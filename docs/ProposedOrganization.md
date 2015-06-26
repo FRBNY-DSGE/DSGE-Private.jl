@@ -1,4 +1,4 @@
-﻿# Proposed Organization
+# Proposed Organization
 
 ## Intro Note
 
@@ -14,16 +14,16 @@ objects that define the model
 - __Parameters__: With values, boundaries, fixed-or-not status, priors
 - __States__: Collections of type `State` that map a name to an index.
   (e.g. "π_t" -> 1)
-  - __Equilibrium Conditions__: A function that takes parameters and model
-    indices, then returns G0, G1, Ψ, and Π
+- __Equilibrium Conditions__: A function that takes parameters and model
+  indices, then returns G0, G1, Ψ, and Π
 
-    These are enough to define the model structure. _Everything else_ is
-    essentially a function of these basics, and we can get to a forecast by
-    this chain:
+These are enough to define the model structure. _Everything else_ is
+essentially a function of these basics, and we can get to a forecast by
+this chain:
 
-    - (Parameters + Model Indices + Eqcond Function) -> (TTT + RRR)
-    - (TTT + RRR + Data) -> Estimation
-    - (Estimation + TTT + RRR + Data) -> Forecast
+- (Parameters + Model Indices + Eqcond Function) -> (TTT + RRR)
+- (TTT + RRR + Data) -> Estimation
+- (Estimation + TTT + RRR + Data) -> Forecast
 
 
 ## Parameters
@@ -33,26 +33,26 @@ objects that define the model
 - A parameter vector of type `Parameters` collects more fundamental
   individual objects of type `Param`, which have fields
 
-    - `Value`:   Float64
-      - `IsFixed`: Logical
-        - `Boundaries`
-          - `PriorDistribution`
-            - `TransformationType`: To go from model space to real line & vice versa
+  - `Value`:   Float64
+  - `IsFixed`: Logical
+  - `Boundaries`
+  - `PriorDistribution`
+  - `TransformationType`: To go from model space to real line & vice versa
 
-            We define the following functions to act on objects of type parameter:
+We define the following functions to act on objects of type parameter:
 
-            - `PriorDensity`: Look at value of parameter & its prior density; compute
-            - `Transform`:    To go from model space to real line
-            - `InvTransform`: To go from real line to model space
+- `PriorDensity`: Look at value of parameter & its prior density; compute
+- `Transform`:    To go from model space to real line
+- `InvTransform`: To go from real line to model space
 
-            Parameter file for a particulare model looks like this, for all parameters:
-            ```
+Parameter file for a particulare model looks like this, for all parameters:
+```
 # Define individual parameters as:
 #
 #   paraname = Param(Value, IsFixed, Bounds, PriorDistribution)
 #
-            α = Param(0.2, false,[-1,1],     Beta(1,0.5))
-            β = Param(27,  true, [-Inf,Inf], Gamma(1,0.5))
+α = Param(0.2, false,[-1,1],     Beta(1,0.5))
+β = Param(27,  true, [-Inf,Inf], Gamma(1,0.5))
 
 # Collect parameters in vector
 θ = Parameters(α, β, ...)
@@ -75,15 +75,15 @@ Functions are:
 They all look like this:
 ```julia
   function exo(name)
-      names = ["π_sh", "rm_sh", "jerry", "george", "elaine", "kramer"]
-          return find(map(nm -> (nm == name), names))
-            end
-            ```
-            - Since we don't care about the number, we only have to define the names.
-            - In this setup, adding states is easier, because we don't have to
-              increment the index numbers of _everything_ when we add states.
-              - Super-automatic and less error prone; code focuses on the names just
-                like we do.
+    names = ["π_sh", "rm_sh", "jerry", "george", "elaine", "kramer"]
+    return find(map(nm -> (nm == name), names))
+  end
+```
+- Since we don't care about the number, we only have to define the names.
+- In this setup, adding states is easier, because we don't have to
+  increment the index numbers of _everything_ when we add states.
+- Super-automatic and less error prone; code focuses on the names just
+  like we do.
 
 ## Equilibrium Conditions
 
@@ -93,55 +93,55 @@ similar to our current code. Example
 function eqcond990(θ::Parameters, endo::EndoStates, exo::ExoShocks, exp::ExpShocks, eq::Equations)
 
   G0[eq["mp"], endo["R_t"]) = 1;
-    G1[eq["mp"], endo["R_t"]) = θ.ρ;
-      G0[eq["mp"], endo["π_t"]) = -θ.Ψ_1;
-        etc.
+  G1[eq["mp"], endo["R_t"]) = θ.ρ;
+  G0[eq["mp"], endo["π_t"]) = -θ.Ψ_1;
+  etc.
 
-          return G0, G1, Ψ, Π
+  return G0, G1, Ψ, Π
 
-          end
-          ```
-          Measurement Equation will be very similar, taking parameters, model
-          indices, and data.
+end
+```
+Measurement Equation will be very similar, taking parameters, model
+indices, and data.
 
 ## Further organize model logic into types
 
-- Create `State` type, with fields 
-    - `name`
-        - `index`
-            - `description`
-                - `adjustmenttype` (e.g. cum_for in matlab code)
-                    - `constant` (e.g. C_ss in matlab code)
-                    - `States` abstract type
-                    - `EndoStates <: States` abstract type
-                    - `EndoStates990 <: EndoStates` concrete type
-                    - `ExoShocks <: States` abstract type
-                    - `ExoShocks990 <: ExoShocks` concrete type
-                    - `ExpShocks <: States` abstract type
-                    - `ExpShocks990 <: ExpShocks` concrete type
-                    - `Equation` type
-                    - `Equations` abstract type
-                    - `Equations990 <: Equations` concrete type
+-	Create `State` type, with fields 
+    -	`name`
+    -	`index`
+    -	`description`
+    -	`adjustmenttype` (e.g. cum_for in matlab code)
+    -	`constant` (e.g. C_ss in matlab code)
+-	`States` abstract type
+-	`EndoStates <: States` abstract type
+-	`EndoStates990 <: EndoStates` concrete type
+-	`ExoShocks <: States` abstract type
+-	`ExoShocks990 <: ExoShocks` concrete type
+-	`ExpShocks <: States` abstract type
+-	`ExpShocks990 <: ExpShocks` concrete type
+-	`Equation` type
+-	`Equations` abstract type
+-	`Equations990 <: Equations` concrete type
 
-                    Add additional functionality to the model types
-                    - We should be able to iterate through `Param`s in a `Parameters` type:
-                    ```julia
-                    assert(isa(θ, Parameters))
-                    for α in θ
-                          println("$α")
-                          end
-                          ```
-                          - We should potentially be able to iterate through `State`s in instances of type `States`.
-                          - We should be able to use the get functionality in instances of type `States` or `Equations`:
-                          ```julia
-                          julia> eq["euler"]
-                          1
+Add additional functionality to the model types
+- We should be able to iterate through `Param`s in a `Parameters` type:
+```julia
+assert(isa(θ, Parameters))
+for α in θ
+    println("$α")
+end
+```
+- We should potentially be able to iterate through `State`s in instances of type `States`.
+- We should be able to use the get functionality in instances of type `States` or `Equations`:
+```julia
+julia> eq["euler"]
+1
 
-                          julia> endo["c_t"]
-                          1
+julia> endo["c_t"]
+1
 
-                          julia> G0[eq["euler"], endo["c_t"]] = 1
-                          ```
+julia> G0[eq["euler"], endo["c_t"]] = 1
+```
 
 ## Defining a Model
 
@@ -177,3 +177,4 @@ We can also easily query key information about the model (whether
 parametrs are fixed, what the prior distributions are, the index of
 state "π_t"), since _one, single object_ of type "Model" will contain
 all the relevant information.
+
