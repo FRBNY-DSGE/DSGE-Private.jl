@@ -15,7 +15,7 @@ objects that define the model
 - __States__: Collections of type `State` that map a name to an index.
   (e.g. "π_t" -> 1)
 - __Equilibrium Conditions__: A function that takes parameters and model
-  indices, then returns G0, G1, Ψ, and Π
+  indices, then returns Γ0, Γ1, Ψ, and Π
 
 These are enough to define the model structure. _Everything else_ is
 essentially a function of these basics, and we can get to a forecast by
@@ -92,12 +92,12 @@ similar to our current code. Example
 ```julia
 function eqcond990(θ::Parameters, endo::EndoStates, exo::ExoShocks, exp::ExpShocks, eq::Equations)
 
-  G0[eq["mp"], endo["R_t"]) = 1;
-  G1[eq["mp"], endo["R_t"]) = θ.ρ;
-  G0[eq["mp"], endo["π_t"]) = -θ.Ψ_1;
+  Γ0[eq["mp"], endo["R_t"]) = 1;
+  Γ1[eq["mp"], endo["R_t"]) = θ.ρ;
+  Γ0[eq["mp"], endo["π_t"]) = -θ.Ψ_1;
   etc.
 
-  return G0, G1, Ψ, Π
+  return Γ0, Γ1, Ψ, Π
 
 end
 ```
@@ -140,7 +140,7 @@ julia> eq["euler"]
 julia> endo["c_t"]
 1
 
-julia> G0[eq["euler"], endo["c_t"]] = 1
+julia> Γ0[eq["euler"], endo["c_t"]] = 1
 ```
 
 ## Defining a Model
