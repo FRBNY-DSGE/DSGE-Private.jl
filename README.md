@@ -1,5 +1,6 @@
-# dsgejl
-FRBNY DSGE model
+# DSGE.jl
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/FRBNY-DSGE/DSGE.jl?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 
 ## Using MATLAB.jl on the RAN
 
