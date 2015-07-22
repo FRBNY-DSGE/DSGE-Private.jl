@@ -7,6 +7,7 @@
 Run the following at the shell:
 ```
 git config --global url."https://".insteadOf git://
+echo 'unset SSH_ASKPASS' >> .bashrc
 ```
 
 ## Install DSGE.jl into the correct directory.
