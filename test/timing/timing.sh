@@ -17,11 +17,13 @@ do
   echo -n "node: $i, seconds: " >> my_results_mat.txt
   if ((SUBMIT_FORWARD));
   then 
-    matlab14a-custom-node -n $i -r my_test_script.m >> my_results_mat.txt
+    matlab14a-custom-node -n $i -r my_test_script.m \
+      | tail -n 2 >> my_results_mat.txt
     julia-0.3.9-custom-node -n $i my_test_script.jl >> my_results_jl.txt
   else
     julia-0.3.9-custom-node -n $i my_test_script.jl >> my_results_jl.txt
-    matlab14a-custom-node -n $i -r my_test_script.m >> my_results_mat.txt
+    matlab14a-custom-node -n $i -r my_test_script.m \
+      | tail -n 2 >> my_results_mat.txt
   fi
   # Flip option.
   SUBMIT_FORWARD=$((1-SUBMIT_FORWARD))
