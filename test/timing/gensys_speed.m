@@ -15,4 +15,5 @@ for i = 1:iterations;
 end;
 time_elapsed = toc;
 
-disp([num2str(iterations), ' calls to gensys executed in ', num2str(time_elapsed), ' seconds']);
+disp(time_elapsed);
+exit;
