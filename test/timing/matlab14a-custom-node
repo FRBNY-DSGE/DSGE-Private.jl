@@ -1,14 +1,26 @@
 #!/bin/bash
 
-ropts=""
+# See http://www.mathworks.com/help/matlab/ref/matlablinux.html
+# Execute the specified MATLAB statement, specified as a string or as the name of
+# a MATLAB script or function. If statement is MATLAB code, enclose the string
+# with double quotation marks. If statement is the name of a MATLAB function or
+# script, do not specify the file extension and do not use quotation marks. Any
+# required file must be on the MATLAB search path or in the startup folder.
+# 
+# Example: -r "disp(['Current folder: ' pwd])"
+# 
+# Example: -r myscript
+
 node=""
+ropts=""
 while (( $# > 0 )); do
 case $1 in 
--q) shift; node="@$1"; shift;;
--r) shift; ropts=","$ropts" "$1 ; shift;;
+-n) shift; node="@$1"; shift;;
+-r) shift; ropts="-r $1"; shift;;
 *) echo "Invalid argument"; exit 1
 esac
 done
+
 export UMASK=`umask`
 unset module
-qrsh -v LD_LIBRARY_PATH -V -N Mat_UI -q background.q${node} -cwd -b y "umask $UMASK;/apps/matlab14a/bin/matlab -nodisplay -nodesktop -nosplash -singleCompThread"
+qrsh -v LD_LIBRARY_PATH -V -N Mat_UI -q background.q${node} -cwd -b y "umask $UMASK;/apps/matlab14a/bin/matlab -nodisplay -nodesktop -nosplash -singleCompThread $ropts"
