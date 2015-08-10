@@ -19,4 +19,4 @@ for i = 1:iterations
 end
 time_elapsed = toq()
 
-println("$iterations calls to gensys executed in $time_elapsed seconds")
+println(time_elapsed)

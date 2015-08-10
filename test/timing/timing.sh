@@ -6,9 +6,9 @@
 #
 # Created 2015-08-07 MJS
 
-cd /path/to/testing/code
+#cd /path/to/testing/code
 
-ALL_NODES="n01 n02 n03 n04 n05 n11 n12 n13 n14 15"
+ALL_NODES="n01 n02 n03 n04 n05 n11 n12 n13 n14 n15"
 
 SUBMIT_FORWARD=1
 for i in $ALL_NODES;
@@ -17,12 +17,12 @@ do
   echo -n "node: $i, seconds: " >> my_results_mat.txt
   if ((SUBMIT_FORWARD));
   then 
-    matlab14a-custom-node -n $i -r my_test_script.m \
+    matlab14a-custom-node -n $i -r gensys_speed \
       | tail -n 2 >> my_results_mat.txt
-    julia-0.3.9-custom-node -n $i my_test_script.jl >> my_results_jl.txt
+    julia-0.3.9-custom-node -n $i gensys_speed.jl >> my_results_jl.txt
   else
-    julia-0.3.9-custom-node -n $i my_test_script.jl >> my_results_jl.txt
-    matlab14a-custom-node -n $i -r my_test_script.m \
+    julia-0.3.9-custom-node -n $i gensys_speed.jl >> my_results_jl.txt
+    matlab14a-custom-node -n $i -r gensys_speed \
       | tail -n 2 >> my_results_mat.txt
   fi
   # Flip option.
