@@ -11,8 +11,15 @@ PSI = get_variable(mf, "PSI")
 PIE = get_variable(mf, "PIE")
 close(mf)
 
+# The first time tic and toc are called, the function gets compiled, so we should ignore the returned time
+tic()
+for i = 1:1
+    gensys(G0, G1, C, PSI, PIE, 1+1e-6)
+end
+toq()
+
 # Call gensys
-iterations = 10
+iterations = 1000
 tic()
 for i = 1:iterations
     gensys(G0, G1, C, PSI, PIE, 1+1e-6)

@@ -8,7 +8,7 @@ addpath(dirs{:});
 load('posterior.mat')
 
 % Call objfcndsge
-iterations = 1e5;
+iterations = 1000;
 tic;
 for i = 1:iterations;
   objfcndsge(para, YY, YY0, nobs, nlags, nvar, mspec, npara, trspec, pmean, ...
@@ -17,3 +17,4 @@ for i = 1:iterations;
 end
 time_elapsed = toc;
 disp([num2str(iterations), ' calls to objfcndsge executed in ', num2str(time_elapsed), ' seconds']);
+exit;
