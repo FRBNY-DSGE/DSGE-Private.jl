@@ -16,7 +16,7 @@ ropts=""
 while (( $# > 0 )); do
 case $1 in 
 -n) shift; node="@$1"; shift;;
--r) shift; ropts="-r $1"; shift;;
+-r) shift; ropts="-r \"$1\""; shift;;
 *) echo "Invalid argument"; exit 1
 esac
 done
