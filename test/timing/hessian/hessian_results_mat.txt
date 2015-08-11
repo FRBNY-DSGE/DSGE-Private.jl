@@ -1,0 +1,19 @@
+node: n03 seconds: 19875.4323
+node: n02 seconds: 20280.9032
+node: n04 seconds: 20237.3641
+node: n05 seconds: 20293.0671
+node: n11 seconds: 20142.5484
+node: n14 seconds: 20246.7349
+node: n13 seconds: 20543.7104
+node: n12 seconds: 20984.225
+node: n15 seconds: 20762.2797
+
+                            < M A T L A B (R) >
+                  Copyright 1984-2014 The MathWorks, Inc.
+                    R2014a (8.3.0.532) 64-bit (glnxa64)
+                             February 11, 2014
+
+ 
+To get started, type one of these: helpwin, helpdesk, or demo.
+For product information, visit www.mathworks.com.
+ 
