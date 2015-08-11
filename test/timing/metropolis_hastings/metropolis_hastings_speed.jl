@@ -6,7 +6,8 @@ using HDF5
 
 using DSGE
 using DSGE: DistributionsExt
-include("../util.jl")
+# include("../util.jl")
+
 path = dirname(@__FILE__)
 
 # Load variables
@@ -36,8 +37,8 @@ for i = 1:1
 end
 toq()
 
-# Call gensys
-iterations = 1000
+# Call metropolis_hastings
+iterations = 1
 tic()
 for i = 1:iterations
     metropolis_hastings(propdist, model, YY, cc0, cc, randvecs, randvals)
