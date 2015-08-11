@@ -8,7 +8,7 @@ addpath(dirs{:});
 load('gensys.mat');
 
 % Call gensys
-iterations = 10;
+iterations = 1000;
 tic;
 for i = 1:iterations;
   gensys(G0, G1, C, PSI, PIE, 1+1e-6);
