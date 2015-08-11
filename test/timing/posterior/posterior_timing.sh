@@ -17,11 +17,11 @@ do
   echo -n "node: $i, seconds:" >> posterior_results_mat.txt
   if ((SUBMIT_FORWARD));
   then 
-    ./matlab14a-custom-node -n $i -r posterior_speed | grep -E -o '\s[0-9]+\.[0-9]+' >> posterior_results_mat.txt
-    ./julia-0.3.9-custom-node -n $i posterior_speed.jl >> posterior_results_jl.txt
+    ../matlab14a-custom-node -n $i -r posterior_speed | grep -E -o '\s[0-9]+\.[0-9]+' >> posterior_results_mat.txt
+    ../julia-0.3.9-custom-node -n $i posterior_speed.jl >> posterior_results_jl.txt
   else
-    ./julia-0.3.9-custom-node -n $i posterior_speed.jl >> posterior_results_jl.txt
-    ./matlab14a-custom-node -n $i -r posterior_speed | grep -E -o '\s[0-9]+\.[0-9]+' >> posterior_results_mat.txt
+    ../julia-0.3.9-custom-node -n $i posterior_speed.jl >> posterior_results_jl.txt
+    ../matlab14a-custom-node -n $i -r posterior_speed | grep -E -o '\s[0-9]+\.[0-9]+' >> posterior_results_mat.txt
   fi
   # Flip option.
   SUBMIT_FORWARD=$((1-SUBMIT_FORWARD))
