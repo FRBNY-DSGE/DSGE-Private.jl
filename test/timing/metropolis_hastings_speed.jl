@@ -1,5 +1,7 @@
+# Add paths
+
 using Base: Test
-using MATLAB
+using MATLAB 
 using HDF5
 
 using DSGE
@@ -7,8 +9,7 @@ using DSGE: DistributionsExt
 include("../util.jl")
 path = dirname(@__FILE__)
 
-
-
+# Load variables
 mf = MatFile("$path/metropolis_hastings.mat")
 mode = get_variable(mf, "params")
 hessian = get_variable(mf, "hessian")
@@ -28,5 +29,19 @@ cc = 0.09
 
 propdist = DegenerateMvNormal(mode, σ)
 
-metropolis_hastings(propdist, model, YY, cc0, cc, randvecs, randvals)
+# The first time tic and toc are called, the function gets compiled, so we should ignore the returned time
+tic()
+for i = 1:1
+    metropolis_hastings(propdist, model, YY, cc0, cc, randvecs, randvals)
+end
+toq()
 
+# Call gensys
+iterations = 1000
+tic()
+for i = 1:iterations
+    metropolis_hastings(propdist, model, YY, cc0, cc, randvecs, randvals)
+end
+time_elapsed = toq()
+
+println(time_elapsed)
