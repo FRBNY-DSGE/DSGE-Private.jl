@@ -4,7 +4,7 @@ node: n03, seconds: 8438.550501527
 node: n11, seconds: 8572.95565611
 node: n13, seconds: 8684.414266888
 node: n14, seconds: 8733.459329775
-node: n01, seconds: 10674.005925433
 node: n05, seconds: 9383.59100389
 node: n15, seconds: 9303.937516507
 node: n12, seconds: 9800.99807929
+node: n01, seconds: 9651.068375234
