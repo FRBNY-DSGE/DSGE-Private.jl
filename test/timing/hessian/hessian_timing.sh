@@ -15,11 +15,11 @@ for i in $ALL_NODES;
 do
   if ((SUBMIT_FORWARD));
   then 
-    ../matlab14a-custom-node -n $i -r "hessian_speed $i" >> hessian_results_mat.txt
-    ../julia-0.3.9-custom-node -n $i hessian_speed.jl $i >> hessian_results_jl.txt
+    echo "../matlab14a-custom-node -n $i -r \"hessian_speed $i\" >> hessian_results_mat.txt" | batch
+    echo "../julia-0.3.9-custom-node -n $i hessian_speed.jl $i >> hessian_results_jl.txt" | batch
   else
-    ../julia-0.3.9-custom-node -n $i hessian_speed.jl $i >> hessian_results_jl.txt
-    ../matlab14a-custom-node -n $i -r "hessian_speed $i" >> hessian_results_mat.txt
+    echo "../julia-0.3.9-custom-node -n $i hessian_speed.jl $i >> hessian_results_jl.txt" | batch
+    echo "../matlab14a-custom-node -n $i -r \"hessian_speed $i\" >> hessian_results_mat.txt" | batch
   fi
   # Flip option.
   SUBMIT_FORWARD=$((1-SUBMIT_FORWARD))
