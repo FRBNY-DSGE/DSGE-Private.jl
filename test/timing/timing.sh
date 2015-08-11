@@ -13,17 +13,13 @@ ALL_NODES="n01 n02 n03 n04 n05 n11 n12 n13 n14 n15"
 SUBMIT_FORWARD=1
 for i in $ALL_NODES;
 do
-  echo -n "node: $i, seconds: " >> my_results_jl.txt
-  echo -n "node: $i, seconds: " >> my_results_mat.txt
   if ((SUBMIT_FORWARD));
   then 
-    matlab14a-custom-node -n $i -r gensys_speed \
-      | tail -n 2 >> my_results_mat.txt
-    julia-0.3.9-custom-node -n $i gensys_speed.jl >> my_results_jl.txt
+    nohup submit_julia.sh $i 2>/dev/null &
+    nohup submit_matlab.sh $i 2>/dev/null &
   else
-    julia-0.3.9-custom-node -n $i gensys_speed.jl >> my_results_jl.txt
-    matlab14a-custom-node -n $i -r gensys_speed \
-      | tail -n 2 >> my_results_mat.txt
+    nohup submit_matlab.sh $i 2>/dev/null &
+    nohup submit_julia.sh $i 2>/dev/null &
   fi
   # Flip option.
   SUBMIT_FORWARD=$((1-SUBMIT_FORWARD))
