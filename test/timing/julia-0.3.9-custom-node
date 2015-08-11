@@ -11,4 +11,4 @@ done
 
 export UMASK=`umask`
 unset module
-qrsh -V -N Julia -q background.q${node} -cwd "umask $UMASK;/apps/julia-0.3.9/julia/usr/bin/julia -p 1 $rest"
+qsub -V -N Julia -q background.q${node} -cwd "umask $UMASK;/apps/julia-0.3.9/julia/usr/bin/julia -p 1 $rest"

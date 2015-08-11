@@ -13,15 +13,13 @@ ALL_NODES="n01 n02 n03 n04 n05 n11 n12 n13 n14 n15"
 SUBMIT_FORWARD=1
 for i in $ALL_NODES;
 do
-  #echo -n "node: $i, seconds: " >> hessian_results_jl.txt
-  #echo -n "node: $i, seconds:" >> hessian_results_mat.txt
   if ((SUBMIT_FORWARD));
   then 
-    echo "../matlab14a-custom-node -n $i -r \"hessian_speed $i\" >> hessian_results_mat.txt" | batch
-    echo "../julia-0.3.9-custom-node -n $i hessian_speed.jl $i >> hessian_results_jl.txt" | batch
+    ../matlab14a-custom-node -n $i -r "hessian_speed $i" >> hessian_results_mat.txt
+    ../julia-0.3.9-custom-node -n $i hessian_speed.jl $i >> hessian_results_jl.txt
   else
-    echo "../julia-0.3.9-custom-node -n $i hessian_speed.jl $i >> hessian_results_jl.txt" | batch
-    echo "../matlab14a-custom-node -n $i -r \"hessian_speed $i\" >> hessian_results_mat.txt" | batch
+    ../julia-0.3.9-custom-node -n $i hessian_speed.jl $i >> hessian_results_jl.txt
+    ../matlab14a-custom-node -n $i -r "hessian_speed $i" >> hessian_results_mat.txt
   fi
   # Flip option.
   SUBMIT_FORWARD=$((1-SUBMIT_FORWARD))

@@ -23,4 +23,4 @@ done
 
 export UMASK=`umask`
 unset module
-qrsh -v LD_LIBRARY_PATH -V -N Mat_UI -q background.q${node} -cwd -b y "umask $UMASK;/apps/matlab14a/bin/matlab -nodisplay -nodesktop -nosplash -singleCompThread $ropts"
+qsub -v LD_LIBRARY_PATH -V -N Mat_UI -q background.q${node} -cwd -b y "umask $UMASK;/apps/matlab14a/bin/matlab -nodisplay -nodesktop -nosplash -singleCompThread $ropts"
