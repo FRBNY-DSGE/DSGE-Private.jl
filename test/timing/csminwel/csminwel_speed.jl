@@ -1,5 +1,5 @@
 # Add paths
-using DSGE, MATLAB
+using DSGE, MATLAB, Debug
 path = dirname(@__FILE__)
 
 # Load variables
@@ -23,10 +23,14 @@ end
 
 # Call csminwel
 tic()
-csminwel(posterior_min!, x0, H0; ftol=crit, iterations=nit, randvecs=randvecs)
+out, H = csminwel(posterior_min!, x0, H0; ftol=crit, iterations=1, randvecs=randvecs)
+toq()
+
+tic()
+out, H = csminwel(posterior_min!, x0, H0; ftol=crit, iterations=nit, randvecs=randvecs)
 time_elapsed = toq()
 
 # Print time elapsed
 for node in ARGS
-    println("node: $node, seconds: $time_elapsed")
+    println("node: $node, seconds: $time_elapsed, iterations: $(out.iterations)")
 end

@@ -10,12 +10,13 @@ addpath(dirs{:});
 load('csminwel.mat');
 
 tic;
-csminwel('objfcndsge', x0, H0, [], crit, nit, randvecs, ...
+[fh, xh, g, H, itct, fcount, retcode] = ...
+    csminwel('objfcndsge', x0, H0, [], crit, nit, randvecs, ...
     YY, YY0, nobs, nlags, nvar, mspec, npara, trspec, pmean, pstdd, pshape, para_mask, ...
     para_fix, marglh, coint, cointadd, cointall, YYcoint0, MIN, nant, antlags);
 time_elapsed = toc;
 
-disp(['node: ', node, ' seconds: ',  num2str(time_elapsed)]);
+disp(['node: ', node, ', seconds: ', num2str(time_elapsed), ', iterations: ', num2str(itct)]);
 exit;
 
 end
