@@ -3,26 +3,30 @@
 using Base: Test
 using MATLAB 
 using HDF5
-
+using Debug
 using DSGE
 using DSGE: DistributionsExt
-# include("../util.jl")
+include("../../util.jl")
 
 path = dirname(@__FILE__)
+savepath = joinpath(path, "save")
 
 # Load variables
-mf = MatFile("$path/metropolis_hastings.mat")
+
+mf = MatFile("$path/pre_mh_state.mat")
 mode = get_variable(mf, "params")
 hessian = get_variable(mf, "hessian")
-YY = get_variable(mf, "YYall")
-
-randvecs = get_variable(mf, "randvecs")
-randvals = get_variable(mf, "randvals")
+YY0 = get_variable(mf, "YY0")
+YY = get_variable(mf, "YY")
+data = [YY0; YY]
+σ = get_variable(mf, "sigscale")
 close(mf)
 
-mf2 = MatFile("$path/sigscale.mat")
-σ = get_variable(mf2, "sigscale")
-close(mf2)
+# Load random vectors
+mf3 = MatFile("$path/metropolis_hastings.mat")
+randvecs = get_variable(mf3, "randvecs")
+randvals = get_variable(mf3, "randvals")
+close(mf3)
 
 model = Model990()
 cc0 = 0.01
@@ -30,19 +34,11 @@ cc = 0.09
 
 propdist = DegenerateMvNormal(mode, σ)
 
-# The first time tic and toc are called, the function gets compiled, so we should ignore the returned time
-tic()
-for i = 1:1
-    metropolis_hastings(propdist, model, YY, cc0, cc, randvecs, randvals)
-end
-toq()
-
 # Call metropolis_hastings
-iterations = 1
 tic()
-for i = 1:iterations
-    metropolis_hastings(propdist, model, YY, cc0, cc, randvecs, randvals)
-end
+metropolis_hastings(propdist, model, data, cc0, cc, randvecs, randvals)
 time_elapsed = toq()
 
-println(time_elapsed)
+for node in ARGS
+    println("node: $node, seconds: $time_elapsed")
+end
