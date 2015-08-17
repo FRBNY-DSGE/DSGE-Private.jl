@@ -122,7 +122,7 @@ for iblock = 1:nblocks
         % deviation cc*sigscale).
         
         if testing
-            para_new = para_old + cc*(sigscale*randvecs(:, j));
+            para_new = para_old + cc*(sigscale*randvecs(:, mod(j,1000)));
         else
             para_new = para_old + cc*(sigscale*randn(npara,1));
         end
@@ -137,7 +137,7 @@ for iblock = 1:nblocks
         [post_new,like_new,zend_new,ZZ_new,DD_new,QQ_new] = feval('objfcnmhdsge',para_new,bounds,YY,YY0,nobs,...
             nlags,nvar,mspec,npara,trspec,pmean,pstdd,pshape,TTT_new,RRR_new,CCC_new,valid_new,para_mask,coint,cointadd,cointall,YYcoint0,args_nant_antlags{:});
         
-        fprintf(1,'Iteration %2.0f: posterior = %4.8f\n',[j, post_new]);
+        %fprintf(1,'Iteration %2.0f: posterior = %4.8f\n',[j, post_new]);
 
         
         % Calculate the multivariate log likelihood of jump from para_old to para_new
@@ -156,7 +156,7 @@ for iblock = 1:nblocks
         r = min([1 ; exp( post_new - post_old)]);
         
         if testing
-            x = randvals(j);
+            x = randvals(mod(j,1000));
         else
             x = rand(1, 1);
         end
@@ -197,9 +197,9 @@ for iblock = 1:nblocks
             zsim(j/ntimes,:) = zend_old(:)';
         end
         
-        if j == nsim*ntimes
-             fprintf(1,'\nRejection perct %2.4f ',[sum(rej)/j]);
-        end
+        %if j == nsim*ntimes
+        %     fprintf(1,'\nRejection perct %2.4f ',[sum(rej)/j]);
+        %end
         
     end
     

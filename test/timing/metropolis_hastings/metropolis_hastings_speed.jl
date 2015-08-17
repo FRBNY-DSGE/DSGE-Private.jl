@@ -36,7 +36,7 @@ propdist = DegenerateMvNormal(mode, σ)
 
 # Call metropolis_hastings
 tic()
-metropolis_hastings(propdist, model, data, cc0, cc, randvecs, randvals)
+@debug metropolis_hastings(propdist, model, data, cc0, cc, randvecs, randvals)
 time_elapsed = toq()
 
 for node in ARGS
