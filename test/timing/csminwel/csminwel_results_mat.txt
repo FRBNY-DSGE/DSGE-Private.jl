@@ -1,0 +1,10 @@
+node: n01, seconds: 33415.1479, iterations: 1001
+node: n03, seconds: 33689.7054, iterations: 1001
+node: n02, seconds: 34038.3551, iterations: 1001
+node: n11, seconds: 33702.7364, iterations: 1001
+node: n04, seconds: 33987.3379, iterations: 1001
+node: n12, seconds: 33877.2431, iterations: 1001
+node: n05, seconds: 34177.1608, iterations: 1001
+node: n13, seconds: 33762.8737, iterations: 1001
+node: n15, seconds: 33633.1781, iterations: 1001
+node: n14, seconds: 36083.1202, iterations: 1001
