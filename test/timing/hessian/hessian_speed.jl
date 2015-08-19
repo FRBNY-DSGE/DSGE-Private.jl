@@ -13,7 +13,7 @@ data = [YY0; YY]
 
 # Call hessian
 tic()
-hessizero!(params, model, data; noisy=false)
+hessizero!(model, params, data; verbose=false)
 time_elapsed = toq()
 
 for node in ARGS
