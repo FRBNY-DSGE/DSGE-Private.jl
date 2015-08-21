@@ -5,7 +5,7 @@ using MATLAB
 using HDF5
 using Debug
 using DSGE
-using DSGE: DistributionsExt
+
 include("../../util.jl")
 
 path = dirname(@__FILE__)
@@ -32,13 +32,16 @@ model = Model990()
 cc0 = 0.01
 cc = 0.09
 
+mode = vec(mode)
+σ = convert(Matrix{Float64},σ)
+
 propdist = DegenerateMvNormal(mode, σ)
 
 # Call metropolis_hastings
 tic()
-@debug metropolis_hastings(propdist, model, data, cc0, cc, randvecs, randvals)
+@debug metropolis_hastings(propdist, model, data, cc0, cc; randvecs=randvecs, randvals=randvals)
 time_elapsed = toq()
 
-for node in ARGS
-    println("node: $node, seconds: $time_elapsed")
-end
+## for node in ARGS
+##     println("node: $node, seconds: $time_elapsed")
+## end
