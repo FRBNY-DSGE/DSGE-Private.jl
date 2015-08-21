@@ -9,6 +9,7 @@
 - Speed up the Kalman filter (right now 2x slower than Matlab)
 - Complete unit tests for estimation step
 - *Model completion: implement forecasting, plotting, and loading data*
+- Print out TeX tables of posterior steady state values 
 
 ## Long-Run
 - Consider reimplementing eqcond, transition, and measurement matrices using sparse matrices
