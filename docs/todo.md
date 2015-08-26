@@ -1,15 +1,16 @@
 # To Do
 
 ## Short-Run
-- Investigate how the discrepancy between Matlab and Julia computed Hessians affects how the posterior distribution is explored during Metropolis-Hastings
-- Step through `csminwel` and confirm that the outputted mode as well as intermediate values are the same in Matlab and Julia
 - Thorough testing of Metropolis-Hastings
+..- Investigate how the discrepancy between Matlab and Julia computed Hessians affects how the posterior distribution is explored during Metropolis-Hastings
+..- Step through `csminwel` and confirm that the outputted mode as well as intermediate values are the same in Matlab and Julia
+- Complete unit tests for estimation step
+..- Write program to print out TeX tables of posterior steady state values :white_check_mark:
 
 ## Medium-Run
 - Speed up the Kalman filter (right now 2x slower than Matlab)
-- Complete unit tests for estimation step
 - *Model completion: implement forecasting, plotting, and loading data*
-- Print out TeX tables of posterior steady state values 
+
 
 ## Long-Run
 - Consider reimplementing eqcond, transition, and measurement matrices using sparse matrices
@@ -18,6 +19,6 @@
 - Replace csminwel, Hessian computation, etc. with external packages
 - Compute likelihood without partitioning
 - Unmodulify FinancialFrictionsExt
-- Convert all .mat files to .h5
+- Convert all .mat files to .h5 :white_check_mark:
 - Standardize variable names (TTT, etc.)
 - Get rid of src/init/
