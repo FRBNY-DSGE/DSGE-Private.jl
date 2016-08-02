@@ -74,6 +74,8 @@ function kalman_filter{S<:AbstractFloat}(data::Matrix{S},
                                       z0::Matrix{S},
                                       vz0::Matrix{S},
                                       Ny0::Int = 0;
+                                      A::Matrix{S} = [];
+                                      x::Matrix{S} = [];
                                       allout::Bool = false)
     T = size(data, 2)
     Nz = size(a, 1)
@@ -82,6 +84,16 @@ function kalman_filter{S<:AbstractFloat}(data::Matrix{S},
     z = z0
     P = vz0
 
+    # For forcing processes in measurement equation.
+    # Should conform to proper size in measurement equation, but be all zeros.
+    if isempty(x)
+        x = zeros(Nz, T)
+    end
+    
+    if isempty(A)
+        A = zeros(T, Ny) 
+    end
+    
     # Check input matrix dimensions
     @assert size(data, 1) == Ny
     @assert size(a, 2) == 1
@@ -123,12 +135,12 @@ function kalman_filter{S<:AbstractFloat}(data::Matrix{S},
         R_t = R[nonmissing, nonmissing]    # R_t = Var(ϵ_t)
         Ny_t = length(data_t)              # Ny_t = T is length of time
         b_t = b[nonmissing, :]             # b_t = DD
-
+        x_t = x[:,t]                       # observables for forcing process
 
         ## forecasting
         z = a + F*z                        # z_{t|t-1} = a + F(Θ)*z_{t-1|t-1}
         P = F*P*F' + V                     # P_{t|t-1} = F(Θ)*P_{t-1|t-1}*F(Θ)' + F(Θ)*Var(η_t)*F(Θ)'
-        dy = data_t - H_t*z - b_t          # dy = y_t - H(Θ)*z_{t|t-1} - DD is prediction error or innovation
+        dy = data_t - A*x_t - H_t*z - b_t  # dy = y_t - A(θ)*x_t - H(Θ)*z_{t|t-1} - DD is prediction error or innovation
         HG = H_t*G_t                       # HG is ZZ*Cov(η_t, ϵ_t)
         D = H_t*P*H_t' + HG + HG' + R_t    # D = ZZ*P_{t+t-1}*ZZ' + HG + HG' + R_t
         D = (D+D')/2
