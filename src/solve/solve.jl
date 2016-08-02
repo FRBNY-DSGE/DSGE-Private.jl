@@ -18,19 +18,26 @@ function solve(m::AbstractModel)
 
     # Get equilibrium condition matrices
     Γ0, Γ1, C, Ψ, Π  = eqcond(m)
+    
+    zero_mat = zeros(size(Π))
+    if Π == zero_mat
+        TTT = Γ0
+        RRR = Γ1
+        CCC = C
 
-    # Solve model
-    TTT_gensys, CCC_gensys, RRR_gensys, fmat, fwt, ywt, gev, eu, loose = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6)
-    if !((eu[1] == 1) & (eu[2] == 1))
-        throw(GensysError("Gensys does not give existence"))
+    else
+        # Solve model
+        TTT_gensys, CCC_gensys, RRR_gensys, fmat, fwt, ywt, gev, eu, loose = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6)
+        if !((eu[1] == 1) & (eu[2] == 1))
+            throw(GensysError("Gensys does not give existence"))
+        end
+        TTT_gensys = real(TTT_gensys)
+        RRR_gensys = real(RRR_gensys)
+        CCC_gensys = reshape(CCC_gensys, length(CCC_gensys), 1)
+
+        # Augment states
+        TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
     end
-    TTT_gensys = real(TTT_gensys)
-    RRR_gensys = real(RRR_gensys)
-    CCC_gensys = reshape(CCC_gensys, length(CCC_gensys), 1)
-
-    # Augment states
-    TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
-
     return TTT, RRR, CCC
 end
 
