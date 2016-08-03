@@ -9,6 +9,11 @@ kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     TTT::Matrix{S}, CCC::Vector{S}, ZZ::Matrix{S}, DD::Vector{S}, VVall::Matrix{S},
     z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}(); lead::Int = 0,
     allout::Bool = false, include_presample::Bool = true)
+
+kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
+    TTT::Matrix{S}, CCC::Vector{S}, ZZ::Matrix{S}, DDs::Vector{Vector{S}},
+    VVall::Matrix{S}, z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
+    lead::Int = 0, allout::Bool = false, include_presample::Bool = true)
 ```
 
 ### Inputs
@@ -20,7 +25,9 @@ kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
 - `CCC`: an `Nz` x 1 vector for a time-invariant input vector in the transition equation.
 - `ZZ`: an `Ny` x `Nz` matrix for a time-invariant measurement matrix in the measurement
   equation.
-- `DD`: an `Ny` x 1 vector for a time-invariant input vector in the measurement equation.
+- `DDs`: a vector of length `T`, whose elements are the time-varying constants
+  `DD_t` (themselves `Ny` x 1 vectors) in the measurement equation. Alternatively,
+  specify a single time-invariant constant `DD`.
 - `VVall`: an `Ny + Nz` x `Ny + Nz` matrix for a time-invariant variance matrix for the
   error in the transition equation and the error in the measurement equation, that is,
   `[η(t)', ϵ(t)']'`.
@@ -53,7 +60,7 @@ Where:
 The state space model is defined as follows:
 ```
 z(t+1) = CCC+TTT*z(t)+η(t)   (state or transition equation)
-y(t) = DD+ZZ*z(t)+ϵ(t)       (observation or measurement equation)
+y(t) = DD(t)+ZZ*z(t)+ϵ(t)       (observation or measurement equation)
 ```
 
 When `z0` and `Vz0` are omitted, the initial state vector and its covariance matrix of the
@@ -82,9 +89,11 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          allout::Bool = false,
                                          include_presample::Bool = true)
 
+    # Broadcast time-invariant DD
     T = size(data, 2)
     DDs = fill(DD, T)
 
+    # Call time-varying Kalman filter
     kalman_filter(m, data, TTT, CCC, ZZ, DDs, VVall, z0, vz0; lead = lead,
         allout = allout, include_presample = include_presample)
 end
