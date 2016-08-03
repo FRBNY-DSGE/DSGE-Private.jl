@@ -19,7 +19,12 @@ my_tests = [
             "models/m990/m990",
             "models/smets_wouters/smets_wouters",
             "data/misc",
-            "data/load_data"
+            "data/load_data",
+            "forecast/smoothers",
+            "forecast/filter",
+            "forecast/forecast",
+            "forecast/drivers",
+            "forecast/compute_forecast"
             ]
 
 for test in my_tests

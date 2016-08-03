@@ -66,7 +66,7 @@ m = Model990()
 
 # estimate as of 2015-Q3 using the default data vintage from 2015 Nov 27
 m <= Setting(:data_vintage, "151127")
-m <= Setting(:date_mainsample_end, quartertodate("2015-Q3"))
+m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
 
 # reoptimize parameter vector, compute Hessian at mode, and full posterior
 # parameter sampling
@@ -265,10 +265,9 @@ See [defaults.jl](src/defaults.jl) for the complete description of default setti
 
 #### Dates
 - `date_presample_start`: Start date of pre-sample.
-- `date_mainsample_start`: Start date of main sample.
-- `date_zlbregime_start`: Start date of zero lower bound regime.
-- `date_mainsample_end`: End date of main sample.
-- `date_forecast_start`: Start date of forecast period.
+- `date_prezlb_start`: Start date of main sample.
+- `date_zlb_start`: Start date of zero lower bound regime.
+- `date_forecast_start`: Start date of forecast period (or the period after the last period for which we have GDP data).
 - `date_forecast_end`: End date of forecast period.
 
 #### Anticipated Shocks
@@ -451,7 +450,7 @@ specified. See `?load_data` for more details.
 
 The resulting DataFrame `df` contains all the required data series for this model, fully
 transformed. The first row is given by the Setting `date_presample_start` and the last row
-is given by `date_mainsample_end`. The first `n_presample_periods` rows of `df` are the
+is given by `date_zlb_end`. The first `n_presample_periods` rows of `df` are the
 presample.
 
 Driver functions including `estimate` accept this `df` as an argument and convert it into a
@@ -573,7 +572,7 @@ for their model.
     perform a more complex transformation, such as converting to one quarter percent changes
     or adjusting into per-capita terms.
 - the user adjusts data-related settings, such as `data_vintage`, `dataroot`,
-    `date_presample_start`, `date_mainsample_end`, and `date_zlbregime_start`, and
+    `date_presample_start`, `date_zlb_start`, `date_forecast_start`, and
     `use_population_forecast`.
 
 Second, *DSGE.jl* attempts to construct the dataset given this setup through a call to
@@ -588,7 +587,7 @@ Given the complexity of the data download, you may find that the dataset generat
 `load_data` is not exactly as you expect. Here are some common pitfalls to look out for:
 - Ensure that the `data_vintage` model setting is as you expect. (Try checking
     `data_vintage(m)`.)
-- Ensure that the `date_mainsample_end` model setting is as you expect, and that is not
+- Ensure that the `date_forecast_start` model setting is as you expect, and that is not
     logically incompatible with `data_vintage`.
 - Ensure that the `data_series` field of the model object is set as expected.
 - Double check the transformations specified in the `data_transforms` field of the model
@@ -858,6 +857,84 @@ The `Setting{T<:Any}` type has the following fields:
   file names when `print=true`.
 - `description::AbstractString`: Short description of what the setting is used
   for.
+
+### Default Settings
+
+#### I/O
+
+- `dataroot::Setting{ASCIIString}`: The root directory for
+  model input data.
+- `saveroot::Setting{ASCIIString}`: The root directory for model output.
+- `data_vintage::Setting{ASCIIString}`: Data vintage identifier, formatted
+  `yymmdd`. By default, `data_vintage` is set to the most recent date of the
+  files with name `<dataroot>/data/data_<yymmdd>.h5`. It is the only setting
+  printed to output filenames by default.
+
+#### Anticipated Shocks
+- `n_anticipated_shocks::Setting{Int}`: Number of anticipated policy shocks.
+- `n_anticipated_shocks_padding::Setting{Int}`: Padding for anticipated shocks.
+- `index_zlb_start::Setting{Int}`: Index into input data matrix of first period
+  to incorporate zero bound expectations. The first observation in the sample
+  data is 1959Q3 and we assume the zero lower bound period starts in 2008Q4, so
+  we set this to `198` by default.
+- `n_presample_periods::Setting{Int}`: Number of periods in the presample.
+
+#### Estimation
+- `reoptimize::Setting{Bool}`: Whether to reoptimize the posterior mode. If
+  `true` (the default), `estimate()` begins reoptimizing from the model object's
+  parameter vector.
+- `calculate_hessian::Setting{Bool}`: Whether to compute the Hessian. If `true`
+  (the default), `estimate()` calculates the Hessian at the posterior mode.
+
+#### Metropolis-Hastings
+- `n_mh_simulations::Setting{Int}`: Number of draws from the posterior
+  distribution per block.
+- `n_mh_blocks::Setting{Int}`: Number of blocks to run Metropolis-Hastings.
+- `n_mh_burn::Setting{Int}`: Number of blocks to discard as burn-in for
+  Metropolis-Hastings.
+- `mh_thin::Setting{Int}`: Metropolis-Hastings thinning step.
+
+### Accessing Settings
+The function `get_setting(m::AbstractModel, s::Symbol)` returns the value of the
+setting `s` in `m.settings`. Some settings also have explicit getter methods
+that take only the model object `m` as an argument:
+
+*I/O settings:*
+`saveroot(m)`,
+`dataroot(m)`,
+`data_vintage(m)`,
+
+*Parallelization*:
+`use_parallel_workers(m)`
+
+*Estimation*:
+`reoptimize(m)`,
+`calculate_hessian(m)`,
+`n_hessian_test_params(m)`,
+
+*Metropolis-Hastings*:
+`n_mh_blocks(m)`,
+`n_mh_simulations(m)`,
+`n_mh_burn(m)`,
+`mh_thin(m)`
+
+### Overwriting Default Settings
+
+To overwrite default settings added during model construction, a user must
+define a new `Setting` object and overwrite the corresponding entry in the
+model's `settings` dictionary using the `<=` syntax. Individual fields of a
+pre-initialized setting object cannot be modified. This immutability enforces
+the naming convention described in the preceding paragraphs (the default
+parameters are constructed without codes and are not printed to filename outputs
+to avoid excessively long filenames). Therefore, we strongly suggest that users
+who modify settings set `print=true` and define a meaningful code when
+overwriting any default settings.
+
+For example, overwriting `use_parallel_workers` should look like this:
+```julia
+m = Model990()
+m <= Setting(:use_parallel_workers, true)
+```
 
 ## Estimation
 

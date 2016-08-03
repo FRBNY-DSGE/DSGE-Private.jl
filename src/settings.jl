@@ -144,8 +144,6 @@ function default_test_settings!(m::AbstractModel)
         "Location of input files when in test mode" )
     test[:data_vintage] = Setting(:data_vintage, "REF", true, "vint",
         "Reference data identifier")
-    test[:date_mainsample_end] = Setting(:date_mainsample_end, quartertodate("2015-Q3"),
-        "End date of main sample")
     test[:use_parallel_workers] = Setting(:use_parallel_workers, false, false, "parw",
         "Use available parallel workers in computations")
     test[:n_hessian_test_params] = Setting(:n_hessian_test_params, 3, false, "mhfp",
@@ -160,6 +158,20 @@ function default_test_settings!(m::AbstractModel)
         "Number of burn-in blocks for testing Metropolis-Hastings")
     test[:mh_thin] = Setting(:mh_thin, 1, false, "thin",
         "Thinning step for testing Metropolis-Hastings")
+
+    # Forecast
+    test[:date_forecast_start] = Setting(:date_forecast_start, quartertodate("2015-Q4"),
+        "Start date of forecast period")
+    test[:date_forecast_end] = Setting(:date_forecast_end, quartertodate("2016-Q1"),
+        "End date of forecast period")
+    test[:forecast_jstep] = Setting(:forecast_jstep, 1,
+        "Forecast thinning step (in addition to MH thinning step")
+    test[:shockdec_startindex] = Setting(:shockdec_startindex, 2,
+        "Index of start of shock decomposition output period")
+    test[:shockdec_endindex] = Setting(:shockdec_endindex, 4,
+        "Index of end of shock decomposition output period")
+    test[:shockdec_whichshocks] = Setting(:shockdec_whichshocks, :all, #TODO
+        "Sets of shocks for which to conduct shock decomposition")
 
     return test
 end
