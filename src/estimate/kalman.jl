@@ -81,10 +81,32 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          lead::Int = 0,
                                          allout::Bool = false,
                                          include_presample::Bool = true)
+
+    T = size(data, 2)
+    DDs = fill(DD, T)
+
+    kalman_filter(m, data, TTT, CCC, ZZ, DDs, VVall, z0, vz0; lead = lead,
+        allout = allout, include_presample = include_presample)
+end
+
+function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
+                                         data::Matrix{S},
+                                         TTT::Matrix{S},
+                                         CCC::Vector{S},
+                                         ZZ::Matrix{S},
+                                         DDs::Vector{Vector{S}},
+                                         VVall::Matrix{S},
+                                         z0::Vector{S} = Vector{S}(),
+                                         vz0::Matrix{S} = Matrix{S}();
+                                         lead::Int = 0,
+                                         allout::Bool = false,
+                                         include_presample::Bool = true)
     T = size(data, 2)
     Nz = length(CCC)
-    Ny = length(DD)
+    Ny = length(DDs[1])
     V = VVall[1:Nz, 1:Nz]
+
+    @assert length(DDs) == T
 
     if isempty(z0) || isempty(vz0)
         e, _ = eig(TTT)
@@ -138,7 +160,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         G_t = G[:, nonmissing]             # G_t = Cov(η_t, ϵ_t)
         R_t = R[nonmissing, nonmissing]    # R_t = Var(ϵ_t)
         Ny_t = length(data_t)              # Ny_t = T is length of time
-        DD_t = DD[nonmissing]                # DD_t
+        DD_t = DDs[t][nonmissing]          # DD_t
 
 
         ## forecasting
