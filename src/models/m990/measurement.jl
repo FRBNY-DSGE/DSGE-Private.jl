@@ -157,10 +157,6 @@ type Measurement{T<:AbstractFloat}
     EE::Matrix{T}
     MM::Matrix{T}
     VVall::Matrix{T}
-    A::Matrix{T}
-end
-function Measurement{T<:AbstractFloat}(ZZ, DD, QQ, EE, MM, VVall)
-    Measurement(ZZ, DD, QQ, EE, MM, VVall, [])
 end
 function Base.getindex(M::Measurement, d::Symbol)
     if d in (:ZZ, :DD, :QQ, :EE, :MM, :VVall)
