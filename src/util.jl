@@ -23,4 +23,3 @@ function sorted_list_insert!{T}(v::Vector{T}, x::T)
     end
     insert!(v,insert_index,x)
 end
-

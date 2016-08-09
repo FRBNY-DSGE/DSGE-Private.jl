@@ -1,14 +1,12 @@
 abstract AbstractModel{T}
 
-description(m::AbstractModel) = "DSGE Model $(spec(m)) (subspec $(subspec(m)))"
-
 function Base.show{T<:AbstractModel}(io::IO, m::T)
     @printf io "Dynamic Stochastic General Equilibrium Model\n"
     @printf io "%s\n" T
-    @printf io "description:\n %s\n"          description(m)
     @printf io "no. states:             %i\n" n_states(m)
     @printf io "no. anticipated shocks: %i\n" n_anticipated_shocks(m)
     @printf io "data vintage:           %s\n" data_vintage(m)
+    @printf io "description:\n %s\n"          description(m)
 end
 
 @inline function Base.getindex(m::AbstractModel, i::Integer)
@@ -62,6 +60,7 @@ param. Otherwise, overwrites m.steady_state[i-length(m.parameters).
 end
 
 Base.setindex!(m::AbstractModel, value, k::Symbol) = Base.setindex!(m, value, m.keys[k])
+
 
 """
 ```
@@ -119,26 +118,29 @@ Distributions.pdf(m::AbstractModel) = exp(logpdf(m))
 
 # Number of anticipated policy shocks
 n_anticipated_shocks(m::AbstractModel) = get_setting(m, :n_anticipated_shocks)
-
-# Padding for number of anticipated policy shocks
 n_anticipated_shocks_padding(m::AbstractModel) = get_setting(m, :n_anticipated_shocks_padding)
 
-# Index into data matrix of first period to incorporate expected rate data
-function zlb_start_index(m::AbstractModel)
-    zlb_start_quarter = get_setting(m, :date_zlbregime_start)
-    presample_start_quarter = get_setting(m, :date_presample_start)
-    quarters = subtract_quarters(zlb_start_quarter, presample_start_quarter)
-    index = quarters+1
-    return index
-end
+# Dates, indices, number of periods for each regime
+date_presample_start(m::AbstractModel) = get_setting(m, :date_presample_start)
+date_prezlb_start(m::AbstractModel) = get_setting(m, :date_prezlb_start)
+date_zlb_start(m::AbstractModel) = get_setting(m, :date_zlb_start)
 
-# Number of presample periods
-function n_presample_periods(m::AbstractModel)
-    mainsample_start_quarter = get_setting(m, :date_mainsample_start)
-    presample_start_quarter = get_setting(m, :date_presample_start)
-    quarters = subtract_quarters(mainsample_start_quarter, presample_start_quarter)
-    return quarters
-end
+date_presample_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_prezlb_start) - Dates.Month(3))
+date_prezlb_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_zlb_start) - Dates.Month(3))
+date_zlb_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_forecast_start) - Dates.Month(3))
+
+index_presample_start(m::AbstractModel) = 1
+index_prezlb_start(m::AbstractModel) = subtract_quarters(date_prezlb_start(m), date_presample_start(m)) + 1
+index_zlb_start(m::AbstractModel) = subtract_quarters(date_zlb_start(m), date_presample_start(m)) + 1
+index_forecast_start(m::AbstractModel) = subtract_quarters(date_forecast_start(m), date_presample_start(m)) + 1
+
+n_presample_periods(m::AbstractModel) = subtract_quarters(date_prezlb_start(m), date_presample_start(m))
+n_prezlb_periods(m::AbstractModel) = subtract_quarters(date_zlb_start(m), date_prezlb_start(m))
+n_zlb_periods(m::AbstractModel) = subtract_quarters(date_forecast_start(m), date_zlb_start(m))
+
+inds_presample_periods(m::AbstractModel) = collect(index_presample_start(m):(index_prezlb_start(m)-1))
+inds_prezlb_periods(m::AbstractModel) = collect(index_prezlb_start(m):(index_zlb_start(m)-1))
+inds_zlb_periods(m::AbstractModel) = collect(index_zlb_start(m):(index_forecast_start(m)-1))
 
 # Number of a few things that are useful
 n_states(m::AbstractModel)                 = length(m.endogenous_states)
@@ -151,6 +153,38 @@ n_parameters(m::AbstractModel)             = length(m.parameters)
 n_parameters_steady_state(m::AbstractModel)= length(m.steady_state)
 n_parameters_free(m::AbstractModel)        = sum([!α.fixed for α in m.parameters])
 
+# From an augmented state space with anticipated policy shocks, get indices
+# corresponding to pre-ZLB states, shocks, and observables
+function inds_states_no_ant(m::AbstractModel)
+    if n_anticipated_shocks(m) > 0
+        ind_ant1 = m.endogenous_states[:rm_tl1]
+        ind_antn = m.endogenous_states[symbol("rm_tl$(n_anticipated_shocks(m))")]
+        return [1:(ind_ant1-1); (ind_antn+1):n_states_augmented(m)]
+    else
+        return collect(1:n_states_augmented(m))
+    end
+end
+
+function inds_shocks_no_ant(m::AbstractModel)
+    if n_anticipated_shocks(m) > 0
+        ind_ant1 = m.exogenous_shocks[:rm_shl1]
+        ind_antn = m.exogenous_shocks[symbol("rm_shl$(n_anticipated_shocks(m))")]
+        return [1:(ind_ant1-1); (ind_antn+1):n_shocks_exogenous(m)]
+    else
+        return collect(1:n_shocks_exogenous(m))
+    end
+end
+
+function inds_obs_no_ant(m::AbstractModel)
+    if n_anticipated_shocks(m) > 0
+        ind_ant1 = m.observables[:obs_nominalrate1]
+        ind_antn = m.observables[symbol("obs_nominalrate$(n_anticipated_shocks(m))")]
+        return [1:(ind_ant1-1); (ind_antn+1):n_observables(m)]
+    else
+        return collect(1:n_observables(m))
+    end
+end
+
 # Interface for I/O settings
 spec(m::AbstractModel)         = m.spec
 subspec(m::AbstractModel)      = m.subspec
@@ -161,17 +195,15 @@ dataroot(m::AbstractModel)     = get_setting(m, :dataroot)
 data_vintage(m::AbstractModel) = get_setting(m, :data_vintage)
 cond_vintage(m::AbstractModel) = get_setting(m, :cond_vintage)
 cond_id(m::AbstractModel) = get_setting(m, :cond_id)
+use_population_forecast(m::AbstractModel) = get_setting(m, :use_population_forecast)
 
 # Interface for general computation settings
 use_parallel_workers(m::AbstractModel)    = get_setting(m, :use_parallel_workers)
 
-# Interface for data step
-use_population_forecast(m::AbstractModel) = get_setting(m, :use_population_forecast)
-
 # Interface for estimation settings
-reoptimize(m::AbstractModel)            = get_setting(m, :reoptimize)
-calculate_hessian(m::AbstractModel)     = get_setting(m, :calculate_hessian)
-hessian_path(m::AbstractModel)          = get_setting(m, :hessian_path)
+reoptimize(m::AbstractModel)          = get_setting(m, :reoptimize)
+calculate_hessian(m::AbstractModel) = get_setting(m, :calculate_hessian)
+hessian_path(m::AbstractModel)      = get_setting(m, :hessian_path)
 n_hessian_test_params(m::AbstractModel) = get_setting(m, :n_hessian_test_params)
 
 # Interface for Metropolis-Hastings settings
@@ -179,6 +211,20 @@ n_mh_blocks(m::AbstractModel)      =  get_setting(m, :n_mh_blocks)
 n_mh_simulations(m::AbstractModel) =  get_setting(m, :n_mh_simulations)
 n_mh_burn(m::AbstractModel)        =  get_setting(m, :n_mh_burn)
 mh_thin(m::AbstractModel)          =  get_setting(m, :mh_thin)
+n_draws(m::AbstractModel)          =  round(Int,(n_mh_blocks(m) - n_mh_burn(m)) * (n_mh_simulations(m)/mh_thin(m)))
+
+# Interface for forecast settings
+date_forecast_start(m::AbstractModel)   = get_setting(m, :date_forecast_start)
+forecast_tdist_df_val(m::AbstractModel) = get_setting(m, :forecast_tdist_df_val)
+forecast_tdist_shocks(m::AbstractModel) = get_setting(m, :forecast_tdist_shocks)
+forecast_kill_shocks(m::AbstractModel)  = get_setting(m, :forecast_kill_shocks)
+forecast_smoother(m::AbstractModel)     = get_setting(m, :forecast_smoother)
+    
+function forecast_horizons(m::AbstractModel)
+    t0 = get_setting(m, :date_forecast_start)
+    t1 = get_setting(m, :date_forecast_end)
+    return 1 + subtract_quarters(t1, t0)
+end
 
 """
 ```
