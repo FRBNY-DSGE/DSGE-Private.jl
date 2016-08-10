@@ -60,4 +60,9 @@ function default_settings!(m::AbstractModel)
     m <= Setting(:shockdec_startindex, 190, "Index of start of shock decomposition output period")
     m <= Setting(:shockdec_endindex, 50000, "Index of end of shock decomposition output period")
     m <= Setting(:shockdec_whichshocks, :all, "Sets of shocks for which to conduct shock decomposition")
+
+    # Reduced Form
+    m <= Setting(:forcing_index_start, 0, "Index that marks beginning of forcing processes in data matrix")
+    
+
 end
