@@ -49,13 +49,7 @@ function load_data(m::AbstractModel; try_disk::Bool = true, verbose::Symbol=:low
             println("Creating dataset...")
         end
         df = load_data_levels(m; verbose=verbose)
-
-        n_forcing = n_forcing_processes(m)
-        if n_forcing < 1
-            df = transform_data(m, df; verbose=verbose)
-        else
-            df = transform_data_reduced_form(m, df; verbose=verbose)
-        end
+        df = transform_data(m, df; verbose=verbose)
 
         # Ensure that only appropriate rows make it into the returned DataFrame.
         start_date = date_presample_start(m)

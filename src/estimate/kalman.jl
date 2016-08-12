@@ -310,9 +310,6 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     n_states_aug    = n_states_augmented(m)
     nstates         = n_states(m)
     regime_states   = [n_states_no_ant, n_states_no_ant, n_states_aug]
-    n_obs           = n_observables(m)
-    n_forcing       = n_forcing_processes(m)
-    n_periods       = size(data)[1]
 
     state_inds = inds_states_no_ant(m)
     shock_inds = inds_shocks_no_ant(m)
@@ -358,15 +355,8 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     #   Cov(ε_t,u_t) = VV = QQ*MM'
 
     # Get measurement equation matrices set up for normal and zlb periods
-    if n_forcing > 0
-        forcing_ind = get_setting(m, :forcing_index_start)
-        X = data[:,forcing_ind:end]
-        measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC], X; shocks = false)
-        measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC], X; shocks = true)
-    else
-        measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC]; shocks = false)
-        measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC]; shocks = true)
-    end
+    measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC]; shocks = false)
+    measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC]; shocks = true)
     for d in (:ZZ, :DD, :QQ, :VVall)
         R2[d] = measurement_R2[d]
         R3[d] = measurement_R3[d]
@@ -376,14 +366,7 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     # Durbin-Koopman smoother), we want to use that DD instead of the one
     # calculated from the measurement equation
     if !isempty(DD)
-        if n_forcing < 1
-            R2[:DD] = DD[obs_inds]
-        else
-            R2[:DD] = Vector{Vector{}}(n_periods)
-            for t in 1:n_periods
-                R2[:DD][t] = DD[t][obs_inds]
-            end 
-        end
+        R2[:DD] = DD[obs_inds]
         R3[:DD] = DD
     end
 
