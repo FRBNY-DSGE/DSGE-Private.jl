@@ -82,3 +82,64 @@ function transform_data(m::AbstractModel, levels::DataFrame; verbose::Symbol = :
 
     sort!(transformed, cols = :date)
 end
+
+
+
+"""
+```
+transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbose::Symbol = :low)
+```
+Transform data loaded in levels and order columns appropriately for replicating Laubach
+Williams. Returns DataFrame of transformed data.
+The DataFrame `levels` is output from `load_data_levels`. The series in levels are
+transformed as specified in `m.data_transforms`.
+- The transformations are applied for each series using the `levels` DataFrame as input.
+"""
+function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbose::Symbol = :low)
+
+    n_obs, _ = size(levels)
+    
+    transformed = DataFrame()
+    transformed[:date] = levels[:date]
+
+    # Step 1: apply transformations to non-lagged series
+    for series in keys(m.data_transforms)
+        if VERBOSITY[verbose] >= VERBOSITY[:high]
+            println("Transforming series " * string(series) * "...")
+        end
+        f = m.data_transforms[series]
+        transformed[series] = f(levels)
+    end
+
+    # Step 2: create lags of series by hand
+    
+    transformed[:obs_gdp_t1] = lag(transformed,:obs_gdp_t)
+    transformed[:obs_gdp_t2] = lag(transformed,:obs_gdp_t1)
+    transformed[:obs_r_t1]   = lag(transformed,:obs_r_t)
+    transformed[:obs_r_t2]   = lag(transformed,:obs_r_t1)
+    transformed[:obs_π_t1]   = lag(transformed,:obs_π_t)
+
+    for t in 2:8
+       transformed[symbol("obs_π_t$t")] = lag(transformed,symbol("obs_π_t$(t-1)")) 
+    end
+
+    transformed[:obs_π_o_t1]  = lag(transformed,:obs_π_o_t)
+    transformed[:obs_π_e_t1]  = lag(transformed,:obs_π_e_t)   
+
+    sort!(transformed, cols = :date)
+
+
+end
+
+"""
+Returns the lagged version of df[col], with NaN in the leading row
+"""
+function lag(df::DataFrame, col::Symbol)
+    n = size(df)[1]
+    lagged = ones(n,1)
+    lagged[1] = NaN
+    for i in 2:n
+        lagged[i] = df[i-1,col]
+    end
+    return(vec(lagged))
+end

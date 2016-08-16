@@ -1,3 +1,4 @@
+#using Debug
 """
 `prior(m::AbstractModel{T})`
 
@@ -13,27 +14,27 @@ function prior{T<:AbstractFloat}(m::AbstractModel{T})
     return x
 end
 
-"""
-```
-posterior{T<:AbstractFloat}(m::AbstractModel{T}, data::Matrix{T};
-                             mh::Bool = false, catch_errors::Bool = false)
-```
+# """
+# ```
+# posterior{T<:AbstractFloat}(m::AbstractModel{T}, data::Matrix{T};
+#                              mh::Bool = false, catch_errors::Bool = false)
+# ```
 
-Calculates and returns the log of the posterior distribution for m.parameters:
-```
-log posterior = log likelihood + log prior
-log Pr(Θ|data)  = log Pr(data|Θ)   + log Pr(Θ)
-```
+# Calculates and returns the log of the posterior distribution for m.parameters:
+# ```
+# log posterior = log likelihood + log prior
+# log Pr(Θ|data)  = log Pr(data|Θ)   + log Pr(Θ)
+# ```
 
-### Arguments
--`m`: the model object
--`data`: matrix of data for observables
+# ### Arguments
+# -`m`: the model object
+# -`data`: matrix of data for observables
 
-### Optional Arguments
--`mh`: Whether metropolis_hastings is the caller. If `mh=true`, the log likelihood and the
-  transition matrices for the zero-lower-bound period are also returned.
--`catch_errors`: Whether or not to catch errors of type `GensysError` or `ParamBoundsError`
-"""
+# ### Optional Arguments
+# -`mh`: Whether metropolis_hastings is the caller. If `mh=true`, the log likelihood and the
+#   transition matrices for the zero-lower-bound period are also returned.
+# -`catch_errors`: Whether or not to catch errors of type `GensysError` or `ParamBoundsError`
+# """
 function posterior{T<:AbstractFloat}(m::AbstractModel{T},
                                      data::Matrix{T};
                                      mh::Bool = false,
@@ -41,6 +42,8 @@ function posterior{T<:AbstractFloat}(m::AbstractModel{T},
     catch_errors = catch_errors | mh
     like, out = likelihood(m, data; mh=mh, catch_errors=catch_errors)
     post = like + prior(m)
+    print("prior: ",prior(m),"\n")
+    print("like: ",like,"\n")
     if mh
         return Posterior(post, like, out)
     else

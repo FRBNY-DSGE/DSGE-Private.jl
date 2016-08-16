@@ -3,6 +3,8 @@ This code is loosely based on a routine originally copyright Federal Reserve Ban
 and written by Iskander Karibzhanov.
 =#
 
+using Debug
+
 """
 ```
 kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
@@ -11,7 +13,7 @@ kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     allout::Bool = false, include_presample::Bool = true)
 
 kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
-    TTT::Matrix{S}, CCC::Vector{S}, ZZ::Matrix{S}, DDs::Vector{Vector{S}},
+    TTT::Matrix{S}, CCC::Vector{S}, ZZ::Matrix{S}, DDs::Matrix{S},
     VVall::Matrix{S}, z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
     lead::Int = 0, allout::Bool = false, include_presample::Bool = true)
 ```
@@ -25,9 +27,8 @@ kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
 - `CCC`: an `Nz` x 1 vector for a time-invariant input vector in the transition equation.
 - `ZZ`: an `Ny` x `Nz` matrix for a time-invariant measurement matrix in the measurement
   equation.
-- `DDs`: a vector of length `T`, whose elements are the time-varying constants
-  `DD_t` (themselves `Ny` x 1 vectors) in the measurement equation. Alternatively,
-  specify a single time-invariant constant `DD`.
+- `DDs`: a `Ny` x `T` matrix for the constant vector in the transition equation. 
+     May be time varying, or constant through time. 
 - `VVall`: an `Ny + Nz` x `Ny + Nz` matrix for a time-invariant variance matrix for the
   error in the transition equation and the error in the measurement equation, that is,
   `[η(t)', ϵ(t)']'`.
@@ -90,8 +91,11 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          include_presample::Bool = true)
 
     # Broadcast time-invariant DD
-    T = size(data, 2)
-    DDs = fill(DD, T)
+    T = size(data, 1)
+    #DDs = fill(DD, T)
+    for t in 1:T
+        DDs[:,t] = DD
+    end
 
     # Call time-varying Kalman filter
     kalman_filter(m, data, TTT, CCC, ZZ, DDs, VVall, z0, vz0; lead = lead,
@@ -103,19 +107,26 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          TTT::Matrix{S},
                                          CCC::Vector{S},
                                          ZZ::Matrix{S},
-                                         DDs::Vector{Vector{S}},
+                                         DDs::Matrix{S},
                                          VVall::Matrix{S},
                                          z0::Vector{S} = Vector{S}(),
                                          vz0::Matrix{S} = Matrix{S}();
                                          lead::Int = 0,
                                          allout::Bool = false,
                                          include_presample::Bool = true)
-    T = size(data, 2)
+    # T is the number of data points in this subdivision (presample, prezlb, zlb)
+    T  = size(data, 2)
     Nz = length(CCC)
-    Ny = length(DDs[1])
-    V = VVall[1:Nz, 1:Nz]
+    Ny = size(DDs)[1]
+    V  = VVall[1:Nz, 1:Nz]
+    
+    #print("size of DDs: ",size(DDs),"\n")
+    #print("T: ",T,"\n")
+    #print("size of data in kalman: ",size(data),"\n")
 
-    @assert length(DDs) == T
+    # The following will almost never be true, 
+    # since the presample/prezlb/postzlb won't be the full timespan
+    #@assert size(DDs)[2] == T
 
     if isempty(z0) || isempty(vz0)
         e, _ = eig(TTT)
@@ -132,12 +143,14 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
     P = vz0
 
     # Check input matrix dimensions
-    @assert size(data, 1) == Ny
-    @assert size(TTT) == (Nz, Nz)
-    @assert size(ZZ) == (Ny, Nz)
-    @assert size(VVall) == (Ny + Nz, Ny + Nz)
-    @assert length(z) == Nz
-    @assert size(P) == (Nz, Nz)
+    if T>0
+        @assert size(data, 1) == Ny
+        @assert size(TTT) == (Nz, Nz)
+        @assert size(ZZ) == (Ny, Nz)
+        @assert size(VVall) == (Ny + Nz, Ny + Nz)
+        @assert length(z) == Nz
+        @assert size(P) == (Nz, Nz)
+    end
 
     # V(t) and R(t) are variances of η(t) and ϵ(t), respectively, and G(t) is a covariance
     # of η(t) and ϵ(t)
@@ -169,8 +182,12 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         G_t = G[:, nonmissing]             # G_t = Cov(η_t, ϵ_t)
         R_t = R[nonmissing, nonmissing]    # R_t = Var(ϵ_t)
         Ny_t = length(data_t)              # Ny_t = T is length of time
-        DD_t = DDs[t][nonmissing]          # DD_t
-
+        DD_t = DDs[:,t][nonmissing]        # DD_t
+        
+        #print("data_t: ",data_t," ")
+        #print("Ny_t ",Ny_t," ")
+        #print("ZZ_t ",ZZ_t," ")
+        #print("nonmissing ",nonmissing, "\n")
 
         ## forecasting
         z = CCC + TTT*z                    # z_{t|t-1} = CCC + TTT(Θ)*z_{t-1|t-1}
@@ -179,6 +196,10 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         ZG = ZZ_t*G_t                      # ZG is ZZ*Cov(η_t, ϵ_t)
         D = ZZ_t*P*ZZ_t' + ZG + ZG' + R_t  # D = ZZ*P_{t+t-1}*ZZ' + ZG + ZG' + R_t
         D = (D+D')/2
+
+        #print("dy ",dy," ")
+        #print("D ",D," ")
+        #print("z ",z,"\n")
 
         if allout
             pred[:, t]                   = z
@@ -310,6 +331,9 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     n_states_aug    = n_states_augmented(m)
     nstates         = n_states(m)
     regime_states   = [n_states_no_ant, n_states_no_ant, n_states_aug]
+    n_obs           = n_observables(m)
+    n_forcing       = n_forcing_processes(m)
+    n_periods       = size(data)[1]
 
     state_inds = inds_states_no_ant(m)
     shock_inds = inds_shocks_no_ant(m)
@@ -355,8 +379,15 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     #   Cov(ε_t,u_t) = VV = QQ*MM'
 
     # Get measurement equation matrices set up for normal and zlb periods
-    measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC]; shocks = false)
-    measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC]; shocks = true)
+    if n_forcing > 0
+        forcing_ind = get_setting(m, :forcing_index_start)
+        X = data[:,forcing_ind:end]
+        measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC], X; shocks = false)
+        measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC], X; shocks = true)
+    else
+        measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC]; shocks = false)
+        measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC]; shocks = true)
+    end
     for d in (:ZZ, :DD, :QQ, :VVall)
         R2[d] = measurement_R2[d]
         R3[d] = measurement_R3[d]
@@ -366,8 +397,13 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     # Durbin-Koopman smoother), we want to use that DD instead of the one
     # calculated from the measurement equation
     if !isempty(DD)
-        R2[:DD] = DD[obs_inds]
-        R3[:DD] = DD
+        if n_forcing < 1
+            R2[:DD] = DD[obs_inds]
+            R3[:DD] = DD
+        else
+            R2[:DD] = DD[obs_inds,:]
+            R3[:DD] = DD
+        end
     end
 
     # Presample measurement & transition equation matrices are same as normal
@@ -392,13 +428,13 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     end
     R1[:P0] = solve_discrete_lyapunov(R1[:TTT], R1[:RRR]*R1[:QQ]*R1[:RRR]')
     k1 = kalman_filter(m, R1[:data]', R1[:TTT], zeros(S, regime_states[1]),
-        R1[:ZZ], R1[:DD], R1[:VVall], R1[:A0], R1[:P0]; lead = 1, allout = allout,
-        include_presample = true)
+        R1[:ZZ], R1[:DD][:,inds_presample_periods(m)], R1[:VVall], R1[:A0], R1[:P0];
+        lead = 1, allout = allout, include_presample = true)
 
     # Run Kalman filter on normal period
     k2 = kalman_filter(m, R2[:data]', R2[:TTT], zeros(regime_states[2]), R2[:ZZ],
-        R2[:DD], R2[:VVall], k1[:zend], k1[:Pend]; lead = 1, allout = allout,
-        include_presample = true)
+        R2[:DD][:,inds_prezlb_periods(m)], R2[:VVall], k1[:zend], k1[:Pend]; 
+        lead = 1, allout = allout, include_presample = true)
 
     # Run Kalman filter on ZLB period
     zprev = zeros(S, n_states_aug)
@@ -406,8 +442,11 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     zprev[state_inds] = k2[:zend]
     Pprev[state_inds, state_inds] = k2[:Pend]
     k3 = kalman_filter(m, R3[:data]', R3[:TTT], zeros(regime_states[3]), R3[:ZZ],
-        R3[:DD], R3[:VVall], zprev, Pprev; lead = 1, allout = allout,
-        include_presample = true)
+        R3[:DD][:,inds_zlb_periods(m)], R3[:VVall], zprev, Pprev; 
+        lead = 1, allout = allout, include_presample = true)
+
+
+    print("likelihoods: ",k1[:L]," ",k2[:L]," ",k3[:L],"\n")
 
     # Concatenate Kalman objects
     if include_presample

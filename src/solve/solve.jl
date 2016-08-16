@@ -19,12 +19,12 @@ function solve(m::AbstractModel)
     # Get equilibrium condition matrices
     Γ0, Γ1, C, Ψ, Π  = eqcond(m)
     
-    zero_mat = zeros(size(Π))
-    if Π == zero_mat
-        TTT = Γ0
-        RRR = Γ1
-        CCC = C
+    n_forcing = n_forcing_processes(m)
 
+    if n_forcing > 0
+        TTT_gensys = Γ0
+        RRR_gensys = Ψ
+        CCC_gensys = C
     else
         # Solve model
         TTT_gensys, CCC_gensys, RRR_gensys, fmat, fwt, ywt, gev, eu, loose = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6)
