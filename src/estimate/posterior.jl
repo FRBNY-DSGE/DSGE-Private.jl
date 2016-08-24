@@ -14,33 +14,35 @@ function prior{T<:AbstractFloat}(m::AbstractModel{T})
     return x
 end
 
-# """
-# ```
-# posterior{T<:AbstractFloat}(m::AbstractModel{T}, data::Matrix{T};
-#                              mh::Bool = false, catch_errors::Bool = false)
-# ```
+"""
+```
+posterior{T<:AbstractFloat}(m::AbstractModel{T}, data::Matrix{T};
+                             mh::Bool = false, catch_errors::Bool = false)
+```
 
-# Calculates and returns the log of the posterior distribution for m.parameters:
-# ```
-# log posterior = log likelihood + log prior
-# log Pr(Θ|data)  = log Pr(data|Θ)   + log Pr(Θ)
-# ```
+Calculates and returns the log of the posterior distribution for m.parameters:
+```
+log posterior = log likelihood + log prior
+log Pr(Θ|data)  = log Pr(data|Θ)   + log Pr(Θ)
+```
 
-# ### Arguments
-# -`m`: the model object
-# -`data`: matrix of data for observables
+### Arguments
+-`m`: the model object
+-`data`: matrix of data for observables
 
-# ### Optional Arguments
-# -`mh`: Whether metropolis_hastings is the caller. If `mh=true`, the log likelihood and the
-#   transition matrices for the zero-lower-bound period are also returned.
-# -`catch_errors`: Whether or not to catch errors of type `GensysError` or `ParamBoundsError`
-# """
+### Optional Arguments
+-`mh`: Whether metropolis_hastings is the caller. If `mh=true`, the log likelihood and the
+  transition matrices for the zero-lower-bound period are also returned.
+-`catch_errors`: Whether or not to catch errors of type `GensysError` or `ParamBoundsError`
+""" 
 function posterior{T<:AbstractFloat}(m::AbstractModel{T},
                                      data::Matrix{T};
                                      mh::Bool = false,
-                                     catch_errors::Bool = false)
+                                     catch_errors::Bool = false,
+                                     z0::Vector{Float64} = Vector{Float64}(),
+                                     vz0::Matrix{Float64} = Matrix{Float64}())
     catch_errors = catch_errors | mh
-    like, out = likelihood(m, data; mh=mh, catch_errors=catch_errors)
+    like, out = likelihood(m, data; mh=mh, catch_errors=catch_errors, z0=z0, vz0=vz0)
     post = like + prior(m)
     print("prior: ",prior(m),"\n")
     print("like: ",like,"\n")
@@ -54,7 +56,9 @@ end
 """
 ```
 posterior!{T<:AbstractFloat}(m::AbstractModel{T}, parameters::Vector{T}, data::Matrix{T};
-                              mh::Bool = false, catch_errors::Bool = false)
+                              mh::Bool = false, catch_errors::Bool = false,
+                              z0::Vector{Float64}=Vector{Float64}(),
+                              vz0::Matrix{Float64}=Matrix{Float64}())
 ```
 
 Evaluates the log posterior density at `parameters`.
@@ -74,7 +78,9 @@ function posterior!{T<:AbstractFloat}(m::AbstractModel{T},
                                       parameters::Vector{T},
                                       data::Matrix{T};
                                       mh::Bool = false,
-                                      catch_errors::Bool = false)
+                                      catch_errors::Bool = false,
+                                      z0::Vector{Float64}=Vector{Float64}(0,),
+                                      vz0::Matrix{Float64}=Matrix{Float64}(0,0))
     catch_errors = catch_errors | mh
     if mh
         try
@@ -85,7 +91,7 @@ function posterior!{T<:AbstractFloat}(m::AbstractModel{T},
     else
         update!(m, parameters)
     end
-    return posterior(m, data; mh=mh, catch_errors=catch_errors)
+    return posterior(m, data; mh=mh, catch_errors=catch_errors, z0=z0, vz0=vz0)
 
 end
 
@@ -117,7 +123,9 @@ filter over the main sample all at once.
 function likelihood{T<:AbstractFloat}(m::AbstractModel,
                                       data::Matrix{T};
                                       mh::Bool = false,
-                                      catch_errors::Bool = false)
+                                      catch_errors::Bool = false,
+                                     z0::Vector{Float64}=Vector{Float64}(),
+                                     vz0::Matrix{Float64}=Matrix{Float64}())
     catch_errors = catch_errors | mh
 
     # During Metropolis-Hastings, return -∞ if any parameters are not within their bounds
@@ -131,7 +139,10 @@ function likelihood{T<:AbstractFloat}(m::AbstractModel,
     end
 
     # Return total log-likelihood, excluding the presample
-    k, _, _, R3 = kalman_filter_2part(m, data; allout = false, include_presample = false)
+    k, _, _, R3 = kalman_filter_2part(m, data, 
+                                      Matrix{Float64}(), Matrix{Float64}(), Vector{Float64}(),
+                                      z0, vz0;
+                                      allout = false, include_presample = false)
     like = k[:L]
 
     # Add zend to the R3 dict so it can be accessed from within Metropolis-Hastings

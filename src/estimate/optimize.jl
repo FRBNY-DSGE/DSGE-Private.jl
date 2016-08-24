@@ -24,7 +24,9 @@ function optimize!(m::AbstractModel,
                    store_trace::Bool    = false,
                    show_trace::Bool     = false,
                    extended_trace::Bool = false,
-                   verbose::Symbol      = :none)
+                   verbose::Symbol      = :none,
+                   z0::Vector{Float64}  = Vector{Float64}(),
+                   vz0::Matrix{Float64} = Matrix{Float64}())
 
         # For now, only csminwel should be used
         optimizer = if method == :csminwel
@@ -42,7 +44,7 @@ function optimize!(m::AbstractModel,
         function f_opt(x_opt)
             x_model[para_free_inds] = x_opt
             transform_to_model_space!(m,x_model)
-            return -posterior(m, data; catch_errors=true)[:post]
+            return -posterior(m, data; catch_errors=true, z0=z0, vz0=vz0)[:post]
         end
 
         rng = m.rng

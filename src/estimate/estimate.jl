@@ -1,6 +1,7 @@
 """
 ```
-estimate(m::AbstractModel, df::DataFrame; verbose::Symbol=:low, proposal_covariance=Matrix())
+estimate(m::AbstractModel, df::DataFrame; verbose::Symbol=:low, proposal_covariance=Matrix(),
+        z0::Vector{Float64} = Vector{Float64}(), vz0::Matrix{Float64} = Matrix{Float64}())
 ```
 
 Estimate the DSGE parameter posterior distribution.
@@ -20,29 +21,42 @@ Estimate the DSGE parameter posterior distribution.
   eigenvectors corresponding to zero eigenvectors are not well defined, so eigenvalue
   decomposition can cause problems. Passing a precomputed matrix allows us to ensure that
   the rest of the routine has not broken.
+- `z0`: If the system is not stationary or is otherwise degenerate, a
+    proposal state vector for the beginning of the presample period cannot be calculated.
+    Passing one explicitly allows us to bypass this issue.
+- `vz0`: Similarly, if the system is not stationary, a variance matrix for the initial state
+    vector must be specified explicitly. 
 """
 function estimate(m::AbstractModel, df::DataFrame;
                   verbose::Symbol=:low,
-                  proposal_covariance::Matrix=Matrix())
+                  proposal_covariance::Matrix=Matrix(),
+                  z0::Vector{Float64}=Vector{Float64}(),
+                  vz0::Matrix{Float64}=Matrix{Float64}())
     data = df_to_matrix(m, df)
-    estimate(m, data; verbose=verbose, proposal_covariance=proposal_covariance)
+    estimate(m, data; verbose=verbose, proposal_covariance=proposal_covariance, 
+              z0=z0, vz0=vz0)
 end
 function estimate(m::AbstractModel;
                   verbose::Symbol=:low,
-                  proposal_covariance::Matrix=Matrix())
+                  proposal_covariance::Matrix=Matrix(),
+                  z0::Vector{Float64}=Vector{Float64}(),
+                  vz0::Matrix{Float64}=Matrix{Float64}())
     # Load data
     df = load_data(m; verbose=verbose)
-    estimate(m, df; verbose=verbose, proposal_covariance=proposal_covariance)
+    estimate(m, df; verbose=verbose, proposal_covariance=proposal_covariance,
+             z0=z0, vz0=vz0)
 end
 function estimate(m::AbstractModel, data::Matrix{Float64};
                   verbose::Symbol=:low,
-                  proposal_covariance::Matrix=Matrix())
+                  proposal_covariance::Matrix=Matrix(),
+                  z0::Vector{Float64}=Vector{Float64}(),
+                  vz0::Matrix{Float64}=Matrix{Float64}())
 
     ########################################################################################
     ### Step 1: Initialize
     ########################################################################################
 
-    post = posterior(m, data)[:post]
+    post = posterior(m, data; z0=z0, vz0=vz0)[:post]
 
     ########################################################################################
     ### Step 2: Find posterior mode (if reoptimizing, run csminwel)
@@ -66,7 +80,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         while !converged
             tic()
             out, H = optimize!(m, data;
-                ftol=ftol, iterations=n_iterations, show_trace=true, verbose=verbose)
+                ftol=ftol, iterations=n_iterations, show_trace=true, verbose=verbose,
+                z0=z0, vz0=vz0)
             converged = !out.iteration_converged
 
             total_iterations += out.iterations
@@ -198,7 +213,9 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
                                                data::Matrix{T},
                                                cc0::T,
                                                cc::T;
-                                               verbose::Symbol=:low)
+                                               verbose::Symbol=:low,
+                                               z0::Vector{Float64}=Vector{Float64}(),
+                                               vz0::Matrix{Float64}=Matrix{Float64}())
 
 
     # If testing, set the random seeds at fixed numbers
@@ -238,7 +255,7 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
         n_burn   = n_mh_burn(m)
         mhthin   = mh_thin(m)
 
-        post_out = posterior!(m, para_old, data; mh=true)
+        post_out = posterior!(m, para_old, data; mh=true, z0=z0, vz0=vz0)
         post_old, like_old, out = post_out[:post], post_out[:like], post_out[:mats]
 
         if post_old > -Inf
@@ -316,7 +333,7 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
 
             # Solves the model, check that parameters are within bounds, gensys returns a
             # meaningful system, and evaluate the posterior.
-            post_out = posterior!(m, para_new, data; mh=true)
+            post_out = posterior!(m, para_new, data; mh=true, z0=z0, vz0=vz0)
             post_new, like_new, out = post_out[:post], post_out[:like], post_out[:mats]
 
             if VERBOSITY[verbose] >= VERBOSITY[:high]

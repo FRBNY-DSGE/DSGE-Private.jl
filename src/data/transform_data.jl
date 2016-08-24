@@ -120,11 +120,17 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
     transformed[:obs_π_t1]   = lag(transformed,:obs_π_t)
 
     for t in 2:8
-       transformed[symbol("obs_π_t$t")] = lag(transformed,symbol("obs_π_t$(t-1)")) 
+        transformed[symbol("obs_π_t$t")] = lag(transformed,symbol("obs_π_t$(t-1)"))
     end
 
     transformed[:obs_π_o_t1]  = lag(transformed,:obs_π_o_t)
-    transformed[:obs_π_e_t1]  = lag(transformed,:obs_π_e_t)   
+    transformed[:obs_π_e_t1]  = lag(transformed,:obs_π_e_t) 
+
+    #print("\n right place \n")
+    for col in names(transformed)
+        transformed[col] = fill_nan(transformed,col)
+    end
+    #print("top of data: \n",head(transformed),"\n")
 
     sort!(transformed, cols = :date)
 
@@ -132,7 +138,8 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
 end
 
 """
-Returns the lagged version of df[col], with NaN in the leading row
+Returns the lagged version of df[col]
+it fills the leading value with a NaN
 """
 function lag(df::DataFrame, col::Symbol)
     n = size(df)[1]
@@ -142,4 +149,25 @@ function lag(df::DataFrame, col::Symbol)
         lagged[i] = df[i-1,col]
     end
     return(vec(lagged))
+end
+
+
+
+"""
+replaces the NaNs in df[col] with the
+last observed value. Meant for use with
+lagged series. 
+"""
+function fill_nan(df::DataFrame, col::Symbol)
+    n = size(df)[1]
+    filled = ones(n,1)
+    nan_ind = findin(df[col],NaN)
+    if !isempty(nan_ind)
+        fill_val_ind = nan_ind[end]+1
+        fill_val = df[col][fill_val_ind]
+        for i in nan_ind
+            df[col][i] = fill_val
+        end
+    end
+    return(df[col])
 end

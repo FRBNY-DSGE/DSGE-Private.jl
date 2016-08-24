@@ -3,7 +3,7 @@ This code is loosely based on a routine originally copyright Federal Reserve Ban
 and written by Iskander Karibzhanov.
 =#
 
-using Debug
+#using Debug
 
 """
 ```
@@ -120,27 +120,35 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
     Ny = size(DDs)[1]
     V  = VVall[1:Nz, 1:Nz]
     
-    #print("size of DDs: ",size(DDs),"\n")
-    #print("T: ",T,"\n")
-    #print("size of data in kalman: ",size(data),"\n")
+    # print("size of DDs: ",size(DDs),"\n")
+    # print("DDs: ",DDs,"\n")
+    # print("Nz: ",Nz,"\n")    
+    # print("T: ",T,"\n")
+    # print("size of data in kalman: ",size(data),"\n")
 
-    # The following will almost never be true, 
-    # since the presample/prezlb/postzlb won't be the full timespan
-    #@assert size(DDs)[2] == T
-
+    # print("vz0: \n",vz0,"\n")
+    # print("is vz0 empty: ",isempty(vz0),"\n")
+    # print("is z0 empty: ",isempty(z0),"\n")
+    # # The following will almost never be true, 
+    # # since the presample/prezlb/postzlb won't be the full timespan
+    # @assert size(DDs)[2] == T
+ 
     if isempty(z0) || isempty(vz0)
         e, _ = eig(TTT)
         if countnz(e*e' - eye(Nz)) == Nz^2
-            z0 = (eye(Nz) - TTT)\CCC
-            vz0 = reshape((eye(Nz^2)-kron(TTT,TTT))\V, Nz, Nz)
+            z0 = isempty(z0) ? (eye(Nz) - TTT)\CCC : z0
+            vz0 = isempty(vz0) ? reshape((eye(Nz^2)-kron(TTT,TTT))\V, Nz, Nz) : vz0
         else
-            z0 = CCC
-            vz0 = eye(Nz)*1e6
+            z0 = isempty(z0) ? CCC : z0
+            vz0 = isempty(z0) ? eye(Nz)*1e6 : vz0
         end
     end
 
     z = z0
     P = vz0
+    
+    @assert !any(isnan,z)
+    @assert !any(isnan,vz0)
 
     # Check input matrix dimensions
     if T>0
@@ -184,10 +192,20 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         Ny_t = length(data_t)              # Ny_t = T is length of time
         DD_t = DDs[:,t][nonmissing]        # DD_t
         
-        #print("data_t: ",data_t," ")
-        #print("Ny_t ",Ny_t," ")
-        #print("ZZ_t ",ZZ_t," ")
-        #print("nonmissing ",nonmissing, "\n")
+        @assert !any(isnan,ZZ_t)
+        @assert !any(isnan,G_t)
+        @assert !any(isnan,R_t)
+        @assert !any(isnan,Ny_t)
+        @assert !any(isnan,DD_t)
+
+        # print("t: ",t,"\n")
+        # print("data_t: ",data_t," ")
+        # print("Ny_t ",Ny_t,"\n ")
+        # print("ZZ_t ",ZZ_t,"\n ")
+        # print("P ",P,"\n ")
+        # print("G_t ",G_t,"\n ")
+        # print("R_t ",R_t,"\n ")
+        # print("nonmissing ",nonmissing, "\n")
 
         ## forecasting
         z = CCC + TTT*z                    # z_{t|t-1} = CCC + TTT(Θ)*z_{t-1|t-1}
@@ -197,9 +215,15 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         D = ZZ_t*P*ZZ_t' + ZG + ZG' + R_t  # D = ZZ*P_{t+t-1}*ZZ' + ZG + ZG' + R_t
         D = (D+D')/2
 
-        #print("dy ",dy," ")
-        #print("D ",D," ")
-        #print("z ",z,"\n")
+        @assert !any(isnan,z)
+        @assert !any(isnan,P)
+        @assert !any(isnan,dy)
+        @assert !any(isnan,ZG)
+        @assert !any(isnan,D)
+
+        # print("dy ",dy,"\n ")
+        # print("D ",D,"\n ")
+        # print("z ",z,"\n")
 
         if allout
             pred[:, t]                   = z
@@ -209,6 +233,15 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         end
 
         ddy = D\dy
+    
+        if det(D) < 0
+            print("t: ",t,"\n")
+            print("D misbehaving. D: ",D,"\n")
+            print("det(D): ",det(D),"\n")
+            print("ddy: ",ddy,"\n")
+            print("first(dy'*ddy/2): ",first(dy'*ddy/2),"\n") 
+       
+        end
         # We evaluate the log likelihood function by adding values of L at every iteration
         #   step (for each t = 1,2,...T)
         if include_presample || (!include_presample && t > n_presample_periods(m))
@@ -225,7 +258,8 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
             filt[:, t]     = z
             vfilt[:, :, t] = P
         end
-
+        
+        #print("z after filter: ",z,"\n")
         # If !include_presample, then we reassign `z0` and `P0` to be their
         # values at the end of the presample/beginning of the main sample
         if !include_presample && t == n_presample_periods(m)
@@ -236,6 +270,10 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
 
     zend = z
     Pend = P
+
+    # print("zend: \n",zend,"\n")
+    # print("Pend: \n",Pend,"\n")
+
 
     if allout && lead > 1
         for t = (T+2):(T+lead)
@@ -289,8 +327,8 @@ Where:
 
 #### Keyword arguments
 
-- `DD`: optional override for the constant term in the measurement equation. We
-  use this in `durbin_koopman_smoother` because the data matrix we pass in is
+- `DD`: `Ny` x `T` matrix. An optional override for the constant term in the measurement equation.
+  We use this in `durbin_koopman_smoother` because the data matrix we pass in is
   related to the states by a measurement equation with no constant term.
 - `lead`: the number of steps to forecast after the end of the data.
 - `allout`: indicates whether we want optional output variables returned as well
@@ -307,7 +345,7 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
                                                TTT::Matrix{S} = Matrix{S}(0, 0),
                                                RRR::Matrix{S} = Matrix{S}(0, 0),
                                                CCC::Vector{S} = Vector{S}(0,),
-                                               z0::Array{S}   = Array{S}(0,),
+                                               z0::Vector{S}  = Vector{S}(0,),
                                                vz0::Matrix{S} = Matrix{S}(0, 0);
                                                DD::Array{S}   = Array{S}(0,),
                                                lead::Int      = 0,
@@ -339,9 +377,9 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     shock_inds = inds_shocks_no_ant(m)
     obs_inds   = inds_obs_no_ant(m)
 
-    R1[:data] = data[inds_presample_periods(m), obs_inds]
-    R2[:data] = data[inds_prezlb_periods(m),    obs_inds]
-    R3[:data] = data[inds_zlb_periods(m),       :]
+    R1[:data] = data[obs_inds, inds_presample_periods(m)]
+    R2[:data] = data[obs_inds, inds_prezlb_periods(m)]
+    R3[:data] = data[obs_inds, inds_zlb_periods(m)]
 
     # Step 1: Compute the transition equation:
     #   S_t = CCC + TTT*S_{t-1} + RRR*ε_t
@@ -378,12 +416,18 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     #   Var(u_t) = HH = EE+MM QQ MM'
     #   Cov(ε_t,u_t) = VV = QQ*MM'
 
+    #print("TTT: \n",R2[:TTT],"\n")
+    #print("I-TTT: \n",UniformScaling(1)-R2[:TTT],"\n")
+    #print("Vz0: \n", UniformScaling(1)-kron(R2[:TTT],R2[:TTT]),"\n")
+    #print("n_forcing: ",n_forcing,"\n")
+
     # Get measurement equation matrices set up for normal and zlb periods
     if n_forcing > 0
         forcing_ind = get_setting(m, :forcing_index_start)
-        X = data[:,forcing_ind:end]
-        measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC], X; shocks = false)
-        measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC], X; shocks = true)
+        X_prezlb = data[forcing_ind:end, inds_prezlb_periods(m)]
+        X_zlb    = data[forcing_ind:end, inds_zlb_periods(m)]
+        measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC], X_prezlb; shocks = false)
+        measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC], X_zlb; shocks = true)
     else
         measurement_R2 = measurement(m, R2[:TTT], R2[:RRR], R2[:CCC]; shocks = false)
         measurement_R3 = measurement(m, R3[:TTT], R3[:RRR], R3[:CCC]; shocks = true)
@@ -397,19 +441,27 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     # Durbin-Koopman smoother), we want to use that DD instead of the one
     # calculated from the measurement equation
     if !isempty(DD)
-        if n_forcing < 1
-            R2[:DD] = DD[obs_inds]
+        if n_forcing > 0
+            R2[:DD] = DD[obs_inds,:]
             R3[:DD] = DD
         else
-            R2[:DD] = DD[obs_inds,:]
+            R2[:DD] = DD[obs_inds]
             R3[:DD] = DD
         end
     end
 
     # Presample measurement & transition equation matrices are same as normal
     # period
-    for d in (:TTT, :RRR, :QQ, :ZZ, :DD, :VVall)
+    for d in (:TTT, :RRR, :QQ, :ZZ, :VVall)
         R1[d] = R2[d]
+    end
+
+    if n_forcing > 0
+        X_presample = data[forcing_ind:end, inds_presample_periods(m)]
+        measurement_R1 =  measurement(m, R2[:TTT], R2[:RRR], R2[:CCC], X_presample; shocks = false)
+        R1[:DD] = measurement_R1[:DD]
+    else
+        R1[:DD] = R2[:DD]
     end
 
     # Step 3: Compute log-likelihood using the Kalman filter.
@@ -419,21 +471,44 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     #   QQ2 = Var(ε2_t) = RRR*QQ*RRR'
     #   VV2 = Cov(ε2_t, u_t) = RRR*VV
     #   VVall = Var([ε2_t; u_t])    (joint variance of the two shocks)
+     
+    # Run Kalman filter on presample, calculating `z0` and `vz0` in
+    # `kalman_filter` if necessary
+    if n_forcing < 1 && (isempty(z0) || isempty(vz0)) 
+        k1 = kalman_filter(m, R1[:data], R1[:TTT], zeros(S, regime_states[1]),
+            R1[:ZZ], R1[:DD], R1[:VVall]; lead = 1, allout = allout,
+            include_presample = true)
+        R1[:A0] = k1[:z0]
+        R1[:P0] = k1[:vz0]
+    elseif n_ant > 0
+        # Check that rows and columns corresponding to anticipated shocks are zero in vz0
+        ind_ant1 = m.endogenous_states[:rm_tl1]
+        ind_antn = m.endogenous_states[symbol("rm_tl$(n_anticipated_shocks(m))")]
+        shock_inds_ant = ind_ant1:ind_antn
+        @assert all(x -> x == 0, vz0[:, ind_ant1:ind_antn])
+        @assert all(x -> x == 0, vz0[ind_ant1:ind_antn, :])
 
-    # Run Kalman filter on presample
-    R1[:A0] = if isempty(z0)
-        zeros(S, n_states_no_ant)
+        R1[:A0] = z0[state_inds]
+        R1[:P0] = vz0[state_inds, state_inds]
+        k1 = kalman_filter(m, R1[:data], R1[:TTT], zeros(S, regime_states[1]),
+            R1[:ZZ], R1[:DD], R1[:VVall], R1[:A0], R1[:P0]; lead = 1, allout = allout,
+            include_presample = true)
     else
-        z0[state_inds]
+        R1[:A0] = isempty(z0) ? Vector{Float64}() : z0[state_inds]
+        R1[:P0] = isempty(vz0) ? Matrix{Float64}() : vz0[state_inds,state_inds]
+        #print("R1[:A0]: ",R1[:A0],"\n R1[:P0]",R1[:P0],"\n")
+        k1 = kalman_filter(m, R1[:data], R1[:TTT], zeros(S, regime_states[1]),
+            R1[:ZZ], R1[:DD], R1[:VVall], R1[:A0], R1[:P0]; lead = 1, allout = allout,
+            include_presample = true)
     end
-    R1[:P0] = solve_discrete_lyapunov(R1[:TTT], R1[:RRR]*R1[:QQ]*R1[:RRR]')
-    k1 = kalman_filter(m, R1[:data]', R1[:TTT], zeros(S, regime_states[1]),
-        R1[:ZZ], R1[:DD][:,inds_presample_periods(m)], R1[:VVall], R1[:A0], R1[:P0];
-        lead = 1, allout = allout, include_presample = true)
+    
+    #k1 = kalman_filter(m, R1[:data]', R1[:TTT], zeros(S, regime_states[1]),
+    #    R1[:ZZ], R1[:DD][:,inds_presample_periods(m)], R1[:VVall], R1[:A0], R1[:P0];
+    #    lead = 1, allout = allout, include_presample = true)
 
     # Run Kalman filter on normal period
-    k2 = kalman_filter(m, R2[:data]', R2[:TTT], zeros(regime_states[2]), R2[:ZZ],
-        R2[:DD][:,inds_prezlb_periods(m)], R2[:VVall], k1[:zend], k1[:Pend]; 
+    k2 = kalman_filter(m, R2[:data], R2[:TTT], zeros(regime_states[2]), R2[:ZZ],
+        R2[:DD], R2[:VVall], k1[:zend], k1[:Pend]; 
         lead = 1, allout = allout, include_presample = true)
 
     # Run Kalman filter on ZLB period
@@ -441,11 +516,12 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     Pprev = zeros(S, n_states_aug, n_states_aug)
     zprev[state_inds] = k2[:zend]
     Pprev[state_inds, state_inds] = k2[:Pend]
-    k3 = kalman_filter(m, R3[:data]', R3[:TTT], zeros(regime_states[3]), R3[:ZZ],
-        R3[:DD][:,inds_zlb_periods(m)], R3[:VVall], zprev, Pprev; 
+    k3 = kalman_filter(m, R3[:data], R3[:TTT], zeros(regime_states[3]), R3[:ZZ],
+        R3[:DD], R3[:VVall], zprev, Pprev; 
         lead = 1, allout = allout, include_presample = true)
 
 
+    #print("VVall: ",R1[:VVall]," ",R2[:VVall]," ",R3[:VVall],"\n")
     print("likelihoods: ",k1[:L]," ",k2[:L]," ",k3[:L],"\n")
 
     # Concatenate Kalman objects

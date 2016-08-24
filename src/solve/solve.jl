@@ -22,7 +22,7 @@ function solve(m::AbstractModel)
     n_forcing = n_forcing_processes(m)
 
     if n_forcing > 0
-        TTT_gensys = Γ0
+        TTT_gensys = Γ1
         RRR_gensys = Ψ
         CCC_gensys = C
     else
