@@ -129,7 +129,7 @@ end
 
 function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
-    Ds::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    Ds::Matrix{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
     n_conditional_periods::Int = 0)
 
     Ne = size(R, 2)
@@ -145,7 +145,7 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     n_ant_shocks = n_anticipated_shocks(m)
     t_zlb_start  = index_zlb_start(m)
 
-    r, eta_hat = disturbance_smoother(m, data, T, R, C, Q, Z, D, pred, vpred)
+    r, eta_hat = disturbance_smoother(m, data, T, R, C, Q, Z, Ds, pred, vpred)
 
     alpha_hat = zeros(Nz, Nt)
     ah_t = A0 + P0*r[:, 1]
@@ -256,7 +256,7 @@ end
 
 function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
     data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
-    Z::Matrix{S}, D::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
+    Z::Matrix{S}, Ds::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
 
     Nt = size(data, 2)
     Nz = size(T, 1)
