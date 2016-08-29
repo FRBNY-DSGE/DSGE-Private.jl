@@ -106,7 +106,7 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
     n_conditional_periods::Int = 0)
 
     # convert DataFrame to matrix
-    data = df_to_matrix(df)'
+    data = df_to_matrix(df)
     
     # call actual Kalman smoother
     kalman_smoother(m, data, T, R, C, Q, Z, D, A0, P0, pred, vpred;
@@ -116,6 +116,20 @@ end
 function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
     D::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    n_conditional_periods::Int = 0)
+
+    # Broadcast time-invariant DD
+    T = size(data, 2)
+    Ds = repmat(D, 1, T)
+
+    # Call time-varying Kalman smoother
+    kalman_smoother(m, data, T, R, C, Q, Z, Ds, A0, P0, pred, vpred,
+        n_conditional_periods = n_conditional_periods)
+end
+
+function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
+    T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
+    Ds::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
     n_conditional_periods::Int = 0)
 
     Ne = size(R, 2)
@@ -232,6 +246,18 @@ function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
     data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
     Z::Matrix{S}, D::Vector{S}, pred::Matrix{S}, vpred::Array{S, 3})
 
+    # Broadcast time-invariant DD
+    T = size(data, 2)
+    Ds = repmat(D, 1, T)
+
+    # Call time-varying disturbance smoother
+    disturbance_smoother(m, data, T, R, C, Q, Z, Ds, pred, vpred)
+end
+
+function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
+    data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
+    Z::Matrix{S}, D::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
+
     Nt = size(data, 2)
     Nz = size(T, 1)
 
@@ -253,7 +279,7 @@ function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
         nonmissing = !isnan(data_t)
         data_t = data_t[nonmissing]
         Z_t = Z[nonmissing, :]
-        D_t = D[nonmissing]
+        D_t = Ds[:, t][nonmissing]
 
         a = pred[:, t]
         P = vpred[:, :, t]
@@ -398,7 +424,7 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     n_conditional_periods::Int = 0)
 
     # convert DataFrame to Matrix
-    data = df_to_matrix(df)'
+    data = df_to_matrix(df)
     
     # call actual simulation smoother
     durbin_koopman_smoother(m, data, T, R, C, Q, Z, D, A0, P0;

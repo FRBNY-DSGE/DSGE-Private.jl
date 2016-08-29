@@ -3,8 +3,6 @@ This code is loosely based on a routine originally copyright Federal Reserve Ban
 and written by Iskander Karibzhanov.
 =#
 
-#using Debug
-
 """
 ```
 kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
@@ -91,11 +89,8 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          include_presample::Bool = true)
 
     # Broadcast time-invariant DD
-    T = size(data, 1)
-    #DDs = fill(DD, T)
-    for t in 1:T
-        DDs[:,t] = DD
-    end
+    T = size(data, 2)
+    DDs = repmat(DD, 1, T)
 
     # Call time-varying Kalman filter
     kalman_filter(m, data, TTT, CCC, ZZ, DDs, VVall, z0, vz0; lead = lead,
@@ -140,7 +135,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
             vz0 = isempty(vz0) ? reshape((eye(Nz^2)-kron(TTT,TTT))\V, Nz, Nz) : vz0
         else
             z0 = isempty(z0) ? CCC : z0
-            vz0 = isempty(z0) ? eye(Nz)*1e6 : vz0
+            vz0 = isempty(vz0) ? eye(Nz)*1e6 : vz0
         end
     end
 
