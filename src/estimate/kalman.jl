@@ -516,8 +516,8 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
         lead = 1, allout = allout, include_presample = true)
 
 
-    #print("VVall: ",R1[:VVall]," ",R2[:VVall]," ",R3[:VVall],"\n")
-    print("likelihoods: ",k1[:L]," ",k2[:L]," ",k3[:L],"\n")
+    # print("VVall: ",R1[:VVall]," ",R2[:VVall]," ",R3[:VVall],"\n")
+    # print("likelihoods: ",k1[:L]," ",k2[:L]," ",k3[:L],"\n")
 
     # Concatenate Kalman objects
     if include_presample

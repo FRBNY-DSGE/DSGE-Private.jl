@@ -27,7 +27,7 @@ function compute_system(m; use_expected_rate_data=false)
         df = load_data(m)
         forcing_ind = get_setting(m, :forcing_index_start)
         data = df_to_matrix(m,df)
-        X = data[forcing_ind:end,inds_presample_periods(m)]
+        X = data[forcing_ind:end,:]
         measurement_equation = measurement(m, TTT, RRR, CCC, X; shocks = use_expected_rate_data)
     else
         # Solve measurement equation

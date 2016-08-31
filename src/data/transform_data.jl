@@ -101,7 +101,7 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
     
     transformed = DataFrame()
     transformed[:date] = levels[:date]
-
+ 
     # Step 1: apply transformations to non-lagged series
     for series in keys(m.data_transforms)
         if VERBOSITY[verbose] >= VERBOSITY[:high]
@@ -110,6 +110,7 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
         f = m.data_transforms[series]
         transformed[series] = f(levels)
     end
+
 
     # Step 2: create lags of series by hand
     
@@ -126,11 +127,19 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
     transformed[:obs_π_o_t1]  = lag(transformed,:obs_π_o_t)
     transformed[:obs_π_e_t1]  = lag(transformed,:obs_π_e_t) 
 
-    #print("\n right place \n")
     for col in names(transformed)
         transformed[col] = fill_nan(transformed,col)
     end
-    #print("top of data: \n",head(transformed),"\n")
+
+    # ensure order matches order in mLaubachWilliams.jl
+    y_keys = [:obs_gdp_t, :obs_π_t]
+    X_dict = copy(m.observables)
+    [delete!(X_dict,key) for key in y_keys]
+    X_keys = [entry[2] for entry in sort(collect(zip(values(X_dict),keys(X_dict))))]
+    ordered_cols = [:date; y_keys; X_keys]
+    ordered_cols = [Symbol(x) for x in ordered_cols]
+    #println("ordered_cols: $ordered_cols")
+    transformed = transformed[:,ordered_cols]
 
     sort!(transformed, cols = :date)
 

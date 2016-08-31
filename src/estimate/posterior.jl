@@ -44,8 +44,8 @@ function posterior{T<:AbstractFloat}(m::AbstractModel{T},
     catch_errors = catch_errors | mh
     like, out = likelihood(m, data; mh=mh, catch_errors=catch_errors, z0=z0, vz0=vz0)
     post = like + prior(m)
-    print("prior: ",prior(m),"\n")
-    print("like: ",like,"\n")
+    # print("prior: ",prior(m),"\n")
+    # print("like: ",like,"\n")
     if mh
         return Posterior(post, like, out)
     else
