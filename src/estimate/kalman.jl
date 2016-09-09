@@ -115,15 +115,10 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
     Ny = size(DDs)[1]
     V  = VVall[1:Nz, 1:Nz]
     
-    # print("size of DDs: ",size(DDs),"\n")
-    # print("DDs: ",DDs,"\n")
-    # print("Nz: ",Nz,"\n")    
-    # print("T: ",T,"\n")
-    # print("size of data in kalman: ",size(data),"\n")
-
     # print("vz0: \n",vz0,"\n")
     # print("is vz0 empty: ",isempty(vz0),"\n")
     # print("is z0 empty: ",isempty(z0),"\n")
+    # print("z0: \n",z0,"\n")
     # # The following will almost never be true, 
     # # since the presample/prezlb/postzlb won't be the full timespan
     # @assert size(DDs)[2] == T
@@ -141,6 +136,13 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
 
     z = z0
     P = vz0
+    
+    # print("VVall: ", VVall, "\n")
+    # print("size of DDs: ",size(DDs),"\n")
+    # print("DDs: ",DDs,"\n")
+    # print("TTT: ",TTT,"\n")    
+    # print("z: ",z,"\n")
+    # print("size of data in kalman: ",size(data),"\n")
     
     @assert !any(isnan,z)
     @assert !any(isnan,vz0)
@@ -228,33 +230,32 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         end
 
         ddy = D\dy
-    
-        if det(D) < 0
-            print("t: ",t,"\n")
-            print("D misbehaving. D: ",D,"\n")
-            print("det(D): ",det(D),"\n")
-            print("ddy: ",ddy,"\n")
-            print("first(dy'*ddy/2): ",first(dy'*ddy/2),"\n") 
-       
-        end
+
         # We evaluate the log likelihood function by adding values of L at every iteration
         #   step (for each t = 1,2,...T)
         if include_presample || (!include_presample && t > n_presample_periods(m))
             L += -log(det(D))/2 - first(dy'*ddy/2) - Ny_t*log(2*pi)/2
         end
-
+        
         ## updating
         PZG = P*ZZ_t' + G_t
         z = z + PZG*ddy                    # z_{t|t} = z_{t|t-1} + P_{t|t-1}*ZZ(Θ)' + ...
         P = P - PZG/D*PZG'                 # P_{t|t} = P_{t|t-1} - PZG*(1/D)*PZG
-
+        
+        # print("PZG : ",PZG,"\n")
+        # print("ddy : ",ddy,"\n")
+        # print("D inv", inv(D),"\n")
+        # print("PH(?) ",PZG,"\n")
+        # print("Kalman gain: ",PZG*inv(D),"\n")
+        
         if allout
-            PZZ = P*ZZ_t'
+            PZZ = P*ZZ_t' # ? 
             filt[:, t]     = z
-            vfilt[:, :, t] = P
+            vfilt[:, :, t] = P # PZZ?
         end
         
         #print("z after filter: ",z,"\n")
+        #@assert 1==2
         # If !include_presample, then we reassign `z0` and `P0` to be their
         # values at the end of the presample/beginning of the main sample
         if !include_presample && t == n_presample_periods(m)
@@ -265,12 +266,12 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
 
     zend = z
     Pend = P
-
+    #@assert 1==2
     # print("zend: \n",zend,"\n")
     # print("Pend: \n",Pend,"\n")
 
-
     if allout && lead > 1
+        #@assert 1==2
         for t = (T+2):(T+lead)
             z = TTT*z + CCC
             P = TTT*P*TTT' + V
@@ -637,7 +638,7 @@ function Base.cat{S<:AbstractFloat}(m::AbstractModel, k1::Kalman{S},
         k1_new[:ystdprederror][obs_inds, :] = k1[:ystdprederror]
         k1_new[:rmse][:, obs_inds] = k1[:rmse]
         k1_new[:rmsd][:, obs_inds] = k1[:rmsd]
-        k1_new[:filt][state_inds, :] = k1[:pred]
+        k1_new[:filt][state_inds, :] = k1[:filt] # k1[:pred]
         k1_new[:vfilt][state_inds, state_inds, :] = k1[:vfilt]
         k1_new[:z0][state_inds] = k1[:z0]
         k1_new[:vz0][state_inds, state_inds] = k1[:vz0]

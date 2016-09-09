@@ -138,7 +138,7 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     Nz = size(T, 1)
     
     # Check data is well-formed wrt model settings
-    @assert Ny == n_observables(m)
+    @assert Ny == n_observables(m) 
     @assert Nt == n_presample_periods(m) + n_prezlb_periods(m) + n_zlb_periods(m) + n_conditional_periods
 
     # Anticipated monetary policy shocks
@@ -443,8 +443,8 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     Ne = size(R, 2)
     
     # Check data is well-formed wrt model settings
-    @assert Ny == n_observables(m)
-    @assert Nt == n_presample_periods(m) + n_prezlb_periods(m) + n_zlb_periods(m) + n_conditional_periods
+    #@assert Ny == n_observables(m)
+    #@assert Nt == n_presample_periods(m) + n_prezlb_periods(m) + n_zlb_periods(m) + n_conditional_periods
 
     # Anticipated monetary policy shocks
     n_ant_shocks = n_anticipated_shocks(m)

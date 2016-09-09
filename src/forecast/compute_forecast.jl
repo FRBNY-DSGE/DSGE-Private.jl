@@ -49,6 +49,9 @@ function compute_forecast(T::Array{Float64,2}, R::Array{Float64,2}, C::Array{Flo
         states[t,:] = iterate(states[t-1,:]', shocks[t, :]')
     end
 
+    println("size of D: ",size(D))
+    println("size of Z: ",size(Z))
+    println("size of states: ",size(states))
     # Apply observation and pseudo-observation equations
     observables        = D        .+ Z * states'
     pseudo_observables = D_pseudo .+ Z * states'
