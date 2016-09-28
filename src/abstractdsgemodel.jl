@@ -154,6 +154,9 @@ n_parameters(m::AbstractModel)             = length(m.parameters)
 n_parameters_steady_state(m::AbstractModel)= length(m.steady_state)
 n_parameters_free(m::AbstractModel)        = sum([!α.fixed for α in m.parameters])
 
+# flag for reduced form models
+reduced_form(m::AbstractModel) = get_setting(m,:reduced_form)
+
 # From an augmented state space with anticipated policy shocks, get indices
 # corresponding to pre-ZLB states, shocks, and observables
 function inds_states_no_ant(m::AbstractModel)

@@ -63,6 +63,6 @@ function default_settings!(m::AbstractModel)
 
     # Reduced Form
     m <= Setting(:forcing_index_start, 0, "Index that marks beginning of forcing processes in data matrix")
-    
+    m <= Setting(:reduced_form, false, "flag for whether model is reduced form or structural")
 
 end

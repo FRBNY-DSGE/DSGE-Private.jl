@@ -19,9 +19,10 @@ function solve(m::AbstractModel)
     # Get equilibrium condition matrices
     Γ0, Γ1, C, Ψ, Π  = eqcond(m)
     
-    n_forcing = n_forcing_processes(m)
+    # n_forcing = n_forcing_processes(m)
+    reduced_form_flag = reduced_form(m) 
 
-    if n_forcing > 0
+    if reduced_form_flag == true
         TTT_gensys = Γ1
         RRR_gensys = Ψ
         CCC_gensys = C

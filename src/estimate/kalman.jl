@@ -109,20 +109,13 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          lead::Int = 0,
                                          allout::Bool = false,
                                          include_presample::Bool = true)
+    
     # T is the number of data points in this subdivision (presample, prezlb, zlb)
     T  = size(data, 2)
     Nz = length(CCC)
     Ny = size(DDs)[1]
     V  = VVall[1:Nz, 1:Nz]
-    
-    # print("vz0: \n",vz0,"\n")
-    # print("is vz0 empty: ",isempty(vz0),"\n")
-    # print("is z0 empty: ",isempty(z0),"\n")
-    # print("z0: \n",z0,"\n")
-    # # The following will almost never be true, 
-    # # since the presample/prezlb/postzlb won't be the full timespan
-    # @assert size(DDs)[2] == T
- 
+     
     if isempty(z0) || isempty(vz0)
         e, _ = eig(TTT)
         if countnz(e*e' - eye(Nz)) == Nz^2
@@ -136,14 +129,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
 
     z = z0
     P = vz0
-    
-    # print("VVall: ", VVall, "\n")
-    # print("size of DDs: ",size(DDs),"\n")
-    # print("DDs: ",DDs,"\n")
-    # print("TTT: ",TTT,"\n")    
-    # print("z: ",z,"\n")
-    # print("size of data in kalman: ",size(data),"\n")
-    
+     
     @assert !any(isnan,z)
     @assert !any(isnan,vz0)
 
@@ -188,21 +174,6 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         R_t = R[nonmissing, nonmissing]    # R_t = Var(ϵ_t)
         Ny_t = length(data_t)              # Ny_t = T is length of time
         DD_t = DDs[:,t][nonmissing]        # DD_t
-        
-        @assert !any(isnan,ZZ_t)
-        @assert !any(isnan,G_t)
-        @assert !any(isnan,R_t)
-        @assert !any(isnan,Ny_t)
-        @assert !any(isnan,DD_t)
-
-        # print("t: ",t,"\n")
-        # print("data_t: ",data_t," ")
-        # print("Ny_t ",Ny_t,"\n ")
-        # print("ZZ_t ",ZZ_t,"\n ")
-        # print("P ",P,"\n ")
-        # print("G_t ",G_t,"\n ")
-        # print("R_t ",R_t,"\n ")
-        # print("nonmissing ",nonmissing, "\n")
 
         ## forecasting
         z = CCC + TTT*z                    # z_{t|t-1} = CCC + TTT(Θ)*z_{t-1|t-1}
@@ -217,10 +188,6 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         @assert !any(isnan,dy)
         @assert !any(isnan,ZG)
         @assert !any(isnan,D)
-
-        # print("dy ",dy,"\n ")
-        # print("D ",D,"\n ")
-        # print("z ",z,"\n")
 
         if allout
             pred[:, t]                   = z
@@ -242,20 +209,12 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         z = z + PZG*ddy                    # z_{t|t} = z_{t|t-1} + P_{t|t-1}*ZZ(Θ)' + ...
         P = P - PZG/D*PZG'                 # P_{t|t} = P_{t|t-1} - PZG*(1/D)*PZG
         
-        # print("PZG : ",PZG,"\n")
-        # print("ddy : ",ddy,"\n")
-        # print("D inv", inv(D),"\n")
-        # print("PH(?) ",PZG,"\n")
-        # print("Kalman gain: ",PZG*inv(D),"\n")
-        
         if allout
             PZZ = P*ZZ_t' # ? 
             filt[:, t]     = z
             vfilt[:, :, t] = P # PZZ?
         end
         
-        #print("z after filter: ",z,"\n")
-        #@assert 1==2
         # If !include_presample, then we reassign `z0` and `P0` to be their
         # values at the end of the presample/beginning of the main sample
         if !include_presample && t == n_presample_periods(m)
