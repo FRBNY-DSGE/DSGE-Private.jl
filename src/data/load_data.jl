@@ -49,13 +49,13 @@ function load_data(m::AbstractModel; try_disk::Bool = true, verbose::Symbol=:low
             println("Creating dataset...")
         end
         df = load_data_levels(m; verbose=verbose)
-        # df = transform_data(m, df; verbose=verbose)
-
-        n_forcing = n_forcing_processes(m)
-        if n_forcing < 1
-            df = transform_data(m, df; verbose=verbose)
-        else
+        println("loaded data in levels")
+        reduced_form_flag = reduced_form(m)
+        if reduced_form_flag
+            println("transforming reduced form model data")
             df = transform_data_reduced_form(m, df; verbose=verbose)
+        else
+            df = transform_data(m, df; verbose=verbose)
         end
 
         # Ensure that only appropriate rows make it into the returned DataFrame.

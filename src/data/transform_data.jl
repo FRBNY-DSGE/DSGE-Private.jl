@@ -114,8 +114,17 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
 
     # Step 2: create lags of series by hand
     
-    transformed[:obs_gdp_t1] = lag(transformed,:obs_gdp_t)
-    transformed[:obs_gdp_t2] = lag(transformed,:obs_gdp_t1)
+    if :obs_gdp_t in names(levels)
+        transformed[:obs_gdp_t1] = lag(transformed,:obs_gdp_t)
+        transformed[:obs_gdp_t2] = lag(transformed,:obs_gdp_t1)
+        y_keys = [:obs_gdp_t, :obs_π_t]
+    else
+        transformed[:obs_unemp_t1] = lag(transformed,:obs_unemp_t)
+        transformed[:obs_unemp_t2] = lag(transformed,:obs_unemp_t1)
+        y_keys = [:obs_unemp_t, :obs_π_t]
+    end
+
+    
     transformed[:obs_r_t1]   = lag(transformed,:obs_r_t)
     transformed[:obs_r_t2]   = lag(transformed,:obs_r_t1)
     transformed[:obs_π_t1]   = lag(transformed,:obs_π_t)
@@ -132,7 +141,6 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
     end
 
     # ensure order matches order in mLaubachWilliams.jl
-    y_keys = [:obs_gdp_t, :obs_π_t]
     X_dict = copy(m.observables)
     [delete!(X_dict,key) for key in y_keys]
     X_keys = [entry[2] for entry in sort(collect(zip(values(X_dict),keys(X_dict))))]

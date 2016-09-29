@@ -25,29 +25,39 @@ Estimate the DSGE parameter posterior distribution.
     proposal state vector for the beginning of the presample period cannot be calculated.
     Passing one explicitly allows us to bypass this issue.
 - `vz0`: Similarly, if the system is not stationary, a variance matrix for the initial state
-    vector must be specified explicitly. 
+    vector must be specified explicitly.
+- `mle`: Set to true if parameters should be estimated by maximum likelihood directly, 
+    without using any Bayesian framework. If this is set to true, the code will exit after
+    estimating parameters.
+- `run_MH`: Set to false to disable Metropolis-Hastings MCMC sampling from the posterior.
 """
 function estimate(m::AbstractModel, df::DataFrame;
                   verbose::Symbol=:low,
+                  mle::Bool=false,
+                  run_MH::Bool=false,
                   proposal_covariance::Matrix=Matrix(),
                   z0::Vector{Float64}=Vector{Float64}(),
                   vz0::Matrix{Float64}=Matrix{Float64}())
     data = df_to_matrix(m, df)
     estimate(m, data; verbose=verbose, proposal_covariance=proposal_covariance, 
-              z0=z0, vz0=vz0)
+              z0=z0, vz0=vz0, mle=mle, run_MH=run_MH)
 end
 function estimate(m::AbstractModel;
                   verbose::Symbol=:low,
+                  mle::Bool=false,
+                  run_MH::Bool=false,
                   proposal_covariance::Matrix=Matrix(),
                   z0::Vector{Float64}=Vector{Float64}(),
                   vz0::Matrix{Float64}=Matrix{Float64}())
     # Load data
     df = load_data(m; verbose=verbose)
     estimate(m, df; verbose=verbose, proposal_covariance=proposal_covariance,
-             z0=z0, vz0=vz0)
+             z0=z0, vz0=vz0, mle=mle, run_MH=run_MH)
 end
 function estimate(m::AbstractModel, data::Matrix{Float64};
                   verbose::Symbol=:low,
+                  mle::Bool=false,
+                  run_MH::Bool=false, 
                   proposal_covariance::Matrix=Matrix(),
                   z0::Vector{Float64}=Vector{Float64}(),
                   vz0::Matrix{Float64}=Matrix{Float64}())
@@ -72,7 +82,7 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         n_iterations       = 100
         ftol               = 1e-10
         converged          = false
-
+        
         # If the algorithm stops only because we have exceeded the maximum number of
         # iterations, continue improving guess of modal parameters
         total_iterations = 0
@@ -81,7 +91,7 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
             tic()
             out, H = optimize!(m, data;
                 ftol=ftol, iterations=n_iterations, show_trace=true, verbose=verbose,
-                z0=z0, vz0=vz0)
+                z0=z0, vz0=vz0, mle=mle)
             converged = !out.iteration_converged
 
             total_iterations += out.iterations
@@ -99,6 +109,11 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     end
     
     params = map(θ->θ.value, m.parameters)
+
+    # Return here if using MLE, as running MH does not make sense
+    if mle || !run_MH
+        return nothing
+    end
     
     ########################################################################################
     ### Step 3: Compute proposal distribution
@@ -109,60 +124,60 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     ### the hessian. We find the inverse via eigenvalue decomposition.
     ########################################################################################
 
-    # # Calculate the Hessian at the posterior mode
-    # hessian = if calculate_hessian(m)
-    #     if VERBOSITY[verbose] >= VERBOSITY[:low]
-    #         println("Recalculating Hessian...")
-    #     end
+    # Calculate the Hessian at the posterior mode
+    hessian = if calculate_hessian(m)
+        if VERBOSITY[verbose] >= VERBOSITY[:low]
+            println("Recalculating Hessian...")
+        end
 
-    #     hessian, _ = hessian!(m, params, data; verbose=verbose)
+        hessian, _ = hessian!(m, params, data; verbose=verbose)
 
-    #     h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
-    #         file["hessian"] = hessian
-    #     end
+        h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
+            file["hessian"] = hessian
+        end
 
-    #     hessian
+        hessian
 
-    # # Read in a pre-calculated Hessian
-    # else
-    #     fn = hessian_path(m)
-    #     if VERBOSITY[verbose] >= VERBOSITY[:low]
-    #         println("Using pre-calculated Hessian from $fn")
-    #     end
+    # Read in a pre-calculated Hessian
+    else
+        fn = hessian_path(m)
+        if VERBOSITY[verbose] >= VERBOSITY[:low]
+            println("Using pre-calculated Hessian from $fn")
+        end
 
-    #     hessian = h5open(fn,"r") do file
-    #         read(file, "hessian")
-    #     end
+        hessian = h5open(fn,"r") do file
+            read(file, "hessian")
+        end
 
-    #     hessian
-    # end
+        hessian
+    end
 
-    # # Compute inverse hessian and create proposal distribution, or
-    # # just create it with the given cov matrix if we have it
-    # propdist = if isempty(proposal_covariance)
-    #     # Make sure the mode and hessian have the same number of parameters
-    #     n = length(params)
-    #     @assert (n, n) == size(hessian)
+    # Compute inverse hessian and create proposal distribution, or
+    # just create it with the given cov matrix if we have it
+    propdist = if isempty(proposal_covariance)
+        # Make sure the mode and hessian have the same number of parameters
+        n = length(params)
+        @assert (n, n) == size(hessian)
 
-    #     # Compute the inverse of the Hessian via eigenvalue decomposition
-    #     S_diag, U = eig(hessian)
-    #     big_eig_vals = find(x -> x > 1e-6, S_diag)
-    #     rank = length(big_eig_vals)
+        # Compute the inverse of the Hessian via eigenvalue decomposition
+        S_diag, U = eig(hessian)
+        big_eig_vals = find(x -> x > 1e-6, S_diag)
+        rank = length(big_eig_vals)
 
-    #     S_inv = zeros(n, n)
-    #     for i = (n-rank+1):n
-    #         S_inv[i, i] = 1/S_diag[i]
-    #     end
+        S_inv = zeros(n, n)
+        for i = (n-rank+1):n
+            S_inv[i, i] = 1/S_diag[i]
+        end
 
-    #     hessian_inv = U*sqrt(S_inv) #this is the inverse of the hessian
-    #     DSGE.DegenerateMvNormal(params, hessian_inv)
-    # else
-    #     DSGE.DegenerateMvNormal(params, proposal_covariance)
-    # end
+        hessian_inv = U*sqrt(S_inv) #this is the inverse of the hessian
+        DSGE.DegenerateMvNormal(params, hessian_inv)
+    else
+        DSGE.DegenerateMvNormal(params, proposal_covariance)
+    end
     
-    # if DSGE.rank(propdist) != n_parameters_free(m)
-    #     println("problem –    shutting down dimensions")
-    # end
+    if DSGE.rank(propdist) != n_parameters_free(m)
+        println("problem –    shutting down dimensions")
+    end
 
     ########################################################################################
     ### Step 4: Sample from posterior using Metropolis-Hastings algorithm
@@ -172,13 +187,13 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     cc0 = 0.01
     cc = 0.09
 
-    # metropolis_hastings(propdist, m, data, cc0, cc; verbose=verbose);
+    metropolis_hastings(propdist, m, data, cc0, cc; verbose=verbose);
 
     ########################################################################################
     ### Step 5: Calculate and save parameter covariance matrix
     ########################################################################################
 
-    # compute_parameter_covariance(m);
+    compute_parameter_covariance(m);
 
     return nothing
 end

@@ -9,6 +9,7 @@ optimize!(m::AbstractModel, data::Matrix;
           store_trace::Bool    = false,
           show_trace::Bool     = false,
           extended_trace::Bool = false,
+          mle::Bool            = false,  # default from estimate.jl
           verbose::Symbol      = :none)
 ```
 
@@ -24,55 +25,55 @@ function optimize!(m::AbstractModel,
                    store_trace::Bool    = false,
                    show_trace::Bool     = false,
                    extended_trace::Bool = false,
-                   mle::Bool            = false,
+                   mle::Bool            = false,  # default from estimate.jl
                    verbose::Symbol      = :none,
                    z0::Vector{Float64}  = Vector{Float64}(),
                    vz0::Matrix{Float64} = Matrix{Float64}())
 
-        # For now, only csminwel should be used
-        optimizer = if method == :csminwel
-            csminwel
+    # For now, only csminwel should be used
+    optimizer = if method == :csminwel
+        csminwel
+    else
+        error("Method ",method," is not supported.")
+    end
+    
+    # Inputs to optimization
+    H0             = 1e-4 * eye(n_parameters_free(m))
+    para_free_inds = find([!θ.fixed for θ in m.parameters])
+    x_model        = transform_to_real_line(m.parameters)
+    x_opt          = x_model[para_free_inds]
+    
+    function f_opt(x_opt)
+        x_model[para_free_inds] = x_opt
+        transform_to_model_space!(m,x_model)
+        if mle
+            return -likelihood(m, data; catch_errors=true, z0=z0, vz0=vz0)[1]
         else
-            error("Method ",method," is not supported.")
+            return -posterior(m, data; catch_errors=true, z0=z0, vz0=vz0)[:post]
         end
-
-        # Inputs to optimization
-        H0             = 1e-4 * eye(n_parameters_free(m))
-        para_free_inds = find([!θ.fixed for θ in m.parameters])
-        x_model        = transform_to_real_line(m.parameters)
-        x_opt          = x_model[para_free_inds]
-
-        function f_opt(x_opt)
-            x_model[para_free_inds] = x_opt
-            transform_to_model_space!(m,x_model)
-            if mle
-                return -likelihood(m, data; catch_errors=true, z0=z0, vz0=vz0)[1]
-            else
-                return -posterior(m, data; catch_errors=true, z0=z0, vz0=vz0)[:post]
-            end
-        end
-
-        rng = m.rng
-
-        out, H_ = optimizer(f_opt, x_opt, H0;
-            xtol=xtol, ftol=ftol, grtol=grtol, iterations=iterations,
-            store_trace=store_trace, show_trace=show_trace, extended_trace=extended_trace,
-            verbose=verbose, rng=rng)
-
-        x_model[para_free_inds] = out.minimum
-        transform_to_model_space!(m, x_model)
-
-        # Match original dimensions
-        out.minimum = x_model
-
-        H = zeros(n_parameters(m), n_parameters(m))
-
-        # Fill in rows/cols of zeros corresponding to location of fixed parameters
-        # For each row corresponding to a free parameter, fill in columns corresponding to
-        # free parameters. Everything else is 0.
-        for (row_free, row_full) in enumerate(para_free_inds)
-            H[row_full,para_free_inds] = H_[row_free,:]
-        end
-
-        return out, H
+    end
+    
+    rng = m.rng
+    
+    out, H_ = optimizer(f_opt, x_opt, H0;
+                        xtol=xtol, ftol=ftol, grtol=grtol, iterations=iterations,
+                        store_trace=store_trace, show_trace=show_trace, extended_trace=extended_trace,
+                        verbose=verbose, rng=rng)
+    
+    x_model[para_free_inds] = out.minimum
+    transform_to_model_space!(m, x_model)
+    
+    # Match original dimensions
+    out.minimum = x_model
+    
+    H = zeros(n_parameters(m), n_parameters(m))
+    
+    # Fill in rows/cols of zeros corresponding to location of fixed parameters
+    # For each row corresponding to a free parameter, fill in columns corresponding to
+    # free parameters. Everything else is 0.
+    for (row_free, row_full) in enumerate(para_free_inds)
+        H[row_full,para_free_inds] = H_[row_free,:]
+    end
+    
+    return out, H
 end
