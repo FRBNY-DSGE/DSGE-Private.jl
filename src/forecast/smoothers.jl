@@ -136,7 +136,13 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     Ny = size(data, 1)
     Nt = size(data, 2)
     Nz = size(T, 1)
-    
+
+    # broadcast time-invariant DD if necessary
+    if size(Ds) == 1
+        T  = size(data,2)
+        Ds = repmat(Ds, 1, T)
+    end
+
     # Check data is well-formed wrt model settings
     @assert Ny == n_observables(m) 
     @assert Nt == n_presample_periods(m) + n_prezlb_periods(m) + n_zlb_periods(m) + n_conditional_periods
@@ -420,20 +426,20 @@ end
 
 function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     df::DataFrame, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
-    Z::Matrix{S}, D::Vector{S}, A0::Vector{S}, P0::Matrix{S};
+    Z::Matrix{S}, Ds::Array{S}, A0::Vector{S}, P0::Matrix{S};
     n_conditional_periods::Int = 0)
 
     # convert DataFrame to Matrix
     data = df_to_matrix(df)
     
     # call actual simulation smoother
-    durbin_koopman_smoother(m, data, T, R, C, Q, Z, D, A0, P0;
+    durbin_koopman_smoother(m, data, T, R, C, Q, Z, Ds, A0, P0;
         n_conditional_periods = n_conditional_periods)
 end
 
 function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
-    Z::Matrix{S}, D::Vector{S}, A0::Array{S}, P0::Matrix{S};
+    Z::Matrix{S}, Ds::Array{S}, A0::Array{S}, P0::Matrix{S};
     n_conditional_periods::Int = 0)
 
     # Get matrix dimensions
@@ -441,10 +447,17 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     Nt = size(data, 2)
     Nz = size(T, 1)
     Ne = size(R, 2)
+
+    # broadcast time-invariant DD if necessary
+    if size(Ds) == 1
+        T  = size(data,2)
+        Ds = repmat(Ds, 1, T)
+    end
+
     
     # Check data is well-formed wrt model settings
-    #@assert Ny == n_observables(m)
-    #@assert Nt == n_presample_periods(m) + n_prezlb_periods(m) + n_zlb_periods(m) + n_conditional_periods
+    @assert Ny == n_observables(m)
+    @assert Nt == n_presample_periods(m) + n_prezlb_periods(m) + n_zlb_periods(m) + n_conditional_periods
 
     # Anticipated monetary policy shocks
     n_ant_shocks = n_anticipated_shocks(m)
@@ -484,7 +497,7 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     for t = 1:Nt
         ap_t             = T * ap_t + R * η_all_plus[:,t]
         α_all_plus[:,t]  = ap_t
-        YY_all_plus[:,t] = Z*ap_t + D
+        YY_all_plus[:,t] = Z*ap_t + Ds[:,t]
     end
 
     # Replace fake data with NaNs wherever actual data has NaNs
@@ -499,21 +512,21 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
         # Note that we pass in `zeros(size(D))` instead of `D` because the
         # measurement equation for `YY_star` has no constant term
         k, _, _, R3 = kalman_filter_2part(m, YY_star', T, R, C, A0, P0;
-            DD = zeros(size(D)), allout = true, include_presample = true)
+            DD = zeros(size(Ds)), allout = true, include_presample = true)
         
         k[:z0], k[:vz0], k[:pred], k[:vpred], R3[:TTT], R3[:RRR], R3[:CCC]
     else
         VVall = zeros(Ny+Nz,Ny+Nz)
         VVall[1:Nz,1:Nz] = R*Q*R'
         
-        k = kalman_filter(m, YY_star', T, C, Z, zeroes(size(D)), VVall, A0, P0; lead = 0, allout = true)
+        k = kalman_filter(m, YY_star, T, C, Z, zeros(size(Ds)), VVall, A0, P0; lead = 0, allout = true)
 
         A0, P0, k[:pred], k[:vpred], T, R, C
     end
 
     ##### Step 2: Kalman smooth over everything
     α_hat_star, η_hat_star = kalman_smoother(m, YY_star, T, R, C, Q, Z,
-        zeros(size(D)), A0, P0, pred, vpred)
+        zeros(size(Ds)), A0, P0, pred, vpred)
     
     # Compute draw (states and shocks)
     alpha_hat = α_all_plus[:, index_prezlb_start(m):end] + α_hat_star

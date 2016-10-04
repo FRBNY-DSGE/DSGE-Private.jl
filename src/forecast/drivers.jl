@@ -193,7 +193,7 @@ be implemented.
 """
 function prepare_systems(m::AbstractModel, input_type::Symbol,
     params::Matrix{Float64}, TTT::Array{Float64,3}, RRR::Array{Float64,3},
-    CCC::Array{Float64,3})
+    CCC::Array{Float64,3}, df::DataFrame)
 
     # Setup and preallocate
     n_sim = size(params,1)
@@ -206,6 +206,14 @@ function prepare_systems(m::AbstractModel, input_type::Symbol,
         systems[1] = compute_system(m)
     elseif input_type in [:full]
         empty = isempty(CCC)
+        
+        if reduced_form(m)
+            CCC_j       = zeros(size(TTT_j)[1],)
+            forcing_ind = get_setting(m, :forcing_index_start)
+            data_mat    = df_to_matrix(m, df)
+            X           = data_mat[forcing_ind:end, inds_prezlb_periods(m)]
+        end
+
         # TODO parallelize
         for i in 1:n_sim_forecast
             j = i * jstep
@@ -223,7 +231,11 @@ function prepare_systems(m::AbstractModel, input_type::Symbol,
             # Prepare measurement eq
             params_j = vec(params[j,:])
             update!(m, params_j)
-            meas_j   = measurement(m, trans_j; shocks = true)
+            if reduced_form(m)
+                meas_j      = measurement(m, TTT_j, RRR_j, CCC_j, X; shocks = true)
+            else
+                meas_j   = measurement(m, trans_j; shocks = true)
+            end
 
             # Prepare system
             systems[i] = System(trans_j, meas_j)
@@ -259,7 +271,7 @@ function prepare_forecast_inputs(m::AbstractModel, df::DataFrame;
     n_sim_forecast = convert(Int, n_sim/jstep)
 
     # Populate systems vector
-    systems = prepare_systems(m, input_type, params, TTT, RRR, CCC)
+    systems = prepare_systems(m, input_type, params, TTT, RRR, CCC, df)
 
     # Populate states vector
     states = prepare_states(m, input_type, cond_type, systems, params, df, zend)
