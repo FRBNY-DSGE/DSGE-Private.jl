@@ -128,6 +128,7 @@ date_zlb_start(m::AbstractModel) = get_setting(m, :date_zlb_start)
 date_presample_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_prezlb_start) - Dates.Month(3))
 date_prezlb_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_zlb_start) - Dates.Month(3))
 date_zlb_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_forecast_start) - Dates.Month(3))
+date_conditional_end(m::AbstractModel) = get_setting(m, :date_conditional_end)
 
 index_presample_start(m::AbstractModel) = 1
 index_prezlb_start(m::AbstractModel) = subtract_quarters(date_prezlb_start(m), date_presample_start(m)) + 1
@@ -157,6 +158,11 @@ n_parameters_free(m::AbstractModel)        = sum([!α.fixed for α in m.paramete
 # flag for reduced form models
 reduced_form(m::AbstractModel) = get_setting(m,:reduced_form)
 
+# Parse population mnemonic into 2 symbols from one
+function parse_population_mnemonic(m::AbstractModel)
+    map(symbol, split(string(get_setting(m, :population_mnemonic)), DSGE_DATASERIES_DELIM))
+end
+    
 # From an augmented state space with anticipated policy shocks, get indices
 # corresponding to pre-ZLB states, shocks, and observables
 function inds_states_no_ant(m::AbstractModel)
@@ -196,9 +202,11 @@ saveroot(m::AbstractModel)     = get_setting(m, :saveroot)
 dataroot(m::AbstractModel)     = get_setting(m, :dataroot)
 
 # Interface for data
-data_vintage(m::AbstractModel) = get_setting(m, :data_vintage)
-cond_vintage(m::AbstractModel) = get_setting(m, :cond_vintage)
-cond_id(m::AbstractModel) = get_setting(m, :cond_id)
+data_vintage(m::AbstractModel)    = get_setting(m, :data_vintage)
+cond_vintage(m::AbstractModel)    = get_setting(m, :cond_vintage)
+cond_id(m::AbstractModel)         = get_setting(m, :cond_id)
+cond_full_names(m::AbstractModel) = get_setting(m, :cond_full_names)
+cond_semi_names(m::AbstractModel) = get_setting(m, :cond_semi_names)
 use_population_forecast(m::AbstractModel) = get_setting(m, :use_population_forecast)
 
 # Interface for general computation settings
@@ -223,7 +231,9 @@ forecast_tdist_df_val(m::AbstractModel) = get_setting(m, :forecast_tdist_df_val)
 forecast_tdist_shocks(m::AbstractModel) = get_setting(m, :forecast_tdist_shocks)
 forecast_kill_shocks(m::AbstractModel)  = get_setting(m, :forecast_kill_shocks)
 forecast_smoother(m::AbstractModel)     = get_setting(m, :forecast_smoother)
-    
+forecast_input_file_overrides(m::AbstractModel) = get_setting(m, :forecast_input_file_overrides)
+forecast_pseudoobservables(m::AbstractModel) = get_setting(m, :forecast_pseudoobservables)
+
 function forecast_horizons(m::AbstractModel)
     t0 = get_setting(m, :date_forecast_start)
     t1 = get_setting(m, :date_forecast_end)
@@ -412,9 +422,9 @@ Returns path to specific input data file, creating containing directory as neede
 `file_name` not specified, creates and returns path to containing directory only. Valid
 `in_type` includes:
 
-* `"data"`: recorded data
-* `"cond"`: conditional data - nowcasts for the current forecast quarter, or related
-* `"user"`: user-supplied data for starting parameter vector, hessian, or related
+* `\"data\"`: recorded data
+* `\"cond\"`: conditional data - nowcasts for the current forecast quarter, or related
+* `\"user\"`: user-supplied data for starting parameter vector, hessian, or related
 
 Path built as
 ```

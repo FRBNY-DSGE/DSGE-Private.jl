@@ -1,24 +1,33 @@
 """
 ```
-transform_data(m::AbstractModel, levels::DataFrame; verbose::Symbol = :low)
+transform_data(m::AbstractModel, levels::DataFrame; cond_type::Symbol = :none,
+    verbose::Symbol = :low)
 ```
 
-Transform data loaded in levels and order columns appropriately for the DSGE model. Returns
-DataFrame of transformed data.
+Transform data loaded in levels and order columns appropriately for the DSGE
+model. Returns DataFrame of transformed data.
 
 The DataFrame `levels` is output from `load_data_levels`. The series in levels are
-transformed as specified in `m.data_transforms`.
-- To prepare for per-capita transformations, population data are filtered using
-    `hpfilter`. The series in `levels` to use as the population series is given by the
-    `population_mnemonic` setting. If `use_population_forecast` is `true`, a population
-    forecast is appended to the recorded population levels before the filtering. Both
-    filtered and unfiltered population levels and growth rates are added to the `levels`
-    data frame.
-- The transformations are applied for each series using the `levels` DataFrame as input.
-"""
-function transform_data(m::AbstractModel, levels::DataFrame; verbose::Symbol = :low)
+transformed as specified in `m.observable_mappings`.
 
-    population_mnemonic = get_setting(m, :population_mnemonic)
+- To prepare for per-capita transformations, population data are filtered using
+  `hpfilter`. The series in `levels` to use as the population series is given by
+  the `population_mnemonic` setting. If `use_population_forecast(m)`, a
+  population forecast is appended to the recorded population levels before the
+  filtering. Both filtered and unfiltered population levels and growth rates are
+  added to the `levels` data frame.
+- The transformations are applied for each series using the `levels` DataFrame
+  as input.
+
+Conditional data (identified by `cond_type in [:semi, :full]`) are handled
+slightly differently: If `use_population_forecast(m)`, we drop the first period
+of the population forecast because we treat the first forecast period
+(`date_forecast_start(m)` as if it were data. We also only apply transformations
+for the observables given in `cond_full_names(m)` or `cond_semi_names(m)`.
+"""
+function transform_data(m::AbstractModel, levels::DataFrame; cond_type::Symbol = :none, verbose::Symbol = :low)
+
+    population_mnemonic = parse_population_mnemonic(m)[1] 
     n_obs, _ = size(levels)
 
     # Step 1: HP filter population forecasts, if they're being used
@@ -32,7 +41,7 @@ function transform_data(m::AbstractModel, levels::DataFrame; verbose::Symbol = :
         if VERBOSITY[verbose] >= VERBOSITY[:high]
             println("Loading population forecast...")
         end
-
+        
         # load population forecast
         population_forecast_file = inpath(m, "data", "population_forecast_$(data_vintage(m)).csv")
         pop_forecast = readtable(population_forecast_file)
@@ -41,8 +50,14 @@ function transform_data(m::AbstractModel, levels::DataFrame; verbose::Symbol = :
         DSGE.na2nan!(pop_forecast)
         DSGE.format_dates!(:date, pop_forecast)
 
+        # for conditional data, start "forecast" one period later
+        # (first real forecast period treated as data)
+        if cond_type in [:semi, :full]
+            pop_forecast = pop_forecast[2:end, :]
+        end
+
         # use our "real" series as current value
-        pop_all = [population_recorded; pop_forecast[2:end,:]]
+        pop_all = vcat(population_recorded, pop_forecast[2:end, :])
 
         # return values
         pop_all[population_mnemonic],
@@ -72,22 +87,38 @@ function transform_data(m::AbstractModel, levels::DataFrame; verbose::Symbol = :
     transformed = DataFrame()
     transformed[:date] = levels[:date]
 
-    for series in keys(m.data_transforms)
+    data_transforms = collect_data_transforms(m)
+    
+    for series in keys(data_transforms)
         if VERBOSITY[verbose] >= VERBOSITY[:high]
-            println("Transforming series " * string(series) * "...")
+            println("Transforming series $series...")
         end
-        f = m.data_transforms[series]
+        f = data_transforms[series]
         transformed[series] = f(levels)
     end
 
     sort!(transformed, cols = :date)
-end
 
+    # NaN out observables not used for (semi)conditional forecasts
+    if cond_type in [:semi, :full]
+        cond_names = if cond_type == :semi
+            cond_semi_names(m)
+        elseif cond_type == :full
+            cond_full_names(m)
+        end
+
+        cond_names_nan = setdiff(names(transformed), [cond_names; :date])
+        T = eltype(transformed[:, cond_names_nan])
+        transformed[transformed[:, :date] .>= date_forecast_start(m), cond_names_nan] = convert(T, NaN)
+    end
+
+    return transformed
+end
 
 
 """
 ```
-transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbose::Symbol = :low)
+transform_data_reduced_form(m::AbstractModel, levels::DataFrame; cond_type::Symbol=:none, verbose::Symbol = :low)
 ```
 Transform data loaded in levels and order columns appropriately for replicating Laubach
 Williams. Returns DataFrame of transformed data.
@@ -187,4 +218,17 @@ function fill_nan(df::DataFrame, col::Symbol)
         end
     end
     return(df[col])
+end
+
+function collect_data_transforms(m; direction=:fwd)
+
+    data_transforms = OrderedDict{Symbol,Function}()
+
+    # Parse vector of observable mappings into data_transforms dictionary
+    for obs in keys(m.observable_mappings)
+        data_transforms[obs] = getfield(m.observable_mappings[obs], symbol(string(direction) * "_transform"))
+    end
+    
+    data_transforms    
+
 end

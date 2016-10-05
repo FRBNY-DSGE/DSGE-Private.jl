@@ -1,27 +1,16 @@
+<<<<<<< HEAD
 
-function compute_system(m; use_expected_rate_data=false)
+function compute_system(m)
 
-    # Solve model
-    TTT, RRR, CCC = solve(m)
+	# Solve model
+	TTT, RRR, CCC = solve(m)
+	transition_equation = Transition(TTT, RRR, CCC)
 
-    # Index out non-anticipated shocks rows and columns of system matrices if desired
-    if !use_expected_rate_data
-        n_states     = DSGE.n_states(m)
-        n_ant        = n_anticipated_shocks(m)
-        n_states_aug = DSGE.n_states_augmented(m)
-        n_exo        = n_shocks_exogenous(m)
-        
-        state_inds = [1:(n_states-n_ant); (n_states+1):n_states_aug]
-        shock_inds = 1:(n_exo-n_ant)
-        
-        TTT = TTT[state_inds, state_inds]
-        RRR = RRR[state_inds, shock_inds]
-        CCC = CCC[state_inds]
-    end
-    
-    transition_equation = Transition(TTT, RRR, CCC)
+	# Solve measurement equation
+	shocks = n_anticipated_shocks(m) > 0
+	measurement_equation = measurement(m, TTT, RRR, CCC; shocks = shocks)
 
-    # Load data if m is a reduced-form model
+    # Load data if m has forcing processes
     if n_forcing_processes(m) > 0
         #print("right place\n")
         df = load_data(m)

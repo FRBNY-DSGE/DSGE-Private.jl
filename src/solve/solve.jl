@@ -19,7 +19,6 @@ function solve(m::AbstractModel)
     # Get equilibrium condition matrices
     Γ0, Γ1, C, Ψ, Π  = eqcond(m)
     
-    # n_forcing = n_forcing_processes(m)
     reduced_form_flag = reduced_form(m) 
 
     if reduced_form_flag == true
@@ -32,14 +31,7 @@ function solve(m::AbstractModel)
         if !((eu[1] == 1) & (eu[2] == 1))
             throw(GensysError("Gensys does not give existence"))
         end
-        TTT_gensys = real(TTT_gensys)
-        RRR_gensys = real(RRR_gensys)
-        CCC_gensys = reshape(CCC_gensys, size(CCC_gensys, 1))
-
-        # Augment states
-        TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
-    end
-
+     end
 
     TTT_gensys = real(TTT_gensys)
     RRR_gensys = real(RRR_gensys)
@@ -47,7 +39,6 @@ function solve(m::AbstractModel)
 
     # Augment states
     TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
-
 
     return TTT, RRR, CCC
 end

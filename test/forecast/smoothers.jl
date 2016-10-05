@@ -8,25 +8,20 @@ data = h5open("$path/../reference/smoother_args.h5", "r") do h5
     read(h5, "data")
 end
 
-m = Model990()
-m.testing = true
-m <= Setting(:n_anticipated_shocks, 6)
-DSGE.init_model_indices!(m)
-m <= Setting(:date_forecast_start, quartertodate("2016-Q1"))
+custom_settings = Dict{Symbol, Setting}(
+    :n_anticipated_shocks => Setting(:n_anticipated_shocks, 6),
+    :date_forecast_start  => Setting(:date_forecast_start, quartertodate("2016-Q1")))
+m = Model990(custom_settings = custom_settings, testing = true)
 
 TTT, RRR, CCC = solve(m)
 meas = measurement(m, TTT, RRR, CCC)
 QQ, ZZ, DD = meas.QQ, meas.ZZ, meas.DD
 
-A0 = zeros(size(TTT, 1))
-P0 = QuantEcon.solve_discrete_lyapunov(TTT, RRR*QQ*RRR')
-k, _, _, _ = kalman_filter_2part(m, data', TTT, RRR, CCC, A0, P0; allout = true,
-    include_presample = true)
-pred  = k[:pred]
-vpred = k[:vpred]
+pred, vpred, A0, P0 = h5open("$path/../reference/kalman_filter_2part_out.h5", "r") do h5
+    read(h5, "pred"), read(h5, "vpred"), read(h5, "z0"), read(h5, "vz0")
+end
 
-
-# Kalman filter test
+# Kalman smoother test
 alpha_hat, eta_hat = kalman_smoother(m, data, TTT, RRR, CCC, QQ, ZZ, DD, A0, P0,
     pred, vpred)
 
@@ -37,7 +32,6 @@ end
 
 @test_approx_eq exp_alpha_hat alpha_hat
 @test_approx_eq exp_eta_hat eta_hat
-
 
 # Durbin Koopman smoother test
 alpha_hat, eta_hat = durbin_koopman_smoother(m, data, TTT, RRR, CCC, QQ, ZZ, DD,

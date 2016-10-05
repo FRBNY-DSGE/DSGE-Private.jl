@@ -1,13 +1,14 @@
 """
 ```
 smooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame, syses::Vector{System},
-    kals::Vector{Kalman})
+    kals::Vector{Kalman}; cond_type::Symbol = :none)
 
 smooth{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     syses::Vector{System}, kals::Vector{Kalman})
 ```
 
-Computes and returns the smoothed values of states for every parameter draw.
+Computes and returns the smoothed values of states and shocks for every
+parameter draw.
 
 ### Inputs
 
@@ -20,23 +21,28 @@ Computes and returns the smoothed values of states for every parameter draw.
 
 ### Outputs
 
-- `smoothed_states`: a vector of `alpha_hat`s returned from the smoother
-  specified by `smoother_flag(m)`, one for each system in `syses`
-- `smoothed_shocks`: a vector of `eta_hat`s returned from the smoother, one for
-  each system in `syses`
+- `states`: 3-dimensional array of size `nstates` x `hist_periods` x `ndraws`
+  consisting of smoothed states for each draw
+- `shocks`: 3-dimensional array of size `nshocks` x `hist_periods` x `ndraws`
+  consisting of smoothed shocks for each draw
+
+where `states` and `shocks` are returned from the smoother specified by
+`smoother_flag(m)`.
 """
 function smooth{S<:AbstractFloat}(m::AbstractModel,
                                   df::DataFrame,
-                                  syses::Vector{System},
-                                  kals::Vector{Kalman})
-    data = df_to_matrix(m, df)'
+                                  syses::Vector{System{S}},
+                                  kals::Vector{Kalman{S}};
+                                  cond_type::Symbol = :none)
+
+    data = df_to_matrix(m, df; cond_type = cond_type)
     smooth(m, data, syses, kals)
 end
 
 function smooth{S<:AbstractFloat}(m::AbstractModel,
-                                  data::Matrix{S}
-                                  syses::Vector{System},
-                                  kals::Vector{Kalman})
+                                  data::Matrix{S},
+                                  syses::Vector{System{S}},
+                                  kals::Vector{Kalman{S}})
 
     # numbers of useful things
     ndraws = length(syses)
@@ -45,40 +51,34 @@ function smooth{S<:AbstractFloat}(m::AbstractModel,
     # Broadcast models and data matrices 
     models = fill(m, ndraws)
     datas = fill(data, ndraws)
-    include_presamples = if include_presample
-        fill(IncludePresample(), ndraws)
-    else
-        fill(ExcludePresample(), ndraws)
-    end
 
     # Call smooth over all draws
     if use_parallel_workers(m) && nworkers() > 1
-        println("Using pmap")
         mapfcn = pmap
     else
         mapfcn = map
     end    
-    out = mapfcn(DSGE.tricky_smooth, include_presamples, models, datas, syses, kals)
+    out = mapfcn(DSGE.smooth, models, datas, syses, kals)
 
-    smoothed_states = [Array(x[1]) for x in out]  # to make type stable
-    smoothed_shocks = [Array(x[2]) for x in out]  
-    
-    return smoothed_states, smoothed_shocks
+    # Unpack returned vector of tuples
+    states = [x[1]::Matrix{S} for x in out]
+    shocks = [x[2]::Matrix{S} for x in out]
+
+    # Splat vectors of matrices into 3-D arrays
+    states = cat(3, states...)
+    shocks = cat(3, shocks...)
+
+    return states, shocks
 end
 
-tricky_smooth(::IncludePresample, m::AbstractModel, data::Matrix, sys::System, kal::Kalman) = 
-    smooth(m, data, sys, kal; include_presample = true)
-tricky_smooth(::ExcludePresample, m::AbstractModel, data::Matrix, sys::System, kal::Kalman) = 
-    smooth(m, data, sys, kal; include_presample = false)
-
 function smooth{S<:AbstractFloat}(m::AbstractModel,
-                                  data::Matrix{AbstractFloat},
-                                  sys::System,
-                                  kal::Kalman)
+                                  data::Matrix{S},
+                                  sys::System{S},
+                                  kal::Kalman{S})
 
-    alpha_hat, eta_hat = if smoother_flag(m) == :kalman
+    alpha_hat, eta_hat = if forecast_smoother(m) == :kalman
         kalman_smoother(m, data, sys, kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
-    elseif smoother_flag(m) == :durbin_koopman
+    elseif forecast_smoother(m) == :durbin_koopman
         durbin_koopman_smoother(m, data, sys, kal[:z0], kal[:vz0])
     end
 

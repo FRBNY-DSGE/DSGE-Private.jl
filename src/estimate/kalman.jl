@@ -5,10 +5,6 @@ and written by Iskander Karibzhanov.
 
 """
 ```
-kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
-    TTT::Matrix{S}, CCC::Vector{S}, ZZ::Matrix{S}, DD::Vector{S}, VVall::Matrix{S},
-    z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}(); lead::Int = 0,
-    allout::Bool = false, include_presample::Bool = true)
 
 kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     TTT::Matrix{S}, CCC::Vector{S}, ZZ::Matrix{S}, DDs::Matrix{S},
@@ -29,7 +25,7 @@ kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
      May be time varying, or constant through time. 
 - `VVall`: an `Ny + Nz` x `Ny + Nz` matrix for a time-invariant variance matrix for the
   error in the transition equation and the error in the measurement equation, that is,
-  `[η(t)', ϵ(t)']'`.
+  `[ϵ(t)', u(t)']'`.
 
 #### Optional Inputs
 - `z0`: an optional `Nz` x 1 initial state vector.
@@ -43,8 +39,8 @@ kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
   returned `Kalman` object to be the states and variance-covariance matrices at
   the end of the presample/beginning of the main sample
 
-
 Where:
+
 - `Nz`: number of states
 - `Ny`: number of observables
 - `T`: number of time periods for which we have data
@@ -53,27 +49,32 @@ Where:
 
 - a `Kalman` object. See documentation for `Kalman`.
 
-
 ### Notes
 
 The state space model is defined as follows:
 ```
-z(t+1) = CCC+TTT*z(t)+η(t)   (state or transition equation)
-y(t) = DD(t)+ZZ*z(t)+ϵ(t)       (observation or measurement equation)
+z(t+1) = CCC + TTT*z(t) + ϵ(t)   (state or transition equation)
+y(t) = DD + ZZ*z(t) + u(t)       (observation or measurement equation)
 ```
 
-When `z0` and `Vz0` are omitted, the initial state vector and its covariance matrix of the
-time invariant Kalman filters are computed under the stationarity condition:
+When `z0` and `Vz0` are omitted, the initial state vector and its covariance
+matrix of the time invariant Kalman filters are computed under the stationarity
+condition:
 ```
-z0 = (I-TTT)\CCC
-vz0 = (I-kron(TTT,TTT))\(V(:),Nz,Nz)
+z0  = (I - TTT)\CCC
+vz0 = reshape(I - kron(TTT, TTT))\vec(V), Nz, Nz)
 ```
-where `TTT` and `V` are the time invariant transition matrix and the covariance matrix of
-transition equation noise, and `vec(V)` is an `Nz^2` x 1 column vector that is constructed
-by stacking the `Nz` columns of `V`.  Note that all eigenvalues of `TTT` are inside the unit
-circle when the state space model is stationary.  When the preceding formula cannot be
-applied, the initial state vector estimate is set to `a` and its covariance matrix is given
-by `1E6I`.  Optionally, you can specify initial values.
+
+Where:
+
+- `kron(TTT, TTT)` is a matrix of dimension `Nz^2` x `Nz^2`, the Kronecker
+  product of `TTT`
+- `vec(V)` is the `Nz^2` x 1 column vector constructed by stacking the `Nz`
+  columns of `V`
+
+All eigenvalues of `TTT` are inside the unit circle when the state space model
+is stationary.  When the preceding formula cannot be applied, the initial state
+vector estimate is set to `CCC` and its covariance matrix is given by `1e6 * I`.
 """
 function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          data::Matrix{S},
@@ -118,9 +119,9 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
      
     if isempty(z0) || isempty(vz0)
         e, _ = eig(TTT)
-        if countnz(e*e' - eye(Nz)) == Nz^2
-            z0 = isempty(z0) ? (eye(Nz) - TTT)\CCC : z0
-            vz0 = isempty(vz0) ? reshape((eye(Nz^2)-kron(TTT,TTT))\V, Nz, Nz) : vz0
+        if all(abs(e) .< 1.)
+            z0  = (eye(Nz) - TTT)\CCC
+            vz0 = solve_discrete_lyapunov(TTT, V)
         else
             z0 = isempty(z0) ? CCC : z0
             vz0 = isempty(vz0) ? eye(Nz)*1e6 : vz0
@@ -183,12 +184,6 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         D = ZZ_t*P*ZZ_t' + ZG + ZG' + R_t  # D = ZZ*P_{t+t-1}*ZZ' + ZG + ZG' + R_t
         D = (D+D')/2
 
-        @assert !any(isnan,z)
-        @assert !any(isnan,P)
-        @assert !any(isnan,dy)
-        @assert !any(isnan,ZG)
-        @assert !any(isnan,D)
-
         if allout
             pred[:, t]                   = z
             vpred[:, :, t]               = P
@@ -210,9 +205,9 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         P = P - PZG/D*PZG'                 # P_{t|t} = P_{t|t-1} - PZG*(1/D)*PZG
         
         if allout
-            PZZ = P*ZZ_t' # ? 
+            PZZ = P*ZZ_t'
             filt[:, t]     = z
-            vfilt[:, :, t] = P # PZZ?
+            vfilt[:, :, t] = P
         end
         
         # If !include_presample, then we reassign `z0` and `P0` to be their
@@ -225,12 +220,8 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
 
     zend = z
     Pend = P
-    #@assert 1==2
-    # print("zend: \n",zend,"\n")
-    # print("Pend: \n",Pend,"\n")
 
     if allout && lead > 1
-        #@assert 1==2
         for t = (T+2):(T+lead)
             z = TTT*z + CCC
             P = TTT*P*TTT' + V
@@ -265,15 +256,15 @@ Implements the Kalman filter, accounting for the zero lower bound.
 ### Inputs
 
 - `m`: model object
-- `data`: a `T x Ny` matrix containing data `y(1), ... , y(T)`.
-- `TTT`: an optional `Nz x Nz` matrix for a time-invariant transition matrix in
+- `data`: a `Ny` x `T` matrix containing data `y(1), ... , y(T)`.
+- `TTT`: an optional `Nz` x `Nz` matrix for a time-invariant transition matrix in
   the transition equation. If not provided, it will be calculated.
 - `RRR`: an optional `Nz` x `Nz` matrix for a time-invariant variance matrix for
   the error in the transition equation.  If not provided, it will be calculated.
-- `CCC`: an `Nz` x 1` vector for a time-invariant input vector in the transition
+- `CCC`: an `Nz` x 1 vector for a time-invariant input vector in the transition
   equation.  If not provided, it will be calculated.
-- `z0`: an optional `Nz x 1` initial state vector.
-- `vz0`: an optional `Nz x Nz` covariance matrix of an initial state vector.
+- `z0`: an optional `Nz` x 1 initial state vector.
+- `vz0`: an optional `Nz` x `Nz` covariance matrix of an initial state vector.
 
 Where:
 - `Nz`: number of states
@@ -334,7 +325,7 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
 
     R1[:data] = data[obs_inds, inds_presample_periods(m)]
     R2[:data] = data[obs_inds, inds_prezlb_periods(m)]
-    R3[:data] = data[obs_inds, inds_zlb_periods(m)]
+    R3[:data] = data[:,        index_zlb_start(m):end] # allows for conditional data
 
     # Step 1: Compute the transition equation:
     #   S_t = CCC + TTT*S_{t-1} + RRR*ε_t
@@ -370,11 +361,6 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     #   u_t = η_t + MM*ε_t
     #   Var(u_t) = HH = EE+MM QQ MM'
     #   Cov(ε_t,u_t) = VV = QQ*MM'
-
-    #print("TTT: \n",R2[:TTT],"\n")
-    #print("I-TTT: \n",UniformScaling(1)-R2[:TTT],"\n")
-    #print("Vz0: \n", UniformScaling(1)-kron(R2[:TTT],R2[:TTT]),"\n")
-    #print("n_forcing: ",n_forcing,"\n")
 
     # Get measurement equation matrices set up for normal and zlb periods
     if n_forcing > 0
@@ -426,7 +412,7 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     #   QQ2 = Var(ε2_t) = RRR*QQ*RRR'
     #   VV2 = Cov(ε2_t, u_t) = RRR*VV
     #   VVall = Var([ε2_t; u_t])    (joint variance of the two shocks)
-     
+
     # Run Kalman filter on presample, calculating `z0` and `vz0` in
     # `kalman_filter` if necessary
     if n_forcing < 1 && (isempty(z0) || isempty(vz0)) 
@@ -451,20 +437,16 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     else
         R1[:A0] = isempty(z0) ? Vector{Float64}() : z0[state_inds]
         R1[:P0] = isempty(vz0) ? Matrix{Float64}() : vz0[state_inds,state_inds]
-        #print("R1[:A0]: ",R1[:A0],"\n R1[:P0]",R1[:P0],"\n")
+   
         k1 = kalman_filter(m, R1[:data], R1[:TTT], zeros(S, regime_states[1]),
             R1[:ZZ], R1[:DD], R1[:VVall], R1[:A0], R1[:P0]; lead = 1, allout = allout,
             include_presample = true)
     end
-    
-    #k1 = kalman_filter(m, R1[:data]', R1[:TTT], zeros(S, regime_states[1]),
-    #    R1[:ZZ], R1[:DD][:,inds_presample_periods(m)], R1[:VVall], R1[:A0], R1[:P0];
-    #    lead = 1, allout = allout, include_presample = true)
 
     # Run Kalman filter on normal period
     k2 = kalman_filter(m, R2[:data], R2[:TTT], zeros(regime_states[2]), R2[:ZZ],
-        R2[:DD], R2[:VVall], k1[:zend], k1[:Pend]; 
-        lead = 1, allout = allout, include_presample = true)
+        R2[:DD], R2[:VVall], k1[:zend], k1[:Pend]; lead = 1, allout = allout,
+        include_presample = true)
 
     # Run Kalman filter on ZLB period
     zprev = zeros(S, n_states_aug)
@@ -472,12 +454,8 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     zprev[state_inds] = k2[:zend]
     Pprev[state_inds, state_inds] = k2[:Pend]
     k3 = kalman_filter(m, R3[:data], R3[:TTT], zeros(regime_states[3]), R3[:ZZ],
-        R3[:DD], R3[:VVall], zprev, Pprev; 
-        lead = 1, allout = allout, include_presample = true)
-
-
-    # print("VVall: ",R1[:VVall]," ",R2[:VVall]," ",R3[:VVall],"\n")
-    # print("likelihoods: ",k1[:L]," ",k2[:L]," ",k3[:L],"\n")
+        R3[:DD], R3[:VVall], zprev, Pprev; lead = 1, allout = allout,
+        include_presample = true)
 
     # Concatenate Kalman objects
     if include_presample
@@ -490,7 +468,6 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     ## Return concatenated Kalman and system matrices for each regime
     return k, R1, R2, R3
 end
-
 
 """
 ```

@@ -44,11 +44,11 @@ the model's measurement equation matrices.
 
 #### Model Specifications and Settings
 
-* `spec::AbstractString`: The model specification identifier, "m990",
+* `spec::AbstractString`: The model specification identifier, \"smets_wouters\",
 cached here for filepath computation.
 
 * `subspec::AbstractString`: The model subspecification number,
-indicating that some parameters from the original model spec ("ss0")
+indicating that some parameters from the original model spec (\"ss0\")
 are initialized differently. Cached here for filepath computation.
 
 
@@ -160,7 +160,9 @@ function init_model_indices!(m::SmetsWouters)
 end
 
 
-function SmetsWouters(subspec::AbstractString="ss0")
+function SmetsWouters(subspec::AbstractString="ss0";
+                      custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                      testing = true)
 
     # Model-specific specifications
     spec               = split(basename(@__FILE__),'.')[1]
@@ -168,7 +170,6 @@ function SmetsWouters(subspec::AbstractString="ss0")
     settings           = Dict{Symbol,Setting}()
     test_settings      = Dict{Symbol,Setting}()
     rng                = MersenneTwister()        # Random Number Generator
-    testing            = false
 
     # initialize empty model
     m = SmetsWouters{Float64}(
@@ -188,8 +189,28 @@ function SmetsWouters(subspec::AbstractString="ss0")
     # Set settings
     settings_smets_wouters!(m)
     default_test_settings!(m)
+    for custom_setting in values(custom_settings)
+        m <= custom_setting
+    end
 
     # Initialize parameters
+    init_parameters!(m)
+    init_model_indices!(m)
+    init_subspec!(m)
+    steadystate!(m)
+    return m
+end
+
+"""
+```
+init_parameters!(m::SmetsWouters)
+```
+
+Initializes the model's parameters, as well as empty values for the steady-state
+parameters (in preparation for `steadystate!(m)` being called to initialize
+those).
+"""
+function init_parameters!(m::SmetsWouters)
     m <= parameter(:α,      0.24, (1e-5, 0.999), (1e-5, 0.999),   SquareRoot(),     Normal(0.30, 0.05),         fixed=false,
                    description="α: Capital elasticity in the intermediate goods sector's Cobb-Douglas production function.",
                    tex_label="\\alpha")
@@ -379,11 +400,6 @@ function SmetsWouters(subspec::AbstractString="ss0")
     m <= SteadyStateParameter(:ystar,  NaN, description="steady-state something something", tex_label="\\y_*")
     m <= SteadyStateParameter(:cstar,  NaN, description="steady-state something something", tex_label="\\c_*")
     m <= SteadyStateParameter(:wl_c,   NaN, description="steady-state something something", tex_label="\\wl_c")
-
-    init_model_indices!(m)
-    init_subspec!(m)
-    steadystate!(m)
-    return m
 end
 
 

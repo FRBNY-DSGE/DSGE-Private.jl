@@ -1,6 +1,6 @@
 """
 ```
-forecast_all(m::AbstractModel, df::DataFrame; cond_types::Vector{Symbol}
+forecast_all(m::AbstractModel, cond_types::Vector{Symbol}
 input_types::Vector{Symbol}, output_types::Vector{Symbol}
 ```
 
@@ -10,12 +10,12 @@ output types.
 # Arguments
 
 - `m`: model object
-- `df`: DataFrame of data for observables
 - `cond_types`: conditional data type, any combination of
     - `:none`: no conditional data
-    - `:semi`: use \"semiconditional data\" - average of quarter-to-date observations for high frequency series
-    - `:full`: use \"conditional data\" - semiconditional plus nowcasts for desired
-      observables
+    - `:semi`: use \"semiconditional data\" - average of quarter-to-date
+      observations for high frequency series
+    - `:full`: use \"conditional data\" - semiconditional plus nowcasts for
+      desired observables
 - `input_types`: which set of parameters to use, any combination of
     - `:mode`: forecast using the modal parameters only
     - `:mean`: forecast using the mean parameters only
@@ -24,18 +24,20 @@ output types.
     - `:subset`: forecast using a well-defined user-specified subset of draws
 - `output_types`: forecast routine outputs to compute, any combination of
     - `:states`: smoothed states (history) for all specified conditional data types
-    - `:shocks`: smoothed shocks (history, standardized) for all specified conditional data types
-    - `:shocks_nonstandardized`: smoothed shocks (history, non-standardized) for all
-        specified conditional data types
-    - `:forecast`: forecast of states and observables for all specified conditional data types
-    - `:shockdec`: shock decompositions (history) of states and observables for all
-        specified conditional data types
-    - `:dettrend`: deterministic trend (history) of states and observables for all specified
-        conditional data types
-    - `:counter`: counterfactuals (history) of states and observables for all specified
-        conditional data types
-    - `:simple`: smoothed states, forecast of states, forecast of observables for
-        *unconditional* data only
+    - `:shocks`: smoothed shocks (history, standardized) for all specified
+      conditional data types
+    - `:shocks_nonstandardized`: smoothed shocks (history, non-standardized) for
+      all specified conditional data types
+    - `:forecast`: forecast of states and observables for all specified
+      conditional data types, as well as shocks that produced them
+    - `:shockdec`: shock decompositions (history) of states and observables for
+      all specified conditional data types
+    - `:dettrend`: deterministic trend (history) of states and observables for
+      all specified conditional data types
+    - `:counter`: counterfactuals (history) of states and observables for all
+      specified conditional data types
+    - `:simple`: smoothed states, forecast of states, forecast of observables
+      for *unconditional* data only
     - `:all`: smoothed states (history), smoothed shocks (history, standardized), smoothed
       shocks (history, non-standardized), shock decompositions (history), deterministic
       trend (history), counterfactuals (history), forecast, forecast shocks drawn, shock
@@ -51,16 +53,19 @@ Outputs
 
 - todo
 """
-function forecast_all(m::AbstractModel, df::DataFrame;
+function forecast_all(m::AbstractModel,
                       cond_types::Vector{Symbol}   = Vector{Symbol}(),
                       input_types::Vector{Symbol}  = Vector{Symbol}(),
                       output_types::Vector{Symbol} = Vector{Symbol}())
 
-    for input_type in input_types
-        for output_type in output_types
-            for cond_type in cond_types
-                forecast_one(m, df; cond_type=cond_type, input_type=input_type, output_type=output_type)
-            end
+    for cond_type in cond_types
+        df = load_data(m; cond_type=cond_type, try_disk=true, verbose=:none)
+        for input_type in input_types
+            # Take the union of all output variables specified by output_types
+            all_output_vars = map(x -> get_output_vars(m, x), output_types)
+            output_vars = union(all_output_vars...)
+
+            forecast_one(m, df; cond_type=cond_type, input_type=input_type, output_vars = output_vars)
         end
     end
 
@@ -108,6 +113,7 @@ function load_draws(m::AbstractModel, input_type::Symbol)
             params, TTT, RRR, CCC, zend
         end
     elseif input_type in [:init]
+        init_parameters!(m)
         tmp = Float64[α.value for α in m.parameters]
         params = reshape(tmp, 1, size(tmp,1))
         TTT  = Array{Float64}(0,0,0)
@@ -155,7 +161,7 @@ function prepare_states(m::AbstractModel, input_type::Symbol, cond_type::Symbol,
     # pre-computed system matrices. We now recompute them here by running the Kalman filter.
     if input_type in [:mean, :mode, :init]
         update!(m, vec(params))
-        kals = filter(m, df, systems; allout = true)
+        kals = filter(m, df, systems; cond_type = cond_type, allout = true)
         # `kals` is a vector of length 1
         states[1] = kals[1][:filt][:, end]
 
@@ -249,8 +255,8 @@ end
 
 """
 ```
-prepare_forecast_inputs(m::AbstractModel, df::DataFrame; input_type::Symbol  = :mode,
-output_type::Symbol = :simple, cond_type::Symbol  = :none)
+prepare_forecast_inputs(m::AbstractModel, df::DataFrame; input_type::Symbol =
+    :mode, cond_type::Symbol = :none)
 ```
 
 Load draws for this input type, prepare a System object for each draw, and prepare initial
@@ -258,8 +264,7 @@ state vectors.
 """
 function prepare_forecast_inputs(m::AbstractModel, df::DataFrame;
                       input_type::Symbol  = :mode,
-                      output_type::Symbol = :simple,
-                      cond_type::Symbol  = :none)
+                      cond_type::Symbol   = :none)
     # Some variables
     n_states = n_states_augmented(m)
 
@@ -282,7 +287,7 @@ end
 """
 ```
 forecast_one(m::AbstractModel, df::DataFrame; input_type::Symbol  = :mode,
-    output_type::Symbol = :simple, cond_type::Symbol  = :none)
+    output_type::Symbol = :simple, cond_type::Symbol = :none)
 ```
 
 Compute, save, and return forecast outputs given by `output_type` for input draws given by
@@ -291,54 +296,92 @@ Compute, save, and return forecast outputs given by `output_type` for input draw
 """
 function forecast_one(m::AbstractModel, df::DataFrame;
                       input_type::Symbol  = :mode,
-                      output_type::Symbol = :simple,
-                      cond_type::Symbol  = :none)
-
-    # Prepare conditional data matrix. All missing columns will be set to NaN.
-    if cond_type in [:semi, :full]
-        cond_df = load_cond_data(m, cond_type)
-        df0 = [df; cond_df]
-    elseif cond_type in [:none]
-        df0 = df
-    end
+                      output_vars::Vector{Symbol} = [],
+                      cond_type::Symbol   = :none)
 
     # Prepare forecast inputs
-    systems, states = prepare_forecast_inputs(m, df0;
-        input_type=input_type, output_type=output_type, cond_type=cond_type)
+    systems, states = prepare_forecast_inputs(m, df; input_type = input_type,
+        cond_type = cond_type)
+    ndraws = length(systems)
 
     # Prepare forecast outputs
-    forecast_output = Dict{Symbol, Vector{Array{Float64}}}()
-    forecast_output_files = get_output_files(m, input_type, output_type, cond_type)
+    forecast_output = Dict{Symbol, Array{Float64}}()
+    forecast_output_files = get_output_files(m, input_type, output_vars, cond_type)
 
+    # Set forecast_pseudoobservables properly
+    for output in output_vars
+        if contains(string(output), "pseudo")
+            update!(m.settings[:forecast_pseudoobservables], Setting(:forecast_pseudoobservables, true))
+            break
+        end
+    end
+        
     # must re-run filter/smoother for conditional data in addition to explicit cases
-    if output_type in [:states, :simple, :all] || cond_type in [:semi, :full]
-        histstates, histpseudo = filterandsmooth(m, df0, systems)
+    if !isempty(intersect(output_vars, [:histstates, :histpseudo, :histshocks, :shockdecstates, :shockdecpseudo, :shockdecobs])) || cond_type in [:semi, :full]
 
-        forecast_output[:histstates] = histstates
-        forecast_output[:histpseudo] = histpseudo
+        histstates, histshocks, histpseudo, kals = filterandsmooth(m, df, systems; cond_type = cond_type)
+
+        # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
+        if cond_type in [:semi, :full]
+            T = DSGE.subtract_quarters(date_forecast_start(m), date_prezlb_start(m))
+
+            forecast_output[:histstates] = histstates[:, 1:T, :]
+            forecast_output[:histshocks] = histshocks[:, 1:T, :]
+	    if :histpseudo in output_vars            
+		forecast_output[:histpseudo] = histpseudo[:, 1:T, :]
+	    end	
+        else
+            forecast_output[:histstates] = histstates
+            forecast_output[:histshocks] = histshocks
+            if :histpseudo in output_vars
+                forecast_output[:histpseudo] = histpseudo
+            end
+        end            
     end
 
     # For conditional data, use the end of the hist states as the initial state
     # vector for the forecast
     if cond_type in [:semi, :full]
-        # TODO determine structure of histstates
-        states = histstates[end]
+        states = [kal[:zend]::Vector{Float64} for kal in kals]
     end
 
-    if output_type in [:forecast, :simple, :all]
-        forecaststates, forecastobs, forecastpseudo =
+    if !isempty(intersect(output_vars, [:forecaststates, :forecastobs, :forecastpseudo, :forecastshocks]))
+        forecaststates, forecastobs, forecastpseudo, forecastshocks =
             forecast(m, systems, states)
 
-        forecast_output[:forecastobs] = forecastobs
-        forecast_output[:forecaststates] = forecaststates
-        forecast_output[:forecastpseudo] = forecastpseudo
-        # forecast_output[:forecastshocks] = forecastshocks
+        # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
+        if cond_type in [:semi, :full]
+            T = DSGE.subtract_quarters(date_forecast_start(m), date_prezlb_start(m))
+
+            # copy history of observables to make correct size
+            histobs = df_to_matrix(m, df; cond_type = cond_type)[:, index_prezlb_start(m):end]
+            histobs = repeat(histobs, outer = [1,1,ndraws])
+            
+            forecast_output[:forecaststates] = cat(2, histstates[:, T+1:end, :], forecaststates)
+            forecast_output[:forecastshocks] = cat(2, histshocks[:, T+1:end, :], forecastshocks)
+            forecast_output[:forecastobs]    = cat(2, histobs[:,    T+1:end, :], forecastobs)
+
+	    if :forecastpseudo in output_vars
+	        forecast_output[:forecastpseudo] = cat(2, histpseudo[:, T+1:end, :], forecastpseudo)
+	    end
+        else
+            forecast_output[:forecaststates] = forecaststates
+            forecast_output[:forecastshocks] = forecastshocks
+            forecast_output[:forecastobs]    = forecastobs
+            
+            if :forecastpseudo in output_vars
+                forecast_output[:forecastpseudo] = forecastpseudo
+            end
+        end
     end
 
-    # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
-    if cond_type in [:semi, :full]
-        # TODO implement
-        nothing
+    if !isempty(intersect(output_vars, [:shockdecstates, :shockdecobs, :shockdecpseudo]))
+        histshocks = [histshocks[:, :, i]::Matrix{Float64} for i = 1:ndraws]
+        shockdecstates, shockdecobs, shockdecpseudo = shock_decompositions(m, systems, histshocks)
+
+        forecast_output[:shockdecstates] = shockdecstates
+        forecast_output[:shockdecpseudo] = shockdecpseudo
+        forecast_output[:shockdecobs]    = shockdecobs
     end
 
     # Write output files
@@ -348,12 +391,23 @@ function forecast_one(m::AbstractModel, df::DataFrame;
         end
     end
 
+    # Return only saved elements of dict
+    filter!((k, v) -> k ∈ output_vars, forecast_output)
     return forecast_output
-
 end
 
 
 function get_input_file(m, input_type)
+    overrides = forecast_input_file_overrides(m)
+    if haskey(overrides, input_type)
+        override_file = overrides[input_type]
+        if ispath(override_file)
+            return override_file
+        else
+            error("Invalid input file override for input_type = $input_type: $override_file")
+        end
+    end
+
     if input_type == :mode
         return rawpath(m,"estimate","paramsmode.h5")
     elseif input_type == :mean
@@ -369,54 +423,53 @@ function get_input_file(m, input_type)
     end
 end
 
-function get_output_files(m, input_type, output_type, cond_type)
 
-    # Add additional file strings here
-    additional_file_strings = ASCIIString[]
-    push!(additional_file_strings, "para=" * abbrev_symbol(input_type))
-    push!(additional_file_strings, "cond=" * abbrev_symbol(cond_type))
-
-    # vars prefix
+function get_output_vars(m, output_type)
     if output_type == :states
-        vars = ["histstates",
-                "histpseudo"]
-        throw(ArgumentError("Not implemented."))
+        vars = [:histstates,
+                :histpseudo]
     elseif output_type == :shocks
-        vars = ["histshocks"]
-        throw(ArgumentError("Not implemented."))
+        vars = [:histshocks]
     elseif output_type == :shocks_nonstandardized
-        vars = ["histshocksns"]
+        vars = [:histshocksns]
         throw(ArgumentError("Not implemented."))
     elseif output_type == :forecast
-       vars = ["forecaststates",
-               "forecastobs",
-               "forecastpseudo"]
-#              "forecastshocks"]
+       vars = [:forecaststates,
+               :forecastobs,
+               :forecastpseudo,
+               :forecastshocks]
     elseif output_type == :shockdec
-        vars = ["shockdecstates",
-                "shockdecobs"]
-        throw(ArgumentError("Not implemented."))
+        vars = [:shockdecstates,
+                :shockdecpseudo,
+                :shockdecobs]
     elseif output_type == :dettrend
-        vars = ["dettrendstates",
-                "dettrendobs"]
+        vars = [:dettrendstates,
+                :dettrendobs]
         throw(ArgumentError("Not implemented."))
     elseif output_type == :counter
-        vars = ["counterstates",
-                "counterobs"]
+        vars = [:counterstates,
+                :counterobs]
         throw(ArgumentError("Not implemented."))
-    elseif output_type in [:simple]
-        vars = ["histstates",
-                "histpseudo",
-                "forecaststates",
-                "forecastobs",
-                "forecastshocks"]
-        throw(ArgumentError("Not implemented."))
+    elseif output_type == :simple
+        vars = [:histstates,
+                :histpseudo,
+                :forecaststates,
+                :forecastpseudo,
+                :forecastobs,
+                :forecastshocks]
     elseif output_type == :all
         vars = []
         throw(ArgumentError("Not implemented."))
     else
         throw(ArgumentError("Invalid input_type: $(output_type)"))
     end
+end
 
-    return [symbol(x) => rawpath(m, "forecast", x*".jld", additional_file_strings) for x in vars]
+
+function get_output_files(m, input_type, output_vars, cond_type)
+    additional_file_strings = ASCIIString[]
+    push!(additional_file_strings, "para=" * abbrev_symbol(input_type))
+    push!(additional_file_strings, "cond=" * abbrev_symbol(cond_type))
+
+    return [symbol(x) => rawpath(m, "forecast", "$x.jld", additional_file_strings) for x in output_vars]
 end

@@ -8,7 +8,9 @@ my_tests = [
             "parameters",
             "solve/gensys",
             "solve/solve",
-            "estimate/kalman",
+            "estimate/kalman_filter",
+            "estimate/kalman_filter_2part",
+            "estimate/cat",
             "estimate/posterior",
             "estimate/hessizero",
             "estimate/hessian",
@@ -22,9 +24,12 @@ my_tests = [
             "data/load_data",
             "forecast/smoothers",
             "forecast/filter",
+            "forecast/filterandsmooth",
+            "forecast/smooth",
+            "forecast/compute_forecast",
             "forecast/forecast",
-            "forecast/drivers",
-            "forecast/compute_forecast"
+            "forecast/shock_decompositions",
+            "forecast/drivers"
             ]
 
 for test in my_tests
