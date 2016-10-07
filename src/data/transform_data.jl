@@ -126,25 +126,25 @@ The DataFrame `levels` is output from `load_data_levels`. The series in levels a
 transformed as specified in `m.data_transforms`.
 - The transformations are applied for each series using the `levels` DataFrame as input.
 """
-function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbose::Symbol = :low)
+function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; cond_type::Symbol=:none,verbose::Symbol = :low)
 
     n_obs, _ = size(levels)
     
     transformed = DataFrame()
     transformed[:date] = levels[:date]
+
+    data_transforms = collect_data_transforms(m)
  
     # Step 1: apply transformations to non-lagged series
-    for series in keys(m.data_transforms)
+    for series in keys(data_transforms)
         if VERBOSITY[verbose] >= VERBOSITY[:high]
-            println("Transforming series " * string(series) * "...")
+            println("Transforming series $series...")
         end
-        f = m.data_transforms[series]
+        f = data_transforms[series]
         transformed[series] = f(levels)
     end
 
-
     # Step 2: create lags of series by hand
-    
     if :obs_gdp_t in names(levels)
         transformed[:obs_gdp_t1] = lag(transformed,:obs_gdp_t)
         transformed[:obs_gdp_t2] = lag(transformed,:obs_gdp_t1)
@@ -154,8 +154,7 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
         transformed[:obs_unemp_t2] = lag(transformed,:obs_unemp_t1)
         y_keys = [:obs_unemp_t, :obs_π_t]
     end
-
-    
+  
     transformed[:obs_r_t1]   = lag(transformed,:obs_r_t)
     transformed[:obs_r_t2]   = lag(transformed,:obs_r_t1)
     transformed[:obs_π_t1]   = lag(transformed,:obs_π_t)
@@ -163,7 +162,7 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; verbos
     for t in 2:8
         transformed[symbol("obs_π_t$t")] = lag(transformed,symbol("obs_π_t$(t-1)"))
     end
-
+        
     transformed[:obs_π_o_t1]  = lag(transformed,:obs_π_o_t)
     transformed[:obs_π_e_t1]  = lag(transformed,:obs_π_e_t) 
 

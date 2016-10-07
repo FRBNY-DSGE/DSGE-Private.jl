@@ -53,7 +53,7 @@ module DSGE
         Measurement, Transition, System, compute_system,
 
         # observables.jl
-        PseudoObservable, PseudoObservableMapping,
+        PseudoObservable, PseudoObservableMapping, Observable,
 
         # estimate/
         kalman_filter, kalman_filter_2part, likelihood, posterior, posterior!,

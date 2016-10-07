@@ -57,13 +57,14 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool =
             levels = vcat(levels, cond_levels)
             na2nan!(levels)
         end
+
         reduced_form_flag = reduced_form(m)
         if reduced_form_flag
-			df = transform_data_reduced_form(m, df; cond_type=cond_type, verbose=verbose)
+	    df = transform_data_reduced_form(m, levels; cond_type=cond_type, verbose=verbose)
         else
             df = transform_data(m, levels; cond_type=cond_type, verbose=verbose)
         end
-
+        
         # Ensure that only appropriate rows make it into the returned DataFrame.
         start_date = date_presample_start(m)
         end_date   = if cond_type in [:semi, :full]
@@ -412,5 +413,5 @@ function parse_data_series(m::AbstractModel)
         end
     end
     data_series
->>>>>>> forecast
+
 end

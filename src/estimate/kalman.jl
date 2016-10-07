@@ -116,6 +116,10 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
     Nz = length(CCC)
     Ny = size(DDs)[1]
     V  = VVall[1:Nz, 1:Nz]
+    # Broadcast time-invariant DD
+    if size(DDs)[2] == 1
+        DDs = repmat(DDs, 1, T)
+    end
      
     if isempty(z0) || isempty(vz0)
         e, _ = eig(TTT)
@@ -131,9 +135,6 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
     z = z0
     P = vz0
      
-    @assert !any(isnan,z)
-    @assert !any(isnan,vz0)
-
     # Check input matrix dimensions
     if T>0
         @assert size(data, 1) == Ny
@@ -574,7 +575,7 @@ function Base.cat{S<:AbstractFloat}(m::AbstractModel, k1::Kalman{S},
         k1_new[:ystdprederror][obs_inds, :] = k1[:ystdprederror]
         k1_new[:rmse][:, obs_inds] = k1[:rmse]
         k1_new[:rmsd][:, obs_inds] = k1[:rmsd]
-        k1_new[:filt][state_inds, :] = k1[:filt] # k1[:pred]
+        k1_new[:filt][state_inds, :] = k1[:pred]
         k1_new[:vfilt][state_inds, state_inds, :] = k1[:vfilt]
         k1_new[:z0][state_inds] = k1[:z0]
         k1_new[:vz0][state_inds, state_inds] = k1[:vz0]
