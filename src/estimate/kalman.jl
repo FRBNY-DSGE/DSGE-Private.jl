@@ -575,7 +575,7 @@ function Base.cat{S<:AbstractFloat}(m::AbstractModel, k1::Kalman{S},
         k1_new[:ystdprederror][obs_inds, :] = k1[:ystdprederror]
         k1_new[:rmse][:, obs_inds] = k1[:rmse]
         k1_new[:rmsd][:, obs_inds] = k1[:rmsd]
-        k1_new[:filt][state_inds, :] = k1[:pred]
+        k1_new[:filt][state_inds, :] = k1[:filt]
         k1_new[:vfilt][state_inds, state_inds, :] = k1[:vfilt]
         k1_new[:z0][state_inds] = k1[:z0]
         k1_new[:vz0][state_inds, state_inds] = k1[:vz0]
