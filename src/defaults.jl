@@ -19,7 +19,7 @@ function default_settings!(m::AbstractModel)
     # Data settings for released and conditional data. Default behavior is to set vintage
     # of data to today's date.
     vint = Dates.format(now(), DSGE_DATE_FORMAT)
-    settings[:data_vintage] = Setting(:data_vintage, vint, true, 
+    settings[:data_vintage] = Setting(:data_vintage, vint, true,
         "vint", "Vintage of data")
     settings[:cond_vintage] = Setting(:cond_vintage, vint,
         "Vintage of conditional data")
@@ -103,7 +103,7 @@ function default_settings!(m::AbstractModel)
         "Index of end of shock decomposition output period")
     settings[:shockdec_whichshocks] = Setting(:shockdec_whichshocks, :all,
         "Sets of shocks for which to conduct shock decomposition")
-    
+
 	# Reduced Form
 	settings[:forcing_index_start] = Setting(:forcing_index_start, 0, "Index that marks beginning of forcing processes in data matrix")
     settings[:reduced_form] = Setting(:reduced_form, false, "flag for whether model is reduced form or structural")
@@ -164,6 +164,14 @@ function default_test_settings!(m::AbstractModel)
         "Thinning step for testing Metropolis-Hastings")
 
     # Forecast
+    test[:date_forecast_start] = Setting(:date_forecast_start, quartertodate("2015-Q4"),
+        "Start date of forecast period")
+    test[:date_forecast_end] = Setting(:date_forecast_end, quartertodate("2016-Q1"),
+        "End date of forecast period")
+    test[:forecast_jstep] = Setting(:forecast_jstep, 1,
+        "Forecast thinning step (in addition to MH thinning step")
+    test[:shockdec_whichshocks] = Setting(:shockdec_whichshocks, :all, #TODO
+        "Sets of shocks for which to conduct shock decomposition")
 
     return test
 end
