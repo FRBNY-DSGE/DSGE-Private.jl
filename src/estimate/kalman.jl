@@ -112,13 +112,13 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          include_presample::Bool = true)
     
     # T is the number of data points in this subdivision (presample, prezlb, zlb)
-    T  = size(data, 2)
+    Nt  = size(data, 2)
     Nz = length(CCC)
     Ny = size(DDs)[1]
     V  = VVall[1:Nz, 1:Nz]
     # Broadcast time-invariant DD
     if size(DDs)[2] == 1
-        DDs = repmat(DDs, 1, T)
+        DDs = repmat(DDs, 1, Nt)
     end
      
     if isempty(z0) || isempty(vz0)
@@ -136,7 +136,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
     P = vz0
      
     # Check input matrix dimensions
-    if T>0
+    if Nt>0
         @assert size(data, 1) == Ny
         @assert size(TTT) == (Nz, Nz)
         @assert size(ZZ) == (Ny, Nz)
@@ -156,17 +156,17 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
     G = VVall[1:Nz, (Nz+1):end]
 
     if allout
-        pred          = zeros(S, Nz, T)
-        vpred         = zeros(S, Nz, Nz, T)
-        yprederror    = NaN*zeros(S, Ny, T)
-        ystdprederror = NaN*zeros(S, Ny, T)
-        filt          = zeros(Nz, T)
-        vfilt         = zeros(Nz, Nz, T)
+        pred          = zeros(S, Nz, Nt)
+        vpred         = zeros(S, Nz, Nz, Nt)
+        yprederror    = NaN*zeros(S, Ny, Nt)
+        ystdprederror = NaN*zeros(S, Ny, Nt)
+        filt          = zeros(Nz, Nt)
+        vfilt         = zeros(Nz, Nz, Nt)
     end
 
     L = zero(S)
 
-    for t = 1:T
+    for t = 1:Nt
         # If an element of the vector y(t) is missing (NaN) for the observation t, the
         #   corresponding row is ditched from the measurement equation.
         nonmissing = !isnan(data[:, t])
@@ -195,7 +195,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         ddy = D\dy
 
         # We evaluate the log likelihood function by adding values of L at every iteration
-        #   step (for each t = 1,2,...T)
+        #   step (for each t = 1,2,...Nt)
         if include_presample || (!include_presample && t > n_presample_periods(m))
             L += -log(det(D))/2 - first(dy'*ddy/2) - Ny_t*log(2*pi)/2
         end

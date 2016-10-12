@@ -20,7 +20,7 @@ end
 
 type Measurement{T<:AbstractFloat}
     ZZ::Matrix{T}
-    DD::Vector{T}
+    DD::Union{Vector{T},Matrix{T}}
     QQ::Matrix{T}
     EE::Matrix{T}
     MM::Matrix{T}
