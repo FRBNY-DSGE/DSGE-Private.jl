@@ -115,18 +115,16 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     D::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
 
     # Broadcast time-invariant DD
-    T = size(data, 2)
-    Ds = repmat(D, 1, T)
+    Nt = size(data, 2)
+    Ds = repmat(D, 1, Nt)
 
     # Call time-varying Kalman smoother
-    kalman_smoother(m, data, T, R, C, Q, Z, Ds, A0, P0, pred, vpred,
-        n_conditional_periods = n_conditional_periods)
+    kalman_smoother(m, data, T, R, C, Q, Z, Ds, A0, P0, pred, vpred)
 end
 
 function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
-    Ds::Matrix{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
-    n_conditional_periods::Int = 0)
+    Ds::Matrix{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
 
     Ne = size(R, 2)
     Ny = size(data, 1)
@@ -134,9 +132,8 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     Nz = size(T, 1)
 
     # broadcast time-invariant DD if necessary
-    if size(Ds) == 1
-        T  = size(data,2)
-        Ds = repmat(Ds, 1, T)
+    if size(Ds, 2) == 1
+        Ds = repmat(Ds, 1, Nt)
     end
 
     # Check data is well-formed wrt model settings
@@ -250,8 +247,8 @@ function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
     Z::Matrix{S}, D::Vector{S}, pred::Matrix{S}, vpred::Array{S, 3})
 
     # Broadcast time-invariant DD
-    T = size(data, 2)
-    Ds = repmat(D, 1, T)
+    Nt = size(data, 2)
+    Ds = repmat(D, 1, Nt)
 
     # Call time-varying disturbance smoother
     disturbance_smoother(m, data, T, R, C, Q, Z, Ds, pred, vpred)
@@ -428,7 +425,7 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     data = df_to_matrix(m, df; cond_type = cond_type)
 
     # call actual simulation smoother
-    durbin_koopman_smoother(m, data, T, R, C, Q, Z, D, A0, P0)
+    durbin_koopman_smoother(m, data, T, R, C, Q, Z, Ds, A0, P0)
 end
 
 function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
@@ -442,12 +439,11 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     Ne = size(R, 2)
 
     # broadcast time-invariant DD if necessary
-    if size(Ds) == 1
-        T  = size(data,2)
-        Ds = repmat(Ds, 1, T)
+    if size(Ds, 2) == 1
+        Ds = repmat(Ds, 1, Nt)
     end
 
-    
+
     # Check data is well-formed wrt model settings
     @assert Ny == n_observables(m)
     @assert Nt >= n_presample_periods(m) + n_prezlb_periods(m) + n_zlb_periods(m)
@@ -504,15 +500,15 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
 
         # Note that we pass in `zeros(size(D))` instead of `D` because the
         # measurement equation for `YY_star` has no constant term
-        k, _, _, R3 = kalman_filter_2part(m, YY_star', T, R, C, A0, P0;
-            DD = zeros(size(Ds)), allout = true, include_presample = true)
+        k, _, _, R3 = kalman_filter_2part(m, YY_star, T, R, C, A0, P0;
+            DD = zeros(size(Ds, 1)), allout = true, include_presample = true)
 
         k[:z0], k[:vz0], k[:pred], k[:vpred], R3[:TTT], R3[:RRR], R3[:CCC]
     else
         VVall = zeros(Ny+Nz,Ny+Nz)
         VVall[1:Nz,1:Nz] = R*Q*R'
-        
-        k = kalman_filter(m, YY_star, T, C, Z, zeros(size(Ds)), VVall, A0, P0; lead = 0, allout = true)
+
+        k = kalman_filter(m, YY_star, T, C, Z, zeros(size(Ds, 1)), VVall, A0, P0; lead = 0, allout = true)
 
         A0, P0, k[:pred], k[:vpred], T, R, C
     end
