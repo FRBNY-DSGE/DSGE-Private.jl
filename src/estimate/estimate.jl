@@ -26,7 +26,7 @@ Estimate the DSGE parameter posterior distribution.
     Passing one explicitly allows us to bypass this issue.
 - `vz0`: Similarly, if the system is not stationary, a variance matrix for the initial state
     vector must be specified explicitly.
-- `mle`: Set to true if parameters should be estimated by maximum likelihood directly, 
+- `mle`: Set to true if parameters should be estimated by maximum likelihood directly,
     without using any Bayesian framework. If this is set to true, the code will exit after
     estimating parameters.
 - `run_MH`: Set to false to disable Metropolis-Hastings MCMC sampling from the posterior.
@@ -34,18 +34,18 @@ Estimate the DSGE parameter posterior distribution.
 function estimate(m::AbstractModel, df::DataFrame;
                   verbose::Symbol=:low,
                   mle::Bool=false,
-                  run_MH::Bool=false,
+                  run_MH::Bool=true,
                   proposal_covariance::Matrix=Matrix(),
                   z0::Vector{Float64}=Vector{Float64}(),
                   vz0::Matrix{Float64}=Matrix{Float64}())
     data = df_to_matrix(m, df)
-    estimate(m, data; verbose=verbose, proposal_covariance=proposal_covariance, 
+    estimate(m, data; verbose=verbose, proposal_covariance=proposal_covariance,
               z0=z0, vz0=vz0, mle=mle, run_MH=run_MH)
 end
 function estimate(m::AbstractModel;
                   verbose::Symbol=:low,
                   mle::Bool=false,
-                  run_MH::Bool=false,
+                  run_MH::Bool=true,
                   proposal_covariance::Matrix=Matrix(),
                   z0::Vector{Float64}=Vector{Float64}(),
                   vz0::Matrix{Float64}=Matrix{Float64}())
@@ -57,7 +57,7 @@ end
 function estimate(m::AbstractModel, data::Matrix{Float64};
                   verbose::Symbol=:low,
                   mle::Bool=false,
-                  run_MH::Bool=false, 
+                  run_MH::Bool=true,
                   proposal_covariance::Matrix=Matrix(),
                   z0::Vector{Float64}=Vector{Float64}(),
                   vz0::Matrix{Float64}=Matrix{Float64}())
@@ -82,7 +82,7 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         n_iterations       = 100
         ftol               = 1e-10
         converged          = false
-        
+
         # If the algorithm stops only because we have exceeded the maximum number of
         # iterations, continue improving guess of modal parameters
         total_iterations = 0
@@ -107,14 +107,14 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
             end
         end
     end
-    
+
     params = map(θ->θ.value, m.parameters)
 
     # Return here if using MLE, as running MH does not make sense
     if mle || !run_MH
         return nothing
     end
-    
+
     ########################################################################################
     ### Step 3: Compute proposal distribution
     ###
@@ -174,7 +174,7 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     else
         DSGE.DegenerateMvNormal(params, proposal_covariance)
     end
-    
+
     if DSGE.rank(propdist) != n_parameters_free(m)
         println("problem –    shutting down dimensions")
     end
@@ -285,8 +285,8 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
         end
 
     end
-    
-    # Report number of blocks that will be used 
+
+    # Report number of blocks that will be used
 
     if VERBOSITY[verbose] >= VERBOSITY[:low]
         println("Blocks: $n_blocks")
