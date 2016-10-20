@@ -379,7 +379,9 @@ function df_to_matrix(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none
     # Discard columns not used.
     # skip if there are forcing processes
     if n_forcing_processes(m) > 0
-        cols = collect(keys(m.observables))
+        # cols = collect(keys(m.observables))
+        # df1 = df1[cols]
+        cols = Base.filter((x) -> x in keys(m.observables),names(df))
         df1 = df1[cols]
     else
         cols = collect(keys(m.observables))

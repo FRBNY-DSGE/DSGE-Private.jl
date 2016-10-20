@@ -176,7 +176,7 @@ function filterandsmooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
                                            vz0::Matrix{S} = Matrix{S}();
                                            cond_type::Symbol = :none,
                                            lead::Int = 0, allout::Bool = false)
-
+  
     data = df_to_matrix(m, df; cond_type = cond_type)
     filterandsmooth(m, data, syses, z0, vz0; lead = lead)
 end
@@ -230,7 +230,7 @@ function filterandsmooth{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, sy
     ZZ    = sys[:ZZ]
     DD    = sys[:DD]
     VVall = sys[:VVall]
-
+    
     # Call the appropriate version of the Kalman filter
     if n_anticipated_shocks(m) > 0
 
@@ -238,6 +238,10 @@ function filterandsmooth{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, sy
         # (starting at index_zlb_start)
         kal, _, _, _ = kalman_filter_2part(m, data, TTT, RRR, CCC, z0, vz0; lead =
             lead, allout = true, include_presample = true)
+    elseif n_forcing_processes(m) > 0
+        # reduced form model w/ forcing processes
+        kal = kalman_filter(m, data[1:n_observables(m),:], TTT, CCC, ZZ, DD, VVall, z0, vz0; 
+                            lead = lead, allout=true, include_presample = true)
     else
         # regular Kalman filter with no regime-switching
         kal = kalman_filter(m, data, TTT, CCC, ZZ, DD, VVall, z0, vz0;
@@ -247,9 +251,19 @@ function filterandsmooth{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, sy
     ## 2. Smooth
 
     states, shocks = if forecast_smoother(m) == :kalman
-        kalman_smoother(m, data, sys, kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
+        if n_forcing_processes(m) > 0
+            kalman_smoother(m, data[1:n_observables(m),:], TTT, RRR, CCC, QQ, ZZ, DD,
+                            kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
+        else
+            kalman_smoother(m, data, sys, kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
+        end    
     elseif forecast_smoother(m) == :durbin_koopman
-        durbin_koopman_smoother(m, data, sys, kal[:z0], kal[:vz0])
+        if n_forcing_processes(m) > 0
+            durbin_koopman_smoother(m, data[1:n_observables(m),:],TTT, RRR, CCC, QQ, ZZ, DD, 
+                                    kal[:z0], kal[:vz0])
+        else
+            durbin_koopman_smoother(m, data, sys, kal[:z0], kal[:vz0])
+        end
     end
 
     ## 3. Map smoothed states to pseudo-observables

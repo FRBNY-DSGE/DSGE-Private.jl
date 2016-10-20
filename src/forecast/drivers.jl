@@ -214,10 +214,9 @@ function prepare_systems(m::AbstractModel, input_type::Symbol,
         empty = isempty(CCC)
         
         if reduced_form(m)
-            CCC_j       = zeros(size(TTT_j)[1],)
             forcing_ind = get_setting(m, :forcing_index_start)
             data_mat    = df_to_matrix(m, df)
-            X           = data_mat[forcing_ind:end, inds_prezlb_periods(m)]
+            X           = data_mat[forcing_ind:end, :]
         end
 
         # TODO parallelize
@@ -238,6 +237,7 @@ function prepare_systems(m::AbstractModel, input_type::Symbol,
             params_j = vec(params[j,:])
             update!(m, params_j)
             if reduced_form(m)
+                CCC_j       = zeros(size(TTT_j)[1],)
                 meas_j      = measurement(m, TTT_j, RRR_j, CCC_j, X; shocks = true)
             else
                 meas_j   = measurement(m, trans_j; shocks = true)
