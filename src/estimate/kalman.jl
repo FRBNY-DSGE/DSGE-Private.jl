@@ -193,10 +193,14 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         end
 
         ddy = D\dy
+        # println("eigvals(D)",eigvals(D))
+        # println("first(dy'*ddy/2) - Ny_t*log(2*pi)/2: ",first(dy'*ddy/2) - Ny_t*log(2*pi)/2)
 
         # We evaluate the log likelihood function by adding values of L at every iteration
         #   step (for each t = 1,2,...T)
-        if include_presample || (!include_presample && t > n_presample_periods(m))
+        if det(D) < 0
+            L = -Inf
+        elseif include_presample || (!include_presample && t > n_presample_periods(m))
             L += -log(det(D))/2 - first(dy'*ddy/2) - Ny_t*log(2*pi)/2
         end
         
@@ -230,7 +234,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
             vpred[:, :, t] = P
         end
     end
-
+    
     if allout
         rmse = sqrt(mean((yprederror.^2)', 1))
         rmsd = sqrt(mean((ystdprederror.^2)', 1))

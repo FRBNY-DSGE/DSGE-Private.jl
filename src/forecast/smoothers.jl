@@ -145,7 +145,7 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     t_zlb_start  = index_zlb_start(m)
 
     r, eta_hat = disturbance_smoother(m, data, T, R, C, Q, Z, Ds, pred, vpred)
-
+    
     alpha_hat = zeros(Nz, Nt)
     ah_t = A0 + P0*r[:, 1]
     alpha_hat[:, 1] = ah_t

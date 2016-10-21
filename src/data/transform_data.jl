@@ -129,6 +129,7 @@ transformed as specified in `m.data_transforms`.
 function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; cond_type::Symbol=:none,verbose::Symbol = :low)
 
     n_obs, _ = size(levels)
+    obs = keys(m.observables)
     
     transformed = DataFrame()
     transformed[:date] = levels[:date]
@@ -149,22 +150,30 @@ function transform_data_reduced_form(m::AbstractModel, levels::DataFrame; cond_t
         transformed[:obs_gdp_t1] = lag(transformed,:obs_gdp_t)
         transformed[:obs_gdp_t2] = lag(transformed,:obs_gdp_t1)
         y_keys = [:obs_gdp_t, :obs_π_t]
-    else
+    elseif :obs_unemp_t1 in obs
         transformed[:obs_unemp_t1] = lag(transformed,:obs_unemp_t)
         transformed[:obs_unemp_t2] = lag(transformed,:obs_unemp_t1)
         y_keys = [:obs_unemp_t, :obs_π_t]
+    else 
+        y_keys = [:obs_unemp_t, :obs_π_t]
     end
   
-    transformed[:obs_r_t1]   = lag(transformed,:obs_r_t)
-    transformed[:obs_r_t2]   = lag(transformed,:obs_r_t1)
-    transformed[:obs_π_t1]   = lag(transformed,:obs_π_t)
-
-    for t in 2:8
-        transformed[symbol("obs_π_t$t")] = lag(transformed,symbol("obs_π_t$(t-1)"))
+    if :obs_r_t1 in obs
+        transformed[:obs_r_t1]   = lag(transformed,:obs_r_t)
+        transformed[:obs_r_t2]   = lag(transformed,:obs_r_t1)
     end
-        
-    transformed[:obs_π_o_t1]  = lag(transformed,:obs_π_o_t)
-    transformed[:obs_π_e_t1]  = lag(transformed,:obs_π_e_t) 
+    if :obs_π_t1 in obs
+        transformed[:obs_π_t1]   = lag(transformed,:obs_π_t)
+
+        for t in 2:8
+            transformed[symbol("obs_π_t$t")] = lag(transformed,symbol("obs_π_t$(t-1)"))
+        end
+    end
+    
+    if :obs_π_o_t1 in obs && :obs_π_e_t1 in obs
+        transformed[:obs_π_o_t1]  = lag(transformed,:obs_π_o_t)
+        transformed[:obs_π_e_t1]  = lag(transformed,:obs_π_e_t) 
+    end
 
     for col in names(transformed)
         transformed[col] = fill_nan(transformed,col)
