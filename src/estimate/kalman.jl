@@ -21,8 +21,8 @@ kalman_filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
 - `CCC`: an `Nz` x 1 vector for a time-invariant input vector in the transition equation.
 - `ZZ`: an `Ny` x `Nz` matrix for a time-invariant measurement matrix in the measurement
   equation.
-- `DDs`: a `Ny` x `T` matrix for the constant vector in the transition equation. 
-     May be time varying, or constant through time. 
+- `DDs`: a `Ny` x `T` matrix for the constant vector in the transition equation.
+     May be time varying, or constant through time.
 - `VVall`: an `Ny + Nz` x `Ny + Nz` matrix for a time-invariant variance matrix for the
   error in the transition equation and the error in the measurement equation, that is,
   `[ϵ(t)', u(t)']'`.
@@ -110,7 +110,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
                                          lead::Int = 0,
                                          allout::Bool = false,
                                          include_presample::Bool = true)
-    
+
     # T is the number of data points in this subdivision (presample, prezlb, zlb)
     T  = size(data, 2)
     Nz = length(CCC)
@@ -120,7 +120,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
     if size(DDs)[2] == 1
         DDs = repmat(DDs, 1, T)
     end
-     
+
     if isempty(z0) || isempty(vz0)
         e, _ = eig(TTT)
         if all(abs(e) .< 1.)
@@ -134,7 +134,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
 
     z = z0
     P = vz0
-     
+
     # Check input matrix dimensions
     if T>0
         @assert size(data, 1) == Ny
@@ -193,8 +193,6 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         end
 
         ddy = D\dy
-        # println("eigvals(D)",eigvals(D))
-        # println("first(dy'*ddy/2) - Ny_t*log(2*pi)/2: ",first(dy'*ddy/2) - Ny_t*log(2*pi)/2)
 
         # We evaluate the log likelihood function by adding values of L at every iteration
         #   step (for each t = 1,2,...T)
@@ -203,18 +201,18 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         elseif include_presample || (!include_presample && t > n_presample_periods(m))
             L += -log(det(D))/2 - first(dy'*ddy/2) - Ny_t*log(2*pi)/2
         end
-        
+
         ## updating
         PZG = P*ZZ_t' + G_t
         z = z + PZG*ddy                    # z_{t|t} = z_{t|t-1} + P_{t|t-1}*ZZ(Θ)' + ...
         P = P - PZG/D*PZG'                 # P_{t|t} = P_{t|t-1} - PZG*(1/D)*PZG
-        
+
         if allout
             PZZ = P*ZZ_t'
             filt[:, t]     = z
             vfilt[:, :, t] = P
         end
-        
+
         # If !include_presample, then we reassign `z0` and `P0` to be their
         # values at the end of the presample/beginning of the main sample
         if !include_presample && t == n_presample_periods(m)
@@ -234,7 +232,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
             vpred[:, :, t] = P
         end
     end
-    
+
     if allout
         rmse = sqrt(mean((yprederror.^2)', 1))
         rmsd = sqrt(mean((ystdprederror.^2)', 1))
@@ -420,7 +418,7 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
 
     # Run Kalman filter on presample, calculating `z0` and `vz0` in
     # `kalman_filter` if necessary
-    if n_forcing < 1 && (isempty(z0) || isempty(vz0)) 
+    if n_forcing < 1 && (isempty(z0) || isempty(vz0))
         k1 = kalman_filter(m, R1[:data], R1[:TTT], zeros(S, regime_states[1]),
             R1[:ZZ], R1[:DD], R1[:VVall]; lead = 1, allout = allout,
             include_presample = true)
@@ -442,7 +440,7 @@ function kalman_filter_2part{S<:AbstractFloat}(m::AbstractModel,
     else
         R1[:A0] = isempty(z0) ? Vector{Float64}() : z0[state_inds]
         R1[:P0] = isempty(vz0) ? Matrix{Float64}() : vz0[state_inds,state_inds]
-   
+
         k1 = kalman_filter(m, R1[:data], R1[:TTT], zeros(S, regime_states[1]),
             R1[:ZZ], R1[:DD], R1[:VVall], R1[:A0], R1[:P0]; lead = 1, allout = allout,
             include_presample = true)

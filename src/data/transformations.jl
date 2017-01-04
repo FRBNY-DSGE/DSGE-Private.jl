@@ -68,11 +68,65 @@ end
 
 """
 ```
+y_hat, residual = estimate_time_trend(y, intercept::Bool = true)
+```
+
+Estimates a linear time trend from the dataset, and returns both the trend and the residual.
+"""
+function estimate_time_trend(y, intercept::Bool = true)
+    # Convert y to vector
+    if !isa(y, Vector)
+        try
+            y = vec(y)
+        catch
+            error("Series must be convertible to Vector")
+        end
+    end
+
+    # Indices of consecutive NaN elements at beginning
+    i = 1
+    j = length(y)
+    while isnan(y[i])
+        i = i+1
+    end
+    while isnan(y[j])
+        j = j-1
+    end
+
+    start_nans = i - 1
+    end_nans = length(y) - j
+    y = convert(Array,y[i:j])
+
+    T = length(y)
+    x = Matrix()
+    time = vec(1:T)
+
+    if intercept
+        x = ones(T,2)
+        x[:,2] = time
+    else
+        x = reshape(time,(T,1))
+    end
+
+    β = x\y
+    y_hat = x*β
+    residual = y - y_hat
+
+    y_hat = [fill(NaN, start_nans); y_hat; fill(NaN, end_nans)]
+    residual = [fill(NaN, start_nans); residual; fill(NaN, end_nans)]
+
+
+    return y_hat, residual
+
+end
+
+"""
+```
 yt, yf = hpfilter(y, λ::Real)
 ```
 
 Applies the Hodrick-Prescott filter ("H-P filter"). The smoothing parameter `λ` is applied
-to the columns of `y`, returning the trend component `yt` and the cyclical component `yf`.  
+to the columns of `y`, returning the trend component `yt` and the cyclical component `yf`.
 For quarterly data, one can use λ=1600.
 
 Consecutive missing values at the beginning or end of the time series are excluded from the
@@ -206,7 +260,7 @@ logtopct_annualized_percapita(y, q_adj = 100)
 Transform from log growth rates to % growth rates (annualized).
 
 This should only be used for output, consumption, investment
-and GDP deflator (inflation).  
+and GDP deflator (inflation).
 """
 function logtopct_annualized_percapita(y, q_adj = 100)
     100 * ((exp(y/q_adj)).^4-1)
@@ -238,7 +292,7 @@ Transform from log level to 4-quarter annualized percent change.
 ### Arguments
 
 - `y`: The series we wish to transform to 4 quarter annualized percent
-  change from 1-quarter log-levels. 
+  change from 1-quarter log-levels.
 
 - `y_data`: The actual data series corresponding to the `y` variable
   (state or observable) in the model. This is necessary to get the
@@ -248,13 +302,13 @@ Transform from log level to 4-quarter annualized percent change.
 - `current_index`: Index of the last period of data for this
   variable. Could use `end` if not using conditional data, otherwise
   use `end-1`.
-""" 
+"""
 function loglevelto4qpct_annualized(y, y_data, current_index)
 # Repmat is used to put the data point in each row of the simulations.  The
 # log levels are subtracted to get the log percent changes and
 # then the exponential is used to remove the log from the
 # levels.
-    
+
     ((exp(y[:,1:end]/100 - [repmat(y_data[current_index], size(y)) y[:,1:end-1]]/100).^4)-1)*100
 end
 

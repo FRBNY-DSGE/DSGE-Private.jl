@@ -8,14 +8,14 @@ module DSGE
     import Calculus
     import Optim
     using Optim: OptimizationTrace, OptimizationState, MultivariateOptimizationResults
-    
+
     export
 
         # distributions_ext.jl
         BetaAlt, GammaAlt, DegenerateMvNormal,
 
         # settings.jl
-        Setting, get_setting, 
+        Setting, get_setting,
 
         # defaults.jl
         default_settings!, default_test_settings!,
@@ -41,7 +41,7 @@ module DSGE
         forecast_smoother, forecast_input_file_overrides, forecast_horizons,
         load_parameters_from_file, specify_mode!, specify_hessian,
         logpath, workpath, rawpath, tablespath, figurespath, inpath,
-        transform_to_model_space!, transform_to_real_line!,
+        transform_to_model_space!, transform_to_real_line!, reduced_form,
 
         # parameters.jl
         parameter, Transform, NullablePrior, AbstractParameter,
@@ -62,7 +62,7 @@ module DSGE
         find_density_bands, prior,
 
         # forecast/
-        filter, filterandsmooth, smooth, kalman_smoother, durbin_koopman_smoother, 
+        filter, filterandsmooth, smooth, kalman_smoother, durbin_koopman_smoother,
         forecast_all, forecast_one, forecast, compute_forecast,
         shock_decompositions,
 
@@ -78,7 +78,7 @@ module DSGE
         df_to_matrix, hpfilter, difflog, quartertodate, percapita, nominal_to_real,
         hpadjust, oneqtrpctchange, annualtoquarter, quartertoannual, quartertoannualpercent,
         logtopct_annualized_percapita, logtopct_annualized, loglevelto4qpct_annualized,
-        loglevelto4qpct_annualized,
+        loglevelto4qpct_annualized, estimate_time_trend,
         parse_data_series, collect_data_transforms
 
     const VERBOSITY = Dict(:none => 0, :low => 1, :high => 2)
