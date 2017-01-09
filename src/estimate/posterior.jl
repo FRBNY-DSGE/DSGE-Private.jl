@@ -34,7 +34,7 @@ log Pr(Θ|data)  = log Pr(data|Θ)   + log Pr(Θ)
 -`mh`: Whether metropolis_hastings is the caller. If `mh=true`, the log likelihood and the
   transition matrices for the zero-lower-bound period are also returned.
 -`catch_errors`: Whether or not to catch errors of type `GensysError` or `ParamBoundsError`
-""" 
+"""
 function posterior{T<:AbstractFloat}(m::AbstractModel{T},
                                      data::Matrix{T};
                                      mh::Bool = false,
@@ -44,7 +44,7 @@ function posterior{T<:AbstractFloat}(m::AbstractModel{T},
     catch_errors = catch_errors | mh
     like, out = likelihood(m, data; mh=mh, catch_errors=catch_errors, z0=z0, vz0=vz0)
     post = like + prior(m)
-    
+
     if mh
         return Posterior(post, like, out)
     else
@@ -138,7 +138,7 @@ function likelihood{T<:AbstractFloat}(m::AbstractModel,
     end
 
     # Return total log-likelihood, excluding the presample
-    k, _, _, R3 = kalman_filter_2part(m, data, 
+    k, _, _, R3 = kalman_filter_2part(m, data,
                                       Matrix{Float64}(), Matrix{Float64}(), Vector{Float64}(),
                                       z0, vz0;
                                       allout = false, include_presample = false)

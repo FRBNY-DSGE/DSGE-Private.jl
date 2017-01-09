@@ -185,14 +185,20 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         D = ZZ_t*P*ZZ_t' + ZG + ZG' + R_t  # D = ZZ*P_{t+t-1}*ZZ' + ZG + ZG' + R_t
         D = (D+D')/2
 
-        if allout
-            pred[:, t]                   = z
-            vpred[:, :, t]               = P
-            yprederror[nonmissing, t]    = dy
-            ystdprederror[nonmissing, t] = dy./sqrt(diag(D))
-        end
+        # check that D is full rank
+        ddy = dy
+        try
+            if allout
+                pred[:, t]                   = z
+                vpred[:, :, t]               = P
+                yprederror[nonmissing, t]    = dy
+                ystdprederror[nonmissing, t] = dy./sqrt(diag(D))
+            end
 
-        ddy = D\dy
+            ddy = D\dy
+        catch
+            error("D not full rank in Kalman filter")
+        end
 
         # We evaluate the log likelihood function by adding values of L at every iteration
         #   step (for each t = 1,2,...T)

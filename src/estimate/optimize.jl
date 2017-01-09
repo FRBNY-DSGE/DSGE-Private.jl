@@ -44,7 +44,7 @@ function optimize!(m::AbstractModel,
     x_opt          = x_model[para_free_inds]
 
     function f_opt(x_opt)
-        #try
+        try
             x_model[para_free_inds] = x_opt
             transform_to_model_space!(m,x_model)
             if mle
@@ -52,9 +52,10 @@ function optimize!(m::AbstractModel,
             else
                 return -posterior(m, data; catch_errors=true, z0=z0, vz0=vz0)[:post]
             end
-        #catch
-        #    return Inf
-        #end
+        catch
+            info("Could not evaluate likelihood")
+            return Inf
+        end
     end
 
     rng = m.rng

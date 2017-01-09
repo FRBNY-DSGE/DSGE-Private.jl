@@ -92,9 +92,10 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
             out, H = optimize!(m, data;
                 ftol=ftol, iterations=n_iterations, show_trace=true, verbose=verbose,
                 z0=z0, vz0=vz0, mle=mle)
-            converged = !out.iteration_converged
 
             total_iterations += out.iterations
+            converged = !out.iteration_converged && total_iterations > 15
+
             if VERBOSITY[verbose] >= VERBOSITY[:low]
                 @printf "Total iterations completed: %d\n" total_iterations
                 @printf "Optimization time elapsed: %5.2f\n" optimization_time += toq()
