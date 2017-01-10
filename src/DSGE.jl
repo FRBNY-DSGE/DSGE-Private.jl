@@ -55,7 +55,7 @@ module DSGE
         PseudoObservable, PseudoObservableMapping, Observable,
 
         # estimate/
-        kalman_filter, likelihood, posterior, posterior!,
+        kalman_filter, kalman_filter_2part, likelihood, posterior, posterior!,
         optimize!, csminwel, simulated_annealing, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance, compute_moments,
         find_density_bands, prior,

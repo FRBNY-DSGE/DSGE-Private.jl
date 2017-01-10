@@ -27,9 +27,8 @@ function optimize!(m::AbstractModel,
                    show_trace::Bool     = false,
                    extended_trace::Bool = false,
                    mle::Bool            = false,  # default from estimate.jl
-                   verbose::Symbol      = :none,
                    z0::Vector{Float64}  = Vector{Float64}(),
-                   vz0::Matrix{Float64} = Matrix{Float64}())
+                   vz0::Matrix{Float64} = Matrix{Float64}(),
                    step_size::Float64   = .01,
                    verbose::Symbol      = :none)
 
@@ -67,7 +66,7 @@ function optimize!(m::AbstractModel,
         # This function computes a proposal "next step" during simulated annealing.
         # Inputs:
         # - `x`: current position (of non-fixed states)
-        # - `x_proposal`: proposed next position (of non-fixed states). 
+        # - `x_proposal`: proposed next position (of non-fixed states).
         #                 (passed in for pre-allocation purposes)
         # Outputs:
         # - `x_proposal`
@@ -103,7 +102,7 @@ function optimize!(m::AbstractModel,
                     end
                 end
                 @inbounds x_proposal_all[i] = proposal
-            
+
             end
 
             # check that model can be solved
@@ -115,7 +114,7 @@ function optimize!(m::AbstractModel,
                 x_proposal_all = transform_to_real_line(m.parameters, x_proposal_all)
                 success = true
             end
-            
+
         end
 
         x_proposal[1:end] = x_proposal_all[para_free_inds]
@@ -147,13 +146,13 @@ function optimize!(m::AbstractModel,
     H = zeros(n_parameters(m), n_parameters(m))
     if H_ != nothing
 
-    # Fill in rows/cols of zeros corresponding to location of fixed parameters
-    # For each row corresponding to a free parameter, fill in columns corresponding to
-    # free parameters. Everything else is 0.
-    for (row_free, row_full) in enumerate(para_free_inds)
-        H[row_full,para_free_inds] = H_[row_free,:]
+        # Fill in rows/cols of zeros corresponding to location of fixed parameters
+        # For each row corresponding to a free parameter, fill in columns corresponding to
+        # free parameters. Everything else is 0.
+        for (row_free, row_full) in enumerate(para_free_inds)
+            H[row_full,para_free_inds] = H_[row_free,:]
+        end
     end
 
-    end
     return out, H
 end

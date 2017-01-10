@@ -65,11 +65,10 @@ function default_settings!(m::AbstractModel)
         "Calculate the hessian at the mode")
     settings[:n_hessian_test_params] = Setting(:n_hessian_test_params, typemax(Int),
         "Max number of free params for which to calculate Hessian")
-	settings[:optimization_method] = Setting(:csminwel, "Method for finding the posterior mode")
-	settings[:optimization_iterations] = Setting(100, "Number of iterations the optimizer should run for")
-	settings[:optimization_step_size] = Setting(.01, "step size scaling factor for optimization")
-	settings[:simulated_annealing_temperature] = Setting(Optim.log_temperature, "The temperature function for simulated annealing")
-	
+	settings[:optimization_method] = Setting(:optimization_method,:csminwel, "Method for finding the posterior mode")
+	settings[:optimization_iterations] = Setting(:optimization_iterations,100, "Number of iterations the optimizer should run for")
+	settings[:optimization_step_size] = Setting(:optimization_step_size,.01, "step size scaling factor for optimization")
+	settings[:simulated_annealing_temperature] = Setting(:simulated_annealing_temperature,Optim.log_temperature, "The temperature function for simulated annealing")
 
 
     # Metropolis-Hastings
