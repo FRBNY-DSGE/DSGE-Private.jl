@@ -6,13 +6,12 @@ module DSGE
     using FredData, DataFrames, Base.Dates
     using QuantEcon: solve_discrete_lyapunov
     import Calculus
-    import Optim
-    using Optim: OptimizationTrace, OptimizationState, MultivariateOptimizationResults
+    using Optim
 
     export
 
         # distributions_ext.jl
-        BetaAlt, GammaAlt, DegenerateMvNormal,
+        BetaAlt, GammaAlt, RootInverseGamma, DegenerateMvNormal,
 
         # settings.jl
         Setting, get_setting,
@@ -21,7 +20,7 @@ module DSGE
         default_settings!, default_test_settings!,
 
         # abstractdsgemodel.jl
-        AbstractModel, description,
+        AbstractModel, description, transform_to_model_space!, transform_to_real_line!,
         n_anticipated_shocks, n_anticipated_shocks_padding,
         date_presample_start, date_prezlb_start, date_zlb_start,
         date_presample_end, date_prezlb_end, date_zlb_end, date_conditional_end,
@@ -56,8 +55,8 @@ module DSGE
         PseudoObservable, PseudoObservableMapping, Observable,
 
         # estimate/
-        kalman_filter, kalman_filter_2part, likelihood, posterior, posterior!,
-        optimize!, csminwel, hessian!, estimate, proposal_distribution,
+        kalman_filter, likelihood, posterior, posterior!,
+        optimize!, csminwel, simulated_annealing, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance, compute_moments,
         find_density_bands, prior,
 
@@ -109,6 +108,7 @@ module DSGE
     include("estimate/csminwel.jl")
     include("estimate/hessian.jl")
     include("estimate/hessizero.jl")
+    include("estimate/simulated_annealing.jl")
     include("estimate/estimate.jl")
     include("estimate/moments.jl")
 

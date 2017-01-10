@@ -485,8 +485,8 @@ Transforms `values` from the real line to the model space, and assigns `values[i
 paramter values.
 
 ### Arguments
--`m`: the model object
--`values`: the new values to assign to non-steady-state parameters.
+- `m`: the model object
+- `values`: the new values to assign to non-steady-state parameters.
 """
 function transform_to_model_space!{T<:AbstractFloat}(m::AbstractModel, values::Vector{T})
     new_values = transform_to_model_space(m.parameters, values)
@@ -502,8 +502,8 @@ update!{T<:AbstractFloat}(m::AbstractModel, values::Vector{T})
 Update `m.parameters` with `values`, recomputing the steady-state parameter values.
 
 ### Arguments:
--`m`: the model object
--`values`: the new values to assign to non-steady-state parameters.
+- `m`: the model object
+- `values`: the new values to assign to non-steady-state parameters.
 """
 function update!{T<:AbstractFloat}(m::AbstractModel, values::Vector{T})
     update!(m.parameters, values)
@@ -521,3 +521,37 @@ function rand{T<:AbstractFloat, U<:AbstractModel}(d::DegenerateMvNormal, m::U; c
     return d.μ + cc*d.σ*randn(m.rng, length(d))
 end
 
+"""
+`rand_prior(m::AbstractModel; ndraws::Int = 100_000)`
+
+Draw a random sample from the model's prior distribution.
+"""
+function rand_prior(m::AbstractModel; ndraws::Int = 100_000)
+    T = typeof(m.parameters[1].value)
+    npara = length(m.parameters)
+    priorsim = Array{T}(ndraws, npara)
+
+    for i in 1:ndraws
+        priodraw = Array{T}(npara)
+
+        #Parameter draws per particle
+        for j in 1:length(m.parameters)
+
+            priodraw[j] = if !m.parameters[j].fixed
+                prio = rand(m.parameters[j].prior.value)
+
+                # Resample until all prior draws are within the value bounds
+                while !(m.parameters[j].valuebounds[1] < prio < m.parameters[j].valuebounds[2])
+                    prio = rand(m.parameters[j].prior.value)
+                end
+
+                prio
+            else
+                m.parameters[j].value
+            end
+        end
+        priorsim[i,:] = priodraw'
+    end
+
+    priorsim
+end

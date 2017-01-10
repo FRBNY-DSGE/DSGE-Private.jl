@@ -1,31 +1,27 @@
 """
 ```
-estimate(m::AbstractModel, df::DataFrame; verbose::Symbol=:low, proposal_covariance=Matrix(),
-        z0::Vector{Float64} = Vector{Float64}(), vz0::Matrix{Float64} = Matrix{Float64}())
+estimate(m::AbstractModel, df::DataFrame; verbose::Symbol=:low, proposal_covariance=Matrix())
 ```
 
 Estimate the DSGE parameter posterior distribution.
 
-### Arguments
-- `m`: model object
-- `df`: well-formed data as DataFrame
+### Arguments:
+- `m::AbstractModel`: model object
 
 ### Optional Arguments:
-- `verbose`: The desired frequency of function progress messages printed to standard out.
+- `data`: well-formed data as `Matrix` or `DataFrame`. If this is not provided, the `load_data` routine will be executed.
+
+### Keyword Arguments:
+- `verbose::Symbol`: The desired frequency of function progress messages printed to standard out.
    - `:none`: No status updates will be reported.
    - `:low`: Status updates will be provided in csminwel and at each block in
      Metropolis-Hastings.
    - `:high`: Status updates provided at each iteration in Metropolis-Hastings.
-- `proposal_covariance`: Used to test the metropolis_hastings algorithm with a precomputed
+- `proposal_covariance::Matrix`: Used to test the metropolis_hastings algorithm with a precomputed
   covariance matrix for the proposal distribution. When the Hessian is singular,
   eigenvectors corresponding to zero eigenvectors are not well defined, so eigenvalue
   decomposition can cause problems. Passing a precomputed matrix allows us to ensure that
   the rest of the routine has not broken.
-- `z0`: If the system is not stationary or is otherwise degenerate, a
-    proposal state vector for the beginning of the presample period cannot be calculated.
-    Passing one explicitly allows us to bypass this issue.
-- `vz0`: Similarly, if the system is not stationary, a variance matrix for the initial state
-    vector must be specified explicitly.
 - `mle`: Set to true if parameters should be estimated by maximum likelihood directly,
     without using any Bayesian framework. If this is set to true, the code will exit after
     estimating parameters.
@@ -35,41 +31,35 @@ function estimate(m::AbstractModel, df::DataFrame;
                   verbose::Symbol=:low,
                   mle::Bool=false,
                   run_MH::Bool=true,
-                  proposal_covariance::Matrix=Matrix(),
-                  z0::Vector{Float64}=Vector{Float64}(),
-                  vz0::Matrix{Float64}=Matrix{Float64}())
+                  proposal_covariance::Matrix=Matrix())
     data = df_to_matrix(m, df)
     estimate(m, data; verbose=verbose, proposal_covariance=proposal_covariance,
-              z0=z0, vz0=vz0, mle=mle, run_MH=run_MH)
+              mle=mle, run_MH=run_MH)
 end
 function estimate(m::AbstractModel;
                   verbose::Symbol=:low,
                   mle::Bool=false,
                   run_MH::Bool=true,
-                  proposal_covariance::Matrix=Matrix(),
-                  z0::Vector{Float64}=Vector{Float64}(),
-                  vz0::Matrix{Float64}=Matrix{Float64}())
+                  proposal_covariance::Matrix=Matrix())
     # Load data
     df = load_data(m; verbose=verbose)
     estimate(m, df; verbose=verbose, proposal_covariance=proposal_covariance,
-             z0=z0, vz0=vz0, mle=mle, run_MH=run_MH)
+             mle=mle, run_MH=run_MH)
 end
 function estimate(m::AbstractModel, data::Matrix{Float64};
                   verbose::Symbol=:low,
                   mle::Bool=false,
                   run_MH::Bool=true,
-                  proposal_covariance::Matrix=Matrix(),
-                  z0::Vector{Float64}=Vector{Float64}(),
-                  vz0::Matrix{Float64}=Matrix{Float64}())
+                  proposal_covariance::Matrix=Matrix())
 
     ########################################################################################
     ### Step 1: Initialize
     ########################################################################################
 
-    post = posterior(m, data; z0=z0, vz0=vz0)[:post]
+    post = posterior(m, data)[:post]
 
     ########################################################################################
-    ### Step 2: Find posterior mode (if reoptimizing, run csminwel)
+    ### Step 2: Find posterior mode (if reoptimizing, run optimization routine)
     ########################################################################################
 
     # Specify starting mode
@@ -79,8 +69,9 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         println("Reoptimizing...")
 
         # Inputs to optimization algorithm
-        n_iterations       = 100
+        n_iterations       = get_setting(m, :optimization_iterations)
         ftol               = 1e-10
+        step_size          = get_setting(m, :optimization_step_size)
         converged          = false
 
         # If the algorithm stops only because we have exceeded the maximum number of
@@ -90,8 +81,11 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         while !converged
             tic()
             out, H = optimize!(m, data;
-                ftol=ftol, iterations=n_iterations, show_trace=true, verbose=verbose,
-                z0=z0, vz0=vz0, mle=mle)
+                               method = get_setting(m, :optimization_method),
+                               ftol=ftol,
+                               iterations=n_iterations, show_trace=true, step_size=step_size,
+                               verbose=verbose,
+                               mle=mle)
 
             total_iterations += out.iterations
             converged = !out.iteration_converged && total_iterations > 15
@@ -115,7 +109,6 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     if mle || !run_MH
         return nothing
     end
-
     ########################################################################################
     ### Step 3: Compute proposal distribution
     ###
@@ -217,11 +210,8 @@ distribution of the parameters.
 
 ### Optional Arguments
 - `verbose`: The desired frequency of function progress messages printed to standard out.
-
    - `:none`: No status updates will be reported.
-
    - `:low`: Status updates provided at each block.
-
    - `:high`: Status updates provided at each draw.
 """
 function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
@@ -229,9 +219,7 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
                                                data::Matrix{T},
                                                cc0::T,
                                                cc::T;
-                                               verbose::Symbol=:low,
-                                               z0::Vector{Float64}=Vector{Float64}(),
-                                               vz0::Matrix{Float64}=Matrix{Float64}())
+                                               verbose::Symbol=:low)
 
 
     # If testing, set the random seeds at fixed numbers
@@ -271,7 +259,7 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
         n_burn   = n_mh_burn(m)
         mhthin   = mh_thin(m)
 
-        post_out = posterior!(m, para_old, data; mh=true, z0=z0, vz0=vz0)
+        post_out = posterior!(m, para_old, data; mh=true)
         post_old, like_old, out = post_out[:post], post_out[:like], post_out[:mats]
 
         if post_old > -Inf
@@ -349,7 +337,7 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
 
             # Solves the model, check that parameters are within bounds, gensys returns a
             # meaningful system, and evaluate the posterior.
-            post_out = posterior!(m, para_new, data; mh=true, z0=z0, vz0=vz0)
+            post_out = posterior!(m, para_new, data; mh=true)
             post_new, like_new, out = post_out[:post], post_out[:like], post_out[:mats]
 
             if VERBOSITY[verbose] >= VERBOSITY[:high]
