@@ -119,31 +119,33 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     ########################################################################################
 
     # Calculate the Hessian at the posterior mode
-    hessian = if calculate_hessian(m)
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            println("Recalculating Hessian...")
+    if isempty(proposal_covariance)
+        hessian = if calculate_hessian(m)
+            if VERBOSITY[verbose] >= VERBOSITY[:low]
+                println("Recalculating Hessian...")
+            end
+
+            hessian, _ = hessian!(m, params, data; verbose=verbose)
+
+            h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
+                file["hessian"] = hessian
+            end
+
+            hessian
+
+            # Read in a pre-calculated Hessian
+        else
+            fn = hessian_path(m)
+            if VERBOSITY[verbose] >= VERBOSITY[:low]
+                println("Using pre-calculated Hessian from $fn")
+            end
+
+            hessian = h5open(fn,"r") do file
+                read(file, "hessian")
+            end
+
+            hessian
         end
-
-        hessian, _ = hessian!(m, params, data; verbose=verbose)
-
-        h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
-            file["hessian"] = hessian
-        end
-
-        hessian
-
-    # Read in a pre-calculated Hessian
-    else
-        fn = hessian_path(m)
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            println("Using pre-calculated Hessian from $fn")
-        end
-
-        hessian = h5open(fn,"r") do file
-            read(file, "hessian")
-        end
-
-        hessian
     end
 
     # Compute inverse hessian and create proposal distribution, or

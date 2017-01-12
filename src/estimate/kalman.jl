@@ -196,6 +196,7 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
             end
 
             ddy = D\dy
+
         catch
             error("D not full rank in Kalman filter")
         end

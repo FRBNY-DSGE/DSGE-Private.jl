@@ -52,10 +52,12 @@ function optimize!(m::AbstractModel,
             x_model[para_free_inds] = x_opt
             transform_to_model_space!(m,x_model)
             if mle
-                return -likelihood(m, data; catch_errors=true, z0=z0, vz0=vz0)[1]
+                out = -likelihood(m, data; catch_errors=true, z0=z0, vz0=vz0)[1]
             else
-                return -posterior(m, data; catch_errors=true, z0=z0, vz0=vz0)[:post]
+                out = -posterior(m, data; catch_errors=true, z0=z0, vz0=vz0)[:post]
             end
+            @assert !isnan(out)
+            return out
         catch
             info("Could not evaluate likelihood")
             return Inf

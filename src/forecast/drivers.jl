@@ -212,9 +212,10 @@ function prepare_systems(m::AbstractModel, input_type::Symbol,
         systems[1] = compute_system(m)
     elseif input_type in [:full]
         empty = isempty(CCC)
-        
+
         if reduced_form(m)
             forcing_ind = get_setting(m, :forcing_index_start)
+            forcing_ind = forcing_ind == 0 ? 1 : forcing_ind
             data_mat    = df_to_matrix(m, df)
             X           = data_mat[forcing_ind:end, :]
         end
@@ -315,7 +316,7 @@ function forecast_one(m::AbstractModel, df::DataFrame;
             break
         end
     end
-        
+
     # must re-run filter/smoother for conditional data in addition to explicit cases
     if !isempty(intersect(output_vars, [:histstates, :histpseudo, :histshocks, :shockdecstates, :shockdecpseudo, :shockdecobs])) || cond_type in [:semi, :full]
 
@@ -327,16 +328,16 @@ function forecast_one(m::AbstractModel, df::DataFrame;
 
             forecast_output[:histstates] = histstates[:, 1:T, :]
             forecast_output[:histshocks] = histshocks[:, 1:T, :]
-	    if :histpseudo in output_vars            
+	    if :histpseudo in output_vars
 		forecast_output[:histpseudo] = histpseudo[:, 1:T, :]
-	    end	
+	    end
         else
             forecast_output[:histstates] = histstates
             forecast_output[:histshocks] = histshocks
             if :histpseudo in output_vars
                 forecast_output[:histpseudo] = histpseudo
             end
-        end            
+        end
     end
 
     # For conditional data, use the end of the hist states as the initial state
@@ -356,7 +357,7 @@ function forecast_one(m::AbstractModel, df::DataFrame;
             # copy history of observables to make correct size
             histobs = df_to_matrix(m, df; cond_type = cond_type)[:, index_prezlb_start(m):end]
             histobs = repeat(histobs, outer = [1,1,ndraws])
-            
+
             forecast_output[:forecaststates] = cat(2, histstates[:, T+1:end, :], forecaststates)
             forecast_output[:forecastshocks] = cat(2, histshocks[:, T+1:end, :], forecastshocks)
             forecast_output[:forecastobs]    = cat(2, histobs[:,    T+1:end, :], forecastobs)
@@ -368,7 +369,7 @@ function forecast_one(m::AbstractModel, df::DataFrame;
             forecast_output[:forecaststates] = forecaststates
             forecast_output[:forecastshocks] = forecastshocks
             forecast_output[:forecastobs]    = forecastobs
-            
+
             if :forecastpseudo in output_vars
                 forecast_output[:forecastpseudo] = forecastpseudo
             end
