@@ -98,7 +98,8 @@ tricky_filter(::AllOut, ::IncludePresample, m::AbstractModel, data::Matrix, sys:
 tricky_filter(::AllOut, ::ExcludePresample, m::AbstractModel, data::Matrix, sys::System, z0::Vector, vz0::Matrix) =
     filter(m, data, sys, z0, vz0; allout = true, include_presample = false)
 tricky_filter(::MinimumOut, ::IncludePresample, m::AbstractModel, data::Matrix, sys::System, z0::Vector, vz0::Matrix) =
-    filter(m, data, sys, z0, vz0; allout = false, include_presample = true)tricky_filter(::MinimumOut, ::ExcludePresample, m::AbstractModel, data::Matrix, sys::System, z0::Vector, vz0::Matrix) =
+    filter(m, data, sys, z0, vz0; allout = false, include_presample = true)
+tricky_filter(::MinimumOut, ::ExcludePresample, m::AbstractModel, data::Matrix, sys::System, z0::Vector, vz0::Matrix) =
     filter(m, data, sys, z0, vz0; allout = false, include_presample = false)
 
 function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, sys::System{S},
