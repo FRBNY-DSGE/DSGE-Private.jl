@@ -10,7 +10,7 @@ optimize!(m::AbstractModel, data::Matrix;
           show_trace::Bool     = false,
           extended_trace::Bool = false,
           mle::Bool            = false,  # default from estimate.jl
-		  step_size::Float64   = .01,
+          step_size::Float64   = .01,
           verbose::Symbol      = :none)
 ```
 
@@ -37,6 +37,10 @@ function optimize!(m::AbstractModel,
         csminwel
     elseif method == :simulated_annealing
         simulated_annealing
+    elseif method == :combined_optimizer
+        combined_optimizer
+    elseif method == :LBFGS
+        LBFGS_wrapper
     else
         error("Method ",method," is not supported.")
     end
@@ -56,11 +60,15 @@ function optimize!(m::AbstractModel,
             else
                 out = -posterior(m, data; catch_errors=true, z0=z0, vz0=vz0)[:post]
             end
-            @assert !isnan(out)
+            @assert !isnan(out) && isfinite(out)
             return out
-        catch
-            info("Could not evaluate likelihood")
-            return Inf
+        catch err
+            if isa(err,InterruptException)
+                error("Optimization exited in f_opt")
+            else
+                #info("Could not evaluate likelihood")
+                return 1e10#Inf
+            end
         end
     end
 
@@ -75,6 +83,7 @@ function optimize!(m::AbstractModel,
 
         @assert size(x) == size(x_proposal)
 
+        mover = Bernoulli(.3)
         T = eltype(x)
         npara = length(x)
 
@@ -91,12 +100,13 @@ function optimize!(m::AbstractModel,
 
             # take a step in model space
             for i in para_free_inds
+                move = rand(mover)
                 prior_var = moments(get(m.parameters[i].prior))[2]
                 proposal_in_bounds = false
                 proposal = x_all_model[i]
                 # draw a new parameter value, and redraw if out of bounds
                 while !proposal_in_bounds
-                    r = rand([-1 1]) * rand()
+                    r = rand([-1 1]) * rand() * move
                     proposal = x_all_model[i] + (r * step_size * prior_var)
                     if m.parameters[i].valuebounds[1] < proposal &&
                         m.parameters[i].valuebounds[2] > proposal
@@ -126,9 +136,10 @@ function optimize!(m::AbstractModel,
 
     rng = m.rng
     temperature = get_setting(m, :simulated_annealing_temperature)
+    max_cycles = get_setting(m, :combined_optimizer_max_cycles)
 
     if method == :simulated_annealing
-        out, H_ = optimizer(f_opt, x_opt, H0;
+        out, H_ = optimizer(f_opt, x_opt;
                         xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations, step_size = step_size,
                         store_trace = store_trace, show_trace = show_trace, extended_trace = extended_trace,
                         neighbor! = neighbor_dsge!, verbose = verbose, rng = rng, temperature = temperature)
@@ -137,6 +148,17 @@ function optimize!(m::AbstractModel,
                         xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                         store_trace = store_trace, show_trace = show_trace, extended_trace = extended_trace,
                         verbose = verbose, rng = rng)
+    elseif method == :LBFGS
+        out, H_ = optimizer(f_opt, x_opt;
+                        xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
+                        store_trace = store_trace, show_trace = show_trace, extended_trace = extended_trace,
+                        verbose = verbose, rng = rng)
+    elseif method == :combined_optimizer
+        out, H_ = optimizer(f_opt, x_opt;
+                        xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations, step_size = step_size,
+                        store_trace = store_trace, show_trace = show_trace, extended_trace = extended_trace,
+                        neighbor! = neighbor_dsge!, verbose = verbose, rng = rng, temperature = temperature,
+                        max_cycles = max_cycles)
     end
 
     x_model[para_free_inds] = out.minimizer

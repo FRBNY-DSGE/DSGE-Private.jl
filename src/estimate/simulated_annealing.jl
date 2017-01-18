@@ -10,8 +10,8 @@ function simulated_annealing(fcn::Function,
                              extended_trace::Bool  = false,
                              temperature::Function = Optim.log_temperature,
                              kwargs...)
- 
-    Optim.optimize(fcn, x0, 
+
+    Optim.optimize(fcn, x0,
                    method = SimulatedAnnealing(neighbor! = neighbor!,temperature = temperature),
                    iterations = iterations, store_trace = store_trace, show_trace = show_trace,
                    extended_trace = extended_trace), nothing
@@ -24,7 +24,7 @@ function log_temperature(t::Real; initial_temperature::Real = 1.0)
 end
 
 function exponential_temperature(t::Real; initial_temperature::Real = 1.0, α::Real = .99)
-    if !( 0.0 < α < 1.0) 
+    if !( 0.0 < α < 1.0)
         error("α must be in (0,1)")
     end
     return initial_temperature*α^t

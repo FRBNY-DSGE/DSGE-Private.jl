@@ -56,8 +56,8 @@ module DSGE
 
         # estimate/
         kalman_filter, kalman_filter_2part, likelihood, posterior, posterior!,
-        optimize!, csminwel, simulated_annealing, hessian!, estimate, proposal_distribution,
-        metropolis_hastings, compute_parameter_covariance, compute_moments,
+        optimize!, csminwel, simulated_annealing, combined_optimizer, hessian!, estimate, LBFGS_wrapper,
+        proposal_distribution, metropolis_hastings, compute_parameter_covariance, compute_moments,
         find_density_bands, prior,
 
         # forecast/
@@ -109,6 +109,8 @@ module DSGE
     include("estimate/hessian.jl")
     include("estimate/hessizero.jl")
     include("estimate/simulated_annealing.jl")
+    include("estimate/combined_optimizer.jl")
+    include("estimate/LBFGS.jl")
     include("estimate/estimate.jl")
     include("estimate/moments.jl")
 
