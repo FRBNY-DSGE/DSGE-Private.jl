@@ -93,7 +93,7 @@ function default_settings!(m::AbstractModel)
     settings[:forecast_pseudoobservables] = Setting(:forecast_pseudoobservables, false,
         "Whether to forecast pseudo-observables")
     settings[:forecast_smoother] = Setting(:forecast_smoother, :durbin_koopman,
-        "Choice of smoother to use during forecasting. Can be :kalman, :durbin_koopman, or eventually :carter_kohn")
+        "Choice of smoother to use during forecasting. Can be :kalman, :durbin_koopman, or :Hamilton")
     settings[:forecast_horizons] = Setting(:forecast_horizons, 60,
         "Number of periods to forecast ahead")
     settings[:forecast_draw_z0] = Setting(:forecast_draw_z0, false,
@@ -116,7 +116,7 @@ function default_settings!(m::AbstractModel)
 	settings[:forcing_index_start] = Setting(:forcing_index_start, 0, "Index that marks beginning of forcing processes in data matrix")
         settings[:reduced_form] = Setting(:reduced_form, false, "flag for whether model is reduced form or structural")
 
- 
+
     return settings
 end
 
