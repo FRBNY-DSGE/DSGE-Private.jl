@@ -1,37 +1,36 @@
-using DSGE, HDF5
+using DSGE, JLD
 include("../util.jl")
 
 path = dirname(@__FILE__)
 
 # Set up arguments
-custom_settings = Dict{Symbol, Setting}(
-    :date_forecast_start  => Setting(:date_forecast_start, quartertodate("2016-Q1")),
-    :use_parallel_workers => Setting(:use_parallel_workers, true),
-    :n_anticipated_shocks => Setting(:n_anticipated_shocks, 6))
-m = Model990(custom_settings = custom_settings)
-m.testing = true
+m = AnSchorfheide(testing = true)
+m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
+m <= Setting(:forecast_horizons, 1)
 
-eta_hat = h5open("$path/../reference/durbin_koopman_smoother_out.h5", "r") do h5
-    read(h5, "eta_hat")
+system, histshocks = jldopen("$path/../reference/forecast_args.jld","r") do file
+    read(file, "system"), read(file, "histshocks")
 end
 
-ndraws = 2
-syses = Vector{System{Float64}}(ndraws)
-histshocks = Vector{Matrix{Float64}}(ndraws)
-for i = 1:ndraws
-    syses[i] = compute_system(m)
-    histshocks[i] = eta_hat
-end
+# Read expected output
+exp_states, exp_obs, exp_pseudo =
+    jldopen("$path/../reference/shock_decompositions_out.jld", "r") do file
+        read(file, "exp_states"), read(file, "exp_obs"), read(file, "exp_pseudo")
+    end
 
-# Add parallel workers
-my_procs = addprocs(ndraws)
-@everywhere using DSGE
-states, observables, pseudos = DSGE.shock_decompositions(m, syses, histshocks)
+# With shockdec_startdate not null
+states, obs, pseudo = shock_decompositions(m, system, histshocks)
 
-# Run forecast
-@time states, observables, pseudos = DSGE.shock_decompositions(m, syses, histshocks)
+@test_matrix_approx_eq exp_states[:startdate] states
+@test_matrix_approx_eq exp_obs[:startdate]    obs
+@test_matrix_approx_eq exp_pseudo[:startdate] pseudo
 
-# Remove parallel workers
-rmprocs(my_procs)
+# With shockdec_startdate null
+m <= Setting(:shockdec_startdate, Nullable{Date}())
+states, obs, pseudo = shock_decompositions(m, system, histshocks)
+
+@test_matrix_approx_eq exp_states[:no_startdate] states
+@test_matrix_approx_eq exp_obs[:no_startdate]    obs
+@test_matrix_approx_eq exp_pseudo[:no_startdate] pseudo
 
 nothing

@@ -5,170 +5,137 @@
 Calculates log joint prior density of m.parameters.
 """
 function prior{T<:AbstractFloat}(m::AbstractModel{T})
-    x = zero(T)
-    for θ in m.parameters
-        if !θ.fixed
-            x += logpdf(θ)
-        end
-    end
-    return x
+    free_params = Base.filter(θ -> !θ.fixed, m.parameters)
+    logpdfs = map(logpdf, free_params)
+    return sum(logpdfs)
 end
 
 """
 ```
 posterior{T<:AbstractFloat}(m::AbstractModel{T}, data::Matrix{T};
-                             mh::Bool = false, catch_errors::Bool = false)
+                            mh::Bool = false, catch_errors::Bool = false)
 ```
 
-Calculates and returns the log of the posterior distribution for m.parameters:
+Calculates and returns the log of the posterior distribution for `m.parameters`:
+
 ```
-log posterior = log likelihood + log prior
-log Pr(Θ|data)  = log Pr(data|Θ)   + log Pr(Θ)
+log posterior  = log likelihood + log prior + const
+log Pr(Θ|data) = log Pr(data|Θ) + log Pr(Θ) + const
 ```
 
 ### Arguments
+
 - `m`: the model object
 - `data`: matrix of data for observables
 
 ### Optional Arguments
--`mh`: Whether metropolis_hastings is the caller. If `mh=true`, the log likelihood and the
-  transition matrices for the zero-lower-bound period are also returned.
--`catch_errors`: Whether or not to catch errors of type `GensysError` or `ParamBoundsError`
+
+- `mh`: Whether `metropolis_hastings` is the caller. If `mh = true`,
+  `catch_errors` is set to `true` (see below)
+- `catch_errors`: Whether or not to catch errors of type `GensysError` and
+  `ParamBoundsError`
 """
 function posterior{T<:AbstractFloat}(m::AbstractModel{T},
                                      data::Matrix{T};
                                      mh::Bool = false,
-                                     catch_errors::Bool = false,
-                                     z0::Vector{Float64} = Vector{Float64}(),
-                                     vz0::Matrix{Float64} = Matrix{Float64}())
-    catch_errors = catch_errors | mh
-    like, out = likelihood(m, data; mh=mh, catch_errors=catch_errors, z0=z0, vz0=vz0)
-    post = like + prior(m)
-
-    if mh
-        return Posterior(post, like, out)
-    else
-        return Posterior(post, like)
-    end
+                                     catch_errors::Bool = false)
+    catch_errors = catch_errors || mh
+    post = likelihood(m, data; mh = mh, catch_errors = catch_errors) + prior(m)
+    return post
 end
 
 """
 ```
 posterior!{T<:AbstractFloat}(m::AbstractModel{T}, parameters::Vector{T}, data::Matrix{T};
-                              mh::Bool = false, catch_errors::Bool = false,
-                              z0::Vector{Float64}=Vector{Float64}(),
-                              vz0::Matrix{Float64}=Matrix{Float64}())
+                             mh::Bool = false, catch_errors::Bool = false)
 ```
 
 Evaluates the log posterior density at `parameters`.
 
 ### Arguments
+
 - `m`: The model object
 - `parameters`: New values for the model parameters
 - `data`: Matrix of input data for observables
 
 ### Optional Arguments
-- `mh`: Whether metropolis_hastings is the caller. If `mh=true`, the log likelihood and the
-  transition matrices for the zero-lower-bound period are also returned.
-- `catch_errors`: Whether or not to catch errors of type `GensysError` or `ParamBoundsError`.
-  If `mh = true`, both should always be caught.
+
+- `mh`: Whether `metropolis_hastings` is the caller. If `mh = true`,
+  `catch_errors` is set to `true` (see below)
+- `catch_errors`: Whether or not to catch errors of type `GensysError` and
+  `ParamBoundsError`
 """
 function posterior!{T<:AbstractFloat}(m::AbstractModel{T},
                                       parameters::Vector{T},
                                       data::Matrix{T};
                                       mh::Bool = false,
-                                      catch_errors::Bool = false,
-                                      z0::Vector{Float64}=Vector{Float64}(0,),
-                                      vz0::Matrix{Float64}=Matrix{Float64}(0,0))
-    catch_errors = catch_errors | mh
+                                      catch_errors::Bool = false)
+    catch_errors = catch_errors || mh
     if mh
         try
             update!(m, parameters)
         catch err
-            return Posterior()
+            if isa(err, GensysError) || isa(err, ParamBoundsError)
+                return -Inf
+            else
+                throw(err)
+            end
         end
     else
         update!(m, parameters)
     end
-    return posterior(m, data; mh=mh, catch_errors=catch_errors, z0=z0, vz0=vz0)
+    return posterior(m, data; mh=mh, catch_errors=catch_errors)
 
 end
-
-# Empty outputs from `likelihood`.
-const LIKE_NULL_DICT   = Dict{Symbol, Matrix{AbstractFloat}}()
-const LIKE_NULL_OUTPUT = (-Inf, LIKE_NULL_DICT)
 
 """
 ```
 likelihood{T<:AbstractFloat}(m::AbstractModel, data::Matrix{T};
-                              mh::Bool = false, catch_errors::Bool = false)
+                             mh::Bool = false, catch_errors::Bool = false)
 ```
 
-Evaluate the DSGE likelihood function. Can handle "two part" estimation where the observed
+Evaluate the DSGE likelihood function. Can handle two-part estimation where the observed
 sample contains both a normal stretch of time (in which interest rates are positive) and
 a stretch of time in which interest rates reach the zero lower bound. If there is a
-zero-lower-bound period, then we filter over the 2 periods separately.  Otherwise, we
+zero-lower-bound period, then we filter over the 2 periods separately. Otherwise, we
 filter over the main sample all at once.
 
 ### Arguments
+
 - `m`: The model object
 - `data`: matrix of data for observables
 
 ### Optional Arguments
-- `mh`: Whether metropolis_hastings is the caller. If `mh=true`, the transition matrices for
-  the zero-lower-bound period are returned in a dictionary.
-- `catch_errors`: If `mh = true`, `GensysErrors` should always be caught.
+
+- `mh`: Whether `metropolis_hastings` is the caller. If `mh = true`,
+  `catch_errors` is set to `true` (see below)
+- `catch_errors`: Whether or not to catch errors of type `GensysError`
 """
 function likelihood{T<:AbstractFloat}(m::AbstractModel,
                                       data::Matrix{T};
                                       mh::Bool = false,
-                                      catch_errors::Bool = false,
-                                     z0::Vector{Float64}=Vector{Float64}(),
-                                     vz0::Matrix{Float64}=Matrix{Float64}())
-    catch_errors = catch_errors | mh
+                                      catch_errors::Bool = false)
+    catch_errors = catch_errors || mh
 
     # During Metropolis-Hastings, return -∞ if any parameters are not within their bounds
     if mh
         for θ in m.parameters
             (left, right) = θ.valuebounds
             if !θ.fixed && !(left <= θ.value <= right)
-                return LIKE_NULL_OUTPUT
+                return -Inf
             end
         end
     end
 
-    # Return total log-likelihood, excluding the presample
-    k, _, _, R3 = kalman_filter_2part(m, data,
-                                      Matrix{Float64}(), Matrix{Float64}(), Vector{Float64}(),
-                                      z0, vz0;
-                                      allout = false, include_presample = false)
-    like = k[:L]
-
-    # Add zend to the R3 dict so it can be accessed from within Metropolis-Hastings
-    R3[:zend] = k[:zend]
-
-    if mh
-        return like, R3
-    else
-        return like, LIKE_NULL_DICT
-    end
-end
-
-# Type returned by posterior
-immutable Posterior{T<:AbstractFloat}
-    post::T
-    like::T
-    mats::Dict{Symbol, Array{T}}
-end
-function Posterior{T<:AbstractFloat}(post::T = -Inf,
-                                     like::T = -Inf,
-                                     mats::Dict{Symbol,Array{T}} = Dict{Symbol,Array{T}}())
-    return Posterior{T}(post, like, mats)
-end
-function Base.getindex(P::Posterior, d::Symbol)
-    if d in (:post, :like, :mats)
-        return getfield(P, d)
-    else
-        throw(KeyError(d))
+    try
+        # Return total log-likelihood, excluding the presample
+        kal, _, _, _ = kalman_filter_2part(m, data; allout = false, include_presample = false)
+        return kal[:L]
+    catch err
+        if catch_errors && isa(err, GensysError)
+            return -Inf
+        else
+            throw(err)
+        end
     end
 end

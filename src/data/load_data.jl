@@ -22,13 +22,14 @@ Then, the series in levels are transformed as specified in `m.observable_mapping
 If `m.testing` is false, then the resulting DataFrame is saved to disk as `data_<yymmdd>.csv`.
 The data are then returned to the caller.
 """
-function load_data(m::AbstractModel; cond_type::Symbol = :none,
-                   try_disk::Bool = true, verbose::Symbol=:low, recreate_data::Bool = false)
+function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool = true, verbose::Symbol=:low)
+    recreate_data = false
 
     # Check if already downloaded
     if try_disk && has_saved_data(m; cond_type=cond_type)
+        filename = get_data_filename(m, cond_type)
         if VERBOSITY[verbose] >= VERBOSITY[:low]
-            print("Reading dataset from disk...")
+            print("Reading dataset $(filename) from disk...")
         end
         df = read_data(m; cond_type = cond_type)
         if isvalid_data(m, df; cond_type = cond_type)
@@ -57,20 +58,14 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none,
             levels = vcat(levels, cond_levels)
             na2nan!(levels)
         end
-
-        reduced_form_flag = reduced_form(m)
-        if reduced_form_flag
-	    df = transform_data_reduced_form(m, levels; cond_type=cond_type, verbose=verbose)
-        else
-            df = transform_data(m, levels; cond_type=cond_type, verbose=verbose)
-        end
+        df = transform_data(m, levels; cond_type=cond_type, verbose=verbose)
 
         # Ensure that only appropriate rows make it into the returned DataFrame.
         start_date = date_presample_start(m)
         end_date   = if cond_type in [:semi, :full]
             date_conditional_end(m)
         else
-            date_zlb_end(m)
+            date_mainsample_end(m)
         end
         df = df[start_date .<= df[:, :date] .<= end_date, :]
 
@@ -80,6 +75,13 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none,
         if VERBOSITY[verbose] >= VERBOSITY[:low]
             println("dataset creation successful")
         end
+
+        # NaN out conditional period variables not in `cond_semi_names(m)` or
+        # `cond_full_names(m)` if necessary
+        nan_cond_vars!(m, df; cond_type = cond_type)
+
+        # check that dataset is valid
+        isvalid_data(m, df)
     end
 
     return df
@@ -111,17 +113,17 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
     # Start two quarters further back than `start_date` as we need these additional
     # quarters to compute differences.
     start_date = date_presample_start(m) - Dates.Month(6)
-    end_date = date_zlb_end(m)
+    end_date = date_mainsample_end(m)
 
     # Parse m.observable_mappings for data series
     data_series = parse_data_series(m)
 
     # Load FRED data
-    df = load_fred_data(m; start_date=firstdayofquarter(start_date), end_date=end_date)
+    df = load_fred_data(m; start_date=firstdayofquarter(start_date), end_date=end_date, verbose=verbose)
 
     # Set ois series to load
     if n_anticipated_shocks(m) > 0
-        data_series[:ois] = [symbol("ant$i") for i in 1:n_anticipated_shocks(m)]
+        data_series[:OIS] = [symbol("ant$i") for i in 1:n_anticipated_shocks(m)]
     end
 
     # For each additional source, search for the file with the proper name. Open
@@ -140,7 +142,7 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
 
         # Skip FRED sources, which have already been handled
         # Conditional data are handled in `load_cond_data_levels`
-        if source == :fred || source == :conditional
+        if source in [:FRED, :conditional]
             continue
         end
 
@@ -185,7 +187,7 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
             addl_data = DataFrame(fill(NaN, (size(df,1), length(mnemonics))))
             names!(addl_data, mnemonics)
             df = hcat(df, addl_data)
-            warn("$file was not found; NaNs used.")
+            warn("$file was not found; NaNs used")
         end
     end
 
@@ -193,6 +195,17 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
     na2nan!(df)
 
     sort!(df, cols = :date)
+
+    # print population level data to a file
+    if !m.testing
+        filename = inpath(m, "data", "population_data_levels_$vint.csv")
+        mnemonic = parse_population_mnemonic(m)[1]
+        if !isnull(mnemonic)
+            writetable(filename, df[:,[:date, get(mnemonic)]])
+        end
+    end
+
+    return df
 end
 
 """
@@ -214,9 +227,9 @@ appended or merged into the conditional data:
 function load_cond_data_levels(m::AbstractModel; verbose::Symbol=:low)
 
     # Prepare file name
-    cond_vint = get_setting(m, :cond_vintage)
-    cond_id = get_setting(m, :cond_id)
-    file = inpath(m, "cond", "cond_vint=$(cond_vint)_cdid=$(cond_id).csv")
+    cond_vint = cond_vintage(m)
+    cond_idno = cond_id(m)
+    file = inpath(m, "cond", "cond_vint=$(cond_vint)_cdid=$(cond_idno).csv")
 
     if isfile(file)
         if VERBOSITY[verbose] >= VERBOSITY[:low]
@@ -231,10 +244,10 @@ function load_cond_data_levels(m::AbstractModel; verbose::Symbol=:low)
 
         # Use population forecast as population data
         population_forecast_file = inpath(m, "data", "population_forecast_$(data_vintage(m)).csv")
-        if isfile(population_forecast_file)
+        if isfile(population_forecast_file) && !isnull(get_setting(m, :population_mnemonic))
             pop_forecast = readtable(population_forecast_file)
 
-            population_mnemonic = get_setting(m, :population_mnemonic)
+            population_mnemonic = get(parse_population_mnemonic(m)[1])
             rename!(pop_forecast, :POPULATION,  population_mnemonic)
             DSGE.na2nan!(pop_forecast)
             DSGE.format_dates!(:date, pop_forecast)
@@ -263,12 +276,7 @@ save_data(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none)
 Save `df` to disk as CSV. File is located in `inpath(m, \"data\")`.
 """
 function save_data(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none)
-    vint = data_vintage(m)
-    filestring = "data"
-    if cond_type in [:semi, :full]
-        filestring = filestring * "_cond=$cond_type"
-    end
-    filename = inpath(m, "data", "$(filestring)_$vint.csv")
+    filename = get_data_filename(m, cond_type)
     writetable(filename, df)
 end
 
@@ -281,13 +289,8 @@ Determine if there is a saved dataset on disk for the required vintage and
 conditional type.
 """
 function has_saved_data(m::AbstractModel; cond_type::Symbol = :none)
-    vint = data_vintage(m)
-    filestring = "data"
-    if cond_type in [:semi, :full]
-        filestring = filestring * "_cond=$cond_type"
-    end
-    filename = inpath(m, "data", "$(filestring)_$vint.csv")
-    isfile(filename)
+    filename = get_data_filename(m, cond_type)
+    return isfile(filename)
 end
 
 """
@@ -298,16 +301,15 @@ read_data(m::AbstractModel; cond_type::Symbol = :none)
 Read CSV from disk as DataFrame. File is located in `inpath(m, \"data\")`.
 """
 function read_data(m::AbstractModel; cond_type::Symbol = :none)
-    vint = data_vintage(m)
-    filestring = "data"
-    if cond_type in [:semi, :full]
-        filestring = filestring * "_cond=$cond_type"
-    end
-    filename = inpath(m, "data", "$(filestring)_$vint.csv")
+    filename = get_data_filename(m, cond_type)
     df       = readtable(filename)
 
     # Convert date column from string to Date
     df[:date] = map(Date, df[:date])
+
+    # NaN out conditional period variables not in `cond_semi_names(m)` or
+    # `cond_full_names(m)` if necessary
+    nan_cond_vars!(m, df; cond_type = cond_type)
 
     return df
 end
@@ -319,7 +321,7 @@ isvalid_data(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none)
 
 Return if dataset is valid for this model, ensuring that all observables are contained and
 that all quarters between the beginning of the presample and the end of the mainsample are
-contained.
+contained. Also checks to make sure that expected interest rate data is available if `n_anticipated_shocks(m) > 0`.
 """
 function isvalid_data(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none)
     valid = true
@@ -334,14 +336,14 @@ function isvalid_data(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none
         println(coldiff)
     end
 
-    # Ensure the dates between date_presample_start and date_zlb_end are contained.
+    # Ensure the dates between date_presample_start and date_mainsample_end are contained.
     actual_dates = df[:date]
 
     start_date = date_presample_start(m)
     end_date   = if cond_type in [:semi, :full]
         date_conditional_end(m)
     else
-        date_zlb_end(m)
+        date_mainsample_end(m)
     end
     expected_dates = get_quarter_ends(start_date, end_date)
     datesdiff = setdiff(expected_dates, actual_dates)
@@ -350,6 +352,13 @@ function isvalid_data(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none
     if !isempty(datesdiff)
         println("Dates of 'df' do not match expected.")
         println(datesdiff)
+    end
+
+    # Ensure that no series is all NaN
+    for col in setdiff(names(df), [:date])
+        if all(isnan(df[col]))
+            error("df[$col] is all NaN.")
+        end
     end
 
     return valid
@@ -372,22 +381,14 @@ function df_to_matrix(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none
     end_date   = if cond_type in [:semi, :full]
         date_conditional_end(m)
     else
-        date_zlb_end(m)
+        date_mainsample_end(m)
     end
     df1 = df1[start_date .<= df1[:, :date] .<= end_date, :]
 
     # Discard columns not used.
-    # skip if there are forcing processes
-    if n_forcing_processes(m) > 0
-        # cols = collect(keys(m.observables))
-        # df1 = df1[cols]
-        cols = Base.filter((x) -> x in keys(m.observables),names(df))
-        df1 = df1[cols]
-    else
-        cols = collect(keys(m.observables))
-        sort!(cols, by = x -> m.observables[x])
-        df1 = df1[cols]
-    end
+    cols = collect(keys(m.observables))
+    sort!(cols, by = x -> m.observables[x])
+    df1 = df1[cols]
 
     return convert(Matrix{Float64}, df1)'
 end
@@ -421,5 +422,82 @@ function parse_data_series(m::AbstractModel)
         end
     end
     data_series
+end
 
+"""
+```
+read_population_data(m; verbose = :low)
+
+read_population_data(filename; verbose = :low)
+```
+
+Read in population data stored in levels, either from
+`inpath(m, \"data\", \"population_data_levels_[vint].csv\"`) or `filename`.
+"""
+function read_population_data(m::AbstractModel; verbose::Symbol = :low)
+    vint = data_vintage(m)
+    filename = inpath(m, "data", "population_data_levels_$vint.csv")
+    read_population_data(filename; verbose = verbose)
+end
+
+function read_population_data(filename::AbstractString; verbose::Symbol = :low)
+    if VERBOSITY[verbose] >= VERBOSITY[:low]
+        println("Reading population data from $filename...")
+    end
+
+    df = readtable(filename)
+
+    DSGE.na2nan!(df)
+    DSGE.format_dates!(:date, df)
+    sort!(df, cols = :date)
+
+    return df
+end
+
+"""
+```
+read_population_forecast(m; verbose = :low)
+
+read_population_forecast(filename, population_mnemonic, last_recorded_date; verbose = :low)
+```
+
+Read in population forecast in levels, either from
+`inpath(m, \"data\", \"population_forecast_[vint].csv\")` or `filename`.
+If that file does not exist, return an empty `DataFrame`.
+
+"""
+function read_population_forecast(m::AbstractModel; verbose::Symbol = :low)
+    population_forecast_file = inpath(m, "data", "population_forecast_$(data_vintage(m)).csv")
+    population_mnemonic = parse_population_mnemonic(m)[1]
+
+    if isnull(population_mnemonic)
+        error("No population mnemonic provided")
+    else
+        read_population_forecast(population_forecast_file, get(population_mnemonic); verbose = verbose)
+    end
+end
+
+function read_population_forecast(filename::AbstractString, population_mnemonic::Symbol;
+                                  verbose::Symbol = :low)
+
+    if isfile(filename)
+        if VERBOSITY[verbose] >= VERBOSITY[:low]
+            println("Loading population forecast from $filename...")
+        end
+
+        df = readtable(filename)
+
+        rename!(df, :POPULATION, population_mnemonic)
+        DSGE.na2nan!(df)
+        DSGE.format_dates!(:date, df)
+        sort!(df, cols = :date)
+
+        return df[:, [:date, population_mnemonic]]
+    else
+        if VERBOSITY[verbose] >= VERBOSITY[:low]
+            warn("No population forecast found")
+        end
+
+        return DataFrame()
+    end
 end

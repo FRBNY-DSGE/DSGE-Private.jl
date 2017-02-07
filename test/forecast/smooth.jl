@@ -1,58 +1,32 @@
-using DSGE, DataFrames, HDF5
+using DSGE, DataFrames, JLD
 include("../util.jl")
 
 path = dirname(@__FILE__())
 
 # Set up arguments
-custom_settings = Dict{Symbol, Setting}(
-    :date_forecast_start  => Setting(:date_forecast_start, quartertodate("2015-Q4")),
-    :use_parallel_workers => Setting(:use_parallel_workers, true))
-m = Model990(custom_settings = custom_settings, testing = true)
+m = AnSchorfheide(testing = true)
+m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
 
-params_sim = h5open("$path/../reference/filter_args.h5","r") do h5
-    read(h5, "params_sim")
+df, system, kal = jldopen("$path/../reference/forecast_args.jld","r") do file
+    read(file, "df"), read(file, "system"), read(file, "kal")
 end
 
-df = load_data(m; try_disk = true, verbose = :none)
-
-ndraws = 2
-syses = Vector{System{Float64}}(ndraws)
-for i = 1:ndraws
-    params = squeeze(params_sim[i, :], 1)
-    update!(m, params)
-    syses[i] = compute_system(m)
+# Read expected output
+exp_states, exp_shocks, exp_pseudo = jldopen("$path/../reference/smooth_out.jld", "r") do file
+    read(file, "exp_states"),
+    read(file, "exp_shocks"),
+    read(file, "exp_pseudo")
 end
-
-z0  = (eye(n_states_augmented(m)) - syses[1][:TTT]) \ syses[1][:CCC]
-vz0 = QuantEcon.solve_discrete_lyapunov(syses[1][:TTT], syses[1][:RRR]*syses[1][:QQ]*syses[1][:RRR]')
-kals = DSGE.filter(m, df, syses, z0, vz0; allout = true)
-
-# Add parallel workers
-my_procs = addprocs(ndraws)
-@everywhere using DSGE
-alpha_hats, eta_hats = smooth(m, df, syses, kals)
 
 # Call smoother and test
 for smoother in [:durbin_koopman, :kalman]
     m <= Setting(:forecast_smoother, smoother)
 
-    @time alpha_hats, eta_hats = smooth(m, df, syses, kals)
+    states, shocks, pseudo = smooth(m, df, system, kal)
 
-    exp_alpha_hats = Vector{Matrix{Float64}}(ndraws)
-    exp_eta_hats   = Vector{Matrix{Float64}}(ndraws)
-    for i = 1:ndraws
-        exp_alpha_hats[i], exp_eta_hats[i] = if forecast_smoother(m) == :durbin_koopman
-            durbin_koopman_smoother(m, df, syses[i], kals[i][:z0], kals[i][:vz0])
-        elseif forecast_smoother(m) == :kalman
-            kalman_smoother(m, df, syses[i], kals[i][:z0], kals[i][:vz0], kals[i][:pred], kals[i][:vpred])
-        end
-
-        @test_matrix_approx_eq exp_alpha_hats[i] alpha_hats[:, :, i]
-        @test_matrix_approx_eq exp_eta_hats[i] eta_hats[:, :, i]
-    end
+    @test_matrix_approx_eq exp_states[smoother, :z0] states
+    @test_matrix_approx_eq exp_shocks[smoother, :z0] shocks
+    @test_matrix_approx_eq exp_pseudo[smoother, :z0] pseudo
 end
-
-# Remove parallel workers
-rmprocs(my_procs)
 
 nothing

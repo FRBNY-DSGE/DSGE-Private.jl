@@ -43,11 +43,11 @@ conditions.
 
 #### Model Specifications and Settings
 
-* `spec::AbstractString`: The model specification identifier, "m990", cached here for
+* `spec::AbstractString`: The model specification identifier, \"m990\", cached here for
   filepath computation.
 
 * `subspec::AbstractString`: The model subspecification number, indicating that some
-  parameters from the original model spec ("ss0") are initialized differently. Cached here for
+  parameters from the original model spec (\"ss0\") are initialized differently. Cached here for
   filepath computation.
 
 * `settings::Dict{Symbol,Setting}`: Settings/flags that affect computation without changing
@@ -90,8 +90,6 @@ type Model990{T} <: AbstractModel{T}
     testing::Bool                                   # Whether we are in testing mode or not
 
     observable_mappings::OrderedDict{Symbol, Observable}
-#    data_series::Dict{Symbol,Vector{Symbol}}       # Keys = data sources, values = vector of series mnemonics
-#    data_transforms::OrderedDict{Symbol,Function}  # functions to transform raw data into input matrix
 end
 
 description(m::Model990) = "FRBNY DSGE Model m990, $(m.subspec)"
@@ -141,34 +139,19 @@ function init_model_indices!(m::Model990)
     # Additional states added after solving model
     # Lagged states and observables measurement error
     endogenous_states_augmented = [
-        :y_t1, :c_t1, :i_t1, :w_t1, :π_t1, :L_t1, :Et_π_t, :lr_t, :tfp_t, :e_gdpdef_t,
+        :y_t1, :c_t1, :i_t1, :w_t1, :π_t1_dup, :L_t1, :Et_π_t, :lr_t, :tfp_t, :e_gdpdef_t,
         :e_corepce_t, :u_t1]
 
     # Measurement equation observables
-    # observables = [[
-    #     :obs_gdp,              # quarterly output growth
-    #     :obs_hours,            # aggregate hours growth
-    #     :obs_wages,            # real wage growth
-    #     :obs_gdpdeflator,      # inflation (GDP deflator)
-    #     :obs_corepce,          # inflation (core PCE)
-    #     :obs_nominalrate,      # nominal interest rate
-    #     :obs_consumption,      # consumption growth
-    #     :obs_investment,       # investment growth
-    #     :obs_spread,           # spreads
-    #     :obs_longinflation,    # 10-year inflation expectation
-    #     :obs_longrate,         # long-term rate
-    #     :obs_tfp];             # total factor productivity
-    #     [symbol("obs_nominalrate$i") for i=1:n_anticipated_shocks(m)]] # compounded nominal rates
-
     observables = keys(m.observable_mappings)
-    
-    for (i,k) in enumerate(endogenous_states);            m.endogenous_states[k]            = i end
-    for (i,k) in enumerate(exogenous_shocks);             m.exogenous_shocks[k]             = i end
-    for (i,k) in enumerate(expected_shocks);              m.expected_shocks[k]              = i end
-    for (i,k) in enumerate(equilibrium_conditions);       m.equilibrium_conditions[k]       = i end
-    for (i,k) in enumerate(endogenous_states);            m.endogenous_states[k]            = i end
-    for (i,k) in enumerate(endogenous_states_augmented);  m.endogenous_states_augmented[k]  = i+length(endogenous_states) end
-    for (i,k) in enumerate(observables);                  m.observables[k]                  = i end
+
+    for (i,k) in enumerate(endogenous_states);           m.endogenous_states[k]           = i end
+    for (i,k) in enumerate(exogenous_shocks);            m.exogenous_shocks[k]            = i end
+    for (i,k) in enumerate(expected_shocks);             m.expected_shocks[k]             = i end
+    for (i,k) in enumerate(equilibrium_conditions);      m.equilibrium_conditions[k]      = i end
+    for (i,k) in enumerate(endogenous_states);           m.endogenous_states[k]           = i end
+    for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i+length(endogenous_states) end
+    for (i,k) in enumerate(observables);                 m.observables[k]                 = i end
 end
 
 
@@ -183,23 +166,6 @@ function Model990(subspec::AbstractString="ss2";
     test_settings      = Dict{Symbol,Setting}()
     rng                = MersenneTwister()
 
-    # # Set up data sources and series
-    # fred_series        = [:GDP, :GDPCTPI, :PCE, :FPI, :CNP16OV, :CE16OV, :PRS85006013,
-    #                       :UNRATE, :AWHNONAG, :DFF, :BAA, :GS10, :PRS85006063, :CES0500000030, :CLF16OV,
-    #                       :PCEPILFE, :COMPNFB, :THREEFYTP10]
-    # spf_series         = [:ASACX10]
-    # fernald_series     = [:TFPJQ, :TFPKQ]
-    # longrate_series    = [:FYCCZA]
-    # conditional_series = [:GDP, :GDPCTPI, :DFF, :BAA, :GS10, :PCEPILFE]
-    # # ois data taken care of in load_data
-    
-    # data_series = Dict{Symbol,Vector{Symbol}}(:fred => fred_series, :spf => spf_series,
-    #                                           :fernald => fernald_series, :longrate => longrate_series,
-    #                                           :conditional => conditional_series)
-
-    # set up data transformations
-    # data_transforms = OrderedDict{Symbol,Function}()
-    # observable_mappings = Dict{Symbol,Observable}()
 
     # initialize empty model
     m = Model990{Float64}(
@@ -233,6 +199,7 @@ function Model990(subspec::AbstractString="ss2";
     init_model_indices!(m)
     init_subspec!(m)
     steadystate!(m)
+
     return m
 end
 
@@ -605,7 +572,7 @@ function steadystate!(m::Model990)
     σ_ω_star = SIGWSTAR_ZERO
     try
         σ_ω_star = fzero(sigma -> ζ_spb_fn(zω_star, sigma, m[:spr]) - m[:ζ_spb], 0.5)
-    catch
+    catch ex
         σ_ω_star = SIGWSTAR_ZERO
         if !isa(ex, ConvergenceFailed)
             rethrow(ex)
@@ -683,4 +650,7 @@ end
 
 function settings_m990!(m::Model990)
     default_settings!(m)
+
+    m <= Setting(:shockdec_startdate, Nullable(quartertodate("2007-Q1")))
+    m <= Setting(:forecast_pseudoobservables, true)
 end

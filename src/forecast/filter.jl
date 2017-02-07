@@ -1,131 +1,69 @@
-# Immutable types s.t. we can use map on functions with kwargs
-abstract FilterOutput
-immutable AllOut<:FilterOutput end
-immutable MinimumOut<:FilterOutput end
-
-abstract FilterPresample
-immutable IncludePresample<:FilterPresample end
-immutable ExcludePresample<:FilterPresample end
-
 """
 ```
-filter{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
-    syses::Vector{System{S}}, z0::Vector{S} = Vector{S}(), vz0::Matrix{S} =
-    Matrix{S}(); cond_type::Symbol = :none, lead::Int = 0, allout::Bool = false,
-    include_presample::Bool = true)
-
-filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
-    syses::Vector{System{S}}, z0::Vector{S} = Vector{S}(), vz0::Matrix{S} =
-    Matrix{S}(); lead::Int = 0, allout::Bool = false, include_presample::Bool =
-    true)
+filter(m, data, system, z0, vz0; cond_type = :none, allout = false,
+      include_presample = true)
 ```
 
-Computes and returns the filtered values of states for every state-space system in `syses`.
+Computes and returns the filtered values of states for the state-space
+system corresponding to the current parameter values of model `m`.
 
 ### Inputs
 
-- `m`: model object
-- `data`: DataFrame or matrix of data for observables
-- `syses`: a vector of `System` objects specifying state-space
-  system matrices for each draw
-- `z0`: an optional `Nz` x 1 initial state vector
-- `vz0`: an optional `Nz` x `Nz` covariance matrix of an initial state vector
-- `allout`: an optional keyword argument indicating whether we want optional
-  output variables returned as well
-- `include_presample`: indicates whether to include presample periods in the
-  returned vector of `Kalman` objects
+- `m::AbstractModel`: model object
+- `data`: `DataFrame` or `nobs` x `hist_periods` `Matrix{S}` of data for
+  observables. This should include the conditional period if `cond_type in
+  [:semi, :full]`
+- `system::System`: `System` object specifying state-space system matrices for
+  the model
+- `z0::Vector{S}`: optional `Nz` x 1 initial state vector
+- `vz0::Matrix{S}`: optional `Nz` x `Nz` initial state covariance matrix
+
+where `S<:AbstractFloat`.
+
+### Keyword Arguments
+
+- `cond_type::Symbol`: conditional case. See `forecast_all` for documentation of
+  all `cond_type` options.
+- `allout::Bool`: optional keyword argument indicating whether we want optional
+  output variables returned as well. Defaults to `false`.
+- `include_presample::Bool`: indicates whether to include presample periods in
+  the returned vector of `Kalman` objects. Defaults to `true`.
 
 ### Outputs
 
-`filter` returns a vector of `Kalman` objects, which each contain the following fields:
-
-- `logl`: value of the average log likelihood function of the SSM under assumption that
-  observation noise ϵ(t) is normally distributed
-- `pred`: a `Nz` x `T+lead` matrix containing one-step predicted state vectors.
-- `vpred`: a `Nz` x `Nz` x `T+lead` matrix containing mean square errors of predicted
-  state vectors.
-- `filt`: an optional `Nz` x `T` matrix containing filtered state vectors.
-- `vfilt`: an optional `Nz` x `Nz` x `T` matrix containing mean square errors of filtered
-  state vectors.
+- `kal::Kalman`: see `Kalman` documentation for more details.
 """
-function filter{S<:AbstractFloat}(m::AbstractModel, df::DataFrame, syses::Vector{System{S}},
-                                  z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
-                                  cond_type::Symbol = :none, lead::Int = 0, allout::Bool = false,
-                                  include_presample::Bool = true)
 
-    # Convert the DataFrame to a data matrix without altering the original dataframe
+function filter{S<:AbstractFloat}(m::AbstractModel, df::DataFrame, system::System{S},
+    z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
+    cond_type::Symbol = :none, allout::Bool = false,
+    include_presample::Bool = true)
+
     data = df_to_matrix(m, df; cond_type = cond_type)
-    filter(m, data, syses, z0, vz0; lead = lead, allout = allout, include_presample = include_presample)
+    filter(m, data, system, z0, vz0; allout = allout,
+           include_presample = include_presample)
 end
 
-function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, syses::Vector{System{S}},
-                                  z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
-                                  lead::Int = 0, allout::Bool = false, include_presample::Bool = true)
 
-    # numbers of useful things
-    ndraws = size(syses, 1)
+function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, system::System{S},
+    z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
+    allout::Bool = false, include_presample::Bool = true)
 
-    # Broadcast models and data matrices
-    models = fill(m, ndraws)
-    datas = fill(data, ndraws)
-    z0s = fill(z0, ndraws)
-    vz0s = fill(vz0, ndraws)
-    allouts = if allout
-        fill(AllOut(), ndraws)
-    else
-        fill(MinimumOut(), ndraws)
-    end
-    include_presamples = if include_presample
-        fill(IncludePresample(), ndraws)
-    else
-        fill(ExcludePresample(), ndraws)
-    end
+    # Unpack system
+    T, R, C     = system[:TTT], system[:RRR], system[:CCC]
+    Q, Z, D     = system[:QQ], system[:ZZ], system[:DD]
+    M, E, V_all = system[:MM], system[:EE], system[:VVall]
 
-    # Call filter over all draws
-    if use_parallel_workers(m) && nworkers() > 1
-        mapfcn = pmap
-    else
-        mapfcn = map
-    end
-
-    kals = mapfcn(DSGE.tricky_filter, allouts, include_presamples, models, datas, syses, z0s, vz0s)
-
-    return [kal::Kalman{S} for kal in kals]
-end
-
-tricky_filter(::AllOut, ::IncludePresample, m::AbstractModel, data::Matrix, sys::System, z0::Vector, vz0::Matrix) =
-    filter(m, data, sys, z0, vz0; allout = true, include_presample = true)
-tricky_filter(::AllOut, ::ExcludePresample, m::AbstractModel, data::Matrix, sys::System, z0::Vector, vz0::Matrix) =
-    filter(m, data, sys, z0, vz0; allout = true, include_presample = false)
-tricky_filter(::MinimumOut, ::IncludePresample, m::AbstractModel, data::Matrix, sys::System, z0::Vector, vz0::Matrix) =
-    filter(m, data, sys, z0, vz0; allout = false, include_presample = true)
-tricky_filter(::MinimumOut, ::ExcludePresample, m::AbstractModel, data::Matrix, sys::System, z0::Vector, vz0::Matrix) =
-    filter(m, data, sys, z0, vz0; allout = false, include_presample = false)
-
-function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, sys::System{S},
-                                  z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
-                                  lead::Int = 0, allout::Bool = false, include_presample::Bool = true)
-
-    # pull out the elements of sys
-    TTT    = sys[:TTT]
-    RRR    = sys[:RRR]
-    CCC    = sys[:CCC]
-    QQ     = sys[:QQ]
-    ZZ     = sys[:ZZ]
-    DD     = sys[:DD]
-    VVall  = sys[:VVall]
-
-    # Call the appropriate version of the Kalman filter
     if n_anticipated_shocks(m) > 0
-
         # We have 3 regimes: presample, main sample, and expected-rate sample
         # (starting at index_zlb_start)
-        kal, _, _, _ = kalman_filter_2part(m, data, TTT, RRR, CCC, z0, vz0;
-            lead = lead, allout = allout, include_presample = include_presample)
+        kal, _, _, _ = kalman_filter_2part(m, data, T, R, C, z0, vz0;
+                           ZZ = Z, DD = D, QQ = Q, MM = M, EE = E, VVall = V_all,
+                           allout = true, include_presample = true)
     else
-        # regular Kalman filter with no regime-switching
-        kal = kalman_filter(m, data, TTT, CCC, ZZ, DD, VVall, z0, vz0;
-            lead = lead, allout = allout, include_presample = include_presample)
+        # Regular Kalman filter with no regime-switching
+        kal = kalman_filter(m, data, T, C, Z, D, V_all, z0, vz0;
+            allout = allout, include_presample = include_presample)
     end
 
     return kal
@@ -133,150 +71,116 @@ end
 
 """
 ```
-filterandsmooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
-    syses::Vector{System{S}}, z0::Vector{S} = Vector{S}(), vz0::Matrix{S} =
-    Matrix{S}(); lead::Int = 0, allout::Bool = false, include_presample::Bool =
-    true)
-
-filterandsmooth{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
-    syses::Vector{System{S}}, z0::Vector{S} = Vector{S}(), vz0::Matrix{S} =
-    Matrix{S}(); lead::Int = 0, allout::Bool = false, include_presample::Bool =
-    true)
+filterandsmooth(m, data, system, z0 = Vector{S}(), vz0 = Matrix{S}();
+    cond_type = :none)
 ```
 
 Computes and returns the smoothed states, shocks, and pseudo-observables, as
-well as the Kalman filter outputs, for every state-space system in `syses`.
+well as the filtered states for the last historical period, for the state-space
+system given by `system`.
 
 ### Inputs
 
-- `m`: model object
-- `data`: DataFrame or matrix of data for observables
-- `syses`: a vector of `System` objects specifying state-space
-  system matrices for each draw
-- `z0`: an optional `Nz` x 1 initial state vector
-- `vz0`: an optional `Nz` x `Nz` covariance matrix of an initial state vector
+- `m::AbstractModel`: model object
+- `data`: `DataFrame` or `nobs` x `hist_periods` `Matrix{S}` of data for
+  observables. This should include the conditional period if `cond_type in
+  [:semi, :full]`
+- `system::System{S}`: `System` objects specifying state-space system matrices
+- `z0::Vector{S}`: optional `Nz` x 1 initial state vector
+- `vz0::Matrix{S}`: optional `Nz` x `Nz` initial state covariance matrix
+
+where `S<:AbstractFloat`.
+
+### Keyword Arguments
+
+- `cond_type::Symbol`: conditional case. See `forecast_all` for documentation of
+  all cond_type options.
 
 ### Outputs
 
-- `states`: 3-dimensional array of size `nstates` x `hist_periods` x `ndraws`
-  consisting of smoothed states for each draw
-- `shocks`: 3-dimensional array of size `nshocks` x `hist_periods` x `ndraws`
-  consisting of smoothed shocks for each draw
-- `pseudo`: 3-dimensional array of size `npseudo` x `hist_periods` x `ndraws`
-  consisting of pseudo-observables computed from the smoothed states for each
-  draw
-- `kals`: vector of Kalman objects, of length `ndraws`
+- `states::Matrix{S}`: matrix of size `nstates` x `hist_periods` of smoothed
+  states
+- `shocks::Matrix{S}`: matrix of size `nshocks` x `hist_periods` of smoothed
+  shocks
+- `pseudo::Matrix{S}`: matrix of size `npseudo` x `hist_periods` of
+  pseudo-observables computed from the smoothed states. If
+  `!forecast_pseudoobservables(m)`, `pseudo` will be empty.
 
-where `states` and `shocks` are returned from the smoother specified by
-`smoother_flag(m)`.
+### Notes
+
+`states` and `shocks` are returned from the smoother specified by
+`forecast_smoother(m)`, which defaults to `:durbin_koopman`. This can be
+overridden by calling
+
+```
+m <= Setting(:forecast_smoother, :kalman_smoother))
+```
+
+before calling `filterandsmooth`.
 """
 function filterandsmooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
-                                           syses::Vector{System{S}},
-                                           z0::Vector{S} = Vector{S}(),
-                                           vz0::Matrix{S} = Matrix{S}();
-                                           cond_type::Symbol = :none,
-                                           lead::Int = 0, allout::Bool = false)
+    system::System{S}, z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
+    cond_type::Symbol = :none)
 
     data = df_to_matrix(m, df; cond_type = cond_type)
-    filterandsmooth(m, data, syses, z0, vz0; lead = lead)
+    filterandsmooth(m, data, system, z0, vz0)
 end
 
 function filterandsmooth{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
-                                           syses::Vector{System{S}},
-                                           z0::Vector{S} = Vector{S}(),
-                                           vz0::Matrix{S} = Matrix{S}();
-                                           lead::Int = 0)
-    # numbers of useful things
-    ndraws = length(syses)
 
-    # Broadcast models and data matrices
-    models = fill(m, ndraws)
-    datas = fill(data, ndraws)
-    z0s = fill(z0, ndraws)
-    vz0s = fill(vz0, ndraws)
+    system::System{S}, z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}())
 
-    # Call filter over all draws
-    if use_parallel_workers(m) && nworkers() > 1
-        mapfcn = pmap
+    # 0. Unpack system
+    T, R, C     = system[:TTT], system[:RRR], system[:CCC]
+    Q, Z, D     = system[:QQ], system[:ZZ], system[:DD]
+    M, E, V_all = system[:MM], system[:EE], system[:VVall]
+
+    Z_pseudo, D_pseudo = if forecast_pseudoobservables(m)
+        system[:ZZ_pseudo], system[:DD_pseudo]
     else
-        mapfcn = map
+        Matrix{S}(), Vector{S}()
     end
-    out = mapfcn(filterandsmooth, models, datas, syses, z0s, vz0s)
 
-    # Unpack returned vector of tuples
-    states = [x[1]::Matrix{S} for x in out]
-    shocks = [x[2]::Matrix{S} for x in out]
-    pseudo = [x[3]::Matrix{S} for x in out]
-    kals   = [x[4]::Kalman{S} for x in out]
-
-    # Splat vectors of matrices into 3-D arrays
-    states = cat(3, states...)
-    shocks = cat(3, shocks...)
-    pseudo = cat(3, pseudo...)
-
-    return states, shocks, pseudo, kals
-end
-
-function filterandsmooth{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, sys::System{S},
-                                           z0::Vector{S} = Vector{S}(), vz0::Matrix{S} = Matrix{S}();
-                                           lead::Int = 0)
     ## 1. Filter
 
-    # pull out the elements of sys
-    TTT   = sys[:TTT]
-    RRR   = sys[:RRR]
-    CCC   = sys[:CCC]
-    QQ    = sys[:QQ]
-    ZZ    = sys[:ZZ]
-    DD    = sys[:DD]
-    VVall = sys[:VVall]
-
-    # Call the appropriate version of the Kalman filter
     if n_anticipated_shocks(m) > 0
-
         # We have 3 regimes: presample, main sample, and expected-rate sample
         # (starting at index_zlb_start)
-        kal, _, _, _ = kalman_filter_2part(m, data, TTT, RRR, CCC, z0, vz0; lead =
-            lead, allout = true, include_presample = true)
-    elseif n_forcing_processes(m) > 0
-        # reduced form model w/ forcing processes
-        kal = kalman_filter(m, data[1:n_observables(m),:], TTT, CCC, ZZ, DD, VVall, z0, vz0;
-                            lead = lead, allout=true, include_presample = true)
+        kal, _, _, _ = kalman_filter_2part(m, data, T, R, C, z0, vz0;
+                           ZZ = Z, DD = D, QQ = Q, MM = M, EE = E, VVall = V_all,
+                           allout = true, include_presample = true)
     else
-        # regular Kalman filter with no regime-switching
-        kal = kalman_filter(m, data, TTT, CCC, ZZ, DD, VVall, z0, vz0;
-            lead = lead, allout = true, include_presample = true)
+        # Regular Kalman filter with no regime-switching
+        kal = kalman_filter(m, data, T, C, Z, D, V_all, z0, vz0;
+                  allout = true, include_presample = true)
     end
 
     ## 2. Smooth
 
     states, shocks = if forecast_smoother(m) == :kalman
-        if n_forcing_processes(m) > 0
-            kalman_smoother(m, data[1:n_observables(m),:], TTT, RRR, CCC, QQ, ZZ, DD,
-                            kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
-        else
-            kalman_smoother(m, data, sys, kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
-        end
+        kalman_smoother(m, data, T, R, C, Q, Z, D,
+                        kal[:z0], kal[:vz0], kal[:pred], kal[:vpred];
+                        include_presample = true)
     elseif forecast_smoother(m) == :durbin_koopman
-        if n_forcing_processes(m) > 0
-            durbin_koopman_smoother(m, data[1:n_observables(m),:],TTT, RRR, CCC, QQ, ZZ, DD,
-                                    kal[:z0], kal[:vz0])
-        else
-            durbin_koopman_smoother(m, data, sys, kal[:z0], kal[:vz0])
-        end
+        durbin_koopman_smoother(m, data, T, R, C, Q, Z, D, M, E, V_all,
+                                kal[:z0], kal[:vz0];
+                                include_presample = true)
     end
 
+    # Index out last presample states, used to compute the deterministic trend
+    t0 = n_presample_periods(m)
+    t1 = index_mainsample_start(m)
+    initial_states = states[:, t0]
+    states = states[:, t1:end]
+    shocks = shocks[:, t1:end]
+
     ## 3. Map smoothed states to pseudo-observables
+
     pseudo = if forecast_pseudoobservables(m)
-
-        _, pseudo_mapping = pseudo_measurement(m)
-        Z_pseudo = pseudo_mapping.ZZ
-        D_pseudo = pseudo_mapping.DD
-
         D_pseudo .+ Z_pseudo * states
     else
         Matrix{S}()
     end
 
-    return states, shocks, pseudo, kal
+    return states, shocks, pseudo, initial_states
 end

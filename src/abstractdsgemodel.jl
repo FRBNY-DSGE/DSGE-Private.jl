@@ -122,26 +122,47 @@ n_anticipated_shocks_padding(m::AbstractModel) = get_setting(m, :n_anticipated_s
 
 # Dates, indices, number of periods for each regime
 date_presample_start(m::AbstractModel) = get_setting(m, :date_presample_start)
-date_prezlb_start(m::AbstractModel) = get_setting(m, :date_prezlb_start)
+date_mainsample_start(m::AbstractModel) = get_setting(m, :date_mainsample_start)
 date_zlb_start(m::AbstractModel) = get_setting(m, :date_zlb_start)
 
-date_presample_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_prezlb_start) - Dates.Month(3))
+date_presample_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_mainsample_start) - Dates.Month(3))
 date_prezlb_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_zlb_start) - Dates.Month(3))
-date_zlb_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_forecast_start) - Dates.Month(3))
+date_mainsample_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_forecast_start) - Dates.Month(3))
 date_conditional_end(m::AbstractModel) = get_setting(m, :date_conditional_end)
 
 index_presample_start(m::AbstractModel) = 1
-index_prezlb_start(m::AbstractModel) = subtract_quarters(date_prezlb_start(m), date_presample_start(m)) + 1
+index_mainsample_start(m::AbstractModel) = subtract_quarters(date_mainsample_start(m), date_presample_start(m)) + 1
 index_zlb_start(m::AbstractModel) = subtract_quarters(date_zlb_start(m), date_presample_start(m)) + 1
 index_forecast_start(m::AbstractModel) = subtract_quarters(date_forecast_start(m), date_presample_start(m)) + 1
 
-n_presample_periods(m::AbstractModel) = subtract_quarters(date_prezlb_start(m), date_presample_start(m))
-n_prezlb_periods(m::AbstractModel) = subtract_quarters(date_zlb_start(m), date_prezlb_start(m))
-n_zlb_periods(m::AbstractModel) = subtract_quarters(date_forecast_start(m), date_zlb_start(m))
+"""
+```
+index_shockdec_start(m::AbstractModel)
+```
 
-inds_presample_periods(m::AbstractModel) = collect(index_presample_start(m):(index_prezlb_start(m)-1))
-inds_prezlb_periods(m::AbstractModel) = collect(index_prezlb_start(m):(index_zlb_start(m)-1))
+Returns the index starting from which the shock decomposition is saved, where 1 is the index corresponding to date_mainsample_start(m).
+"""
+index_shockdec_start(m::AbstractModel) = subtract_quarters(date_shockdec_start(m), date_mainsample_start(m)) + 1
+
+"""
+```
+index_shockdec_end(m::AbstractModel)
+```
+
+Returns the last index for which the shock decomposition is saved, where 1 is the index corresponding to date_mainsample_start(m).
+"""
+index_shockdec_end(m::AbstractModel) = subtract_quarters(date_shockdec_end(m), date_mainsample_start(m)) + 1
+
+n_presample_periods(m::AbstractModel)   = subtract_quarters(date_mainsample_start(m), date_presample_start(m))
+n_prezlb_periods(m::AbstractModel)      = subtract_quarters(date_zlb_start(m), date_mainsample_start(m))
+n_zlb_periods(m::AbstractModel)         = subtract_quarters(date_forecast_start(m), date_zlb_start(m))
+n_mainsample_periods(m::AbstractModel)  = subtract_quarters(date_forecast_start(m), date_mainsample_start(m))
+n_conditional_periods(m::AbstractModel) = subtract_quarters(date_conditional_end(m), date_mainsample_end(m))
+
+inds_presample_periods(m::AbstractModel) = collect(index_presample_start(m):(index_mainsample_start(m)-1))
+inds_prezlb_periods(m::AbstractModel) = collect(index_mainsample_start(m):(index_zlb_start(m)-1))
 inds_zlb_periods(m::AbstractModel) = collect(index_zlb_start(m):(index_forecast_start(m)-1))
+inds_mainsample_periods(m::AbstractModel) = collect(index_mainsample_start(m):(index_forecast_start(m)-1))
 
 # Number of a few things that are useful
 n_states(m::AbstractModel)                 = length(m.endogenous_states)
@@ -158,11 +179,58 @@ n_parameters_free(m::AbstractModel)        = sum([!α.fixed for α in m.paramete
 # flag for reduced form models
 reduced_form(m::AbstractModel) = get_setting(m,:reduced_form)
 
-# Parse population mnemonic into 2 symbols from one
-function parse_population_mnemonic(m::AbstractModel)
-    map(symbol, split(string(get_setting(m, :population_mnemonic)), DSGE_DATASERIES_DELIM))
+function n_pseudoobservables(m::AbstractModel)
+    if forecast_pseudoobservables(m)
+        pseudo, _ = pseudo_measurement(m)
+        return length(pseudo)
+    else
+        return 0
+    end
 end
-    
+
+"""
+```
+get_key(m, class, index)
+```
+
+Returns the name of the state (`class = :state`), observable (`obs`),
+pseudo-observable (`pseudo`), or shock (`shock`) corresponding to the given
+`index`.
+"""
+function get_key(m::AbstractModel, class::Symbol, index::Int)
+    dict = if class == :state
+        m.endogenous_states
+    elseif class == :obs
+        m.observables
+    elseif class == :pseudo
+        _, pseudo_mapping = pseudo_measurement(m)
+        pseudo_mapping.inds
+    elseif class == :shock
+        m.exogenous_shocks
+    else
+        throw(ArgumentError("Invalid class :$class. Must be :state, :obs, :pseudo, or :shock"))
+    end
+
+    out = Base.filter(key -> dict[key] == index, collect(keys(dict)))
+    if length(out) == 0
+        error("Key corresponding to index $index not found for class :$class")
+    elseif length(out) > 1
+        error("Multiple keys corresponding to index $index found for class :$class")
+    else
+        return out[1]
+    end
+end
+
+# Parse population mnemonic into 2 Nullable{Symbol}s from one
+function parse_population_mnemonic(m::AbstractModel)
+    mnemonic = get_setting(m, :population_mnemonic)
+    if isnull(mnemonic)
+        return [Nullable{Symbol}(), Nullable{Symbol}()]
+    else
+        return map(s -> Nullable(symbol(s)), split(string(get(mnemonic)), DSGE_DATASERIES_DELIM))
+    end
+end
+
 # From an augmented state space with anticipated policy shocks, get indices
 # corresponding to pre-ZLB states, shocks, and observables
 function inds_states_no_ant(m::AbstractModel)
@@ -223,21 +291,52 @@ n_mh_blocks(m::AbstractModel)      =  get_setting(m, :n_mh_blocks)
 n_mh_simulations(m::AbstractModel) =  get_setting(m, :n_mh_simulations)
 n_mh_burn(m::AbstractModel)        =  get_setting(m, :n_mh_burn)
 mh_thin(m::AbstractModel)          =  get_setting(m, :mh_thin)
-n_draws(m::AbstractModel)          =  round(Int,(n_mh_blocks(m) - n_mh_burn(m)) * (n_mh_simulations(m)/mh_thin(m)))
 
 # Interface for forecast settings
 date_forecast_start(m::AbstractModel)   = get_setting(m, :date_forecast_start)
-forecast_tdist_df_val(m::AbstractModel) = get_setting(m, :forecast_tdist_df_val)
-forecast_tdist_shocks(m::AbstractModel) = get_setting(m, :forecast_tdist_shocks)
-forecast_kill_shocks(m::AbstractModel)  = get_setting(m, :forecast_kill_shocks)
-forecast_smoother(m::AbstractModel)     = get_setting(m, :forecast_smoother)
+forecast_block_size(m::AbstractModel)   = get_setting(m, :forecast_block_size)
+forecast_start_block(m::AbstractModel)  = get_setting(m, :forecast_start_block)
 forecast_input_file_overrides(m::AbstractModel) = get_setting(m, :forecast_input_file_overrides)
 forecast_pseudoobservables(m::AbstractModel) = get_setting(m, :forecast_pseudoobservables)
+forecast_smoother(m::AbstractModel)     = get_setting(m, :forecast_smoother)
+forecast_draw_z0(m::AbstractModel)      = get_setting(m, :forecast_draw_z0)
+forecast_kill_shocks(m::AbstractModel)  = get_setting(m, :forecast_kill_shocks)
+forecast_tdist_df_val(m::AbstractModel) = get_setting(m, :forecast_tdist_df_val)
+forecast_tdist_shocks(m::AbstractModel) = get_setting(m, :forecast_tdist_shocks)
+forecast_zlb_value(m::AbstractModel)    = get_setting(m, :forecast_zlb_value)
+impulse_response_horizons(m::AbstractModel) = get_setting(m, :impulse_response_horizons)
+n_shockdec_periods(m::AbstractModel)    = index_shockdec_end(m) - index_shockdec_start(m) + 1
 
-function forecast_horizons(m::AbstractModel)
-    t0 = get_setting(m, :date_forecast_start)
-    t1 = get_setting(m, :date_forecast_end)
-    return 1 + subtract_quarters(t1, t0)
+function date_forecast_end(m::AbstractModel)
+    date = date_forecast_start(m) + Dates.Month(3 * (forecast_horizons(m)-1))
+    return Dates.lastdayofquarter(date)
+end
+
+function forecast_horizons(m::AbstractModel; cond_type::Symbol = :none)
+    horizons = get_setting(m, :forecast_horizons)
+    if cond_type == :none
+        return horizons
+    else
+        return horizons - n_conditional_periods(m)
+    end
+end
+
+function date_shockdec_start(m::AbstractModel)
+    startdate = get_setting(m, :shockdec_startdate)
+    if !isnull(startdate)
+        return get(startdate)
+    else
+        return date_mainsample_start(m)
+    end
+end
+
+function date_shockdec_end(m::AbstractModel)
+    enddate =  get_setting(m, :shockdec_enddate)
+    if !isnull(enddate)
+        return get(enddate)
+    else
+        return date_forecast_end(m)
+    end
 end
 
 """
@@ -361,9 +460,9 @@ for (str, fn) in zip(strs, fns)
     @eval begin
         # First eval function
         function $fn{T<:AbstractString}(m::AbstractModel,
-                                             out_type::T,
-                                             file_name::T="",
-                                             filestring_addl::Vector{T}=Vector{T}())
+                                        out_type::T,
+                                        file_name::T = "",
+                                        filestring_addl::Vector{T}=Vector{T}())
             return savepath(m, out_type, $(string(str)), file_name, filestring_addl)
         end
 
@@ -389,28 +488,38 @@ end
 function savepath{T<:AbstractString}(m::AbstractModel,
                                      out_type::T,
                                      sub_type::T,
-                                     file_name::T="",
-                                     filestring_addl::Vector{T}=Vector{T}())
-    # Containing dir
-    path = joinpath(saveroot(m), "output_data", spec(m), subspec(m), out_type, sub_type)
-    if !isdir(path)
-        mkpath(path)
-    end
+                                     file_name::T = "",
+                                     filestring_addl::Vector{T} = Vector{T}())
+    # Containing directory
+    dir = ASCIIString(joinpath(saveroot(m), "output_data", spec(m), subspec(m), out_type, sub_type))
 
-    # File with model string inserted
     if !isempty(file_name)
-        if isempty(filestring_addl)
-            myfilestring = filestring(m)
-        else
-            myfilestring = filestring(m, filestring_addl)
-        end
-        (base, ext) = splitext(file_name)
-        file_name_detail = base * myfilestring * ext
-        path = joinpath(path, file_name_detail)
+        base = filestring_base(m)
+        return savepath(dir, file_name, base, filestring_addl)
+    else
+        return dir
+    end
+end
+
+function savepath{T<:AbstractString}(dir::T,
+                                     file_name::T = "",
+                                     filestring_base::Vector{T} = Vector{T}(),
+                                     filestring_addl::Vector{T} = Vector{T}())
+    if !isdir(dir)
+        mkpath(dir)
     end
 
-    return path
+    if !isempty(file_name)
+        (base, ext) = splitext(file_name)
+        myfilestring = filestring(filestring_base, filestring_addl)
+        file_name_detail = base * myfilestring * ext
+
+        return joinpath(dir, file_name_detail)
+    else
+        return dir
+    end
 end
+
 
 # Input data handled slightly differently, because it is not model-specific.
 """
@@ -456,23 +565,36 @@ function inpath{T<:AbstractString}(m::AbstractModel, in_type::T, file_name::T=""
     return path
 end
 
-filestring(m::AbstractModel) = filestring(m, Vector{AbstractString}())
-filestring(m::AbstractModel, d::AbstractString) = filestring(m, [d])
-function filestring{T<:AbstractString}(m::AbstractModel,
-                                        d::Vector{T})
+function filestring_base(m::AbstractModel)
     if !m.testing
-        filestrings = Vector{T}()
+        base = Vector{ASCIIString}()
         for (skey, sval) in m.settings
             if sval.print
-                push!(filestrings, to_filestring(sval))
+                push!(base, to_filestring(sval))
             end
         end
-        append!(filestrings, d)
-        sort!(filestrings)
-        return "_"*join(filestrings, "_")
+        return base
     else
-        return "_test"
+        return ["test"]
     end
+end
+
+filestring(m::AbstractModel) = filestring(m, Vector{ASCIIString}())
+filestring(m::AbstractModel, d::AbstractString) = filestring(m, [ASCIIString(d)])
+function filestring{T<:AbstractString}(m::AbstractModel, d::Vector{T})
+    base = filestring_base(m)
+    return filestring(base, d)
+end
+
+function filestring{T<:AbstractString}(base::Vector{T}, d::Vector{T})
+    filestrings = vcat(base, d)
+    sort!(filestrings)
+    return "_" * join(filestrings, "_")
+end
+
+function filestring{T<:AbstractString}(d::Vector{T})
+    sort!(d)
+    return "_" * join(d, "_")
 end
 
 """

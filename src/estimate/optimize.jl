@@ -27,8 +27,6 @@ function optimize!(m::AbstractModel,
                    show_trace::Bool     = false,
                    extended_trace::Bool = false,
                    mle::Bool            = false,  # default from estimate.jl
-                   z0::Vector{Float64}  = Vector{Float64}(),
-                   vz0::Matrix{Float64} = Matrix{Float64}(),
                    step_size::Float64   = .01,
                    verbose::Symbol      = :none)
 
@@ -55,22 +53,18 @@ function optimize!(m::AbstractModel,
         try
             x_model[para_free_inds] = x_opt
             transform_to_model_space!(m,x_model)
-            if mle
-                out = -likelihood(m, data; catch_errors=true, z0=z0, vz0=vz0)[1]
-            else
-                out = -posterior(m, data; catch_errors=true, z0=z0, vz0=vz0)[:post]
-            end
-            @assert !isnan(out) && isfinite(out)
-            return out
-        catch err
-            if isa(err,InterruptException)
-                error("Optimization exited in f_opt")
-            else
-                #info("Could not evaluate likelihood")
-                return 1e10#Inf
-            end
+        catch
+            return Inf
         end
+        if mle
+            out = -likelihood(m, data; catch_errors=true)
+        else
+            out = -posterior(m, data; catch_errors=true)
+        end
+        out = !isnan(out) ? out : Inf
+        return out
     end
+
 
     function neighbor_dsge!(x, x_proposal)
         # This function computes a proposal "next step" during simulated annealing.
@@ -165,7 +159,7 @@ function optimize!(m::AbstractModel,
     transform_to_model_space!(m, x_model)
 
     # Match original dimensions
-    out.minimizer = x_model
+    out.minimizer = map(θ->θ.value, m.parameters)
 
     H = zeros(n_parameters(m), n_parameters(m))
     if H_ != nothing

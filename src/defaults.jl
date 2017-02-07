@@ -31,13 +31,13 @@ function default_settings!(m::AbstractModel)
         "Observables used in semiconditional forecasts")
     settings[:use_population_forecast] = Setting(:use_population_forecast, false,
         "Whether to use population forecasts as data")
-    settings[:population_mnemonic] = Setting(:population_mnemonic, :CNP16OV__FRED,
-        "Mnemonic of FRED data series for computing per-capita values")
+    settings[:population_mnemonic] = Setting(:population_mnemonic, Nullable(:CNP16OV__FRED),
+        "Mnemonic of FRED data series for computing per-capita values (a Nullable{Symbol})")
 
     # Dates
     settings[:date_presample_start] = Setting(:date_presample_start, quartertodate("1959-Q3"),
         "Start date of pre-sample")
-    settings[:date_prezlb_start] = Setting(:date_prezlb_start, quartertodate("1960-Q1"),
+    settings[:date_mainsample_start] = Setting(:date_mainsample_start, quartertodate("1960-Q1"),
         "Start date of main sample")
     settings[:date_zlb_start] = Setting(:date_zlb_start, quartertodate("2008-Q4"),
         "Start date of zero lower bound regime")
@@ -45,8 +45,6 @@ function default_settings!(m::AbstractModel)
         "Start date of forecast period")
     settings[:date_conditional_end] = Setting(:date_conditional_end, Dates.lastdayofquarter(Dates.today()),
         "End date of conditional data period")
-    settings[:date_forecast_end] = Setting(:date_forecast_end, Dates.lastdayofquarter(Dates.today()+Dates.Month(60*3)),
-        "End date of forecast period")
 
     # Anticipated shocks
     settings[:n_anticipated_shocks] = Setting(:n_anticipated_shocks, 0,
@@ -75,7 +73,7 @@ function default_settings!(m::AbstractModel)
 
     # Metropolis-Hastings
     settings[:n_mh_simulations] = Setting(:n_mh_simulations, 5000,
-        "Number of draws per block in Metropolis-Hastings")
+        "Number of draws saved (after thinning) per block in Metropolis-Hastings")
     settings[:n_mh_blocks] = Setting(:n_mh_blocks, 22,
         "Number of blocks for Metropolis-Hastings")
     settings[:n_mh_burn] = Setting(:n_mh_burn, 2,
@@ -84,37 +82,41 @@ function default_settings!(m::AbstractModel)
         "Metropolis-Hastings thinning step")
 
     # Forecast
-    settings[:forecast_observables] = Setting(:forecast_observables, :all,
-        "Observables to forecast")
+    settings[:forecast_block_size] = Setting(:n_forecast_blocks, 5000,
+        "Number of draws in each forecast block (before thinning by forecast_jstep)")
+    settings[:forecast_start_block] = Setting(:forecast_start_block, Nullable{Int64}(),
+        "Block at which to resume forecasting (possibly null)")
     settings[:forecast_input_file_overrides] = Setting(:forecast_input_file_overrides,
         Dict{Symbol, ASCIIString}())
+    settings[:forecast_jstep] = Setting(:forecast_jstep, 5,
+        "Forecast thinning step (in addition to MH thinning step")
     settings[:forecast_pseudoobservables] = Setting(:forecast_pseudoobservables, false,
-        "Pseudo-observables to forecast")
+        "Whether to forecast pseudo-observables")
+    settings[:forecast_smoother] = Setting(:forecast_smoother, :durbin_koopman,
+        "Choice of smoother to use during forecasting. Can be :kalman, :durbin_koopman, or eventually :carter_kohn")
+    settings[:forecast_horizons] = Setting(:forecast_horizons, 60,
+        "Number of periods to forecast ahead")
+    settings[:forecast_draw_z0] = Setting(:forecast_draw_z0, false,
+        "Whether to draw an initial state from N(s_{T|T}, P_{T|T}) to start the forecast")
     settings[:forecast_kill_shocks] = Setting(:forecast_kill_shocks, false,
         "Kill (set to 0) all shocks in forecast")
     settings[:forecast_tdist_shocks] = Setting(:forecast_tdist_shocks, false,
         "Draw Students-t distributed shocks in forecast")
-    settings[:forecast_tdist_draw_df] = Setting(:forecast_tdist_draw_df, false,
-        "Draw Students-t degrees of freedom parameter")
     settings[:forecast_tdist_df_val] = Setting(:forecast_tdist_df_val, 15,
         "Students-t degrees of freedom fixed value")
-    settings[:forecast_smoother] = Setting(:forecast_smoother, :durbin_koopman,
-        "Choice of smoother to use during forecasting. Can be :kalman, :durbin_koopman, or eventually :carter_kohn")
-    settings[:forecast_jstep] = Setting(:forecast_jstep, 5,
-        "Forecast thinning step (in addition to MH thinning step")
-    settings[:forecast_enforce_zlb] = Setting(:forecast_enforce_zlb, true,
-        "Enforce zero lower bound in forecast periods")
-    settings[:shockdec_startindex] = Setting(:shockdec_startindex, 190,
-        "Index of start of shock decomposition output period")
-    settings[:shockdec_endindex] = Setting(:shockdec_endindex, 50000,
-        "Index of end of shock decomposition output period")
-    settings[:shockdec_whichshocks] = Setting(:shockdec_whichshocks, :all,
-        "Sets of shocks for which to conduct shock decomposition")
-
+    settings[:forecast_zlb_value] = Setting(:forecast_zlb_value, 0.13/4,
+        "Value of the zero lower bound in forecast periods, if we choose to enforce it")
+    settings[:shockdec_startdate] = Setting(:shockdec_startdate, Nullable{Date}(),
+        "Date of start of shock decomposition output period. If null, then shockdec starts at date_mainsample_start")
+    settings[:shockdec_enddate] = Setting(:shockdec_enddate, Nullable{Date}(),
+        "Date of end of shock decomposition output period. If null, then shockdec ends at date_forecast_end")
+    settings[:impulse_response_horizons] = Setting(:impulse_response_horizons, 40,
+        "Number of periods for which to calculate an impulse response")
 	# Reduced Form
 	settings[:forcing_index_start] = Setting(:forcing_index_start, 0, "Index that marks beginning of forcing processes in data matrix")
         settings[:reduced_form] = Setting(:reduced_form, false, "flag for whether model is reduced form or structural")
 
+ 
     return settings
 end
 
@@ -173,12 +175,12 @@ function default_test_settings!(m::AbstractModel)
     # Forecast
     test[:date_forecast_start] = Setting(:date_forecast_start, quartertodate("2015-Q4"),
         "Start date of forecast period")
-    test[:date_forecast_end] = Setting(:date_forecast_end, quartertodate("2016-Q1"),
-        "End date of forecast period")
+    test[:forecast_horizons] = Setting(:forecast_horizons, 2,
+        "Number of periods to forecast ahead")
     test[:forecast_jstep] = Setting(:forecast_jstep, 1,
         "Forecast thinning step (in addition to MH thinning step")
-    test[:shockdec_whichshocks] = Setting(:shockdec_whichshocks, :all, #TODO
-        "Sets of shocks for which to conduct shock decomposition")
+    test[:impulse_response_horizons] = Setting(:impulse_response_horizons, 2,
+        "Number of periods for which to calculate an impulse response")
 
     return test
 end

@@ -1,222 +1,169 @@
 """
 ```
-forecast{T<:AbstractFloat}(m::AbstractModel, sys::Vector{System{T}},
-    initial_state_draws::Vector{Vector{T}}; shock_distributions::Union{Distribution,
-    Matrix{T}} = Matrix{T}())
-```
+forecast(m, system, kal; enforce_zlb = false, shocks = Matrix{S}())
 
-Computes forecasts for all draws, given a model object, system matrices, and a
-matrix of shocks or a distribution of shocks
+forecast(m, system, z0; enforce_zlb = false, shocks = Matrix{S}())
+
+forecast(system, z0, shocks; enforce_zlb = false)
+```
 
 ### Inputs
 
-- `m`: model object
-- `syses::Vector{System}`: a vector of `System` objects specifying state-space
-  system matrices for each draw
-- `initial_state_draws`: a vector of state vectors in the final historical period
-- `shock_distributions`: a `Distribution` to draw shock values from, or
-  a matrix specifying the shock innovations in each period
+- `m::AbstractModel`: model object. Only needed for the method in which `shocks`
+  are not provided.
+- `system::System{S}`: state-space system matrices
+- `kal::Kalman{S}` or `z0::Vector{S}`: result of running the Kalman filter or
+  state vector in the final historical period (aka initial forecast period)
+
+where `S<:AbstractFloat`.
+
+### Keyword Arguments
+
+- `cond_type::Symbol`: one of `:none`, `:semi`, or `:full`, used to determine
+  how many periods to forecast ahead. If `cond_type in [:semi, :full]`, the
+  forecast horizon is reduced by the number of periods of conditional
+  data. Defaults to `:none`.
+- `enforce_zlb::Bool`: whether to enforce the zero lower bound. Defaults to
+  `false`.
+- `shocks::Matrix{S}`: matrix of size `nshocks` x `horizon` of shock innovations
+  under which to forecast. If not provided, shocks are drawn according to:
+
+  1. If `forecast_killshocks(m)`, `shocks` is set to a `nshocks` x `horizon`
+     matrix of zeros
+  2. Otherwise, if `forecast_tdist_shocks(m)`, draw `horizons` many shocks from a
+     `Distributions.TDist(forecast_tdist_df_val(m))`
+  3. Otherwise, draw `horizons` many shocks from a
+     `DegenerateMvNormal(zeros(nshocks), sqrt(system[:QQ]))`
 
 ### Outputs
 
-- `states`: 3-dimensional array of size `nstates` x `horizon` x `ndraws`
-  consisting of forecasted states for each draw
-- `observables`: 3-dimensional array of size `nobs` x `horizon` x `ndraws`
-  consisting of forecasted observables for each draw
-- `pseudo_observables`: 3-dimensional array of size `npseudo` x `horizon` x `ndraws`
-  consisting of forecasted pseudo-observables for each draw
-- `shocks`: 3-dimensional array of size `nshocks` x `horizon` x `ndraws`
-  consisting of forecasted shocks for each draw
+- `states::Matrix{S}`: matrix of size `nstates` x `horizon` of forecasted states
+- `obs::Matrix{S}`: matrix of size `nobs` x `horizon` of forecasted observables
+- `pseudo::Matrix{S}`: matrix of size `npseudo` x `horizon` of forecasted
+  pseudo-observables. If `!forecast_pseudoobservables(m)` or the provided
+  `Z_pseudo` and `D_pseudo` matrices are empty, then `pseudo` will be empty.
+- `shocks::Matrix{S}`: matrix of size `nshocks` x `horizon` of shock innovations
 """
-function forecast{T<:AbstractFloat}(m::AbstractModel, syses::Vector{System{T}},
-                                    initial_state_draws::Vector{Vector{T}};
-                                    shock_distributions::Union{Distribution,
-                                    Matrix{T}} = Matrix{T}())
+function forecast{S<:AbstractFloat}(m::AbstractModel, system::System{S},
+    kal::Kalman{S}; cond_type::Symbol = :none, enforce_zlb::Bool = false,
+    shocks::Matrix{S} = Matrix{S}())
 
-    ndraws = length(syses)
-
-    # Get pseudomeasurement matrices
-    Z_pseudo, D_pseudo = if forecast_pseudoobservables(m)
-        _, pseudo_mapping = pseudo_measurement(m)
-        pseudo_mapping.ZZ, pseudo_mapping.DD
+    draw_z0(kal::Kalman) = rand(DegenerateMvNormal(kal[:zend], kal[:Pend]))
+    z0 = if forecast_draw_z0(m)
+        draw_z0(kal)
     else
-        Matrix{T}(), Vector{T}()
+        kal[:zend]
     end
-    
-    # retrieve settings for forecast
-    horizon  = forecast_horizons(m)
-    nshocks  = n_shocks_exogenous(m)
 
-    # Unpack everything for call to map/pmap
-    TTTs     = [s[:TTT] for s in syses]
-    RRRs     = [s[:RRR] for s in syses]
-    CCCs     = [s[:CCC] for s in syses]
-    ZZs      = [s[:ZZ] for s in syses]
-    DDs      = [s[:DD] for s in syses]
+    forecast(m, system, z0; cond_type = cond_type, enforce_zlb = enforce_zlb,
+                     shocks = shocks)
+end
 
-    # Prepare copies of these objects due to lack of parallel broadcast functionality
-    ZZps     = [Z_pseudo for i in 1:ndraws]
-    DDps     = [D_pseudo for i in 1:ndraws]
-    horizons = [horizon for i in 1:ndraws]
-        
-    # set up distribution of shocks if not specified
-    # For now, we construct a giant vector of distirbutions of shocks and pass
-    # each to compute_forecast.
-    #
-    # TODO: refactor so that compute_forecast
-    # creates its own DegenerateMvNormal based on passing the QQ
-    # matrix (which has already been computed/is taking up space)
-    # rather than having to copy each Distribution across nodes. This will also be much more
-    # space-efficient when forecast_kill_shocks is true.
+function forecast{S<:AbstractFloat}(m::AbstractModel, system::System{S},
+    z0::Vector{S}; cond_type::Symbol = :none, enforce_zlb::Bool = false,
+    shocks::Matrix{S} = Matrix{S}())
 
-    shock_distributions = if isempty(shock_distributions)
+    # Numbers of things
+    nshocks = n_shocks_exogenous(m)
+    horizon = forecast_horizons(m; cond_type = cond_type)
+
+    # Populate shocks matrix
+    if isempty(shocks)
         if forecast_kill_shocks(m)
-            [zeros(nshocks, horizon) for i in 1:ndraws]
+            shocks = zeros(S, nshocks, horizon)
         else
-            # use t-distributed shocks
-            if forecast_tdist_shocks(m)
-                [Distributions.TDist(forecast_tdist_df_val(m)) for i in 1:ndraws]
-            # use normally distributed shocks
+            μ = zeros(S, nshocks)
+            σ = sqrt(system[:QQ])
+            dist = if forecast_tdist_shocks(m)
+                # Use t-distributed shocks
+                ν = forecast_tdist_df_val(m)
+                DegenerateDiagMvTDist(μ, σ, ν)
             else
-                shock_distributions = Vector{DSGE.DegenerateMvNormal}(ndraws)
-                for i = 1:ndraws
-                    shock_distributions[i] = DSGE.DegenerateMvNormal(zeros(nshocks),sqrt(syses[i][:QQ]))
-                end
-                shock_distributions
+                # Use normally distributed shocks
+                DegenerateMvNormal(μ, σ)
+            end
+
+            shocks = rand(dist, horizon)
+
+            # Forecast without anticipated shocks
+            if n_anticipated_shocks(m) > 0
+                ind_ant1 = m.exogenous_shocks[:rm_shl1]
+                ind_antn = m.exogenous_shocks[symbol("rm_shl$(n_anticipated_shocks(m))")]
+                ant_shock_inds = ind_ant1:ind_antn
+                shocks[ant_shock_inds, :] = 0
             end
         end
     end
 
-    if use_parallel_workers(m)
-        mapfcn = pmap
-    else
-        mapfcn = map
-    end
+    # Get variables necessary to enforce the zero lower bound in the forecast
+    ind_r = m.observables[:obs_nominalrate]
+    ind_r_sh = m.exogenous_shocks[:rm_sh]
+    zlb_value = forecast_zlb_value(m)
 
-    # Go to work!
-    forecasts =  mapfcn(DSGE.compute_forecast, TTTs, RRRs, CCCs, ZZs, DDs,
-                        horizons, shock_distributions, initial_state_draws,
-                        ZZps, DDps)
-
-    # Unpack returned vector of tuples
-    states             = [forecast[1]::Matrix{T} for forecast in forecasts]
-    observables        = [forecast[2]::Matrix{T} for forecast in forecasts]
-    pseudo_observables = [forecast[3]::Matrix{T} for forecast in forecasts]
-    shocks             = [forecast[4]::Matrix{T} for forecast in forecasts]
-
-    # Splat vectors of matrices into 3-D arrays
-    states             = cat(3, states...)
-    observables        = cat(3, observables...)
-    pseudo_observables = cat(3, pseudo_observables...)
-    shocks             = cat(3, shocks...)
-
-    return states, observables, pseudo_observables, shocks
+    forecast(system, z0, shocks; enforce_zlb = enforce_zlb,
+        ind_r = ind_r, ind_r_sh = ind_r_sh, zlb_value = zlb_value)
 end
 
-"""
-```
-compute_forecast(T, R, C, Z, D, forecast_horizons,
-    shocks, z,  Z_pseudo, D_pseudo)
-```
+function forecast{S<:AbstractFloat}(system::System{S}, z0::Vector{S},
+    shocks::Matrix{S}; enforce_zlb::Bool = false, ind_r::Int = -1,
+    ind_r_sh::Int = -1, zlb_value::S = 0.13/4)
 
-### Inputs
+    # Unpack system
+    T, R, C = system[:TTT], system[:RRR], system[:CCC]
+    Q, Z, D = system[:QQ], system[:ZZ], system[:DD]
 
-- `T`, `R`, `C`: transition equation matrices
-- `Z`, `D`: observation equation matrices
-- `Z_pseudo`, `D_pseudo`: matrices mapping states to pseudo-observables
-- `forecast_horizons`: number of quarters ahead to forecast output
-- `shocks`: joint distribution (type `Distribution`) from which to draw
-  time-invariant shocks or matrix of drawn shocks (size `nshocks` x
-  `forecast_horizons`)
-- `z`: state vector at time `T`, i.e. at the beginning of the forecast
-
-### Outputs
-
-`compute_forecast` returns a 4-tuple of forecast outputs, whose elements have
-sizes:
-
-- `states`: `nstates` x `forecast_horizons`
-- `observables`: `nobs` x `forecast_horizons`
-- `pseudo_observables`: `npseudo` x `forecast_horizons`
-- `shocks`: `nshocks` x `forecast_horizons`
-"""
-function compute_forecast{S<:AbstractFloat}(T::Matrix{S}, R::Matrix{S}, C::Vector{S}, 
-                                            Z::Matrix{S}, D::Vector{S},
-                                            forecast_horizons::Int,
-                                            shocks::Matrix{S},
-                                            z::Vector{S},
-                                            Z_pseudo::Matrix{S}=Matrix{S}(),
-                                            D_pseudo::Vector{S}=Vector{S}())
-
-    if forecast_horizons <= 0
-        throw(DomainError())
+    Z_pseudo, D_pseudo = if !isnull(system.pseudo_measurement)
+        system[:ZZ_pseudo], system[:DD_pseudo]
+    else
+        Matrix{S}(), Vector{S}()
     end
-                                    
+
     # Setup
-    nshocks      = size(R, 2)
-    nstates      = size(T, 2)
-    nobservables = size(Z, 1)
-    npseudo      = size(Z_pseudo, 1)
-    states       = zeros(nstates, forecast_horizons)
-    
-    # Define our iteration function
-    iterate(z_t1, ϵ_t) = C + T*z_t1 + R*ϵ_t
-
-    # Iterate first period
-    states[:, 1] = iterate(z, shocks[:, 1])
-    
-    # Iterate remaining periods
-    for t in 2:forecast_horizons
-        states[:, t] = iterate(states[:, t-1], shocks[:, t])
-    end
-
-    # Apply observation and pseudo-observation equations
-    observables        = D        .+ Z        * states
-    pseudo_observables = if isempty(Z_pseudo) || isempty(D_pseudo)
-        Matrix{S}()
-    else
-        D_pseudo .+ Z_pseudo * states
-    end
-    
-    # Return a dictionary of forecasts
-    return states, observables, pseudo_observables, shocks
-end
-
-# Utility method to actually draw shocks
-function compute_forecast{S<:AbstractFloat}(T::Matrix{S}, R::Matrix{S}, C::Vector{S}, 
-                                            Z::Matrix{S}, D::Vector{S},  
-                                            forecast_horizons::Int,
-                                            dist::Distribution,
-                                            z::Vector{S},
-					    Z_pseudo::Matrix{S}=Matrix{S}(),
-                                            D_pseudo::Vector{S}=Vector{S}())
-
-    if forecast_horizons <= 0
-        throw(DomainError())
-    end
-
     nshocks = size(R, 2)
-    shocks = zeros(nshocks, forecast_horizons)
+    nstates = size(T, 2)
+    nobs    = size(Z, 1)
+    npseudo = size(Z_pseudo, 1)
+    horizon = size(shocks, 2)
 
-    for t in 1:forecast_horizons
-        shocks[:, t] = rand(dist)
+    # Define our iteration function
+    function iterate(z_t1, ϵ_t)
+        z_t = C + T*z_t1 + R*ϵ_t
+
+        # Change monetary policy shock to account for 0.13 interest rate bound
+        if enforce_zlb
+            interest_rate_forecast = getindex(D + Z*z_t, ind_r)
+            if interest_rate_forecast < zlb_value
+                # Solve for interest rate shock causing interest rate forecast to be exactly ZLB
+                ϵ_t[ind_r_sh] = 0.
+                z_t = C + T*z_t1 + R*ϵ_t
+                ϵ_t[ind_r_sh] = getindex((zlb_value - D[ind_r] - Z[ind_r, :]*z_t) / (Z[ind_r, :]*R[:, ind_r_sh]), 1)
+
+                # Forecast again with new shocks
+                z_t = C + T*z_t1 + R*ϵ_t
+
+                # Confirm procedure worked
+                interest_rate_forecast = getindex(D + Z*z_t, ind_r)
+                @assert interest_rate_forecast >= zlb_value - 0.01
+            end
+        end
+        return z_t, ϵ_t
     end
 
-    compute_forecast(T, R, C, Z, D, forecast_horizons, shocks, z,
-                     Z_pseudo, D_pseudo)
+    # Iterate state space forward
+    states = zeros(S, nstates, horizon)
+    states[:, 1], shocks[:, 1] = iterate(z0, shocks[:, 1])
+    for t in 2:horizon
+        states[:, t], shocks[:, t] = iterate(states[:, t-1], shocks[:, t])
+    end
+
+    # Apply measurement and pseudo-measurement equations
+    obs    = D .+ Z*states
+    pseudo = if !isempty(Z_pseudo) && !isempty(D_pseudo)
+        D_pseudo .+ Z_pseudo * states
+    else
+        Matrix{S}()
+    end
+
+    # Return forecasts
+    return states, obs, pseudo, shocks
 end
-
-# I'm imagining that a Forecast object could be returned from
-# compute_forecast rather than a dictionary. It could look something like the
-# type outlined below for a single draw.
-# Perhaps we could also add some fancy indexing to be able to index by names of states/observables/etc.
-# Question becomes: where do we store the list of observables? In the
-# model object? In a separate forecastSettings vector that we also
-# pass to forecast?
-# immutable Forecast{T<:AbstractFloat}
-#     states::Matrix{T}
-#     observables::Matrix{T}
-#     pseudoobservables::Matrix{T}
-#     shocks::Matrix{T}
-# end
-

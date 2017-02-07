@@ -1,20 +1,22 @@
 """
 ```
 kalman_smoother{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
-    sys::System, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
-    cond_type::Symbol = :none)
+    system::System, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    cond_type::Symbol = :none, include_presample::Bool = false)
 
 kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
-    sys::System, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
+    system::System, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    include_presample::Bool = false)
 
 kalman_smoother{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
     T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
     D::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
-    cond_type::Symbol = :none)
+    cond_type::Symbol = :none, include_presample::Bool = false)
 
 kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}
     T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
-    D::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
+    D::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    include_presample::Bool = false)
 ```
 This is a Kalman Smoothing program based on S.J. Koopman's \"Disturbance
 Smoother for State Space Models\" (Biometrika, 1993), as specified in
@@ -50,6 +52,8 @@ in the `eta_hat` matrix.
   one of `:none`, `:semi`, or `:full`. This is only necessary when a DataFrame
   (as opposed to a data matrix) is passed in, so that `df_to_matrix` knows how
   many periods of data to keep
+- `include_presample`: indicates whether or not to return presample periods in
+  the returned smoothed states and shocks. Defaults to `false`
 
 Where:
 
@@ -60,8 +64,8 @@ Where:
 
 ### Outputs:
 
-- `alpha_hat`: the (`Nz` x `Nt`) matrix of smoothed states
-- `eta_hat`: the (`Ne` x `Nt`) matrix of smoothed shocks
+- `α_hat`: the (`Nz` x `Nt`) matrix of smoothed states
+- `η_hat`: the (`Ne` x `Nt`) matrix of smoothed shocks
 
 If `n_presample_periods(m)` is nonzero, the `α_hat` and `η_hat` matrices will be
 shorter by that number of columns (taken from the beginning).
@@ -75,56 +79,69 @@ y(t) = Z*α(t) + D             (state or transition equation)
 ```
 """
 function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
-    sys::System, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
-    cond_type::Symbol = :none)
+    system::System, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    cond_type::Symbol = :none, include_presample::Bool = false)
 
     # extract system matrices
-    T, R, C = sys[:TTT], sys[:RRR], sys[:CCC]
-    Q, Z, D = sys[:QQ], sys[:ZZ], sys[:DD]
+    T, R, C = system[:TTT], system[:RRR], system[:CCC]
+    Q, Z, D = system[:QQ], system[:ZZ], system[:DD]
 
     # call actual Kalman smoother
     kalman_smoother(m, df, T, R, C, Q, Z, D, A0, P0, pred, vpred; cond_type =
-        cond_type)
+        cond_type, include_presample = include_presample)
 end
 
 function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
-    sys::System, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
+    system::System, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    include_presample::Bool = false)
 
     # extract system matrices
-    T, R, C = sys[:TTT], sys[:RRR], sys[:CCC]
-    Q, Z, D = sys[:QQ], sys[:ZZ], sys[:DD]
+    T, R, C = system[:TTT], system[:RRR], system[:CCC]
+    Q, Z, D = system[:QQ], system[:ZZ], system[:DD]
 
     # call actual Kalman smoother
-    kalman_smoother(m, data, T, R, C, Q, Z, D, A0, P0, pred, vpred)
+    kalman_smoother(m, data, T, R, C, Q, Z, D, A0, P0, pred, vpred;
+        include_presample = include_presample)
 end
 
 function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
     T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
-    D::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
-    cond_type::Symbol = :none)
+    D::Array{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    cond_type::Symbol = :none, include_presample::Bool = false)
 
     # convert DataFrame to matrix
     data = df_to_matrix(m, df; cond_type = cond_type)
 
+    # Broadcast time-invariant DD if needed
+    if isa(D,Vector) || size(D,2) == 1
+        Nt = size(data, 2)
+        D = repmat(D, 1, Nt)
+    end
+
     # call actual Kalman smoother
-    kalman_smoother(m, data, T, R, C, Q, Z, D, A0, P0, pred, vpred)
+    kalman_smoother(m, data, T, R, C, Q, Z, D, A0, P0, pred, vpred;
+        include_presample = include_presample)
 end
 
 function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
-    D::Vector{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
+    D::Array{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    include_presample::Bool = false)
 
-    # Broadcast time-invariant DD
-    Nt = size(data, 2)
-    Ds = repmat(D, 1, Nt)
+    # Broadcast time-invariant DD if needed
+    if isa(D,Vector) || size(D,2) == 1
+        Nt = size(data, 2)
+        D = repmat(D, 1, Nt)
+    end
 
     # Call time-varying Kalman smoother
-    kalman_smoother(m, data, T, R, C, Q, Z, Ds, A0, P0, pred, vpred)
+    kalman_smoother(m, data, T, R, C, Q, Z, D, A0, P0, pred, vpred, include_presample = include_presample)
 end
 
 function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S}, Z::Matrix{S},
-    Ds::Matrix{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
+    D::Matrix{S}, A0::Vector{S}, P0::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3};
+    include_presample::Bool = false)
 
     Ne = size(R, 2)
     Ny = size(data, 1)
@@ -132,8 +149,8 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     Nz = size(T, 1)
 
     # broadcast time-invariant DD if necessary
-    if size(Ds, 2) == 1
-        Ds = repmat(Ds, 1, Nt)
+    if size(D, 2) == 1
+        D = repmat(D, 1, Nt)
     end
 
     # Check data is well-formed wrt model settings
@@ -144,11 +161,12 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     n_ant_shocks = n_anticipated_shocks(m)
     t_zlb_start  = index_zlb_start(m)
 
-    r, eta_hat = disturbance_smoother(m, data, T, R, C, Q, Z, Ds, pred, vpred)
 
-    alpha_hat = zeros(Nz, Nt)
+    r, η_hat = disturbance_smoother(m, data, T, R, C, Q, Z, D, pred, vpred)
+
+    α_hat = zeros(Nz, Nt)
     ah_t = A0 + P0*r[:, 1]
-    alpha_hat[:, 1] = ah_t
+    α_hat[:, 1] = ah_t
 
     shock_inds = inds_shocks_no_ant(m)
     for t = 2:Nt
@@ -172,15 +190,15 @@ function kalman_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
             ah_t = T*ah_t + R*Q*R'*r[:, t]
         end
 
-        alpha_hat[:, t] = ah_t
+        α_hat[:, t] = ah_t
     end
 
-    period_inds = [inds_prezlb_periods(m);
-                   index_zlb_start(m):Nt] # allows for conditional data
-    alpha_hat = alpha_hat[:, period_inds]
-    eta_hat   = eta_hat[:,   period_inds]
+    if !include_presample
+        α_hat = α_hat[:, index_mainsample_start(m):end]
+        η_hat = η_hat[:, index_mainsample_start(m):end]
+    end
 
-    return alpha_hat, eta_hat
+    return α_hat, η_hat
 end
 
 """
@@ -232,7 +250,7 @@ Where:
 ### Outputs:
 
 - `r`: the (`Nz` x `Nt`) matrix used for state smoothing
-- `eta_hat`: the (`Ne` x `Nt`) matrix of smoothed shocks
+- `η_hat`: the (`Ne` x `Nt`) matrix of smoothed shocks
 
 ### Notes
 
@@ -243,29 +261,23 @@ y(t) = Z*α(t) + D             (state or transition equation)
 ```
 """
 function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
-    data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
-    Z::Matrix{S}, D::Vector{S}, pred::Matrix{S}, vpred::Array{S, 3})
-
-    # Broadcast time-invariant DD
-    Nt = size(data, 2)
-    Ds = repmat(D, 1, Nt)
-
-    # Call time-varying disturbance smoother
-    disturbance_smoother(m, data, T, R, C, Q, Z, Ds, pred, vpred)
-end
-
-function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
-    data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
-    Z::Matrix{S}, Ds::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
+    data::Array{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
+    Z::Matrix{S}, D::Matrix{S}, pred::Matrix{S}, vpred::Array{S, 3})
 
     Nt = size(data, 2)
     Nz = size(T, 1)
+
+    # Broadcast time-invariant DD if needed
+    if isa(D,Vector) || size(D,2) == 1
+        Nt = size(data, 2)
+        D = repmat(D, 1, Nt)
+    end
 
     r = zeros(Nz, Nt) # holds r_{T-1}, ..., r_0
     r_t = zeros(Nz, 1)
 
     Ne = size(R, 2)
-    eta_hat = zeros(Ne, Nt)
+    η_hat = zeros(Ne, Nt)
 
     # Anticipated policy shocks metadata
     n_ant_shocks = n_anticipated_shocks(m)
@@ -279,7 +291,7 @@ function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
         nonmissing = !isnan(data_t)
         data_t = data_t[nonmissing]
         Z_t = Z[nonmissing, :]
-        D_t = Ds[:, t][nonmissing]
+        D_t = D[:, t][nonmissing]
 
         a = pred[:, t]
         P = vpred[:, :, t]
@@ -303,35 +315,37 @@ function disturbance_smoother{S<:AbstractFloat}(m::AbstractModel,
             if t < t_zlb_start
                 Q_t = zeros(Ne, Ne)
                 Q_t[shock_inds, shock_inds] = Q[shock_inds, shock_inds]
-                eta_hat[:, t] = Q_t * R' * r_t
+                η_hat[:, t] = Q_t * R' * r_t
             else
-                eta_hat[:, t] = Q * R' * r_t
+                η_hat[:, t] = Q * R' * r_t
             end
         else
-            eta_hat[:, t] = Q * R' * r_t
+            η_hat[:, t] = Q * R' * r_t
         end
     end
 
-    return r, eta_hat
+    return r, η_hat
 end
 
 """
 ```
 durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
-    df::DataFrame, sys::System, A0::Vector{S}, P0::Matrix{S};
-    cond_type::Symbol = :none)
+    df::DataFrame, system::System, A0::Vector{S}, P0::Matrix{S};
+    cond_type::Symbol = :none, include_presample::Bool = false)
 
 durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
-    data:Matrix{S}, sys::System, A0::Vector{S}, P0::Matrix{S})
+    data:Matrix{S}, system::System, A0::Vector{S}, P0::Matrix{S};
+    include_presample::Bool = false)
 
 durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     df::DataFrame, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
     Z::Matrix{S}, D::Matrix{S}, A0::Array{S}, P0::Matrix{S};
-    cond_type::Symbol = :none)
+    cond_type::Symbol = :none, include_presample::Bool = false)
 
 durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
-    Z::Matrix{S}, D::Matrix{S}, A0::Array{S}, P0::Matrix{S})
+    Z::Matrix{S}, D::Matrix{S}, A0::Array{S}, P0::Matrix{S};
+    include_presample::Bool = false)
 ```
 This program is a simulation smoother based on Durbin and Koopman's
 \"A Simple and Efficient Simulation Smoother for State Space Time Series
@@ -368,6 +382,8 @@ erratic Moore-Penrose pseudoinverse).
   one of `:none`, `:semi`, or `:full`. This is only necessary when a DataFrame
   (as opposed to a data matrix) is passed in, so that `df_to_matrix` knows how
   many periods of data to keep
+- `include_presample`: indicates whether or not to return presample periods in
+  the returned smoothed states and shocks. Defaults to `false`
 
 Where:
 
@@ -378,8 +394,8 @@ Where:
 
 ### Outputs:
 
-- `alpha_hat`: the (`Nz` x `Nt`) matrix of smoothed states.
-- `eta_hat`: the (`Ne` x `Nt`) matrix of smoothed shocks.
+- `α_hat`: the (`Nz` x `Nt`) matrix of smoothed states.
+- `η_hat`: the (`Ne` x `Nt`) matrix of smoothed shocks.
 
 If `n_presample_periods(m)` is nonzero, the `α_hat` and `η_hat` matrices will be
 shorter by that number of columns (taken from the beginning).
@@ -393,44 +409,53 @@ y(t) = Z*α(t) + D             (state or transition equation)
 ```
 """
 function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
-    df::DataFrame, sys::System, A0::Vector{S}, P0::Matrix{S};
-    cond_type::Symbol = :none)
+    df::DataFrame, system::System, A0::Vector{S}, P0::Matrix{S};
+    cond_type::Symbol = :none, include_presample::Bool = false)
 
     # extract system matrices
-    T, R, C = sys[:TTT], sys[:RRR], sys[:CCC]
-    Q, Z, D = sys[:QQ], sys[:ZZ], sys[:DD]
+    T, R, C = system[:TTT], system[:RRR], system[:CCC]
+    Q, Z, D = system[:QQ], system[:ZZ], system[:DD]
+    M, E, V_all = system[:MM], system[:EE], system[:VVall]
 
     # call actual Durbin-Koopman smoother
-    durbin_koopman_smoother(m, df, T, R, C, Q, Z, D, A0, P0; cond_type =
-        cond_type)
+    durbin_koopman_smoother(m, df, T, R, C, Q, Z, D, M, E, V_all, A0, P0;
+        cond_type = cond_type, include_presample = include_presample)
 end
 
 function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
-    data::Matrix{S}, sys::System, A0::Vector{S}, P0::Matrix{S})
+    data::Matrix{S}, system::System, A0::Vector{S}, P0::Matrix{S};
+    include_presample::Bool = false)
 
     # extract system matrices
-    T, R, C = sys[:TTT], sys[:RRR], sys[:CCC]
-    Q, Z, D = sys[:QQ], sys[:ZZ], sys[:DD]
+    T, R, C = system[:TTT], system[:RRR], system[:CCC]
+    Q, Z, D = system[:QQ], system[:ZZ], system[:DD]
+    M, E, V_all = system[:MM], system[:EE], system[:VVall]
 
     # call actual Durbin-Koopman smoother
-    durbin_koopman_smoother(m, data, T, R, C, Q, Z, D, A0, P0)
+    durbin_koopman_smoother(m, data, T, R, C, Q, Z, D, M, E, V_all, A0, P0;
+        include_presample = include_presample)
 end
 
 function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
-    df::DataFrame, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
-    Z::Matrix{S}, Ds::Array{S}, A0::Vector{S}, P0::Matrix{S};
-    cond_type::Symbol = :none)
+    df::DataFrame, T::Matrix{S}, R::Matrix{S}, C::Array{S},
+    Q::Matrix{S}, Z::Matrix{S}, D::Array{S},
+    M::Matrix{S}, E::Matrix{S}, V_all::Matrix{S},
+    A0::Vector{S}, P0::Matrix{S};
+    cond_type::Symbol = :none, include_presample::Bool = false)
 
     # convert DataFrame to Matrix
     data = df_to_matrix(m, df; cond_type = cond_type)
 
     # call actual simulation smoother
-    durbin_koopman_smoother(m, data, T, R, C, Q, Z, Ds, A0, P0)
+    durbin_koopman_smoother(m, data, T, R, C, Q, Z, D, M, E, V_all, A0, P0;
+        include_presample = include_presample)
 end
 
 function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
-    data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S}, Q::Matrix{S},
-    Z::Matrix{S}, Ds::Array{S}, A0::Array{S}, P0::Matrix{S})
+    data::Matrix{S}, T::Matrix{S}, R::Matrix{S}, C::Array{S},
+    Q::Matrix{S}, Z::Matrix{S}, D::Array{S},
+    M::Matrix{S}, E::Matrix{S}, V_all::Matrix{S},
+    A0::Array{S}, P0::Matrix{S}; include_presample::Bool = false)
 
     # Get matrix dimensions
     Ny = size(data, 1)
@@ -439,8 +464,8 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     Ne = size(R, 2)
 
     # broadcast time-invariant DD if necessary
-    if size(Ds, 2) == 1
-        Ds = repmat(Ds, 1, Nt)
+    if size(D, 2) == 1
+        D = repmat(D, 1, Nt)
     end
 
 
@@ -452,73 +477,73 @@ function durbin_koopman_smoother{S<:AbstractFloat}(m::AbstractModel,
     n_ant_shocks = n_anticipated_shocks(m)
     t_zlb_start  = index_zlb_start(m)
 
-    # Initialize matrices
-    α_all_plus  = fill(NaN, Nz, Nt)
-    YY_all_plus = fill(NaN, Ny, Nt)
-
     # Draw initial state α_0+ and sequence of shocks η+
-    U, E, V = svd(P0)
+    U, eig, _ = svd(P0)
+    dist_α = DegenerateMvNormal(zeros(S, Nz), U * diagm(sqrt(eig)))
+    dist_η = DegenerateMvNormal(zeros(S, Ne), sqrt(Q))
 
-    # If testing, set initial state and all shocks to zero
     if m.testing
-        ap_t       = U * diagm(sqrt(E)) * zeros(Nz, 1)
-        η_all_plus = sqrt(Q) * zeros(Ne, Nt)
+        α_plus_0 = zeros(S, Nz)
+        η_plus   = zeros(S, Ne, Nt)
     else
-        ap_t       = U * diagm(sqrt(E)) * randn(Nz, 1)
-        η_all_plus = sqrt(Q) * randn(Ne, Nt)
+        α_plus_0 = rand(dist_α)
+        η_plus   = rand(dist_η, Nt)
     end
 
     # Set n_ant_shocks shocks to 0 in pre-ZLB time periods
     if n_ant_shocks > 0
-        # get the indices of the anticipated shocks in the m.exogenous_shocks
-        # field
         ant1_ind = m.exogenous_shocks[:rm_shl1]
         antn_ind = m.exogenous_shocks[symbol("rm_shl$(n_ant_shocks)")]
         shock_inds = ant1_ind:antn_ind
-        period_inds = [inds_presample_periods(m); inds_prezlb_periods(m)]
-
-        # set shocks to 0
-        η_all_plus[shock_inds, period_inds] = 0
+        period_inds = vcat(inds_presample_periods(m), inds_prezlb_periods(m))
+        η_plus[shock_inds, period_inds] = 0
     end
 
     # Produce "fake" states and observables (a+ and y+) by
     # iterating the state-space system forward
-    for t = 1:Nt
-        ap_t             = T * ap_t + R * η_all_plus[:,t]
-        α_all_plus[:,t]  = ap_t
-        YY_all_plus[:,t] = Z*ap_t + Ds[:,t]
+    iterate(α_plus_t1, η_plus_t) = C + T*α_plus_t1 + R*η_plus_t
+
+    α_plus       = zeros(S, Nz, Nt)
+    α_plus[:, 1] = iterate(α_plus_0, η_plus[:, 1])
+    for t = 2:Nt
+        α_plus[:, t] = iterate(α_plus[:, t-1], η_plus[:, t])
     end
+    data_plus = D .+ Z*α_plus
 
     # Replace fake data with NaNs wherever actual data has NaNs
-    YY_all_plus[isnan(data)] = NaN
+    data_plus[isnan(data)] = NaN
 
-    # Compute y* = y - y+ - D
-    YY_star = data - YY_all_plus
+    # Compute y* = y - y+
+    data_star = data - data_plus
 
     ## Run the kalman filter
     A0, P0, pred, vpred, T, R, C = if n_ant_shocks > 0
 
         # Note that we pass in `zeros(size(D))` instead of `D` because the
-        # measurement equation for `YY_star` has no constant term
-        k, _, _, R3 = kalman_filter_2part(m, YY_star, T, R, C, A0, P0;
-            DD = zeros(size(Ds, 1)), allout = true, include_presample = true)
+        # measurement equation for `data_star` has no constant term
+        k, _, _, R3 = kalman_filter_2part(m, data_star, T, R, C, A0, P0;
+            ZZ = Z, DD = zeros(size(D, 1)), QQ = Q, MM = M, EE = E, VVall = V_all,
+            allout = true, include_presample = true)
 
         k[:z0], k[:vz0], k[:pred], k[:vpred], R3[:TTT], R3[:RRR], R3[:CCC]
     else
-        VVall = zeros(Ny+Nz,Ny+Nz)
-        VVall[1:Nz,1:Nz] = R*Q*R'
-
-        k = kalman_filter(m, YY_star, T, C, Z, zeros(size(Ds, 1)), VVall, A0, P0; lead = 0, allout = true)
+        k = kalman_filter(m, data_star, T, C, Z, zeros(size(D, 1)), V_all, A0, P0; lead = 0, allout = true)
 
         A0, P0, k[:pred], k[:vpred], T, R, C
     end
 
     ##### Step 2: Kalman smooth over everything
-    α_hat_star, η_hat_star = kalman_smoother(m, YY_star, T, R, C, Q, Z,
-        zeros(size(Ds)), A0, P0, pred, vpred)
-    # Compute draw (states and shocks)
-    alpha_hat = α_all_plus[:, index_prezlb_start(m):end] + α_hat_star
-    eta_hat   = η_all_plus[:, index_prezlb_start(m):end] + η_hat_star
+    α_hat_star, η_hat_star = kalman_smoother(m, data_star, T, R, C, Q, Z,
+        zeros(size(D)), A0, P0, pred, vpred; include_presample = true)
 
-    return alpha_hat, eta_hat
+    # Compute draw (states and shocks)
+    α_hat = α_plus + α_hat_star
+    η_hat = η_plus + η_hat_star
+
+    if !include_presample
+        α_hat = α_hat[:, index_mainsample_start(m):end]
+        η_hat = η_hat[:, index_mainsample_start(m):end]
+    end
+
+    return α_hat, η_hat
 end
