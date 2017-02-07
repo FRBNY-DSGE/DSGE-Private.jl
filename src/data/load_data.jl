@@ -1,6 +1,6 @@
 """
 ```
-load_data(m::AbstractModel; try_disk::Bool = true, verbose::Symbol = :low)
+load_data(m::AbstractModel; try_disk::Bool = true, verbose::Symbol = :low, recreate_data::Bool = false)
 ```
 
 Create a DataFrame with all data series for this model, fully transformed.
@@ -22,8 +22,8 @@ Then, the series in levels are transformed as specified in `m.observable_mapping
 If `m.testing` is false, then the resulting DataFrame is saved to disk as `data_<yymmdd>.csv`.
 The data are then returned to the caller.
 """
-function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool = true, verbose::Symbol=:low)
-    recreate_data = false
+function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool = true, verbose::Symbol=:low,
+                   recreate_data::Bool = false)
 
     # Check if already downloaded
     if try_disk && has_saved_data(m; cond_type=cond_type)
