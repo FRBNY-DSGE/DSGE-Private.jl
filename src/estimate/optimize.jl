@@ -95,7 +95,7 @@ function optimize!(m::AbstractModel,
             # take a step in model space
             for i in para_free_inds
                 move = rand(mover)
-                prior_var = moments(get(m.parameters[i].prior))[2]
+                prior_var = moments(m.parameters[i])[2]
                 proposal_in_bounds = false
                 proposal = x_all_model[i]
                 # draw a new parameter value, and redraw if out of bounds
