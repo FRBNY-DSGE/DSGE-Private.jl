@@ -66,9 +66,13 @@ function default_settings!(m::AbstractModel)
     settings[:optimization_method] = Setting(:optimization_method,:csminwel, "Method for finding the posterior mode")
     settings[:optimization_iterations] = Setting(:optimization_iterations,100, "Number of iterations the optimizer should run for")
     settings[:optimization_step_size] = Setting(:optimization_step_size,.01, "step size scaling factor for optimization")
-   settings[:optimization_ftol] = Setting(:optimization_ftol, 1e-10, "relative function difference threshold for optimization")
-    settings[:simulated_annealing_temperature] = Setting(:simulated_annealing_temperature,Optim.log_temperature, "The temperature function for simulated annealing")
+	settings[:simulated_annealing_temperature] = Setting(:simulated_annealing_temperature,Optim.log_temperature, "The temperature function for simulated annealing")
+   settings[:simulated_annealing_block_proportion] = Setting(:simulated_annealing_block_proportion, .3, "The fraction of parameters to vary for each proposed move in simulated annealing")
+   settings[:optimization_ftol] = Setting(:optimization_ftol, 1e-10, "The relative function difference threshold for optimization")
+    settings[:optimization_xtol] = Setting(:optimization_xtol, 1e-10, "The relative input vector difference threshold for optimization")
+    settings[:optimization_gtol] = Setting(:optimization_gtol, 1e-10, "The relative gradient difference threshold for optimization")
     settings[:combined_optimizer_max_cycles] = Setting(:combined_optimizer_max_cycles,4, "The total number of cycles to use in the combined optimization routine")
+    settings[:optimization_attempts] = Setting(:optimization_attempts, 4, "The number of times to attempt optimization in estimate()")
 
 
     # Metropolis-Hastings
@@ -115,8 +119,7 @@ function default_settings!(m::AbstractModel)
 	# Reduced Form
 	settings[:forcing_index_start] = Setting(:forcing_index_start, 0, "Index that marks beginning of forcing processes in data matrix")
         settings[:reduced_form] = Setting(:reduced_form, false, "flag for whether model is reduced form or structural")
-
-
+    settings[:compute_shockdec_bands] = Setting(:compute_shockdec_bands, false, "Whether or not to compute bands for shock decomposition. Setting to false saves signficant storage space.")
     return settings
 end
 

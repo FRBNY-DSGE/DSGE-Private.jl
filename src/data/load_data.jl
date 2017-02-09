@@ -121,6 +121,7 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
     # Load FRED data
     df = load_fred_data(m; start_date=firstdayofquarter(start_date), end_date=end_date, verbose=verbose)
 
+
     # Set ois series to load
     if n_anticipated_shocks(m) > 0
         data_series[:OIS] = [symbol("ant$i") for i in 1:n_anticipated_shocks(m)]

@@ -5,8 +5,9 @@ module DSGE
     using DataStructures: SortedDict, insert!, ForwardOrdering, OrderedDict
     using QuantEcon: solve_discrete_lyapunov
     import Calculus
-    using Optim
     using Roots: fzero, ConvergenceFailed
+    import Optim: optimize, Optimizer
+    using Optim
 
     export
 
@@ -62,6 +63,7 @@ module DSGE
 
 
         # estimate/
+        simulated_annealing, combined_optimizer, LBFGS_wrapper,
         kalman_filter, kalman_filter_2part, likelihood, posterior, posterior!,
         optimize!, csminwel, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance,

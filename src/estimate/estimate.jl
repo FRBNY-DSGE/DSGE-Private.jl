@@ -22,44 +22,39 @@ Estimate the DSGE parameter posterior distribution.
   eigenvectors corresponding to zero eigenvectors are not well defined, so eigenvalue
   decomposition can cause problems. Passing a precomputed matrix allows us to ensure that
   the rest of the routine has not broken.
-- `mle`: Set to true if parameters should be estimated by maximum likelihood directly,
-    without using any Bayesian framework. If this is set to true, the code will exit after
-    estimating parameters.
-- `run_MH`: Set to false to disable Metropolis-Hastings MCMC sampling from the posterior.
+- `mle`: Set to true if parameters should be estimated by maximum likelihood directly.
+    If this is set to true, this function will return after estimating parameters.
+- `run_MH`: Set to false to disable sampling from the posterior.
 """
 function estimate(m::AbstractModel, df::DataFrame;
                   verbose::Symbol=:low,
-                  mle::Bool=false,
-                  run_MH::Bool=true,
-                  proposal_covariance::Matrix=Matrix())
+                  proposal_covariance::Matrix=Matrix(),
+                  mle::Bool = false,
+                  run_MH::Bool = true)
     data = df_to_matrix(m, df)
     estimate(m, data; verbose=verbose, proposal_covariance=proposal_covariance,
-              mle=mle, run_MH=run_MH)
+             mle = mle, run_MH = run_MH)
 end
 function estimate(m::AbstractModel;
                   verbose::Symbol=:low,
-                  mle::Bool=false,
-                  run_MH::Bool=true,
-                  proposal_covariance::Matrix=Matrix())
+                  proposal_covariance::Matrix=Matrix(),
+                  mle::Bool = false,
+                  run_MH::Bool = true)
     # Load data
     df = load_data(m; verbose=verbose)
     estimate(m, df; verbose=verbose, proposal_covariance=proposal_covariance,
-             mle=mle, run_MH=run_MH)
+             mle = mle, run_MH = run_MH)
 end
 function estimate(m::AbstractModel, data::Matrix{Float64};
                   verbose::Symbol=:low,
-                  mle::Bool=false,
-                  run_MH::Bool=true,
-                  proposal_covariance::Matrix=Matrix())
+                  proposal_covariance::Matrix=Matrix(),
+                  mle::Bool = false,
+                  run_MH::Bool = true)
+
+
 
     ########################################################################################
-    ### Step 1: Initialize
-    ########################################################################################
-
-    post = posterior(m, data)
-
-    ########################################################################################
-    ### Step 2: Find posterior mode (if reoptimizing, run optimization routine)
+    ### Step 1: Find posterior/likelihood mode (if reoptimizing, run optimization routine)
     ########################################################################################
 
     # Specify starting mode
@@ -71,6 +66,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         # Inputs to optimization algorithm
         n_iterations       = get_setting(m, :optimization_iterations)
         ftol               = get_setting(m, :optimization_ftol)
+        xtol               = get_setting(m, :optimization_xtol)
+        gtol               = get_setting(m, :optimization_gtol)
         step_size          = get_setting(m, :optimization_step_size)
         converged          = false
 
@@ -78,18 +75,21 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         # iterations, continue improving guess of modal parameters
         total_iterations = 0
         optimization_time = 0
-        max_iterations = n_iterations * 5
+        max_attempts = get_setting(m, :optimization_attempts)
+        attempts = 1
+
         while !converged
             tic()
             out, H = optimize!(m, data;
                                method = get_setting(m, :optimization_method),
-                               ftol=ftol,
+                               ftol=ftol, grtol = gtol, xtol = xtol,
                                iterations=n_iterations, show_trace=true, step_size=step_size,
                                verbose=verbose,
-                               mle=mle)
+                               mle = mle)
 
+            attempts += 1
             total_iterations += out.iterations
-            converged = !out.iteration_converged || total_iterations > max_iterations
+            converged = out.converged || attempts > max_attempts
 
             if VERBOSITY[verbose] >= VERBOSITY[:low]
                 @printf "Total iterations completed: %d\n" total_iterations
@@ -105,18 +105,18 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
 
         # write parameters to file one last time so we have the final mode
         h5open(rawpath(m, "estimate", "paramsmode.h5"),"w") do file
-            write(file, "params")
+            file["params"] = params
         end
     end
 
     params = map(θ->θ.value, m.parameters)
 
-    # Return here if using MLE, as running MH does not make sense
+    # Sampling does not make sense if mle=true
     if mle || !run_MH
         return nothing
     end
     ########################################################################################
-    ### Step 3: Compute proposal distribution
+    ### Step 2: Compute proposal distribution
     ###
     ### In Metropolis-Hastings, we draw sample parameter vectors from
     ### the proposal distribution, which is a degenerate multivariate
@@ -182,7 +182,7 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     end
 
     ########################################################################################
-    ### Step 4: Sample from posterior using Metropolis-Hastings algorithm
+    ### Step 3: Sample from posterior using Metropolis-Hastings algorithm
     ########################################################################################
 
     # Set the jump size for sampling
@@ -192,7 +192,7 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     metropolis_hastings(propdist, m, data, cc0, cc; verbose=verbose)
 
     ########################################################################################
-    ### Step 5: Calculate and save parameter covariance matrix
+    ### Step 4: Calculate and save parameter covariance matrix
     ########################################################################################
 
     compute_parameter_covariance(m)

@@ -174,6 +174,12 @@ function write_forecast_outputs{S<:AbstractString}(m::AbstractModel, input_type:
                                 verbose::Symbol = :low)
 
     for var in output_vars
+        prod = get_product(var)
+        if prod in [:forecast4q, :bddforecast4q, :forecastq4q4, :bddforecastq4q4]
+            # these are computed and saved in means and bands, not
+            # during the forecast itself.
+            continue
+        end
         filepath = forecast_output_files[var]
         if isnull(block_number) || get(block_number) == 1
             jldopen(filepath, "w") do file
@@ -218,7 +224,7 @@ Specifically, we save dictionaries mapping dates, as well as state, observable,
 pseudo-observable, and shock names, to their respective indices in the saved
 forecast output array. The saved dictionaries include:
 
-- `date_indices::Dict{Date, Int}`: saved for all forecast outputs
+- `date_indices::Dict{Date, Int}`: saved for all forecast outputs except IRFs
 - `state_names::Dict{Symbol, Int}`: saved for `var in [:histstates, :forecaststates, :shockdecstates]`
 - `observable_names::Dict{Symbol, Int}`: saved for `var in [:forecastobs, :shockdecobs]`
 - `observable_revtransforms::Dict{Symbol, Symbol}`: saved identifiers for reverse transforms used for observables
