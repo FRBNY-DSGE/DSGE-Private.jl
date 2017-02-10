@@ -182,25 +182,26 @@ function kalman_filter{S<:AbstractFloat}(m::AbstractModel,
         D = ZZ_t*P*ZZ_t' + ZG + ZG' + R_t  # D = ZZ*P_{t+t-1}*ZZ' + ZG + ZG' + R_t
         D = (D+D')/2
 
-        # check that D is full rank
-        ddy = dy
-        try
-            if allout
-                pred[:, t]                   = z
-                vpred[:, :, t]               = P
-                yprederror[nonmissing, t]    = dy
-                ystdprederror[nonmissing, t] = dy./sqrt(diag(D))
-            end
+        # check that D is well behaved
 
-            ddy = D\dy
-
-        catch
-            error("D not full rank in Kalman filter")
+        if allout
+            pred[:, t]                   = z
+            vpred[:, :, t]               = P
+            yprederror[nonmissing, t]    = dy
+            ystdprederror[nonmissing, t] = dy./sqrt(diag(D))
         end
+
+        # ddy = D\dy
+        # To keep things moving, calculate pseudo inverse
+        u,d,v = svd(D)
+        d_inv = [(x > 1e-10 ? 1/x : 0.) for x in d]
+        D_not_invertible = 0 in d_inv
+        D_inv = v*diagm(d_inv)*u'
+        ddy = D_inv*dy
 
         # We evaluate the log likelihood function by adding values of L at every iteration
         #   step (for each t = 1,2,...T)
-        if det(D) < 0
+        if det(D) < 0 || D_not_invertible
             L = -Inf
         elseif include_presample || (!include_presample && t > n_presample_periods(m))
             L += -log(det(D))/2 - first(dy'*ddy/2) - Ny_t*log(2*pi)/2

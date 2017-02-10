@@ -88,7 +88,7 @@ function optimize!(m::AbstractModel,
         else
             out = -posterior(m, data; catch_errors=true)
         end
-        out = !isnan(out) ? out : Inf
+        out = !isnan(out) && isfinite(out) ? out : 1e10
         return out
     end
 
