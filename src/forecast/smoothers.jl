@@ -693,7 +693,3 @@ function Hamilton_smoother{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
 
     return α_hat, η_hat
 end
-
-# This is a Kalman Smoothing program based on the treatment in James Hamilton's
-# \"Time Series Analysis\". Unlike the disturbance smoother, this one does
-# rely on inverting singualr matrices using the Moore-Penrose pseudoinverse.
