@@ -1,13 +1,12 @@
 isdefined(Base, :__precompile__) && __precompile__()
 
 module DSGE
-    using Base.Dates, DataFrames, Distributions, FredData, HDF5, JLD
+    using Base.Dates, DataFrames, Distributions, FredData, HDF5, JLD, Optim, StateSpaceRoutines
     using DataStructures: SortedDict, insert!, ForwardOrdering, OrderedDict
     using QuantEcon: solve_discrete_lyapunov
-    import Calculus
     using Roots: fzero, ConvergenceFailed
+    import Calculus
     import Optim: optimize, Optimizer
-    using Optim
 
     export
 
@@ -64,16 +63,14 @@ module DSGE
 
         # estimate/
         simulated_annealing, combined_optimizer, LBFGS_wrapper,
-        kalman_filter, kalman_filter_2part, likelihood, posterior, posterior!,
+        filter, likelihood, posterior, posterior!,
         optimize!, csminwel, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance,
         prior,
 
         # forecast/
         load_draws, forecast_one,
-        filter, filterandsmooth, smooth,
-        kalman_smoother, durbin_koopman_smoother, hamilton_smoother, carter_kohn_smoother,
-        forecast, shock_decompositions, deterministic_trends, trends, impulse_responses,
+        smooth, forecast, shock_decompositions, deterministic_trends, trends, impulse_responses,
         compute_system, add_requisite_output_vars, n_forecast_draws,
         get_forecast_input_file, get_forecast_output_files, get_forecast_filename,
         read_forecast_output,
@@ -127,6 +124,7 @@ module DSGE
     include("solve/solve.jl")
 
     include("estimate/kalman.jl")
+    include("estimate/filter.jl")
     include("estimate/posterior.jl")
     include("estimate/optimize.jl")
     include("estimate/csminwel.jl")
@@ -139,8 +137,6 @@ module DSGE
 
     include("forecast/util.jl")
     include("forecast/io.jl")
-    include("forecast/smoothers.jl")
-    include("forecast/filter.jl")
     include("forecast/smooth.jl")
     include("forecast/forecast.jl")
     include("forecast/shock_decompositions.jl")
