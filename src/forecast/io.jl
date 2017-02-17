@@ -22,7 +22,7 @@ function get_forecast_input_file(m, input_type)
         if ispath(override_file)
             return override_file
         else
-            error("Invalid input file override for input_type = $input_type: $override_file")
+            error("Input file $override_file does not exist")
         end
     # If input_type = :subset or :block, also check for existence of overrides[:full]
     elseif input_type in [:subset, :block]
@@ -89,6 +89,14 @@ function get_forecast_filename(directory::AbstractString, filestring_base::Vecto
     file_name = ASCIIString("$output_var.$fileformat")
 
     # Gather all of the file strings into an array
+    filestring_addl = get_forecast_filestring_addl(input_type, cond_type,
+                                                   forecast_string = forecast_string)
+
+    return savepath(directory, file_name, filestring_base, filestring_addl)
+end
+
+function get_forecast_filestring_addl(input_type, cond_type; forecast_string::AbstractString = "")
+
     filestring_addl = Vector{ASCIIString}()
     push!(filestring_addl, ASCIIString("para=" * abbrev_symbol(input_type)))
     push!(filestring_addl, ASCIIString("cond=" * abbrev_symbol(cond_type)))
@@ -100,7 +108,7 @@ function get_forecast_filename(directory::AbstractString, filestring_base::Vecto
         push!(filestring_addl, ASCIIString("fcid=" * forecast_string))
     end
 
-    return savepath(directory, file_name, filestring_base, filestring_addl)
+    filestring_addl
 end
 
 """

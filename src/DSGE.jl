@@ -71,7 +71,8 @@ module DSGE
 
         # forecast/
         load_draws, forecast_one,
-        filter, filterandsmooth, smooth, kalman_smoother, durbin_koopman_smoother, Hamilton_smoother,
+        filter, filterandsmooth, smooth,
+        kalman_smoother, durbin_koopman_smoother, hamilton_smoother, carter_kohn_smoother,
         forecast, shock_decompositions, deterministic_trends, trends, impulse_responses,
         compute_system, add_requisite_output_vars, n_forecast_draws,
         get_forecast_input_file, get_forecast_output_files, get_forecast_filename,
@@ -98,7 +99,9 @@ module DSGE
         # analysis/
         find_density_bands, moment_tables, means_bands, means_bands_all, compute_means_bands, MeansBands,
         meansbands_matrix_all, meansbands_matrix, read_mb,
-        get_meansbands_input_files, get_meansbands_output_files, get_product, get_class
+        get_meansbands_input_files, get_meansbands_output_files, get_product, get_class,
+        which_density_bands, write_meansbands_tables, prepare_meansbands_tables_timeseries,
+        prepare_meansbands_tables_shockdec, write_meansbands_tables_all
 
     const VERBOSITY = Dict(:none => 0, :low => 1, :high => 2)
     const DSGE_DATE_FORMAT = "yymmdd"
@@ -146,8 +149,9 @@ module DSGE
 
     include("analysis/moments.jl")
     include("analysis/meansbands.jl")
-    include("analysis/compute_means_bands.jl")
+    include("analysis/compute_meansbands.jl")
     include("analysis/meansbands_to_matrix.jl")
+    include("analysis/io.jl")
     include("analysis/util.jl")
 
     include("models/m990/m990.jl")
