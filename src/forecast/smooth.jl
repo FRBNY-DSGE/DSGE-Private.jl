@@ -18,8 +18,13 @@ Computes and returns the smoothed values of states and shocks for the system
 
 ### Keyword Arguments
 
-- `cond_type`: conditional case. See `forecast_all` for documentation of all
-  `cond_type` options.
+- `cond_type`: conditional case. See `forecast_one` for documentation of all
+  `cond_type` options
+- `draw_states`: if using a simulation smoother (i.e.
+  `forecast_smoother(m) in [:carter_kohn, :durbin_koopman]`), indicates whether
+   to draw smoothed states from the distribution `N(z_{t|T}, P_{t|T})` or to use
+   the mean `z_{t|T}`. Defaults to `true`. If not using a simulation smoother,
+   this flag has no effect
 
 ### Outputs
 
@@ -47,12 +52,8 @@ m <= Setting(:forecast_smoother, :koopman_smoother))
 before calling `smooth`.
 """
 function smooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
-    system::System{S}, kal::Kalman{S}; cond_type::Symbol = :none, draw_states::Bool = true)
-
-    # override draw_states if testing
-    if m.testing
-        draw_states = false
-    end
+    system::System{S}, kal::Kalman{S}; cond_type::Symbol = :none,
+    draw_states::Bool = true)
 
     data = df_to_matrix(m, df; cond_type = cond_type)
 
@@ -66,19 +67,22 @@ function smooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
     # Call smoother
     states, shocks = if forecast_smoother(m) == :hamilton
         hamilton_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, MMs, EEs,
-                          kal[:z0], kal[:vz0])
+            kal[:z0], kal[:vz0])
 
     elseif forecast_smoother(m) == :koopman
-        koopman_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs,
+        koopman_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, MMs, EEs,
             kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
 
     elseif forecast_smoother(m) == :carter_kohn
         carter_kohn_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, MMs, EEs,
-                          kal[:z0], kal[:vz0], draw_states = draw_states)
+            kal[:z0], kal[:vz0]; draw_states = draw_states)
 
     elseif forecast_smoother(m) == :durbin_koopman
         durbin_koopman_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, MMs, EEs,
             kal[:z0], kal[:vz0]; draw_states = draw_states)
+
+    else
+        error("Invalid smoother: $(forecast_smoother(m))")
     end
 
     # Index out last presample states, used to compute the deterministic trend
