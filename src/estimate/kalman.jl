@@ -112,8 +112,8 @@ function zlb_regime_indices{S<:AbstractFloat}(m::AbstractModel{S}, data::Matrix{
         regime_inds[1] = 1:index_zlb_start(m)-1
         regime_inds[2] = index_zlb_start(m):T # allows for conditional data
     else
-        regime_inds[1] = 1:T
-        regime_inds[2] = 1:0
+        regime_inds[1] = 1:0
+        regime_inds[2] = 1:T
     end
 
     return regime_inds

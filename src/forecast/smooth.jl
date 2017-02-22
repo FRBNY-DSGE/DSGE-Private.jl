@@ -47,7 +47,12 @@ m <= Setting(:forecast_smoother, :koopman_smoother))
 before calling `smooth`.
 """
 function smooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
-    system::System{S}, kal::Kalman{S}; cond_type::Symbol = :none)
+    system::System{S}, kal::Kalman{S}; cond_type::Symbol = :none, draw_states::Bool = true)
+
+    # override draw_states if testing
+    if m.testing
+        draw_states = false
+    end
 
     data = df_to_matrix(m, df; cond_type = cond_type)
 
@@ -60,26 +65,26 @@ function smooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
 
     # Call smoother
     states, shocks = if forecast_smoother(m) == :hamilton
-        hamilton_smoother(regime_inds, data, TTTs, RRRs, kal[:z0], kal[:pred], kal[:vpred],
-            kal[:filt], kal[:vfilt])
+        hamilton_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, MMs, EEs,
+                          kal[:z0], kal[:vz0])
 
     elseif forecast_smoother(m) == :koopman
         koopman_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs,
             kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
 
     elseif forecast_smoother(m) == :carter_kohn
-        carter_kohn_smoother(regime_inds, data, TTTs, RRRs, kal[:z0], kal[:pred], kal[:vpred],
-            kal[:filt], kal[:vfilt]; draw_states = !m.testing)
+        carter_kohn_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, MMs, EEs,
+                          kal[:z0], kal[:vz0], draw_states = draw_states)
 
     elseif forecast_smoother(m) == :durbin_koopman
         durbin_koopman_smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, MMs, EEs,
-            kal[:z0], kal[:vz0]; draw_states = !m.testing)
+            kal[:z0], kal[:vz0]; draw_states = draw_states)
     end
 
     # Index out last presample states, used to compute the deterministic trend
     t0 = n_presample_periods(m)
     t1 = index_mainsample_start(m)
-    initial_states = states[:, t0]
+    initial_states = t0 > 0 ? states[:, t0] : Array{Float64,2}(n_states(m),0)
     states = states[:, t1:end]
     shocks = shocks[:, t1:end]
 
