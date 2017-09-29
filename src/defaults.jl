@@ -19,20 +19,24 @@ function default_settings!(m::AbstractModel)
     # Data settings for released and conditional data. Default behavior is to set vintage
     # of data to today's date.
     vint = Dates.format(now(), DSGE_DATE_FORMAT)
-    settings[:data_vintage] = Setting(:data_vintage, vint, true,
-        "vint", "Vintage of data")
+    settings[:data_vintage] = Setting(:data_vintage, vint, true, "vint",
+        "Data vintage")
+    settings[:data_id] = Setting(:data_id, 3,
+        "Dataset identifier")
     settings[:cond_vintage] = Setting(:cond_vintage, vint,
-        "Vintage of conditional data")
-    settings[:cond_id] = Setting(:cond_id, "0000",
-        "Identifier of conditional dataset")
-    settings[:cond_full_names] = Setting(:cond_full_names, [:obs_gdp, :obs_corepce, :obs_spread, :obs_nominalrate],
+        "Conditional data vintage")
+    settings[:cond_id] = Setting(:cond_id, 2,
+        "Conditional dataset identifier")
+    settings[:cond_full_names] = Setting(:cond_full_names, [:obs_gdp, :obs_corepce, :obs_spread, :obs_nominalrate, :obs_longrate],
         "Observables used in conditional forecasts")
-    settings[:cond_semi_names] = Setting(:cond_semi_names, [:obs_spread, :obs_nominalrate],
+    settings[:cond_semi_names] = Setting(:cond_semi_names, [:obs_spread, :obs_nominalrate, :obs_longrate],
         "Observables used in semiconditional forecasts")
     settings[:use_population_forecast] = Setting(:use_population_forecast, false,
         "Whether to use population forecasts as data")
     settings[:population_mnemonic] = Setting(:population_mnemonic, Nullable(:CNP16OV__FRED),
         "Mnemonic of FRED data series for computing per-capita values (a Nullable{Symbol})")
+    settings[:hpfilter_population] = Setting(:hpfilter_population, true,
+        "Whether to HP filter combined population and forecast")
 
     # Dates
     settings[:date_presample_start] = Setting(:date_presample_start, quartertodate("1959-Q3"),
@@ -63,17 +67,26 @@ function default_settings!(m::AbstractModel)
         "Calculate the hessian at the mode")
     settings[:n_hessian_test_params] = Setting(:n_hessian_test_params, typemax(Int),
         "Max number of free params for which to calculate Hessian")
-    settings[:optimization_method] = Setting(:optimization_method,:csminwel, "Method for finding the posterior mode")
-    settings[:optimization_iterations] = Setting(:optimization_iterations,100, "Number of iterations the optimizer should run for")
-    settings[:optimization_step_size] = Setting(:optimization_step_size,.01, "step size scaling factor for optimization")
-	settings[:simulated_annealing_temperature] = Setting(:simulated_annealing_temperature,Optim.log_temperature, "The temperature function for simulated annealing")
-   settings[:simulated_annealing_block_proportion] = Setting(:simulated_annealing_block_proportion, .3, "The fraction of parameters to vary for each proposed move in simulated annealing")
-   settings[:optimization_ftol] = Setting(:optimization_ftol, 1e-10, "The relative function difference threshold for optimization")
-    settings[:optimization_xtol] = Setting(:optimization_xtol, 1e-10, "The relative input vector difference threshold for optimization")
-    settings[:optimization_gtol] = Setting(:optimization_gtol, 1e-10, "The relative gradient difference threshold for optimization")
-    settings[:combined_optimizer_max_cycles] = Setting(:combined_optimizer_max_cycles,4, "The total number of cycles to use in the combined optimization routine")
-    settings[:optimization_attempts] = Setting(:optimization_attempts, 4, "The number of times to attempt optimization in estimate()")
-
+    settings[:optimization_method] = Setting(:optimization_method, :csminwel,
+        "Method for finding the posterior mode")
+    settings[:optimization_iterations] = Setting(:optimization_iterations, 100,
+        "Number of iterations the optimizer should run for")
+    settings[:optimization_step_size] = Setting(:optimization_step_size, 0.01,
+        "Step size scaling factor for optimization")
+	settings[:simulated_annealing_temperature] = Setting(:simulated_annealing_temperature, Optim.log_temperature,
+        "Temperature function for simulated annealing")
+   settings[:simulated_annealing_block_proportion] = Setting(:simulated_annealing_block_proportion, 0.3,
+        "Fraction of parameters to vary for each proposed move in simulated annealing")
+   settings[:optimization_ftol] = Setting(:optimization_ftol, 1e-10,
+        "Relative function difference threshold for optimization")
+    settings[:optimization_xtol] = Setting(:optimization_xtol, 1e-10,
+        "Relative input vector difference threshold for optimization")
+    settings[:optimization_gtol] = Setting(:optimization_gtol, 1e-10,
+        "Relative gradient difference threshold for optimization")
+    settings[:combined_optimizer_max_cycles] = Setting(:combined_optimizer_max_cycles, 4,
+        "Total number of cycles to use in the combined optimization routine")
+    settings[:optimization_attempts] = Setting(:optimization_attempts, 4,
+        "Number of times to attempt optimization in estimate()")
 
     # Metropolis-Hastings
     settings[:n_mh_simulations] = Setting(:n_mh_simulations, 5000,
@@ -91,21 +104,17 @@ function default_settings!(m::AbstractModel)
     settings[:forecast_start_block] = Setting(:forecast_start_block, Nullable{Int64}(),
         "Block at which to resume forecasting (possibly null)")
     settings[:forecast_input_file_overrides] = Setting(:forecast_input_file_overrides,
-        Dict{Symbol, ASCIIString}())
+        Dict{Symbol, String}())
     settings[:forecast_jstep] = Setting(:forecast_jstep, 5,
         "Forecast thinning step (in addition to MH thinning step")
     settings[:forecast_pseudoobservables] = Setting(:forecast_pseudoobservables, false,
         "Whether to forecast pseudo-observables")
+    settings[:forecast_uncertainty_override] = Setting(:forecast_uncertainty_override, Nullable{Bool}(),
+        "If non-null, overrides default drawing states/shocks behavior in smoother and forecast")
     settings[:forecast_smoother] = Setting(:forecast_smoother, :durbin_koopman,
         "Choice of smoother to use during forecasting. Can be :hamilton, :koopman, :carter_kohn, or :durbin_koopman")
-    settings[:smoother_draw_states_override] = Setting(:smoother_draw_states_override, Nullable{Bool}(),
-        "If non-null, overrides default smoother behavior to draw or not draw smoothed states from N(s_{t|T}, P_{t|T}. Only affects simulation smoothers :carter_kohn and :durbin_koopman")
     settings[:forecast_horizons] = Setting(:forecast_horizons, 60,
         "Number of periods to forecast ahead")
-    settings[:forecast_draw_z0] = Setting(:forecast_draw_z0, false,
-        "Whether to draw an initial state from N(s_{T|T}, P_{T|T}) to start the forecast")
-    settings[:forecast_draw_shocks_override] = Setting(:forecast_draw_shocks, Nullable{Bool}(),
-        "If non-null, overrides default forecast behavior to draw or not draw shocks")
     settings[:forecast_tdist_shocks] = Setting(:forecast_tdist_shocks, false,
         "Draw Students-t distributed shocks in forecast")
     settings[:forecast_tdist_df_val] = Setting(:forecast_tdist_df_val, 15,
@@ -135,9 +144,9 @@ The following Settings are constructed, initialized and added to
 `m.settings`, but these values are used to test DSGE.jl.
 
 ### I/O Locations and identifiers
-- `saveroot::Setting{ASCIIString}`: A temporary directory in /tmp/
-- `dataroot::Setting{ASCIIString}`: dsgeroot/test/reference/
-- `data_vintage::Setting{ASCIIString}`: \"_REF\"
+- `saveroot::Setting{String}`: A temporary directory in /tmp/
+- `dataroot::Setting{String}`: dsgeroot/test/reference/
+- `data_vintage::Setting{String}`: \"_REF\"
 
 ### Metropolis-Hastings
 - `n_mh_simulations::Setting{Int}`: 100
@@ -153,7 +162,7 @@ function default_test_settings!(m::AbstractModel)
     dataroot = normpath(joinpath(dirname(@__FILE__), "..", "test", "reference", "input_data"))
     saveroot = mktempdir()
 
-    #General
+    # General
     test[:saveroot] = Setting(:saveroot, saveroot,
         "Where to write files when in test mode")
     test[:dataroot] = Setting(:dataroot, dataroot,

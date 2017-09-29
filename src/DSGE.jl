@@ -1,7 +1,8 @@
 isdefined(Base, :__precompile__) && __precompile__()
 
 module DSGE
-    using Base.Dates, DataFrames, Distributions, FredData, HDF5, JLD, Optim, StateSpaceRoutines
+    using Base.Dates, Base.Test
+    using DataFrames, Distributions, FredData, HDF5, JLD, Optim, Plots, StateSpaceRoutines, StatPlots
     using DataStructures: SortedDict, insert!, ForwardOrdering, OrderedDict
     using QuantEcon: solve_discrete_lyapunov
     using Roots: fzero, ConvergenceFailed
@@ -35,19 +36,21 @@ module DSGE
         n_parameters_free, n_pseudoobservables, get_key,
         inds_states_no_ant, inds_shocks_no_ant, inds_obs_no_ant,
         spec, subspec, saveroot, dataroot,
-        data_vintage, cond_vintage, cond_id, cond_full_names, cond_semi_names, use_population_forecast,
+        data_vintage, data_id, cond_vintage, cond_id, cond_full_names, cond_semi_names, use_population_forecast,
         use_parallel_workers,
         reoptimize, calculate_hessian, hessian_path, n_hessian_test_params,
         n_mh_blocks, n_mh_simulations, n_mh_burn, mh_thin,
-        date_forecast_start, date_forecast_end, forecast_tdist_df_val,
-        forecast_smoother, smoother_draw_states_override,
-        forecast_draw_z0, forecast_draw_shocks_override, forecast_zlb_value, forecast_tdist_shocks,
+        date_forecast_start, date_forecast_end,
         forecast_block_size, forecast_start_block,
-        forecast_input_file_overrides, shockdec_startdate, date_shockdec_end,
-        forecast_horizons, n_shockdec_periods, impulse_response_horizons,
+        forecast_input_file_overrides, forecast_uncertainty_override,
+        forecast_smoother, forecast_horizons,
+        forecast_zlb_value, forecast_tdist_shocks, forecast_tdist_df_val,
+        shockdec_startdate, date_shockdec_end,
+        n_shockdec_periods, impulse_response_horizons,
         load_parameters_from_file, specify_mode!, specify_hessian,
         logpath, workpath, rawpath, tablespath, figurespath, inpath,
-        transform_to_model_space!, transform_to_real_line!, reduced_form,
+        transform_to_model_space!, transform_to_real_line!,
+        ShockGroup,
 
         # parameters.jl
         parameter, Transform, NullablePrior, AbstractParameter,
@@ -56,18 +59,18 @@ module DSGE
         update, update!, transform_to_model_space, transform_to_real_line, Interval, ParamBoundsError,
 
         # observables.jl
-        Observable, PseudoObservable, PseudoObservableMapping,
+        Observable, PseudoObservable, PseudoObservableMapping, check_mnemonics,
 
         # statespace.jl
         Measurement, Transition, System, compute_system,
 
 
         # estimate/
-        simulated_annealing, combined_optimizer, LBFGS_wrapper,
+        simulated_annealing, combined_optimizer, lbfgs,
         filter, likelihood, posterior, posterior!,
         optimize!, csminwel, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance,
-        prior,
+        prior, get_estimation_output_files,
 
         # forecast/
         load_draws, forecast_one,
@@ -78,7 +81,8 @@ module DSGE
 
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
-        Model990, Model1002, SmetsWouters, AnSchorfheide, eqcond, measurement, pseudo_measurement,
+        Model990, Model1002, Model1010, SmetsWouters, AnSchorfheide, eqcond, measurement, pseudo_measurement,
+        shock_groupings,
 
         # solve/
         gensys, solve,
@@ -87,19 +91,29 @@ module DSGE
         load_data, load_data_levels, load_cond_data_levels, load_fred_data,
         transform_data, save_data, get_data_filename,
         df_to_matrix, hpfilter, difflog, quartertodate, percapita, nominal_to_real,
-        hpadjust, oneqtrpctchange, annualtoquarter, quartertoannual, quartertoannualpercent,
-		estimate_time_trend,
-        logtopct_annualized_percapita, logtopct_annualized, loglevelto4qpct_annualized_percapita,
-        loglevelto4qpct_annualized,
-        parse_data_series, collect_data_transforms,
+        estimate_time_trend,
+        oneqtrpctchange, annualtoquarter, quartertoannual, quartertoannualpercent,
+        loggrowthtopct_percapita, loggrowthtopct,
+        loggrowthtopct_annualized_percapita, loggrowthtopct_annualized, logleveltopct_annualized_percapita,
+        logleveltopct_annualized,
+        parse_data_series, collect_data_transforms, reverse_transform,
         subtract_quarters, iterate_quarters,
 
         # analysis/
         find_density_bands, moment_tables, means_bands, means_bands_all, compute_means_bands, MeansBands,
-        meansbands_matrix_all, meansbands_matrix, read_mb,
+        meansbands_matrix_all, meansbands_matrix, read_mb, read_bdd_and_unbdd_mb,
         get_meansbands_input_files, get_meansbands_output_files, get_product, get_class,
-        which_density_bands, write_meansbands_tables, prepare_meansbands_tables_timeseries,
-        prepare_meansbands_tables_shockdec, write_meansbands_tables_all
+        which_density_bands,
+        prepare_meansbands_tables_timeseries, prepare_means_tables_shockdec, prepare_meansbands_table_irf,
+        write_meansbands_tables_timeseries, write_means_tables_shockdec, prepare_meansbands_table_irf,
+        write_meansbands_tables_all,
+
+        # plot/
+        plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
+        plot_forecast_comparison, plot_shock_decomposition,
+
+        # util
+        @test_matrix_approx_eq, @test_matrix_approx_eq_eps
 
     const VERBOSITY = Dict(:none => 0, :low => 1, :high => 2)
     const DSGE_DATE_FORMAT = "yymmdd"
@@ -119,6 +133,7 @@ module DSGE
     include("data/fred_data.jl")
     include("data/transformations.jl")
     include("data/transform_data.jl")
+    include("data/reverse_transform.jl")
     include("data/util.jl")
 
     include("solve/gensys.jl")
@@ -133,7 +148,8 @@ module DSGE
     include("estimate/hessizero.jl")
     include("estimate/simulated_annealing.jl")
     include("estimate/combined_optimizer.jl")
-    include("estimate/LBFGS.jl")
+    include("estimate/lbfgs.jl")
+    include("estimate/nelder_mead.jl")
     include("estimate/estimate.jl")
 
     include("forecast/util.jl")
@@ -151,6 +167,16 @@ module DSGE
     include("analysis/io.jl")
     include("analysis/util.jl")
 
+    include("plot/util.jl")
+    include("plot/plot_parameters.jl")
+    include("plot/plot_impulse_response.jl")
+    include("plot/plot_history_and_forecast.jl")
+    include("plot/hair_plot.jl")
+    include("plot/plot_forecast_comparison.jl")
+    include("plot/plot_shock_decomposition.jl")
+
+    include("models/financial_frictions.jl")
+
     include("models/m990/m990.jl")
     include("models/m990/subspecs.jl")
     include("models/m990/eqcond.jl")
@@ -166,6 +192,14 @@ module DSGE
     include("models/m1002/measurement.jl")
     include("models/m1002/pseudo_measurement.jl")
     include("models/m1002/augment_states.jl")
+
+    include("models/m1010/m1010.jl")
+    include("models/m1010/subspecs.jl")
+    include("models/m1010/eqcond.jl")
+    include("models/m1010/observables.jl")
+    include("models/m1010/measurement.jl")
+    include("models/m1010/pseudo_measurement.jl")
+    include("models/m1010/augment_states.jl")
 
     include("models/smets_wouters/smets_wouters.jl")
     include("models/smets_wouters/subspecs.jl")

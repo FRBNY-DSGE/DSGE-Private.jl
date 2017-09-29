@@ -24,10 +24,6 @@ Base.show(io::IO, t::Untransformed) = @printf io "x -> x\n"
 Base.show(io::IO, t::SquareRoot)    = @printf io "x -> (a+b)/2 + (b-a)/2*c*x/sqrt(1 + c^2 * x^2)\n"
 Base.show(io::IO, t::Exponential)   = @printf io "x -> b + (1/c) * log(x-a)\n"
 
-Base.call(t::Untransformed) = Untransformed()
-Base.call(t::SquareRoot) = SquareRoot()
-Base.call(t::Exponential) = Exponential()
-
 """
 ```
 AbstractParameter{T<:Number}
@@ -83,9 +79,9 @@ conditions.
   model space and real line.
 - `prior::NullablePrior`: Prior distribution for parameter value.
 - `fixed::Bool`: Indicates whether the parameter's value is fixed rather than estimated.
-- `description::AbstractString`:  A short description of the parameter's economic
+- `description::String`:  A short description of the parameter's economic
   significance.
-- `tex_label::AbstractString`: String for printing the parameter name to LaTeX.
+- `tex_label::String`: String for printing the parameter name to LaTeX.
 """
 type UnscaledParameter{T,U} <: Parameter{T,U}
     key::Symbol
@@ -95,8 +91,8 @@ type UnscaledParameter{T,U} <: Parameter{T,U}
     transform::U                            # transformation between model space and real line for optimization
     prior::NullablePrior                    # prior distribution
     fixed::Bool                             # is this parameter fixed at some value?
-    description::AbstractString
-    tex_label::AbstractString               # LaTeX label for printing
+    description::String
+    tex_label::String               # LaTeX label for printing
 end
 
 
@@ -126,9 +122,9 @@ conditions.
 - `fixed::Bool`: Indicates whether the parameter's value is fixed rather than estimated.
 - `scaling::Function`: Function used to scale parameter value for use in equilibrium
   conditions.
-- `description::AbstractString`: A short description of the parameter's economic
+- `description::String`: A short description of the parameter's economic
   significance.
-- `tex_label::AbstractString`: String for printing parameter name to LaTeX.
+- `tex_label::String`: String for printing parameter name to LaTeX.
 """
 type ScaledParameter{T,U} <: Parameter{T,U}
     key::Symbol
@@ -140,8 +136,8 @@ type ScaledParameter{T,U} <: Parameter{T,U}
     prior::NullablePrior
     fixed::Bool
     scaling::Function
-    description::AbstractString
-    tex_label::AbstractString
+    description::String
+    tex_label::String
 end
 
 """
@@ -162,14 +158,14 @@ equilibrium conditions.
 - `key::Symbol`: Parameter name. Should conform to the guidelines
   established in the DSGE Style Guide.
 - `value::T`: The parameter's steady-state value.
-- `description::AbstractString`: Short description of the parameter's economic significance.
-- `tex_label::AbstractString`: String for printing parameter name to LaTeX.
+- `description::String`: Short description of the parameter's economic significance.
+- `tex_label::String`: String for printing parameter name to LaTeX.
 """
 type SteadyStateParameter{T} <: AbstractParameter{T}
     key::Symbol
     value::T
-    description::AbstractString
-    tex_label::AbstractString
+    description::String
+    tex_label::String
 end
 
 hasprior(p::Parameter) = !isnull(p.prior)
@@ -189,7 +185,7 @@ A `ParamBoundsError` is thrown upon an attempt to assign a parameter value that 
 between `valuebounds`.
 """
 type ParamBoundsError <: Exception
-    msg::AbstractString
+    msg::String
 end
 ParamBoundsError() = ParamBoundsError("Value not between valuebounds")
 Base.showerror(io::IO, ex::ParamBoundsError) = print(io, ex.msg)
@@ -200,7 +196,7 @@ parameter{T,U<:Transform}(key::Symbol, value::T, valuebounds = (value,value),
                           transform_parameterization = (value,value),
                           transform = Untransformed(), prior = NullablePrior(),
                           fixed = true, scaling::Function = identity, description = "",
-                          tex_label::AbstractString = "")
+                          tex_label::String = "")
 ```
 
 By default, returns a fixed `UnscaledParameter` object with key `key`
@@ -216,8 +212,8 @@ function parameter{T,U<:Transform}(key::Symbol,
                                    prior::NullableOrPrior   = NullablePrior();
                                    fixed::Bool              = true,
                                    scaling::Function        = identity,
-                                   description::AbstractString = "No description available.",
-                                   tex_label::AbstractString = "")
+                                   description::String = "No description available.",
+                                   tex_label::String = "")
 
     # If fixed=true, force bounds to match and leave prior as null.  We need to define new
     # variable names here because of lexical scoping.
@@ -257,16 +253,16 @@ end
 """
 ```
 SteadyStateParameter{T<:Number}(key::Symbol, value::T;
-                                description::AbstractString = "",
-                                tex_label::AbstractString = "")
+                                description::String = "",
+                                tex_label::String = "")
 ```
 
 SteadyStateParameter constructor with optional `description` and `tex_label` arguments.
 """
 function SteadyStateParameter{T<:Number}(key::Symbol,
                                        value::T;
-                                       description::AbstractString = "No description available",
-                                       tex_label::AbstractString = "")
+                                       description::String = "No description available",
+                                       tex_label::String = "")
 
     return SteadyStateParameter(key, value, description, tex_label)
 end
@@ -380,14 +376,6 @@ transform_to_real_line{T}(p::Parameter{T,Untransformed}, x::T = p.value) = x
 function transform_to_real_line{T}(p::Parameter{T,SquareRoot}, x::T = p.value)
     (a,b), c = p.transform_parameterization, one(T)
     cx = 2. * (x - (a+b)/2.)/(b-a)
-    if cx^2 >1
-        println("Parameter is: $(p.key)")
-        println("a is $a")
-        println("b is $b")
-        println("x is $x")
-        println("cx is $cx")
-        error("invalid paramter value")
-    end
     (1/c)*cx/sqrt(1 - cx^2)
 end
 function transform_to_real_line{T}(p::Parameter{T,Exponential}, x::T = p.value)
@@ -407,11 +395,11 @@ Base.convert{T<:Number}(::Type{T}, p::SteadyStateParameter)  = convert(T,p.value
 
 Base.promote_rule{T<:Number,U<:Number}(::Type{AbstractParameter{T}}, ::Type{U}) = promote_rule(T,U)
 
-for op in (:(Base.(:+)),
-           :(Base.(:-)),
-           :(Base.(:*)),
-           :(Base.(:/)),
-           :(Base.(:^)))
+for op in (:(Base.:+),
+           :(Base.:-),
+           :(Base.:*),
+           :(Base.:/),
+           :(Base.:^))
 
     @eval ($op)(p::UnscaledOrSteadyState, q::UnscaledOrSteadyState) = ($op)(p.value, q.value)
     @eval ($op)(p::UnscaledOrSteadyState, x::Integer)            = ($op)(p.value, x)
@@ -429,17 +417,20 @@ end
 
 for f in (:(Base.exp),
           :(Base.log),
-          :(Base.(:-)),
-          :(Base.(:<)),
-          :(Base.(:>)),
-          :(Base.(:<=)),
-          :(Base.(:>=)))
+          :(Base.transpose),
+          :(Base.:-),
+          :(Base.:<),
+          :(Base.:>),
+          :(Base.:<=),
+          :(Base.:>=))
 
     @eval ($f)(p::UnscaledOrSteadyState) = ($f)(p.value)
     @eval ($f)(p::ScaledParameter) = ($f)(p.scaledvalue)
 
-    @eval ($f)(p::UnscaledOrSteadyState, x::Number) = ($f)(p.value, x)
-    @eval ($f)(p::ScaledParameter, x::Number) = ($f)(p.scaledvalue, x)
+    if f != :(Base.:-)
+        @eval ($f)(p::UnscaledOrSteadyState, x::Number) = ($f)(p.value, x)
+        @eval ($f)(p::ScaledParameter, x::Number) = ($f)(p.scaledvalue, x)
+    end
 end
 
 """
@@ -498,3 +489,29 @@ end
 
 Distributions.pdf{T}(pvec::ParameterVector{T}) = exp(logpdf(pvec))
 Distributions.pdf{T}(pvec::ParameterVector{T}, values::Vector{T}) = exp(logpdf(pvec, values))
+
+function describe_prior(param::Parameter)
+    if param.fixed
+        return "fixed at " * string(param.value)
+
+    elseif !param.fixed && !isnull(param.prior)
+        (prior_mean, prior_std) = DSGE.moments(param)
+
+        prior_dist = string(typeof(get(param.prior)))
+        prior_dist = replace(prior_dist, "Distributions.", "")
+        prior_dist = replace(prior_dist, "DSGE.", "")
+        prior_dist = replace(prior_dist, "{Float64}", "")
+
+        mom1, mom2 = if isa(prior, DSGE.RootInverseGamma)
+            "tau", "nu"
+        else
+            "mu", "sigma"
+        end
+
+        return prior_dist * "(" * mom1 * "=" * string(round(prior_mean, 4)) * ", " *
+                                  mom2 * "=" * string(round(prior_std, 4)) * ")"
+
+    else
+        error("Parameter must either be fixed or have non-null prior: " * string(param.key))
+    end
+end

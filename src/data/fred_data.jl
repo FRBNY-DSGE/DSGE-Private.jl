@@ -3,7 +3,7 @@
 load_fred_data(m::AbstractModel; start_date="1959-03-31", end_date=prev_quarter())
 ```
 
-Checks in `inpath(m)` for a FRED dataset corresponding to `data_vintage(m)`.
+Checks in `inpath(m, raw)` for a FRED dataset corresponding to `data_vintage(m)`.
 If a FRED vintage exists on disk, any required FRED series that is contained therein will be
 imported. All missing series will be downloaded directly from FRED using the *FredData*
 package. The full dataset is written to the appropriate data vintage file and returned.
@@ -32,7 +32,7 @@ function load_fred_data(m::AbstractModel;
     missing_series = Vector{Symbol}()
     data = []
 
-    datafile = inpath(m, "data", "fred_$vint.csv")
+    datafile = inpath(m, "raw", "fred_$vint.csv")
     if isfile(datafile)
 
         # Read in dataset and check that the file contains data for the proper dates
@@ -117,7 +117,7 @@ function load_fred_data(m::AbstractModel;
         for i = 1:length(fredseries)
             if isdefined(fredseries, i)
                 series = fredseries[i]
-                series_id = symbol(series.id)
+                series_id = Symbol(series.id)
                 rename!(series.df, :value, series_id)
                 map!(x->lastdayofquarter(x), series.df[:date], series.df[:date])
                 data = join(data, series.df[:,[:date, series_id]], on=:date, kind=:outer)

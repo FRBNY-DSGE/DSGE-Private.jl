@@ -7,11 +7,11 @@ Kalman{S<:AbstractFloat}
 
 - `L`: value of the average log likelihood function of the SSM under assumption that
   observation noise ϵ(t) is normally distributed
-
-#### Fields filled in when `!likelihood_only` in a call to `kalman_filter`:
-
 - `zend`: state vector in the last period for which data is provided
 - `Pend`: variance-covariance matrix for `zend`
+
+#### Fields filled in when `allout` in a call to `kalman_filter`:
+
 - `pred`: a `Nz` x `T` matrix containing one-step predicted state vectors
 - `vpred`: a `Nz` x `Nz` x `T` matrix containing mean square errors of predicted
   state vectors
@@ -22,6 +22,7 @@ Kalman{S<:AbstractFloat}
   data, then `z0` is the state vector at the end of the presample/beginning of
   the main sample
 - `P0`: variance-covariance matrix for `z0`
+- `marginal_L`: a vector of marginal likelihoods from t = 1 to T
 """
 immutable Kalman{S<:AbstractFloat}
     L::S                  # likelihood
@@ -37,9 +38,12 @@ immutable Kalman{S<:AbstractFloat}
     vfilt::Array{S, 3}     # mean squared errors of filtered state vectors
     z0::Vector{S}          # starting-period state vector
     vz0::Matrix{S}         # starting-period variance-covariance matrix for the states
+    marginal_L::Vector{S}
 end
 
 function Kalman{S<:AbstractFloat}(L::S,
+                                  zend::Vector{S}          = Vector{S}(),
+                                  Pend::Matrix{S}          = Matrix{S}(),
                                   pred::Matrix{S}          = Matrix{S}(),
                                   vpred::Array{S, 3}       = Array{S}(0, 0, 0),
                                   filt::Matrix{S}          = Matrix{S}(),
@@ -49,22 +53,16 @@ function Kalman{S<:AbstractFloat}(L::S,
                                   rmse::Matrix{S}          = Matrix{S}(),
                                   rmsd::Matrix{S}          = Matrix{S}(),
                                   z0::Vector{S}            = Vector{S}(),
-                                  P0::Matrix{S}            = Matrix{S}())
+                                  P0::Matrix{S}            = Matrix{S}(),
+                                  marginal_L::Vector{S}    = Vector{S}())
 
-    if !isempty(filt) && !isempty(vfilt)
-        zend = filt[:, end]
-        Pend = vfilt[:, :, end]
-    else
-        zend = Vector{S}()
-        Pend = Matrix{S}()
-    end
-
-    return Kalman{S}(L, zend, Pend, pred, vpred, yprederror, ystdprederror, rmse, rmsd, filt, vfilt, z0, P0)
+    return Kalman{S}(L, zend, Pend, pred, vpred, yprederror, ystdprederror, rmse, rmsd, filt, vfilt, z0, P0,
+                     marginal_L)
 end
 
 function Base.getindex(K::Kalman, d::Symbol)
     if d in (:L, :zend, :Pend, :pred, :vpred, :yprederror, :ystdprederror, :rmse, :rmsd,
-             :filt, :vfilt, :z0, :vz0)
+             :filt, :vfilt, :z0, :vz0, :marginal_L)
         return getfield(K, d)
     else
         throw(KeyError(d))
@@ -72,15 +70,13 @@ function Base.getindex(K::Kalman, d::Symbol)
 end
 
 function Base.cat{S<:AbstractFloat}(m::AbstractModel, k1::Kalman{S},
-    k2::Kalman{S}; likelihood_only::Bool = false)
+    k2::Kalman{S}; allout::Bool = true)
 
     L = k1[:L] + k2[:L]
     zend = k2[:zend]
     Pend = k2[:Pend]
 
-    if likelihood_only
-        return Kalman(L)
-    else
+    if allout
         pred  = hcat(k1[:pred], k2[:pred])
         vpred = cat(3, k1[:vpred], k2[:vpred])
         yprederror    = hcat(k1[:yprederror], k2[:yprederror])
@@ -91,9 +87,12 @@ function Base.cat{S<:AbstractFloat}(m::AbstractModel, k1::Kalman{S},
         vfilt = cat(3, k1[:vfilt], k2[:vfilt])
         z0    = k1[:z0]
         P0    = k1[:vz0]
+        marginal_L = vcat(k1[:marginal_L], k2[:marginal_L])
 
         return Kalman(L, zend, Pend, pred, vpred, yprederror, ystdprederror,
-            rmse, rmsd, filt, vfilt, z0, P0)
+            rmse, rmsd, filt, vfilt, z0, P0, marginal_L)
+    else
+        return Kalman(L, zend, Pend)
     end
 end
 

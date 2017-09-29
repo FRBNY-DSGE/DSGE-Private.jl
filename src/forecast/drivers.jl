@@ -161,7 +161,6 @@ function load_draws(m::AbstractModel, input_type::Symbol, block_inds::Range{Int6
     else
         error("This load_draws method can only be called with input_type in [:full, :subset]")
     end
-
 end
 
 """
@@ -209,7 +208,7 @@ conditional data case given by `cond_type`.
   more sophisticated selection criterion is desired, the user is responsible for
   determining the indices corresponding to that criterion. If `input_type` is
   not `subset`, `subset_inds` will be ignored
-- `forecast_string::AbstractString`: short string identifying the subset to be
+- `forecast_string::String`: short string identifying the subset to be
   appended to the output filenames. If `input_type = :subset` and
   `forecast_string` is empty, an error is thrown.
 - `verbose::Symbol`: desired frequency of function progress messages printed to
@@ -223,13 +222,14 @@ None. Output is saved to files returned by
 function forecast_one(m::AbstractModel{Float64},
     input_type::Symbol, cond_type::Symbol, output_vars::Vector{Symbol};
     df::DataFrame = DataFrame(), subset_inds::Range{Int64} = 1:0,
-    forecast_string::AbstractString = "", verbose::Symbol = :low)
+    forecast_string::String = "", verbose::Symbol = :low)
 
     ### Common Setup
 
     # Add necessary output_vars and load data
     output_vars, df = prepare_forecast_inputs!(m, input_type, cond_type, output_vars;
-                                               df = df, verbose = verbose)
+                                               df = df, verbose = verbose,
+                                               subset_inds = subset_inds)
 
     # Get output file names
     forecast_output = Dict{Symbol, Array{Float64}}()
@@ -256,7 +256,7 @@ function forecast_one(m::AbstractModel{Float64},
                                             params, df, verbose = verbose)
 
         write_forecast_outputs(m, input_type, output_vars, forecast_output_files,
-                               forecast_output; block_number = Nullable{Int64}(),
+                               forecast_output; df = df, block_number = Nullable{Int64}(),
                                verbose = verbose)
 
         if VERBOSITY[verbose] >= VERBOSITY[:low]
@@ -294,20 +294,13 @@ function forecast_one(m::AbstractModel{Float64},
                                                                param, df, verbose = verbose),
                                     params)
 
-            # If some element of forecast_outputs is a RemoteException, rethrow the exception
-            ind_ex = findfirst(x -> isa(x, RemoteException), forecast_outputs)
-            if ind_ex > 0
-                ex = forecast_outputs[ind_ex].captured
-                throw(ex)
-            else
-                forecast_outputs = convert(Vector{Dict{Symbol, Array{Float64}}}, forecast_outputs)
-            end
-
             # Assemble outputs from this block and write to file
+            forecast_outputs = convert(Vector{Dict{Symbol, Array{Float64}}}, forecast_outputs)
             forecast_output = assemble_block_outputs(forecast_outputs)
             write_forecast_outputs(m, input_type, output_vars, forecast_output_files,
-                                   forecast_output; block_number = Nullable(block),
-                                   verbose = block_verbose, block_inds = block_inds_thin[block])
+                                   forecast_output; df = df, block_number = Nullable(block),
+                                   verbose = block_verbose, block_inds = block_inds_thin[block],
+                                   subset_inds = subset_inds)
             gc()
 
             # Calculate time to complete this block, average block time, and
@@ -316,12 +309,13 @@ function forecast_one(m::AbstractModel{Float64},
                 block_time = toq()
                 total_forecast_time += block_time
                 total_forecast_time_min     = total_forecast_time/60
-                expected_time_remaining     = (total_forecast_time/block)*(nblocks - block)
+                blocks_elapsed              = block - start_block + 1
+                expected_time_remaining     = (total_forecast_time/blocks_elapsed)*(nblocks - block)
                 expected_time_remaining_min = expected_time_remaining/60
 
                 println("\nCompleted $block of $nblocks blocks.")
-                println("Total time to compute $block blocks: $total_forecast_time_min minutes")
-                println("Expected time remaining in forecast: $expected_time_remaining_min minutes")
+                println("Total time elapsed: $total_forecast_time_min minutes")
+                println("Expected time remaining: $expected_time_remaining_min minutes")
             end
         end # of loop through blocks
 
@@ -405,35 +399,38 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
         kal = filter(m, df, system; cond_type = cond_type)
     end
 
-    # Initialize dictionary
+    # Initialize output dictionary
     forecast_output = Dict{Symbol, Array{Float64}}()
+
+    # Decide whether to draw states/shocks in smoother/forecast
+    uncertainty_override = forecast_uncertainty_override(m)
+    uncertainty = if isnull(uncertainty_override)
+        if input_type in [:init, :mode, :mean]
+            false
+        elseif input_type in [:full, :subset]
+            true
+        end
+    else
+        get(uncertainty_override)
+    end
 
 
     ### 1. Smoothed Histories
 
-    # Decide whether to draw smoothed states
-    draw_states_override = smoother_draw_states_override(m)
-    draw_states = if isnull(draw_states_override)
-        if input_type in [:init, :mode, :mean]
-            true
-        elseif input_type in [:full, :subset]
-            false
-        end
-    else
-        get(draw_states_override)
-    end
-
     # Must run smoother for conditional data in addition to explicit cases
-    hist_vars = [:histstates, :histpseudo, :histshocks]
+    hist_vars = [:histstates, :histpseudo, :histshocks, :histstdshocks]
     shockdec_vars = [:shockdecstates, :shockdecpseudo, :shockdecobs]
     dettrend_vars = [:dettrendstates, :dettrendpseudo, :dettrendobs]
     smooth_vars = vcat(hist_vars, shockdec_vars, dettrend_vars)
-    hists_to_compute = intersect(output_vars, hist_vars)
+    hists_to_compute = intersect(output_vars, smooth_vars)
 
-    if !isempty(intersect(output_vars, smooth_vars)) || cond_type in [:semi, :full]
+    run_smoother = !isempty(hists_to_compute) ||
+        (cond_type in [:semi, :full] && !irfs_only)
 
+    if run_smoother
+        # Call smoother
         histstates, histshocks, histpseudo, initial_states =
-            smooth(m, df, system, kal; cond_type = cond_type, draw_states = draw_states)
+            smooth(m, df, system, kal; cond_type = cond_type, draw_states = uncertainty)
 
         # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
         if cond_type in [:full, :semi]
@@ -447,67 +444,93 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
             forecast_output[:histshocks] = histshocks
             forecast_output[:histpseudo] = histpseudo
         end
+
+        # Standardize shocks if desired
+        if :histstdshocks in output_vars
+            forecast_output[:histstdshocks] = standardize_shocks(forecast_output[:histshocks], system[:QQ])
+        end
     end
 
 
     ### 2. Forecasts
 
-    # Decide whether to draw shocks
-    draw_shocks_override = forecast_draw_shocks_override(m)
-    draw_shocks = if isnull(draw_shocks_override)
-        if input_type in [:init, :mode, :mean]
-            true
-        elseif input_type in [:full, :subset]
-            false
-        end
-    else
-        get(draw_shocks_override)
-    end
-
-    # 2A. Unbounded forecasts
-
-    forecast_vars = [:forecaststates, :forecastobs, :forecastpseudo, :forecastshocks]
+    unbddforecast_vars = [:forecaststates, :forecastobs, :forecastpseudo, :forecastshocks, :forecaststdshocks]
+    bddforecast_vars = [:bddforecaststates, :bddforecastobs, :bddforecastpseudo, :bddforecastshocks, :bddforecaststdshocks]
+    forecast_vars = vcat(unbddforecast_vars, bddforecast_vars)
     forecasts_to_compute = intersect(output_vars, forecast_vars)
 
     if !isempty(forecasts_to_compute)
-        forecaststates, forecastobs, forecastpseudo, forecastshocks =
-            forecast(m, system, kal; cond_type = cond_type, enforce_zlb = false, draw_shocks = draw_shocks)
-
-        # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
-        if cond_type in [:full, :semi]
-            forecast_output[:forecaststates] = transplant_forecast(histstates, forecaststates, T)
-            forecast_output[:forecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
-            forecast_output[:forecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-            forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+        # Get initial forecast state vector s_T
+        initial_forecast_state = if uncertainty
+            if run_smoother
+                # If we want to draw s_T and have already run the smoother, use the
+                # last smoothed state, which was already drawn from N(s_{T|T},
+                # P_{T|T}) in the simulation smoother
+                histstates[:, end]
+            else
+                # If we want to draw s_T but haven't run the smoother, draw from
+                # N(s_{T|T}, P_{T|T}) directly
+                U, singular_values, _ = svd(kal[:Pend])
+                dist = DegenerateMvNormal(kal[:zend], U*diagm(sqrt(singular_values)))
+                rand(dist)
+            end
         else
-            forecast_output[:forecaststates] = forecaststates
-            forecast_output[:forecastshocks] = forecastshocks
-            forecast_output[:forecastpseudo] = forecastpseudo
-            forecast_output[:forecastobs]    = forecastobs
+            # If we don't want to draw s_T, simply use the mean s_{T|T}
+            kal[:zend]
         end
-    end
 
 
-    # 2B. Bounded forecasts
+        # 2A. Unbounded forecasts
 
-    forecast_vars_bdd = [:bddforecaststates, :bddforecastobs, :bddforecastpseudo, :bddforecastshocks]
-    forecasts_to_compute = intersect(output_vars, forecast_vars_bdd)
+        if !isempty(intersect(output_vars, unbddforecast_vars))
+            forecaststates, forecastobs, forecastpseudo, forecastshocks =
+                forecast(m, system, initial_forecast_state;
+                         cond_type = cond_type, enforce_zlb = false, draw_shocks = uncertainty)
 
-    if !isempty(forecasts_to_compute)
-        forecaststates, forecastobs, forecastpseudo, forecastshocks =
-            forecast(m, system, kal; cond_type = cond_type, enforce_zlb = true, draw_shocks = draw_shocks)
+            # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
+            if cond_type in [:full, :semi]
+                forecast_output[:forecaststates] = transplant_forecast(histstates, forecaststates, T)
+                forecast_output[:forecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
+                forecast_output[:forecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
+                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+            else
+                forecast_output[:forecaststates] = forecaststates
+                forecast_output[:forecastshocks] = forecastshocks
+                forecast_output[:forecastpseudo] = forecastpseudo
+                forecast_output[:forecastobs]    = forecastobs
+            end
 
-        # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
-        if cond_type in [:full, :semi]
-            forecast_output[:bddforecaststates] = transplant_forecast(histstates, forecaststates, T)
-            forecast_output[:bddforecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
-            forecast_output[:bddforecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-            forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
-        else
-            forecast_output[:bddforecaststates] = forecaststates
-            forecast_output[:bddforecastshocks] = forecastshocks
-            forecast_output[:bddforecastpseudo] = forecastpseudo
-            forecast_output[:bddforecastobs]    = forecastobs
+            # Standardize shocks if desired
+            if :forecaststdshocks in output_vars
+                forecast_output[:forecaststdshocks] = standardize_shocks(forecast_output[:forecastshocks], system[:QQ])
+            end
+        end
+
+
+        # 2B. Bounded forecasts
+
+        if !isempty(intersect(output_vars, bddforecast_vars))
+            forecaststates, forecastobs, forecastpseudo, forecastshocks =
+                forecast(m, system, initial_forecast_state;
+                         cond_type = cond_type, enforce_zlb = true, draw_shocks = uncertainty)
+
+            # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
+            if cond_type in [:full, :semi]
+                forecast_output[:bddforecaststates] = transplant_forecast(histstates, forecaststates, T)
+                forecast_output[:bddforecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
+                forecast_output[:bddforecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
+                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+            else
+                forecast_output[:bddforecaststates] = forecaststates
+                forecast_output[:bddforecastshocks] = forecastshocks
+                forecast_output[:bddforecastpseudo] = forecastpseudo
+                forecast_output[:bddforecastobs]    = forecastobs
+            end
+
+            # Standardize shocks if desired
+            if :bddforecaststdshocks in output_vars
+                forecast_output[:bddforecaststdshocks] = standardize_shocks(forecast_output[:bddforecastshocks], system[:QQ])
+            end
         end
     end
 

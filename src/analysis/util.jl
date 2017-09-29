@@ -1,57 +1,68 @@
-#########################################
-## Extract class and product from a symbol
-#########################################
+##########################################
+## Extract class and product from a Symbol
+##########################################
 
-function get_class(s::Symbol)
-    class = if contains(string(s), "pseudo")
+function get_class(output_var::Symbol)
+    s = string(output_var)
+    if contains(s, "pseudo")
         :pseudo
-    elseif contains(string(s), "obs")
+    elseif contains(s, "obs")
         :obs
-    elseif contains(string(s), "state")
-        :state
-    elseif contains(string(s), "shock")
-        :shock
+    elseif contains(s, "state")
+        :states
+    elseif contains(s, "stdshock")
+        :stdshocks
+    elseif contains(s, "shock")
+        :shocks
+    else
+        error("Invalid output_var: " * s)
     end
 end
 
-function get_product(s::Symbol)
-    product = if contains(string(s), "hist")
+function get_product(output_var::Symbol)
+    s = string(output_var)
+    if contains(s, "hist4q")
+        :hist4q
+    elseif contains(s, "hist")
         :hist
-    elseif contains(string(s), "bddforecast4q")
+    elseif contains(s, "bddforecast4q")
         :bddforecast4q
-    elseif contains(string(s), "forecast4q")
+    elseif contains(s, "forecast4q")
         :forecast4q
-    elseif contains(string(s), "bddforecast")
+    elseif contains(s, "bddforecast")
         :bddforecast
-    elseif contains(string(s), "forecast")
+    elseif contains(s, "forecast")
         :forecast
-    elseif contains(string(s), "shockdec")
+    elseif contains(s, "shockdec")
         :shockdec
-    elseif contains(string(s), "dettrend")
+    elseif contains(s, "dettrend")
         :dettrend
-    elseif contains(string(s), "trend")
+    elseif contains(s, "trend")
         :trend
-    elseif contains(string(s), "irf")
+    elseif contains(s, "irf")
         :irf
+    else
+        error("Invalid output_var: " * s)
     end
 end
 
 function get_class_longname(class::Symbol)
-    longname = if class == :pseudo
+    if class == :pseudo
         :pseudoobservable
     elseif class == :obs
         :observable
-    elseif class == :state
+    elseif class == :states
         :state
-    elseif class == :shock
+    elseif class in [:shocks, :stdshocks]
         :shock
     end
 end
 
 
-#########################################
+#####################################
 ## Preparing data for transformations
-#########################################
+#####################################
+
 """
 ```
 resize_population_forecast(population_forecast::DataFrame, nperiods::Int,
@@ -105,37 +116,127 @@ parse_transform(t::Symbol)
 Parse the module name out of a Symbol to recover the transform associated with
 an observable or pseudoobservable. Returns a function.
 """
-parse_transform(t::Symbol) = eval(symbol(split(string(t),".")[end]))
+parse_transform(t::Symbol) = eval(Symbol(split(string(t),".")[end]))
 
 """
 ```
-load_population_growth(data_file, forecast_file, mnemonic; verbose = :low)
+load_population_growth(data_file, forecast_file, mnemonic;
+    use_population_forecast = true, use_hpfilter = true, verbose = :low)
 ```
 
 Returns `DataFrame`s of growth rates for HP-filtered population data and forecast.
 """
-function load_population_growth{S<:AbstractString}(data_file::S, forecast_file::S,
-                                                   mnemonic::Symbol;
-                                                   verbose::Symbol = :low)
+function load_population_growth(data_file::String, forecast_file::String,
+                                mnemonic::Symbol;
+                                use_population_forecast::Bool = true,
+                                use_hpfilter::Bool = true,
+                                verbose::Symbol = :low)
+
     data_verbose = verbose == :none ? :none : :low
 
     # Read in unfiltered series
     unfiltered_data     = read_population_data(data_file; verbose = data_verbose)
-    unfiltered_forecast = read_population_forecast(forecast_file, mnemonic; verbose = data_verbose)
+    unfiltered_forecast = if use_population_forecast
+        read_population_forecast(forecast_file, mnemonic; verbose = data_verbose)
+    else
+        DataFrame()
+    end
 
-    # HP filter
+    # HP filter if necessary
     data, forecast = transform_population_data(unfiltered_data, unfiltered_forecast,
-                                               mnemonic; verbose = :none)
-    dlfiltered_data =
-        DataFrame(date = @data(convert(Array{Date}, data[:date])),
-                  population_growth = @data(convert(Array{Float64},
-                                                    data[:dlfiltered_population_recorded])))
-    dlfiltered_forecast =
-        DataFrame(date = @data(convert(Array{Date}, forecast[:date])),
-                  population_growth = @data(convert(Array{Float64},
-                                                    forecast[:dlfiltered_population_forecast])))
+                                               mnemonic; use_hpfilter = use_hpfilter,
+                                               verbose = :none)
+    if use_hpfilter
+        data_mnemonic = :dlfiltered_population_recorded
+        forecast_mnemonic = :dlfiltered_population_forecast
+    else
+        data_mnemonic = :dlpopulation_recorded
+        forecast_mnemonic = :dlpopulation_forecast
+    end
 
-    return dlfiltered_data, dlfiltered_forecast
+    # Prepare output variables
+    data  = data[[:date, data_mnemonic]]
+    rename!(data, data_mnemonic, :population_growth)
+
+    if use_population_forecast
+        forecast = forecast[[:date, forecast_mnemonic]]
+        rename!(forecast, forecast_mnemonic, :population_growth)
+    else
+        forecast = DataFrame()
+    end
+
+    return data, forecast
+end
+
+"""
+```
+get_population_series(mnemonic, population_data, population_forecast,
+    start_date, end_date)
+```
+
+Returns the population series between `start_date` and `end_date`. If `end_date`
+is after the last period in `population_forecast`, the last forecasted
+population is repeated until `end_date` using
+`resize_population_forecast`. Returns a `Vector{Float64}`.
+"""
+function get_population_series(mnemonic::Symbol, population_data::DataFrame,
+                               population_forecast::DataFrame, start_date::Date,
+                               end_date::Date)
+
+    last_historical_date = population_data[end, :date]
+
+    # If no population forecast, use last period of population data instead
+    if isempty(population_forecast)
+        population_forecast = population_data[end, :]
+        last_forecast_date = DSGE.iterate_quarters(last_historical_date, 1)
+        population_forecast[1, :date] = last_forecast_date
+    else
+        last_forecast_date = population_forecast[end, :date]
+    end
+
+    # Calculate number of periods that are in the future and extend
+    # population forecast by the right number of periods
+    if end_date > last_forecast_date
+        n_fcast_periods = subtract_quarters(end_date, last_historical_date)
+        population_forecast = resize_population_forecast(population_forecast, n_fcast_periods,
+                                                         mnemonic)
+    end
+
+    population_insample = if start_date <= population_data[end, :date]
+
+        padding = if start_date < population_data[1, :date]
+            # Start date is before population data; compute number of NaNs to prepend
+            warn("Start date $start_date is before population data begins: prepending NaNs")
+            n_nans = subtract_quarters(population_data[1, :date], start_date)
+
+            DataFrame(date = quarter_range(start_date, iterate_quarters(population_data[1,:date], -1)))
+        else
+            DataFrame()
+        end
+
+        unpadded_data = if population_data[1, :date] < end_date < population_data[end, :date]
+            # Dates entirely in past
+            population_data[start_date .<= population_data[:, :date] .<= end_date, :]
+        else
+            # Dates span past and forecast
+            data  = population_data[start_date .<= population_data[:, :date], :]
+            fcast = population_forecast[population_forecast[:, :date] .<= end_date, :]
+            vcat(data, fcast)
+        end
+
+        padded_data =  vcat(padding, unpadded_data)
+        na2nan!(padded_data)
+        padded_data
+
+    elseif population_forecast[1, :date] <= start_date <= population_forecast[end, :date]
+        # Dates entirely in forecast
+        population_forecast[start_date .<= population_forecast[:, :date] .<= end_date, :]
+    else
+        # start_date comes after population_forecast[end, :date]
+        error("Start date $start_date comes after population forecast ends")
+    end
+
+    return convert(Vector{Float64}, population_insample[mnemonic])
 end
 
 """
@@ -149,79 +250,28 @@ function get_mb_population_series(product::Symbol, mnemonic::Symbol,
                                   population_data::DataFrame, population_forecast::DataFrame,
                                   date_list::Vector{Date})
 
-    if product in [:forecast, :bddforecast]
-
-        # For forecasts, we repeat the last forecast period's population
-        # forecast until we have n_fcast_periods of population forecasts
-        n_fcast_periods = length(date_list)
-        population_series = resize_population_forecast(population_forecast, n_fcast_periods,
-                                                       mnemonic)
-        population_series = convert(Vector{Float64}, population_series[mnemonic])
-
-    elseif product in [:shockdec, :dettrend, :trend, :forecast4q, :bddforecast4q]
-
-        if product in [:forecast4q, :bddforecast4q]
-            # For forecast4q, we want the last 3 historical periods + the forecast
-            # date_list is the date_list for forecast, so date_list[1] corresponds to date_forecast_start.
-            start_date = iterate_quarters(date_list[1], -3)
-            end_date   = date_list[end]
-            start_ind  = find(population_data[:date] .== start_date)[1]
-        else
-            # For shockdecs, deterministic trend, and trend, we want to
-            # make sure population series corresponds with the saved dates.
-            start_date = date_list[1]
-            end_date   = date_list[end]
-            start_ind  = find(population_data[:date] .== start_date)[1]
-        end
-        population_data = population_data[start_ind:end, mnemonic]
-
-        # Calculate number of periods that are in the future
-        n_fcast_periods = if product in [:forecast4q, :bddforecast4q]
-            length(date_list)
-        else
-            length(date_list) - length(population_data)
-        end
-
-        # Extend population forecast by the right number of periods
-        population_forecast = resize_population_forecast(population_forecast, n_fcast_periods,
-                                                         mnemonic)
-        end_ind = if isempty(population_forecast[:date])
-            []
-        else
-            find(population_forecast[:date] .== end_date)[1]
-        end
-
-        # Concatenate population histories and forecasts together
-        population_series = if isempty(end_ind)
-            convert(Vector{Float64}, population_data)
-        else
-            tmp = [population_data; population_forecast[1:end_ind, mnemonic]]
-            convert(Vector{Float64}, tmp)
-        end
-
-    elseif product == :hist
-
-        # For history, the population series is just the data
-        population_series = convert(Vector{Float64}, population_data[mnemonic])
-
-    elseif product == :irf
-
+    if product == :irf
         # Return empty vector for IRFs, which don't correspond to real dates
-        population_series = Vector{Float64}()
-
+        return Vector{Float64}()
     else
+        start_date = if product in [:hist4q, :forecast4q, :bddforecast4q]
+            iterate_quarters(date_list[1], -3)
+        elseif product in [:hist, :forecast, :bddforecast, :shockdec, :dettrend, :trend]
+            date_list[1]
+        else
+            error("Invalid product: $product")
+        end
+        end_date = date_list[end]
 
-        error("Invalid product: $product")
-
+        return get_population_series(mnemonic, population_data, population_forecast,
+                                     start_date, end_date)
     end
-
-    return population_series
 end
 
 
-#########################################
+##############
 ## Other utils
-#########################################
+##############
 
 """
 ```
@@ -231,9 +281,9 @@ get_mb_metadata(input_type, cond_type, output_var, forecast_output_file; forecas
 Returns the `metadata` dictionary from `read_forecast_metadata`, as well as
 `mb_metadata`, the dictionary that we will save to the means and bands file.
 """
-function get_mb_metadata{S<:AbstractString}(input_type::Symbol, cond_type::Symbol,
-                                            output_var::Symbol, forecast_output_file::S;
-                                            forecast_string = "")
+function get_mb_metadata(input_type::Symbol, cond_type::Symbol,
+                         output_var::Symbol, forecast_output_file::String;
+                         forecast_string::String = "")
     class   = get_class(output_var)
     product = get_product(output_var)
 
@@ -242,7 +292,7 @@ function get_mb_metadata{S<:AbstractString}(input_type::Symbol, cond_type::Symbo
     end
 
     class_long = get_class_longname(class)
-    variable_indices = metadata[symbol("$(class_long)_indices")]
+    variable_indices = metadata[Symbol(class_long, "_indices")]
     date_indices     = product == :irf ? Dict{Date,Int}() : metadata[:date_indices]
 
     # Make sure date lists are valid. This is vacuously true for and IRFs, which
@@ -286,7 +336,7 @@ function get_y0_index(m::AbstractModel, product::Symbol)
         return index_forecast_start(m) - 4
     elseif product in [:shockdec, :dettrend, :trend]
         return n_presample_periods(m) + index_shockdec_start(m) - 1
-    elseif product == :hist
+    elseif product in [:hist, :hist4q]
         return index_mainsample_start(m) - 1
     elseif product == :irf
         return -1
@@ -294,7 +344,6 @@ function get_y0_index(m::AbstractModel, product::Symbol)
         error("get_y0_index not implemented for product = $product")
     end
 end
-
 
 """
 ```
@@ -323,4 +372,3 @@ function check_consistent_order(l1, l2)
 
     return true
 end
-

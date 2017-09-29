@@ -42,7 +42,7 @@ end
 csminwel(fcn::Function, grad::Function, x0::Vector, H0::Matrix=1e-5.*eye(length(x0)), args...;
          xtol::Real=1e-32, ftol::Float64=1e-14, grtol::Real=1e-8, iterations::Int=1000,
          store_trace::Bool = false, show_trace::Bool = false, extended_trace::Bool = false,
-         verbose::Symbol = :none, rng::AbstractRNG = MersenneTwister(), kwargs...)
+         verbose::Symbol = :none, rng::AbstractRNG = MersenneTwister(0), kwargs...)
 ```
 
 Minimizes `fcn` using the csminwel algorithm.
@@ -84,9 +84,7 @@ function csminwel(fcn::Function,
                   show_trace::Bool     = false,
                   extended_trace::Bool = false,
                   verbose::Symbol      = :none,
-                  rng::AbstractRNG     = MersenneTwister(),
-                  #step_size::Float64   = 0.1,
-                  #neighbor!::Function  = identity,
+                  rng::AbstractRNG     = MersenneTwister(0),
                   kwargs...)
 
     if show_trace
@@ -164,7 +162,7 @@ function csminwel(fcn::Function,
                 Hcliff = H + diagm(diag(H).*rand(rng, nx))
 
                 if VERBOSITY[verbose] >= VERBOSITY[:low]
-                    @printf "Cliff.  Perturbing search direction.\n"
+                    println("Cliff. Perturbing search direction.")
                 end
 
                 f2, x2, fc, retcode2 = csminit(fcn, x, f_x, gr, badg, Hcliff,
@@ -183,7 +181,7 @@ function csminwel(fcn::Function,
 
                     if wall2
                         if VERBOSITY[verbose] >= VERBOSITY[:low]
-                            @printf "Cliff again.  Try traversing\n"
+                            println("Cliff again. Try traversing")
                         end
 
                         if norm(x2-x1) < 1e-13
@@ -294,7 +292,7 @@ function csminwel(fcn::Function,
 
         if stuck
             if VERBOSITY[verbose] >= VERBOSITY[:low]
-                @printf "improvement < ftol -- terminating\n"
+                println("improvement < ftol -- terminating")
             end
         end
 
@@ -326,7 +324,7 @@ function csminwel(fcn::Function,
 
     return MultivariateOptimizationResults("csminwel", x0, x, convert(Float64, f_x),
         iteration, iteration==iterations, x_converged, xtol, f_converged, ftol, gr_converged,
-        grtol, tr, f_calls, g_calls, 0), H  # also return H
+        grtol, false, tr, f_calls, g_calls, 0), H  # also return H
 end
 
 
@@ -348,7 +346,7 @@ function csminwel(fcn::Function,
                   show_trace::Bool     = false,
                   extended_trace::Bool = false,
                   verbose::Symbol      = :none,
-                  rng::AbstractRNG     = MersenneTwister(),
+                  rng::AbstractRNG     = MersenneTwister(0),
                   kwargs...)
 
     grad{T<:Number}(x::Array{T}) = csminwell_grad(fcn, x, args...; kwargs...)
@@ -396,7 +394,7 @@ function csminit(fcn, x0, f0, g0, badg, H0, args...; verbose::Symbol=:none, kwar
         if dxnorm > 1e12
 
             if VERBOSITY[verbose] >= VERBOSITY[:low]
-                @printf "Near singular H problem.\n"
+                println("Near singular H problem.")
             end
 
             dx = dx * fchange / dxnorm

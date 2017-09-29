@@ -13,14 +13,14 @@ Reformat `MeansBands` object into matrices, and save to individual files.
 
 ### Keyword Arguments
 
-- `forecast_string::AbstractString`: identifies the forecast (if
+- `forecast_string::String`: identifies the forecast (if
   desired). Required if `input_type == :subset`
 - `verbose::Symbol`: desired frequency of function progress messages printed to
   standard out. One of `:none`, `:low`, or `:high`
 """
 function meansbands_matrix_all(m::AbstractModel, input_type::Symbol,
                                cond_type::Symbol, output_vars::Vector{Symbol};
-                               forecast_string::AbstractString = "", verbose::Symbol = :low)
+                               forecast_string::String = "", verbose::Symbol = :low)
 
     ## Step 0: Determine full set of output_vars necessary for plotting desired results
     #          Specifically, if output_vars contains shockdecs but not
@@ -107,7 +107,7 @@ function meansbands_matrix(mb::MeansBands)
     nbands     = length(bands_list)             # how many bands are stored
 
     # extract  matrices from MeansBands structure
-    if prod in [:hist, :forecast, :forecast4q, :bddforecast, :bddforecast4q, :dettrend, :trend]
+    if prod in [:hist, :hist4q, :forecast, :forecast4q, :bddforecast, :bddforecast4q, :dettrend, :trend]
 
         # construct means and bands arrays
         means = Array{T,2}(nvars, nperiods)
@@ -119,7 +119,7 @@ function meansbands_matrix(mb::MeansBands)
             means[ind,:] = convert(Array{T},mb.means[series])
 
             for (i,band) in enumerate(bands_list)  # these are ordered properly already
-                bands[i,ind,:] = convert(Array{T},mb.bands[series][symbol(band)])
+                bands[i,ind,:] = convert(Array{T},mb.bands[series][Symbol(band)])
             end
         end
 
@@ -142,7 +142,7 @@ function meansbands_matrix(mb::MeansBands)
 
             for (band_ind, band) in enumerate(bands_list)
                 bands[band_ind, ind, :, shock_ind] =
-                    convert(Array{T}, mb.bands[series][symbol(band)])
+                    convert(Array{T}, mb.bands[series][Symbol(band)])
             end
         end
     end

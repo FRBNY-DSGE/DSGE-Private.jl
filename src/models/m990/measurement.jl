@@ -10,7 +10,7 @@ y_t = ZZ*s_t + DD + u_t
 ```
 where
 ```
-u_t = η_t + MM*ϵ_t     
+u_t = η_t + MM*ϵ_t
 ```
 is error composed of measurement error and a contribution from underlying shocks, and
 ```
@@ -39,7 +39,7 @@ function measurement{T<:AbstractFloat}(m::Model990{T},
         _n_observables = n_observables(m) - n_anticipated_shocks(m)
         _n_states = n_states_augmented(m) - n_anticipated_shocks(m)
         _n_shocks_exogenous = n_shocks_exogenous(m) - n_anticipated_shocks(m)
-        endo_new = Dict(
+        endo_new = OrderedDict(
             [(key,m.endogenous_states_augmented[key] - n_anticipated_shocks(m)) for key in keys(m.endogenous_states_augmented)])
     end
 
@@ -102,7 +102,7 @@ function measurement{T<:AbstractFloat}(m::Model990{T},
     DD[obs[:obs_longinflation]]    = 100*(m[:π_star]-1)
 
     ## Long Rate
-    ZZ[obs[:obs_longrate], :]               = ZZ[6, :]*TTT10
+    ZZ[obs[:obs_longrate], :]               = ZZ[6, :]' * TTT10
     ZZ[obs[:obs_longrate], endo_new[:lr_t]] = 1.0
     DD[obs[:obs_longrate]]                  = m[:Rstarn]
 
@@ -134,9 +134,9 @@ function measurement{T<:AbstractFloat}(m::Model990{T},
     # as we had in 904
     if shocks
         for i = 1:n_anticipated_shocks(m)
-            ZZ[obs[symbol("obs_nominalrate$i")], :]              = ZZ[obs[:obs_nominalrate], :]*(TTT^i)
-            DD[obs[symbol("obs_nominalrate$i")]]                 = m[:Rstarn]
-            QQ[exo[symbol("rm_shl$i")], exo[symbol("rm_shl$i")]] = m[symbol("σ_r_m$i")]^2
+            ZZ[obs[Symbol("obs_nominalrate$i")], :]              = ZZ[obs[:obs_nominalrate], :]' * (TTT^i)
+            DD[obs[Symbol("obs_nominalrate$i")]]                 = m[:Rstarn]
+            QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[Symbol("σ_r_m$i")]^2
         end
     end
 

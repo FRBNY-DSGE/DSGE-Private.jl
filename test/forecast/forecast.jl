@@ -1,5 +1,4 @@
 using DSGE, JLD
-include("../util.jl")
 
 path = dirname(@__FILE__)
 
@@ -9,7 +8,7 @@ m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
 m <= Setting(:forecast_horizons, 1)
 
 system, kal = jldopen("$path/../reference/forecast_args.jld","r") do file
-    read(file, "system"), read(file, "kal")
+    read(file, "system"), read(file, "kalman")
 end
 z0 = zeros(n_states_augmented(m))
 
@@ -59,10 +58,6 @@ states, obs, pseudo, shocks = forecast(m, system, z0; shocks = shocks)
 states, obs, pseudo, shocks = forecast(m, system, z0; shocks = shocks, enforce_zlb = true)
 @assert all(x -> abs(x - zlb_value) < 0.01, obs[ind_r, :])
 @assert all(x -> x != -10.,                 shocks[ind_r_sh, :])
-
-# Draw z0
-m <= Setting(:forecast_draw_z0, true)
-states, obs, pseudo, shocks = forecast(m, system, kal)
 
 
 nothing

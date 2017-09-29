@@ -1,15 +1,12 @@
 using DSGE, Base.Test, HDF5, JLD
-include("../util.jl")
 
 path = dirname(@__FILE__)
 
 # Initialize model object
 m = AnSchorfheide(testing = true)
-m <= Setting(:saveroot, tempdir())
+m <= Setting(:cond_id, 0)
 m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
 m <= Setting(:date_conditional_end, quartertodate("2015-Q4"))
-m <= Setting(:smoother_draw_states_override, Nullable(false))
-m <= Setting(:forecast_draw_shocks_override, Nullable(false))
 m <= Setting(:use_population_forecast, true)
 m <= Setting(:forecast_pseudoobservables, true)
 
@@ -18,10 +15,13 @@ overrides = forecast_input_file_overrides(m)
 overrides[:mode] = joinpath(estroot, "optimize.h5")
 overrides[:full] = joinpath(estroot, "metropolis_hastings.h5")
 
-output_vars = add_requisite_output_vars([:histpseudo,
+# Make sure output_vars ignores the 4q things because they are computed in compute_meansbands
+output_vars = add_requisite_output_vars([:histpseudo, :histobs,
                                          :forecastpseudo, :forecastobs,
                                          :shockdecpseudo, :shockdecobs,
-                                         :irfpseudo, :irfobs])
+                                         :irfpseudo, :irfobs,
+                                         :forecast4qobs, :bddforecast4qobs, :hist4qobs,
+                                         :forecast4qpseudo, :bddforecast4qpseudo, :hist4qpseudo])
 
 # Check error handling for input_type = :subset
 @test_throws ErrorException forecast_one(m, :subset, :none, output_vars,
@@ -77,6 +77,20 @@ end
 @everywhere using DSGE
 m <= Setting(:forecast_block_size, 5)
 @time forecast_one(m, :full, :none, output_vars, verbose = :none)
+
+# Test read_forecast_output
+for input_type in [:mode, :full]
+    output_files = get_forecast_output_files(m, input_type, :none, output_vars)
+    jldopen(output_files[:trendobs], "r") do file
+        @test ndims(read_forecast_output(file, :obs, :trend, :obs_gdp)) == 2
+    end
+    jldopen(output_files[:forecastobs], "r") do file
+        @test ndims(read_forecast_output(file, :obs, :forecast, :obs_gdp)) == 2
+    end
+    jldopen(output_files[:irfobs], "r") do file
+        @test ndims(read_forecast_output(file, :obs, :irf, :obs_gdp, :rm_sh)) == 2
+    end
+end
 
 
 nothing

@@ -34,7 +34,7 @@ function solve(m::AbstractModel)
 
     TTT_gensys = real(TTT_gensys)
     RRR_gensys = real(RRR_gensys)
-    CCC_gensys = reshape(CCC_gensys, size(CCC_gensys, 1))
+    CCC_gensys = real(CCC_gensys)
 
     # Augment states
     TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
@@ -42,20 +42,25 @@ function solve(m::AbstractModel)
     return TTT, RRR, CCC
 end
 
-
-
 """
 ```
 GensysError <: Exception
 ```
-A `GensysError` is thrown when Gensys does not give a unique solution, or no solution
-exists. If a `GensysError`is thrown during Metropolis-Hastings, it is caught by `posterior`.
-`posterior` then returns a value of `-Inf`, which Metropolis-Hastings always rejects.
+A `GensysError` is thrown when:
+
+1. Gensys does not give existence and uniqueness, or
+2. A LAPACK error was thrown while computing the Schur decomposition of Γ0 and Γ1
+
+If a `GensysError`is thrown during Metropolis-Hastings, it is caught by
+`posterior`.  `posterior` then returns a value of `-Inf`, which
+Metropolis-Hastings always rejects.
+
 ### Fields
-* `msg::ASCIIString`: Info message. Default = "Error in gensys."
+
+* `msg::String`: Info message. Default = \"Error in Gensys\"
 """
 type GensysError <: Exception
-    msg::ASCIIString
+    msg::String
 end
-GensysError() = GensysError("Error in gensys.")
+GensysError() = GensysError("Error in Gensys")
 Base.showerror(io::IO, ex::GensysError) = print(io, ex.msg)

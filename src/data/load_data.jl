@@ -124,7 +124,7 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
 
     # Set ois series to load
     if n_anticipated_shocks(m) > 0
-        data_series[:OIS] = [symbol("ant$i") for i in 1:n_anticipated_shocks(m)]
+        data_series[:OIS] = [Symbol("ant$i") for i in 1:n_anticipated_shocks(m)]
     end
 
     # For each additional source, search for the file with the proper name. Open
@@ -148,7 +148,7 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
         end
 
         # Read and merge data from this source
-        file = inpath(m, "data", "$(lowercase(string(source)))_$vint.csv")
+        file = inpath(m, "raw", "$(lowercase(string(source)))_$vint.csv")
 
         if isfile(file)
             if VERBOSITY[verbose] >= VERBOSITY[:low]
@@ -199,7 +199,7 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
 
     # print population level data to a file
     if !m.testing
-        filename = inpath(m, "data", "population_data_levels_$vint.csv")
+        filename = inpath(m, "raw", "population_data_levels_$vint.csv")
         mnemonic = parse_population_mnemonic(m)[1]
         if !isnull(mnemonic)
             writetable(filename, df[:,[:date, get(mnemonic)]])
@@ -217,7 +217,7 @@ load_cond_data_levels(m::AbstractModel; verbose::Symbol=:low)
 Check on disk in `inpath(m, \"cond\")` for a conditional dataset (in levels) of the correct
 vintage and load it.
 
-The following series are also loaded from `inpath(m, \"data\")` and either
+The following series are also loaded from `inpath(m, \"raw\")` and either
 appended or merged into the conditional data:
 
 - The last period of (unconditional) data in levels
@@ -229,8 +229,8 @@ function load_cond_data_levels(m::AbstractModel; verbose::Symbol=:low)
 
     # Prepare file name
     cond_vint = cond_vintage(m)
-    cond_idno = cond_id(m)
-    file = inpath(m, "cond", "cond_vint=$(cond_vint)_cdid=$(cond_idno).csv")
+    cond_idno = lpad(cond_id(m), 2, 0) # print as 2 digits
+    file = inpath(m, "cond", "cond_cdid=" * cond_idno * "_cdvt=" * cond_vint * ".csv")
 
     if isfile(file)
         if VERBOSITY[verbose] >= VERBOSITY[:low]
@@ -244,7 +244,7 @@ function load_cond_data_levels(m::AbstractModel; verbose::Symbol=:low)
         date_cond_end = cond_df[end, :date]
 
         # Use population forecast as population data
-        population_forecast_file = inpath(m, "data", "population_forecast_$(data_vintage(m)).csv")
+        population_forecast_file = inpath(m, "raw", "population_forecast_" * data_vintage(m) * ".csv")
         if isfile(population_forecast_file) && !isnull(get_setting(m, :population_mnemonic))
             pop_forecast = readtable(population_forecast_file)
 
@@ -367,18 +367,23 @@ end
 
 """
 ```
-df_to_matrix(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none)
+df_to_matrix(m, df; cond_type = :none, include_presample = true)
 ```
 
 Return `df`, converted to matrix of floats, and discard date column. Also ensure data are
 sorted by date and that rows outside of sample are discarded. The output of this function is
 suitable for direct use in `estimate`, `posterior`, etc.
 """
-function df_to_matrix(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none)
+function df_to_matrix(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none,
+                      include_presample::Bool = true)
     # Sort rows by date and discard rows outside of sample
     df1 = sort(df; cols=[:date])
 
-    start_date = date_presample_start(m)
+    start_date = if include_presample
+        date_presample_start(m)
+    else
+        date_mainsample_start(m)
+    end
     end_date   = if cond_type in [:semi, :full]
         date_conditional_end(m)
     else
@@ -394,6 +399,34 @@ function df_to_matrix(m::AbstractModel, df::DataFrame; cond_type::Symbol = :none
     return convert(Matrix{Float64}, df1)'
 end
 
+"""
+```
+data_to_df(m, data, start_date)
+```
+
+Create a `DataFrame` out of the matrix `data`, including a `:date` column
+beginning in `start_date`.  Variable names and indices are obtained from
+`m.observables`.
+"""
+function data_to_df{T<:AbstractFloat}(m::AbstractModel, data::Matrix{T}, start_date::Date)
+    # Check number of rows = number of observables
+    nobs = n_observables(m)
+    @assert size(data, 1) == nobs "Number of rows of data matrix ($(size(data, 1))) must equal number of observables ($nobs)"
+
+    # Initialize DataFrame and add dates
+    nperiods = size(data, 2)
+    end_date = iterate_quarters(start_date, nperiods - 1)
+    dates = quarter_range(start_date, end_date)
+    df = DataFrame(date = dates)
+
+    # Add observables
+    for var in keys(m.observables)
+        ind = m.observables[var]
+        df[var] = vec(data[ind, :])
+    end
+
+    return df
+end
 
 """
 ```
@@ -411,7 +444,7 @@ function parse_data_series(m::AbstractModel)
     # Parse vector of observable mappings into data_series dictionary
     for obs in values(m.observable_mappings)
         for series in obs.input_series
-            mnemonic, source = map(symbol, split(string(series), DSGE_DATASERIES_DELIM))
+            mnemonic, source = map(Symbol, split(string(series), DSGE_DATASERIES_DELIM))
 
             if !in(source, keys(data_series))
                 data_series[source] = Vector{Symbol}()
@@ -433,15 +466,15 @@ read_population_data(filename; verbose = :low)
 ```
 
 Read in population data stored in levels, either from
-`inpath(m, \"data\", \"population_data_levels_[vint].csv\"`) or `filename`.
+`inpath(m, \"raw\", \"population_data_levels_[vint].csv\"`) or `filename`.
 """
 function read_population_data(m::AbstractModel; verbose::Symbol = :low)
     vint = data_vintage(m)
-    filename = inpath(m, "data", "population_data_levels_$vint.csv")
+    filename = inpath(m, "raw", "population_data_levels_" * vint * ".csv")
     read_population_data(filename; verbose = verbose)
 end
 
-function read_population_data(filename::AbstractString; verbose::Symbol = :low)
+function read_population_data(filename::String; verbose::Symbol = :low)
     if VERBOSITY[verbose] >= VERBOSITY[:low]
         println("Reading population data from $filename...")
     end
@@ -463,12 +496,12 @@ read_population_forecast(filename, population_mnemonic, last_recorded_date; verb
 ```
 
 Read in population forecast in levels, either from
-`inpath(m, \"data\", \"population_forecast_[vint].csv\")` or `filename`.
+`inpath(m, \"raw\", \"population_forecast_[vint].csv\")` or `filename`.
 If that file does not exist, return an empty `DataFrame`.
 
 """
 function read_population_forecast(m::AbstractModel; verbose::Symbol = :low)
-    population_forecast_file = inpath(m, "data", "population_forecast_$(data_vintage(m)).csv")
+    population_forecast_file = inpath(m, "raw", "population_forecast_" * data_vintage(m) * ".csv")
     population_mnemonic = parse_population_mnemonic(m)[1]
 
     if isnull(population_mnemonic)
@@ -478,9 +511,8 @@ function read_population_forecast(m::AbstractModel; verbose::Symbol = :low)
     end
 end
 
-function read_population_forecast(filename::AbstractString, population_mnemonic::Symbol;
+function read_population_forecast(filename::String, population_mnemonic::Symbol;
                                   verbose::Symbol = :low)
-
     if isfile(filename)
         if VERBOSITY[verbose] >= VERBOSITY[:low]
             println("Loading population forecast from $filename...")
