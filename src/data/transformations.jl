@@ -227,7 +227,7 @@ difflog(x::Vector{AbstractFloat})
 ```
 """
 function difflog{T<:AbstractFloat}(x::Vector{T})
-    [NaN; log(x[2:end]) - log(x[1:end-1])]
+    [NaN; log.(x[2:end]) - log.(x[1:end-1])]
 end
 
 
@@ -271,7 +271,7 @@ This should only be used in Model 510, which has the core PCE inflation
 observable in annualized log growth rates.
 """
 function loggrowthtopct(y)
-    100. * (exp(y/100.) - 1.)
+    100. * (exp.(y/100.) - 1.)
 end
 
 """
@@ -311,7 +311,7 @@ function loggrowthtopct_percapita(y::Array, pop_growth::Vector)
 
     @assert length(pop_growth) == nperiods "Length of pop_growth ($(length(pop_growth))) must equal number of periods of y ($nperiods)"
 
-    100. * ((exp(y/100.) .* exp(pop_growth).^4) - 1.)
+    100. * ((exp.(y/100.) .* exp.(pop_growth).^4) - 1.)
 end
 
 """
@@ -322,7 +322,7 @@ loggrowthtopct_annualized(y)
 Transform from log growth rates to annualized quarter-over-quarter percent change.
 """
 function loggrowthtopct_annualized(y)
-    100. * (exp(y/100.).^4 - 1.)
+    100. * (exp.(y/100.).^4 - 1.)
 end
 
 """
@@ -362,7 +362,7 @@ function loggrowthtopct_annualized_percapita(y::Array, pop_growth::Vector)
 
     @assert length(pop_growth) == nperiods "Length of pop_growth ($(length(pop_growth))) must equal number of periods of y ($nperiods)"
 
-    100. * (exp(y/100. .+ pop_growth).^4 - 1.)
+    100. * (exp.(y/100. .+ pop_growth).^4 - 1.)
 end
 
 """
@@ -395,7 +395,7 @@ function logleveltopct_annualized{T<:AbstractFloat}(y::Array, y0::T)
 
     # Subtract log levels to get log growth rates, then take the exponential to
     # get growth rates
-    100. * (exp(y./100. - y_t1./100.).^4 .- 1.)
+    100. * (exp.(y./100. - y_t1./100.).^4 .- 1.)
 end
 
 """
@@ -444,18 +444,18 @@ function logleveltopct_annualized_percapita{T<:AbstractFloat}(y::Array, y0::T, p
 
     # Subtract log levels to get log growth rates, then take the exponential to
     # get growth rates
-    100. * (exp(y./100. - y_t1./100. .+ pop_growth).^4 .- 1.)
+    100. * (exp.(y./100. - y_t1./100. .+ pop_growth).^4 .- 1.)
 end
 
 """
 ```
-get_irf_transform(transform::Function)
+get_nopop_transform(transform::Function)
 ```
-Returns the IRF-specific transformation, which doesn't add back population
-growth (since IRFs are given in deviations).
+Returns the corresponding transformation which doesn't add back population
+growth. Used for shock decompositions, deterministic trends, and IRFs, which are
+given in deviations.
 """
-function get_irf_transform(transform::Function)
-
+function get_nopop_transform(transform::Function)
     transform4q = if transform == loggrowthtopct_annualized_percapita
         loggrowthtopct_annualized
     elseif transform == logleveltopct_annualized_percapita
@@ -472,8 +472,7 @@ get_transform4q(transform::Function)
 Returns the 4-quarter transformation associated with the annualizing transformation.
 """
 function get_transform4q(transform::Function)
-
-    transform4q = if transform == loggrowthtopct_annualized_percapita
+    if transform == loggrowthtopct_annualized_percapita
         loggrowthtopct_4q_percapita
     elseif transform == loggrowthtopct_annualized
         loggrowthtopct_4q
@@ -521,7 +520,7 @@ function loggrowthtopct_4q(y::Array, data::Vector)
         y_4q = y[:,  1:end-3] + y[:, 2:end-2] + y[:, 3:end-1] + y[:, 4:end]
     end
 
-    100. * (exp(y_4q/100.) - 1.)
+    100. * (exp.(y_4q/100.) - 1.)
 end
 
 """
@@ -574,7 +573,7 @@ function loggrowthtopct_4q_percapita(y::Array, data::Vector, pop_growth::Vector)
 
     @assert length(pop_growth_4q) == nperiods
 
-    100. * (exp(y_4q/100. .+ pop_growth_4q) - 1.)
+    100. * (exp.(y_4q/100. .+ pop_growth_4q) - 1.)
 end
 
 """
@@ -610,7 +609,7 @@ function logleveltopct_4q(y::Array, data::Vector)
 
     # Subtract log levels to get log growth rates, then exponentiate to get
     # growth rates
-    100. * (exp(y_4q./100.) .- 1.)
+    100. * (exp.(y_4q./100.) .- 1.)
 end
 
 """
@@ -660,7 +659,7 @@ function logleveltopct_4q_percapita(y::Array, data::Vector, pop_growth::Vector)
     y_4q = y - y_t4
 
     # Subtract log levels to get log growth rates, then exponentiate to get growth rates
-    100. * (exp(y_4q./100. .+ pop_growth_4q) .- 1.)
+    100. * (exp.(y_4q./100. .+ pop_growth_4q) .- 1.)
 end
 
 """
@@ -685,4 +684,164 @@ function prepend_data(y::Array, data::Vector)
     end
 
     return y_extended
+end
+
+"""
+```
+get_scenario_transform(transform::Function)
+```
+Given a transformation used for usual forecasting, return the transformation
+used for *scenarios*, which are forecasted in deviations from baseline.
+
+The 1Q deviation from baseline should really be calculated by 1Q transforming
+the forecasts (in levels) under the baseline (call this `y_b`) and alternative
+scenario (`y_s`), then subtracting baseline from alternative scenario (since
+most of our 1Q transformations are nonlinear). Let `y_d = y_s - y_b`. Then, for
+example, the most correct `loggrowthtopct_annualized` transformation is:
+
+```
+y_b_1q = 100*(exp(y_b/100)^4 - 1)
+y_s_1q = 100*(exp(y_s/100)^4 - 1)
+y_d_1q = y_b_1q - y_s_1q
+```
+
+Instead, we approximate this by transforming the deviation directly:
+
+```
+y_d_1q ≈ 4*(y_b - y_s)
+```
+"""
+function get_scenario_transform(transform::Function)
+    if transform in [loggrowthtopct_annualized_percapita, loggrowthtopct_annualized,
+                     quartertoannual]
+        quartertoannual
+    elseif transform in [logleveltopct_annualized_percapita, logleveltopct_annualized]
+        logleveltopct_annualized_approx
+    elseif transform == identity
+        identity
+    else
+        error("Scenario equivalent not implemented for $transform")
+    end
+end
+
+function get_scenario_transform4q(transform::Function)
+    if transform in [loggrowthtopct_annualized_percapita, loggrowthtopct_annualized]
+        loggrowthtopct_4q_approx
+    elseif transform in [logleveltopct_annualized_percapita, logleveltopct_annualized]
+        logleveltopct_4q_approx
+    elseif transform == quartertoannual
+        quartertoannual
+    elseif transform == identity
+        identity
+    else
+        error("Scenario 4q equivalent not implemented for $transform")
+    end
+end
+
+"""
+```
+logleveltopct_annualized_approx(y, y0)
+```
+
+Transform from log levels to *approximate* annualized quarter-over-quarter
+percent change.
+
+**This method should only be used to transform scenarios forecasts, which are in
+  deviations from baseline.**
+
+### Inputs
+
+- `y`: the data we wish to transform to annualized quarter-over-quarter percent
+  change from log levels. `y` is either a vector of length `nperiods` or an
+  `ndraws x `nperiods` matrix.
+
+- `y0`: the last data point in the history (of state or observable)
+  corresponding to the `y` variable. This is required to compute a percent
+  change for the first period.
+"""
+function logleveltopct_annualized_approx{T<:AbstractFloat}(y::Array, y0::T)
+    # `y_t1` is an array of the same size as `y`, representing the previous
+    # period observations for each draw
+    if ndims(y) == 1
+        y_t1 = vcat([y0], y[1:end-1])
+    else
+        ndraws = size(y, 1)
+        y0s  = fill(y0, ndraws, 1)
+        y_t1 = hcat(y0s, y[:, 1:end-1])
+    end
+
+    # Subtract log levels to get log growth rates, then multiply by 4 to
+    # approximate annualizing
+    4(y - y_t1)
+end
+
+"""
+```
+loggrowthtopct_4q_approx(y, data)
+```
+
+Transform from log growth rates to *approximate* 4-quarter percent change.
+
+**This method should only be used to transform scenarios forecasts, which are in
+  deviations from baseline.**
+
+### Inputs
+
+- `y`: the data we wish to transform to aggregate 4-quarter percent change from
+  log per-capita growth rates. `y` is either a vector of length `nperiods` or an
+  `ndraws x `nperiods` matrix.
+
+- `data`: if `y = [y_t, y_{t+1}, ..., y_{t+nperiods-1}]`, then
+  `data = [y_{t-3}, y_{t-2}, y_{t-1}]`. This is necessary to compute
+  4-quarter percent changes for the first three periods.
+"""
+function loggrowthtopct_4q_approx(y::Array, data::Vector)
+    @assert length(data) == 3 "Length of data ($(length(data))) must be 3"
+
+    # Prepend previous three periods to `y`
+    y = prepend_data(y, data)
+
+    # `y` is either a vector of length `nperiods+3` or an
+    # `ndraws` x `nperiods+3` matrix
+    if ndims(y) == 1
+        y[1:end-3] + y[2:end-2] + y[3:end-1] + y[4:end]
+    else
+        y[:,  1:end-3] + y[:, 2:end-2] + y[:, 3:end-1] + y[:, 4:end]
+    end
+end
+
+"""
+```
+logleveltopct_4q_approx(y, data)
+```
+
+Transform from log levels to *approximate* 4-quarter percent change.
+
+**This method should only be used to transform scenarios forecasts, which are in
+  deviations from baseline.**
+
+### Inputs
+
+- `y`: the data we wish to transform to 4-quarter percent change from log
+  levels. `y` is either a vector of length `nperiods` or an `ndraws x `nperiods`
+  matrix.
+
+- `data`: if `y = [y_t, y_{t+1}, ..., y_{t+nperiods-1}]`, then
+  `data = [y_{t-4}, y_{t-3}, y_{t-2}, y_{t-1}]`. This is necessary to compute
+  4-quarter percent changes for the first three periods.
+"""
+function logleveltopct_4q_approx(y::Array, data::Vector)
+    @assert length(data) == 4 "Length of data ($(length(data))) must be 4"
+
+    # `y_t4` is an array of the same size as `y`, representing the t-4
+    # period observations for each t
+    y_t4 = if ndims(y) == 1
+        nperiods = length(y)
+        prepend_data(y[1:nperiods-4], data)
+    else
+        nperiods = size(y, 2)
+        prepend_data(y[:, 1:nperiods-4], data)
+    end
+
+    y - y_t4
 end

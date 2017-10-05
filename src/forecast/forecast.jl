@@ -1,6 +1,6 @@
 """
 ```
-forecast(m, system, z0; enforce_zlb = false, shocks = Matrix{S}())
+forecast(m, system, z0; enforce_zlb = false, shocks = Matrix{S}(0,0))
 
 forecast(system, z0, shocks; enforce_zlb = false)
 ```
@@ -23,8 +23,10 @@ where `S<:AbstractFloat`.
   data. Defaults to `:none`.
 - `enforce_zlb::Bool`: whether to enforce the zero lower bound. Defaults to
   `false`.
-- `shocks::Matrix{S}`: matrix of size `nshocks` x `horizon` of shock innovations
-  under which to forecast.
+- `shocks::Matrix{S}`: matrix of size `nshocks` x `shock_horizon` of shock
+  innovations under which to forecast. If `shock_horizon > horizon`, the extra
+  periods of shocks will be ignored; if `shock_horizon < horizon`, zeros will be
+  filled in for the shocks hitting the remaining forecasted periods.
 - `draw_shocks::Bool`: if `isempty(shocks)`, indicates whether to draw shocks
   according to:
 
@@ -48,17 +50,17 @@ where `S<:AbstractFloat`.
 """
 function forecast{S<:AbstractFloat}(m::AbstractModel, system::System{S},
     z0::Vector{S}; cond_type::Symbol = :none, enforce_zlb::Bool = false,
-    shocks::Matrix{S} = Matrix{S}(), draw_shocks::Bool = false)
+    shocks::Matrix{S} = Matrix{S}(0, 0), draw_shocks::Bool = false)
 
     # Numbers of things
     nshocks = n_shocks_exogenous(m)
     horizon = forecast_horizons(m; cond_type = cond_type)
 
-    # Populate shocks matrix
     if isempty(shocks)
+        # Populate shocks matrix
         if draw_shocks
             μ = zeros(S, nshocks)
-            σ = sqrt(system[:QQ])
+            σ = sqrt.(system[:QQ])
             dist = if forecast_tdist_shocks(m)
                 # Use t-distributed shocks
                 ν = forecast_tdist_df_val(m)
@@ -80,6 +82,25 @@ function forecast{S<:AbstractFloat}(m::AbstractModel, system::System{S},
         else
             shocks = zeros(S, nshocks, horizon)
         end
+    else
+        # Adjust size of shocks matrix, padding with zeros or cutting off
+        # periods of shocks if necessary
+        shock_horizon = size(shocks, 2)
+        if shock_horizon <= horizon
+            shocks0 = zeros(nshocks, horizon - shock_horizon)
+            shocks = hcat(shocks, shocks0)
+        else
+            shocks = shocks[:, 1:horizon]
+        end
+    end
+
+    # Populate shocks matrix under alternative policy, if
+    # user has specified a function to do so
+    alt_policy = alternative_policy(m)
+    if alt_policy.solve != identity &&
+        alt_policy.forecast_init != identity
+
+        shocks, z0 = alt_policy.forecast_init(m, shocks, z0, cond_type = cond_type)
     end
 
     # Get variables necessary to enforce the zero lower bound in the forecast
@@ -102,7 +123,7 @@ function forecast{S<:AbstractFloat}(system::System{S}, z0::Vector{S},
     Z_pseudo, D_pseudo = if !isnull(system.pseudo_measurement)
         system[:ZZ_pseudo], system[:DD_pseudo]
     else
-        Matrix{S}(), Vector{S}()
+        Matrix{S}(0,0), Vector{S}(0)
     end
 
     # Setup
@@ -148,7 +169,7 @@ function forecast{S<:AbstractFloat}(system::System{S}, z0::Vector{S},
     pseudo = if !isempty(Z_pseudo) && !isempty(D_pseudo)
         D_pseudo .+ Z_pseudo * states
     else
-        Matrix{S}()
+        Matrix{S}(0,0)
     end
 
     # Return forecasts

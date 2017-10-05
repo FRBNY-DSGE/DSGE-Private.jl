@@ -94,6 +94,9 @@ function Base.show(io::IO, mb::MeansBands)
     end
     @printf io "  # of variables: %s\n" n_vars_means(mb)
     @printf io "  bands: %s\n" which_density_bands(mb, uniquify=true)
+    if haskey(mb.metadata, :scenario_key)
+        @printf io "  scenario: %s\n" get_scenario_key(mb)
+    end
 end
 
 """
@@ -153,10 +156,16 @@ function Base.cat(mb1::MeansBands, mb2::MeansBands;
         return mb1
     end
 
-    # Assert class, cond type and para are the same
+    # Assert class, cond type, para, and scenario info are the same
     @assert get_class(mb1) == get_class(mb2)
     @assert get_cond_type(mb1) == get_cond_type(mb2)
     @assert get_para(mb1) == get_para(mb2)
+    @assert haskey(mb1.metadata, :scenario_key) == haskey(mb2.metadata, :scenario_key) ==
+        haskey(mb1.metadata, :scenario_vint) == haskey(mb2.metadata, :scenario_vint)
+    if haskey(mb1.metadata, :scenario_key)
+        @assert mb1.metadata[:scenario_key] == mb2.metadata[:scenario_key]
+        @assert mb1.metadata[:scenario_vint] == mb2.metadata[:scenario_vint]
+    end
 
     # Assert dates are contiguous
     last_mb1_date  = enddate_means(mb1)
@@ -221,6 +230,10 @@ function Base.cat(mb1::MeansBands, mb2::MeansBands;
                    :indices         => indices,
                    :forecast_string => forecast_string,
                    :date_inds       => sort(date_indices, by = x -> date_indices[x]))
+    if haskey(mb1.metadata, :scenario_key)
+        metadata[:scenario_key] = mb1.metadata[:scenario_key]
+        metadata[:scenario_vint] = mb1.metadata[:scenario_vint]
+    end
 
     # construct the new MeansBands object and return
     MeansBands(mb1.metadata, means, bands)
@@ -303,6 +316,19 @@ function get_variables(mb::MeansBands)
     varshocks = setdiff(names(mb.means), [:date])
     unique(map(x -> Symbol(split(string(x), DSGE_SHOCKDEC_DELIM)[1]), varshocks))
 end
+
+"""
+```
+get_scenario_key(mb::MeansBands)
+```
+
+If `mb` is an alternative scenario `MeansBands`, return the scenario key.
+"""
+function get_scenario_key(mb::MeansBands)
+    @assert haskey(mb.metadata, :scenario_key) "Function only for scenario MeansBands objects"
+    mb.metadata[:scenario_key]
+end
+
 
 ###################################
 ## MEANS
@@ -687,14 +713,12 @@ function prepare_means_table_shockdec(mb_shockdec::MeansBands, mb_trend::MeansBa
     df_shockdec = join(df_shockdec, df_dettrend, on = :date, kind = :inner)
     rename!(df_shockdec, var, :dettrend)
 
-    # De-trend each shock's contribution and add to the output dataframe
+    # Add each shock's contribution and deterministic trend to output DataFrame
     df = DataFrame(date = df_shockdec[:date])
     for col in setdiff(names(df_shockdec), [:date, :trend])
-        df[col] = df_shockdec[col] - df_shockdec[:trend]
+        df[col] = df_shockdec[col]
     end
-
-    # Add the de-trended deterministic trend
-    df_shockdec[:dettrend] = df_shockdec[:dettrend] - df_shockdec[:trend]
+    df_shockdec[:dettrend] = df_shockdec[:dettrend]
 
     # Rename columns to just the shock names
     map(x -> rename!(df, x, parse_mb_colname(x)[2]), setdiff(names(df), [:date, :trend, :dettrend]))

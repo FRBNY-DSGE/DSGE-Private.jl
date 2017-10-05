@@ -1,7 +1,6 @@
 # New York Fed DSGE Model (Version 1002)
 
 [![Build Status](https://travis-ci.org/FRBNY-DSGE/DSGE.jl.svg)](https://travis-ci.org/FRBNY-DSGE/DSGE.jl)
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://FRBNY-DSGE.github.io/DSGE.jl/stable)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://FRBNY-DSGE.github.io/DSGE.jl/latest)
 
 The *DSGE.jl* package implements the New York Fed DSGE model and provides
@@ -16,8 +15,7 @@ Liberty Street Economics blog post
 
 
 For the latest documentation on the *code*, click on the docs|latest button
-above. For the latest stable version of the code, click on the docs|stable
-button. Documentation for the most recent *model version* is available
+above. Documentation for the most recent *model version* is available
 [here](https://github.com/FRBNY-DSGE/DSGE.jl/blob/master/docs/DSGE_Model_Documentation_1002.pdf).
 
 The New York Fed DSGE team is currently working on extending the code to include

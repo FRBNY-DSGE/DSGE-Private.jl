@@ -79,7 +79,7 @@ function plot_impulse_response(m::AbstractModel, shock::Symbol, vars::Vector{Sym
     # Get titles if not provided
     if isempty(titles)
         detexify_title = typeof(Plots.backend()) == Plots.GRBackend
-        titles = map(var -> DSGE.describe_series(m, var, class, detexify = detexify_title), vars)
+        titles = map(var -> describe_series(m, var, class, detexify = detexify_title), vars)
     end
 
     # Loop through variables
@@ -112,7 +112,7 @@ function plot_impulse_response(shock::Symbol, var::Symbol, mb::MeansBands;
     if isempty(title)
         title = string(var)
     end
-    p = plot(title = title, margin = 10px)
+    p = plot(title = title)
 
     varshock = Symbol("$(var)__$(shock)")
     sign = flip ? -1 : 1

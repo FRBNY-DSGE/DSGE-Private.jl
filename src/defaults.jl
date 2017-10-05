@@ -131,6 +131,11 @@ function default_settings!(m::AbstractModel)
 	settings[:forcing_index_start] = Setting(:forcing_index_start, 0, "Index that marks beginning of forcing processes in data matrix")
         settings[:reduced_form] = Setting(:reduced_form, false, "flag for whether model is reduced form or structural")
     settings[:compute_shockdec_bands] = Setting(:compute_shockdec_bands, false, "Whether or not to compute bands for shock decomposition. Setting to false saves signficant storage space.")
+
+    # Alternative policy
+    baseline_policy = AltPolicy(:historical, eqcond, solve, forecast_init = identity)
+    settings[:alternative_policy] = Setting(:alternative_policy, baseline_policy)
+
     return settings
 end
 

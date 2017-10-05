@@ -29,6 +29,10 @@ function get_product(output_var::Symbol)
         :bddforecast4q
     elseif contains(s, "forecast4q")
         :forecast4q
+    elseif contains(s, "bddforecastut")
+        :bddforecastut
+    elseif contains(s, "forecastut")
+        :forecastut
     elseif contains(s, "bddforecast")
         :bddforecast
     elseif contains(s, "forecast")
@@ -84,7 +88,7 @@ function resize_population_forecast(population_forecast::DataFrame, nperiods::In
     dr = last_provided:(last_provided+Dates.Day(93 * n_filler_periods))
 
     islastdayofquarter = x->Dates.lastdayofquarter(x) == x
-    dates = recur(dr) do x
+    dates = Base.filter(dr) do x
         islastdayofquarter(x)
     end
 
