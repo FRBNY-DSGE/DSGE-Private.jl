@@ -29,9 +29,7 @@ function solve(m::AbstractModel; apply_altpolicy = false)
 
     if reduced_form(m)
 	if altpolicy_solve == solve || !apply_altpolicy
-            TTT = Γ1
-            RRR = Ψ
-            CCC = C
+            _, TTT, CCC, RRR, _  = eqcond(m)
 	else
 	    error("Cannot use alternative policies on reduced form models")
 	end
