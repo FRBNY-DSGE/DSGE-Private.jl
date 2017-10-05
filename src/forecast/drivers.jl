@@ -409,7 +409,11 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
     # Compute state space and run Kalman filter
     update!(m, params)
-    system = compute_system(m)
+    if n_forcing_processes(m) > 0
+        compute_system(m; data = df_to_matrix(m, df))
+    else
+        system = compute_system(m)
+    end
     if !irfs_only
         kal = filter(m, df, system; cond_type = cond_type)
     end
@@ -495,7 +499,11 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
         # Re-solve model with alternative policy rule, if applicable
         if alternative_policy(m).solve != identity
-            system = compute_system(m; apply_altpolicy = true)
+            if n_forcing_processes(m) > 0
+                compute_system(m; data = df_to_matrix(m, df), apply_altpolicy = true)
+            else
+                system = compute_system(m; apply_altpolicy = true)
+            end
         end
 
         # 2A. Unbounded forecasts

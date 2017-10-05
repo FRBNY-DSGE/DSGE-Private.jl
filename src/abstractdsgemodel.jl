@@ -164,7 +164,7 @@ inds_zlb_periods(m::AbstractModel) = collect(index_zlb_start(m):(index_forecast_
 inds_mainsample_periods(m::AbstractModel) = collect(index_mainsample_start(m):(index_forecast_start(m)-1))
 
 # Number of a few things that are useful
-n_forcing_processes(m::AbstractModel)       = if get_setting(m, :forcing_index_start) < 1 0 else length(m.observables) - n_observables(m) end
+n_forcing_processes(m::AbstractModel)       = get_setting(m, :forcing_index_start) < 1 ? 0 : length(m.observables) - n_observables(m)
 n_altpolicy_states(m::AbstractModel)        = length(alternative_policy(m).states)
 n_altpolicy_equations(m::AbstractModel)     = length(alternative_policy(m).equations)
 n_shocks_exogenous(m::AbstractModel)        = length(m.exogenous_shocks)
@@ -173,8 +173,6 @@ n_observables(m::AbstractModel)             = length(m.observables)
 n_parameters(m::AbstractModel)              = length(m.parameters)
 n_parameters_steady_state(m::AbstractModel) = length(m.steady_state)
 n_parameters_free(m::AbstractModel)         = sum([!α.fixed for α in m.parameters])
-# flag for reduced form models
-reduced_form(m::AbstractModel)              = get_setting(m,:reduced_form)
 
 function n_states(m::AbstractModel; apply_altpolicy::Bool = false)
     length(m.endogenous_states) + (apply_altpolicy ? n_altpolicy_states(m) : 0)

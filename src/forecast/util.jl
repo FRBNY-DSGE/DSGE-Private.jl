@@ -1,19 +1,29 @@
 """
 ```
-compute_system(m; apply_altpolicy = false)
+compute_system(m; apply_altpolicy = false, data = Matrix(0, 0))
 ```
 
-Given the current model parameters, compute the state-space system
-corresponding to model `m`. Returns a `System` object.
+Given the current model parameters, compute the state-space system corresponding
+to model `m`. If there are forcing processes, data is needed to compute the
+measurement equation. Returns a `System` object.
+
 """
-function compute_system{T<:AbstractFloat}(m::AbstractModel{T}; apply_altpolicy = false)
+function compute_system{T<:AbstractFloat}(m::AbstractModel{T};
+                                          apply_altpolicy = false, data::Matrix = Matrix(0, 0))
 
     # Solve model
     TTT, RRR, CCC = solve(m; apply_altpolicy = apply_altpolicy)
     transition_equation = Transition(TTT, RRR, CCC)
 
     # Solve measurement equation
-    measurement_equation = measurement(m, TTT, RRR, CCC)
+    shocks = n_anticipated_shocks(m) > 0
+    if n_forcing_processes(m) > 0
+        forcing_ind = get_setting(m, :forcing_index_start)
+        X = data[forcing_ind:end,:]
+        measurement_equation = measurement(m, TTT, RRR, CCC, X; shocks = shocks)
+    else
+        measurement_equation = measurement(m, TTT, RRR, CCC; shocks = shocks)
+    end
 
     # Solve pseudo-measurement equation
     pseudo_measurement_equation = if method_exists(pseudo_measurement, (typeof(m),)) && forecast_pseudoobservables(m)
@@ -25,6 +35,7 @@ function compute_system{T<:AbstractFloat}(m::AbstractModel{T}; apply_altpolicy =
 
     return System(transition_equation, measurement_equation, pseudo_measurement_equation)
 end
+
 """
 ```
 compute_system_function{S<:AbstractFloat}(system::System{S})
