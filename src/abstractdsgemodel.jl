@@ -1,5 +1,7 @@
 abstract type AbstractModel{T} end
 
+abstract type AbstractReducedFormModel{T}<:AbstractModel{T} end
+
 function Base.show(io::IO, m::AbstractModel)
     @printf io "Dynamic Stochastic General Equilibrium Model\n"
     @printf io "no. states:             %i\n" n_states(m)
@@ -164,7 +166,7 @@ inds_zlb_periods(m::AbstractModel) = collect(index_zlb_start(m):(index_forecast_
 inds_mainsample_periods(m::AbstractModel) = collect(index_mainsample_start(m):(index_forecast_start(m)-1))
 
 # Number of a few things that are useful
-n_forcing_processes(m::AbstractModel)       = get_setting(m, :forcing_index_start) < 1 ? 0 : length(m.observables) - n_observables(m)
+n_forcing_processes(m::AbstractModel)       = get_setting(m, :n_forcing_processes)
 n_altpolicy_states(m::AbstractModel)        = length(alternative_policy(m).states)
 n_altpolicy_equations(m::AbstractModel)     = length(alternative_policy(m).equations)
 n_shocks_exogenous(m::AbstractModel)        = length(m.exogenous_shocks)

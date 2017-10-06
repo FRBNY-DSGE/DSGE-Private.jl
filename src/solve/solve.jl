@@ -56,6 +56,29 @@ function solve(m::AbstractModel; apply_altpolicy = false)
     return TTT, RRR, CCC
 
 end
+
+function solve(m::AbstractReducedFormModel; apply_altpolicy = false)
+
+    altpolicy_solve = alternative_policy(m).solve
+
+    if altpolicy_solve == solve || !apply_altpolicy
+
+	# Get equilibrium condition matrices
+	Γ0, Γ1, C, Ψ, Π  = eqcond(m)
+
+	# Augment states
+	TTT, RRR, CCC = augment_states(m, Γ1, Ψ, C)
+
+    else
+	# Change the policy rule
+	TTT, RRR, CCC = altpolicy_solve(m)
+    end
+
+    return TTT, RRR, CCC
+
+end
+
+
 """
 ```
 GensysError <: Exception

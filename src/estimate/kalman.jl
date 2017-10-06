@@ -172,3 +172,27 @@ function zlb_regime_matrices{S<:AbstractFloat}(m::AbstractModel{S}, system::Syst
 
     return TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs
 end
+
+"""
+```
+time_varying_constant_regime_matrices(m, system)
+```
+
+Returns `TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs`, an 8-tuple of
+`Vector{Matrix{S}}`s and `Vector{Vector{S}}`s of system matrices for the
+case where the measurement constant `DD` is time varying.
+"""
+function time_varying_constant_regime_matrices{S<:AbstractFloat}(m::AbstractModel{S}, system::System{S})
+
+    n_regimes = size(system[:DD], 2)
+    DDs = [system[:DD][:,t] for t in 1:n_regimes]
+
+    TTTs = fill(system[:TTT], n_regimes)
+    RRRs = fill(system[:RRR], n_regimes)
+    CCCs = fill(system[:CCC], n_regimes)
+    ZZs  = fill(system[:ZZ], n_regimes)
+    QQs  = fill(system[:QQ], n_regimes)
+    EEs  = fill(system[:EE], n_regimes)
+
+    return TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs
+end

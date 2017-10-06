@@ -53,7 +53,7 @@ function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     # If we are in Metropolis-Hastings, then any errors coming out of `gensys`
     # should be caught and a -Inf posterior should be returned.
     system = try
-        Nullable{System}(compute_system(m))
+        Nullable{System}(compute_system(m; data = data))
     catch err
         if catch_errors && isa(err, GensysError)
             Nullable{System}()
@@ -97,6 +97,48 @@ function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, system::Sys
         ant_state_inds = setdiff(1:n_states_augmented(m), inds_states_no_ant(m))
         @assert all(x -> x == 0, P0[:, ant_state_inds])
         @assert all(x -> x == 0, P0[ant_state_inds, :])
+    end
+
+    # Specify number of presample periods if we don't want to include them in
+    # the final results
+    T0 = include_presample ? 0 : n_presample_periods(m)
+
+    # Run Kalman filter, construct Kalman object, and return
+    out = kalman_filter(regime_inds, data, TTTs, RRRs, CCCs,
+              QQs, ZZs, DDs, EEs, z0, P0;
+              allout = allout, n_presample_periods = T0)
+
+    return Kalman(out...)
+end
+
+function filter{S<:AbstractFloat}(m::AbstractReducedFormModel, data::Matrix{S}, system::System,
+                                  z0::Vector{S} = Vector{S}(0), P0::Matrix{S} = Matrix{S}(0, 0);
+                                  start_date::Date = date_presample_start(m),
+                                  allout::Bool = true, include_presample::Bool = true)
+
+    n_periods = size(data, 2)
+
+    if n_forcing_processes(m) > 0
+        # If we have forcing processes, we need as many regimes as periods
+        regime_inds = Vector{Range{Int64}}(n_periods)
+        for t in 1:n_periods
+            regime_inds[t] = t:t
+        end
+
+        # Get system matrices for each regime
+        TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = time_varying_constant_regime_matrices(m, system)
+    else
+        # Otherwise, we have just a single regime
+        regime_inds = Range{Int64}[1:n_periods]
+        n_regimes = 1
+
+        TTTs = fill(system[:TTT], n_regimes)
+        RRRs = fill(system[:RRR], n_regimes)
+        CCCs = fill(system[:CCC], n_regimes)
+        ZZs  = fill(system[:ZZ], n_regimes)
+        DDs  = fill(system[:DD], n_regimes)
+        EEs  = fill(system[:EE], n_regimes)
+        QQs  = fill(system[:QQ], n_regimes)
     end
 
     # Specify number of presample periods if we don't want to include them in

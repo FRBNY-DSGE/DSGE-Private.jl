@@ -134,7 +134,7 @@ function default_settings!(m::AbstractModel)
     settings[:alternative_policy] = Setting(:alternative_policy, baseline_policy)
 
     # Reduced form
-    settings[:forcing_index_start] = Setting(:forcing_index_start, 0, "Index that marks beginning of forcing processes in data matrix")
+    settings[:n_forcing_processes] = Setting(:n_forcing_processes, 0, "Number of forcing processes in data matrix. These always come after the normal series.")
 
 
     return settings

@@ -18,7 +18,7 @@ function compute_system{T<:AbstractFloat}(m::AbstractModel{T};
     # Solve measurement equation
     shocks = n_anticipated_shocks(m) > 0
     if n_forcing_processes(m) > 0
-        forcing_ind = get_setting(m, :forcing_index_start)
+        forcing_ind = n_observables(m) - n_forcing_processes(m) + 1
         X = data[forcing_ind:end,:]
         measurement_equation = measurement(m, TTT, RRR, CCC, X; shocks = shocks)
     else
