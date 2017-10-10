@@ -180,19 +180,22 @@ time_varying_constant_regime_matrices(m, system)
 
 Returns `TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs`, an 8-tuple of
 `Vector{Matrix{S}}`s and `Vector{Vector{S}}`s of system matrices for the
-case where the measurement constant `DD` is time varying.
+case where the measurement constant `DD` is time varying. The entries in `ZZ`,
+`DD`, and `EE` corresponding to the forcing processes are removed as well.
 """
 function time_varying_constant_regime_matrices{S<:AbstractFloat}(m::AbstractModel{S}, system::System{S})
 
     n_regimes = size(system[:DD], 2)
-    DDs = [system[:DD][:,t] for t in 1:n_regimes]
+    n_series  = length(m.observables) - n_forcing_processes(m)
+
+    DDs = [system[:DD][1:n_series,t] for t in 1:n_regimes]
+    ZZs = fill(system[:ZZ][1:n_series, :], n_regimes)
+    EEs = fill(system[:EE][1:n_series, 1:n_series], n_regimes)
 
     TTTs = fill(system[:TTT], n_regimes)
     RRRs = fill(system[:RRR], n_regimes)
     CCCs = fill(system[:CCC], n_regimes)
-    ZZs  = fill(system[:ZZ], n_regimes)
     QQs  = fill(system[:QQ], n_regimes)
-    EEs  = fill(system[:EE], n_regimes)
 
     return TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs
 end

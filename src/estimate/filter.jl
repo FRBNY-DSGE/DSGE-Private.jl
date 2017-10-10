@@ -127,6 +127,9 @@ function filter{S<:AbstractFloat}(m::AbstractReducedFormModel, data::Matrix{S}, 
 
         # Get system matrices for each regime
         TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = time_varying_constant_regime_matrices(m, system)
+        # The forcing processes must be removed from the data matrix
+        n_series  = length(m.observables) - n_forcing_processes(m)
+        data = data[1:n_series, :]
     else
         # Otherwise, we have just a single regime
         regime_inds = Range{Int64}[1:n_periods]
