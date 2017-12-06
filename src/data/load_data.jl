@@ -118,9 +118,12 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
     # Parse m.observable_mappings for data series
     data_series = parse_data_series(m)
 
-    # Load FRED data
-    df = load_fred_data(m; start_date=firstdayofquarter(start_date), end_date=end_date, verbose=verbose)
-
+    # Load FRED data if needed
+    df = if :FRED in keys(data_series)
+        load_fred_data(m; start_date=firstdayofquarter(start_date), end_date=end_date, verbose=verbose)
+    else
+        DataFrame(date = get_quarter_ends(start_date,end_date))
+    end
 
     # Set ois series to load
     if n_anticipated_shocks(m) > 0
