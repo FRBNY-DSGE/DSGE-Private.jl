@@ -37,18 +37,18 @@ where `S<:AbstractFloat`.
 function filter{S<:AbstractFloat}(m::AbstractModel, df::DataFrame, system::System{S},
     z0::Vector{S} = Vector{S}(), P0::Matrix{S} = Matrix{S}(0, 0);
     cond_type::Symbol = :none, allout::Bool = true,
-    include_presample::Bool = true)
+    include_presample::Bool = true, robust::Bool = false)
 
     data = df_to_matrix(m, df; cond_type = cond_type)
     start_date = max(date_presample_start(m), df[1, :date])
     filter(m, data, system, z0, P0; start_date = start_date,
-        allout = allout, include_presample = include_presample)
+        allout = allout, include_presample = include_presample, robust = robust)
 end
 
 function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     z0::Vector{S} = Vector{S}(0), P0::Matrix{S} = Matrix{S}(0, 0);
     catch_errors::Bool = false, start_date::Date = date_presample_start(m),
-    allout::Bool = true, include_presample::Bool = true)
+    allout::Bool = true, include_presample::Bool = true, robust::Bool = false)
 
     # If we are in Metropolis-Hastings, then any errors coming out of `gensys`
     # should be caught and a -Inf posterior should be returned.
@@ -67,7 +67,8 @@ function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
     else
         try
             filter(m, data, get(system), z0, P0; start_date = start_date,
-                   allout = allout, include_presample = include_presample)
+                   allout = allout, include_presample = include_presample,
+                   robust = robust)
         catch err
             if catch_errors && isa(err, DomainError)
                 warn("Log of incremental likelihood is negative; returning -Inf")
@@ -82,7 +83,7 @@ end
 function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, system::System,
     z0::Vector{S} = Vector{S}(0), P0::Matrix{S} = Matrix{S}(0, 0);
     start_date::Date = date_presample_start(m),
-    allout::Bool = true, include_presample::Bool = true)
+    allout::Bool = true, include_presample::Bool = true, robust::Bool = false)
 
     # Partition sample into pre- and post-ZLB regimes
     # Note that the post-ZLB regime may be empty if we do not impose the ZLB
@@ -106,7 +107,7 @@ function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, system::Sys
     # Run Kalman filter, construct Kalman object, and return
     out = kalman_filter(regime_inds, data, TTTs, RRRs, CCCs,
               QQs, ZZs, DDs, EEs, z0, P0;
-              allout = allout, n_presample_periods = T0)
+              allout = allout, n_presample_periods = T0, robust = robust)
 
     return Kalman(out...)
 end
@@ -114,7 +115,8 @@ end
 function filter{S<:AbstractFloat}(m::AbstractReducedFormModel, data::Matrix{S}, system::System,
                                   z0::Vector{S} = Vector{S}(0), P0::Matrix{S} = Matrix{S}(0, 0);
                                   start_date::Date = date_presample_start(m),
-                                  allout::Bool = true, include_presample::Bool = true)
+                                  allout::Bool = true, include_presample::Bool = true,
+                                  robust::Bool = false)
 
     n_periods = size(data, 2)
 
@@ -150,8 +152,9 @@ function filter{S<:AbstractFloat}(m::AbstractReducedFormModel, data::Matrix{S}, 
 
     # Run Kalman filter, construct Kalman object, and return
     out = kalman_filter(regime_inds, data, TTTs, RRRs, CCCs,
-              QQs, ZZs, DDs, EEs, z0, P0;
-              allout = allout, n_presample_periods = T0)
+                        QQs, ZZs, DDs, EEs, z0, P0;
+                        allout = allout, n_presample_periods = T0,
+                        robust = robust)
 
     return Kalman(out...)
 end
