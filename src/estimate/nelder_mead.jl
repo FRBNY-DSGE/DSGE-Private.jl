@@ -7,7 +7,12 @@ function nelder_mead(fcn::Function,
                      store_trace::Bool     = false,
                      show_trace::Bool      = false,
                      extended_trace::Bool  = false,
+                     verbose::Symbol       = :low,
                      kwargs...)
+
+    if verbose == :none
+        show_trace = false
+    end
 
     Optim.optimize(fcn, x0,
                    method = Optim.NelderMead(parameters = parameters, initial_simplex = initial_simplex),
