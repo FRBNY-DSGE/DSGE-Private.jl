@@ -208,7 +208,7 @@ function gensys(F::Base.LinAlg.GeneralizedSchur, c, Ψ, Π, div)
 
     ywt = z * ywt
 
-    return G1, C, impact, fmat, fwt, ywt, gev, eu, loose
+    return G1, vec(C), impact, fmat, fwt, ywt, gev, eu, loose
 end
 
 
