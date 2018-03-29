@@ -3,33 +3,35 @@
 
 """
 ```
-gensys(Γ0, Γ1, c, Ψ, Π)
-gensys(Γ0, Γ1, c, Ψ, Π, div)
-gensys(F::Base.LinAlg.GeneralizedSchur, c, Ψ, Π)
-gensys(F::Base.LinAlg.GeneralizedSchur, c, Ψ, Π, div)
+gensys(Γ0, Γ1, c, Ψ, Π; ϵ = 1e-6)
+gensys(Γ0, Γ1, c, Ψ, Π, div; ϵ = 1e-6)
+gensys(F::Base.LinAlg.GeneralizedSchur, c, Ψ, Π, div = new_div(F); ϵ = 1e-6)
 ```
 
-Generate state-space solution to canonical-form DSGE model.
+Generate state-space solution to canonical-form DSGE model. System given as
 
-System given as
 ```
 Γ0*y(t) = Γ1*y(t-1) + c + Ψ*z(t) + Π*η(t),
 ```
-with z an exogenous variable process and η being endogenously
-determined one-step-ahead expectational errors.
+
+with `z` an exogenous variable process and `η` being endogenously
+determined one-step-ahead expectational errors. `div` is the value (close to
+but greater than 1) separating stable and unstable roots. `ϵ` is a small value
+used to check convergence.
 
 Returned system is
+
 ```
 y(t) = G1*y(t-1) + C + impact*z(t) + ywt*inv(I-fmat*inv(L))*fwt*z(t+1)
-```
-Returned values are
-```
-G1, C, impact, fmat, fwt, ywt, gev, eu, loose
 ```
 
 If `z(t)` is i.i.d., the last term drops out.
 
-If `div` is omitted from argument list, a `div`>1 is calculated.
+Returned values are
+
+```
+G1, C, impact, fmat, fwt, ywt, gev, eu, loose
+```
 
 ### Return codes
 
@@ -43,10 +45,10 @@ If `div` is omitted from argument list, a `div`>1 is calculated.
 ### Notes
 
 We constrain Julia to use the complex version of the `schurfact` routine regardless of the
-types of `Γ0` and `Γ1`, to match the behavior of Matlab.  Matlab always uses the complex version
+types of `Γ0` and `Γ1`, to match the behavior of Matlab. Matlab always uses the complex version
 of the Schur decomposition, even if the inputs are real numbers.
 """
-function gensys(Γ0, Γ1, c, Ψ, Π, args...)
+function gensys(Γ0, Γ1, c, Ψ, Π, args...; kwargs...)
     F = try
         schurfact!(complex(Γ0), complex(Γ1))
     catch ex
@@ -68,17 +70,13 @@ function gensys(Γ0, Γ1, c, Ψ, Π, args...)
             rethrow(ex)
         end
     end
-    gensys(F, c, Ψ, Π, args...)
-end
-
-function gensys(F::Base.LinAlg.GeneralizedSchur, c, Ψ, Π)
-    gensys(F, c, Ψ, Π, new_div(F))
+    gensys(F, c, Ψ, Π, args...; kwargs...)
 end
 
 # Method that does the real work. Work directly on the decomposition F
-function gensys(F::Base.LinAlg.GeneralizedSchur, c, Ψ, Π, div)
+function gensys(F::Base.LinAlg.GeneralizedSchur, c, Ψ, Π, div = new_div(F);
+                ϵ = 1e-6)
     eu = [0, 0]
-    ϵ = 1e-6  # small number to check convergence
     nunstab = 0
     zxz = 0
     a, b, = F[:S], F[:T]
