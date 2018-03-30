@@ -104,15 +104,18 @@ function compute_meansbands(m::AbstractModel, input_type::Symbol, cond_type::Sym
     variable_names = collect(keys(metadata[:indices]))
     pop_growth     = get_mb_population_series(product, population_data, population_forecast, date_list)
 
+    # Decide whether to use map or pmap
+    mymap = use_parallel_workers(m) ? pmap : map
+
     # Compute means and bands
     if product in [:hist, :histut, :hist4q, :forecast, :forecastut, :forecast4q,
                    :bddforecast, :bddforecastut, :bddforecast4q, :dettrend, :trend]
         # Get to work!
-        mb_vec = pmap(var_name -> compute_meansbands(m, input_type, cond_type, output_var, var_name, df;
+        mb_vec = mymap(var_name -> compute_meansbands(m, input_type, cond_type, output_var, var_name, df;
                                       pop_growth = pop_growth, forecast_string = forecast_string, kwargs...),
                       variable_names)
 
-        # Re-assemble pmap outputs
+        # Re-assemble mymap outputs
         means = DataFrame(date = date_list)
         bands = Dict{Symbol,DataFrame}()
 
@@ -132,12 +135,12 @@ function compute_meansbands(m::AbstractModel, input_type::Symbol, cond_type::Sym
                 println("  * " * string(shock_name))
             end
 
-            mb_vec = pmap(var_name -> compute_meansbands(m, input_type, cond_type, output_var, var_name, df;
+            mb_vec = mymap(var_name -> compute_meansbands(m, input_type, cond_type, output_var, var_name, df;
                                           pop_growth = pop_growth, shock_name = Nullable(shock_name),
                                           forecast_string = forecast_string, kwargs...),
                           variable_names)
 
-            # Re-assemble pmap outputs
+            # Re-assemble mymap outputs
             for (var_name, (var_means, var_bands)) in zip(variable_names, mb_vec)
                 means[Symbol(var_name, DSGE_SHOCKDEC_DELIM, shock_name)] = var_means
                 bands[Symbol(var_name, DSGE_SHOCKDEC_DELIM, shock_name)] = var_bands
