@@ -128,8 +128,8 @@ function default_settings!(m::AbstractModel)
     settings[:compute_shockdec_bands] = Setting(:compute_shockdec_bands, false, "Whether or not to compute bands for shock decomposition. Setting to false saves signficant storage space.")
 
     # Alternative policy
-    baseline_policy = AltPolicy(:historical, eqcond, solve, forecast_init = identity)
-    settings[:alternative_policy] = Setting(:alternative_policy, baseline_policy)
+    baseline_policy = AltPolicy(:historical, eqcond, solve, color = RGB(0.0, 0.0, 0.0))
+    settings[:alternative_policy] = Setting(:alternative_policy, baseline_policy, false, "apol", "Alternative monetary policy rule")
 
     return settings
 end
