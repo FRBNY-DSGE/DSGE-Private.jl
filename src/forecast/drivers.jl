@@ -563,6 +563,11 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
                 forecast_output[:bddforecaststdshocks] = standardize_shocks(forecast_output[:bddforecastshocks], system[:QQ])
             end
         end
+
+        # Revert state and equation dictionaries to their original values under
+        # the historical policy
+        altpol, _, _ = altpol_to_historical!(m)
+        m <= Setting(:alternative_policy, altpol)
     end
 
 
