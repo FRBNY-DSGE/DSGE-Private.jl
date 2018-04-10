@@ -179,6 +179,7 @@ module DSGE
     include("analysis/df_to_table.jl")
 
     include("altpolicy/altpolicy.jl")
+    include("altpolicy/statespace.jl")
     include("altpolicy/taylor93.jl")
     include("altpolicy/taylor99.jl")
 

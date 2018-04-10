@@ -566,8 +566,7 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
         # Revert state and equation dictionaries to their original values under
         # the historical policy
-        altpol, _, _ = altpol_to_historical!(m)
-        m <= Setting(:alternative_policy, altpol)
+        reset_historical_rule_indices!(m)
     end
 
 
