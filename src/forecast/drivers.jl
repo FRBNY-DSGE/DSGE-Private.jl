@@ -500,10 +500,20 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
             if cond_type in [:full, :semi]
+                # If forecasting under an alternative policy, transplant only
+                # the forecasted states which were present under the historical
+                # rule
+                if alternative_policy(m).key != :historical
+                    forecaststates = forecaststates[historical_state_indices(m), :]
+                    transp_system = historical_system(m, system)
+                else
+                    transp_system = system
+                end
+
                 forecast_output[:forecaststates] = transplant_forecast(histstates, forecaststates, T)
                 forecast_output[:forecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:forecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, transp_system, T)
             else
                 forecast_output[:forecaststates] = forecaststates
                 forecast_output[:forecastshocks] = forecastshocks
@@ -527,10 +537,20 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
             if cond_type in [:full, :semi]
+                # If forecasting under an alternative policy, transplant only
+                # the forecasted states which were present under the historical
+                # rule
+                if alternative_policy(m).key != :historical
+                    forecaststates = forecaststates[historical_state_indices(m), :]
+                    transp_system = historical_system(m, system)
+                else
+                    transp_system = system
+                end
+
                 forecast_output[:bddforecaststates] = transplant_forecast(histstates, forecaststates, T)
                 forecast_output[:bddforecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:bddforecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, transp_system, T)
             else
                 forecast_output[:bddforecaststates] = forecaststates
                 forecast_output[:bddforecastshocks] = forecastshocks
