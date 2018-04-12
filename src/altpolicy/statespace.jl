@@ -56,6 +56,8 @@ function historical_to_altpol!(m::AbstractModel, altpol::AltPolicy,
                                 eqs_alt::OrderedDict{Symbol, Int},
                                 states_alt::OrderedDict{Symbol, Int})
     m <= Setting(:alternative_policy, altpol)
+    reordered = m.equilibrium_conditions != eqs_alt || m.endogenous_states != states_alt
+    m <= Setting(:altpol_reordered, reordered)
     m.equilibrium_conditions = eqs_alt
     m.endogenous_states      = states_alt
     return nothing
