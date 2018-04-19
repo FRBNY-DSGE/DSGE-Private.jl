@@ -394,16 +394,29 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
     # Re-initialize model indices if forecasting under an alternative policy
     # rule (in case new states or equations were added)
     if alternative_policy(m).key != :historical
-        init_model_indices!(m)
+        reset_historical_rule_indices!(m)
     end
 
     # Are we only running IRFs?
     output_prods = map(get_product, output_vars)
     irfs_only = all(x -> x == :irf, output_prods)
 
-    # Compute state space and run Kalman filter
+    # Compute state-space matrices
     update!(m, params)
     system = compute_system(m)
+
+    # If forecasting under alternative policy, compute that system and expand
+    # the state space of the original system to accommodate possible new states
+    # under the alternative rule
+    if alternative_policy(m).key != :historical
+        hist_system = system
+        altpol_system = Nullable(compute_system(m, apply_altpolicy = true))
+        system = expand_historical_system(m, system)
+    else
+        altpol_system = Nullable{System}()
+    end
+
+    # Run Kalman filter
     if !irfs_only
         kal = filter(m, df, system; cond_type = cond_type)
     end
@@ -487,9 +500,9 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
             kal[:zend]
         end
 
-        # Re-solve model with alternative policy rule, if applicable
+        # Use alternative policy rule, if applicable
         if alternative_policy(m).key != :historical
-            system = compute_system(m, apply_altpolicy = true)
+            system = get(altpol_system)
         end
 
         # 2A. Unbounded forecasts
@@ -500,20 +513,10 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
             if cond_type in [:full, :semi]
-                # If forecasting under an alternative policy, transplant only
-                # the forecasted states which were present under the historical
-                # rule
-                if alternative_policy(m).key != :historical
-                    forecaststates = forecaststates[historical_state_indices(m), :]
-                    transp_system = historical_system(m, system)
-                else
-                    transp_system = system
-                end
-
                 forecast_output[:forecaststates] = transplant_forecast(histstates, forecaststates, T)
                 forecast_output[:forecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:forecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, transp_system, T)
+                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
             else
                 forecast_output[:forecaststates] = forecaststates
                 forecast_output[:forecastshocks] = forecastshocks
@@ -537,20 +540,10 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
             if cond_type in [:full, :semi]
-                # If forecasting under an alternative policy, transplant only
-                # the forecasted states which were present under the historical
-                # rule
-                if alternative_policy(m).key != :historical
-                    forecaststates = forecaststates[historical_state_indices(m), :]
-                    transp_system = historical_system(m, system)
-                else
-                    transp_system = system
-                end
-
                 forecast_output[:bddforecaststates] = transplant_forecast(histstates, forecaststates, T)
                 forecast_output[:bddforecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:bddforecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, transp_system, T)
+                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
             else
                 forecast_output[:bddforecaststates] = forecaststates
                 forecast_output[:bddforecastshocks] = forecastshocks
@@ -564,14 +557,9 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
             end
         end
 
-        # Revert state and equation dictionaries to their original values under
-        # the historical policy
+        # Revert system to historical rule
         if alternative_policy(m).key != :historical
-            reset_historical_rule_indices!(m)
-            altpol_system = Nullable(system)
-            system = compute_system(m, apply_altpolicy = false)
-        else
-            altpol_system = Nullable{System}()
+            system = hist_system
         end
     end
 

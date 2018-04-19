@@ -90,31 +90,38 @@ end
 
 """
 ```
-historical_system(m, system)
+expand_historical_system(m, system)
 ```
 
-Given `system`, return another `System` containing only the states found under
-the historical policy rule.
+Return a new `System` containing the state-space matrices under the historical
+rule, with the state space augmented to accommodate possible new states under
+the alternative rule.
 """
-function historical_system(m::AbstractModel, system::System)
-    new_inds = historical_state_indices(m)
+function expand_historical_system(m::AbstractModel, system::System)
+    new_inds = DSGE.historical_state_indices(m)
 
-    TTT = system[:TTT][new_inds, new_inds]
-    RRR = system[:RRR][new_inds, :]
-    CCC = system[:CCC][new_inds]
-    trans = Transition(TTT, RRR, CCC)
+    nstates = n_states_augmented(m)
+    nshocks = n_shocks_exogenous(m)
+    nobs    = n_observables(m)
+    npseudo = n_pseudo_observables(m)
 
-    ZZ = system[:ZZ][:, new_inds]
-    DD = copy(system[:DD])
-    QQ = copy(system[:QQ])
-    EE = copy(system[:EE])
-    meas = Measurement(ZZ, DD, QQ, EE)
+    TTT       = zeros(nstates, nstates)
+    RRR       = zeros(nstates, nshocks)
+    CCC       = zeros(nstates)
+    ZZ        = zeros(nobs,    nstates)
+    ZZ_pseudo = zeros(npseudo, nstates)
 
-    ZZ_pseudo = system[:ZZ_pseudo][:, new_inds]
-    DD_pseudo = copy(system[:DD_pseudo])
-    pseudo = PseudoMeasurement(ZZ_pseudo, DD_pseudo)
+    TTT[new_inds, new_inds] = system[:TTT]
+    RRR[new_inds, :]        = system[:RRR]
+    CCC[new_inds]           = system[:CCC]
+    ZZ[:, new_inds]         = system[:ZZ]
+    ZZ_pseudo[:, new_inds]  = system[:ZZ_pseudo]
 
-    return System(trans, meas, pseudo)
+    system.transition = Transition(TTT, RRR, CCC)
+    system.measurement = Measurement(ZZ, copy(system[:DD]), copy(system[:QQ]), copy(system[:EE]))
+    system.pseudo_measurement = PseudoMeasurement(ZZ_pseudo, copy(system[:DD_pseudo]))
+
+    return system
 end
 
 """
