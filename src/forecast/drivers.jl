@@ -488,8 +488,8 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
         end
 
         # Re-solve model with alternative policy rule, if applicable
-        if alternative_policy(m).solve != identity
-            system = compute_system(m; apply_altpolicy = true)
+        if alternative_policy(m).key != :historical
+            system = compute_system(m, apply_altpolicy = true)
         end
 
         # 2A. Unbounded forecasts
@@ -566,7 +566,13 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
         # Revert state and equation dictionaries to their original values under
         # the historical policy
-        reset_historical_rule_indices!(m)
+        if alternative_policy(m).key != :historical
+            reset_historical_rule_indices!(m)
+            altpol_system = Nullable(system)
+            system = compute_system(m, apply_altpolicy = false)
+        else
+            altpol_system = Nullable{System}()
+        end
     end
 
 
