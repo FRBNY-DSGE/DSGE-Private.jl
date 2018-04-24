@@ -1,8 +1,7 @@
 """
 ```
 smooth(m, df, system, kal; cond_type = :none, draw_states = true,
-    include_presample = false, in_sample = true,
-    altpol_system = Nullable{System}())
+    include_presample = false)
 ```
 
 Computes and returns the smoothed values of states and shocks for the system
@@ -30,7 +29,6 @@ Computes and returns the smoothed values of states and shocks for the system
 - `include_presample::Bool`: indicates whether to include presample periods in
   the returned matrices. Defaults to `false`.
 - `in_sample::Bool`: indicates whether or not to discard out of sample rows in `df_to_matrix` call.
-- `altpol_system::Nullable{System}`: system matrices under alternative rule
 
 ### Outputs
 
@@ -58,8 +56,8 @@ before calling `smooth`.
 """
 function smooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
     system::System{S}, kal::Kalman{S}; cond_type::Symbol = :none,
-    draw_states::Bool = false, include_presample::Bool = false, in_sample::Bool = true,
-    altpol_system::Nullable{System{S}} = Nullable{System{S}}())
+    draw_states::Bool = false, include_presample::Bool = false,
+    in_sample::Bool = true)
 
     data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
 
@@ -69,22 +67,22 @@ function smooth{S<:AbstractFloat}(m::AbstractModel, df::DataFrame,
     regime_inds = zlb_regime_indices(m, data, start_date)
 
     # Get system matrices for each regime
-    sysmats = zlb_regime_matrices(m, system, start_date, cond_type = cond_type,
-                                  altpol_system = altpol_system)
+    TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = zlb_regime_matrices(m, system, start_date)
 
     # Call smoother
     smoother = eval(Symbol(forecast_smoother(m), "_smoother"))
 
     states, shocks = if smoother == hamilton_smoother
-        draw_states && warn("$smoother called with draw_states = true")
-        smoother(regime_inds, data, sysmats..., kal[:z0], kal[:vz0])
+        draw_states ? warn("$smoother called with draw_states = true") : nothing
+        smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
+            kal[:z0], kal[:vz0])
     elseif smoother == koopman_smoother
-        draw_states && warn("$smoother called with draw_states = true")
-        smoother(regime_inds, data, sysmats..., kal[:z0], kal[:vz0],
-                 kal[:pred], kal[:vpred])
+        draw_states ? warn("$smoother called with draw_states = true") : nothing
+        smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
+            kal[:z0], kal[:vz0], kal[:pred], kal[:vpred])
     elseif smoother in [carter_kohn_smoother, durbin_koopman_smoother]
-        smoother(regime_inds, data, sysmats..., kal[:z0], kal[:vz0];
-                 draw_states = draw_states)
+        smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
+            kal[:z0], kal[:vz0]; draw_states = draw_states)
     else
         error("Invalid smoother: $(forecast_smoother(m))")
     end

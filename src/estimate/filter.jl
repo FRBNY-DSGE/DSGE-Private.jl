@@ -1,12 +1,7 @@
 """
 ```
 filter(m, data, system, z0, P0; cond_type = :none, allout = true,
-    include_presample = true, in_sample = true,
-    altpol_system = Nullable{System}())
-
-filter(m, data, z0, P0; catch_errors = false,
-    start_date = date_presample_start(m), allout = true,
-    include_presample = true)
+      include_presample = true)
 ```
 
 Computes and returns the filtered values of states for the state-space
@@ -35,7 +30,6 @@ where `S<:AbstractFloat`.
 - `include_presample::Bool`: indicates whether to include presample periods in
   the returned vector of `Kalman` objects. Defaults to `true`.
 - `in_sample::Bool`: indicates whether or not to discard out of sample rows in `df_to_matrix` call.
-- `altpol_system::Nullable{System}`: state-space matrices under alternative policy
 
 ### Outputs
 
@@ -44,15 +38,12 @@ where `S<:AbstractFloat`.
 function filter{S<:AbstractFloat}(m::AbstractModel, df::DataFrame, system::System{S},
     z0::Vector{S} = Vector{S}(), P0::Matrix{S} = Matrix{S}(0, 0);
     cond_type::Symbol = :none, allout::Bool = true,
-    include_presample::Bool = true, in_sample::Bool = true,
-    altpol_system::Nullable{System{S}} = Nullable{System{S}}())
+    include_presample::Bool = true, in_sample::Bool = true)
 
     data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
     start_date = max(date_presample_start(m), df[1, :date])
-    filter(m, data, system, z0, P0; cond_type = cond_type,
-           start_date = start_date, allout = allout,
-           include_presample = include_presample,
-           altpol_system = altpol_system)
+    filter(m, data, system, z0, P0; start_date = start_date,
+           allout = allout, include_presample = include_presample)
 end
 
 function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S},
@@ -91,17 +82,15 @@ end
 
 function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, system::System,
     z0::Vector{S} = Vector{S}(0), P0::Matrix{S} = Matrix{S}(0, 0);
-    cond_type::Symbol = :none, start_date::Date = date_presample_start(m),
-    allout::Bool = true, include_presample::Bool = true,
-    altpol_system::Nullable{System{S}} = Nullable{System{S}}())
+    start_date::Date = date_presample_start(m),
+    allout::Bool = true, include_presample::Bool = true)
 
     # Partition sample into pre- and post-ZLB regimes
     # Note that the post-ZLB regime may be empty if we do not impose the ZLB
     regime_inds = zlb_regime_indices(m, data, start_date)
 
     # Get system matrices for each regime
-    sysmats = zlb_regime_matrices(m, system, start_date, cond_type = cond_type,
-                                  altpol_system = altpol_system)
+    TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = zlb_regime_matrices(m, system, start_date)
 
     # If z0 and P0 provided, check that rows and columns corresponding to
     # anticipated shocks are zero in P0
@@ -116,8 +105,9 @@ function filter{S<:AbstractFloat}(m::AbstractModel, data::Matrix{S}, system::Sys
     T0 = include_presample ? 0 : n_presample_periods(m)
 
     # Run Kalman filter, construct Kalman object, and return
-    out = kalman_filter(regime_inds, data, sysmats..., z0, P0;
-                        allout = allout, n_presample_periods = T0)
+    out = kalman_filter(regime_inds, data, TTTs, RRRs, CCCs,
+              QQs, ZZs, DDs, EEs, z0, P0;
+              allout = allout, n_presample_periods = T0)
 
     return Kalman(out...)
 end
