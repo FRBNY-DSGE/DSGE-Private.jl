@@ -418,7 +418,7 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
     # Run Kalman filter
     if !irfs_only
-        kal = filter(m, df, system; cond_type = cond_type)
+        kal = filter(m, df, system; cond_type = cond_type, altpol_system = altpol_system)
     end
 
     # Initialize output dictionary
@@ -452,7 +452,8 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
     if run_smoother
         # Call smoother
         histstates, histshocks, histpseudo, initial_states =
-            smooth(m, df, system, kal; cond_type = cond_type, draw_states = uncertainty)
+            smooth(m, df, system, kal; cond_type = cond_type, draw_states = uncertainty,
+                   altpol_system = altpol_system)
 
         # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
         if cond_type in [:full, :semi]
@@ -513,10 +514,11 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
             if cond_type in [:full, :semi]
+                transp_system = alternative_policy(m).key == :historical ? system : get(altpol_system)
                 forecast_output[:forecaststates] = transplant_forecast(histstates, forecaststates, T)
                 forecast_output[:forecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:forecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, transp_system, T)
             else
                 forecast_output[:forecaststates] = forecaststates
                 forecast_output[:forecastshocks] = forecastshocks
@@ -540,10 +542,11 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
             if cond_type in [:full, :semi]
+                transp_system = alternative_policy(m).key == :historical ? system : get(altpol_system)
                 forecast_output[:bddforecaststates] = transplant_forecast(histstates, forecaststates, T)
                 forecast_output[:bddforecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:bddforecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, transp_system, T)
             else
                 forecast_output[:bddforecaststates] = forecaststates
                 forecast_output[:bddforecastshocks] = forecastshocks

@@ -146,21 +146,38 @@ function zlb_regime_indices{S<:AbstractFloat}(m::AbstractModel{S}, data::Matrix{
         regime_inds = Range{Int64}[1:T]
     end
 
+    # If conditional forecast under alternative policy, add a last regime
+    # (alternative rule) during the conditional periods
+    if alternative_policy(m).key != :historical
+        n_uncond_periods = subtract_quarters(date_forecast_start(m), start_date)
+        if n_uncond_periods < T
+            regime_inds[end] = first(regime_inds[end]):n_uncond_periods
+            push!(regime_inds, (n_uncond_periods+1):T)
+        end
+    end
+
     return regime_inds
 end
 
 """
 ```
-zlb_regime_matrices(m, system, start_date = date_presample_start(m))
+zlb_regime_matrices(m, system, start_date = date_presample_start(m);
+    cond_type = :none, altpol_system = Nullable{System}())
 ```
 
 Returns `TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs`, an 8-tuple of
 `Vector{Matrix{S}}`s and `Vector{Vector{S}}`s of system matrices for the pre-
 and post-ZLB regimes. Of these, only `QQ` changes from pre- to post-ZLB: the
 entries corresponding to anticipated shock variances are zeroed out pre-ZLB.
+
+If `cond_type != :none` and `alternative_policy(m).key != :historical`, append
+an additional regime containing system matrices under the alternative rule
+(corresponding to the conditional periods).
 """
 function zlb_regime_matrices{S<:AbstractFloat}(m::AbstractModel{S}, system::System{S},
-                                               start_date::Date = date_presample_start(m))
+                                               start_date::Date = date_presample_start(m);
+                                               cond_type::Symbol = :none,
+                                               altpol_system::Nullable{System{S}} = Nullable{System{S}}())
     if n_anticipated_shocks(m) > 0
         if start_date < date_presample_start(m)
             error("Start date $start_date must be >= date_presample_start(m)")
@@ -189,6 +206,18 @@ function zlb_regime_matrices{S<:AbstractFloat}(m::AbstractModel{S}, system::Syst
     ZZs  = fill(system[:ZZ], n_regimes)
     DDs  = fill(system[:DD], n_regimes)
     EEs  = fill(system[:EE], n_regimes)
+
+    # If conditional forecast under alternative policy, add a last regime
+    # (alternative rule) during the conditional periods
+    if cond_type != :none && alternative_policy(m).key != :historical
+        push!(TTTs, get(altpol_system)[:TTT])
+        push!(RRRs, get(altpol_system)[:RRR])
+        push!(CCCs, get(altpol_system)[:CCC])
+        push!(QQs, get(altpol_system)[:QQ])
+        push!(ZZs, get(altpol_system)[:ZZ])
+        push!(DDs, get(altpol_system)[:DD])
+        push!(EEs, get(altpol_system)[:EE])
+    end
 
     return TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs
 end
