@@ -1,5 +1,7 @@
 julia 0.6
 Calculus
+CSV
+DataArrays
 DataFrames
 DataStructures
 Distributions
