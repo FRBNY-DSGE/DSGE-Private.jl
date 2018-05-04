@@ -610,7 +610,11 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
     irfs_to_compute = intersect(output_vars, irf_vars)
 
     if !isempty(irfs_to_compute)
-        irfstates, irfobs, irfpseudo = impulse_responses(m, system)
+        irfstates, irfobs, irfpseudo = if alternative_policy(m).key == :historical
+            impulse_responses(m, system)
+        else
+            impulse_responses(m, get(altpol_system))
+        end
 
         forecast_output[:irfstates] = irfstates
         forecast_output[:irfobs] = irfobs
