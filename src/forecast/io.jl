@@ -97,8 +97,8 @@ end
 function get_forecast_filestring_addl(input_type, cond_type; forecast_string::String = "")
 
     filestring_addl = Vector{String}()
-    push!(filestring_addl, String("para=" * abbrev_symbol(input_type)))
-    push!(filestring_addl, String("cond=" * abbrev_symbol(cond_type)))
+    push!(filestring_addl, string("para=", input_type))
+    push!(filestring_addl, string("cond=", cond_type))
     if isempty(forecast_string)
         if input_type == :subset
             error("Must supply a nonempty forecast_string if input_type = subset")
