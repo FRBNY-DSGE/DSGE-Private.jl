@@ -102,7 +102,7 @@ function plot_altpolicies{T<:AbstractModel}(models::Vector{T}, vars::Vector{Symb
 
             # Call recipe
             names  = Dict{Symbol, String}(:hist => "", :forecast => string(altpolicy))
-            colors = Dict{Symbol, Any   }(:forecast => altpolicy.color)
+            colors = Dict{Symbol, Any   }(:forecast => altpolicy.color, :bands => altpolicy.color)
             styles = Dict{Symbol, Symbol}(:forecast => altpolicy.linestyle)
             ylabel = series_ylabel(m, var, class, untrans = untrans, fourquarter = fourquarter)
 
