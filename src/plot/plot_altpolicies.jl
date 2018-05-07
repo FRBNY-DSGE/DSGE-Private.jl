@@ -1,13 +1,14 @@
 """
 ```
-plot_altpolicies(models, var, class, cond_type; title = "", kwargs...)
+plot_altpolicies(models, var, class, input_type, cond_type;
+    title = "", kwargs...)
 
-plot_altpolicies(models, vars, class, cond_type;
+plot_altpolicies(models, vars, class, input_type, cond_type;
     forecast_string = "", altpol_string = "",
     start_date = iterate_quarters(date_mainsample_end(models[1], -4)),
     end_date = iterate_quarters(date_forecast_start(models[1], 20)),
     untrans = false, fourquarter = false,
-    plotroot = figurespath(models[1], \"forecast\"), 
+    plotroot = figurespath(models[1], \"forecast\"),
     titles = [], verbose = :low, kwargs...)
 ```
 
@@ -20,6 +21,7 @@ Plot `var` or `vars` forecasts under the alternative policies in `models`.
 - `var::Symbol` or `vars::Vector{Symbol}`: variable(s) to be plotted,
   e.g. `:obs_gdp` or `[:obs_gdp, :obs_nominalrate]`
 - `class::Symbol`
+- `input_type::Symbol`
 - `cond_type::Symbol`
 
 ### Keyword Arguments
@@ -39,16 +41,16 @@ See `?histforecast` for additional keyword arguments, all of which can be passed
 into `plot_altpolicies`.
 """
 function plot_altpolicies{T<:AbstractModel}(models::Vector{T}, var::Symbol, class::Symbol,
-                                            cond_type::Symbol; title::String = "",
-                                            kwargs...)
-    plots = plot_altpolicies(models, [var], class, cond_type;
+                                            input_type::Symbol, cond_type::Symbol;
+                                            title::String = "", kwargs...)
+    plots = plot_altpolicies(models, [var], class, input_type, cond_type;
                              titles = isempty(title) ? String[] : [title],
                              kwargs...)
     return plots[var]
 end
 
 function plot_altpolicies{T<:AbstractModel}(models::Vector{T}, vars::Vector{Symbol}, class::Symbol,
-                                            cond_type::Symbol;
+                                            input_type::Symbol, cond_type::Symbol;
                                             forecast_string::String = "",
                                             altpol_string::String = "",
                                             start_date::Date = iterate_quarters(date_mainsample_end(models[1]), -4),
@@ -95,8 +97,8 @@ function plot_altpolicies{T<:AbstractModel}(models::Vector{T}, vars::Vector{Symb
             altpolicy = alternative_policy(m)
 
             # Read in MeansBands
-            hist     = read_mb(m, :mode, cond_type, Symbol(hist_prod, class), forecast_string = forecast_string)
-            forecast = read_mb(m, :mode, cond_type, Symbol(fcast_prod, class), forecast_string = forecast_string)
+            hist     = read_mb(m, input_type, cond_type, Symbol(hist_prod, class), forecast_string = forecast_string)
+            forecast = read_mb(m, input_type, cond_type, Symbol(fcast_prod, class), forecast_string = forecast_string)
 
             # Call recipe
             names  = Dict{Symbol, String}(:hist => "", :forecast => string(altpolicy))
@@ -118,7 +120,7 @@ function plot_altpolicies{T<:AbstractModel}(models::Vector{T}, vars::Vector{Symb
             models[1].settings[:alternative_policy].print = true
 
             # Save plot
-            output_file = get_forecast_filename(plotroot, filestring_base(models[1]), :mode, cond_type,
+            output_file = get_forecast_filename(plotroot, filestring_base(models[1]), input_type, cond_type,
                                                 Symbol("altpol", fcast_prod, "_", detexify(var)),
                                                 forecast_string = forecast_string,
                                                 fileformat = plot_extension())
