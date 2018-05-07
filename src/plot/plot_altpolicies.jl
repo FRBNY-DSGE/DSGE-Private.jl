@@ -9,7 +9,7 @@ plot_altpolicies(models, vars, class, input_type, cond_type;
     end_date = iterate_quarters(date_forecast_start(models[1], 20)),
     untrans = false, fourquarter = false,
     plotroot = figurespath(models[1], \"forecast\"),
-    titles = [], verbose = :low, kwargs...)
+    titles = [], skip_missing = false, verbose = :low, kwargs...)
 ```
 
 Plot `var` or `vars` forecasts under the alternative policies in `models`.
@@ -35,6 +35,8 @@ Plot `var` or `vars` forecasts under the alternative policies in `models`.
 - `fourquarter::Bool`: whether to plot four-quarter forecast
 - `plotroot::String`: if nonempty, plots will be saved in that directory
 - `title::String` or `titles::Vector{String}`
+- `skip_missing::Bool`: whether to skip plotting `AltPolicy`s for which
+  `MeansBands` can't be found
 - `verbose::Symbol`
 
 See `?histforecast` for additional keyword arguments, all of which can be passed
@@ -59,6 +61,7 @@ function plot_altpolicies{T<:AbstractModel}(models::Vector{T}, vars::Vector{Symb
                                             fourquarter::Bool = false,
                                             plotroot::String = figurespath(models[1], "forecast"),
                                             titles::Vector{String} = String[],
+                                            skip_missing::Bool = false,
                                             verbose::Symbol = :low,
                                             kwargs...)
     # Determine output_vars
@@ -97,8 +100,12 @@ function plot_altpolicies{T<:AbstractModel}(models::Vector{T}, vars::Vector{Symb
             altpolicy = alternative_policy(m)
 
             # Read in MeansBands
-            hist     = read_mb(m, input_type, cond_type, Symbol(hist_prod, class), forecast_string = forecast_string)
-            forecast = read_mb(m, input_type, cond_type, Symbol(fcast_prod, class), forecast_string = forecast_string)
+            hist, forecast = try
+                read_mb(m, input_type, cond_type, Symbol(hist_prod, class), forecast_string = forecast_string),
+                read_mb(m, input_type, cond_type, Symbol(fcast_prod, class), forecast_string = forecast_string)
+            catch ex
+                skip_missing ? continue : throw(ex)
+            end
 
             # Call recipe
             names  = Dict{Symbol, String}(:hist => "", :forecast => string(altpolicy))
