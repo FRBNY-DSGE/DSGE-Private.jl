@@ -100,33 +100,36 @@ end
 
 """
 ```
-add_requisite_output_vars(output_vars::Vector{Symbol})
+add_requisite_output_vars(output_vars; enforce_zlb = true)
 ```
 
-Based on the given `output_vars`, this function determines which
-additional `output_vars` must be computed and stored for future
-plotting.
+Based on the given `output_vars`, this function determines which additional
+`output_vars` must be computed and stored for future plotting.
 
-Specifically, when plotting a shock decomposition, the trend and
-deterministic trend series are required (the trend is subtracted from
-the value of each shock, and the deterministic trend represents
-deviations from steady-state that would realize even in the absence of
-shocks). For example, if `output_vars` contains `shockdecobs`, the
-variables `dettrendobs` and `trendobs` will be added to `output_vars`.
+Specifically:
 
-Note that this case is distinct from a case in which computing a
-different product is required to compute the desired `output_var`. For
-example, smoothed historical states (`histstates`) must be computed in
-order to compute a shock decomposition for a state variable, but need
-not be saved to produce plots later on. Therefore, `histstates` is not
-added to `output_vars` when calling
+1. Add `:bddforecast<class>` if `:forecast<class>` is in `output_vars`, unless
+   `enforce_zlb = false`.
+2. When plotting a shock decomposition, the trend and deterministic trend series
+   are required (the trend is subtracted from the value of each shock, and the
+   deterministic trend represents deviations from steady-state that would
+   realize even in the absence of shocks). For example, if `output_vars`
+   contains `shockdecobs`, the variables `dettrendobs` and `trendobs` will be
+   added to `output_vars`.
+
+Note that this case is distinct from a case in which computing a different
+product is required to compute the desired `output_var`. For example, smoothed
+historical states (`histstates`) must be computed in order to compute a shock
+decomposition for a state variable, but need not be saved to produce plots later
+on. Therefore, `histstates` is not added to `output_vars` when calling
 `add_requisite_output_vars([shockdecstates])`.
 """
-function add_requisite_output_vars(output_vars::Vector{Symbol})
+function add_requisite_output_vars(output_vars::Vector{Symbol};
+                                   enforce_zlb::Bool = true)
     # Add :bddforecast<class> if :forecast<class> is in output_vars
     forecast_outputs = Base.filter(output -> get_product(output) in [:forecast, :forecastut, :forecast4q],
                                    output_vars)
-    if !isempty(forecast_outputs)
+    if !isempty(forecast_outputs) && enforce_zlb
         bdd_vars = [Symbol("bdd$(var)") for var in forecast_outputs]
         output_vars = unique(vcat(output_vars, bdd_vars))
     end

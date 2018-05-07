@@ -46,7 +46,7 @@ function compute_meansbands(m::AbstractModel, input_type::Symbol,
     end
 
     # Determine full set of output_vars necessary for plotting desired result
-    output_vars = add_requisite_output_vars(output_vars)
+    output_vars = add_requisite_output_vars(output_vars, enforce_zlb = get_setting(m, :forecast_enforce_zlb))
 
     # Load population data and main dataset (required for some transformations)
     if all(var -> get_product(var) == :irf, output_vars)

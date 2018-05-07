@@ -35,7 +35,7 @@ function prepare_forecast_inputs!{S<:AbstractFloat}(m::AbstractModel{S},
     verbose::Symbol = :none)
 
     # Compute everything that will be needed to plot original output_vars
-    output_vars = add_requisite_output_vars(output_vars)
+    output_vars = add_requisite_output_vars(output_vars, enforce_zlb = get_setting(m, :forecast_enforce_zlb))
 
     # Get products and classes computed
     output_prods   = unique(map(get_product, output_vars))

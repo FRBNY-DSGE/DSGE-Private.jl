@@ -23,7 +23,7 @@ function meansbands_to_matrix(m::AbstractModel, input_type::Symbol,
                               forecast_string::String = "", verbose::Symbol = :low)
 
     # Determine full set of output_vars necessary for plotting desired results
-    output_vars = add_requisite_output_vars(output_vars)
+    output_vars = add_requisite_output_vars(output_vars, enforce_zlb = get_setting(m, :forecast_enforce_zlb))
     output_dir  = workpath(m, "forecast")
 
     if VERBOSITY[verbose] >= VERBOSITY[:low]

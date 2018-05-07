@@ -119,6 +119,8 @@ function default_settings!(m::AbstractModel)
         "Draw Students-t distributed shocks in forecast")
     settings[:forecast_tdist_df_val] = Setting(:forecast_tdist_df_val, 15,
         "Students-t degrees of freedom fixed value")
+    settings[:forecast_enforce_zlb] = Setting(:forecast_enforce_zlb, true,
+        "Whether to run both bounded and unbounded forecasts in forecast_one. If false, then only unbounded forecasts are run")
     settings[:forecast_zlb_value] = Setting(:forecast_zlb_value, 0.13/4,
         "Value of the zero lower bound in forecast periods, if we choose to enforce it")
     settings[:shockdec_startdate] = Setting(:shockdec_startdate, Nullable{Date}(),
