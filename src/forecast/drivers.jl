@@ -112,7 +112,7 @@ function load_draws(m::AbstractModel, input_type::Symbol; subset_inds::Range{Int
     end
 
     # Load single draw
-    if input_type in [:mean, :mode]
+    if input_type in [:mean, :mode, :modeshocks]
 
         params = convert(Vector{Float64}, h5read(input_file_name, "params"))
 
@@ -150,19 +150,24 @@ function load_draws(m::AbstractModel, input_type::Symbol, block_inds::Range{Int6
         println("Loading draws from $input_file_name")
     end
 
-    if input_type in [:full, :subset]
+    if input_type in [:full, :subset, :modeshocks]
         if isempty(block_inds)
             error("Must supply nonempty range of block_inds for this load_draws method")
         else
             ndraws = length(block_inds)
-            params = Vector{Vector{Float64}}(ndraws)
-            for (i, j) in zip(1:ndraws, block_inds)
-                params[i] = vec(map(Float64, h5read(input_file_name, "mhparams", (j, :))))
+            if input_type == :modeshocks
+                modal_params = load_draws(m, :modeshocks, verbose = :none)
+                params = fill(modal_params, ndraws)
+            else
+                params = Vector{Vector{Float64}}(ndraws)
+                for (i, j) in zip(1:ndraws, block_inds)
+                    params[i] = vec(map(Float64, h5read(input_file_name, "mhparams", (j, :))))
+                end
             end
             return params
         end
     else
-        error("This load_draws method can only be called with input_type in [:full, :subset]")
+        error("This load_draws method can only be called with input_type in [:full, :subset, :modeshocks]")
     end
 end
 
@@ -183,10 +188,14 @@ conditional data case given by `cond_type`.
 
 ```
   - `:mode`: forecast using the modal parameters only
+  - `:modeshocks`: forecast many draws using the modal parameters, **drawing
+    shocks**. The number of draws is set in the `:forecast_modeshocks_ndraws`
+    `Setting`
   - `:mean`: forecast using the mean parameters only
   - `:init`: forecast using the initial parameter values only
   - `:full`: forecast using all parameters (full distribution)
-  - `:subset`: forecast using a well-defined user-specified subset of draws
+  - `:subset`: forecast using a subset of the full-distribution draws, specified
+    using the keyword argument `subset_inds`
 ```
 
 - `cond_type::Symbol`: one of:
@@ -272,7 +281,7 @@ function forecast_one(m::AbstractModel{Float64},
 
     ### Multiple-Draw Forecasts
 
-    elseif input_type in [:full, :subset]
+    elseif input_type in [:full, :subset, :modeshocks]
 
         # Block info
         block_inds, block_inds_thin = forecast_block_inds(m, input_type; subset_inds = subset_inds)
@@ -429,7 +438,7 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
     uncertainty = if isnull(uncertainty_override)
         if input_type in [:init, :mode, :mean]
             false
-        elseif input_type in [:full, :subset]
+        elseif input_type in [:full, :subset, :modeshocks]
             true
         end
     else

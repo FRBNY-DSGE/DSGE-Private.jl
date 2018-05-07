@@ -24,12 +24,15 @@ function get_forecast_input_file(m, input_type)
         else
             error("Input file $override_file does not exist")
         end
+    elseif input_type == :modeshocks
+        # If input_type == :modeshocks, also check for existence of overrides[:mode]
+        return get_forecast_input_file(m, :mode)
     elseif input_type == :subset
         # If input_type == :subset, also check for existence of overrides[:full]
         return get_forecast_input_file(m, :full)
     end
 
-    if input_type == :mode
+    if input_type in [:mode, :modeshocks]
         return rawpath(m,"estimate","paramsmode.h5")
     elseif input_type == :mean
         return workpath(m,"estimate","paramsmean.h5")

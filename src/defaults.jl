@@ -105,6 +105,8 @@ function default_settings!(m::AbstractModel)
         "Block at which to resume forecasting")
     settings[:forecast_input_file_overrides] = Setting(:forecast_input_file_overrides,
         Dict{Symbol, String}())
+    settings[:forecast_modeshocks_ndraws] = Setting(:forecast_modeshocks_ndraws, 10_000,
+        "Number of draws to forecast when using input_type = :modeshocks")
     settings[:forecast_jstep] = Setting(:forecast_jstep, 5,
         "Forecast thinning step (in addition to MH thinning step")
     settings[:forecast_uncertainty_override] = Setting(:forecast_uncertainty_override, Nullable{Bool}(),

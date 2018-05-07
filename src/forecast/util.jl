@@ -25,6 +25,8 @@ Returns the number of forecast draws in the file
 function n_forecast_draws(m::AbstractModel, input_type::Symbol)
     if input_type in [:mean, :mode, :init]
         return 1
+    elseif input_type == :modeshocks
+        return get_setting(m, :forecast_modeshocks_ndraws)
     elseif input_type in [:full, :subset]
         input_file = get_forecast_input_file(m, input_type)
         draws = h5open(input_file, "r") do file
@@ -50,8 +52,8 @@ range of indices for block `i` before thinning by `jstep` and
 function forecast_block_inds(m::AbstractModel, input_type::Symbol; subset_inds::Range{Int64} = 1:0)
 
     if input_type == :full
-        ndraws = n_forecast_draws(m, :full)
-        jstep = get_jstep(m, ndraws)
+        ndraws    = n_forecast_draws(m, :full)
+        jstep     = get_jstep(m, ndraws)
         start_ind = 1
         end_ind   = ndraws
     elseif input_type == :subset
@@ -59,6 +61,11 @@ function forecast_block_inds(m::AbstractModel, input_type::Symbol; subset_inds::
         jstep     = get_jstep(m, ndraws)
         start_ind = first(subset_inds)
         end_ind   = last(subset_inds)
+    elseif input_type == :modeshocks
+        ndraws    = n_forecast_draws(m, :modeshocks)
+        jstep     = 1
+        start_ind = 1
+        end_ind   = ndraws
     else
         throw(ArgumentError("Cannot call forecast_block_inds with input_type = $input_type."))
     end
@@ -266,7 +273,7 @@ function get_forecast_output_dims(m::AbstractModel, input_type::Symbol, output_v
 
     ndraws = if input_type in [:mode, :mean, :init]
         1
-    elseif input_type in [:full, :subset]
+    elseif input_type in [:full, :subset, :modeshocks]
         _, block_inds_thin = forecast_block_inds(m, input_type; subset_inds = subset_inds)
         sum(map(length, block_inds_thin))
     end
