@@ -84,7 +84,7 @@ function plot_altpolicies{T<:AbstractModel}(models::Vector{T}, vars::Vector{Symb
     # Check if that altpol_string is provided if there are multiple altpolicies being plotted
     n_altpolicies = length(models)
     if n_altpolicies != 1 && isempty(altpol_string)
-        error("Must provide nonempty altpol_key if plotting multiple alternative policies")
+        error("Must provide nonempty altpol_string if plotting multiple alternative policies")
     end
 
     # Loop through variables
