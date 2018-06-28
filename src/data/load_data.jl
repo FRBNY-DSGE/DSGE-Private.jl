@@ -28,18 +28,12 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool =
     # Check if already downloaded
     if try_disk && has_saved_data(m; cond_type=cond_type)
         filename = get_data_filename(m, cond_type)
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            print("Reading dataset $(filename) from disk...")
-        end
+        print(verbose, :low, "Reading dataset $(filename) from disk...")
         df = read_data(m; cond_type = cond_type)
         if isvalid_data(m, df; cond_type = cond_type)
-            if VERBOSITY[verbose] >= VERBOSITY[:low]
-                println("dataset from disk valid")
-            end
+            println(verbose, :low, "dataset from disk valid")
         else
-            if VERBOSITY[verbose] >= VERBOSITY[:low]
-                println("dataset from disk not valid")
-            end
+            println(verbose, :low, "dataset from disk not valid")
             recreate_data = true
         end
     else
@@ -48,9 +42,7 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool =
 
     # Download routines
     if recreate_data
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            println("Creating dataset...")
-        end
+        println(verbose, :low, "Creating dataset...")
 
         levels = load_data_levels(m; verbose=verbose)
         if cond_type in [:semi, :full]
@@ -73,9 +65,7 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool =
         if !m.testing
             save_data(m, df; cond_type=cond_type)
         end
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            println("dataset creation successful")
-        end
+        println(verbose, :low, "dataset creation successful")
 
         # NaN out conditional period variables not in `cond_semi_names(m)` or
         # `cond_full_names(m)` if necessary
@@ -155,9 +145,7 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
         file = inpath(m, "raw", "$(lowercase(string(source)))_$vint.csv")
 
         if isfile(file)
-            if VERBOSITY[verbose] >= VERBOSITY[:low]
-                println("Reading data from $file...")
-            end
+            println(verbose, :low, "Reading data from $file...")
 
             # Read in dataset and check that the file contains data for the proper dates
             addl_data = CSV.read(file)
@@ -237,9 +225,7 @@ function load_cond_data_levels(m::AbstractModel; verbose::Symbol=:low)
     file = inpath(m, "cond", "cond_cdid=" * cond_idno * "_cdvt=" * cond_vint * ".csv")
 
     if isfile(file)
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            println("Reading conditional data from $file...")
-        end
+        println(verbose, :low, "Reading conditional data from $file...")
 
         # Read data
         cond_df = CSV.read(file)
@@ -254,8 +240,8 @@ function load_cond_data_levels(m::AbstractModel; verbose::Symbol=:low)
 
             population_mnemonic = get(parse_population_mnemonic(m)[1])
             rename!(pop_forecast, :POPULATION =>  population_mnemonic)
-            DSGE.na2nan!(pop_forecast)
-            DSGE.format_dates!(:date, pop_forecast)
+            na2nan!(pop_forecast)
+            format_dates!(:date, pop_forecast)
 
             cond_df = join(cond_df, pop_forecast, on=:date, kind=:left)
 
@@ -486,14 +472,11 @@ function read_population_data(m::AbstractModel; verbose::Symbol = :low)
 end
 
 function read_population_data(filename::String; verbose::Symbol = :low)
-    if VERBOSITY[verbose] >= VERBOSITY[:low]
-        println("Reading population data from $filename...")
-    end
+    println(verbose, :low, "Reading population data from $filename...")
 
     df = CSV.read(filename)
-
-    DSGE.na2nan!(df)
-    DSGE.format_dates!(:date, df)
+    na2nan!(df)
+    format_dates!(:date, df)
     sort!(df, :date)
 
     return df
@@ -525,23 +508,17 @@ end
 function read_population_forecast(filename::String, population_mnemonic::Symbol;
                                   verbose::Symbol = :low)
     if isfile(filename)
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            println("Loading population forecast from $filename...")
-        end
+        println(verbose, :low, "Loading population forecast from $filename...")
 
         df = CSV.read(filename)
-
         rename!(df, :POPULATION => population_mnemonic)
-        DSGE.na2nan!(df)
-        DSGE.format_dates!(:date, df)
+        na2nan!(df)
+        format_dates!(:date, df)
         sort!(df, :date)
 
         return df[:, [:date, population_mnemonic]]
     else
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            warn("No population forecast found")
-        end
-
+        warn(verbose, :low, "No population forecast found")
         return DataFrame()
     end
 end

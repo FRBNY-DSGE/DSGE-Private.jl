@@ -13,7 +13,7 @@ module DSGE
     export
 
         # distributions_ext.jl
-        BetaAlt, GammaAlt, DegenerateMvNormal, DegenerateDiagMvTDist, MatrixNormal,
+        BetaAlt, GammaAlt, RootInverseGamma, DegenerateMvNormal, DegenerateDiagMvTDist, MatrixNormal,
 
         # settings.jl
         Setting, get_setting,
@@ -106,6 +106,9 @@ module DSGE
         construct_fcast_and_hist_dfs,
         df_to_table,
 
+        # decomp/
+        decompose_forecast, decomposition_means,
+
         # altpolicy/
         AltPolicy, taylor93, taylor99,
 
@@ -115,10 +118,12 @@ module DSGE
         compute_scenario_system, filter_shocks!, forecast_scenario, simulate_switching, scenario_means_bands,
         get_scenario_input_file, n_scenario_draws, get_scenario_filename, get_scenario_output_files,
         read_scenario_output, get_scenario_mb_input_file, get_scenario_mb_output_file, read_scenario_mb,
+        count_scenario_draws,
 
         # plot/
         plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
         plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
+        plot_forecast_decomposition,
 
         # models/
         init_parameters!, steadystate!, init_observable_mappings!, init_pseudo_observable_mappings!,
@@ -182,6 +187,11 @@ module DSGE
     include("analysis/forecast_decomposition.jl")
     include("analysis/df_to_table.jl")
 
+    include("decomp/drivers.jl")
+    include("decomp/util.jl")
+    include("decomp/io.jl")
+    include("decomp/meansbands.jl")
+
     include("altpolicy/altpolicy.jl")
     include("altpolicy/taylor93.jl")
     include("altpolicy/taylor99.jl")
@@ -201,6 +211,7 @@ module DSGE
     include("plot/plot_shock_decomposition.jl")
     include("plot/plot_altpolicies.jl")
     include("plot/plot_scenario.jl")
+    include("plot/plot_forecast_decomposition.jl")
 
     include("models/financial_frictions.jl")
 

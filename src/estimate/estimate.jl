@@ -91,10 +91,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
             total_iterations += out.iterations
             converged = out.converged || attempts > max_attempts
 
-            if VERBOSITY[verbose] >= VERBOSITY[:low]
-                @printf "Total iterations completed: %d\n" total_iterations
-                @printf "Optimization time elapsed: %5.2f\n" optimization_time += toq()
-            end
+            println(verbose, :low, @sprintf "Total iterations completed: %d\n" total_iterations)
+            println(verbose, :low, @sprintf "Optimization time elapsed: %5.2f\n" optimization_time += toq())
 
             # Write params to file after every `n_iterations` iterations
             params = map(θ->θ.value, m.parameters)
@@ -125,11 +123,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
     ########################################################################################
 
     # Calculate the Hessian at the posterior mode
-    if isempty(proposal_covariance)
-        hessian = if calculate_hessian(m)
-            if VERBOSITY[verbose] >= VERBOSITY[:low]
-                println("Recalculating Hessian...")
-            end
+    if calculate_hessian(m)
+        println(verbose, :low, "Recalculating Hessian...")
 
             hessian, _ = hessian!(m, params, data; verbose=verbose)
 
@@ -137,20 +132,13 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
                 file["hessian"] = hessian
             end
 
-            hessian
+    # Read in a pre-calculated Hessian
+    else
+        fn = hessian_path(m)
+        println(verbose, :low, "Using pre-calculated Hessian from $fn")
 
-            # Read in a pre-calculated Hessian
-        else
-            fn = hessian_path(m)
-            if VERBOSITY[verbose] >= VERBOSITY[:low]
-                println("Using pre-calculated Hessian from $fn")
-            end
-
-            hessian = h5open(fn,"r") do file
-                read(file, "hessian")
-            end
-
-            hessian
+        hessian = h5open(fn,"r") do file
+            read(file, "hessian")
         end
     end
 
@@ -172,12 +160,12 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         end
 
         hessian_inv = U*sqrt.(S_inv) #this is the inverse of the hessian
-        DSGE.DegenerateMvNormal(params, hessian_inv)
+        DegenerateMvNormal(params, hessian_inv)
     else
-        DSGE.DegenerateMvNormal(params, proposal_covariance)
+        DegenerateMvNormal(params, proposal_covariance)
     end
 
-    if DSGE.rank(propdist) != n_parameters_free(m)
+    if Base.rank(propdist) != n_parameters_free(m)
         println("problem –    shutting down dimensions")
     end
 
@@ -274,10 +262,8 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
 
 
     # Report number of blocks that will be used
-    if VERBOSITY[verbose] >= VERBOSITY[:low]
-        println("Blocks: $n_blocks")
-        println("Draws per block: $n_sim")
-    end
+    println(verbose, :low, "Blocks: $n_blocks")
+    println(verbose, :low, "Draws per block: $n_sim")
 
     # For n_sim*mhthin iterations within each block, generate a new parameter draw.
     # Decide to accept or reject, and save every (mhthin)th draw that is accepted.
@@ -310,9 +296,7 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
             # gensys returns a meaningful system) and evaluate the posterior
             post_new = posterior!(m, para_new, data; mh = true)
 
-            if VERBOSITY[verbose] >= VERBOSITY[:high]
-                println("Block $block, Iteration $j: posterior = $post_new")
-            end
+            println(verbose, :high, "Block $block, Iteration $j: posterior = $post_new")
 
             # Choose to accept or reject the new parameter by calculating the
             # ratio (r) of the new posterior value relative to the old one We
@@ -330,16 +314,12 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
                 post_old = post_new
                 propdist.μ = para_new
 
-                if VERBOSITY[verbose] >= VERBOSITY[:high]
-                    println("Block $block, Iteration $j: accept proposed jump")
-                end
+                println(verbose, :high, "Block $block, Iteration $j: accept proposed jump")
             else
                 # Reject proposed jump
                 block_rejections += 1
 
-                if VERBOSITY[verbose] >= VERBOSITY[:high]
-                    println("Block $block, Iteration $j: reject proposed jump")
-                end
+                println(verbose, :high, "Block $block, Iteration $j: reject proposed jump")
             end
 
             # Save every (mhthin)th draw
@@ -365,27 +345,22 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
 
         # Calculate time to complete this block, average block time, and
         # expected time to completion
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            block_time = toq()
-            total_sampling_time += block_time
-            total_sampling_time_minutes = total_sampling_time/60
-            expected_time_remaining_sec     = (total_sampling_time/block)*(n_blocks - block)
-            expected_time_remaining_minutes = expected_time_remaining_sec/60
+        block_time = toq()
+        total_sampling_time += block_time
+        total_sampling_time_minutes = total_sampling_time/60
+        expected_time_remaining_sec     = (total_sampling_time/block)*(n_blocks - block)
+        expected_time_remaining_minutes = expected_time_remaining_sec/60
 
-            println("Completed $block of $n_blocks blocks.")
-            println("Total time to compute $block blocks: $total_sampling_time_minutes minutes")
-            println("Expected time remaining for Metropolis-Hastings: $expected_time_remaining_minutes minutes")
-            println("Block $block rejection rate: $block_rejection_rate \n")
-        end
-
+        println(verbose, :low, "Completed $block of $n_blocks blocks.")
+        println(verbose, :low, "Total time to compute $block blocks: $total_sampling_time_minutes minutes")
+        println(verbose, :low, "Expected time remaining for Metropolis-Hastings: $expected_time_remaining_minutes minutes")
+        println(verbose, :low, "Block $block rejection rate: $block_rejection_rate \n")
     end # of loop over blocks
 
     close(simfile)
 
     rejection_rate = all_rejections / (n_blocks*n_sim*mhthin)
-    if VERBOSITY[verbose] >= VERBOSITY[:low]
-        println("Overall rejection rate: $rejection_rate")
-    end
+    println(verbose, :low, "Overall rejection rate: $rejection_rate")
 end
 
 """

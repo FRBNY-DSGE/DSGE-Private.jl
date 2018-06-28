@@ -72,7 +72,7 @@ equilibrium conditions.
 
 * `observable_mappings::OrderedDict{Symbol,Observable}`: A dictionary that
   stores data sources, series mnemonics, and transformations to/from model
-  units.  DSGE.jl will fetch data from the Federal Reserve Bank of St. Louis's
+  units. DSGE.jl will fetch data from the Federal Reserve Bank of St. Louis's
   FRED database; all other data must be downloaded by the user. See `load_data`
   and `Observable` for further details.
 
@@ -200,7 +200,7 @@ function Model1002(subspec::String="ss10";
             OrderedDict{Symbol,PseudoObservable}())
 
     # Set settings
-    settings_m1002!(m)
+    model_settings!(m)
     default_test_settings!(m)
     for custom_setting in values(custom_settings)
         m <= custom_setting
@@ -693,7 +693,7 @@ function steadystate!(m::Model1002)
     return m
 end
 
-function settings_m1002!(m::Model1002)
+function model_settings!(m::Model1002)
 
     default_settings!(m)
 
@@ -735,7 +735,8 @@ parameter groupings (e.g. \"Policy Parameters\") to vectors of
 `prior_table`.
 """
 function parameter_groupings(m::Model1002)
-    policy     = [:ψ1, :ψ2, :ψ3, :ρ, :ρ_rm, :σ_r_m, :σ_r_m1]
+    policy     = [[:ψ1, :ψ2, :ψ3, :ρ, :ρ_rm, :σ_r_m];
+                  [Symbol("σ_r_m$i") for i = 1:n_anticipated_shocks(m)]]
     sticky     = [:ζ_p, :ι_p, :ϵ_p, :ζ_w, :ι_w, :ϵ_w]
     other_endo = [:γ, :α, :β, :σ_c, :h, :ν_l, :δ, :Φ, :S′′, :ppsi, :π_star,
                   :Γ_gdpdef, :δ_gdpdef, :Lmean, :λ_w, :g_star]
@@ -757,7 +758,7 @@ function parameter_groupings(m::Model1002)
     # Ensure no parameters missing
     incl_params = vcat(collect(values(groupings))...)
     excl_params = [m[θ] for θ in vcat([:Upsilon, :ρ_μ_e, :ρ_γ, :σ_μ_e, :σ_γ, :Iendoα, :γ_gdi, :δ_gdi],
-                                      [Symbol("σ_r_m$i") for i=2:20])]
+                                      [Symbol("σ_r_m$i") for i=n_anticipated_shocks(m)+1:n_anticipated_shocks_padding(m)])]
     @assert isempty(setdiff(m.parameters, vcat(incl_params, excl_params)))
 
     return groupings

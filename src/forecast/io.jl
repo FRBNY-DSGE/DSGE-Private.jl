@@ -194,7 +194,7 @@ function write_forecast_outputs(m::AbstractModel, input_type::Symbol,
         filepath = forecast_output_files[var]
         if isnull(block_number) || get(block_number) == 1
             jldopen(filepath, "w") do file
-                write_forecast_metadata(m, file, var)
+                write_forecast_metadata(m, file, get_product(var), get_class(var))
 
                 if var == :histobs
                     # :histobs just refers to data, so we only write one draw
@@ -232,15 +232,14 @@ function write_forecast_outputs(m::AbstractModel, input_type::Symbol,
             end
         end
 
-        if VERBOSITY[verbose] >= VERBOSITY[:high]
-            println(" * Wrote $(basename(filepath))")
-        end
+        println(verbose, :high, " * Wrote $(basename(filepath))")
     end
 end
 
 """
 ```
-write_forecast_metadata(m::AbstractModel, file::JldFile, var::Symbol)
+write_forecast_metadata(m::AbstractModel, file::JldFile, prod::Symbol,
+    class::Symbol, hs::UnitRange{Int} = 1:0)
 ```
 
 Write metadata about the saved forecast output `var` to `filepath`.
@@ -257,13 +256,12 @@ forecast output array. The saved dictionaries include:
 - `pseudoobservable_revtransforms::Dict{Symbol, Symbol}`: saved identifiers for reverse transforms used for pseudoobservables
 - `shock_names::Dict{Symbol, Int}`: saved for `var in [:histshocks, :forecastshocks, :shockdecstates, :shockdecobs, :shockdecpseudo]`
 
-Note that we don't save dates or transformations for impulse response functions.
+Note that we don't save dates or transformations for impulse response
+functions. The `hs` keyword argument denotes horizons and is only used for
+forecast decompositions.
 """
-function write_forecast_metadata(m::AbstractModel, file::JLD.JldFile, var::Symbol)
-
-    prod  = get_product(var)
-    class = get_class(var)
-
+function write_forecast_metadata(m::AbstractModel, file::JLD.JldFile, prod::Symbol, class::Symbol;
+                                 hs::UnitRange{Int} = 1:0)
     # Write date range
     if prod != :irf
         dates = if prod == :hist
@@ -272,6 +270,8 @@ function write_forecast_metadata(m::AbstractModel, file::JLD.JldFile, var::Symbo
             quarter_range(date_forecast_start(m), date_forecast_end(m))
         elseif prod in [:shockdec, :dettrend, :trend]
             quarter_range(date_shockdec_start(m), date_shockdec_end(m))
+        elseif contains(string(prod), "decomp")
+            map(h -> DSGE.iterate_quarters(date_mainsample_end(m), h), hs)
         end
 
         date_indices = Dict(d::Date => i::Int for (i, d) in enumerate(dates))
@@ -283,7 +283,7 @@ function write_forecast_metadata(m::AbstractModel, file::JLD.JldFile, var::Symbo
         state_indices = merge(m.endogenous_states, m.endogenous_states_augmented)
         @assert length(state_indices) == n_states_augmented(m) # assert no duplicate keys
         write(file, "state_indices", state_indices)
-        rev_transforms = Dict{Symbol,Symbol}(x => Symbol("DSGE.identity") for x in keys(state_indices))
+        rev_transforms = Dict{Symbol,Symbol}(x => Symbol("identity") for x in keys(state_indices))
         write(file, "state_revtransforms", rev_transforms)
     end
 
@@ -293,7 +293,7 @@ function write_forecast_metadata(m::AbstractModel, file::JLD.JldFile, var::Symbo
         rev_transforms = if prod != :irf
             Dict{Symbol,Symbol}(x => Symbol(m.observable_mappings[x].rev_transform) for x in keys(m.observables))
         else
-            Dict{Symbol,Symbol}(x => Symbol("DSGE.identity") for x in keys(m.observables))
+            Dict{Symbol,Symbol}(x => Symbol("identity") for x in keys(m.observables))
         end
         write(file, "observable_revtransforms", rev_transforms)
     end
@@ -305,16 +305,16 @@ function write_forecast_metadata(m::AbstractModel, file::JLD.JldFile, var::Symbo
             Dict{Symbol,Symbol}(x => Symbol(m.pseudo_observable_mappings[x].rev_transform)
                                 for x in keys(m.pseudo_observables))
         else
-            Dict{Symbol,Symbol}(x => Symbol("DSGE.identity") for x in keys(m.pseudo_observables))
+            Dict{Symbol,Symbol}(x => Symbol("identity") for x in keys(m.pseudo_observables))
         end
         write(file, "pseudoobservable_revtransforms", rev_transforms)
     end
 
     # Write shock names and transforms
-    if class in [:shocks, :stdshocks] || prod in [:shockdec, :irf]
+    if class in [:shocks, :stdshocks] || prod in [:shockdec, :irf, :decompindshock]
         write(file, "shock_indices", m.exogenous_shocks)
         if class in [:shocks, :stdshocks]
-            rev_transforms = Dict{Symbol,Symbol}(x => Symbol("DSGE.identity") for x in keys(m.exogenous_shocks))
+            rev_transforms = Dict{Symbol,Symbol}(x => Symbol("identity") for x in keys(m.exogenous_shocks))
             write(file, "shock_revtransforms", rev_transforms)
         end
     end
@@ -435,7 +435,8 @@ function read_forecast_series(file::JLD.JldFile, class::Symbol, product::Symbol,
 
     # Other products are ndraws x nvars x nperiods
     elseif product in [:hist, :histut, :hist4q, :forecast, :forecastut, :forecast4q,
-                       :bddforecast, :bddforecastut, :bddforecast4q, :dettrend]
+                       :bddforecast, :bddforecastut, :bddforecast4q, :dettrend,
+                       :decompstate, :decompshock, :decompdata, :decompparam, :decomptotal]
         inds_to_read = if ndims == 2 # one draw
             arr = h5read(filename, "arr", (var_ind, Colon()))
         elseif ndims == 3 # many draws

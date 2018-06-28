@@ -107,9 +107,7 @@ function load_draws(m::AbstractModel, input_type::Symbol; subset_inds::Range{Int
     verbose::Symbol = :low)
 
     input_file_name = get_forecast_input_file(m, input_type)
-    if VERBOSITY[verbose] >= VERBOSITY[:low]
-        println("Loading draws from $input_file_name")
-    end
+    println(verbose, :low, "Loading draws from $input_file_name")
 
     # Load single draw
     if input_type in [:mean, :mode]
@@ -146,9 +144,7 @@ function load_draws(m::AbstractModel, input_type::Symbol, block_inds::Range{Int6
                     verbose::Symbol = :low)
 
     input_file_name = get_forecast_input_file(m, input_type)
-    if VERBOSITY[verbose] >= VERBOSITY[:low]
-        println("Loading draws from $input_file_name")
-    end
+    println(verbose, :low, "Loading draws from $input_file_name")
 
     if input_type in [:full, :subset]
         if isempty(block_inds)
@@ -241,11 +237,9 @@ function forecast_one(m::AbstractModel{Float64},
     output_dir = rawpath(m, "forecast")
 
     # Print
-    if VERBOSITY[verbose] >= VERBOSITY[:low]
-        info("Forecasting input_type = $input_type, cond_type = $cond_type...")
-        println("Start time: $(now())")
-        println("Forecast outputs will be saved in $output_dir")
-    end
+    info(verbose, :low, "Forecasting input_type = $input_type, cond_type = $cond_type...")
+    println(verbose, :low, "Start time: $(now())")
+    println(verbose, :low, "Forecast outputs will be saved in $output_dir")
 
 
     ### Single-Draw Forecasts
@@ -262,12 +256,9 @@ function forecast_one(m::AbstractModel{Float64},
                                forecast_output; df = df, block_number = Nullable{Int64}(),
                                verbose = verbose)
 
-        if VERBOSITY[verbose] >= VERBOSITY[:low]
-            total_forecast_time     = toq()
-            total_forecast_time_min = total_forecast_time/60
-
-            println("\nTotal time to forecast: $total_forecast_time_min minutes")
-        end
+        total_forecast_time     = toq()
+        total_forecast_time_min = total_forecast_time/60
+        println(verbose, :low, "\nTotal time to forecast: $total_forecast_time_min minutes")
 
 
     ### Multiple-Draw Forecasts
@@ -284,10 +275,8 @@ function forecast_one(m::AbstractModel{Float64},
         block_verbose = verbose == :none ? :none : :low
 
         for block = start_block:nblocks
-            if VERBOSITY[verbose] >= VERBOSITY[:low]
-                println()
-                info("Forecasting block $block of $nblocks...")
-            end
+            println(verbose, :low, )
+            info(verbose, :low, "Forecasting block $block of $nblocks...")
             tic()
 
             # Get to work!
@@ -309,25 +298,21 @@ function forecast_one(m::AbstractModel{Float64},
 
             # Calculate time to complete this block, average block time, and
             # expected time to completion
-            if VERBOSITY[verbose] >= VERBOSITY[:low]
-                block_time = toq()
-                total_forecast_time += block_time
-                total_forecast_time_min     = total_forecast_time/60
-                blocks_elapsed              = block - start_block + 1
-                expected_time_remaining     = (total_forecast_time/blocks_elapsed)*(nblocks - block)
-                expected_time_remaining_min = expected_time_remaining/60
+            block_time = toq()
+            total_forecast_time += block_time
+            total_forecast_time_min     = total_forecast_time/60
+            blocks_elapsed              = block - start_block + 1
+            expected_time_remaining     = (total_forecast_time/blocks_elapsed)*(nblocks - block)
+            expected_time_remaining_min = expected_time_remaining/60
 
-                println("\nCompleted $block of $nblocks blocks.")
-                println("Total time elapsed: $total_forecast_time_min minutes")
-                println("Expected time remaining: $expected_time_remaining_min minutes")
-            end
+            println(verbose, :low, "\nCompleted $block of $nblocks blocks.")
+            println(verbose, :low, "Total time elapsed: $total_forecast_time_min minutes")
+            println(verbose, :low, "Expected time remaining: $expected_time_remaining_min minutes")
         end # of loop through blocks
 
     end # of input_type
 
-    if VERBOSITY[verbose] >= VERBOSITY[:low]
-        println("\nForecast complete: $(now())")
-    end
+    println(verbose, :low, "\nForecast complete: $(now())")
 end
 
 """
@@ -401,15 +386,12 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
     output_prods = map(get_product, output_vars)
     irfs_only = all(x -> x == :irf, output_prods)
 
-    # Compute state space and run Kalman filter
+    # Compute state space
     update!(m, params)
     if n_forcing_processes(m) > 0
         compute_system(m; data = df_to_matrix(m, df))
     else
         system = compute_system(m)
-    end
-    if !irfs_only
-        kal = filter(m, df, system; cond_type = cond_type)
     end
 
     # Initialize output dictionary
@@ -443,7 +425,7 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
     if run_smoother
         # Call smoother
         histstates, histshocks, histpseudo, initial_states =
-            smooth(m, df, system, kal; cond_type = cond_type, draw_states = uncertainty)
+            smooth(m, df, system; cond_type = cond_type, draw_states = uncertainty)
 
         # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
         if cond_type in [:full, :semi]
@@ -473,22 +455,22 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
     if !isempty(forecasts_to_compute)
         # Get initial forecast state vector s_T
-        initial_forecast_state = if uncertainty
-            if run_smoother
-                # If we want to draw s_T and have already run the smoother, use the
-                # last smoothed state, which was already drawn from N(s_{T|T},
-                # P_{T|T}) in the simulation smoother
-                histstates[:, end]
-            else
+        s_T = if run_smoother
+            # The last smoothed state is either s_{T|T} (if !uncertainty) or
+            # drawn from N(s_{T|T}, P_{T|T}) (if uncertainty)
+            histstates[:, end]
+        else
+            kal = filter(m, df, system; cond_type = cond_type)
+            if uncertainty
                 # If we want to draw s_T but haven't run the smoother, draw from
                 # N(s_{T|T}, P_{T|T}) directly
-                U, singular_values, _ = svd(kal[:Pend])
-                dist = DegenerateMvNormal(kal[:zend], U*diagm(sqrt(singular_values)))
+                U, singular_values, _ = svd(kal[:P_T])
+                dist = DegenerateMvNormal(kal[:s_T], U*diagm(sqrt(singular_values)))
                 rand(dist)
+            else
+                # If we don't want to draw s_T, simply use the mean s_{T|T}
+                kal[:s_T]
             end
-        else
-            # If we don't want to draw s_T, simply use the mean s_{T|T}
-            kal[:zend]
         end
 
         # Re-solve model with alternative policy rule, if applicable
@@ -503,7 +485,7 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
         # 2A. Unbounded forecasts
         if !isempty(intersect(output_vars, unbddforecast_vars))
             forecaststates, forecastobs, forecastpseudo, forecastshocks =
-                forecast(m, system, initial_forecast_state;
+                forecast(m, system, s_T;
                          cond_type = cond_type, enforce_zlb = false, draw_shocks = uncertainty)
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
@@ -530,7 +512,7 @@ function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_t
 
         if !isempty(intersect(output_vars, bddforecast_vars))
             forecaststates, forecastobs, forecastpseudo, forecastshocks =
-                forecast(m, system, initial_forecast_state;
+                forecast(m, system, s_T;
                          cond_type = cond_type, enforce_zlb = true, draw_shocks = uncertainty)
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
