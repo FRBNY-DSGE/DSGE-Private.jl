@@ -80,6 +80,7 @@ end
 function filter{S<:AbstractFloat}(m::AbstractReducedFormModel, data::Matrix{S}, system::System,
                                   s_0::Vector{S} = Vector{S}(0), P_0::Matrix{S} = Matrix{S}(0, 0);
                                   start_date::Date = date_presample_start(m),
+                                  include_presample::Bool = true,
                                   outputs::Vector{Symbol} = [:loglh, :pred, :filt])
 
     n_periods = size(data, 2)
