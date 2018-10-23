@@ -2,7 +2,7 @@ using Base.Test
 @everywhere using DSGE, JLD
 
 my_tests = [
-            #="core",
+            "core",
             "parameters",
             "models/an_schorfheide/an_schorfheide",
             "models/smets_wouters/smets_wouters",
@@ -23,7 +23,7 @@ my_tests = [
             "estimate/eig",
             "estimate/metropolis_hastings",
             "estimate/smc/smc",
-            "estimate/smc/helpers", =#
+            "estimate/smc/helpers",
             "estimate/smc/initialization",
             "estimate/smc/resample",
             "estimate/smc/util",
