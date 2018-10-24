@@ -8,6 +8,7 @@ module DSGE
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample
     using StatsFuns: chisqinvcdf
+    import Base: isempty
     import Calculus
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
 
