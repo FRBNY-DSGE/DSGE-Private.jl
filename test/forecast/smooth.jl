@@ -6,7 +6,7 @@ path = dirname(@__FILE__())
 m = AnSchorfheide(testing = true)
 m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
 
-df, system = jldopen("$path/../reference/forecast_args.jld","r") do file
+df, system = JLD.jldopen("$path/../reference/forecast_args.jld","r") do file
     read(file, "df"), read(file, "system")
 end
 
