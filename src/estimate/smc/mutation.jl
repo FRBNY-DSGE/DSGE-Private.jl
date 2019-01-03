@@ -30,13 +30,16 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
                   ϕ_n::Float64, ϕ_n1::Float64; c::Float64 = 1., α::Float64 = 1.,
                   old_data::Matrix{Float64} = Matrix{Float64}(size(data, 1), 0),
                   use_chand_recursion::Bool = false,
-                  verbose::Symbol = :low)
+                  verbose::Symbol = :low,
+                  mixr = Vector{Float64}(size(blocks_all,1), 0)) # RECA: need to add n_mh if want > 1
 
     n_steps = get_setting(m, :n_mh_steps_smc)
 
     # draw initial step probability
     # conditions for testing purposes
-    step_prob = rand()
+    #step_prob = rand()
+    step_prob = mixr[1]
+    mm = 1 # RECA
 
     para = p.value
     like = p.loglh
@@ -56,7 +59,8 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
             para_subset = para[block_a]
             d_subset = MvNormal(d.μ[block_f], d.Σ.mat[block_f, block_f])
 
-            para_draw, para_new_density, para_old_density = mvnormal_mixture_draw(para_subset, d_subset;
+            para_draw, para_new_density, para_old_density = mvnormal_mixture_draw(para_subset,
+                                                                                  d_subset;
                                                                                   cc = c, α = α)
 
             para_new = copy(para)
@@ -68,15 +72,16 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
 
             try
                 update!(m, para_new)
-                like_new = likelihood(m, data; sampler = true, use_chand_recursion = use_chand_recursion,
+                like_new = likelihood(m, data; sampler = true,
+                                      use_chand_recursion = use_chand_recursion,
                                       verbose = verbose)
                 if like_new == -Inf
                     post_new = like_old_data = -Inf
                 end
                 post_new = ϕ_n*like_new + prior(m) - para_new_density
                 like_old_data = isempty(old_data) ? 0. : likelihood(m, old_data; sampler = true,
-                                                                    use_chand_recursion = use_chand_recursion,
-                                                                    verbose = verbose)
+                                                         use_chand_recursion = use_chand_recursion,
+                                                         verbose = verbose)
             catch err
                 if isa(err, ParamBoundsError)
                     post_new = like_new = like_old_data = -Inf
@@ -100,7 +105,9 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
             end
 
             # draw again for the next step
-            step_prob = rand()
+            #step_prob = rand()
+            mm += 1
+            step_prob = (mm==4 ? 0 : mixr[mm])
         end
     end
     update_mutation!(p, para, like, post, like_prev, accept)
