@@ -51,7 +51,7 @@ function compute_meansbands(m::AbstractModel, input_type::Symbol,
         population_data, population_forecast = DataFrame(), DataFrame()
     else
         population_data, population_forecast = load_population_growth(m, verbose = verbose)
-        isempty(df) && (df = load_data(m, verbose = :none))
+        isempty(df) && (df = load_data(m, verbose = :high, cond_type = cond_type))
     end
 
     for output_var in output_vars
