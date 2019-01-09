@@ -43,12 +43,14 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     # RECA
     fortran_path = "/data/dsge_data_dir/dsgejl/reca/SMCProject/specfiles/fortran/"
     fortESS      = readdlm(fortran_path * "ESS.txt")
+    step         = readdlm(fortran_path * "stepprobs.txt")
 
     # General
     parallel = get_setting(m, :use_parallel_workers)
-    n_parts = get_setting(m, :n_particles)
+    n_parts  = get_setting(m, :n_particles)
     n_params = n_parameters(m)
     n_blocks = get_setting(m, :n_smc_blocks)
+    n_steps  = get_setting(m, :n_mh_steps_smc)
 
     use_chand_recursion = get_setting(m, :use_chand_recursion)
 
@@ -85,7 +87,9 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     c = get_setting(m, :step_size_smc)
     target = accept = get_setting(m, :target_accept)
     α = get_setting(m, :mixture_proportion)
-    fixed_para_inds = find([θ.fixed for θ in m.parameters])
+    # RECA
+    ##################### HERE #########################
+    fixed_para_inds = [4, 6, 8, 10, 24]#find([θ.fixed for θ in m.parameters])
     free_para_inds = find([!θ.fixed for θ in m.parameters])
     n_free_para = length(free_para_inds)
 
@@ -245,12 +249,14 @@ function smc(m::AbstractModel, data::Matrix{Float64};
         blocks_free = generate_free_blocks(n_free_para, n_blocks, fortran_path, i) # RECA: last two args
         blocks_all  = generate_all_blocks(blocks_free, free_para_inds)
 
-        # RECA: Want to grab right mixr
+        # RECA: mixr gives which distribution we ought draw from
         mixr = readdlm(fortran_path * convert_string(i) * "mixr.txt")
+        eps  = readdlm(fortran_path * convert_string(i) * "eps.txt")
 
-        fortpara = readdlm(fortran_path * convert_string(i) * "parasim.txt")
-        fortpost = readdlm(fortran_path * convert_string(i) * "postsim.txt")
-        fortlik  = readdlm(fortran_path * convert_string(i) * "liksim.txt")
+#        fortpara = readdlm(fortran_path * convert_string(i) * "parasim.txt")
+#        fortpost = readdlm(fortran_path * convert_string(i) * "postsim.txt")
+#        fortlik  = readdlm(fortran_path * convert_string(i) * "liksim.txt")
+
 
         if parallel
             new_particles = @parallel (vcat) for j in 1:n_parts
@@ -263,7 +269,10 @@ function smc(m::AbstractModel, data::Matrix{Float64};
                 mutation(m, data, cloud.particles[j], d, blocks_free, blocks_all, ϕ_n, ϕ_n1;
                          c = c, α = α, old_data = old_data,
                          use_chand_recursion = use_chand_recursion, verbose = verbose,
-                         mixr = mixr[j,:])
+                         mixr = mixr[j,:],
+                         step = step[(i-2) * n_parts * n_steps * n_blocks + (j-1) * n_steps * n_blocks +
+                                     1:(i-2) * n_parts * n_steps * n_blocks + (j-1) * n_steps * n_blocks +
+                                     n_blocks * n_steps])
             end
         else
             new_particles = [mutation(m, data, cloud.particles[j], d, blocks_free, blocks_all,
