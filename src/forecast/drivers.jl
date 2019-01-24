@@ -405,7 +405,6 @@ Compute `output_vars` for a single parameter draw, `params`. Called by
 function forecast_one_draw(m::AbstractModel{Float64}, input_type::Symbol, cond_type::Symbol,
                            output_vars::Vector{Symbol}, params::Vector{Float64}, df::DataFrame; verbose::Symbol = :low,
                            use_filtered_shocks_in_shockdec::Bool = false,
-
                            shock_name::Symbol = :none,
                            shock_var_name::Symbol = :none,
                            shock_var_value::Float64 = 0.0

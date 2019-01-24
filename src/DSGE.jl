@@ -9,6 +9,7 @@ module DSGE
     using StatsBase: sample
     import Calculus
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
+    import StateSpaceRoutines: augment_states_with_shocks
 
     export
 
@@ -83,7 +84,7 @@ module DSGE
 
         # estimate/
         simulated_annealing, combined_optimizer, lbfgs,
-        filter, likelihood, posterior, posterior!,
+        filter, filter_shocks, likelihood, posterior, posterior!,
         optimize!, csminwel, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance,
         prior, get_estimation_output_files,
