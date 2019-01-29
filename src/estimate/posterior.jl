@@ -42,11 +42,7 @@ function posterior{T<:AbstractFloat}(m::AbstractModel{T},
     catch_errors = catch_errors | sampler
     like = likelihood(m, data; sampler=sampler, catch_errors=catch_errors)
     post = ϕ_smc*like + prior(m)
-    if sampler
-        return post
-    else
-        return post
-    end
+    return post
 end
 
 """
