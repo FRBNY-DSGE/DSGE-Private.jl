@@ -120,13 +120,13 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
             pr1  = -Inf
 
             n_para = length(para)
-            if (pnum == 12001)
-                @show "TEST", "BLOCKING BELOW"
-                p1 = readdlm("/home/rcerxs30/SLICOT-2018-12-19/dsge-smc/fortran/smc-sw-new-mix-npart-12000-nintmh-1-nphi-500-prior-b3-trial1-phibend-jan28-mixron-blocking-FIX/002step_p1.txt")
-                fort_para = vec(p1[(mm-1)*n_steps*n_para + (step-1)*n_para + 1:(mm-1)*n_steps*n_para + step*n_para])
-                update!(m, fort_para)
-                @show likelihood(m, data)
-            end
+            #if (pnum == 12001)
+                #@show "TEST", "BLOCKING BELOW"
+                #p1 = readdlm("/home/rcerxs30/SLICOT-2018-12-19/dsge-smc/fortran/smc-sw-new-mix-npart-12000-nintmh-1-nphi-500-prior-b3-trial1-phibend-jan28-mixron-blocking-FIX/002step_p1.txt")
+                #fort_para = vec(p1[(mm-1)*n_steps*n_para + (step-1)*n_para + 1:(mm-1)*n_steps*n_para + step*n_para])
+                #update!(m, fort_para)
+                #@show likelihood(m, data)
+            #end
             try
                 update!(m, para_new)
                 pr1 = prior(m)
