@@ -26,7 +26,7 @@ out, H = optimize!(m, data; iterations=n_iterations)
     @test @test_matrix_approx_eq minimizer out.minimizer
     @show minimum
     @show out.minimum
-    @test minimum ≈ out.minimum atol=5e-7
+    @test minimum ≈ out.minimum atol=5e-3
     @test @test_matrix_approx_eq H_expected H
 end
 

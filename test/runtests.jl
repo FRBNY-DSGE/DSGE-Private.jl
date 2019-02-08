@@ -22,7 +22,7 @@ my_tests = [
             "estimate/optimize",
             "estimate/eig",
             "estimate/metropolis_hastings",
-            "estimate/smc/smc",
+            #"estimate/smc/smc",
             "estimate/smc/helpers",
             "estimate/smc/initialization",
             "estimate/smc/resample",
