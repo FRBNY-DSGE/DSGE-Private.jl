@@ -11,7 +11,7 @@ m <= Setting(:forecast_horizons, 1)
 system = jldopen("$path/../reference/forecast_args.jld","r") do file
     read(file, "system")
 end
-s_0 = zeros(n_states_augmented(m))
+z0 = zeros(n_states_augmented(m))
 
 # Read expected output
 exp_states, exp_obs, exp_pseudo, exp_shocks =
@@ -23,7 +23,7 @@ exp_states, exp_obs, exp_pseudo, exp_shocks =
     end
 
 # Without shocks
-states, obs, pseudo, shocks = forecast(m, system, s_0; draw_shocks = false)
+states, obs, pseudo, shocks = forecast(m, system, z0; draw_shocks = false)
 
 @testset "Testing forecasting without drawing shocks" begin
     @test @test_matrix_approx_eq exp_states states
@@ -33,7 +33,7 @@ states, obs, pseudo, shocks = forecast(m, system, s_0; draw_shocks = false)
 end
 
 # Supplying shocks
-states, obs, pseudo, shocks = forecast(m, system, s_0; shocks = shocks)
+states, obs, pseudo, shocks = forecast(m, system, z0; shocks = shocks)
 
 @testset "Testing forecasting with pre-supplied shocks" begin
     @test @test_matrix_approx_eq exp_states states
@@ -43,11 +43,11 @@ states, obs, pseudo, shocks = forecast(m, system, s_0; shocks = shocks)
 end
 
 # Draw normally distributed shocks
-states, obs, pseudo, shocks = forecast(m, system, s_0; draw_shocks = true)
+states, obs, pseudo, shocks = forecast(m, system, z0; draw_shocks = true)
 
 # Draw t-distributed shocks
 m <= Setting(:forecast_tdist_shocks, true)
-states, obs, pseudo, shocks = forecast(m, system, s_0; draw_shocks = true)
+states, obs, pseudo, shocks = forecast(m, system, z0; draw_shocks = true)
 m <= Setting(:forecast_tdist_shocks, false)
 
 # Enforce ZLB

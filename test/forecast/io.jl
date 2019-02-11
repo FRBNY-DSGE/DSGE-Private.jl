@@ -40,7 +40,7 @@ dir = joinpath(saveroot(m), "output_data", "an_schorfheide", "ss0")
     # write_forecast_metadata
     for var in output_vars
         jldopen(dict[var], "w") do file
-            DSGE.write_forecast_metadata(m, file, var)
+            DSGE.write_forecast_metadata(m, file, get_product(var), get_class(var))
         end
     end
     jldopen(dict[:histstates], "r") do file
