@@ -300,8 +300,6 @@ function read_scenario_output(m::AbstractModel, m904::AbstractModel, agg::Scenar
     transform = identity
 
     for (i, scen) in enumerate(agg.scenarios)
-        @show scen
-        @show scen.key
         # If Aggregate or Switching scenario, then recursively call read_scenario_output down until get to SingleScenario
         if in(:scenarios, fieldnames(scen))
             scen_draws, transform = read_scenario_output(m, m904, scen, class, product, var_name)
