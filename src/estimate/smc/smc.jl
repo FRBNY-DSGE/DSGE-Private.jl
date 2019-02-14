@@ -266,7 +266,7 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     if !m.testing
         simfile = h5open(rawpath(m, "estimate", "smcsave.h5"), "w")
         #simfile = h5open(rawpath(m, "estimate", "smcsave.h5", ["adpt="*string(tempering_target)]),"w")
-        particle_store = d_create(simfile, "smcparams", datatype(Float32),
+        particle_store = d_create(simfile, "smcparams", datatype(Float64),
                                   dataspace(n_parts, n_params))
         for i in 1:length(cloud)
             particle_store[i,:] = cloud.particles[i].value
