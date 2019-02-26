@@ -187,17 +187,13 @@ end
 
 """
 ```
-read_scenario_output(m,       scen::SingleScenario, class, product, var_name)
+read_scenario_output(m, scen::SingleScenario, class, product, var_name)
 
-read_scenario_output(m,       agg::ScenarioAggregate, class, product, var_name)
-
-read_scenario_output(m, m904, agg:ScenarioAggregate, class, product, var_name)
+read_scenario_output(m, agg::ScenarioAggregate, class, product, var_name)
 ```
 
 Given either `scen` or `agg`, read in and return all draws of and the
 appropriate reverse transform for `var_name`.
-
-The third function that takes in two models is used for when we have scenarios from two different models.
 """
 function read_scenario_output(m::AbstractModel, scen::SingleScenario, class::Symbol, product::Symbol,
                               var_name::Symbol)
@@ -217,7 +213,7 @@ function read_scenario_output(m::AbstractModel, scen::SingleScenario, class::Sym
     end
 end
 
-function read_scenario_output(m::AbstractModel, agg::ScenarioAggregate, class::Symbol,
+function read_scenario_output(m::AbstractModel, m904::AbstractModel, agg::ScenarioAggregate, class::Symbol,
                               product::Symbol, var_name::Symbol)
     # Aggregate scenarios
     nscens = length(agg.scenarios)
@@ -237,9 +233,22 @@ function read_scenario_output(m::AbstractModel, agg::ScenarioAggregate, class::S
     transform = identity
 
     for (i, scen) in enumerate(agg.scenarios)
-        # Recursively read in scenario draws
-        scen_draws, transform = read_scenario_output(m, scen, class, product, var_name)
-
+        @show scen
+        @show scen.key
+        if in(:scenarios, fieldnames(scen)) #length(scen.scenarios)>1
+            scen_draws, transform = read_scenario_output(m, m904, scen, class, product, var_name)
+        else
+            if scen.key==:bor8 || scen.key==:bor9 || scen.key==:bor8_02 || scen.key==:bor9_02
+                if var_name==:obs_corepce
+                    var_name = :obs_gdpdeflator
+                end
+                # Recursively read in scenario draws
+                scen_draws, transform = read_scenario_output(m904, scen, class, product, var_name)
+            else
+                # Recursively read in scenario draws
+                scen_draws, transform = read_scenario_output(m, scen, class, product, var_name)
+            end
+        end
         # Sample if desired
         agg_draws[i] = if agg.sample
             pct = agg.proportions[i]
@@ -279,8 +288,7 @@ function read_scenario_output(m::AbstractModel, agg::ScenarioAggregate, class::S
     return fcast_series, transform
 end
 
-
-function read_scenario_output(m::AbstractModel, m904::AbstractModel, agg::ScenarioAggregate, class::Symbol,
+function read_scenario_output(m::AbstractModel, agg::ScenarioAggregate, class::Symbol,
                               product::Symbol, var_name::Symbol)
     # Aggregate scenarios
     nscens = length(agg.scenarios)
@@ -300,22 +308,9 @@ function read_scenario_output(m::AbstractModel, m904::AbstractModel, agg::Scenar
     transform = identity
 
     for (i, scen) in enumerate(agg.scenarios)
-        # If Aggregate or Switching scenario, then recursively call read_scenario_output down until get to SingleScenario
-        if in(:scenarios, fieldnames(scen))
-            scen_draws, transform = read_scenario_output(m, m904, scen, class, product, var_name)
-        else
-            # If BOR8 or BOR9 (switching or non-switching), read GDP Deflator instead of core PCE
-            if scen.key==:bor8 || scen.key==:bor9 || scen.key==:bor8_02 || scen.key==:bor9_02
-                if var_name == :obs_corepce
-                    var_name = :obs_gdpdeflator
-                end
-                # Recursively read in scenario draws for m904
-                scen_draws, transform = read_scenario_output(m904, scen, class, product, var_name)
-            else
-                # Recursively read in scenario draws for other model
-                scen_draws, transform = read_scenario_output(m, scen, class, product, var_name)
-            end
-        end
+        # Recursively read in scenario draws
+        scen_draws, transform = read_scenario_output(m, scen, class, product, var_name)
+
         # Sample if desired
         agg_draws[i] = if agg.sample
             pct = agg.proportions[i]
