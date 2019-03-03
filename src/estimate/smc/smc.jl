@@ -117,6 +117,9 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
         end
     end
 
+    println("Initialization timing:")
+    @time begin
+
     if tempered_update
         if isempty(old_cloud)
             # Load previous ParticleCloud as the starting point for time tempering
@@ -141,6 +144,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
                       use_chand_recursion = use_chand_recursion, verbose = verbose)
 
         initialize_cloud_settings!(m, cloud; tempered_update = tempered_update)
+    end
     end
 
     # Fixed schedule for construction of ϕ_prop
@@ -258,6 +262,8 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
         blocks_free = generate_free_blocks(n_free_para, n_blocks)
         blocks_all  = generate_all_blocks(blocks_free, free_para_inds)
 
+        println("Mutation timing:")
+        @time begin
         if parallel
             new_particles = @distributed (vcat) for k in 1:n_parts
                 mutation(m, data, cloud.particles[k], d, blocks_free, blocks_all,
@@ -270,6 +276,8 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
                                       old_data = old_data,
                                       use_chand_recursion = use_chand_recursion,
                                       verbose = verbose) for k=1:n_parts]
+        end
+
         end
 
         cloud.particles = new_particles
@@ -286,7 +294,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
                             use_fixed_schedule = use_fixed_schedule)
         end
 
-        if run_test && (i == 3)
+        if run_test && (i == 2)
             break
         end
     end
@@ -295,7 +303,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
     ### Saving data
     ##################################################################################
 
-    if !m.testing || run_test
+    if !m.testing || !run_test
         simfile = h5open(rawpath(m, "estimate", "smcsave.h5"), "w")
         #simfile = h5open(rawpath(m, "estimate", "smcsave.h5",
         #                         ["adpt="*string(tempering_target)]),"w")
