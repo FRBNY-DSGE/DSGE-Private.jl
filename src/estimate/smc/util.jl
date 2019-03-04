@@ -76,7 +76,7 @@ Return a Vector{Vector{Int64}} where each internal Vector{Int64} contains a subs
 function generate_free_blocks(n_free_para::Int64, n_blocks::Int64)
     rand_inds = shuffle(1:n_free_para)
 
-    subset_length = cld(n_free_para, n_blocks) # ceiling division
+    subset_length = fld(n_free_para, n_blocks) # floor division
     last_block_length = n_free_para - subset_length*(n_blocks - 1)
 
     blocks_free = Vector{Vector{Int64}}(n_blocks)
