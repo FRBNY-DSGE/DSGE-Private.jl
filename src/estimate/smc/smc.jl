@@ -34,7 +34,8 @@ SMC is broken up into three main steps:
 - `Mutation`: Propagate particles {θ(i), W(n)} via N(MH) steps of a Metropolis Hastings algorithm.
 """
 function smc(m::AbstractModel, data::Matrix{Float64};
-             verbose::Symbol = :low, old_data::Matrix{Float64} = Matrix{Float64}(size(data, 1), 0))
+             verbose::Symbol = :low, old_data::Matrix{Float64} = Matrix{Float64}(size(data, 1), 0),
+             recompute_transition_equation::Bool = true)
     ########################################################################################
     ### Setting Parameters
     ########################################################################################
@@ -83,6 +84,16 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     free_para_inds = find([!θ.fixed for θ in m.parameters])
     n_free_para = length(free_para_inds)
 
+    # If we don't want to recompute the transition matrices in the event
+    # that we're estimating parameters that don't affect them, we want to pass in
+    # a pre-computed system
+    if recompute_transition_equation
+        system = compute_system(m)
+    else
+        system = System(0.)
+    end
+
+
     ########################################################################################
     ### Initialize Algorithm: Draws from prior
     ########################################################################################
@@ -110,7 +121,7 @@ function smc(m::AbstractModel, data::Matrix{Float64};
 
         # Modifies the cloud object in place to update draws, loglh, & logpost
         initial_draw!(m, data, cloud, parallel = parallel, use_chand_recursion = use_chand_recursion,
-                      verbose = verbose)
+                      verbose = verbose, system = system)
 
         initialize_cloud_settings!(m, cloud; tempered_update = tempered_update)
     end
@@ -237,11 +248,13 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     if parallel
         new_particles = @parallel (vcat) for j in 1:n_parts
             mutation(m, data, cloud.particles[j], d, blocks_free, blocks_all, ϕ_n, ϕ_n1;
-                     c = c, α = α, old_data = old_data, use_chand_recursion = use_chand_recursion, verbose = verbose)
+                     c = c, α = α, old_data = old_data, use_chand_recursion = use_chand_recursion, verbose = verbose,
+                     system = system)
         end
     else
         new_particles = [mutation(m, data, cloud.particles[j], d, blocks_free, blocks_all, ϕ_n, ϕ_n1;
-                                  c = c, α = α, old_data = old_data, verbose = verbose) for j = 1:n_parts]
+                                  c = c, α = α, old_data = old_data, verbose = verbose,
+                                  system = system) for j = 1:n_parts]
     end
 
     cloud.particles = new_particles

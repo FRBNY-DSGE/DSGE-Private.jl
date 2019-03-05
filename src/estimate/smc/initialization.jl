@@ -8,7 +8,8 @@ Returns a tuple (logpost, loglh) and modifies the particle objects in the partic
 
 """
 function initial_draw!(m::AbstractModel, data::Matrix{Float64}, c::ParticleCloud;
-                       parallel::Bool = false, use_chand_recursion::Bool = true, verbose::Symbol = :low)
+                       parallel::Bool = false, use_chand_recursion::Bool = true, verbose::Symbol = :low,
+                       system::System = System(0.))
     n_parts = length(c)
     loglh = zeros(n_parts)
     logpost = zeros(n_parts)
@@ -21,7 +22,22 @@ function initial_draw!(m::AbstractModel, data::Matrix{Float64}, c::ParticleCloud
             while !success
                 try
                     update!(m, draw)
-                    draw_loglh   = likelihood(m, data, catch_errors = true, use_chand_recursion=use_chand_recursion, verbose = verbose)
+
+                    # If the system has been pre-populated that means that
+                    # the recompute_transition_equation kwarg in smc
+                    # was set to false. Hence, we want to pass in a fully
+                    # formed system object into the likelihood function
+                    # so it doesn't have to re-compute the system.
+                    # The particular parameters (the ones in the measurement covariance matrices: QQ, EE)
+                    # that get updated in this estimation don't affect the transition
+                    # so we only need to update them directly
+                    if !isempty(system)
+                        update_measurement_covariance_matrices!(m, system)
+                    end
+
+                    draw_loglh   = likelihood(m, data, catch_errors = true,
+                                              use_chand_recursion = use_chand_recursion, verbose = verbose,
+                                              system = system)
                     draw_logpost = prior(m)
                     if (draw_loglh == -Inf) | (draw_loglh===NaN)
                         draw_logpost = -Inf
@@ -56,7 +72,12 @@ function initial_draw!(m::AbstractModel, data::Matrix{Float64}, c::ParticleCloud
             while !success
                 try
                     update!(m, draws[:, i])
-                    loglh[i] = likelihood(m, data, catch_errors = true, verbose = verbose)
+
+                    if !isempty(system)
+                        update_measurement_covariance_matrices!(m, system)
+                    end
+
+                    loglh[i] = likelihood(m, data, catch_errors = true, verbose = verbose, system = system)
                     logpost[i] = prior(m)
                 catch err
                     if isa(err, ParamBoundsError)

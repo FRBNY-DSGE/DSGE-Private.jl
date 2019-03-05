@@ -29,7 +29,7 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
                   blocks_free::Vector{Vector{Int64}}, blocks_all::Vector{Vector{Int64}},
                   ϕ_n::Float64, ϕ_n1::Float64; c::Float64 = 1., α::Float64 = 1.,
                   old_data::Matrix{Float64} = Matrix{Float64}(size(data, 1), 0),
-                  use_chand_recursion::Bool = false,
+                  use_chand_recursion::Bool = false, system::System = System(0.),
                   verbose::Symbol = :low)
 
     n_steps = get_setting(m, :n_mh_steps_smc)
@@ -68,15 +68,28 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
 
             try
                 update!(m, para_new)
+
+                # If the system has been pre-populated that means that
+                # the recompute_transition_equation kwarg in smc
+                # was set to false. Hence, we want to pass in a fully
+                # formed system object into the likelihood function
+                # so it doesn't have to re-compute the system.
+                # The particular parameters (the ones in the measurement covariance matrices: QQ, EE)
+                # that get updated in this estimation don't affect the transition
+                # so we only need to update them directly
+                if !isempty(system)
+                    update_measurement_covariance_matrices!(m, system)
+                end
+
                 like_new = likelihood(m, data; sampler = true, use_chand_recursion = use_chand_recursion,
-                                      verbose = verbose)
+                                      verbose = verbose, system = system)
                 if like_new == -Inf
                     post_new = like_old_data = -Inf
                 end
                 post_new = ϕ_n*like_new + prior(m) - para_new_density
                 like_old_data = isempty(old_data) ? 0. : likelihood(m, old_data; sampler = true,
                                                                     use_chand_recursion = use_chand_recursion,
-                                                                    verbose = verbose)
+                                                                    verbose = verbose, system = system)
             catch err
                 if isa(err, ParamBoundsError)
                     post_new = like_new = like_old_data = -Inf
