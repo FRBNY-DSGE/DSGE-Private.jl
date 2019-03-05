@@ -33,7 +33,7 @@ function steadystate!(m::RealBond;
     n       = get_setting(m, :n)
 
     # Flag allows one not to recompute steady state
-    if get_setting(m, :use_last_βstar)
+    if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
         βlo = βhi = m[:βstar]
     end
 
