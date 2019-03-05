@@ -33,28 +33,36 @@ function estimate(m::AbstractModel, df::DataFrame;
                   verbose::Symbol = :low,
                   proposal_covariance::Matrix = Matrix(0,0),
                   mle::Bool = false,
-                  sampling::Bool = true)
+                  sampling::Bool = true,
+                  system::System = System(0.),
+                  recompute_transition_equation::Bool = true)
     data = df_to_matrix(m, df)
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
-             mle = mle, sampling = sampling)
+             mle = mle, sampling = sampling, system = system,
+             recompute_transition_equation = recompute_transition_equation)
 end
 
 function estimate(m::AbstractModel;
                   verbose::Symbol = :low,
                   proposal_covariance::Matrix = Matrix(0,0),
                   mle::Bool = false,
-                  sampling::Bool = true)
+                  sampling::Bool = true,
+                  system::System = System(0.),
+                  recompute_transition_equation::Bool = true)
     # Load data
     df = load_data(m; verbose = verbose)
     estimate(m, df; verbose = verbose, proposal_covariance = proposal_covariance,
-             mle = mle, sampling = sampling)
+             mle = mle, sampling = sampling, system = system,
+             recompute_transition_equation = recompute_transition_equation)
 end
 
 function estimate(m::AbstractModel, data::Matrix{Float64};
                   verbose::Symbol = :low,
                   proposal_covariance::Matrix = Matrix(0,0),
                   mle::Bool = false,
-                  sampling::Bool = true)
+                  sampling::Bool = true,
+                  system::System = System(0.),
+                  recompute_transition_equation::Bool = true)
 
     if !(get_setting(m, :sampling_method) in [:SMC,:MH])
         error("method must be :SMC or :MH")
@@ -198,7 +206,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         cc0 = get_setting(m, :mh_cc0)
         cc = get_setting(m, :mh_cc)
 
-        metropolis_hastings(propdist, m, data, cc0, cc; verbose=verbose);
+        metropolis_hastings(propdist, m, data, cc0, cc; verbose = verbose, system = system,
+                            recompute_transition_equation = recompute_transition_equation);
 
     elseif get_setting(m, :sampling_method) == :SMC
         ########################################################################################
@@ -225,7 +234,7 @@ end
 """
 ```
 metropolis_hastings{T<:AbstractFloat}(propdist::Distribution, m::AbstractModel,
-    data::Matrix{T}, cc0::T, cc::T; verbose::Symbol = :low)
+    data::Matrix{T}, cc0::T, cc::T; verbose::Symbol = :low, system::System{T} = System(0.))
 ```
 
 Implements the Metropolis-Hastings MCMC algorithm for sampling from the posterior
@@ -255,7 +264,9 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
                                                data::Matrix{T},
                                                cc0::T,
                                                cc::T;
-                                               verbose::Symbol=:low)
+                                               verbose::Symbol=:low,
+                                               system::System{T} = System(0.),
+                                               recompute_transition_equation::Bool = true)
 
 
     # If testing, set the random seeds at fixed numbers
@@ -327,9 +338,27 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
             # Draw para_new from the proposal distribution
             para_new = rand(propdist, m; cc = cc)
 
-            # Solve the model (checking that parameters are within bounds and
-            # gensys returns a meaningful system) and evaluate the posterior
-            post_new = posterior!(m, para_new, data; sampler = true)
+            # Check whether a pre-computed system has been provided
+            # and whether we want to actually re-compute the transition matrices
+            # for each new draw.
+            # This feature is relevant for estimations of parameters that don't
+            # affect the transition matrices, e.g. RealBond and σ_z.
+            # Setting `recompute_transition_equation` to `false` lets us
+            # "cheat" and not recalculate the system with each new draw, and instead
+            # to just update the shock covariance matrices
+            if !recompute_transition_equation
+                if isempty(system)
+                    throw("Must provide a valid system as a kwarg to estimate if you want to
+                           skip recomputing the transition equation.")
+                end
+                update!(m, para_new)
+                update_measurement_covariance_matrices!(m, system)
+                post_new = posterior(m, data; sampler = true, system = system)
+            else
+                # Solve the model (checking that parameters are within bounds and
+                # gensys returns a meaningful system) and evaluate the posterior
+                post_new = posterior!(m, para_new, data; sampler = true)
+            end
 
             if VERBOSITY[verbose] >= VERBOSITY[:high]
                 println("Block $block, Iteration $j: posterior = $post_new")

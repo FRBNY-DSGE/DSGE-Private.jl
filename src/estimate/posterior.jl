@@ -38,9 +38,12 @@ function posterior{T<:AbstractFloat}(m::AbstractModel{T},
                                      data::Matrix{T};
                                      sampler::Bool = false,
                                      ϕ_smc::Float64 = 1.,
-                                     catch_errors::Bool = false)
+                                     catch_errors::Bool = false,
+                                     use_chand_recursion::Bool = false,
+                                     system::System{T} = System(0.))
     catch_errors = catch_errors | sampler
-    like = likelihood(m, data; sampler=sampler, catch_errors=catch_errors)
+    like = likelihood(m, data; sampler = sampler, catch_errors = catch_errors,
+                      use_chand_recursion = use_chand_recursion, system = system)
     post = ϕ_smc*like + prior(m)
     if sampler
         return post
@@ -76,7 +79,9 @@ function posterior!{T<:AbstractFloat}(m::AbstractModel{T},
                                       data::Matrix{T};
                                       sampler::Bool = false,
                                       ϕ_smc::Float64 = 1.,
-                                      catch_errors::Bool = false)
+                                      catch_errors::Bool = false,
+                                      use_chand_recursion::Bool = false,
+                                      system::System{T} = System(0.))
     catch_errors = catch_errors | sampler
     if sampler
         try
@@ -91,7 +96,8 @@ function posterior!{T<:AbstractFloat}(m::AbstractModel{T},
     else
         update!(m, parameters)
     end
-    return posterior(m, data; sampler=sampler, ϕ_smc = ϕ_smc, catch_errors=catch_errors)
+    return posterior(m, data; sampler = sampler, ϕ_smc = ϕ_smc, catch_errors = catch_errors,
+                     use_chand_recursion = use_chand_recursion, system = system)
 
 end
 
