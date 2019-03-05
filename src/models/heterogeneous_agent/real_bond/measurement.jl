@@ -136,3 +136,11 @@ function construct_GDPfn_realbond(nx::Int, ns::Int,
     end
     return dGDP_dMU, GDP, dGDP_dELL, dGDP_dRR, dGDP_dWW, dGDP_dTT
 end
+
+function update_measurement_covariance_matrices!{T<:AbstractFloat}(m::RealBond, system::System{T})
+    exo       = m.exogenous_shocks
+
+    # Variance of innovations
+    system[:QQ][exo[:z_sh], exo[:z_sh]] = m[:σ_z]^2
+    system[:QQ][exo[:mon_sh], exo[:mon_sh]] = m[:σ_mon]^2
+end

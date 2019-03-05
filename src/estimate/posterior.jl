@@ -122,7 +122,8 @@ function likelihood{T<:AbstractFloat}(m::AbstractModel,
                                       sampler::Bool = false,
                                       catch_errors::Bool = false,
                                       use_chand_recursion = false,
-                                      verbose::Symbol = :high)
+                                      verbose::Symbol = :high,
+                                      system::System{T} = System(0.))
     catch_errors = catch_errors | sampler
 
     # During Metropolis-Hastings, return -∞ if any parameters are not within their bounds
@@ -135,14 +136,16 @@ function likelihood{T<:AbstractFloat}(m::AbstractModel,
         end
     end
 
-    # Compute state-space system
-    system = try
-        compute_system(m, verbose = verbose)
-    catch err
-        if catch_errors && isa(err, GensysError)
-            return -Inf
-        else
-            rethrow(err)
+    # Compute state-space system if one is not provided
+    if isempty(system)
+        system = try
+            compute_system(m, verbose = verbose)
+        catch err
+            if catch_errors && isa(err, GensysError)
+                return -Inf
+            else
+                rethrow(err)
+            end
         end
     end
 

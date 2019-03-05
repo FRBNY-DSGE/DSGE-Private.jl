@@ -10,7 +10,7 @@ module DSGE
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample
     using StatsFuns: chisqinvcdf
-    import Calculus, Missings, Nullables, Base.<
+    import Calculus, Missings, Nullables, Base.<, Base.isempty
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
     import StateSpaceRoutines: KalmanFilter
     export
@@ -130,6 +130,7 @@ module DSGE
         init_parameters!, steadystate!, init_observable_mappings!, init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, SmetsWouters, AnSchorfheide, KrusellSmith,
         BondLabor, RealBond, eqcond, measurement, pseudo_measurement, shock_groupings,
+        update_measurement_covariance_matrices!,
 
         #### Continuous time
         # models

@@ -123,6 +123,32 @@ function System{T<:AbstractFloat}(transition::Transition{T}, measurement::Measur
     return System(transition, measurement, pseudo_measurement)
 end
 
+# Empty constructor
+function System{T<:AbstractFloat}(t::T)
+    # Initialize empty system
+    transition = Transition(Matrix{T}(0, 0), Matrix{T}(0, 0), Vector{T}(0))
+    measurement = Measurement(Matrix{T}(0, 0), Vector{T}(0),
+                              Matrix{T}(0, 0), Matrix{T}(0, 0))
+    return System(transition, measurement)
+end
+
+function isempty(t::Transition)
+    return all([isempty(t[:TTT]), isempty(t[:RRR]), isempty(t[:CCC])])
+end
+
+function isempty(m::Measurement)
+    return all([isempty(m[:ZZ]), isempty(m[:DD]), isempty(m[:QQ]), isempty(m[:EE])])
+end
+
+function isempty(p::PseudoMeasurement)
+    return all([isempty(p[:ZZ_pseudo]), isempty(p[:DD_pseudo])])
+end
+
+function isempty{T<:AbstractFloat}(s::System{T})
+    return all([isempty(s[:transition]), isempty(s[:measurement]),
+                isempty(s[:pseudo_measurement])])
+end
+
 function Base.getindex(system::System, d::Symbol)
     if d in (:transition, :measurement, :pseudo_measurement)
         return getfield(system, d)
