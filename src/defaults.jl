@@ -131,7 +131,7 @@ function default_settings!(m::AbstractModel)
     settings[:impulse_response_horizons] = Setting(:impulse_response_horizons, 40,
         "Number of periods for which to calculate an impulse response")
     settings[:compute_shockdec_bands] = Setting(:compute_shockdec_bands, false, "Whether or not to compute bands for shock decomposition. Setting to false saves signficant storage space.")
-
+    settings[:smc_iteration] = Setting(:smc_iteration, 1, false, "iter", "The iteration index for the number of times smc has been run on the same data vintage. Primarily for numerical accuracy/testing purposes.")
     # Alternative policy
     baseline_policy = AltPolicy(:historical, eqcond, solve, forecast_init = identity)
     settings[:alternative_policy] = Setting(:alternative_policy, baseline_policy)
