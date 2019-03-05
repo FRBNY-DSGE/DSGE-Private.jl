@@ -215,7 +215,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         ### of the posterior. Portions of this method are executed in
         ### parallel.
         ########################################################################################
-        smc(m, data; verbose = verbose)
+        smc(m, data; verbose = verbose, recompute_transition_equation =
+            recompute_transition_equation)
     end
 
     ########################################################################################
