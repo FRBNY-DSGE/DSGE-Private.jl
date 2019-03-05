@@ -17,7 +17,7 @@ function hessizero{T<:AbstractFloat}(fcn::Function,
                                     x::Vector{T};
                                     check_neg_diag::Bool=false,
                                     verbose::Symbol=:none,
-                                    distr::Bool=true)
+                                    distr::Bool=false)
     n_para = length(x)
     hessian  = zeros(n_para, n_para)
 
