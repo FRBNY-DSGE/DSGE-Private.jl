@@ -35,16 +35,18 @@ SMC is broken up into three main steps:
 """
 function smc(m::AbstractModel, data::Matrix{Float64};
              verbose::Symbol = :low, old_data::Matrix{Float64} = Matrix{Float64}(size(data, 1), 0),
-             recompute_transition_equation::Bool = true)
+             old_cloud::ParticleCloud = ParticleCloud(m, 0),
+             recompute_transition_equation::Bool = true, run_test = false)
     ########################################################################################
     ### Setting Parameters
     ########################################################################################
 
     # General
     parallel = get_setting(m, :use_parallel_workers)
-    n_parts = get_setting(m, :n_particles)
+    n_parts  = get_setting(m, :n_particles)
     n_params = n_parameters(m)
     n_blocks = get_setting(m, :n_smc_blocks)
+    n_steps  = get_setting(m, :n_mh_steps_smc)
 
     use_chand_recursion = get_setting(m, :use_chand_recursion)
 
@@ -54,6 +56,7 @@ function smc(m::AbstractModel, data::Matrix{Float64};
 
     # Time Tempering
     tempered_update = !isempty(old_data)
+
     # Quick check that if there is a tempered update that the old vintage and current vintage are different
     if tempered_update
         old_vintage = get_setting(m, :previous_data_vintage)
@@ -66,23 +69,24 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     resampled_last_period = false   # To ensure proper resetting of ESS_bar right after resample
     ϕ_n = 0.                        # Instantiating ϕ_n and ϕ_prop variables to be referenced in their
     ϕ_prop = 0.                     # respective while loop conditions
-    use_fixed_schedule = get_setting(m, :adaptive_tempering_target_smc)==0.0#get_setting(m, :use_fixed_schedule)
+    use_fixed_schedule = get_setting(m, :adaptive_tempering_target_smc) == 0.0 #get_setting(m, :use_fixed_schedule)
     λ = get_setting(m, :λ)
     n_Φ = get_setting(m, :n_Φ)
     tempering_target = get_setting(m, :adaptive_tempering_target_smc)
 
     # Step 2 (Correction) settings
     resampling_method = get_setting(m, :resampler_smc)
-    threshold_ratio = get_setting(m, :resampling_threshold)
-    threshold = threshold_ratio * n_parts
+    threshold_ratio   = get_setting(m, :resampling_threshold)
+    threshold         = threshold_ratio * n_parts
 
     # Step 3 (Mutation) settings
-    c = get_setting(m, :step_size_smc)
+    c      = get_setting(m, :step_size_smc)
     target = accept = get_setting(m, :target_accept)
-    α = get_setting(m, :mixture_proportion)
+    α      = get_setting(m, :mixture_proportion)
+
     fixed_para_inds = find([θ.fixed for θ in m.parameters])
-    free_para_inds = find([!θ.fixed for θ in m.parameters])
-    n_free_para = length(free_para_inds)
+    free_para_inds  = find([!θ.fixed for θ in m.parameters])
+    n_free_para     = length(free_para_inds)
 
     # If we don't want to recompute the transition matrices in the event
     # that we're estimating parameters that don't affect them, we want to pass in
@@ -106,12 +110,16 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     end
 
     if tempered_update
-        # Load the previous ParticleCloud as the starting point for time tempering
-        loadpath = rawpath(m, "estimate", "smc_cloud.jld")
-        #loadpath = rawpath(m, "estimate", "smc_cloud.jld", ["adpt="*string(tempering_target)])
-        loadpath = replace(loadpath, r"vint=[0-9]{6}", "vint="*old_vintage)
+        if isempty(old_cloud)
+            # Load the previous ParticleCloud as the starting point for time tempering
+            loadpath = rawpath(m, "estimate", "smc_cloud.jld")
+            #loadpath = rawpath(m, "estimate", "smc_cloud.jld", ["adpt="*string(tempering_target)])
+            loadpath = replace(loadpath, r"vint=[0-9]{6}", "vint="*old_vintage)
 
-        cloud = load(loadpath, "cloud")
+            cloud = load(loadpath, "cloud")
+        else
+            cloud = old_cloud
+        end
         initialize_cloud_settings!(m, cloud; tempered_update = tempered_update)
         initialize_likelihoods!(m, data, cloud, parallel = parallel, verbose = verbose)
     else
@@ -127,13 +135,12 @@ function smc(m::AbstractModel, data::Matrix{Float64};
 
     # Fixed schedule for construction of ϕ_prop
     if use_fixed_schedule
-        cloud.tempering_schedule = ((collect(1:n_Φ)-1)/(n_Φ-1)).^λ
+        cloud.tempering_schedule = ((collect(1:n_Φ)-1) / (n_Φ-1)) .^ λ
     else
-        proposed_fixed_schedule = ((collect(1:n_Φ)-1)/(n_Φ-1)).^λ
+        proposed_fixed_schedule  = ((collect(1:n_Φ)-1) / (n_Φ-1)) .^ λ
     end
 
     # Instantiate incremental and normalized weight matrices to be used for logMDD calculation
-    #w_matrix = fill(1/n_parts, (n_parts,1))
     w_matrix = zeros(n_parts, 1)
     if tempered_update
         W_matrix = similar(w_matrix)
@@ -142,8 +149,6 @@ function smc(m::AbstractModel, data::Matrix{Float64};
         end
     else
         W_matrix = fill(1/n_parts, (n_parts,1))
-        #update_weights!(cloud, fill(1/n_parts, n_parts))
-        #W_matrix = ones(n_parts, 1)
     end
     z_matrix = ones(1)
 
@@ -154,121 +159,118 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     ########################################################################################
     ### Recursion
     ########################################################################################
-
     if VERBOSITY[verbose] >= VERBOSITY[:low]
         println("\n\n SMC recursion starts \n\n")
     end
 
     while ϕ_n < 1.
 
-    tic()
-    cloud.stage_index = i += 1
+        tic()
+        cloud.stage_index = i += 1
 
-    ########################################################################################
-    ### Step 0: Setting ϕ_n (either adaptively or by the fixed schedule)
-    ########################################################################################
-    ϕ_n1 = cloud.tempering_schedule[i-1]
+        ########################################################################################
+        ### Step 0: Setting ϕ_n (either adaptively or by the fixed schedule)
+        ########################################################################################
+        ϕ_n1 = cloud.tempering_schedule[i-1]
 
-    if use_fixed_schedule
-        ϕ_n = cloud.tempering_schedule[i]
-    else
-        ϕ_n, resampled_last_period, j, ϕ_prop = solve_adaptive_ϕ(cloud, proposed_fixed_schedule, i, j, ϕ_prop,
-                                                                 ϕ_n1, tempering_target, resampled_last_period)
-    end
+        if use_fixed_schedule
+            ϕ_n = cloud.tempering_schedule[i]
+        else
+            ϕ_n, resampled_last_period, j, ϕ_prop = solve_adaptive_ϕ(cloud, proposed_fixed_schedule,
+                                                                     i, j, ϕ_prop, ϕ_n1,
+                                                                     tempering_target,
+                                                                     resampled_last_period)
+        end
 
-    ########################################################################################
-    ### Step 1: Correction
-    ########################################################################################
+        ########################################################################################
+        ### Step 1: Correction
+        ########################################################################################
+        # Calculate incremental weights (if no old data, get_old_loglh(cloud) returns zero)
+        incremental_weights = exp.((ϕ_n1 - ϕ_n)*get_old_loglh(cloud) + (ϕ_n - ϕ_n1)*get_loglh(cloud))
 
-    # Calculate incremental weights (if no old data, get_old_loglh(cloud) returns zero)
-    incremental_weights = exp.((ϕ_n1 - ϕ_n)*get_old_loglh(cloud) + (ϕ_n - ϕ_n1)*get_loglh(cloud))
+        # Update weights
+        update_weights!(cloud, incremental_weights)
+        mult_weights = get_weights(cloud)
 
-    # inc_wt*W_n-1
-    #mult_weights = get_weights(cloud).*incremental_weights
+        # Normalize weights
+        normalize_weights!(cloud)
+        normalized_weights = get_weights(cloud)
 
-    # Update weights
-    update_weights!(cloud, incremental_weights)
+        push!(z_matrix, sum(mult_weights))
+        w_matrix = hcat(w_matrix, incremental_weights)
+        W_matrix = hcat(W_matrix, normalized_weights)
 
-    mult_weights = get_weights(cloud)
+        ########################################################################################
+        ### Step 2: Selection
+        ########################################################################################
 
-    # Normalize weights
-    normalize_weights!(cloud)
+        # Calculate the degeneracy/effective sample size metric
+        push!(cloud.ESS, 1/sum(normalized_weights.^2))
 
-    normalized_weights = get_weights(cloud)
+        # If this assertion does not hold then there are likely too few particles
+        @assert !isnan(cloud.ESS[i]) "no particles have non-zero weight"
 
-    push!(z_matrix, sum(mult_weights))
-    w_matrix = hcat(w_matrix, incremental_weights)
-    W_matrix = hcat(W_matrix, normalized_weights)
+        # Resample if the degeneracy/effective sample size metric falls below the accepted threshold
+        if (cloud.ESS[i] < threshold)
+            new_inds = resample(normalized_weights; method = resampling_method)
+            # update parameters/logpost/loglh with resampled values
+            # reset the weights to 1/n_parts
+            cloud.particles = [deepcopy(cloud.particles[i]) for i in new_inds]
+            reset_weights!(cloud)
+            cloud.resamples += 1
+            resampled_last_period = true
+            W_matrix[:, i] = fill(1/n_parts, (n_parts,1))
+        end
 
-    ########################################################################################
-    ### Step 2: Selection
-    ########################################################################################
+        ########################################################################################
+        ### Step 3: Mutation
+        ########################################################################################
 
-    # Calculate the degeneracy/effective sample size metric
-    push!(cloud.ESS, 1/sum(normalized_weights.^2))
+        # Calculate the adaptive c-step to be used as a scaling coefficient in the mutation MH step
+        c = c*(0.95 + 0.10*exp(16*(cloud.accept - target))/(1. + exp(16.*(cloud.accept - target))))
+        cloud.c = c
 
-    # If this assertion does not hold then there are likely too few particles
-    @assert !isnan(cloud.ESS[i]) "no particles have non-zero weight"
+        θ_bar = weighted_mean(cloud)
+        R     = weighted_cov(cloud)
 
-    # Resample if the degeneracy/effective sample size metric falls below the accepted threshold
-    if (cloud.ESS[i] < threshold)
-        new_inds = resample(normalized_weights; method = resampling_method)
+        # Add to itself and divide by 2 to ensure marix is positive semi-definite symmetric
+        # (not off due to numerical error) and values haven't changed
+        R_fr = (R[free_para_inds, free_para_inds] + R[free_para_inds, free_para_inds]') / 2
 
-        # update parameters/logpost/loglh with resampled values
-        # reset the weights to 1/n_parts
-        cloud.particles = [deepcopy(cloud.particles[i]) for i in new_inds]
-        reset_weights!(cloud)
-        cloud.resamples += 1
-        resampled_last_period = true
-        W_matrix[:, i] = fill(1/n_parts, (n_parts,1))
-    end
+        # MvNormal centered at ̄θ with var-cov ̄Σ, subsetting out the fixed parameters
+        d = MvNormal(θ_bar[free_para_inds], R_fr)
 
-    ########################################################################################
-    ### Step 3: Mutation
-    ########################################################################################
-
-    # Calculate the adaptive c-step to be used as a scaling coefficient in the mutation MH stea
-    c = c*(0.95 + 0.10*exp(16*(cloud.accept - target))/(1 + exp(16*(cloud.accept - target))))
-    cloud.c = c
-
-    θ_bar = weighted_mean(cloud)
-    R = weighted_cov(cloud)
-    # add to itself and divide by 2 to ensure marix is positive semi-definite symmetric (not off due to numerical
-    #error) and values haven't changed
-    R_fr = (R[free_para_inds, free_para_inds] + R[free_para_inds, free_para_inds]')/2
-
-    # MvNormal centered at ̄θ with var-cov ̄Σ, subsetting out the fixed parameters
-    d = MvNormal(θ_bar[free_para_inds], R_fr)
-
-    # New way of generating blocks
-    blocks_free = generate_free_blocks(n_free_para, n_blocks)
-    blocks_all  = generate_all_blocks(blocks_free, free_para_inds)
+        # New way of generating blocks
+        blocks_free = generate_free_blocks(n_free_para, n_blocks)
+        blocks_all  = generate_all_blocks(blocks_free, free_para_inds)
 
     if parallel
         new_particles = @parallel (vcat) for j in 1:n_parts
             mutation(m, data, cloud.particles[j], d, blocks_free, blocks_all, ϕ_n, ϕ_n1;
-                     c = c, α = α, old_data = old_data, use_chand_recursion = use_chand_recursion, verbose = verbose,
-                     system = system)
+                     c = c, α = α, old_data = old_data, use_chand_recursion = use_chand_recursion,
+                     verbose = verbose, system = system)
         end
     else
         new_particles = [mutation(m, data, cloud.particles[j], d, blocks_free, blocks_all, ϕ_n, ϕ_n1;
-                                  c = c, α = α, old_data = old_data, verbose = verbose,
-                                  system = system) for j = 1:n_parts]
+                                  c = c, α = α, old_data = old_data, use_chand_recursion = use_chand_recursion,
+                                  verbose = verbose, system = system) for j = 1:n_parts]
     end
 
-    cloud.particles = new_particles
-    update_acceptance_rate!(cloud) # update average acceptance rate
+        cloud.particles = new_particles
+        update_acceptance_rate!(cloud) # Update average acceptance rate
 
-    ########################################################################################
-    ### Timekeeping and Output Generation
-    ########################################################################################
+        ########################################################################################
+        ### Timekeeping and Output Generation
+        ########################################################################################
+        cloud.total_sampling_time += toq()
 
-    cloud.total_sampling_time += toq()
+        if VERBOSITY[verbose] >= VERBOSITY[:low]
+            end_stage_print(cloud; verbose = verbose, use_fixed_schedule = use_fixed_schedule)
+        end
 
-    if VERBOSITY[verbose] >= VERBOSITY[:low]
-        end_stage_print(cloud; verbose = verbose, use_fixed_schedule = use_fixed_schedule)
-    end
-
+        if run_test && (i == 3)
+            break
+        end
     end
 
     ########################################################################################

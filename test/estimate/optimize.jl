@@ -9,6 +9,10 @@ m = AnSchorfheide(custom_settings = custom_settings, testing = true)
 
 
 file = "$path/../reference/optimize.h5"
+# For regenerating test file
+#=params_test = h5read(file, "params")
+data_test = h5read(file, "data")=#
+
 x0 = h5read(file, "params")
 data = h5read(file, "data")'
 minimizer = h5read(file, "minimizer")

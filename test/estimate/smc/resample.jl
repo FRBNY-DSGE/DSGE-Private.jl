@@ -3,16 +3,22 @@ using DSGE
 using HDF5, JLD
 import Base.Test: @test, @testset
 
-srand(42)
+@everywhere srand(42)
 weights = rand(400)
 weights = weights/sum(weights)
 test_sys_resample = resample(weights, method = :systematic)
 test_multi_resample = resample(weights, method = :multinomial)
 test_poly_resample = resample(weights, method = :polyalgo)
 
-saved_sys_resample = load("../../reference/resample.jld", "sys")
-saved_multi_resample = load("../../reference/resample.jld", "multi")
-saved_poly_resample = load("../../reference/resample.jld", "poly")
+#=jldopen("resample.jld2", "w") do file
+    file["sys"] = test_sys_resample
+    file["multi"] = test_multi_resample
+    file["poly"] = test_poly_resample
+end=#
+
+saved_sys_resample = load("reference/resample.jld", "sys")
+saved_multi_resample = load("reference/resample.jld", "multi")
+saved_poly_resample = load("reference/resample.jld", "poly")
 
 ####################################################################
 @testset "Resampling methods" begin

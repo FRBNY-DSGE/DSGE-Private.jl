@@ -45,11 +45,7 @@ function posterior{T<:AbstractFloat}(m::AbstractModel{T},
     like = likelihood(m, data; sampler = sampler, catch_errors = catch_errors,
                       use_chand_recursion = use_chand_recursion, system = system)
     post = ϕ_smc*like + prior(m)
-    if sampler
-        return post
-    else
-        return post
-    end
+    return post
 end
 
 """
@@ -128,6 +124,7 @@ function likelihood{T<:AbstractFloat}(m::AbstractModel,
                                       sampler::Bool = false,
                                       catch_errors::Bool = false,
                                       use_chand_recursion = false,
+                                      tol::Float64 = 0.0,
                                       verbose::Symbol = :high,
                                       system::System{T} = System(0.))
     catch_errors = catch_errors | sampler
@@ -158,12 +155,12 @@ function likelihood{T<:AbstractFloat}(m::AbstractModel,
     # Return total log-likelihood, excluding the presample
     try
         if use_chand_recursion==false
-            kal = filter(m, data, system; outputs = [:loglh], include_presample = false)
+            kal = filter(m, data, system; outputs = [:loglh], include_presample = false, tol = tol)
             return kal[:total_loglh]
         else
             return chand_recursion(data, system[:TTT], system[:RRR], system[:CCC],
                                    system[:QQ], system[:ZZ], system[:DD], system[:EE];
-                                   allout = false, Nt0 = n_presample_periods(m))[1]
+                                   allout = false, Nt0 = n_presample_periods(m), tol = tol)[1]
         end
     catch err
         if catch_errors && isa(err, DomainError)

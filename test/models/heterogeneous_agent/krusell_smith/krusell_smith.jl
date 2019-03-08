@@ -121,8 +121,10 @@ endo = m.endogenous_states
 # Model Solution/Transition Equation
 TTT, RRR, CCC = solve(m)
 
+TTT_jump, TTT_state = klein(m)
+
 # Measurement Equation
-meas = measurement(m, TTT, RRR, CCC)
+meas = measurement(m, TTT, TTT_jump, RRR, CCC)
 ZZ  = meas[:ZZ]
 DD  = meas[:DD]
 EE  = fill(0.1, (1,1))
