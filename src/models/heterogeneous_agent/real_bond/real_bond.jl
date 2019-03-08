@@ -181,7 +181,7 @@ function RealBond(subspec::String="ss0";
                    testing = false)
 
     # Model-specific specifications
-    spec               = "RealBond"
+    spec               = "real_bond"
     subspec            = subspec
     settings           = Dict{Symbol,Setting}()
     test_settings      = Dict{Symbol,Setting}()
