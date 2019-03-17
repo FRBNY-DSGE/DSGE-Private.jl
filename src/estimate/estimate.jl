@@ -34,11 +34,12 @@ function estimate(m::AbstractModel, df::DataFrame;
                   proposal_covariance::Matrix = Matrix(0,0),
                   mle::Bool = false,
                   sampling::Bool = true,
-                  recompute_transition_equation::Bool = true)
+                  recompute_transition_equation::Bool = true, save_intermediate::Bool = false)
     data = df_to_matrix(m, df)
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
-             recompute_transition_equation = recompute_transition_equation)
+             recompute_transition_equation = recompute_transition_equation,
+             save_intermediate = save_intermediate)
 end
 
 function estimate(m::AbstractModel;
@@ -46,12 +47,13 @@ function estimate(m::AbstractModel;
                   proposal_covariance::Matrix = Matrix(0,0),
                   mle::Bool = false,
                   sampling::Bool = true,
-                  recompute_transition_equation::Bool = true)
+                  recompute_transition_equation::Bool = true,
+                  save_intermediate::Bool = false)
     # Load data
     df = load_data(m; verbose = verbose)
     estimate(m, df; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
-             recompute_transition_equation = recompute_transition_equation)
+             recompute_transition_equation = recompute_transition_equation, save_intermediate = save_intermediate)
 end
 
 function estimate(m::AbstractModel, data::Matrix{Float64};
@@ -59,7 +61,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
                   proposal_covariance::Matrix = Matrix(0,0),
                   mle::Bool = false,
                   sampling::Bool = true,
-                  recompute_transition_equation::Bool = true)
+                  recompute_transition_equation::Bool = true,
+                  save_intermediate::Bool = false)
 
     if !(get_setting(m, :sampling_method) in [:SMC,:MH])
         error("method must be :SMC or :MH")
@@ -216,7 +219,7 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         ### parallel.
         ########################################################################################
         smc(m, data; verbose = verbose, recompute_transition_equation =
-            recompute_transition_equation)
+            recompute_transition_equation, save_intermediate = save_intermediate)
     end
 
     ########################################################################################
