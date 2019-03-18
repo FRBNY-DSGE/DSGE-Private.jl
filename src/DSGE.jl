@@ -132,7 +132,8 @@ module DSGE
         # models/
         init_parameters!, steadystate!, init_observable_mappings!, init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, SmetsWouters, AnSchorfheide, KrusellSmith,
-        BondLabor, RealBond, eqcond, measurement, pseudo_measurement, shock_groupings,
+        BondLabor, RealBond, RealBondMkup,
+        eqcond, measurement, pseudo_measurement, shock_groupings,
         update_measurement_covariance_matrices!,
 
         #### Continuous time
@@ -325,6 +326,9 @@ module DSGE
     include("models/heterogeneous_agent/real_bond/shock_loading.jl")
     include("models/heterogeneous_agent/real_bond/observables.jl")
     include("models/heterogeneous_agent/real_bond/measurement.jl")
+
+    include("models/heterogeneous_agent/real_bond_mkup/real_bond_mkup.jl")
+    include("models/heterogeneous_agent/real_bond_mkup/steady_state.jl")
 
     # Continuous Time Heterogenous Agent Models
     include("solve/solve_hank.jl")
