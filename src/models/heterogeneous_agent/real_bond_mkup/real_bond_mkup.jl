@@ -224,8 +224,8 @@ function RealBondMkup(subspec::String="ss0";
         m <= custom_setting
     end
 
-    # # Set observable transformations
-    # init_observable_mappings!(m)
+    # Set observable transformations
+    init_observable_mappings!(m)
 
     # Initialize parameters
     init_parameters!(m)
@@ -279,6 +279,12 @@ function init_parameters!(m::RealBondMkup)
                    description="σ_mon: The standard deviation of the monetary policy shock.",
                    tex_label="\\sigma_{mon}")
     m <= parameter(:ρmkp, 0., fixed = true, description = "ρmkp: Persistence of the markup shock")
+
+    # Taken from m1002
+    m <= parameter(:σ_mkp, 0.1314, (1e-8, 5.), (1e-8, 5.), Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+                   description="σ_mkp: The mean of the process that generates the price elasticity of the composite good. Specifically, the elasticity is (1+λ_{f,t})/(λ_{f_t}).",
+                   tex_label="\\sigma_{\\lambda_f}")
+
     m <= parameter(:ρtay, 0.5, fixed = true, description = "ρmkp: Persistence in the taylor rule")
     m <= parameter(:κ, 1.0, fixed = true, description = "κ: The slope of the Phillips curve")
     m <= parameter(:phipi, 1.5, fixed = true, description = "phipi: The slope of the taylor rule")
