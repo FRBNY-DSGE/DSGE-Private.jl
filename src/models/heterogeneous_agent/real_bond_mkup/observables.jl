@@ -23,5 +23,43 @@ function init_observable_mappings!(m::RealBondMkup)
                                        gdp_fwd_transform, gdp_rev_transform,
                                        "Log Real GDP", "")
 
+    ############################################################################
+    ## 2. Core PCE Inflation
+    ############################################################################
+
+    pce_fwd_transform = function (levels)
+        # FROM: Core PCE index
+        # INTO: Approximate quarter-to-quarter percent change of Core PCE,
+        # i.e. quarterly core pce inflation
+
+        oneqtrpctchange(levels[:PCEPILFE])
+    end
+
+    pce_rev_transform = loggrowthtopct_annualized
+
+    observables[:obs_corepce] = Observable(:obs_corepce, [:PCEPILFE__FRED],
+                                           pce_fwd_transform, pce_rev_transform,
+                                           "Core PCE Inflation",
+                                           "Core PCE Inflation")
+
+    ############################################################################
+    ## 3. Nominal short-term interest rate (3 months)
+    ############################################################################
+
+    nominalrate_fwd_transform = function (levels)
+        # FROM: Nominal effective federal funds rate (aggregate daily data at a
+        #       quarterly frequency at an annual rate)
+        # TO:   Nominal effective fed funds rate, at a quarterly rate
+
+        annualtoquarter(levels[:DFF])
+    end
+
+    nominalrate_rev_transform = quartertoannual
+
+    observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:DFF__FRED],
+                                               nominalrate_fwd_transform, nominalrate_rev_transform,
+                                               "Nominal FFR",
+                                               "Nominal Effective Fed Funds Rate")
+
     m.observable_mappings = observables
 end

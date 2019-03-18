@@ -21,9 +21,10 @@ Cov(ϵ_t, u_t) = 0
 function measurement{T<:AbstractFloat}(m::RealBondMkup{T}, TTT::Matrix{T},
                                        TTT_jump::Matrix{T},
                                        RRR::Matrix{T}, CCC::Vector{T})
-    endo      = m.endogenous_states_unnormalized
-    exo       = m.exogenous_shocks
-    obs       = m.observables
+    endo        = m.endogenous_states
+    endo_unnorm = m.endogenous_states_unnormalized
+    exo         = m.exogenous_shocks
+    obs         = m.observables
 
     _n_model_states = n_model_states(m)
     _n_states       = n_backward_looking_states(m)
@@ -58,38 +59,44 @@ function measurement{T<:AbstractFloat}(m::RealBondMkup{T}, TTT::Matrix{T},
     nx::Int = get_setting(m, :nx)
     ns::Int = get_setting(m, :ns)
 
-    # This is just a snippet of code that constructs linearized GDP
-    # It should be incorporated into a larger file that simulates, filters etc.
-    # This is based on real_bond_hank.jl
-
-    dGDP_dMU, GDP, dGDP_dELL, dGDP_dRR, dGDP_dWW, dGDP_dTT = construct_GDPfn_realbond(nx, ns, xgrid_total, sgrid, xwts, swts,
+    # Construct GDP
+    dGDP_dMU, dGDP_dZ, dGDP_dELL, dGDP_dRR, dGDP_dWW, dGDP_dTT = construct_GDPfn_realbond(nx, ns, xgrid_total, sgrid, xwts, swts,
                                                                                       γ, ν, abar, R, aborrow, μ,
                                                                                       c, η, ell, χss)
 
-    GDPfn = zeros(1, 2*nx*ns+9) # GDP as function of un-normalized MU Z MON ELL RR II WW PI TT
+    GDPfn = zeros(1, n_model_states_unnormalized(m))
+    # GDP as function of un-normalized MU Z MON ELL RR II WW PI TT
     # note: GDP is only a function of contemporaneous variables
     # we are using the indices (MUP,ZP, etc.) corresponding to date t+1 variables
     # simply because these indices happen to work here also
     # this does not mean that GDP is a function of date t+1 variables
-    GDPfn[1, endo[:μ′_t]]  = dGDP_dMU
-    GDPfn[1, endo[:z′_t]]  = GDP
-    GDPfn[1, endo[:l′_t]]  = dGDP_dELL
-    GDPfn[1, endo[:R′_t]]  = dGDP_dRR
-    GDPfn[1, endo[:w′_t]]  = dGDP_dWW
-    GDPfn[1, endo[:t′_t]]  = dGDP_dTT
+    GDPfn[1, endo_unnorm[:μ′_t]]  = dGDP_dMU
+    GDPfn[1, endo_unnorm[:z′_t]]  = dGDP_dZ
+    GDPfn[1, endo_unnorm[:l′_t]]  = dGDP_dELL
+    GDPfn[1, endo_unnorm[:R′_t]]  = dGDP_dRR
+    GDPfn[1, endo_unnorm[:w′_t]]  = dGDP_dWW
+    GDPfn[1, endo_unnorm[:t′_t]]  = dGDP_dTT
 
     ########################################
     Qx, Qy, _, _ = compose_normalization_matrices(m)
     gx2  = Qy'*TTT_jump*Qx
 
     # now we need to create GDP as a function of the normalized states
-    ZZ_states = (1/GDP)*GDPfn*[eye(n_backward_looking_states_unnormalized(m)); gx2]*Qx'
-                # this is for log GDP
-                # to use the level of gdp, remove (1/GDP)
+    GDPeqn = (1/dGDP_dZ)*GDPfn*[eye(n_backward_looking_states_unnormalized(m)); gx2]*Qx'
+             # this is for log GDP
+             # to use the level of gdp, remove (1/GDP)
 
-    ZZ = Matrix{Float64}(_n_observables, _n_model_states)
-    ZZ[1:_n_states] = ZZ_states
-    ZZ[_n_states+1:end] = zeros(_n_jumps)
+    ZZ = zeros(_n_observables, _n_model_states)
+
+    # GDP
+    ZZ[obs[:obs_gdp], 1:_n_states]     = GDPeqn
+    ZZ[obs[:obs_gdp], _n_states+1:end] = zeros(_n_jumps)
+
+    # Inflation
+    ZZ[obs[:obs_corepce], endo[:π′_t]] = 1.
+
+    # Nominal FFR
+    ZZ[obs[:obs_nominalrate], endo[:i′_t]] = 1.
 
     # Measurement error
     EE[obs[:obs_gdp], obs[:obs_gdp]] = m[:e_y]
@@ -119,7 +126,7 @@ function construct_GDPfn_realbond(nx::Int, ns::Int,
     dGDP_dWW  = 0.0
     dGDP_dRR  = 0.0
     dGDP_dTT  = 0.0
-    GDP       = 0.0
+    dGDP_dZ   = 0.0
 
     unc       = zeros(nx*ns)
     chipW, chipR, chipX = construct_chip_realbond(xgrid_total, γ, ν, aborrow,
@@ -133,10 +140,10 @@ function construct_GDPfn_realbond(nx::Int, ns::Int,
             dGDP_dWW    += swts[is]*xwts[ix]*μ[i]*((sgrid[is]*η[i])/ν - (sgrid[is]*γ*η[i]/(ν*c[i]))*(1-unc[i])*chipW[i])
             dGDP_dRR    += -swts[is]*xwts[ix]*μ[i]*(sgrid[is]*γ*η[i]/(ν*c[i]))*(1-unc[i])*chipR[i]
             dGDP_dTT    += -swts[is]*xwts[ix]*μ[i]*(sgrid[is]*γ*η[i]/(ν*c[i]))*(1-unc[i])*chipX[i]
-            GDP         += swts[is]*xwts[ix]*sgrid[is]*η[i]*μ[i] # note, this is also dGDP_dZ. It is already created by real_bond_hank.jl
+            dGDP_dZ     += swts[is]*xwts[ix]*sgrid[is]*η[i]*μ[i]
         end
     end
-    return dGDP_dMU, GDP, dGDP_dELL, dGDP_dRR, dGDP_dWW, dGDP_dTT
+    return dGDP_dMU, dGDP_dZ, dGDP_dELL, dGDP_dRR, dGDP_dWW, dGDP_dTT
 end
 
 function update_measurement_covariance_matrices!{T<:AbstractFloat}(m::RealBondMkup, system::System{T})
