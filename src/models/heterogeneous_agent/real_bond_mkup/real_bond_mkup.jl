@@ -117,21 +117,23 @@ Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
 function init_model_indices!(m::RealBondMkup)
+
     # Endogenous states
     endogenous_states = collect([
     # These states corresp. to the following in the original notation
-    #    MUP,   ZP,    MONP,    ELLP,  RRP
-        :μ′_t, :z′_t, :mon′_t, :l′_t, :R′_t,
+    #    MUP,   LIIP,    ZP,    MONP,    ELLP,  RRP
+        :μ′_t, :l_i′_t, :z′_t, :mon′_t, :l′_t, :R′_t,
     #    IIP    WWP    PIP    TTP
         :i′_t, :w′_t, :π′_t, :t′_t])
 
     # Exogenous shocks
-    exogenous_shocks = collect([:z_sh, :mon_sh])
+    exogenous_shocks = collect([:z_sh, :mon_sh, :mkp_sh])
 
     # Equilibrium conditions
     equilibrium_conditions = collect([
         :eq_euler, :eq_kolmogorov_fwd, :eq_market_clearing, :eq_TFP,
-        :eq_phillips, :eq_taylor, :eq_fisher, :eq_transfers, :eq_monetary_policy])
+        :eq_phillips, :eq_taylor, :eq_fisher, :eq_transfers, :eq_monetary_policy,
+        :eq_markup, :eq_lagged_nominal_rate])
 
     # Observables
     observables = keys(m.observable_mappings)
@@ -145,16 +147,18 @@ function init_model_indices!(m::RealBondMkup)
 
     # State variables
     endo[:μ′_t]   = 1:nx*ns
-    endo[:z′_t]   = nx*ns+1:nx*ns+1
-    endo[:mon′_t] = nx*ns+2:nx*ns+2
+    endo[:l_i′_t] = nx*ns+1:nx*ns+1
+    endo[:z′_t]   = nx*ns+2:nx*ns+2
+    endo[:mon′_t] = nx*ns+3:nx*ns+3
+    endo[:mkp′_t] = nx*ns+4:nx*ns+4
 
     # Jump variables
-    endo[:l′_t]   = nx*ns+3:2*nx*ns+2
-    endo[:R′_t]   = 2*nx*ns+3:2*nx*ns+3
-    endo[:i′_t]   = 2*nx*ns+4:2*nx*ns+4
-    endo[:w′_t]   = 2*nx*ns+5:2*nx*ns+5
-    endo[:π′_t]   = 2*nx*ns+6:2*nx*ns+6
-    endo[:t′_t]   = 2*nx*ns+7:2*nx*ns+7
+    endo[:l′_t]   = nx*ns+5:2*nx*ns+4
+    endo[:R′_t]   = 2*nx*ns+5:2*nx*ns+5
+    endo[:i′_t]   = 2*nx*ns+6:2*nx*ns+6
+    endo[:w′_t]   = 2*nx*ns+7:2*nx*ns+7
+    endo[:π′_t]   = 2*nx*ns+8:2*nx*ns+8
+    endo[:t′_t]   = 2*nx*ns+9:2*nx*ns+9
 
     eqconds[:eq_euler]              = 1:nx*ns
     eqconds[:eq_kolmogorov_fwd]     = nx*ns+1:2*nx*ns
@@ -165,6 +169,8 @@ function init_model_indices!(m::RealBondMkup)
     eqconds[:eq_fisher]             = 2*nx*ns+5:2*nx*ns+5
     eqconds[:eq_transfers]          = 2*nx*ns+6:2*nx*ns+6
     eqconds[:eq_monetary_policy]    = 2*nx*ns+7:2*nx*ns+7
+    eqconds[:eq_markup]             = 2*nx*ns+8:2*nx*ns+8
+    eqconds[:eq_lagged_nominal_rate]= 2*nx*ns+9:2*nx*ns+9
     ########################################################################################
 
     m.normalized_model_states = [:μ′_t]
@@ -252,6 +258,7 @@ parameters (in preparation for `steadystate!(m)` being called to initialize
 those).
 """
 function init_parameters!(m::RealBondMkup)
+
     # Initialize parameters
     m <= parameter(:R, 1.04, fixed = true,
                    description = "R: Steady-state gross real interest rate.", tex_label = "R")
@@ -261,7 +268,7 @@ function init_parameters!(m::RealBondMkup)
                    description = "Inverse Frisch elasticity of labor supply.", tex_label = "\\nu")
     m <= parameter(:abar, -0.5, fixed = true,
                    description = "Borrowing floor.", tex_label = "\\bar{a}")
-    m <= parameter(:ρ_z, 0.0, (0., 0.999), (0., 0.999), SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+    m <= parameter(:ρ_z, 0.03081565350294113, (0., 0.999), (0., 0.999), SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                    description="ρ_z: AR(1) coefficient in the technology process.",
                    tex_label="\\rho_z")
     m <= parameter(:σ_z, sqrt(.007), (1e-8, 5.), (1e-8, 5.), Exponential(), RootInverseGamma(2, 0.10), fixed=false,
@@ -271,6 +278,8 @@ function init_parameters!(m::RealBondMkup)
     m <= parameter(:σ_mon, 0.2380, (1e-8, 5.), (1e-8, 5.), Exponential(), RootInverseGamma(2, 0.10), fixed=true,
                    description="σ_mon: The standard deviation of the monetary policy shock.",
                    tex_label="\\sigma_{mon}")
+    m <= parameter(:ρmkp, 0., fixed = true, description = "ρmkp: Persistence of the markup shock")
+    m <= parameter(:ρtay, 0.5, fixed = true, description = "ρmkp: Persistence in the taylor rule")
     m <= parameter(:κ, 1.0, fixed = true, description = "κ: The slope of the Phillips curve")
     m <= parameter(:phipi, 1.5, fixed = true, description = "phipi: The slope of the taylor rule")
     m <= parameter(:μ_s, 0., fixed = true, description = "μ_s: Mu of log normal in income")
@@ -378,9 +387,9 @@ function model_settings!(m::RealBondMkup)
                  This set to 0 is just the default setting, since it will always be
                  overwritten once the Jacobian is calculated.")
 
-    m <= Setting(:state_indices, 1:3, "Which indices of m.endogenous_states correspond to
+    m <= Setting(:state_indices, 1:5, "Which indices of m.endogenous_states correspond to
                  backward looking state variables")
-    m <= Setting(:jump_indices, 4:9, "Which indices of m.endogenous_states correspond to jump
+    m <= Setting(:jump_indices, 6:11, "Which indices of m.endogenous_states correspond to jump
                  variables")
 
     # Mollifier setting parameters

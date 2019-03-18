@@ -329,6 +329,7 @@ module DSGE
 
     include("models/heterogeneous_agent/real_bond_mkup/real_bond_mkup.jl")
     include("models/heterogeneous_agent/real_bond_mkup/steady_state.jl")
+    include("models/heterogeneous_agent/real_bond_mkup/jacobian.jl")
 
     # Continuous Time Heterogenous Agent Models
     include("solve/solve_hank.jl")
