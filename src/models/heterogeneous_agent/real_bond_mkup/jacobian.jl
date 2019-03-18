@@ -10,10 +10,10 @@ function jacobian(m::RealBondMkup)
     abar::Float64  = m[:abar].value
     R::Float64     = m[:R].value
     ν::Float64     = m[:ν].value
-    ρz::Float64    = m[:ρ_z].value
-    ρmon::Float64  = m[:ρmon].value
-    ρmkp::Float64  = m[:ρmkp].value
-    ρtay::Float64  = m[:ρtay].value
+    ρ_z::Float64    = m[:ρ_z].value
+    ρ_mon::Float64  = m[:ρ_mon].value
+    ρ_mkp::Float64  = m[:ρ_mkp].value
+    ρ_tay::Float64  = m[:ρ_tay].value
     κ::Float64     = m[:κ].value
     phipi::Float64 = m[:phipi].value
     aborrow::Float64 = abar/R
@@ -98,7 +98,7 @@ function jacobian(m::RealBondMkup)
 
     # TFP
     JJ[eq[:eq_TFP], endo[:z′_t]]  = 1.0
-    JJ[eq[:eq_TFP], endo[:z_t]]   = -ρz
+    JJ[eq[:eq_TFP], endo[:z_t]]   = -ρ_z
 
     # Phillips
     JJ[eq[:eq_phillips], endo[:π′_t]] = -1.0/R
@@ -109,9 +109,9 @@ function jacobian(m::RealBondMkup)
 
     # taylor
     JJ[eq[:eq_taylor], endo[:i_t]]   = 1.0
-    JJ[eq[:eq_taylor], endo[:π_t]]   = -phipi*R*(1-ρtay)
+    JJ[eq[:eq_taylor], endo[:π_t]]   = -phipi*R*(1-ρ_tay)
     JJ[eq[:eq_taylor], endo[:mon_t]] = -1.0
-    JJ[eq[:eq_taylor], endo[:l_i_t]] = -ρtay
+    JJ[eq[:eq_taylor], endo[:l_i_t]] = -ρ_tay
 
     # fisher
     JJ[eq[:eq_fisher], endo[:i_t]]  = 1.0
@@ -125,11 +125,11 @@ function jacobian(m::RealBondMkup)
 
     # MP
     JJ[eq[:eq_monetary_policy], endo[:mon′_t]] = 1.0
-    JJ[eq[:eq_monetary_policy], endo[:mon_t]]  = -ρmon
+    JJ[eq[:eq_monetary_policy], endo[:mon_t]]  = -ρ_mon
 
     # Markup
     JJ[eq[:eq_markup], endo[:mkp′_t]] = 1.0
-    JJ[eq[:eq_markup], endo[:mkp_t]]  = -ρmkp
+    JJ[eq[:eq_markup], endo[:mkp_t]]  = -ρ_mkp
 
     # Lagged Monetary Policy
     JJ[eq[:eq_lagged_nominal_rate], endo[:l_i′_t]] = 1.0
