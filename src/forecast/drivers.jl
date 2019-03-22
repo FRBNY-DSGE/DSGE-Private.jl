@@ -104,9 +104,9 @@ Load and return parameter draws from Metropolis-Hastings.
   parameter draws for this block.
 """
 function load_draws(m::AbstractModel, input_type::Symbol; subset_inds::Range{Int64} = 1:0,
-    verbose::Symbol = :low)
+                    verbose::Symbol = :low, filestring_addl::Vector{String} = Vector{String}(0))
 
-    input_file_name = get_forecast_input_file(m, input_type)
+    input_file_name = get_forecast_input_file(m, input_type, filestring_addl = filestring_addl)
     if VERBOSITY[verbose] >= VERBOSITY[:low]
         println("Loading draws from $input_file_name")
     end
@@ -154,7 +154,8 @@ function load_draws(m::AbstractModel, input_type::Symbol; subset_inds::Range{Int
 end
 
 function load_draws(m::AbstractModel, input_type::Symbol, block_inds::Range{Int64};
-                    verbose::Symbol = :low)
+                    verbose::Symbol = :low, filestring_addl::Vector{String} = Vector{String}(0))
+
 
     input_file_name = get_forecast_input_file(m, input_type)
     if VERBOSITY[verbose] >= VERBOSITY[:low]
