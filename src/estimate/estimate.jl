@@ -34,7 +34,8 @@ function estimate(m::AbstractModel, df::DataFrame;
                   proposal_covariance::Matrix = Matrix(0,0),
                   mle::Bool = false,
                   sampling::Bool = true,
-                  recompute_transition_equation::Bool = true, save_intermediate::Bool = false)
+                  recompute_transition_equation::Bool = true, save_intermediate::Bool = false,
+                  filestring_addl::Vector{String} = Vector{String}())
     data = df_to_matrix(m, df)
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
@@ -48,7 +49,8 @@ function estimate(m::AbstractModel;
                   mle::Bool = false,
                   sampling::Bool = true,
                   recompute_transition_equation::Bool = true,
-                  save_intermediate::Bool = false)
+                  save_intermediate::Bool = false,
+                  filestring_addl::Vector{String} = Vector{String}())
     # Load data
     df = load_data(m; verbose = verbose)
     estimate(m, df; verbose = verbose, proposal_covariance = proposal_covariance,
@@ -62,7 +64,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
                   mle::Bool = false,
                   sampling::Bool = true,
                   recompute_transition_equation::Bool = true,
-                  save_intermediate::Bool = false)
+                  save_intermediate::Bool = false,
+                  filestring_addl::Vector{String} = Vector{String}())
 
     if !(get_setting(m, :sampling_method) in [:SMC,:MH])
         error("method must be :SMC or :MH")
@@ -207,7 +210,8 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         cc = get_setting(m, :mh_cc)
 
         metropolis_hastings(propdist, m, data, cc0, cc; verbose = verbose,
-                            recompute_transition_equation = recompute_transition_equation);
+                            recompute_transition_equation = recompute_transition_equation,
+                            filestring_addl = filestring_addl);
 
     elseif get_setting(m, :sampling_method) == :SMC
         ########################################################################################
@@ -219,14 +223,15 @@ function estimate(m::AbstractModel, data::Matrix{Float64};
         ### parallel.
         ########################################################################################
         smc(m, data; verbose = verbose, recompute_transition_equation =
-            recompute_transition_equation, save_intermediate = save_intermediate)
+            recompute_transition_equation, save_intermediate = save_intermediate,
+            filestring_addl = filestring_addl)
     end
 
     ########################################################################################
     ### Step 4: Calculate and save parameter covariance matrix
     ########################################################################################
 
-    compute_parameter_covariance(m)
+    compute_parameter_covariance(m, filestring_addl = filestring_addl)
 
     return nothing
 end
@@ -267,7 +272,8 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
                                                cc0::T,
                                                cc::T;
                                                verbose::Symbol=:low,
-                                               recompute_transition_equation::Bool = true)
+                                               recompute_transition_equation::Bool = true,
+                                               filestring_addl::Vector{String} = Vector{String}(0))
 
 
     # If testing, set the random seeds at fixed numbers
@@ -324,7 +330,7 @@ function metropolis_hastings{T<:AbstractFloat}(propdist::Distribution,
     mhparams = zeros(n_sim, n_parameters(m))
 
     # Open HDF5 file for saving parameter draws
-    simfile = h5open(rawpath(m,"estimate","mhsave.h5"),"w")
+    simfile = h5open(rawpath(m,"estimate","mhsave.h5",filestring_addl),"w")
     n_saved_obs = n_sim * (n_blocks - n_burn)
     parasim = d_create(simfile, "mhparams", datatype(Float32),
                        dataspace(n_saved_obs,n_params),
@@ -447,11 +453,12 @@ parameter_covariance.h5 file in the `workpath(m, "estimate")` directory.
 ### Arguments
 * `m::AbstractModel`: the model object
 """
-function compute_parameter_covariance(m::AbstractModel)
+function compute_parameter_covariance(m::AbstractModel;
+                                      filestring_addl::Vector{String} = Vector{String}(0))
 
     # Read in saved parameter draws
     if get_setting(m, :sampling_method) == :MH
-        param_draws_path = rawpath(m, "estimate", "mhsave.h5")
+        param_draws_path = rawpath(m, "estimate", "mhsave.h5", filestring_addl)
         if !isfile(param_draws_path)
             @printf STDERR "Saved parameter draws not found.\n"
             return
@@ -464,11 +471,11 @@ function compute_parameter_covariance(m::AbstractModel)
         param_covariance = cov(param_draws)
 
         # Write to file
-        h5open(workpath(m, "estimate","parameter_covariance.h5"),"w") do f
+        h5open(workpath(m, "estimate","parameter_covariance.h5", filestring_addl),"w") do f
             f["mhcov"] = param_covariance
         end
     elseif get_setting(m, :sampling_method) == :SMC
-        param_draws_path = rawpath(m, "estimate", "smcsave.h5")
+        param_draws_path = rawpath(m, "estimate", "smcsave.h5", filestring_addl)
         if !isfile(param_draws_path)
             @printf STDERR "Saved parameter draws not found.\n"
             return
@@ -481,7 +488,7 @@ function compute_parameter_covariance(m::AbstractModel)
         param_covariance = cov(param_draws)
 
         # Write to file
-        h5open(workpath(m, "estimate","parameter_covariance.h5"),"w") do f
+        h5open(workpath(m, "estimate","parameter_covariance.h5", filestring_addl),"w") do f
             f["smccov"] = param_covariance
         end
     else

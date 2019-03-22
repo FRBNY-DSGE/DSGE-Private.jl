@@ -37,7 +37,8 @@ function smc(m::AbstractModel, data::Matrix{Float64};
              verbose::Symbol = :low, old_data::Matrix{Float64} = Matrix{Float64}(size(data, 1), 0),
              old_cloud::ParticleCloud = ParticleCloud(m, 0),
              recompute_transition_equation::Bool = true, run_test::Bool = false,
-             save_intermediate::Bool = false)
+             save_intermediate::Bool = false,
+             filestring_addl::Vector{String} = Vector{String}())
     ########################################################################################
     ### Setting Parameters
     ########################################################################################
@@ -113,8 +114,7 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     if tempered_update
         if isempty(old_cloud)
             # Load the previous ParticleCloud as the starting point for time tempering
-            loadpath = rawpath(m, "estimate", "smc_cloud.jld")
-            #loadpath = rawpath(m, "estimate", "smc_cloud.jld", ["adpt="*string(tempering_target)])
+            loadpath = rawpath(m, "estimate", "smc_cloud.jld", filestring_addl)
             loadpath = replace(loadpath, r"vint=[0-9]{6}", "vint="*old_vintage)
 
             cloud = load(loadpath, "cloud")
@@ -273,7 +273,7 @@ function smc(m::AbstractModel, data::Matrix{Float64};
             break
         end
         if mod(cloud.stage_index, 10)==0 && save_intermediate
-            jldopen(rawpath(m, "estimate", "smc_cloud_$(cloud.stage_index).jld"), "w") do file
+            jldopen(rawpath(m, "estimate", "smc_cloud_$(cloud.stage_index).jld", filestring_addl), "w") do file
                 write(file, "cloud", cloud)
                 write(file, "w", w_matrix)
                 write(file, "W", W_matrix)
@@ -287,16 +287,14 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     ########################################################################################
 
     if !m.testing
-        simfile = h5open(rawpath(m, "estimate", "smcsave.h5"), "w")
-        #simfile = h5open(rawpath(m, "estimate", "smcsave.h5", ["adpt="*string(tempering_target)]),"w")
+        simfile = h5open(rawpath(m, "estimate", "smcsave.h5", filestring_addl), "w")
         particle_store = d_create(simfile, "smcparams", datatype(Float64),
                                   dataspace(n_parts, n_params))
         for i in 1:length(cloud)
             particle_store[i,:] = cloud.particles[i].value
         end
         close(simfile)
-        #jldopen(rawpath(m, "estimate", "smc_cloud.jld", ["adpt="*string(tempering_target)]), "w") do file
-        jldopen(rawpath(m, "estimate", "smc_cloud.jld"), "w") do file
+        jldopen(rawpath(m, "estimate", "smc_cloud.jld", filestring_addl), "w") do file
             write(file, "cloud", cloud)
             write(file, "w", w_matrix)
             write(file, "W", W_matrix)
@@ -305,13 +303,17 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     end
 end
 
-function smc(m::AbstractModel, data::DataFrame; verbose::Symbol=:low, save_intermediate::Bool = false)
+function smc(m::AbstractModel, data::DataFrame; verbose::Symbol=:low, save_intermediate::Bool = false,
+             filestring_addl::Vector{String} = Vector{String}(0))
     data_mat = df_to_matrix(m, data)
-    return smc(m, data_mat, verbose=verbose, save_intermediate = save_intermediate)
+    return smc(m, data_mat, verbose = verbose, save_intermediate = save_intermediate,
+               filestring_addl = filestring_addl)
 end
 
-function smc(m::AbstractModel; verbose::Symbol=:low, save_intermediate::Bool = false)
+function smc(m::AbstractModel; verbose::Symbol=:low, save_intermediate::Bool = false,
+             filestring_addl::Vector{String} = Vector{String}(0))
     data = load_data(m)
     data_mat = df_to_matrix(m, data)
-    return smc(m, data_mat, verbose=verbose, save_intermediate = save_intermediate)
+    return smc(m, data_mat, verbose=verbose, save_intermediate = save_intermediate,
+               filestring_addl = filestring_addl)
 end
