@@ -277,15 +277,10 @@ function init_parameters!(m::RealBondMkup)
                    fixed=false,
                    description="σ_z: The standard deviation of the process describing the stationary component of productivity.",
                    tex_label="\\sigma_{z}")
-<<<<<<< HEAD
-    m <= parameter(:ρ_mon, 0., fixed = true, description = "ρ_mon: Persistence of monetary policy shock")
-    m <= parameter(:σ_mon, 0.2380, (1e-8, 5.), (1e-8, 5.), Exponential(), RootInverseGamma(2, 0.10), fixed=true,
-=======
     m <= parameter(:ρ_mon, 0., (0., 0.999), (0., 0.999), SquareRoot(), BetaAlt(0.5, 0.2),
                    fixed = false, tex_label = "\\rho_z", description = "ρ_mon: Persistence of monetary policy shock")
 
     m <= parameter(:σ_mon, 0.2380, (1e-8, 5.), (1e-8, 5.), Exponential(), RootInverseGamma(2, 0.10), fixed=false,
->>>>>>> Add priors for some parameters
                    description="σ_mon: The standard deviation of the monetary policy shock.",
                    tex_label="\\sigma_{mon}")
     m <= parameter(:ρ_mkp, 0., (0., 0.999), (0., 0.999), SquareRoot(), BetaAlt(0.5, 0.2),
