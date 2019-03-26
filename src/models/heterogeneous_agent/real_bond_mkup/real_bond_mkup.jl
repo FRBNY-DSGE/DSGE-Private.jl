@@ -93,6 +93,7 @@ type RealBondMkup{T} <: AbstractModel{T}
     exogenous_shocks::OrderedDict{Symbol,Int}              #
     expected_shocks::OrderedDict{Symbol,Int}               #
     equilibrium_conditions::OrderedDict{Symbol,UnitRange}  #
+    model_states_augmented::OrderedDict{Symbol, Int}
     observables::OrderedDict{Symbol,Int}                   #
 
     spec::String                                           # Model specification number (eg "m990")
@@ -134,6 +135,8 @@ function init_model_indices!(m::RealBondMkup)
         :eq_euler, :eq_kolmogorov_fwd, :eq_market_clearing, :eq_TFP,
         :eq_phillips, :eq_taylor, :eq_fisher, :eq_transfers, :eq_monetary_policy,
         :eq_markup, :eq_lagged_nominal_rate])
+
+    endogenous_states_augmented = [:y_t1]
 
     # Observables
     observables = keys(m.observable_mappings)
@@ -179,6 +182,7 @@ function init_model_indices!(m::RealBondMkup)
     m.jump_variables = m.endogenous_states.keys[get_setting(m, :jump_indices)]
 
     for (i,k) in enumerate(exogenous_shocks);            m.exogenous_shocks[k]            = i end
+    for (i,k) in enumerate(endogenous_tates_augmented);  m.model_states_augmented[k] = i+length(endogenous_states) end
     for (i,k) in enumerate(observables);                 m.observables[k]                 = i end
 end
 
@@ -278,7 +282,7 @@ function init_parameters!(m::RealBondMkup)
                    description="σ_z: The standard deviation of the process describing the stationary component of productivity.",
                    tex_label="\\sigma_{z}")
     m <= parameter(:ρ_mon, (0., 0.999), (0., 0.999), SquareRoot(), BetaAlt(0.5, 0.2), fixed = false, description = "ρ_mon: Persistence of monetary policy shock")
-    m <= parameter(:σ_mon, 0.2380, (1e-8, 5.), (1e-8, 5.), Exponential(), RootInverseGamma(2, 0.10), fixed=true,
+    m <= parameter(:σ_mon, 0.2380, (1e-8, 5.), (1e-8, 5.), Exponential(), RootInverseGamma(2, 0.10), fixed=false, description = "")
 
     m <= parameter(:ρ_mon, 0., (0., 0.999), (0., 0.999), SquareRoot(), BetaAlt(0.5, 0.2),
                    fixed = false, tex_label = "\\rho_z", description = "ρ_mon: Persistence of monetary policy shock")
