@@ -178,6 +178,16 @@ function smc(m::AbstractModel, data::Matrix{Float64};
         z_matrix = ones(1)
     end
 
+    if save_intermediate && !continue_intermediate
+        jldopen(rawpath(m, "estimate", "smc_cloud_stage=$(cloud.stage_index).jld2"), true, true, true, IOStream) do file
+            write(file, "cloud", cloud)
+            write(file, "w", w_matrix)
+            write(file, "W", W_matrix)
+            write(file, "z", z_matrix)
+            write(file, "j", j)
+        end
+    end
+
     if VERBOSITY[verbose] >= VERBOSITY[:low]
         init_stage_print(cloud; verbose = verbose,
                          use_fixed_schedule = use_fixed_schedule)
