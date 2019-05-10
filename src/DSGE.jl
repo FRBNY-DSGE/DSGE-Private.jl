@@ -5,7 +5,8 @@ module DSGE
     using CSV, DataFrames, DataStructures, OrderedCollections
     using BasisMatrices, ColorTypes, Distributed, Distributions, FileIO, FFTW, FredData, HDF5, JLD2
     using LinearAlgebra, Missings, Nullables, Optim, Printf, Random, RecipesBase
-    using SparseArrays, SpecialFunctions, StateSpaceRoutines, StatsPlots
+    # using SparseArrays, SpecialFunctions, StateSpaceRoutines, StatsPlots
+    using SparseArrays, SpecialFunctions, StateSpaceRoutines
     using DataStructures: SortedDict, insert!, ForwardOrdering
     using QuantEcon: solve_discrete_lyapunov
     using DifferentialEquations: ODEProblem, Tsit5, Euler
@@ -143,11 +144,12 @@ module DSGE
         read_scenario_mb,
         count_scenario_draws,
 
+#=
         # plot/
         plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
         plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
         plot_posterior_intervals, plot_posterior_interval_comparison, plot_forecast_decomposition,
-
+=#
         # models/
         init_parameters!, steadystate!, init_observable_mappings!, init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, SmetsWouters, AnSchorfheide,
@@ -267,6 +269,7 @@ module DSGE
     include("scenarios/switching.jl")
     include("scenarios/transform.jl")
 
+#=
     include("plot/util.jl")
     include("plot/plot_posterior_intervals.jl")
     include("plot/plot_prior_posterior.jl")
@@ -278,7 +281,7 @@ module DSGE
     include("plot/plot_altpolicies.jl")
     include("plot/plot_scenario.jl")
     include("plot/plot_forecast_decomposition.jl")
-
+=#
     # Representative Agent Models
     include("models/representative_agent/financial_frictions.jl")
 
