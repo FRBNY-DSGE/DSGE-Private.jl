@@ -143,7 +143,12 @@ function likelihood(m::AbstractModel, data::AbstractMatrix;
         targets     = get_setting(m, :targets)
 
         for (var, target, σt) in zip(target_vars, targets, target_σt)
-            penalty +=  -0.5 * (log(target) - log(m[var].value))^2 / σt^2
+            try
+                penalty +=  -0.5 * (log(target) - log(m[var].value))^2 / σt^2
+            catch err
+                println(err)
+                return -Inf
+            end
         end
         if ψ_l == 0.0
             return ψ_p * penalty

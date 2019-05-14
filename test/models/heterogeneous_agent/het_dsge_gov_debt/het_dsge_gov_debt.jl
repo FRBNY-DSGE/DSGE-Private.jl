@@ -13,8 +13,9 @@ write_steady_state_calibrate = false
 
 path = dirname(@__FILE__)
 
-m = HetDSGEGovDebt()
+m = HetDSGEGovDebt(testing_gamma = true)
 m <= Setting(:steady_state_only, true)
+
 # Steady-state computation
 if check_steady_state
     steadystate!(m)
@@ -457,12 +458,15 @@ if check_jacobian
 end
 
 if check_solution
+    if !check_steady_state
+        steadystate!(m)
+    end
     nx_save = get_setting(m, :nx)
     m.testing = false
     m <= Setting(:nx, nx_save)
     gx, hx, _ = klein(m)
 
-    file = jldopen("$path/reference/solve.jld2", "r")
+    file = JLD2.jldopen("$path/reference/solve.jld2", "r")
     saved_gx   = read(file, "gx")
     saved_hx   = read(file, "hx")
     close(file)
@@ -474,6 +478,9 @@ if check_solution
 end
 
 if check_irfs
+    #if check_steady_state==false
+        steadystate!(m)
+    #end
 
     file = jldopen("$path/reference/irfs.jld2", "r")
 
@@ -502,7 +509,7 @@ if check_irfs
 
     sys = compute_system(m)
     states, obs, pseudo = impulse_responses(m, sys)
-    endo = m.endogenous_states_unnormalized
+    endo = m.endogenous_states_original
 
     @testset "Check IRFs" begin
         #Last entry is 3 because it's the third shock, the Z shock

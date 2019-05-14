@@ -1,5 +1,6 @@
 function jacobian(m::HetDSGEGovDebt)
-    truncate_distribution!(m)
+    reset_grids!(m)
+    #truncate_distribution!(m)
 
     # Load in endogenous state and eq cond indices
     endo = augment_model_states(m.endogenous_states_unnormalized,
@@ -293,7 +294,7 @@ function jacobian(m::HetDSGEGovDebt)
     JJ[first(eq[:eq_consumption]),first(endo[:t_t])]   = -(xswts.*c)'*dF2_dTT=#
 
     if !m.testing && get_setting(m, :normalize_distr_variables)
-        JJ = normalize(m, JJ)
+        JJ  = normalize(m, JJ)
     end
     return JJ, dF2_dRZ, dF2_dWH, dF2_dTT
 end
@@ -390,43 +391,127 @@ end
 
 function normalize(m::HetDSGEGovDebt, JJ::Matrix{Float64})
 
-    #Qx, _, Qleft, Qright = compose_normalization_matrices(m)
+    Qx, Qy, Qleft, Qright  = compose_normalization_matrices(m)
 
-    #m <= Setting(:n_predetermined_variables, size(Qx, 1))
-    Qleft = get_setting(m, :Qleft) #m[:Qleft].value
-    Qright = get_setting(m, :Qright) #m[:Qright].value
+    m <= Setting(:n_predetermined_variables, size(Qx, 1))
+    m <= Setting(:Qx, Qx)
+    m <= Setting(:Qy, Qy)
+    #Qleft = get_setting(m, :Qleft) #m[:Qleft].value
+    #Qright = get_setting(m, :Qright) #m[:Qright].value
 
 	Jac1 = Qleft*JJ*Qright
 
     return Jac1
 end
 
+# use proxy distribuitions method - now `averaging' so that Qx'*Qx should not `add mass'
+function avg_prox(n::Int, binsize::Int = 3, minn_noag::Int = 0)
+    minn_noag_use = min(minn_noag,n)
+    n_gps = Int(floor((n-minn_noag_use)/binsize)) # number of groups
+    n_noag = n - binsize*n_gps
+    Prox = cat(eye(n_noag), kron(eye(n_gps),ones(1,binsize)./sqrt(binsize)), dims = [1 2])
+    n_new = n_noag + n_gps
+    return (Prox, n_new, n_noag, n_gps)
+end
+# note: setting minn_noag = 0 seems to work the best
+
+function make_S(n::Int, n_noag::Int = 0, binsize::Int = 1)
+    P1 = ones(n,1)*sqrt(binsize)
+    P1[1:n_noag] .= 1.
+    Ptemp = eye(n)
+    Ptemp = Ptemp[:,2:end]
+    P2 = Ptemp
+    P = [P1 P2]
+    (QQQ,Rjunk)=qr(P)
+    S         = QQQ[:,2:end]'
+    return S
+end
+
 function compose_normalization_matrices(m::HetDSGEGovDebt)
-    nx::Int = get_setting(m, :nx)
-    ns::Int = get_setting(m, :ns)
-    nscalars::Int = get_setting(m, :nscalars)
-    nyscalars::Int = get_setting(m, :nyscalars)
-    nxscalars::Int = get_setting(m, :nxscalars)
+    if get_setting(m, :poor_man_reduc)
+        nx = get_setting(m, :nx1_state) #:nx)
+        ns = get_setting(m, :ns)
+        n = nx*ns #get_setting(m, :nx1) + get_setting(m, :nx2) #
+        nscalars = get_setting(m, :nscalars)
+        nyscalars = get_setting(m, :nyscalars)
+        nxscalars = get_setting(m, :nxscalars)
+        mindens = get_setting(m, :mindens)
+        μ = m[:μstar].value
 
-    # Create PPP matrix
-    P1 = kron(Matrix{Float64}(I, ns,ns),ones(nx,1))
-    Ptemp = Matrix{Float64}(I, nx, nx)
-    Ptemp = Ptemp[:, 2:end]
-    P2 = kron(Matrix{Float64}(I, ns, ns), Ptemp)
-    P  = hcat(P1, P2)
+        nx1 = maximum(findall(μ[1:nx].>mindens))
+        m <= Setting(:nx1_state, nx1)
+        m <= Setting(:nx1_jump, nx1)
 
-    Q,R = qr(P)
-    Q = Array(Q)
-    S         = Q[:, ns+1:end]'
+        setup_indices!(m)
+        init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))
+        normalize_model_state_indices!(m)
+        endogenous_states_augmented = [:i_t1, :c_t, :c_t1]
+        for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i + first(collect(values(m.endogenous_states))[end]) end
 
-    nxns = nx*ns
+        m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
+                     length(m.endogenous_states_augmented))
 
-    Qleft     = cat(Matrix{Float64}(I, nxns, nxns),S,Matrix{Float64}(I, nscalars, nscalars), dims = [1 2])
-    Qx        = cat(S,Matrix{Float64}(I, nxscalars, nxscalars), dims = [1 2])
-    Qy        = cat(Matrix{Float64}(I, nxns, nxns),Matrix{Float64}(I, nyscalars, nyscalars), dims = [1 2])
-    Qright    = cat(Qx',Qy',Qx',Qy', dims = [1,2])
+        Reduc = eye(n)
+        Reduc=Reduc[[1:nx1;nx+1:n],:]
 
-    return Qx, Qy, Qleft, Qright
+        minn_noag = 0
+        binsize = get_setting(m, :binsize) # this is the maximum binsize which seemed to leave the IRFs unchanged, you can experiment with this
+        # setting binsize = 1 should return what we had before
+        (ProxL, n_newL, n_noagL, n_gpsL) = avg_prox(nx1, binsize, minn_noag)
+        (ProxH, n_newH, n_noagH, n_gpsH) = avg_prox(nx, binsize,minn_noag)
+        m <= Setting(:nx1_state, n_newL)
+        m <= Setting(:nx2_state, n_newH)
+        setup_indices!(m)
+        init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))
+        normalize_model_state_indices!(m)
+        endogenous_states_augmented = [:i_t1, :c_t, :c_t1]
+        for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i + first(collect(values(m.endogenous_states))[end]) end
+
+        m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
+                     length(m.endogenous_states_augmented))
+
+
+        Prox = cat(ProxL, ProxH, dims = [1 2])
+        SL = make_S(n_newL, n_noagL, binsize)
+        SH = make_S(n_newH, n_noagH, binsize)
+        S = cat(SL, SH, dims = [1 2])
+
+        Qleft     = cat(Reduc,S*Prox*Reduc,eye(nscalars), dims = [1 2])
+        Qx        = cat(S*Prox*Reduc,eye(nxscalars), dims = [1 2])
+        Qy        = cat(Reduc,eye(nyscalars), dims = [1 2])
+
+        Qright    = cat(Qx',Qy',Qx',Qy', dims = [1,2])
+
+        return Qx, Qy, Qleft, Qright
+
+    else
+        nx = get_setting(m, :nx)
+        ns = get_setting(m, :ns)
+        nscalars = get_setting(m, :nscalars)
+        nyscalars = get_setting(m, :nyscalars)
+        nxscalars = get_setting(m, :nxscalars)
+
+        # Create PPP matrix
+        P1 = kron(Matrix{Float64}(I, ns,ns),ones(nx,1))
+        Ptemp = Matrix{Float64}(I, nx, nx)
+        Ptemp = Ptemp[:, 2:end]
+        P2 = kron(Matrix{Float64}(I, ns, ns), Ptemp)
+        P  = hcat(P1, P2)
+
+        Q,R = qr(P)
+        Q = Array(Q)
+        S         = Q[:, ns+1:end]'
+
+        nxns = nx*ns
+
+        Qleft     = cat(Matrix{Float64}(I, nxns, nxns),S,Matrix{Float64}(I, nscalars, nscalars), dims = [1 2])
+        Qx        = cat(S,Matrix{Float64}(I, nxscalars, nxscalars), dims = [1 2])
+        Qy        = cat(Matrix{Float64}(I, nxns, nxns),Matrix{Float64}(I, nyscalars, nyscalars), dims = [1 2])
+        Qright    = cat(Qx',Qy',Qx',Qy', dims = [1,2])
+
+        return Qx, Qy, Qleft, Qright
+
+    end
 end
 
 function truncate_distribution!(m::HetDSGEGovDebt)

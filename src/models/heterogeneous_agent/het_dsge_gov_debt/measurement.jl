@@ -40,49 +40,49 @@ function measurement(m::HetDSGEGovDebt{T},
     QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
 
     ## Output growth - Quarterly!
-    ZZ[obs[:obs_gdp], first(endo[:y′_t])]       = 1.0
+    ZZ[obs[:obs_gdp], first(endo[:y′_t])]  = 1.0
     ZZ[obs[:obs_gdp], first(endo[:y′_t1])] = -1.0
-    ZZ[obs[:obs_gdp], first(endo[:z′_t])]       = 1.0
-    DD[obs[:obs_gdp]]                   = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
+    ZZ[obs[:obs_gdp], first(endo[:z′_t])]  = 1.0
+    DD[obs[:obs_gdp]]                      = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
 
     ## Hours growth
     ZZ[obs[:obs_hours], first(endo[:L′_t])] = 1.0
-    DD[obs[:obs_hours]]             = m[:Lmean]
+    DD[obs[:obs_hours]]                     = m[:Lmean]
 
     ## Labor Share/real wage growth
     ZZ[obs[:obs_wages], first(endo[:w′_t])]       = 1.0
-    ZZ[obs[:obs_wages], first(endo[:w′_t1])] = -1.0
+    ZZ[obs[:obs_wages], first(endo[:w′_t1])]      = -1.0
     ZZ[obs[:obs_wages], first(endo[:z′_t])]       = 1.0
-    DD[obs[:obs_wages]]                   = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
+    DD[obs[:obs_wages]]                           = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
 
     ## Inflation (GDP Deflator)
-    ZZ[obs[:obs_gdpdeflator], first(endo[:π′_t])]  = 1.0
-    DD[obs[:obs_gdpdeflator]]              = 100*(m[:π_star]-1)
+    ZZ[obs[:obs_gdpdeflator], first(endo[:π′_t])] = 1.0
+    DD[obs[:obs_gdpdeflator]]                     = 100*(m[:π_star]-1)
 
     ## Nominal interest rate
-    ZZ[obs[:obs_nominalrate], first(endo[:R′_t])]       = 1.0
-    DD[obs[:obs_nominalrate]]                   = 1 + m[:r] #m[:Rstarn]
+    ZZ[obs[:obs_nominalrate], first(endo[:R′_t])] = 1.0
+    DD[obs[:obs_nominalrate]]                     = 1 + m[:r] #m[:Rstarn]
 
     ## Consumption Growth
-    ZZ[obs[:obs_consumption], endo_new[:c_t]]       = 1.0
-    ZZ[obs[:obs_consumption], endo_new[:c_t1]] = -1.0
-    ZZ[obs[:obs_consumption], first(endo[:z′_t])]       = 1.0
-    DD[obs[:obs_consumption]]                   = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
+    ZZ[obs[:obs_consumption], 1:get_setting(m, :n_backward_looking_states)] = -C_eqn
+    ZZ[obs[:obs_consumption], endo_new[:c_t1]]    = -1.0
+    ZZ[obs[:obs_consumption], first(endo[:z′_t])] = 1.0
+    DD[obs[:obs_consumption]]                     = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
 
     ## Investment Growth
-    ZZ[obs[:obs_investment], first(endo[:i′_t])]       = 1.0
-    ZZ[obs[:obs_investment], endo_new[:i_t1]] = -1.0
-    ZZ[obs[:obs_investment], first(endo[:z′_t])]       = 1.0
-    DD[obs[:obs_investment]]                   = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
+    ZZ[obs[:obs_investment], first(endo[:i′_t])]  = 1.0
+    ZZ[obs[:obs_investment], endo_new[:i_t1]]     = -1.0
+    ZZ[obs[:obs_investment], first(endo[:z′_t])]  = 1.0
+    DD[obs[:obs_investment]]                      = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
 
     #Measurement error
-    EE[obs[:obs_gdp],1] = m[:e_y]^2
-    EE[obs[:obs_hours],2] = m[:e_L]^2
-    EE[obs[:obs_wages],3] = m[:e_w]^2
+    EE[obs[:obs_gdp],1]         = m[:e_y]^2
+    EE[obs[:obs_hours],2]       = m[:e_L]^2
+    EE[obs[:obs_wages],3]       = m[:e_w]^2
     EE[obs[:obs_gdpdeflator],4] = m[:e_π]^2
     EE[obs[:obs_nominalrate],5] = m[:e_R]^2
     EE[obs[:obs_consumption],6] = m[:e_c]^2
-    EE[obs[:obs_investment],7] = m[:e_i]^2
+    EE[obs[:obs_investment],7]  = m[:e_i]^2
 
     #Variance of innovations
     QQ[exo[:g_sh], exo[:g_sh]]           = m[:σ_g]^2
@@ -135,8 +135,9 @@ function construct_consumption_partial(m::HetDSGEGovDebt, dF2_dRZ::Vector{Float6
 
     denominator = sum(μ .* ω .* c)
 
-    dC_dELL = (μ .* unc .* xswts .*c)' ./ denominator
-    dC_dKF = -(xswts .* c)' ./ denominator
+    dC_dELL = ((μ .* unc .* xswts .*c)' ./ denominator)
+
+    dC_dKF = (-(xswts .* c)' ./ denominator)
     dC_dR = -(xswts .* c)' * dF2_dRZ ./ denominator
     dC_dZ = (xswts .* c)' * dF2_dRZ ./ denominator
     dC_dW = -(xswts .* c)' * dF2_dWH ./ denominator
@@ -151,20 +152,28 @@ function construct_consumption_eqn(m::HetDSGEGovDebt, TTT_jump::Matrix{Float64},
     endo_unnorm = m.endogenous_states_unnormalized
 
     dC_dELL, dC_dKF, dC_dR, dC_dZ, dC_dW, dC_dL, dC_dT = construct_consumption_partial(m, dF2_dRZ, dF2_dWH, dF2_dTT)
-    C_eqn = zeros(n_model_states_unnormalized(m))
-    C_eqn[endo_unnorm[:l′_t]] = vec(dC_dELL)
-    C_eqn[endo_unnorm[:kf′_t]] = vec(dC_dKF)
-    C_eqn[first(endo_unnorm[:R′_t])] = dC_dR
-    C_eqn[first(endo_unnorm[:z′_t])] = dC_dZ
-    C_eqn[first(endo_unnorm[:w′_t])] = dC_dW
-    C_eqn[first(endo_unnorm[:L′_t])] = dC_dL
-    C_eqn[first(endo_unnorm[:t′_t])] = dC_dT
 
-    Qx, Qy, _, _ = compose_normalization_matrices(m)
+    endo_orig = m.endogenous_states_original
+    C_eqn = zeros(first(endo_orig[collect(keys(endo_orig))[end]])) #n_model_states_unnormalized(m))
+
+    C_eqn[endo_orig[:l′_t]] = vec(dC_dELL)
+    C_eqn[endo_orig[:kf′_t]] = vec(dC_dKF)
+    C_eqn[first(endo_orig[:R′_t])] = dC_dR
+    C_eqn[first(endo_orig[:z′_t])] = dC_dZ
+    C_eqn[first(endo_orig[:w′_t])] = dC_dW
+    C_eqn[first(endo_orig[:L′_t])] = dC_dL
+    C_eqn[first(endo_orig[:t′_t])] = dC_dT
+
+    #cant do this anymore because the fnction makes everything smaller no matter what!!!
+   # Qx, Qy, _, _  = compose_normalization_matrices(m)
+
+    Qx = get_setting(m, :Qx)
+    Qy = get_setting(m, :Qy)
 
     gx2 = Qy'*TTT_jump*Qx
     n_backward_looking_states_unnorm = n_backward_looking_states_unnormalized(m)
 
-    C = C_eqn'*[Matrix{Float64}(I, n_backward_looking_states_unnorm, n_backward_looking_states_unnorm); gx2]*Qx'
+    n_backward_looking_states_orig = length(stack_indices(m.endogenous_states_original, get_setting(m, :states)))
+    C = C_eqn'*[Matrix{Float64}(I, n_backward_looking_states_orig, n_backward_looking_states_orig); gx2]*Qx'
     return vec(C)
 end
