@@ -90,10 +90,44 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
             try
                 update!(m, para_new)
                 prior_new = prior(m)
-                if get_setting(m, :from_steady_state)
-                    like_new, system = likelihood(m, data; sampler = true,
-                                          use_chand_recursion = use_chand_recursion,
-                                          verbose = verbose, return_system = true)
+                from_steady_state = false
+                try
+                    #if the settings there, use the settings
+                    from_steady_state = get_setting(m, :from_steady_state)
+                catch
+                    nothing #if the settings not there, keep it as false
+                end
+                if from_steady_state
+                    ψ_penalty_new = get_setting(m, :ψ_penalty)
+                    ψ_likelihood_new = get_setting(m, :ψ_likelihood)
+                    ψ_penalty_old = get_setting(m, :ψ_penalty_old)
+                    ψ_likelihood_old = get_setting(m, :ψ_likelihood_old)
+                    target_vars = get_setting(m, :target_vars)
+                    target_σt   = get_setting(m, :target_σt)
+                    targets     = get_setting(m, :targets)
+
+                    system = try
+                        compute_system(m, verbose = verbose)
+                    catch err
+                        if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
+                            return -Inf
+                        else
+                            rethrow(err)
+                        end
+                    end
+                    try
+                        lik = chand_recursion(data, system[:TTT], system[:RRR], system[:CCC],
+                                              system[:QQ], system[:ZZ], system[:DD], system[:EE],
+                                              allout= true, Nt0 = n_presample_periods(m))[1]
+                    catch err
+                        if catchₑrrors && isa(err, DomainError)
+                            @warn "Log of incremental likelihood is negative; returning -Inf"
+                            return -Inf
+                        else
+                            rethrow(err)
+                        end
+                    end
+                        like_new = ψ_penalty_new * penalty_function(m, target_vars, targets, target_σt) + ψ_likelihood_new * lik
                 else
                     like_new = likelihood(m, data; sampler = true,
                                           use_chand_recursion = use_chand_recursion,
@@ -104,9 +138,7 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
                 end
 
                 if from_steady_state
-                    ψ_p_new = get_setting(m, :ψ_p_new)
-                    ψ_l_new = get_setting(m, :ψ_l_new)
-                    like_old_data = ψ_p_new * penalty(m, target_vars, targets, target_σt) + ψ_l_new * chand_recursion(data, system[:TTT], system[:RRR], system[:CCC], system[:QQ], system[:ZZ], system[:DD], system[:DD], system[:EE], allout= true, Nt0 = n_presample_periods(m), tol = tol)[1]
+                    like_old_data = ψ_penalty_old * penalty_function(m, target_vars, targets, target_σt) + ψ_likelihood_old * lik # chand_recursion(data, system[:TTT], system[:RRR], system[:CCC], system[:QQ], system[:ZZ], system[:DD], system[:DD], system[:EE], allout= true, Nt0 = n_presample_periods(m))[1]
                 else
                     like_old_data = isempty(old_data) ? 0. : likelihood(m, old_data; sampler = true,
                                                                         use_chand_recursion = use_chand_recursion,
@@ -124,7 +156,7 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
                     like_new = -Inf
                     like_old_data = -Inf
                 else
-                    throw(err)
+                    rethrow(err)
                 end
             end
 

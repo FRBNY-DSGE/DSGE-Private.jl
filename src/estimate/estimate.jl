@@ -73,7 +73,8 @@ function estimate(m::AbstractModel, data::AbstractArray;
                   continue_intermediate::Bool = false,
                   intermediate_stage_start::Int = 0,
                   intermediate_stage_increment::Int = 10,
-		          save_intermediate::Bool = false)
+		          save_intermediate::Bool = false,
+                  old_cloud::ParticleCloud = ParticleCloud(m, 0))
 
     if !(get_setting(m, :sampling_method) in [:SMC,:MH])
         error("method must be :SMC or :MH")
@@ -228,7 +229,8 @@ function estimate(m::AbstractModel, data::AbstractArray;
             continue_intermediate = continue_intermediate,
             intermediate_stage_start = intermediate_stage_start,
             save_intermediate = save_intermediate,
-            intermediate_stage_increment = intermediate_stage_increment)
+            intermediate_stage_increment = intermediate_stage_increment,
+            old_cloud = old_cloud)
     end
 
     ########################################################################################

@@ -158,9 +158,13 @@ function likelihood(m::AbstractModel, data::AbstractMatrix;
 
         penalty = penalty_function(m, target_vars, targets, target_σt)
 
-        if ψ_l == 0.0
+        if ψ_l == 0.0 && get_setting(m, :ψ_l_new) == 0.0
             return ψ_p * penalty
         end
+    else
+        ψ_l = 1.0
+        ψ_p = 0.0
+        penalty = 0.0
     end
 
     # Compute state-space system

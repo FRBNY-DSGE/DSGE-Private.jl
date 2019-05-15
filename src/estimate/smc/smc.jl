@@ -65,6 +65,14 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     ### Setting Parameters
     ##################################################################################
 
+    # If from_steady_state exists in setings, use that, otherwise make it false.
+    from_steady_state = false
+    try
+        from_steady_state = get_setting(m, :from_steady_state)
+    catch
+        nothing
+    end
+
     # General
     parallel = get_setting(m, :use_parallel_workers)
     n_parts  = get_setting(m, :n_particles)
@@ -123,6 +131,7 @@ function smc(m::AbstractModel, data::Matrix{Float64};
         end
     end
 
+
     if tempered_update
         if isempty(old_cloud)
             loadpath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
@@ -140,14 +149,19 @@ function smc(m::AbstractModel, data::Matrix{Float64};
                            "smc_cloud_stage=$(intermediate_stage_start).jld2", filestring_addl)
         cloud = load(loadpath, "cloud")
     else
-        # Instantiating ParticleCloud object
-        cloud = ParticleCloud(m, n_parts)
+        if from_steady_state
+            cloud = old_cloud
+            initialize_cloud_settings!(m, cloud)
+        else
+            # Instantiating ParticleCloud object
+            cloud = ParticleCloud(m, n_parts)
 
-        # Modifies the cloud object in place to update draws, loglh, & logpost
-        initial_draw!(m, data, cloud, parallel = parallel,
-                      use_chand_recursion = use_chand_recursion, verbose = verbose)
+            # Modifies the cloud object in place to update draws, loglh, & logpost
+            initial_draw!(m, data, cloud, parallel = parallel,
+                          use_chand_recursion = use_chand_recursion, verbose = verbose)
 
-        initialize_cloud_settings!(m, cloud; tempered_update = tempered_update)
+            initialize_cloud_settings!(m, cloud; tempered_update = tempered_update)
+        end
     end
 
     # Fixed schedule for construction of ϕ_prop
@@ -167,7 +181,7 @@ function smc(m::AbstractModel, data::Matrix{Float64};
         j = load(loadpath, "j")
     else
         w_matrix = zeros(n_parts, 1)
-        if tempered_update
+        if tempered_update || from_steady_state
             W_matrix = similar(w_matrix)
             for k in 1:n_parts
                 W_matrix[k] = cloud.particles[k].weight

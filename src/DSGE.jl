@@ -2,7 +2,7 @@ isdefined(Base, :__precompile__) && __precompile__()
 
 module DSGE
     using Dates, Test, BenchmarkTools
-    #using CSV,
+    #using CSV
 using DataFrames, DataStructures, OrderedCollections
     using BasisMatrices, ColorTypes, Distributed, Distributions, FileIO, FFTW, FredData, HDF5, JLD2
     using LinearAlgebra, Missings, Nullables, Optim, Printf, Random, RecipesBase
@@ -207,6 +207,14 @@ using DataFrames, DataStructures, OrderedCollections
     include("solve/solve.jl")
     include("solve/klein.jl")
 
+    include("estimate/smc/particle.jl")
+    include("estimate/smc/initialization.jl")
+    include("estimate/smc/helpers.jl")
+    include("estimate/smc/util.jl")
+    include("estimate/smc/mutation.jl")
+    include("estimate/smc/resample.jl")
+    include("estimate/smc/smc.jl")
+
     include("estimate/util.jl")
     include("estimate/kalman.jl")
     include("estimate/filter.jl")
@@ -222,13 +230,6 @@ using DataFrames, DataStructures, OrderedCollections
     include("estimate/marginal_data_density.jl")
     include("estimate/estimate.jl")
     include("estimate/nearest_spd.jl")
-    include("estimate/smc/particle.jl")
-    include("estimate/smc/initialization.jl")
-    include("estimate/smc/helpers.jl")
-    include("estimate/smc/util.jl")
-    include("estimate/smc/mutation.jl")
-    include("estimate/smc/resample.jl")
-    include("estimate/smc/smc.jl")
 
     # CT HANK code
     include("estimate/filter_hank.jl")
