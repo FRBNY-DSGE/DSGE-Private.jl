@@ -86,6 +86,20 @@ function posterior!(m::AbstractModel{T}, parameters::Vector{T}, data::AbstractAr
 
 end
 
+function penalty_function(m, target_vars, targets, target_σt)
+    penalty = 0.0
+    for (var, target, σt) in zip(target_vars, targets, target_σt)
+        try
+            penalty +=  -0.5 * (log(target) - log(m[var].value))^2 / σt^2
+        catch err
+            println(err)
+            return -Inf
+        end
+    end
+    return penalty
+end
+
+
 """
 ```
 likelihood(m::AbstractModel, data::Matrix{T};
@@ -113,7 +127,83 @@ function likelihood(m::AbstractModel, data::AbstractMatrix;
                     catch_errors::Bool = false,
                     use_chand_recursion::Bool = false,
                     tol::Float64 = 0.0,
-                    verbose::Symbol = :high) where {T<:AbstractFloat}
+                    verbose::Symbol = :high, return_system::Bool = false) where {T<:AbstractFloat}
+    catch_errors = catch_errors | sampler
+    use_penalty  = try get_setting(m, :use_likelihood_penalty) catch; false end
+    auto_reject  = try get_setting(m, :auto_reject) catch; false end
+
+    if auto_reject
+        m <= Setting(:auto_reject, false)
+        return -Inf
+    end
+
+    # During Metropolis-Hastings, return -∞ if any parameters are not within their bounds
+    if sampler
+        for θ in m.parameters
+            (left, right) = θ.valuebounds
+            if !θ.fixed && !(left <= θ.value <= right)
+                return -Inf
+            end
+        end
+    end
+
+    # Likelihood penalties
+    #ψ_l, ψ_p, penalty = 1.0, 1.0, 0.0
+    if use_penalty
+        ψ_l         = get_setting(m, :ψ_likelihood)
+        ψ_p         = get_setting(m, :ψ_penalty)
+        target_vars = get_setting(m, :target_vars)
+        target_σt   = get_setting(m, :target_σt)
+        targets     = get_setting(m, :targets)
+
+        penalty = penalty_function(m, target_vars, targets, target_σt)
+
+        if ψ_l == 0.0
+            return ψ_p * penalty
+        end
+    end
+
+    # Compute state-space system
+    system = try
+        compute_system(m, verbose = verbose)
+    catch err
+        if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
+            return -Inf
+        else
+            rethrow(err)
+        end
+    end
+
+    # Return total log-likelihood, excluding the presample
+    try
+        if use_chand_recursion==false
+            total_lik = sum(filter_likelihood(m, data, system;
+                                              include_presample = false, tol = tol))
+        else
+            total_lik =  chand_recursion(data, system[:TTT], system[:RRR], system[:CCC],
+                                         system[:QQ], system[:ZZ], system[:DD], system[:EE];
+                                         allout = true, Nt0 = n_presample_periods(m),
+                                         tol = tol)[1]
+        end
+        if return_system
+            return ψ_l * total_lik +ψ_p * penalty, system
+        else
+            return ψ_l * total_lik +ψ_p * penalty
+        end
+
+    catch err
+        if catch_errors && isa(err, DomainError)
+            @warn "Log of incremental likelihood is negative; returning -Inf"
+            return -Inf
+        else
+            rethrow(err)
+        end
+    end
+end
+
+#=
+function smc_likelihood(m::AbstractModel, data::Matrix{Float64}, para_new, sampler::Bool = true, use_chand_recursion::Bool = true, verbose::Symbol = :low, temper::Bool = false)
+
     catch_errors = catch_errors | sampler
     use_penalty  = try get_setting(m, :use_likelihood_penalty) catch; false end
     auto_reject  = try get_setting(m, :auto_reject) catch; false end
@@ -166,7 +256,7 @@ function likelihood(m::AbstractModel, data::AbstractMatrix;
         end
     end
 
-    # Return total log-likelihood, excluding the presample
+ # Return total log-likelihood, excluding the presample
     try
         if use_chand_recursion==false
             return ψ_l * sum(filter_likelihood(m, data, system;
@@ -174,9 +264,9 @@ function likelihood(m::AbstractModel, data::AbstractMatrix;
                                                    ψ_p * penalty
         else
             return ψ_l * chand_recursion(data, system[:TTT], system[:RRR], system[:CCC],
-                                   system[:QQ], system[:ZZ], system[:DD], system[:EE];
-                                   allout = true, Nt0 = n_presample_periods(m),
-                                   tol = tol)[1] + ψ_p * penalty
+                                         system[:QQ], system[:ZZ], system[:DD], system[:EE];
+                                         allout = true, Nt0 = n_presample_periods(m),
+                                         tol = tol)[1] + ψ_p * penalty
         end
     catch err
         if catch_errors && isa(err, DomainError)
@@ -186,4 +276,19 @@ function likelihood(m::AbstractModel, data::AbstractMatrix;
             rethrow(err)
         end
     end
+
+aaaa
+
+    like_new = likelihood(m, data; sampler = true,
+                          use_chand_recursion = use_chand_recursion,
+                          verbose = verbose)
+    if like_new == -Inf
+        prior_new = like_old_data = -Inf
+    end
+    like_old_data = (temper==false) ? 0. : likelihood(m, old_data; sampler = true,
+                                                        use_chand_recursion = use_chand_recursion,
+                                                        verbose = verbose)
+
+
 end
+=#

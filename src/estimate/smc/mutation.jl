@@ -90,15 +90,28 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
             try
                 update!(m, para_new)
                 prior_new = prior(m)
-                like_new = likelihood(m, data; sampler = true,
-                                      use_chand_recursion = use_chand_recursion,
-                                      verbose = verbose)
+                if get_setting(m, :from_steady_state)
+                    like_new, system = likelihood(m, data; sampler = true,
+                                          use_chand_recursion = use_chand_recursion,
+                                          verbose = verbose, return_system = true)
+                else
+                    like_new = likelihood(m, data; sampler = true,
+                                          use_chand_recursion = use_chand_recursion,
+                                          verbose = verbose)
+                end
                 if like_new == -Inf
                     prior_new = like_old_data = -Inf
                 end
-                like_old_data = isempty(old_data) ? 0. : likelihood(m, old_data; sampler = true,
-                                                                    use_chand_recursion = use_chand_recursion,
-                                                                    verbose = verbose)
+
+                if from_steady_state
+                    ψ_p_new = get_setting(m, :ψ_p_new)
+                    ψ_l_new = get_setting(m, :ψ_l_new)
+                    like_old_data = ψ_p_new * penalty(m, target_vars, targets, target_σt) + ψ_l_new * chand_recursion(data, system[:TTT], system[:RRR], system[:CCC], system[:QQ], system[:ZZ], system[:DD], system[:DD], system[:EE], allout= true, Nt0 = n_presample_periods(m), tol = tol)[1]
+                else
+                    like_old_data = isempty(old_data) ? 0. : likelihood(m, old_data; sampler = true,
+                                                                        use_chand_recursion = use_chand_recursion,
+                                                                        verbose = verbose)
+                end
             catch err
                 if isa(err, ParamBoundsError)
                     prior_new = like_new = like_old_data = -Inf

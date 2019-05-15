@@ -1,9 +1,9 @@
 using DSGE, JLD2, Distributions, PDMats, DataStructures, OrderedCollections, FileIO, Test, DataFrames, Dates, Nullables, Plots, Distributed, DelimitedFiles, Random
 
 my_tests = [
-            "models/heterogeneous_agent/het_dsge_gov_debt/het_dsge_gov_debt",
+            #"models/heterogeneous_agent/het_dsge_gov_debt/het_dsge_gov_debt",
 #           "models/heterogeneous_agent/het_dsge_simple_taylor/het_dsge_simple_taylor",
-           "models/heterogeneous_agent/het_dsge/het_dsge",
+           #"models/heterogeneous_agent/het_dsge/het_dsge",
            #"models/heterogeneous_agent/het_dsge_lag/het_dsge_lag",
            "core",
            "parameters",
@@ -15,13 +15,13 @@ my_tests = [
            "models/representative_agent/m1010/m1010",
            "models/heterogeneous_agent/krusell_smith/krusell_smith",
            "models/heterogeneous_agent/bond_labor/bond_labor",=#
-           "models/heterogeneous_agent/real_bond/real_bond",
-           "models/heterogeneous_agent/real_bond_mkup/real_bond_mkup",
+           #"models/heterogeneous_agent/real_bond/real_bond",
+           #"models/heterogeneous_agent/real_bond_mkup/real_bond_mkup",
            # "models/heterogeneous_agent/krusell_smith_ct/krusell_smith_ct",
            # "models/heterogeneous_agent/one_asset_hank/one_asset_hank",
            # "models/heterogeneous_agent/one_asset_hank/interns",
-           "data/misc",
-           "data/load_data",
+           #"data/misc",
+           #"data/load_data",
            "solve/gensys",
            "solve/solve",
            # "solve/solve_ct",
