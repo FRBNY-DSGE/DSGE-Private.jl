@@ -60,7 +60,9 @@ function smc(m::AbstractModel, data::Matrix{Float64};
              continue_intermediate::Bool = false,
              intermediate_stage_start::Int = 0,
              save_intermediate::Bool = false,
-             intermediate_stage_increment::Int = 10)
+             intermediate_stage_increment::Int = 10,
+             continue_intermediate_w_fixed::Bool = false,
+             loadpath_override::String = "")
     ########################################################################################
     ### Setting Parameters
     ##################################################################################
@@ -136,8 +138,10 @@ function smc(m::AbstractModel, data::Matrix{Float64};
         initialize_likelihoods!(m, data, cloud, parallel = parallel,
                                 verbose = verbose)
     elseif continue_intermediate
-        loadpath = rawpath(m, "estimate",
-                           "smc_cloud_stage=$(intermediate_stage_start).jld2", filestring_addl)
+        loadpath = rawpath(m, "estimate", "smc_cloud_stage=$(intermediate_stage_start).jld2", filestring_addl)
+        cloud = load(loadpath, "cloud")
+    elseif continue_intermediate_w_fixed
+        loadpath = isempty(loadpath_override) ? rawpath(m, "estimate", "smc_cloud_stage=$(intermediate_stage_start).jld2", filestring_addl) : loadpath_override
         cloud = load(loadpath, "cloud")
     else
         # Instantiating ParticleCloud object
@@ -151,7 +155,7 @@ function smc(m::AbstractModel, data::Matrix{Float64};
     end
 
     # Fixed schedule for construction of ϕ_prop
-    if use_fixed_schedule
+    if use_fixed_schedule && !continue_intermediate_w_fixed
         cloud.tempering_schedule = ((collect(1:n_Φ) .- 1) / (n_Φ-1)) .^ λ
     else
         proposed_fixed_schedule  = ((collect(1:n_Φ) .- 1) / (n_Φ-1)) .^ λ
@@ -167,6 +171,19 @@ function smc(m::AbstractModel, data::Matrix{Float64};
         j = load(loadpath, "j")
 
         ϕ_prop = proposed_fixed_schedule[j]
+    elseif continue_intermediate_w_fixed
+        w_matrix = load(loadpath, "w")
+        W_matrix = load(loadpath, "W")
+        z_matrix = load(loadpath, "z")
+
+        i = cloud.stage_index
+
+        # Construct the hybrid adaptive-to-fixed schedule
+        ϕ_n1 = cloud.tempering_schedule[end]
+        first_fixed_ϕ_index = findfirst(ϕ -> ϕ > ϕ_n1, proposed_fixed_schedule)
+
+        cloud.tempering_schedule = vcat(cloud.tempering_schedule, proposed_fixed_schedule[first_fixed_ϕ_index:end])
+        cloud.n_Φ = length(cloud.tempering_schedule)
     else
         w_matrix = zeros(n_parts, 1)
         if tempered_update
