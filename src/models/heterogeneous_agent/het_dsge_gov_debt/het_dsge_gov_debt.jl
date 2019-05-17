@@ -157,8 +157,9 @@ function init_model_indices!(m::HetDSGEGovDebt, states::Vector{Symbol}, jumps::V
 end
 
 function HetDSGEGovDebt(subspec::String="ss0";
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing = false, testing_gamma::Bool = false)
+                        custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                        testing = false, testing_gamma::Bool = false,
+                        ref_dir = "")
 
     # Model-specific specifications
     spec               = "het_dsge"
@@ -193,6 +194,7 @@ function HetDSGEGovDebt(subspec::String="ss0";
             OrderedDict{Symbol,Observable}())
 
     default_settings!(m)
+    m <= Setting(:ref_dir, ref_dir, "Absolute filepath to reference directory")
 
     # # Set observable transformations
     init_observable_mappings!(m)
@@ -309,7 +311,8 @@ function init_parameters!(m::HetDSGEGovDebt, testing_gamma::Bool)
     m <= parameter(:β_save, 0.0, fixed = true,
                    description = "saving the betas per particle",
                    tex_label = "\\beta_save")
-    m <= parameter(:sH_over_sL, 6.33333, fixed = true,
+    m <= parameter(:sH_over_sL, 6.33333, (3.0, 9.0), (3.0, 9.0), Untransformed(),
+                   Uniform(3.0, 9.0), fixed = true,
                    description = "Ratio of high to low earners", tex_label = "s_H / s_L")
 
     m <= parameter(:pLH, 0.005, (0.0025, 0.095), (0.0025, 0.095), Untransformed(),
@@ -321,17 +324,26 @@ function init_parameters!(m::HetDSGEGovDebt, testing_gamma::Bool)
                    description = "Prob of going from high to low persistent skill",
                    tex_label = "p(s_H \\mid s_L)")
 
-    m <= parameter(:BoverY, 0.26, fixed = true, description = "???", tex_label = "B / Y")
+    m <= parameter(:BoverY, 0.26, fixed = true, description = "B / Y", tex_label = "B / Y")
 
-    m <= parameter(:zlo, 0.0323232, fixed = true,
+    m <= parameter(:zlo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+                   Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
+
     m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 
-    m <= parameter(:mpc, 0.23395, fixed = true, tex_label = "MPC")
-    m <= parameter(:pc0, 0.071893, fixed = true, tex_label = "pc0")
+    m <= parameter(:mpc, 0.23395,  fixed = true, tex_label = "MPC")
+    m <= parameter(:pc0, 0.071893, fixed = true, description = "Number of people at 0 income",
+                   tex_label = "pc0")
+
+    # Give model new parameters
+    m <= parameter(:varlinc, 0.0, fixed = true, tex_label = "varlinc",
+                   description = "var(log(annual income))")
+    m <= parameter(:vardlinc, 0.0, fixed = true, tex_label = "vardlinc",
+                   description = "var(log(deviations in annual income))")
 
     # Not in m1002
     m <= parameter(:η, 0.0, description = "η: Borrowing constraint (normalized by TFP)",
@@ -611,8 +623,6 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:poor_man_reduc, true) #note that we're actually doing more than the "poor man reduction" now however this turns ont both poorman truncation and binning reduction
 
     # Set targets
-    m <= Setting(:targets, [0.16, 0.10],
-                 "Targets for: [MPC, proportion of individuals with 0 income]")
     m <= Setting(:calibration_targets, [0.7, 0.23],
                  "Targets for: [var(log(annual income)), var(one year changes in " *
                  "log(annual income))]")
@@ -626,11 +636,17 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:ψ_penalty, 1.0,
                  "Multiplier on likelihood in penalty function")
 
+    m <= Setting(:targets, [0.16, 0.10],
+                 "Targets for: [MPC, proportion of individuals with 0 income]")
     m <= Setting(:target_vars, [:mpc, :pc0], "Symbols of variables we're targeting")
     m <= Setting(:target_σt, [0.2, 0.1], "Target \\sigma_t for MPC and pc0")
 
+    m <= Setting(:calibrate_income_targets, true, "Calibrate for varlinc and vardlinc")
     m <= Setting(:steady_state_only, false, "Testing setting")
     m <= Setting(:auto_reject, false, "This flag is set when policy function doesn't converge")
+
+    m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_zs.jld2","us"))
+    m <= Setting(:zs, load(get_setting(m, :ref_dir) * "/us_zs.jld2","zs"))
 
     # Misc
     m <= Setting(:trunc_distr, false)
@@ -845,7 +861,6 @@ function init_states_and_jumps!(m::AbstractModel, states::Vector{Symbol}, jumps:
                  "Number of 'states' in the state space model. Because backward and forward
                  looking variables need to be explicitly tracked for the Klein solution
                  method, we have n_states and n_jumps")
-
 end
 
 function reset_grids!(m)
@@ -853,7 +868,6 @@ function reset_grids!(m)
     m <= Setting(:nx2_state, 300)
     m <= Setting(:nx1_jump, 300)
     m <= Setting(:nx2_jump, 300)
-
 
     setup_indices!(m)
 
