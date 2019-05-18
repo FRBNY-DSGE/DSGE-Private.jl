@@ -587,9 +587,9 @@ function savepath(dir::String,
                   file_name::String = "",
                   filestring_base::Vector{String} = Vector{String}(),
                   filestring_addl::Vector{String} = Vector{String}())
-    if !isdir(dir)
+#=    if !isdir(dir)
         mkpath(dir)
-    end
+    end =#
 
     if !isempty(file_name)
         (base, ext) = splitext(file_name)
