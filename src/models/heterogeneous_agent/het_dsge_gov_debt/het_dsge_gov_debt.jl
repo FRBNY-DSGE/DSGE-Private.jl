@@ -604,6 +604,7 @@ function model_settings!(m::HetDSGEGovDebt)
                  overwritten once the Jacobian is calculated.")
 
     m <= Setting(:policy_damp, 0.5, "Dampening parameter for policy function iteration")
+    m <= Setting(:policy_maxit, 500, true, "maxit", "Maximum number of iterations in policy function")
 
     # Mollifier setting parameters
     m <= Setting(:In, 0.443993816237631, "Normalizing constant for the mollifier")
