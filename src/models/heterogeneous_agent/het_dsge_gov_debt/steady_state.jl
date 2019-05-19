@@ -128,14 +128,16 @@ function find_steadystate!(m::HetDSGEGovDebt;
 
         c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, βlo_temp, R, ω, H, η, T, γ,
                                                        zhi, zlo, xgrid, sgrid, xswts, Win_guess,
-                                                       f, damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
+                                                       f, damp = get_setting(m, :policy_damp),
+                                                       maxit = get_setting(m, :policy_maxit))
         excess_lo, μ = compute_excess(xswts, KF, bp, bg)
 
         if excess_lo < 0 && abs(excess_lo) > tol
             βlo = βlo_temp
             c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, βhi_temp, R, ω, H, η, T, γ, zhi,
                                                            zlo, xgrid, sgrid, xswts, Win_guess, f,
-                                                           damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
+                                                           damp = get_setting(m, :policy_damp),
+                                                           maxit = get_setting(m, :policy_maxit))
             excess_hi, μ = compute_excess(xswts, KF, bp, bg)
 
             if excess_hi > 0
@@ -150,7 +152,8 @@ function find_steadystate!(m::HetDSGEGovDebt;
         β = (βlo + βhi) / 2.0
         c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, β, R, ω, H, η, T, γ, zhi, zlo,
                                                        xgrid, sgrid, xswts, Win_guess, f,
-                                                       damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
+                                                       damp = get_setting(m, :policy_damp),
+                                                       maxit = get_setting(m, :policy_maxit))
         excess, μ = compute_excess(xswts, KF, bp, bg)
         # bisection
         if excess > 0
@@ -303,8 +306,8 @@ end
 function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
                                T::S, γ::S, zhi::S, zlo::S, xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
-                               f::Matrix{S}, dist::S = 1., tol::S = 1e-4,
-                               maxit::Int64 = 500; damp::S = 0.5) where {S<:AbstractFloat}
+                               f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
+                               damp::S = 0.5, maxit::Int64 = 500) where {S<:AbstractFloat}
     n    = nx*ns
     c    = zeros(n)                  # consumption
     bp   = Vector{Float64}(undef, n) # savings
