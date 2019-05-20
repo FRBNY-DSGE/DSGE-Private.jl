@@ -331,7 +331,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
                                T::S, γ::S, zhi::S, zlo::S, xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
                                f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
-                               damp::S = 0.5, maxit::Int64 = 500) where {S<:AbstractFloat}
+                               maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
     n    = nx*ns
     c    = zeros(n)                  # consumption
     bp   = Vector{Float64}(undef, n) # savings
