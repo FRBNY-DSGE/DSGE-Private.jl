@@ -2,7 +2,9 @@ isdefined(Base, :__precompile__) && __precompile__()
 
 module DSGE
     using Dates, Test, BenchmarkTools
-    using Distributed, Distributions, FileIO, FredData, HDF5, JLD2, LinearAlgebra, Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions, StateSpaceRoutines, StatsPlots
+    using Distributed, Distributions, FileIO, FredData, HDF5, JLD2, LinearAlgebra, Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions, StateSpaceRoutines
+    using Colors
+    #  using Plots
     using CSV, DataFrames, DataStructures, OrderedCollections
     using DataStructures: SortedDict, insert!, ForwardOrdering
     using QuantEcon: solve_discrete_lyapunov
@@ -134,11 +136,11 @@ module DSGE
         read_scenario_mb,
         count_scenario_draws,
 
-        # plot/
-        plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
-        plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
-        plot_posterior_intervals, plot_posterior_interval_comparison,
-        plot_forecast_decomposition,
+        #  # plot/
+        #  plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
+        #  plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
+        #  plot_posterior_intervals, plot_posterior_interval_comparison,
+        #  plot_forecast_decomposition,
 
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
@@ -231,17 +233,17 @@ module DSGE
     include("scenarios/switching.jl")
     include("scenarios/transform.jl")
 
-    include("plot/util.jl")
-    include("plot/plot_posterior_intervals.jl")
-    include("plot/plot_prior_posterior.jl")
-    include("plot/plot_impulse_response.jl")
-    include("plot/plot_history_and_forecast.jl")
-    include("plot/hair_plot.jl")
-    include("plot/plot_forecast_comparison.jl")
-    include("plot/plot_shock_decomposition.jl")
-    include("plot/plot_altpolicies.jl")
-    include("plot/plot_scenario.jl")
-    include("plot/plot_forecast_decomposition.jl")
+    #  include("plot/util.jl")
+    #  include("plot/plot_posterior_intervals.jl")
+    #  include("plot/plot_prior_posterior.jl")
+    #  include("plot/plot_impulse_response.jl")
+    #  include("plot/plot_history_and_forecast.jl")
+    #  include("plot/hair_plot.jl")
+    #  include("plot/plot_forecast_comparison.jl")
+    #  include("plot/plot_shock_decomposition.jl")
+    #  include("plot/plot_altpolicies.jl")
+    #  include("plot/plot_scenario.jl")
+    #  include("plot/plot_forecast_decomposition.jl")
 
     include("models/financial_frictions.jl")
 
