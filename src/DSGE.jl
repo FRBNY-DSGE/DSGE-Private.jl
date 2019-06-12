@@ -8,7 +8,7 @@ module DSGE
     using QuantEcon: solve_discrete_lyapunov
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample, Weights
-    using StatsFuns: chisqinvcdf
+#    using StatsFuns: chisqinvcdf
     import Base: isempty
     import Calculus
     import LinearAlgebra: rank
