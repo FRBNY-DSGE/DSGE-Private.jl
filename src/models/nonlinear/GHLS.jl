@@ -117,36 +117,26 @@ Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 function init_model_indices!(m::GHLS)
     # Endogenous states
     endogenous_states = [[
-        :y_t, :c_t, :i_t, :qk_t, :k_t, :kbar_t, :u_t, :rk_t, :mc_t,
-        :π_t, :μ_ω_t, :w_t, :L_t, :R_t, :g_t, :b_t, :μ_t, :z_t,
-        :λ_f_t, :λ_f_t1, :λ_w_t, :λ_w_t1, :rm_t, :Ec_t, :Eqk_t, :Ei_t,
-        :Eπ_t, :EL_t, :Erk_t, :Ew_t, :y_f_t, :c_f_t,
-        :i_f_t, :qk_f_t, :k_f_t, :kbar_f_t, :u_f_t, :rk_f_t, :w_f_t,
-        :L_f_t, :r_f_t, :Ec_f_t, :Eqk_f_t, :Ei_f_t, :EL_f_t, :Erk_f_t, :ztil_t];
+        :k_t, :c_t, :i_t, :w_t, :rm_t, :π_t, :y_t, :x_t, :R_t, :λc, :qk_t, :L_t, :u_t, :mc_t, :rk_t, :muc_t, :Vi_t, :Vp_t, :Vw_t, :π_w, :bc_t, :bi_t, :b_t, :μ_t, :ztil_t, :mon_t, :g_t, :elast_t, :elastw_t, :unk_t, :y_t1, :c_t1, :i_t1, :w_t1, :Ei_t, :Erk_t, :Ec_t, :Evw_t, :Etechshock_t, :Eπ_t, :Eqk_t, :Eλ_c];
         [Symbol("rm_tl$i") for i = 1:n_anticipated_shocks(m)]]
 
     # Exogenous shocks
     exogenous_shocks = [[
-        :g_sh, :b_sh, :μ_sh, :z_sh, :λ_f_sh, :λ_w_sh, :rm_sh];
+        :b_sh, :μ_sh, :ztil_sh, :rm_sh, :g_sh, :elast_sh, :elastw_sh, :unk_sh];
         [Symbol("rm_shl$i") for i = 1:n_anticipated_shocks(m)]]
 
-    # Expectations shocks
+    # Expectations shocks - WHAT ARE THESE?
     expected_shocks = [
         :Ec_sh, :Eqk_sh, :Ei_sh, :Eπ_sh, :EL_sh, :Erk_sh, :Ew_sh, :Ec_f_sh,
         :Eqk_f_sh, :Ei_f_sh, :EL_f_sh, :Erk_f_sh]
 
     # Equilibrium conditions
     equilibrium_conditions = [[
-        :eq_euler, :eq_inv, :eq_capval, :eq_output, :eq_caputl, :eq_capsrv, :eq_capev,
-        :eq_mkupp, :eq_phlps, :eq_caprnt, :eq_msub, :eq_wage, :eq_mp, :eq_res, :eq_g, :eq_b, :eq_μ, :eq_z,
-        :eq_λ_f, :eq_λ_w, :eq_rm, :eq_λ_f1, :eq_λ_w1, :eq_Ec,
-        :eq_Eqk, :eq_Ei, :eq_Eπ, :eq_EL, :eq_Erk, :eq_Ew, :eq_euler_f, :eq_inv_f,
-        :eq_capval_f, :eq_output_f, :eq_caputl_f, :eq_capsrv_f, :eq_capev_f, :eq_mkupp_f, :eq_caprnt_f, :eq_msub_f,
-        :eq_res_f, :eq_Ec_f, :eq_Eqk_f, :eq_Ei_f, :eq_EL_f, :eq_Erk_f, :eq_ztil];
+        :eq_capval, :eq_euler, :eq_inv, :eq_wage, :eq_mp, :eq_phlps, :eq_output, :eq_outgap, :eq_mp, :eq_λc, :eq_tobq, :eq_L, :eq_caputil,:eq_mcost, :eq_capsrv, :eq_muc, :eq_vi, :eq_vp, :eq_vw, :eq_π_w, :eq_bc, :eq_bi, :eq_b, :eq_μ, :eq_ztil, :eq_mon, :eq_g, :eq_elast, :eq_elastw, :eq_unk, :eq_Ei, :eq_Erk, :eq_Ec, :eq_EVw, :eq_Ez, :eq_Eπ, :eq_Eqk, :eq_Eλc];
         [Symbol("eq_rml$i") for i=1:n_anticipated_shocks(m)]]
 
     # Additional states added after solving model
-    # Lagged states and observables measurement error
+    # Lagged states and observables measurement error - WHAT ARE THESE?
     endogenous_states_augmented = [
         :y_t1, :c_t1, :i_t1, :w_t1, :π_t1, :L_t1, :Et_π_t]
 
@@ -374,19 +364,27 @@ function init_parameters!(m::GHLS)
     m <= parameter(:e_i, 0.0, fixed = true, description = "e_i: Measurement error on investment", tex_label = "e_i")
 
 
-    # steady states
-    m <= SteadyStateParameter(:zstar, NaN, description="Steady-state growth rate of productivity", tex_label="\\z_*")
-    m <= SteadyStateParameter(:rss, NaN, tex_label="\\r_*")
-    m <= SteadyStateParameter(:Rstarn, NaN, tex_label="\\R_*_n")
-    m <= SteadyStateParameter(:rkss, NaN, tex_label="\\r^k_*")
-    m <= SteadyStateParameter(:wstar, NaN, tex_label="\\w_*")
-    m <= SteadyStateParameter(:Lstar, NaN, tex_label="\\L_*")
-    m <= SteadyStateParameter(:kss, NaN, description="Effective capital that households rent to firms in the steady state.", tex_label="\\k_*")
-    m <= SteadyStateParameter(:kbarstar, NaN, description="Total capital owned by households in the steady state.", tex_label="\\bar{k}_*")
-    m <= SteadyStateParameter(:istar, NaN, description="Detrended steady-state investment", tex_label="\\i_*")
-    m <= SteadyStateParameter(:ystar, NaN, tex_label="\\y_*")
-    m <= SteadyStateParameter(:cstar, NaN, tex_label="\\c_*")
-    m <= SteadyStateParameter(:wl_c, NaN, tex_label="\\wl_c")
+    # Steady states
+    m <= SteadyStateParameter(:gg, NaN, description="Steady-state government spending", tex_label="g")
+    m <= SteadyStateParameter(:gamtil, NaN, tex_label="gamtil")
+    m <= SteadyStateParameter(:mc, NaN, description="Steady-state marginal cost of capital", tex_label="mc")
+    m <= SteadyStateParameter(:k2yrat, NaN, description="Steady-state capital to output ratio", tex_label="\\frac{\\bar{k}}{y}")
+    m <= SteadyStateParameter(:shriy, NaN, description="Steady-state investment to output ratio", tex_label="\\frac{i}{y}")
+    m <= SteadyStateParameter(:shrcy, NaN, description="Steady-state consumption to output ratio", tex_label="\\frac{c}{y}")
+    m <= SteadyStateParameter(:labss, NaN, description="Steady-state hours", tex_label="N")
+    m <= SteadyStateParameter(:κ_w, NaN, tex_label="\\kappa_{w}")
+    m <= SteadyStateParameter(:κ_p, NaN, tex_label="\\kappa_{p}")
+    m <= SteadyStateParameter(:kss, NaN, description="Steady-state capital", tex_label="\\bar{\\kappa}")
+    m <= SteadyStateParameter(:gdpss, NaN, description="Steady-state output", tex_label="y")
+    m <= SteadyStateParameter(:invss, NaN, description="Steady-state investment", tex_label="i")
+    m <= SteadyStateParameter(:phii_jpt, NaN, tex_label="phii_jpt")
+    m <= SteadyStateParameter(:css, NaN, description="Steady-state consumption", tex_label="c")
+    m <= SteadyStateParameter(:rwss, NaN, description="Steady-state real wage", tex_label="rw")
+    m <= SteadyStateParameter(:mucss, NaN, description="Steady-state marginal utility of consumption", tex_label="muc")
+    m <= SteadyStateParameter(:lamss, NaN, description="Steady-state lagrange multiplier on  consumption", tex_label="\\lambda")
+    m <= SteadyStateParameter(:rss, NaN, description="Steady-state interest rate", tex_label="R")
+    m <= SteadyStateParameter(:rkss, NaN, description="Steady-state rental rate of capital", tex_label="rk")
+    m <= SteadyStateParameter(:bw, NaN, tex_label="bw")
 end
 
 """
@@ -450,13 +448,14 @@ Returns a `Vector{ShockGroup}`, which must be passed in to
 function shock_groupings(m::GHLS)
     gov = ShockGroup("g", [:g_sh], RGB(0.70, 0.13, 0.13)) # firebrick
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
-    tfp = ShockGroup("z", [:z_sh], RGB(1.0, 0.55, 0.0)) # darkorange
-    pmu = ShockGroup("p-mkp", [:λ_f_sh], RGB(0.60, 0.80, 0.20)) # yellowgreen
-    wmu = ShockGroup("w-mkp", [:λ_w_sh], RGB(0.0, 0.5, 0.5)) # teal
-    pol = ShockGroup("pol", vcat([:rm_sh], [Symbol("rm_shl$i") for i = 1:n_anticipated_shocks(m)]),
+    tfp = ShockGroup("z", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+    rm = ShockGroup("rm", [:rm_sh], RGB(0.60, 0.80, 0.20)) # yellowgreen
+    elast = ShockGroup("elast_sh", [:elast_sh], RGB(0.0, 0.5, 0.5)) # teal
+    elastw = ShockGroup("elastw", vcat([:elastw_sh], [Symbol("rm_shl$i") for i = 1:n_anticipated_shocks(m)]),
                      RGB(1.0, 0.84, 0.0)) # gold
     mei = ShockGroup("mu", [:μ_sh], :cyan)
-    det = ShockGroup("dt", [:dettrend], :gray40)
+    unk = ShockGroup("unk", [:unk_sh], :gray40)
 
     return [gov, bet, tfp, pmu, wmu, pol, mei, det]
 end
+        :b_sh, :μ_sh, :ztil_sh, :rm_sh, :g_sh, :elast_sh, :elastw_sh, :unk_sh];
