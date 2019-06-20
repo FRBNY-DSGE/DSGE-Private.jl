@@ -117,7 +117,7 @@ Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 function init_model_indices!(m::GHLS)
     # Endogenous states
     endogenous_states = [[
-        :k_t, :c_t, :i_t, :w_t, :rm_t, :π_t, :y_t, :x_t, :R_t, :λc, :qk_t, :L_t, :u_t, :mc_t, :rk_t, :muc_t, :Vi_t, :Vp_t, :Vw_t, :π_w, :bc_t, :bi_t, :b_t, :μ_t, :ztil_t, :mon_t, :g_t, :elast_t, :elastw_t, :unk_t, :y_t1, :c_t1, :i_t1, :w_t1, :Ei_t, :Erk_t, :Ec_t, :Evw_t, :Etechshock_t, :Eπ_t, :Eqk_t, :Eλ_c];
+        :k_t, :c_t, :i_t, :w_t, :rm_t, :π_t, :y_t, :x_t, :R_t, :λc, :qk_t, :L_t, :u_t, :mc_t, :rk_t, :muc_t, :Vi_t, :Vp_t, :Vw_t, :π_w, :bc_t, :bi_t, :b_t, :μ_t, :ztil_t, :mon_t, :g_t, :elast_t, :elastw_t, :unk_t, :y_t1, :c_t1, :i_t1, :w_t1, :Ei_t, :Erk_t, :Ec_t, :EVw_t, :Etechshock_t, :Eπ_t, :Eqk_t, :Eλ_c];
         [Symbol("rm_tl$i") for i = 1:n_anticipated_shocks(m)]]
 
     # Exogenous shocks
@@ -126,13 +126,11 @@ function init_model_indices!(m::GHLS)
         [Symbol("rm_shl$i") for i = 1:n_anticipated_shocks(m)]]
 
     # Expectations shocks - WHAT ARE THESE?
-    expected_shocks = [
-        :Ec_sh, :Eqk_sh, :Ei_sh, :Eπ_sh, :EL_sh, :Erk_sh, :Ew_sh, :Ec_f_sh,
-        :Eqk_f_sh, :Ei_f_sh, :EL_f_sh, :Erk_f_sh]
+    expected_shocks = [:Ei_sh, :Erk_sh, :Ec_sh, :EVw_sh, :Etechshock_sh, :Eπ_sh, :Eqk_sh, :Eλc_sh]
 
     # Equilibrium conditions
     equilibrium_conditions = [[
-        :eq_capval, :eq_euler, :eq_inv, :eq_wage, :eq_mp, :eq_phlps, :eq_output, :eq_outgap, :eq_mp, :eq_λc, :eq_tobq, :eq_L, :eq_caputil,:eq_mcost, :eq_capsrv, :eq_muc, :eq_vi, :eq_vp, :eq_vw, :eq_π_w, :eq_bc, :eq_bi, :eq_b, :eq_μ, :eq_ztil, :eq_mon, :eq_g, :eq_elast, :eq_elastw, :eq_unk, :eq_Ei, :eq_Erk, :eq_Ec, :eq_EVw, :eq_Ez, :eq_Eπ, :eq_Eqk, :eq_Eλc];
+        :eq_capval, :eq_euler, :eq_inv, :eq_wage, :eq_mp, :eq_phlps, :eq_output, :eq_outgap, :eq_mp, :eq_λc, :eq_tobq, :eq_L, :eq_caputil,:eq_mcost, :eq_capsrv, :eq_muc, :eq_vi, :eq_vp, :eq_vw, :eq_π_w, :eq_bc, :eq_bi, :eq_laggdp, :eq_lagcc, :eq_lagit, :eq_lagwage, :eq_b, :eq_μ, :eq_ztil, :eq_mon, :eq_g, :eq_elast, :eq_elastw, :eq_unk, :eq_Ei, :eq_Erk, :eq_Ec, :eq_EVw, :eq_Ez, :eq_Eπ, :eq_Eqk, :eq_Eλc];
         [Symbol("eq_rml$i") for i=1:n_anticipated_shocks(m)]]
 
     # Additional states added after solving model
@@ -229,7 +227,7 @@ function init_parameters!(m::GHLS)
                    description="ϵ_p: Steady state net price markup.",
                    tex_label="\\epsilon_p")
 
-   m <= parameter(:ϵ_w, 0.2, fixed=true, scaling=x -> 1/x + 1
+   m <= parameter(:ϵ_w, 0.2, fixed=true, scaling=x -> 1/x + 1,
                    description="ϵ_w: Steady state net wage markup.",
                    tex_label="\\epsilon_w")
 
@@ -241,7 +239,7 @@ function init_parameters!(m::GHLS)
                    description="ρ_η: Persistence of liquidity shock.",
                    tex_label="\\rho_{\\eta}")
 
-   m <= parameter(:ρ_elast, 0, fixed=true,
+   m <= parameter(:ρ_elast, 0., fixed=true,
                    description="ρ_elast: Persistence of price elasticity shock.",
                    tex_label="\\rho_elast")
 
@@ -288,8 +286,8 @@ function init_parameters!(m::GHLS)
                    tex_label="\\γ_g") #Is this correct?
 
     m <= parameter(:ρ_R, 0.3000, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
-                   description="ρ_r: Coefficient on past interest rate in the monetary policy shock process.",
-                   tex_label="\\rho_{r}")
+                   description="ρ_R: Coefficient on past interest rate in the monetary policy shock process.",
+                   tex_label="\\rho_{R}")
 
     #Endogenous Propogation Parameters
     m <= parameter(:γ, 0.7205, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.1), fixed=false,
@@ -395,19 +393,19 @@ steadystate!(m::GHLS)
 Calculates the model's steady-state values. `steadystate!(m)` must be called whenever the parameters of `m` are updated.
 """
 function steadystate!(m::GHLS)
-    m[:gg] = 1.0/(1.0-m[:shrygy])
+    m[:gg] = 1.0/(1.0-m[:shrgy])
     m[:gamtil] = m[:γ]/m[:gz]
-    m[:mc] = (m[:ϵ]-1.0)/m[:ϵ]
+    m[:mc] = (m[:ϵ_p]-1.0)/m[:ϵ_p]
     m[:k2yrat] = ((m[:mc]*m[:α])/(m[:gz]/m[:β]-(1.0-m[:δ])))*m[:gz]
     m[:shriy] = (1.0 - (1.0-m[:δ])/m[:gz])*m[:k2yrat]
     m[:shrcy] = (1.0 - m[:shrgy] - m[:shriy])
-    m[:labss] = (((m[:ϵ_w] - 1.0)/m[:ϵ_w])*(1.0-m[:α])*(1.0 - m[:β]*m[:gamtil])*((m[:ϵ]-1.0)/m[:ϵ])*(1.0/(m[:ψ_l]*(1.0 - m[:gamtil])))*(1.0/m[:shrcy]))^(1.0/(m[:σ_l]+1))
-    m[:κ_w] = ((1.0-m[:gamtil])/(1.0-m[:β]*m[:gamtil]))*m[:ϵ_w]*m[:ψ_l]*m[:labss]^(1.0+m[:σ_l])/m[:ϕ_w]
-    m[:κ_p] = (m[:ϵ]-1.0)/(m[:ϕ]*(1.0+m[:β]*(1-m[:ap])))
-    m[:kss] = m[:labss]*(m[:gz]^(m[:α]*(m[:α]-1.0)))*k2yrat^(1.0/(1.0-m[:α]))
+    m[:labss] = (((m[:ϵ_w] - 1.0)/m[:ϵ_w])*(1.0-m[:α])*(1.0 - m[:β]*m[:gamtil])*((m[:ϵ_p]-1.0)/m[:ϵ_p])*(1.0/(m[:ψ_L]*(1.0 - m[:gamtil])))*(1.0/m[:shrcy]))^(1.0/(m[:σ_L]+1))
+    m[:κ_w] = ((1.0-m[:gamtil])/(1.0-m[:β]*m[:gamtil]))*m[:ϵ_w]*m[:ψ_L]*m[:labss]^(1.0+m[:σ_L])/m[:ϕ_w]
+    m[:κ_p] = (m[:ϵ_p]-1.0)/(m[:ϕ_p]*(1.0+m[:β]*(1-m[:ap])))
+    m[:kss] = m[:labss]*(m[:gz]^(m[:α]*(m[:α]-1.0)))*m[:k2yrat]^(1.0/(1.0-m[:α]))
     m[:gdpss] = (m[:kss]/m[:gz])^m[:α]*m[:labss]^(1.0-m[:α])
     m[:invss]  = m[:shriy]*m[:gdpss]
-    m[:phii_jpt] = m[:phii]/m[:invss]
+    m[:phii_jpt] = m[:ϕ_I]/m[:invss]
     m[:css] = m[:shrcy]*m[:gdpss]
     m[:rwss] = (1.0 - m[:α])*m[:mc]*m[:gdpss]/m[:labss]
     m[:mucss] = (1.0/m[:css])*(1.0/(1.0 - m[:gamtil]))
@@ -456,6 +454,5 @@ function shock_groupings(m::GHLS)
     mei = ShockGroup("mu", [:μ_sh], :cyan)
     unk = ShockGroup("unk", [:unk_sh], :gray40)
 
-    return [gov, bet, tfp, pmu, wmu, pol, mei, det]
+    return [gov, bet, tfp, rm, elast, elastw, mei, unk]
 end
-        :b_sh, :μ_sh, :ztil_sh, :rm_sh, :g_sh, :elast_sh, :elastw_sh, :unk_sh];
