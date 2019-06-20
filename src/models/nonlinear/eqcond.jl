@@ -51,7 +51,7 @@ function eqcond(m::SmetsWouters)
     Γ0[eq[:eq_euler_f], endo[:Ec_f_t]]   = m[:β] * m[:gamtil]
     Γ0[eq[:eq_euler_f], endo[:lamc]] = -(1.0-m[:gamtil])*(1.0-m[:β]*m[:gamtil]) # Doesn't work: need to figure out what lamc is in DSGE
     Γ0[eq[:eq_euler_f], endo[:ztil_t]] = -1.0*m[:gamtil]
-    Γ0[eq[:eq_euler_f], endo[:Etechshock_t]] = m[:β] * m[:gamtil] # Doesn't work: need to igure out what E[techshock] is in DSGE
+    Γ0[eq[:eq_euler_f], endo[:Etechshock_t]] = m[:β] * m[:gamtil] # Doesn't work: need to figure out what E[techshock] is in DSGE
     Γ1[eq[:eq_euler_f], endp[:c_f_t]]    = -1.0*m[:gamtil]
 
     # Γ0[eq[:eq_euler_f], endo[:c_f_t]] = 1.
@@ -207,7 +207,7 @@ function eqcond(m::SmetsWouters)
     Γ0[eq[:eq_capsrv_f], endo[:rk_f_t]] = -1.0
     Γ0[eq[:eq_capsrv_f], endo[:ztil_t]] = 1.0 # Tech shock
 
-    Γ1[eq[:eq_capsrv_f], endo[:k_f_t]] = 1.0 # Assuming cap or kp is k_t
+    Γ1[eq[:eq_capsrv_f], endo[:k_f_t]] = 1.0 # Assuming cap or kp is k_tz
 
 
     # Γ0[eq[:eq_capsrv_f], endo[:u_f_t]]  = 1.
@@ -219,33 +219,33 @@ function eqcond(m::SmetsWouters)
     ### 7. Evolution of Capital
 
     # Sticky prices and wages
-    Γ0[eq[:eq_capev], endo[:kbar_t]] = 1.
-    Γ1[eq[:eq_capev], endo[:kbar_t]] = 1 - m[:istar]/m[:kbarstar]
-    Γ0[eq[:eq_capev], endo[:z_t]]    = 1 - m[:istar]/m[:kbarstar]
-    Γ0[eq[:eq_capev], endo[:i_t]]    = -m[:istar]/m[:kbarstar]
-    Γ0[eq[:eq_capev], endo[:μ_t]]   = -m[:istar]*m[:S′′]*exp(2*m[:zstar])*(1 + m[:β]*exp((1 - m[:σ_c])*m[:zstar]))/m[:kbarstar]
+    # Γ0[eq[:eq_capev], endo[:kbar_t]] = 1.
+    # Γ1[eq[:eq_capev], endo[:kbar_t]] = 1 - m[:istar]/m[:kbarstar]
+    # Γ0[eq[:eq_capev], endo[:z_t]]    = 1 - m[:istar]/m[:kbarstar]
+    # Γ0[eq[:eq_capev], endo[:i_t]]    = -m[:istar]/m[:kbarstar]
+    # Γ0[eq[:eq_capev], endo[:μ_t]]   = -m[:istar]*m[:S′′]*exp(2*m[:zstar])*(1 + m[:β]*exp((1 - m[:σ_c])*m[:zstar]))/m[:kbarstar]
 
     # Flexible prices and wages
-    Γ0[eq[:eq_capev_f], endo[:kbar_f_t]] = 1.
-    Γ1[eq[:eq_capev_f], endo[:kbar_f_t]] = 1 - m[:istar]/m[:kbarstar]
-    Γ0[eq[:eq_capev_f], endo[:z_t]]      = 1 - m[:istar]/m[:kbarstar]
-    Γ0[eq[:eq_capev_f], endo[:i_f_t]]    = -m[:istar]/m[:kbarstar]
-    Γ0[eq[:eq_capev_f], endo[:μ_t]]     = -m[:istar]*m[:S′′]*exp(2*m[:zstar])*(1 + m[:β]*exp((1 - m[:σ_c])*m[:zstar]))/m[:kbarstar]
+    # Γ0[eq[:eq_capev_f], endo[:kbar_f_t]] = 1.
+    # Γ1[eq[:eq_capev_f], endo[:kbar_f_t]] = 1 - m[:istar]/m[:kbarstar]
+    # Γ0[eq[:eq_capev_f], endo[:z_t]]      = 1 - m[:istar]/m[:kbarstar]
+    # Γ0[eq[:eq_capev_f], endo[:i_f_t]]    = -m[:istar]/m[:kbarstar]
+    # Γ0[eq[:eq_capev_f], endo[:μ_t]]     = -m[:istar]*m[:S′′]*exp(2*m[:zstar])*(1 + m[:β]*exp((1 - m[:σ_c])*m[:zstar]))/m[:kbarstar]
 
 
 
     ### 8. Price Markup
 
     # Sticky prices and wages
-    Γ0[eq[:eq_mkupp], endo[:mc_t]] =  1.
-    Γ0[eq[:eq_mkupp], endo[:w_t]]  = -1.
-    Γ0[eq[:eq_mkupp], endo[:L_t]]  = -m[:α]
-    Γ0[eq[:eq_mkupp], endo[:k_t]]  =  m[:α]
+    # Γ0[eq[:eq_mkupp], endo[:mc_t]] =  1.
+    # Γ0[eq[:eq_mkupp], endo[:w_t]]  = -1.
+    # Γ0[eq[:eq_mkupp], endo[:L_t]]  = -m[:α]
+    # Γ0[eq[:eq_mkupp], endo[:k_t]]  =  m[:α]
 
     # Flexible prices and wages
-    Γ0[eq[:eq_mkupp_f], endo[:w_f_t]] = 1.
-    Γ0[eq[:eq_mkupp_f], endo[:L_f_t]] =  m[:α]
-    Γ0[eq[:eq_mkupp_f], endo[:k_f_t]] =  -m[:α]
+    # Γ0[eq[:eq_mkupp_f], endo[:w_f_t]] = 1.
+    # Γ0[eq[:eq_mkupp_f], endo[:L_f_t]] =  m[:α]
+    # Γ0[eq[:eq_mkupp_f], endo[:k_f_t]] =  -m[:α]
 
 
 
@@ -271,35 +271,35 @@ function eqcond(m::SmetsWouters)
     ### 10. Rental Rate of Capital
 
     # Sticky prices and wages
-    Γ0[eq[:eq_caprnt], endo[:rk_t]] = 1.
-    Γ0[eq[:eq_caprnt], endo[:k_t]]  = 1.
-    Γ0[eq[:eq_caprnt], endo[:L_t]]  = -1.
-    Γ0[eq[:eq_caprnt], endo[:w_t]]  = -1.
+    # Γ0[eq[:eq_caprnt], endo[:rk_t]] = 1.
+    # Γ0[eq[:eq_caprnt], endo[:k_t]]  = 1.
+    # Γ0[eq[:eq_caprnt], endo[:L_t]]  = -1.
+    # Γ0[eq[:eq_caprnt], endo[:w_t]]  = -1.
 
     # Flexible prices and wages
-    Γ0[eq[:eq_caprnt_f], endo[:rk_f_t]] = 1.
-    Γ0[eq[:eq_caprnt_f], endo[:k_f_t]] = 1.
-    Γ0[eq[:eq_caprnt_f], endo[:L_f_t]] = -1.
-    Γ0[eq[:eq_caprnt_f], endo[:w_f_t]] = -1.
+    # Γ0[eq[:eq_caprnt_f], endo[:rk_f_t]] = 1.
+    # Γ0[eq[:eq_caprnt_f], endo[:k_f_t]] = 1.
+    # Γ0[eq[:eq_caprnt_f], endo[:L_f_t]] = -1.
+    # Γ0[eq[:eq_caprnt_f], endo[:w_f_t]] = -1.
 
 
 
     ### 11. Marginal Substitution
 
     # Sticky prices and wages
-    Γ0[eq[:eq_msub], endo[:μ_ω_t]] = 1.
-    Γ0[eq[:eq_msub], endo[:L_t]]   = m[:ν_l]
-    Γ0[eq[:eq_msub], endo[:c_t]]   = 1/(1 - m[:h]*exp(-m[:zstar]))
-    Γ1[eq[:eq_msub], endo[:c_t]]   = m[:h]*exp(-m[:zstar])/(1 - m[:h]*exp(-m[:zstar]))
-    Γ0[eq[:eq_msub], endo[:z_t]]   = m[:h]*exp(-m[:zstar]) /(1 - m[:h]*exp(-m[:zstar]))
-    Γ0[eq[:eq_msub], endo[:w_t]]   = -1.
+    # Γ0[eq[:eq_msub], endo[:μ_ω_t]] = 1.
+    # Γ0[eq[:eq_msub], endo[:L_t]]   = m[:ν_l]
+    # Γ0[eq[:eq_msub], endo[:c_t]]   = 1/(1 - m[:h]*exp(-m[:zstar]))
+    # Γ1[eq[:eq_msub], endo[:c_t]]   = m[:h]*exp(-m[:zstar])/(1 - m[:h]*exp(-m[:zstar]))
+    # Γ0[eq[:eq_msub], endo[:z_t]]   = m[:h]*exp(-m[:zstar]) /(1 - m[:h]*exp(-m[:zstar]))
+     #Γ0[eq[:eq_msub], endo[:w_t]]   = -1.
 
     # Flexible prices and wages
-    Γ0[eq[:eq_msub_f], endo[:w_f_t]] = -1.
-    Γ0[eq[:eq_msub_f], endo[:L_f_t]] = m[:ν_l]
-    Γ0[eq[:eq_msub_f], endo[:c_f_t]] = 1/(1 - m[:h]*exp(-m[:zstar]))
-    Γ1[eq[:eq_msub_f], endo[:c_f_t]] = m[:h]*exp(-m[:zstar])/(1 - m[:h]*exp(-m[:zstar]))
-    Γ0[eq[:eq_msub_f], endo[:z_t]]   = m[:h]*exp(-m[:zstar])/(1 - m[:h]*exp(-m[:zstar]))
+    # Γ0[eq[:eq_msub_f], endo[:w_f_t]] = -1.
+    # Γ0[eq[:eq_msub_f], endo[:L_f_t]] = m[:ν_l]
+    # Γ0[eq[:eq_msub_f], endo[:c_f_t]] = 1/(1 - m[:h]*exp(-m[:zstar]))
+    # Γ1[eq[:eq_msub_f], endo[:c_f_t]] = m[:h]*exp(-m[:zstar])/(1 - m[:h]*exp(-m[:zstar]))
+    # Γ0[eq[:eq_msub_f], endo[:z_t]]   = m[:h]*exp(-m[:zstar])/(1 - m[:h]*exp(-m[:zstar]))
 
 
     ### 12. Evolution of Wages
@@ -307,7 +307,7 @@ function eqcond(m::SmetsWouters)
     # Sticky prices and wages
     Γ0[eq[:eq_wage], endo[:w_t]] = -1.0
     Γ0[eq[:eq_wage], endo[:π_t]] = -1.0
-    Γ0[eq[:eq_wage], endo[:dw_t]] = -1.0 # Don't know what DW is
+    Γ0[eq[:eq_wage], endo[:dw_t]] = -1.0 # DW is wage inflation
     Γ0[eq[:eq_wage], endo[:ztil_t]] = -1.0 # Techshock
 
     Γ1[eq[:eq_wage], endo[:w_t]] = -1.0
@@ -364,24 +364,24 @@ function eqcond(m::SmetsWouters)
     ### 14. Resource Constraint
 
     # Sticky prices and wages
-    Γ0[eq[:eq_res], endo[:y_t]] = 1.
-    Γ0[eq[:eq_res], endo[:g_t]] = -m[:g_star]
-    if m[:ρ_z] < 1
-        Γ0[eq[:eq_res], endo[:ztil_t]] = m[:g_star] * (1/(1-m[:α]))
-    end
-    Γ0[eq[:eq_res], endo[:c_t]] = -m[:cstar]/m[:ystar]
-    Γ0[eq[:eq_res], endo[:i_t]] = -m[:istar]/m[:ystar]
-    Γ0[eq[:eq_res], endo[:u_t]] = -m[:rkstar]*m[:kstar]/m[:ystar]
+    # Γ0[eq[:eq_res], endo[:y_t]] = 1.
+    # Γ0[eq[:eq_res], endo[:g_t]] = -m[:g_star]
+    # if m[:ρ_z] < 1
+    #     Γ0[eq[:eq_res], endo[:ztil_t]] = m[:g_star] * (1/(1-m[:α]))
+    # end
+    # Γ0[eq[:eq_res], endo[:c_t]] = -m[:cstar]/m[:ystar]
+     #Γ0[eq[:eq_res], endo[:i_t]] = -m[:istar]/m[:ystar]
+    # Γ0[eq[:eq_res], endo[:u_t]] = -m[:rkstar]*m[:kstar]/m[:ystar]
 
     # Flexible prices and wages
-    Γ0[eq[:eq_res_f], endo[:y_f_t]] = 1.
-    Γ0[eq[:eq_res_f], endo[:g_t]]   = -m[:g_star]
-    if m[:ρ_z]<1
-        Γ0[eq[:eq_res_f], endo[:ztil_t]] = m[:g_star] * (1/(1-m[:α]))
-    end
-    Γ0[eq[:eq_res_f], endo[:c_f_t]] = -m[:cstar]/m[:ystar]
-    Γ0[eq[:eq_res_f], endo[:i_f_t]] = -m[:istar]/m[:ystar]
-    Γ0[eq[:eq_res_f], endo[:u_f_t]] = -m[:rkstar]*m[:kstar]/m[:ystar]
+    # Γ0[eq[:eq_res_f], endo[:y_f_t]] = 1.
+    # Γ0[eq[:eq_res_f], endo[:g_t]]   = -m[:g_star]
+    # if m[:ρ_z]<1
+    #     Γ0[eq[:eq_res_f], endo[:ztil_t]] = m[:g_star] * (1/(1-m[:α]))
+    # end
+    # Γ0[eq[:eq_res_f], endo[:c_f_t]] = -m[:cstar]/m[:ystar]
+    # Γ0[eq[:eq_res_f], endo[:i_f_t]] = -m[:istar]/m[:ystar]
+    # Γ0[eq[:eq_res_f], endo[:u_f_t]] = -m[:rkstar]*m[:kstar]/m[:ystar]
 
 
     ### 15. Output Gap
@@ -446,9 +446,60 @@ function eqcond(m::SmetsWouters)
     Γ1[eq[:eq_lagwage], endo[:w_t]] = -1.0
 
 
-    ### 24. Liquidity Shock (η Shock?)
-    Γ0[eq[:eq_liqshk], endo[:b_t]] = -1.0 # b_t is b_t shock, coming from etashock
-    Γ1[eq[:eq_liqshk], endo[:b_t]] = -0.85 # Same as above
+    ### 24. Liquidity Shock (η Shock?) - Unneeded, repeated later
+    # Γ0[eq[:eq_liqshk], endo[:b_t]] = -1.0 # b_t is b_t shock, coming from etashock
+    # Γ1[eq[:eq_liqshk], endo[:b_t]] = -0.85 # Same as above
+
+
+    ### 25. Value of Consumption (λ)
+    Γ0[eq[:eq_λc], endo[:w_t]] = 1.0
+    Γ0[eq[:eq_λc], endo[:λc]] = -1.0 # λc is not a state. Needs to be added.
+    Γ0[eq[:eq_λc], endo[:b_t]] = 1.0 # b_t is η shock here.
+    Γ0[eq[:eq_λc], endo[:Etechshock]] = -1.0 # Etechshock doesn't exist
+    Γ0[eq[:eq_λc], endo[:Eπ_t]] = -1.0
+    Γ0[eq[:eq_λc], endo[:Eλc]] = 1.0 #Eλc doesn't exist
+
+
+    ### 26. Wage Inflation
+    Γ0[eq[:eq_π_w], endo[:zzw_t]] = 1.0 # Don't know what zzw_t is
+    Γ0[eq[:eq_π_w], endo[:π_w]] = -1.0 # Need to add π_w
+    Γ0[eq[:eq_π_w], endo[:ztil_t]] = -1.0*m[:bw] + 1.0 # Techshock
+    Γ1[eq[:eq_π_w], endo[:π_t]] = m[:aw] - 1.0
+
+
+    ### 27. V_i
+    Γ0[eq[:eq_vi], endo[:i_t]] = 1.0
+    Γ0[eq[:eq_vi], endo[:Vi_t]] = -1.0 # Vi_t doesn't exist yet
+    Γ0[eq[:eq_vi], endo[:ztil_t]] = 1.0
+    Γ1[eq[:eq_vi], endo[:i_t]] = 1.0
+
+
+    ### 28. V_p
+    Γ0[eq[:eq_vp], endo[:π_t]] = 1.0
+    Γ0[eq[:eq_vp], endo[:Vp_t]] = -1.0 # Vp_t doesn't exist yet
+    Γ1[eq[:eq_vp], endo[:π_t]] = 1.0 - m[:ap]
+
+
+    ### 27. V_w
+    Γ0[eq[:eq_vw], endo[:w_t]] = -1.0 * m[:κw] # Check κw
+    Γ0[eq[:eq_vw], endo[:λc]] = -1.0 * m[:κw] # Check κw and λc doesn't exist
+    Γ0[eq[:eq_vw], endo[:L_t]] = m[:κw] * m[:σ_l] # Check σ_l and κw
+    Γ0[eq[:eq_vw], endo[:Vw_t]] = -1.0 # Vw_t doesn't exist yet
+    Γ0[eq[:eq_vw], endo[:EVw_t]] = m[:β] # EVw_t doesn't exist yet
+
+
+    ### 28. bc
+    Γ0[eq[:eq_bc], endo[:c_t]] = m[:gamtil] * 1.0/(1.0 - m[:gamtil])
+    Γ0[eq[:eq_bc], endo[:bc_t]] = -1.0 # Need to create bc_t
+    Γ0[eq[:eq_bc], endo[:Ec_t]] = -1.0*1.0/(-1.0*m[:gamtil] + 1.0)
+    Γ0[eq[:eq_bc], endo[:Etechshock]] = -1.0*m[:gamtil]*1.0/(-1.0*m[:gamtil] + 1.0) # Need to create Etechshock
+
+
+    ### 29. bi
+    Γ0[eq[:eq_bi], endo[:i_t]] = -1.0
+    Γ0[eq[:eq_bi], endo[:bi_t]] = -1.0 # Need to create bi_t
+    Γ0[eq[:eq_bi], endo[:Ei_t]] = 1.0
+    Γ0[eq[:eq_bi], endo[:Etechshock]] = 1.0 # Need to create Etechshock
 
 
     ### EXOGENOUS SHOCKS ###
@@ -528,6 +579,24 @@ function eqcond(m::SmetsWouters)
     # Γ0[eq[:eq_rm], endo[:rm_t]] = 1.
     # Γ1[eq[:eq_rm], endo[:rm_t]] = m[:ρ_rm]
     # Ψ[eq[:eq_rm], exo[:rm_sh]]  = 1.
+
+
+
+    # ElastShock (Unknown shock 1) Maybe it's ashock?
+    Γ0[eq[:eq_elast], endo[:elast_t]] = -1.0
+    Γ1[eq[:eq_elast], endo[:elast_t]] = -1.0*m[:ρ_elast] # Check ρ_elast
+    Ψ[eq[:eq_elast], exo[:elast_sh]]  = -1.0
+
+
+    # ElastwShock (Unknown shock 2)
+    Γ0[eq[:eq_elastw], endo[:elastw_t]] = -1.0
+    Γ1[eq[:eq_elastw], endo[:elastw_t]] = -1.0*m[:ρ_elastw] # Check ρ
+    Ψ[eq[:eq_elastw], exo[:elastw_sh]]  = -1.0
+
+
+    # UnkShock (Unknown shock 3)
+    Γ0[eq[:eq_unk], endo[:unk_t]] = -1.0
+    Ψ[eq[:eq_unk], exo[:unk_sh]]  = -1.0
 
 
     # Anticipated policy shocks
@@ -681,9 +750,28 @@ function eqcond(m::SmetsWouters)
     ### E(w)
 
     # Sticky prices and wages
-    Γ0[eq[:eq_Ew], endo[:w_t]]         = 1.
-    Γ1[eq[:eq_Ew], endo[:Ew_t]]         = 1.
-    Π[eq[:eq_Ew], ex[:Ew_sh]]          = 1.
+    # Γ0[eq[:eq_Ew], endo[:w_t]]         = 1.
+    # Γ1[eq[:eq_Ew], endo[:Ew_t]]         = 1.
+    # Π[eq[:eq_Ew], ex[:Ew_sh]]          = 1.
+
+
+    ### E(techshock) (Added)
+    Γ0[eq[:eq_Ez], endo[:ztil_t]]         = -1. # Techshock
+    Γ1[eq[:eq_Ez], endo[:Etechshock]]         = -1. # Need Ez_t, expected Techshock
+    Π[eq[:eq_Ez], ex[:Etechshock_sh]]          = -1. # Doesn't exist - change
+
+
+    ### E(λ_c) (Added)
+    Γ0[eq[:eq_Eλc], endo[:λc]]         = -1. # λc doesn't exist yet
+    Γ1[eq[:eq_Eλc], endo[:Eλc]]         = -1. # Need Eλc, expected λ_c
+    Π[eq[:eq_Eλc], ex[:Eλc_sh]]          = -1. # Doesn't exist - change
+
+
+    ### E(VW) (Added)
+    Γ0[eq[:eq_EVw], endo[:Vw_t]]         = -1. # Vw_t doesn't exist yet
+    Γ1[eq[:eq_EVw], endo[:EVw_t]]         = -1. # Need EVw_t
+    Π[eq[:eq_EVw], ex[:EVw_sh]]          = -1. # Doesn't exist - change
+
 
     return Γ0, Γ1, C, Ψ, Π
 end
