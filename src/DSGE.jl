@@ -147,6 +147,9 @@ module DSGE
         pseudo_measurement,
         shock_groupings,
 
+        # models/nonlinear/
+        GHLS,
+
         # util
         @test_matrix_approx_eq, @test_matrix_approx_eq_eps
 
@@ -287,6 +290,14 @@ module DSGE
     include("models/an_schorfheide/pseudo_observables.jl")
     include("models/an_schorfheide/pseudo_measurement.jl")
     include("models/an_schorfheide/augment_states.jl")
+
+    #interns start here
+    include("models/nonlinear/GHLS.jl")
+    include("models/nonlinear/subspecs.jl")
+    include("models/nonlinear/eqcond.jl")
+    include("models/nonlinear/observables.jl")
+    include("models/nonlinear/measurement.jl")
+    include("models/nonlinear/augment_states.jl")
 
 
 end
