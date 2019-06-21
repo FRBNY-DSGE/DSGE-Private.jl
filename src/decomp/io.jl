@@ -4,7 +4,7 @@ function get_decomp_filename(m_new::M, m_old::M, input_type::Symbol,
                              pathfcn::Function = rawpath,
                              fileformat::Symbol = :jld, forecast_string_new = "", forecast_string_old = "") where M<:AbstractModel
     output_var = Symbol(product, class)
-    #@show "a"*forecast_string_new
+
     fn_new = get_forecast_filename(m_new, input_type, cond_new, output_var,
                                    pathfcn = pathfcn, fileformat = fileformat, forecast_string = forecast_string_new)
     fn_old = get_forecast_filename(m_old, input_type, cond_old, output_var, forecast_string = forecast_string_old)
@@ -53,7 +53,7 @@ function write_forecast_decomposition(m_new::M, m_old::M, input_type::Symbol,
             prod = Symbol(:decomp, comp)
             var = Symbol(prod, class)
             filepath = decomp_output_files[var]
-            #@show "c"*filepath
+
             if isnull(block_number) || get(block_number) == 1
                 jldopen(filepath, "w") do file
                     # Write metadata
