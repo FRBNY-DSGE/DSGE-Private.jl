@@ -118,8 +118,8 @@ function eqcond(m::GHLS)
     Γ1[eq[:eq_mp], endo[:y_t]] = m[:γ_g]*(-1.0*m[:ρ_R] + 1.0)
 
     ### 13.5 Nominal Interest Rate
-    Γ0[eq[:eq_mp], endo[:rm_t]] = 1.0 # rm_t should be notional R_t
-    Γ0[eq[:eq_mp], endo[:R_t]] = -1.0 # Nominal Interest Rate (not shock)
+    Γ0[eq[:eq_mpR], endo[:rm_t]] = 1.0 # rm_t should be notional R_t
+    Γ0[eq[:eq_mpR], endo[:R_t]] = -1.0 # Nominal Interest Rate (not shock)
 
     ### 14. Resource Constraint
 

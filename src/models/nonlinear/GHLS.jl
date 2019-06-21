@@ -130,7 +130,7 @@ function init_model_indices!(m::GHLS)
 
     # Equilibrium conditions
     equilibrium_conditions = [[
-        :eq_capval, :eq_euler, :eq_inv, :eq_wage, :eq_mp, :eq_phlps, :eq_output, :eq_outgap, :eq_mp, :eq_λc, :eq_tobq, :eq_L, :eq_caputil,:eq_mcost, :eq_capsrv, :eq_muc, :eq_vi, :eq_vp, :eq_vw, :eq_π_w, :eq_bc, :eq_bi, :eq_laggdp, :eq_lagcc, :eq_lagit, :eq_lagwage, :eq_b, :eq_μ, :eq_ztil, :eq_mon, :eq_g, :eq_elast, :eq_elastw, :eq_unk, :eq_Ei, :eq_Erk, :eq_Ec, :eq_EVw, :eq_Ez, :eq_Eπ, :eq_Eqk, :eq_Eλc];
+        :eq_capval, :eq_euler, :eq_inv, :eq_wage, :eq_mp, :eq_phlps, :eq_output, :eq_outgap, :eq_mpR, :eq_λc, :eq_tobq, :eq_L, :eq_caputil,:eq_mcost, :eq_capsrv, :eq_muc, :eq_vi, :eq_vp, :eq_vw, :eq_π_w, :eq_bc, :eq_bi, :eq_laggdp, :eq_lagcc, :eq_lagit, :eq_lagwage, :eq_b, :eq_μ, :eq_ztil, :eq_mon, :eq_g, :eq_elast, :eq_elastw, :eq_unk, :eq_Ei, :eq_Erk, :eq_Ec, :eq_EVw, :eq_Ez, :eq_Eπ, :eq_Eqk, :eq_Eλc];
         [Symbol("eq_rml$i") for i=1:n_anticipated_shocks(m)]]
 
     # Additional states added after solving model
