@@ -46,7 +46,7 @@ function eqcond(m::GHLS)
     # Sticky prices and wages
     Γ0[eq[:eq_capval], endo[:λc]] = -1.0
     Γ0[eq[:eq_capval], endo[:qk_t]] = -1.0
-    Γ0[eq[:eq_capval], endo[:rk_t]] = -1.0*m[:β]*1.0/m[:gz]*(-1.0*m[:δ] + 1.0) + 1.0
+    Γ0[eq[:eq_capval], endo[:Erk_t]] = -1.0*m[:β]*1.0/m[:gz]*(-1.0*m[:δ] + 1.0) + 1.0
     Γ0[eq[:eq_capval], endo[:Etechshock_t]] = -1
     Γ0[eq[:eq_capval], endo[:Eqk_t]] = m[:β]*1.0/m[:gz]*(-1.0*m[:δ] + 1.0)
     Γ0[eq[:eq_capval], endo[:Eλ_c]] = 1.0
@@ -99,7 +99,7 @@ function eqcond(m::GHLS)
     # Sticky prices and wages
     Γ0[eq[:eq_wage], endo[:w_t]] = -1.0
     Γ0[eq[:eq_wage], endo[:π_t]] = -1.0
-    Γ0[eq[:eq_wage], endo[:π_w]] = -1.0 # DW is wage inflation?
+    Γ0[eq[:eq_wage], endo[:π_w]] = 1.0 # DW is wage inflation?
     Γ0[eq[:eq_wage], endo[:ztil_t]] = -1.0 # Techshock
 
     Γ1[eq[:eq_wage], endo[:w_t]] = -1.0
@@ -108,11 +108,12 @@ function eqcond(m::GHLS)
     ### Notional Rate in Gust Et Al.
 
     # Sticky prices and wages
-    Γ0[eq[:eq_mp], endo[:rm_t]] = 1.0 # This rm_t should be notional R_t
+    Γ0[eq[:eq_mp], endo[:rm_t]] = -1.0 # This rm_t should be notional R_t
     Γ0[eq[:eq_mp], endo[:π_t]] = m[:γ_π]*(-1.0*m[:ρ_R] + 1.0)
     Γ0[eq[:eq_mp], endo[:y_t]] = m[:γ_g]*(-1.0*m[:ρ_R] + 1.0)
+    Γ0[eq[:eq_mp], endo[:x_t]] = m[:γ_x]*(-1.0*m[:ρ_R] + 1.0)
     Γ0[eq[:eq_mp], endo[:ztil_t]] = m[:γ_g]*(-1.0*m[:ρ_R] + 1.0)
-    Γ0[eq[:eq_mp], endo[:mon_t]] = -1.0 # Interest Rate Shock
+    Γ0[eq[:eq_mp], endo[:mon_t]] = 1.0 # Interest Rate Shock
 
     Γ1[eq[:eq_mp], endo[:rm_t]] = -1.0*m[:ρ_R]
     Γ1[eq[:eq_mp], endo[:y_t]] = m[:γ_g]*(-1.0*m[:ρ_R] + 1.0)
@@ -129,7 +130,7 @@ function eqcond(m::GHLS)
     Γ0[eq[:eq_outgap], endo[:u_t]] = m[:α]
 
     ### 16. Tobin's Q
-    Γ0[eq[:eq_tobq], endo[:rm_t]] = m[:phii_jpt]*(m[:β]+1.0) # Treating rm_t as notional rate and phii_jpt as ϕi_jpt
+    Γ0[eq[:eq_tobq], endo[:i_t]] = m[:phii_jpt]*(m[:β]+1.0) # Treating rm_t as notional rate and phii_jpt as ϕi_jpt
     Γ0[eq[:eq_tobq], endo[:qk_t]] = -1.0
     Γ0[eq[:eq_tobq], endo[:μ_t]] = -1.0 # Investment Shock, not sure if μ_t is right
     Γ0[eq[:eq_tobq], endo[:ztil_t]] = m[:phii_jpt]
@@ -190,7 +191,7 @@ function eqcond(m::GHLS)
 
 
     ### 25. Value of Consumption (λ)
-    Γ0[eq[:eq_λc], endo[:w_t]] = 1.0
+    Γ0[eq[:eq_λc], endo[:rm_t]] = 1.0
     Γ0[eq[:eq_λc], endo[:λc]] = -1.0
     Γ0[eq[:eq_λc], endo[:b_t]] = 1.0 # b_t is η shock here.
     Γ0[eq[:eq_λc], endo[:Etechshock_t]] = -1.0
@@ -264,7 +265,7 @@ function eqcond(m::GHLS)
     # Monetary policy shock
     ### Putting interest rate shock in here:
     Γ0[eq[:eq_mon], endo[:mon_t]] = -1.0
-    Γ1[eq[:eq_mon], endo[:mon_t]] = -1.0*m[:ρ_R]
+    Γ1[eq[:eq_mon], endo[:mon_t]] = -1.0*m[:ρ_int]
     Ψ[eq[:eq_mon], exo[:rm_sh]]  = -1.0
 
     # ElastShock (Unknown shock 1) Maybe it's ashock?

@@ -239,12 +239,16 @@ function init_parameters!(m::GHLS)
                    description="ρ_η: Persistence of liquidity shock.",
                    tex_label="\\rho_{\\eta}")
 
+   m <= parameter(:ρ_int, 0., fixed=true,
+                   description="ρ_int: Persistence of interest rate shock.",
+                   tex_label="\\rho_int")
+
    m <= parameter(:ρ_elast, 0., fixed=true,
                    description="ρ_elast: Persistence of price elasticity shock.",
                    tex_label="\\rho_elast")
 
-   m <= parameter(:ρ_elastw, 0.85, fixed=true,
-                   description="ρ_η: Persistence of wage elasticity shock.",
+   m <= parameter(:ρ_elastw, 0., fixed=true,
+                   description="ρ_elastw: Persistence of wage elasticity shock.",
                    tex_label="\\rho_elastw")
 
    m <= parameter(:σ_elast, 1e-5, fixed=true,
@@ -402,7 +406,7 @@ function steadystate!(m::GHLS)
     m[:labss] = (((m[:ϵ_w] - 1.0)/m[:ϵ_w])*(1.0-m[:α])*(1.0 - m[:β]*m[:gamtil])*((m[:ϵ_p]-1.0)/m[:ϵ_p])*(1.0/(m[:ψ_L]*(1.0 - m[:gamtil])))*(1.0/m[:shrcy]))^(1.0/(m[:σ_L]+1))
     m[:κ_w] = ((1.0-m[:gamtil])/(1.0-m[:β]*m[:gamtil]))*m[:ϵ_w]*m[:ψ_L]*m[:labss]^(1.0+m[:σ_L])/m[:ϕ_w]
     m[:κ_p] = (m[:ϵ_p]-1.0)/(m[:ϕ_p]*(1.0+m[:β]*(1-m[:ap])))
-    m[:kss] = m[:labss]*(m[:gz]^(m[:α]*(m[:α]-1.0)))*m[:k2yrat]^(1.0/(1.0-m[:α]))
+    m[:kss] = m[:labss]*(m[:gz]^(m[:α]/(m[:α]-1.0)))*m[:k2yrat]^(1.0/(1.0-m[:α]))
     m[:gdpss] = (m[:kss]/m[:gz])^m[:α]*m[:labss]^(1.0-m[:α])
     m[:invss]  = m[:shriy]*m[:gdpss]
     m[:phii_jpt] = m[:ϕ_I]/m[:invss]
