@@ -61,20 +61,20 @@ function intermediatedec(m,nvars,nexog,endogvarm1,currentshockvalues,polyvar,ome
     #Initilize Variables
     endogvar=Array{Float64}(undef,nvars+nexog,1)
 
-    invshk = exp(m.exogenous_shocks[:μ_sh])
-    techshk = exp(m.exogenous_shocks[:ztil_sh])
-    rrshk = m.exogenous_shocks[:rm_sh]
+    invshk = exp(currentshockvalues[m.exogenous_shocks[:μ_sh]])
+    techshk = exp(currentshockvalues[m.exogenous_shocks[:ztil_sh]])
+    rrshk = currentshockvalues[m.exogenous_shocks[:rm_sh]]
     gss = 1.0/(1.0-m[:shrgy])
-    gshk = exp( log(gss) + m[:g_sh] )
+    gshk = exp( log(gss) + currentshockvalues[m[:g_sh]] )
     ashk = exp( currentshockvalues[6] ) # Which of the last 3 shocks is this?
 
     capm1 = endogvarm1[1] # There is no k_t1 in m.endogenous_states
-    ccm1 = m.endogenous_states[:c_t1]
-    invm1 = m.endogenous_states[:i_t1]
-    rwm1 = m.endogenous_states[:w_t1]
+    ccm1 = endogvarm1[2]
+    invm1 = endogvarm1[3]
+    rwm1 = endogvarm1[4]
     notrm1 = endogvarm1[5] # Add in endogenous_states
     dpm1 = endogvarm1[6] # Add in endogenous_states
-    gdpm1 = m.endogenous_states[:y_t1]
+    gdpm1 = endogvarm1[7]
 
     # Not changing the values in model object
     if (zlbintermediate == true)
@@ -103,13 +103,13 @@ function intermediatedec(m,nvars,nexog,endogvarm1,currentshockvalues,polyvar,ome
     dp = vp*dptildem1
     dw = vw*dwtildem1*gzwage
     muc = lam + (m[:γ]/m[:gz])*m[:β]*bc
-    cc = m[:γ]*ccm1/(m[:gz]*techshk)+1.0/m.endogenous_states[:muc_t]
+    cc = m[:γ]*ccm1/(m[:gz]*techshk)+1.0/muc
     cquad_vi = bi/(qq*invshk)-(1.0-qq*invshk)/(m[:ϕ_I]*qq*invshk)
 
     vi = 0.5*(1.0+sqrt(1.0+4.0*cquad_vi))
 
     inv = vi*invm1/techshk
-    aayy = 1.0/gshk-(m[:ϕ_p]/2.0)*(vp-1.0)*(vp-1.0) # Guessing phi is ϕ_p
+    aayy = 1.0/gshk-(m[:ϕ_p]/2.0)*(vp-1.0)*(vp-1.0)
     rkss = m[:gz]/m[:β]-1.0+m[:δ]
     utilcost = (rkss/m[:σ_a])*(exp(m[:σ_a]*(util-1.0))-1.0)
     gdp = (1.0/aayy)*( cc+inv + utilcost*(capm1/(m[:gz]*techshk)) )
@@ -118,7 +118,7 @@ function intermediatedec(m,nvars,nexog,endogvarm1,currentshockvalues,polyvar,ome
     xhp = m[:α]*log(util) + (1-m[:α])*(log(lab)-m[:labss]) # Changed llabss to m[:labss]
 
     lrss = log(m[:gz]*m[:π_bar]/m[:β])
-    notr = exp(lrss+m[:ρ_R]*(log(notrm1)-lrss) + (1.0-m[:ρ_R])*(m[:γ_π]*log(dp/m[:π_bar]) + m[:γ_g]*log(gdp*techshk/gdpm1) + m[:γ_xhp*xhp ) + rrshk)
+    notr = exp(lrss+m[:ρ_R]*(log(notrm1)-lrss) + (1.0-m[:ρ_R])*(m[:γ_π]*log(dp/m[:π_bar]) + m[:γ_g]*log(gdp*techshk/gdpm1) + m[:γ_xhp]*xhp ) + rrshk)
 
     mc = rw*lab/((1.0-m[:α])*gdp)
     rentalk = (m[:α]/(1.0-m[:α]))*(rw*lab*m[:gz]*techshk/(util*capm1))
@@ -232,11 +232,11 @@ function decr(m,endogvarm1,innovations,poly,alphacoeff)
     omegapoly = 1.0 #SINCE ZLBINTERMEDIATE IS FALSE
     endogvar=intermediatedec(poly.nparams,poly.nvars,poly.nexog,poly.nfunc,endogvarm1,currentshockvalues,params,funcapp,m[:labss],omegapoly,funcapp,zlbintermediate)
 
-    if ( (m.endogenous_states[:rm_t] < 1.0) & (poly.zlbswitch == true) ) #zlb case
+    if ( (endogvar[m.endogenous_states[:rm_t]] < 1.0) & (poly.zlbswitch == true) ) #zlb case
         zlbintermediate = true
-        omegapoly = exp(omegaweight*log(m.endogenous_states[:rm_t])) #now omegapoly and funcapp_plus relevant
+        omegapoly = exp(omegaweight*log(endogvar[m.endogenous_states[:rm_t]])) #now omegapoly and funcapp_plus relevant
         funcapp_plus = funcmatplus * weightvec)
-        endogvar = intermediatedec(m,poly.nvars,poly.nexog,endogvarm1,currentshockvalues,funcapp,omegapoly,funcapp_plus,zlbintermediate) # Change endogvarm1 to m.endogenous_states[23:28]
+        endogvar = intermediatedec(m,poly.nvars,poly.nexog,endogvarm1,currentshockvalues,funcapp,omegapoly,funcapp_plus,zlbintermediate)
         endogvar[9] = 1.0
     end
 
