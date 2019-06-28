@@ -1,0 +1,324 @@
+module polydef
+    import FastGaussQuadrature: gausshermite
+    export SmolyakApproximation, initializesolution!, setgridsize,
+        exoggridindex, ghquadrature,sparsegrid, smolyakpoly, initializelinearsolution!
+using LinearAlgebra
+
+mutable struct SmolyakApproximation
+
+    nfunc :: Int
+    nmsv :: Int
+    nvars :: Int
+    ngrid :: Int
+    nparams :: Int
+    nindplus :: Int
+    nexog :: Int
+    nexogshock :: Int
+    nexogcont :: Int
+    ns :: Int
+    nsexog :: Int
+    ninter :: Int
+    nquad :: Int
+    zlbswitch :: Bool
+    indplus :: Array{Int}
+    nshockgrid :: Array{Int}
+    interpolatemat :: Array{Int}
+    endogsteady :: Array{Float64}
+    slopeconmsv :: Array{Float64}
+    shockbounds :: Array{Float64}
+    shockdistance :: Array{Float64}
+    exoggrid :: Array{Float64}
+    ghnodes :: Array{Float64}
+    ghweights :: Array{Float64}
+    SmolyakApproximation()=new() #Initilizes all the values to undefined values, closet approximation to allocatable array
+
+end
+
+function setgridsize(nexog,nshockgrid)
+
+    #Input
+    nexog :: Int
+    nshockgrid :: Array{Int}
+
+    nexogshock = 0
+    for i in 1:nexog
+        if (nshockgrid[i] > 1)
+            nexogshock = nexogshock + 1
+        else
+            break
+        end
+    end
+    ninter = 2^nexogshock
+
+    #allocate matrices for shock processes
+    ns = 1
+    number_shock_values = 0
+    for i in 1:nexogshock
+        ns = ns*nshockgrid[i]
+        number_shock_values = number_shock_values + nshockgrid[i]
+    end
+
+    return nexogshock,ninter,ns,number_shock_values
+
+end
+
+function exoggridindex(ngrid,nexog,ns)
+
+    # Input
+    nexog :: Int
+    ns :: Int
+    ngrid :: Array{Int}
+
+    #Initilize Variables
+    exoggridindex = zeros(Int,nexog,ns)
+    blocksize = 1 #Initilize blocksize
+
+    for ie in nexog:-1:1
+        if ie == nexog
+            blocksize = 1
+        else
+            blocksize = blocksize*ngrid[ie+1]
+        end
+        ncall = div(ns,blocksize*ngrid[ie]) #use div function to keep Int type
+        for ic in 1:ncall
+            for ib in 1:ngrid[ie]
+                exoggridindex[ie,ngrid[ie]*blocksize*(ic-1)+blocksize*(ib-1)+1:ngrid[ie]*blocksize*(ic-1)+blocksize*ib] .= ib
+            end
+        end
+    end
+
+    return exoggridindex
+
+end
+
+function ghquadrature(nquadsingle,nexog)
+
+    # Input
+    nquadsingle :: Int64
+    nexog :: Int64
+
+    # Initilize Variables
+    quadnodes_s=zeros(nquadsingle,1)
+    quadweights_s=zeros(nquadsingle,1)
+    ghnodes=zeros(nexog,nquadsingle^nexog)#Not sure I should make this zeros
+    ghweights_mat=zeros(nexog,nquadsingle^nexog)#Not sure I should make this zeros
+    ghweights=Array{Float64}(undef,nquadsingle^nexog,1)#Not sure I should make this zeros
+    #const const_pi = 3.14159265358979323846
+    const_pi = 3.14159265358979323846
+
+    quadnodes_s,quadweights_s=gausshermite(nquadsingle) ##
+
+    nquad = nquadsingle^nexog
+    blocksize = 1 #Must Initilize blocksize
+    for ie = nexog:-1:1
+        if (ie == nexog)
+            blocksize = 1
+        else
+            blocksize = blocksize*nquadsingle # it was nquadsingle*blocksize ??
+        end
+        ncall = div(nquad,nquadsingle*blocksize)
+        for ic in 1:ncall
+            for ib in 1:nquadsingle
+                left=nquadsingle*blocksize*(ic-1)+blocksize*(ib-1)+1
+                right=nquadsingle*blocksize*(ic-1)+blocksize*ib
+                ghnodes[ie,left:right] .= sqrt(2)*quadnodes_s[ib]
+                ghweights_mat[ie,left:right] .= quadweights_s[ib]
+            end
+        end
+    end
+
+    ghweights = (1.0/const_pi)^(nexog/2.0)*prod(ghweights_mat,dims=1) # product of ghweights_mat along the first dimension
+
+    return nquad,ghnodes,ghweights
+
+end
+
+function smolyakpoly(nmsv,ngrid,nindplus,indplus,xx)
+
+    # Input
+    nmsv :: Int
+    ngrid :: Int
+    nindplus :: Int
+    indplus :: Array{Int}
+    xx:: Array{Float64}
+
+    # Initilize Variables
+    smolyakpoly=Array{Float64}(undef,ngrid,1)
+
+    smolyakpoly[1] = 1.0
+    for i in 1:nmsv
+	smolyakpoly_aux = xx[i]
+        smolyakpoly[2*i] = smolyakpoly_aux
+        smolyakpoly[2*i+1] = 2.0*(smolyakpoly_aux)^2-1.0
+    end
+
+    for i in 1:nindplus
+	xx_aux =xx[indplus[i]]
+        smolyakpoly[2*nmsv+2*(i-1)+2] = 4.0*xx_aux^3-3.0*xx_aux
+        smolyakpoly[2*nmsv+2*(i-1)+3] = 8.0*xx_aux^4-8.0*xx_aux^2+1.0
+    end
+
+    return smolyakpoly
+
+end
+
+
+function sparsegrid(nmsv,nindplus,ngrid,indplus)
+
+    # Input
+    nmsv :: Int
+    nindplus :: Int
+    ngrid :: Int
+    indplus :: Array{Int}
+
+    #Initilize Variables
+    xgrid = zeros(nmsv,ngrid)
+    bbt = zeros(ngrid,ngrid)
+
+    for i in 1:nmsv
+        xgrid[i,2*i] = -1.0
+        xgrid[i,2*i+1] = 1.0
+    end
+
+    for i in 1:nindplus
+        xgrid[indplus[i],2*nmsv+2*(i-1)+2] = -1.0/sqrt(2.0)
+        xgrid[indplus[i],2*nmsv+2*(i-1)+3] = 1.0/sqrt(2.0)
+    end
+
+    #form bbt matrix
+    for i in 1:ngrid
+	bbt_aux = smolyakpoly(nmsv,ngrid,nindplus,indplus,xgrid[:,i])
+        bbt[:,i] = bbt_aux
+    end
+
+
+    # find bbt inverse matrix
+    bbtinv = copy(bbt)
+    bbtinv,ipiv,info=LinearAlgebra.LAPACK.getrf!(bbtinv)
+    if (info == 0)
+        LinearAlgebra.LAPACK.getri!(bbtinv,ipiv)
+    else
+        println("something went wrong with getrf! (sparsegrid)")
+        println("info = ", info)
+    end
+
+    return xgrid,bbt,bbtinv
+
+end
+
+
+function initializesolution!(m::GHLS; approx::SmolyakApproximation) # ! to indicate that this function mutates and input
+
+    #I don't think we need to declare types of these in the future (may not even work)
+    nquadsingle =3
+
+    #put shocks into polynomial approximation if necessary
+    nexogadj = approx[:nexog] - approx[:nexogcont]
+    nmsvadj = approx[:nmsv] + approx[:nexogcont]
+
+    approx[:ngrid] = 2*(approx[:nmsv]+approx[:nexogcont])+2*approx[:nindplus]+1
+
+    #set nexogshock,ns, and number_shock_values
+    approx[:nexogshock],approx[:ninter],approx[:ns],solution.number_shock_values=setgridsize(nexogadj,approx[:nshockgrid])
+    approx[:nquad] = nquadsingle^(approx[:nexogshock]+approx[:nexogcont])
+
+    #Set exogvarinfo
+    solution.exogvarinfo=Array{Int64}(undef,nexogadj,approx[:ns])
+    solution.exogvarinfo[1:approx[:nexogshock],:] = exoggridindex(approx[:nshockgrid],approx[:nexogshock],approx[:ns])
+    solution.exogvarinfo[approx[:nexogshock]+1:nexogadj,:] .= 1
+
+    #get matrix used for interpolating the shocks
+    approx.interpolatemat=Array{Int64}(undef,approx[:nexogshock],2^approx[:nexogshock])
+    blocksize = 1
+    for i in approx[:nexogshock]:-1:1
+        if (i == approx[:nexogshock])
+            blocksize = 1
+        else
+            blocksize = 2*blocksize
+        end
+        #blocksize=2^(approx[:nexogshock]-i)
+        ncall = div(2^(approx[:nexogshock]-1),blocksize)
+        for j in 1:ncall
+            for k = 1:2
+                left=2*blocksize*(j-1)+blocksize*(k-1)+1
+                right=2*blocksize*(j-1)+blocksize*k
+                approx.interpolatemat[i,left:right] .= k-1
+            end
+        end
+    end
+
+    #get quadrature nodes and weights
+    nquadadj = approx[:nexogshock]+approx[:nexogcont]
+    approx[:nquad],approx[:ghnodes],solution.poly.ghweights=ghquadrature(nquadsingle,nquadadj)
+
+    #construct sparse grid, bb matrix and its inverse
+    solution.xgrid,solution.bbt,solution.bbtinv=sparsegrid(nmsvadj,approx[:nindplus],approx[:ngrid],solution.poly.indplus)
+
+    solution.startingguess = false
+    solution.alphacoeff = zeros(solution.poly.nfunc*approx[:ngrid],2*approx[:ns])
+
+    #initialize linear solution and kalman matrices
+    solution.linsol=initializelinearsolution!(solution.poly.nparams,solution.poly.nvars,solution.poly.nexog,approx[:nexogshock],approx[:nexogcont],solution.linsol)
+
+    approx[:slopeconmsv] = Array{Float64}(undef,2*nmsvadj,1)
+    approx[:shockbounds] = Array{Float64}(undef,approx[:nexogshock],2)
+    approx[:shockdistance] = Array{Float64}(undef,approx[:nexogshock],1)
+    approx[:exoggrid] = Array{Float64}(undef,nexogadj,approx[:ns])
+
+    return
+
+end
+`IGNORE FOR NOW
+function initializetestsolution!(test_solution)
+
+    data=Base.DataFmt.readdlm("solution%poly.txt")
+    numericData=convert(Array{Int},data[1:end-1,3])
+    test_solution.poly.nfunc       =numericData[1]
+    test_solution.poly.nmsv        =numericData[2]
+    test_solution.poly.nvars       =numericData[3]
+    test_solution.poly.ngrid       =numericData[4]
+    test_solution.poly.nparams     =numericData[5]
+    test_solution.poly.nindplus    =numericData[6]
+    test_solution.poly.nexog       =numericData[7]
+    test_solution.poly.nexogshock  =numericData[8]
+    test_solution.poly.nexogcont   =numericData[9]
+    test_solution.poly.ns          =numericData[10]
+    test_solution.poly.nsexog      =numericData[11]
+    test_solution.poly.ninter      =numericData[12]
+    test_solution.poly.nquad       =numericData[13]
+    test_solution.poly.zlbswitch   =true
+
+    data=readdlm("solution%poly%ghnodes.txt")
+    test_solution.poly.ghnodes=data
+
+    data=readdlm("solution%poly%ghweights.txt")
+    test_solution.poly.ghweights=data'
+
+    data=readdlm("solution%poly%indplus.txt")
+    test_solution.poly.indplus=data
+
+    data=readdlm("solution%poly%nshockgrid.txt",Int)
+    test_solution.poly.nshockgrid=data'
+
+    data=readdlm("solution%poly%interpolatemat.txt")
+    test_solution.poly.interpolatemat=data #Somthing may be wrong with this ....? Why is it all zeros?
+
+    data=readdlm("solution%poly%endogsteady.txt")
+    test_solution.poly.endogsteady=data # I think some of the values are undefined
+
+    data=readdlm("solution%poly%exoggrid.txt")
+    test_solution.poly.exoggrid=data
+
+    data=readdlm("solution%poly%endogsteady.txt")
+    test_solution.poly.endogsteady=data
+
+    data=readdlm("solution%poly%shockbounds.txt")
+    test_solution.poly.shockbounds=zeros(size(data)) #something is wrong with the .txt file
+
+    data=readdlm("solution%poly%shockdistance.txt")
+    test_solution.poly.shockdistance=data
+
+    data=readdlm("solution%poly%slopeconmsv.txt")
+    test_solution.poly.slopeconmsv=data
+end
+`
