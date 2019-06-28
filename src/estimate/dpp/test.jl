@@ -17,4 +17,6 @@ Estimate, set as long test
 - estimate(PoolModel) estimates the dynamic prediction pool, compare to Matlab output
   (or something like that, or replicate figures properly, or there are numbers in
   the paper I should be able to replicate)
+
+Check states sum to one
 """

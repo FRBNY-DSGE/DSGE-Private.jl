@@ -175,6 +175,18 @@ function compute_system(m::AbstractModel{T}; apply_altpolicy = false,
         return System(transition_equation, measurement_equation)
     end
 end
+"""
+```
+compute_system(m::PoolModel{T})
+```
+
+Given the current model parameters, compute the state-space system
+corresponding to the PoolModel model `m`. Currently returns nothing.
+"""
+function compute_system(m::PoolModel{T};
+                        verbose::Symbol = :high) where T<:AbstractFloat
+    return nothing
+end
 
 """
 ```
@@ -213,6 +225,26 @@ function compute_system_function(system::System{S}) where S<:AbstractFloat
     F_u = Distributions.MvNormal(zeros(nobs),    EE)
 
     return Φ, Ψ, F_ϵ, F_u
+end
+
+"""
+```
+compute_system_function(m::PoolModel{S}) where S<:AbstractFloat
+```
+
+### Inputs
+
+- `m::PoolModel`
+
+### Outputs
+
+- `Φ::Function`: transition equation
+- `Ψ::Function`: measurement equation
+- `F_ϵ::Distributions.MvNormal`: shock distribution
+- `F_u::Distributions.MvNormal`: measurement error distribution
+"""
+function compute_system_function(m::PoolModel{S}) where S<:AbstractFloat
+    return m.Φ, m.Ψ, m.F_ϵ, m.F_u
 end
 
 function zero_system_constants(system::System{S}) where S<:AbstractFloat

@@ -137,3 +137,38 @@ function filter_likelihood(m::AbstractModel, data::Matrix{S}, system::System{S},
     kalman_likelihood(regime_inds, data, TTTs, RRRs, CCCs, QQs,
                       ZZs, DDs, EEs, s_0, P_0; Nt0 = Nt0, tol = tol)
 end
+
+
+"""
+```
+This section defines filter and filter_likelihood for the PoolModel type
+```
+"""
+function filter_likelihood(m::PoolModel, df::DataFrame, system::Nothing,
+                           s_0::Vector{S} = Vector{S}(undef, 0);
+                           cond_type::Symbol = :none,
+                           in_sample::Bool = true,
+                           tol::Float64 = 0.0) where {S<:AbstractFloat}
+
+    data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
+    start_date = max(date_presample_start(m), df[1, :date])
+
+    filter_likelihood(m, data, system, s_0; start_date = start_date,
+                      include_presample = include_presample, tol = tol)
+end
+
+function filter_likelihood(m::PoolModel, data::Matrix{S}, system::Nothing,
+                           s_0::Vector{S} = Vector{S}(undef, 0);
+                           include_presample::Bool = true,
+                           tol::Float64 = 0.0) where {S<:AbstractFloat}
+
+    # Specify number of presample periods if we don't want to include them in
+    # the final results
+    Nt0 = include_presample ? 0 : n_presample_periods(m)
+
+    # Run TPF and return loglh
+    ~, loglhconditional, ~ = tempered_particle_filter(data, x -> m.Φ(x),
+                                                      y -> m.Ψ(y), m.F_ϵ, m.F_u, m.s_init;
+                                                      n_presample_periods = Nt0)
+    return loglhconditional
+end

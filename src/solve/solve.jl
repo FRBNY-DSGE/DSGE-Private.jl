@@ -56,6 +56,26 @@ function solve(m::AbstractModel; apply_altpolicy = false, verbose::Symbol = :hig
 end
 
 """
+solve(m::PoolModel)
+```
+
+Driver to compute the model solution when using the PoolModel type
+
+### Inputs
+
+- `m`: the PoolModel object
+
+### Outputs
+- nothing (m holds transition equation separately)
+
+"""
+
+
+function solve(m::PoolModel)
+    return nothing
+end
+
+"""
 ```
 GensysError <: Exception
 ```
