@@ -167,8 +167,8 @@ function filter_likelihood(m::PoolModel, data::Matrix{S}, system::Nothing,
     Nt0 = include_presample ? 0 : n_presample_periods(m)
 
     # Run TPF and return loglh
-    ~, loglhconditional, ~ = tempered_particle_filter(data, x -> m.Φ(x),
-                                                      y -> m.Ψ(y), m.F_ϵ, m.F_u, m.s_init;
-                                                      n_presample_periods = Nt0)
+    ~, loglhconditional, ~ = tempered_particle_filter(data, get_Φ(m),
+                                                      get_Ψ(m), get_F_ϵ(m), get_xF_u(m),
+                                                      get_s_init(m); n_presample_periods = Nt0)
     return loglhconditional
 end
