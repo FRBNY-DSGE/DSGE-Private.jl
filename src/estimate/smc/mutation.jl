@@ -114,7 +114,7 @@ function mutation(m::AbstractModel, data::Matrix{Float64}, p::Particle, d::Distr
                 q0 = 0.0
             end
 
-            η = exp(ϕ_n * (like_new - lik0) + prior_new - pr0 + q0 - q1)
+            η = exp(ϕ_n * (like_new - lik0) + (1 - ϕ_n) * (like_old_data - like_prev)  + prior_new - pr0 + q0 - q1)
 
             if step_prob < η
                 para      = para_new
