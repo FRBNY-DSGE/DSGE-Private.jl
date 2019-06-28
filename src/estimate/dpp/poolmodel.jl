@@ -59,9 +59,10 @@ mutable struct PoolModel{T} <: AbstractModel{T}
                                                            # parameters and steady-states
     observables::OrderedDict{Symbol,Int}
     pseudo_observables::OrderedDict{Symbol,Int}
-    models::OrderedDict{Symbol,AbstractModel{T}}           #
-    particles::OrderedDict{Symbol,ParticleCloud}
-
+    particles::OrderedDict{Symbol,ParticleCloud}           # Model name mapped to ParticleCloud
+    statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
+                                                           # Measurement equation for linear weights
+    distributions::Dict{Symbol,Distribution}               # Distributions for state space
     spec::String                                           # Model specification number (eg "m990")
     subspec::String                                        # Model subspecification (eg "ss0")
     settings::Dict{Symbol,Setting}                         # Settings/flags for computation
@@ -84,20 +85,7 @@ Arguments:
 Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
-function init_model_indices!(m::PoolModel)
-    # Observables
-    observables = keys(m.observable_mappings)
-
-    # Pseudo-observables
-    pseudo_observables = keys(m.pseudo_observable_mappings)
-
-    # Collect into model indices
-    for (i,k) in enumerate(observables);                 m.observables[k]                 = i end
-    for (i,k) in enumerate(pseudo_observables);          m.pseudo_observables[k]          = i end
-end
-
-
-function PoolModel(params::ParameterVector{T}, subspec::String="ss0";
+function PoolModel(subspec::String="ss0";
                        custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
                        testing = false)
 
@@ -116,8 +104,9 @@ function PoolModel(params::ParameterVector{T}, subspec::String="ss0";
         # model indices
         OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
 
-        # model data
-        OrderedDict{Symbol,AbstractModel{Float64}}(), OrderedDict{Symbol,ParticleCloud}(),
+        # particles and nonlinear hidden state model info
+        OrderedDict{Symbol,ParticleCloud}(), Dict{Symbol,Function}(),
+        Dict{Symbol,Distribution}(),
 
         # settings
         spec,
@@ -141,11 +130,20 @@ function PoolModel(params::ParameterVector{T}, subspec::String="ss0";
     init_pseudo_observable_mappings!(m)
 
     # Initialize parameters
-    init_parameters!(m, params)
+    init_parameters!(m)
+
+    # Initialize state space equations
+    init_statespace!(m)
+
+    # Initialize distributions for state space
+    init_distributions!(m)
 
     init_model_indices!(m)
     init_subspec!(m)
     steadystate!(m)
+
+    # Initialize particle clouds
+    init_particles!(m)
 
     return m
 end
@@ -161,7 +159,6 @@ those).
 """
 function init_parameters!(m::PoolModel)
     # Initialize parameters
-    for params
     m <= parameter(:ρ, 1, (0,1), (0,1), Untransformed(), Uniform(0,1), fixed = false,
                    description="ρ: persistence of AR processing underlying λ.",
                    text_label="\\rho")
@@ -202,6 +199,92 @@ function model_settings!(m::PoolModel)
     # Forecast
     m <= Setting(:use_population_forecast, true,
                  "Whether to use population forecasts as data")
-    m <= Setting(:forecast_zlb_value, 0.13,
-        "Value of the zero lower bound in forecast periods, if we choose to enforce it")
+end
+
+
+function init_model_indices!(m::PoolModel)
+    # Observables
+    observables = keys(m.observable_mappings)
+
+    # Pseudo-observables
+    pseudo_observables = keys(m.pseudo_observable_mappings)
+
+    # Collect into model indices
+    for (i,k) in enumerate(observables);                 m.observables[k]                 = i end
+    for (i,k) in enumerate(pseudo_observables);          m.pseudo_observables[k]          = i end
+end
+
+"""
+```
+init_statespace!(m::PoolModel)
+```
+
+Creates transition and measurement equations as passable functions.
+"""
+function init_statespace!(m::PoolModel)
+    # transition equation
+    m.statespace[:Φ] = (x,ϵ) -> cdf((1 - m[:ρ]) * m[:μ] + m[:ρ] * quantile(Normal(),x[1]) +
+                              sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)
+
+    # measurement equation, NOT DONE
+    m.statespace[:Ψ] = @. (λ,u) -> λ + u
+end
+
+function init_distribution!(m::PoolModel)
+    # exogenous shock
+    m.distributions[:F_ϵ] = Normal(0,1)
+
+    # measurement error
+    m.distributions[:F_u] = DiscreteUniform(0,0)
+end
+
+function draw_prior(m::PoolModel)
+    return rand(Normal(m[:μ], m[:σ]), 1)
+end
+
+function init_particles!(m::PoolModel)
+    # tbdone
+end
+
+
+"""
+```
+Access and update functions for particles, statespace, and distributions
+```
+"""
+function get_particles(m::PoolModel)
+    return m.particles
+end
+function get_Φ(m::PoolModel)
+    return m.statespace[:Φ]
+end
+function get_Ψ(m::PoolModel)
+    return m.statespace[:Ψ]
+end
+function get_F_ϵ(m::PoolModel)
+    return m.distributions[:F_ϵ]
+end
+function get_F_u(m::PoolModel)
+    return m.distributions[:F_u]
+end
+
+function update_particles!(m::PoolModel, p::Vector{ParticleCloud})
+    m.particles = p
+end
+function update_particles!(m::PoolModel, p::Vector{ParticleCloud}, inds::Vector{Int})
+    for i in inds
+        m.particles[i] = p[i]
+    end
+end
+function update_Φ!(m::PoolModel, f::Function)
+    m.statespace[:Φ] = f
+end
+function update_Ψ!(m::PoolModel, f::Function)
+    m.statespace[:Ψ] = f
+end
+function update_F_ϵ!(m::PoolModel, d::Distribution)
+    m.distributions[:F_ϵ] = d
+end
+function update_F_u!(m::PoolModel, d::Distribution)
+    m.distributions[:F_u] = d
 end
