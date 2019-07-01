@@ -60,6 +60,16 @@ end
 
 function solve(m::GHLS)
 
+    # Initialize Values
+    statezlbinfo = Array{Int64}(undef,m.poly[:ns],1)
+    aalin = Array{Float64}(undef,m.poly[:nvars],m.poly[:nvars])
+    bblin = Array{Float64}(undef,m.poly[:nvars],m.poly[:nexog])
+    alphacoeff0 = Array{Float64}(undef,solution.poly.nfunc*solution.poly.ngrid,2*solution.poly.ns)
+    alphacoeffstar = Array{Float64}(undef,solution.poly.nfunc*solution.poly.ngrid,2*solution.poly.s)
+    msvbounds = Array{Float64}(undef,2*(solution.poly.nmsv+solution.poly.nexogcont),1)
+    slopeconxx = Array{Float64}(undef,2*(solution.poly.nmsv+solution.poly.nexogcont),1)
+    endog_emean = Array{Float64}(undef,solution.poly.nvars+solution.poly.nexog,1)
+
     # Get canonical matrices of linearized solution
     Γ0, Γ1, C, Ψ, Π  = eqcond(m)
 
