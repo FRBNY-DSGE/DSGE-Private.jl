@@ -44,10 +44,21 @@ function SmolyakApproximation()
     #Initialize empty approximation object
     approx = SmolyakApproximation{Float64}(Dict{Symbol,Setting}())
 
+    init_settings!(approx)
     init_solution!(approx)
 end
 
-
+function init_settings!(approx::SmolyakApproximation)
+    approx <= Setting(:nparams, 43)
+    approx <= Setting(:nexog,  6)
+    approx <= Setting(:nexogcont, 0)
+    approx <= Setting(:nvars, 22)
+    approx <= Setting (:nmsv, 7)
+    approx <= Setting (:nfunc, 7)
+    approx <= Setting(:nindplus, 1)
+    approx <= Setting(:nshockgrid, [7 3 3 3 3 1])
+    approx <= Setting(:indplus, [3])
+end
 
 function setgridsize(nexog,nshockgrid)
 
