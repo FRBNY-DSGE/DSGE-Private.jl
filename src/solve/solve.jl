@@ -101,7 +101,7 @@ function fixedpoint(m::GHLS; approx::SmolyakApproximation; α_initial :: Array{F
     α_temp = Array{Float64}(undef, 2*approx[:nfunc], approx[:ngrid])
     convergence = false
 
-    # Settinsg - should probably be stored in model
+    # Settings - should probably be stored in model
     niter = 150
     tolfun = 1.0e-04
     step  = 7.0e-01
