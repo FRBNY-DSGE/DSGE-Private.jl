@@ -19,4 +19,10 @@ Estimate, set as long test
   the paper I should be able to replicate)
 
 Check states sum to one
+
+Check TPF all works properly
+Check if you feed in a non-dynamic model to the dynamic model, it estimates the same thing
+Check if you feed in a simple dynamic measurement (only dynamic in period T and T - 1)
+    that it works and returns the same thing if you run period 1:T - 1 and different otherwise
+Check weight_kernel, mutation, whole TPF works in test file
 """

@@ -59,6 +59,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
                                                            # parameters and steady-states
     observables::OrderedDict{Symbol,Int}
     pseudo_observables::OrderedDict{Symbol,Int}
+    models::OrderedDict{Symbol,AbstractModel}              # Model name mapped to model object
     particles::OrderedDict{Symbol,ParticleCloud}           # Model name mapped to ParticleCloud
     statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
                                                            # Measurement equation for linear weights
@@ -85,7 +86,15 @@ Arguments:
 Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
-function PoolModel(subspec::String="ss0";
+
+function PoolModel(subspec::String="ss0", models::AbstractModel...;
+                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                   testing = false)
+    return PoolModel(subspec, [model for model in models];
+                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                   testing = false)
+end
+function PoolModel(subspec::String="ss0", models::Vector{AbstractModel}();
                        custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
                        testing = false)
 
@@ -138,9 +147,13 @@ function PoolModel(subspec::String="ss0";
     # Initialize distributions for state space
     init_distributions!(m)
 
+    # Initialize model indices and subspec
     init_model_indices!(m)
     init_subspec!(m)
     steadystate!(m)
+
+    # Initialize models dictionary
+    init_models!(m, models)
 
     # Initialize particle clouds
     init_particles!(m)
@@ -226,8 +239,20 @@ function init_statespace!(m::PoolModel)
     m.statespace[:Φ] = (x,ϵ) -> cdf((1 - m[:ρ]) * m[:μ] + m[:ρ] * quantile(Normal(),x[1]) +
                               sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)
 
-    # measurement equation, NOT DONE
-    m.statespace[:Ψ] = @. (λ,u) -> λ + u
+    # measurement equation
+    tmp = [length(get_loglh(v)) for v in values(m.particles)]
+    T = mininimum(tmp) # in case we have asymmetric lengths of estimation
+    loglh_mat = zeros(T,length(keys(m.particles))) # matrix of conditional log likelihoods
+    for (i,v) in enumerate(values(m.particles)) # time period vs. model
+        if tmp[i] > T
+            loglh_mat[:,i] = get_loglh(v)[1:T]
+        else
+            loglh_mat[:,i] = get_loglh(v)
+        end
+    end
+    loglh_mat = loglh_mat'
+
+    m.statespace[:Ψ] = (x,t) -> loglh_mat[:,t] .* x
 end
 
 function init_distribution!(m::PoolModel)
@@ -238,12 +263,15 @@ function init_distribution!(m::PoolModel)
     m.distributions[:F_u] = DiscreteUniform(0,0)
 end
 
-function draw_prior(m::PoolModel)
-    return rand(Normal(m[:μ], m[:σ]), 1)
+function init_models!(m::PoolModel, models::Vector{AbstractModel} = Vector{AbstractModel}())
+    m.models = models
 end
 
 function init_particles!(m::PoolModel)
-    # tbdone
+    for kv in m.models
+        load(rawpath(kv[2], "estimate",, "smc_cloud.jld2"))
+        m.particles[kv[1]] = cloud # need to check this is the correct name
+    end
 end
 
 
@@ -254,6 +282,23 @@ Access and update functions for particles, statespace, and distributions
 """
 function get_particles(m::PoolModel)
     return m.particles
+end
+function get_all_statespace(m::PoolModel)
+    return Dict(:statespace => m.statespace, :distributions => m.distributions)
+end
+function get_statespace(m::PoolModel; F::Symbol = :none)
+    if F == :none
+        return m.statespace
+    else
+        return m.statespace[F]
+    end
+end
+function get_distributions(m::PoolModel; F::Symbol = :none)
+    if F == :none
+        return m.distributions
+    else
+        return m.distributions[F]
+    end
 end
 function get_Φ(m::PoolModel)
     return m.statespace[:Φ]
@@ -269,22 +314,38 @@ function get_F_u(m::PoolModel)
 end
 
 function update_particles!(m::PoolModel, p::Vector{ParticleCloud})
-    m.particles = p
+    m.particles = pp
+    return nothing
 end
 function update_particles!(m::PoolModel, p::Vector{ParticleCloud}, inds::Vector{Int})
     for i in inds
         m.particles[i] = p[i]
     end
+    return nothing
 end
 function update_Φ!(m::PoolModel, f::Function)
     m.statespace[:Φ] = f
+    return nothing
 end
 function update_Ψ!(m::PoolModel, f::Function)
     m.statespace[:Ψ] = f
+    return nothing
 end
 function update_F_ϵ!(m::PoolModel, d::Distribution)
     m.distributions[:F_ϵ] = d
+    return nothing
 end
 function update_F_u!(m::PoolModel, d::Distribution)
     m.distributions[:F_u] = d
+    return nothing
+end
+
+"""
+```
+Other auxiliary functions that are useful for estimating pooled models.
+```
+"""
+
+function draw_prior(m::PoolModel)
+    return rand(Normal(m[:μ], m[:σ]), 1)
 end
