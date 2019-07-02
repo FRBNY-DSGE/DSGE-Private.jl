@@ -62,8 +62,8 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     models::OrderedDict{Symbol,AbstractModel}              # Model name mapped to model object
     datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
     particles::OrderedDict{Symbol,ParticleCloud}           # Model name " " to ParticleCloud
-    statespace::Dict{Symbol,Function}                      # Transition eq for linear weights
-    loglhs::
+    loglhs::OrderedDict{Symbol,Vector{T}}                  # Model name " " to conditional loglhs
+    statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
                                                            # Measurement eq for linear weights
     distributions::Dict{Symbol,Distribution}               # Distributions for state space
     spec::String                                           # Model specification number (eg "m990")
@@ -245,8 +245,7 @@ function init_statespace!(m::PoolModel)
                               sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)
 
     # measurement equation
-    tmp = [length(get_loglh(v)) for v in values(m.particles)]
-    T = mininimum(tmp) # in case we have asymmetric lengths of estimation
+    T = [length(get_loglh(v)) for v in values(m.particles)] # in case we have asymmetric lengths of estimation
     loglh_mat = zeros(T,length(keys(m.particles))) # matrix of conditional log likelihoods
     for (i,v) in enumerate(values(m.particles)) # time period vs. model
         if tmp[i] > T
@@ -257,7 +256,7 @@ function init_statespace!(m::PoolModel)
     end
     loglh_mat = loglh_mat'
 
-    m.statespace[:Ψ] = (x,t) -> loglh_mat[:,t] .* x
+    m.statespace[:Ψ] = (x,t) -> dot(loglh_mat[:,t], x)
 end
 
 function init_distribution!(m::PoolModel)
@@ -302,7 +301,6 @@ function init_loglhs!(m::PoolModel; verbose::Symbol = :low)
 
             for
         end
-
 # 1. Evaluate T, R, Z, D
 # 2. Run Kalman filter to get
 # s_{t-1|t-1} and P_{t-1|t-1}
