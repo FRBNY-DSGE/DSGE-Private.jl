@@ -89,16 +89,71 @@ Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
 
-function PoolModel(subspec::String="ss0", models::AbstractModel...;
+function PoolModel(subspec::String="ss0", data::Matrix{T}, h::Int,
+                   models::AbstractModel...;
                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low)
-    return PoolModel(subspec, [model for model in models];
+                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+    return PoolModel(subspec, [data for i = 1:length(models)], h, [model for model in models];
+                   custom_settings = custom_settings, testing = testing, verbose = verbose)
+end
+function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
+                   models::AbstractModel...;
+                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+    return PoolModel(subspec, datas, h, [model for model in models];
+                   custom_settings = custom_settings, testing = testing, verbose = verbose)
+end
+function PoolModel(subspec::String="ss0", datas::Dict{Symbol,Matrix{T}}, h::Int,
+                   models::AbstractModel...;
+                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+    return PoolModel(subspec, datas, h, [model for model in models];
+                   custom_settings = custom_settings, testing = testing, verbose = verbose)
+end
+function PoolModel(subspec::String="ss0", data::Matrix{T}, h::Int,
+                   models::Vector{AbstractModel};
+                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+    return PoolModel(subspec, [data for i = 1:length(models)], h, models;
                    custom_settings = custom_settings,
                    testing = testing, verbose = verbose)
 end
-function PoolModel(subspec::String="ss0", models::Vector{AbstractModel}();
-                       custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                       testing::Bool = false, verbose::Bool = :low)
+function PoolModel(subspec::String="ss0", datas::Dict{Symbol,Matrix{T}}, h::Int,
+                   models::Vector{AbstractModel};
+                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+    if length(data) > length(models)
+        error("number of data series exceeds number of models")
+    else
+        error("number of models exceeds number of data series")
+    end
+    name_vec = [typeof(model) for model in models]
+    try
+        data_vec = [datas[name] for name in name_vec]
+    catch
+        error("at least one key in data dictionary does not match any model")
+    end
+    return PoolModel(subspec, data_vec, h, models; custom_settings = custom_settings,
+                   testing = testing, verbose = verbose)
+end
+function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
+                   models::AbstractModel...;
+                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+    if length(data) > length(models)
+        error("number of data series exceeds number of models")
+    else
+        error("number of models exceeds number of data series")
+    end
+
+    return PoolModel(subspec, datas, h, [model for model in models];
+                   custom_settings = custom_settings,
+                   testing = testing, verbose = verbose)
+end
+function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
+                   models::Vector{AbstractModel}();
+                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                   testing::Bool = false, verbose::Bool = :low)
 
     # Model-specific specifications
     spec               = split(basename(@__FILE__),'.')[1]
@@ -157,11 +212,14 @@ function PoolModel(subspec::String="ss0", models::Vector{AbstractModel}();
     # Initialize models dictionary
     init_models!(m, models)
 
+    # Initialize datas dictionary
+    init_datas!(m, datas)
+
     # Initialize particle clouds
     init_particles!(m)
 
     # Initialize conditional predictive densities
-    init_loglhs!(m; verbose = verbose)
+    init_loglhs!(m, h; verbose = verbose)
 
     return m
 end
@@ -257,6 +315,8 @@ function init_statespace!(m::PoolModel)
     loglh_mat = loglh_mat'
 
     m.statespace[:Ψ] = (x,t) -> dot(loglh_mat[:,t], x)
+
+    return m
 end
 
 function init_distribution!(m::PoolModel)
@@ -265,10 +325,18 @@ function init_distribution!(m::PoolModel)
 
     # measurement error
     m.distributions[:F_u] = DiscreteUniform(0,0)
+
+    return m
 end
 
 function init_models!(m::PoolModel, models::Vector{AbstractModel} = Vector{AbstractModel}())
     m.models = models
+    return m
+end
+
+function init_datas!(m::PoolModel, datas::Vector{Matrix{T}}) where T<:AbstractFloat
+
+    return m
 end
 
 function init_particles!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}())
@@ -283,23 +351,40 @@ function init_particles!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}())
             m.particles[name] = cloud
         end
     end
+
+    return m
 end
 
-function init_loglhs!(m::PoolModel; verbose::Symbol = :low)
-    # to be done
-    for model in values(m.models)
-        thetas = load_draws(model, :full) # matrix of posterior draws, represents whole posterior
+function init_loglhs!(m::PoolModel, h::Int; names::Vector{Symbol} = Vector{Symbol}(),
+                      verbose::Symbol = :low)
+    if isempty(names)
+        names = keys(m.models)
+    else
+    for name in names
+        thetas = load_draws(m.models[name], :full) # matrix of posterior draws, represents whole posterior
+        Nt = size(datas[name],2)
+        Ns = size(compute_system(m)[:TTT],1)
         @sync @distributed for theta in thetas
             # Step 1: Evaluate T, R, Z, D given theta
-            system = compute_system(model; verbose = verbose)
+            system = compute_system(m.models[name]; verbose = verbose)
             TTT = system[:TTT]
             RRR = system[:RRR]
+            CCC = system[:CCC]
+            QQQ = system[:QQQ]
             ZZ  = system[:ZZ]
             DD  = system[:DD]
+            EE  = system[:EE]
 
-            # Step 2: Run Kalman filter to get an estimate of current state
+            # Step 2: Run Kalman filter to get an estimate of current state (t-1)
+            # loglh, ~, ~, s_filt, P_filt, s_0, P_0, ~, ~,
+            k = KalmanFilter(TTT, RRR, CCC, QQQ, ZZ, DD, EE)
+            S_t = zeros(Ns * (h+1)) # initialize s_{t:t+h|t-1} vector
+            P_t = zeros(Ns * (h+1)) # initialize P_{t:t+h|t-1} matrix
 
-            for
+            for t in 1:Nt
+                for j in 0:h
+                    if
+                    end
         end
 # 1. Evaluate T, R, Z, D
 # 2. Run Kalman filter to get
@@ -308,10 +393,12 @@ function init_loglhs!(m::PoolModel; verbose::Symbol = :low)
 # a. Unconditional forecast: via Kalman filter
 # b. Semiconditional: Use unconditional forecast, then run time t updating setp of Kalman filter with a measurement equation that only uses time t values of observables
 # 4. Compute recursively for j = 1, ...,h s_{t+j|t-1}, P_{t+j|t-1},
-# then create gian matrices out of these (see paper when creating these)
+# then create giant matrices out of these (see paper when creating these)
 # 5. Distribution of y_{t:t+h} is D + Z * s_{t:t+h}, which has the likelihood given in the paper
 # 6. Compute the likelihood for a multivariate normal
 # 7. To integrate out the posterior over theta, just do the Riemann sum approximation (see paper)
+
+    return m
 end
 """
 ```
@@ -387,8 +474,8 @@ function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel};
     end
     if populate
         model_keys = Vector(keys(models))
-        init_particles!(m, model_keys)
-        init_loglhs!(m, model_keys)
+        init_particles!(m; model_keys)
+        init_loglhs!(m; model_keys)
     end
     return nothing
 end
