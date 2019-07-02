@@ -451,17 +451,35 @@ end
 Access and update functions for particles, statespace, and distributions
 ```
 """
-function get_particles(m::PoolModel)
-    return m.particles
-end
-function get_models(m::PoolModel, models::Vector{Symbol} = Vector{Symbol}())
-    if isempty(models)
+function get_models(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
+    if isempty(names)
         return m.models
     else
-        return OrderedDict(kv[1] => kv[2] for kv in models)
+        return OrderedDict(name => m.models[name] for name in names)
     end
 end
-function get_all_statespace(m::PoolModel)
+function get_datas(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
+    if isempty(names)
+        return m.datas
+    else
+        return OrderedDict(name => m.datas[name] for name in names)
+    end
+end
+function get_particles(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
+    if isempty(names)
+        return m.particles
+    else
+        return OrderedDict(name => m.particles[name] for name in names)
+    else
+end
+function get_cond_loglhs(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
+    if isempty(names)
+        return m.cond_loglhs
+    else
+        return OrderedDict(name => m.cond_loglhs[name] for name in names)
+    end
+end
+function get_system(m::PoolModel)
     return Dict(:statespace => m.statespace, :distributions => m.distributions)
 end
 function get_statespace(m::PoolModel; F::Symbol = :none)
@@ -491,26 +509,10 @@ function get_F_u(m::PoolModel)
     return m.distributions[:F_u]
 end
 
-function update_particles!(m::PoolModel, p::Dict{Symbol,ParticleCloud})
-    for kv in p
-        try
-            m.particles[kv[1]] = kv[2]
-        catch
-            warning("No model named " * String(kv[1]) * " found.")
-        end
-    end
-    return nothing
-end
 function update_models!(m::PoolModel, models::Vector{AbstractModel};
                         populate::Bool = true)
-    m.models = OrderedDict(typeof(model) => model for model in models)
-    if populate
-        # Initialize particle clouds
-        init_particles!(m)
-
-        # Initialize conditional predictive densities
-        init_cond_loglhs!(m)
-    end
+    update_models!(m, Dict(typeof(model) => model for model in models);
+                   populate = populate)
     return nothing
 end
 function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel};
@@ -525,7 +527,28 @@ function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel};
     end
     return nothing
 end
-function update_cond_loglhs!(m::PoolModel, cond_loglhs::Dict{Symbol,Matrix{T}}) where T<:Float64
+function update_datas!(m::PoolModel, datas::Dict{Symbol,Matrix{T}}) where T<:AbstractFloat
+    for kv in datas
+        try
+            m.datas[kv[1]] = kv[2]
+        catch
+            warning("No model named " * String(kv[1]) * " found.")
+        end
+    end
+    return nothing
+end
+function update_particles!(m::PoolModel, p::Dict{Symbol,ParticleCloud})
+    for kv in p
+        try
+            m.particles[kv[1]] = kv[2]
+        catch
+            warning("No model named " * String(kv[1]) * " found.")
+        end
+    end
+    return nothing
+end
+function update_cond_loglhs!(m::PoolModel,
+                             cond_loglhs::Dict{Symbol,Vector{T}}) where T<:AbstractFloat
     for kv in cond_loglhs
         try
             m.cond_loglhs[kv[1]] = kv[2]
@@ -535,7 +558,6 @@ function update_cond_loglhs!(m::PoolModel, cond_loglhs::Dict{Symbol,Matrix{T}}) 
     end
     return nothing
 end
-
 function update_Φ!(m::PoolModel, f::Function)
     m.statespace[:Φ] = f
     return nothing
