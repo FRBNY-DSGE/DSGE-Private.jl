@@ -60,44 +60,38 @@ end
 
 function solve(m::GHLS)
 
-    # Initialize Values
-<<<<<<< Updated upstream
-    statezlbinfo = Array{Int64}(undef,m.poly[:ns],1)
-    aalin = Array{Float64}(undef,m.poly[:nvars],m.poly[:nvars])
-    bblin = Array{Float64}(undef,m.poly[:nvars],m.poly[:nexog])
-    alphacoeff0 = Array{Float64}(undef,solution.poly.nfunc*solution.poly.ngrid,2*solution.poly.ns)
-    alphacoeffstar = Array{Float64}(undef,solution.poly.nfunc*solution.poly.ngrid,2*solution.poly.s)
-    msvbounds = Array{Float64}(undef,2*(solution.poly.nmsv+solution.poly.nexogcont),1)
-    slopeconxx = Array{Float64}(undef,2*(solution.poly.nmsv+solution.poly.nexogcont),1)
-    endog_emean = Array{Float64}(undef,solution.poly.nvars+solution.poly.nexog,1)
-=======
-    statezlbinfo = A
-
->>>>>>> Stashed changes
-
     # Get canonical matrices of linearized solution
     Γ0, Γ1, C, Ψ, Π  = eqcond(m)
 
     #SIMULATE LINEAR HERE
+    endog_emean, zlbfrequency, msvbounds, statezlbinfo, convergence = simulate_linear(m, m.approx)
+    m.approx <= Setting(:endog_emean, endog_emean)
+    m.approx <= Setting(:zlbfrequency, zlbfrequency)
+    m.approx <= Setting(:msvbounds, msvbounds)
+    m.approx <= Setting(:statezlbinfo, statezlbinfo)
+    m.approx <= Setting(:convergence, convergence)
 
     #Total number of state variables - these values should come from model
-    nmsvplus = nmsv + nexogcont
+    nmsvplus = m.approx[:nmsv] + m.approx[:nexogcont]
 
     # Conversion from state domain (msv) to [-1, 1] domain (xx)
-    msv_to_xx[1:nmsvplus]  = 2.0 ./  (msvbounds[nmsvplus + 1 :  2*nmsvpluss] - msvbounds[1:nmsvplus])
-    msv_to_xx[nmsvplus+1 : 2*nmsvplus] = -2.0 * msvbounds[1:nmsvplus] ./ (msvbounds[nmsvplus + 1 : 2*nmsvplus] .- msvbounds[1:nmsvplus]) .- 1.0
+    slopeconmsv = zeros(2*nmsvplus)
+    slopeconmsv[1:nmsvplus] = 2.0 ./  (msvbounds[nmsvplus + 1 :  2*nmsvpluss] - msvbounds[1:nmsvplus])
+    slopeconmsv[nmsvplus+1:2*nmsvplus] = -2.0 * msvbounds[1:nmsvplus] ./ (msvbounds[nmsvplus + 1 : 2*nmsvplus] .- msvbounds[1:nmsvplus]) .- 1.
+    m.approx <= Setting(:slopeconmsv, slopeconmsv)
 
     # Conversion from xx to msv domains
-    xx_to_msv[1:nmsvplus] = 0.5 * (msvbounds[nmsvplus + 1 : 2*nmsvplus] - msvbounds[1:nmsvplus])
-    xx_to_msv[nmsvplus+1:2*nmsvplus = msvbounds[1:nmsvplus] + 0.5 * (msvbounds[nmsvplus + 1 : 2*nmsvplus] - msvbounds[1:nmsvplus])
+    slopeconxx = zeros(2*nmsvplus)
+    slopeconxx[1:nmsvplus] =  0.5 * (msvbounds[nmsvplus + 1 : 2*nmsvplus] - msvbounds[1:nmsvplus])
+    slopeconxx[nmsvplus+1:2*nmsvplus] = msvbounds[1:nmsvplus] + 0.5 * (msvbounds[nmsvplus + 1 : 2*nmsvplus] - msvbounds[1:nmsvplus])
 
-    # CONSTRUCT APPROX HERE
+    m.approx <= Setting(:slopeconxx, slopeconxx)
 
     # Construct starting guess
     aalin, bblin = lindecrule_markov(Γ0, Γ1, C, Ψ, Π)
-    α_initial = initial_α(m, approx, aalin, bblin)
+    α_initial = initial_α(m, m.approx, aalin, bblin)
 
-    α_star, convergence = fixedpoint(m, approx, α_initial)
+    α_star, convergence = fixedpoint(m, m.approx, α_initial)
 
 
 end
