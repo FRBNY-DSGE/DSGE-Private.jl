@@ -36,6 +36,14 @@ mutable struct SmolyakApproximation{T} <: AbstractModel{T}
     exoggrid :: Array{Float64}
     ghnodes :: Array{Float64}
     ghweights :: Array{Float64}
+
+    # simulate_linear
+    endog_emean :: Array{Float64}
+    zlbfrequency :: Float64
+    msvbounds :: Array{Float64}
+    statezlbinfo :: Array{Int64}
+    convergence :: Bool
+    slopeconxx :: Array{Float64}
 ```
 end
 
@@ -45,11 +53,11 @@ function SmolyakApproximation()
     approx = SmolyakApproximation{Float64}(Dict{Symbol,Setting}())
 
     init_settings!(approx)
-    init_solution!(approx)
+    return approx
 end
 
 function init_settings!(approx::SmolyakApproximation)
-    approx <= Setting(:nparams, 43)
+
     approx <= Setting(:nexog,  6)
     approx <= Setting(:nexogcont, 0)
     approx <= Setting(:nvars, 22)
