@@ -375,13 +375,27 @@ function init_loglhs!(m::PoolModel, h::Int; names::Vector{Symbol} = Vector{Symbo
             DD  = system[:DD]
             EE  = system[:EE]
 
-            # Step 2: Run Kalman filter to get an estimate of current state (t-1)
+            # Run Kalman filter
             # loglh, ~, ~, s_filt, P_filt, s_0, P_0, ~, ~,
-            k = KalmanFilter(TTT, RRR, CCC, QQQ, ZZ, DD, EE)
+            k   = KalmanFilter(TTT, RRR, CCC, QQQ, ZZ, DD, EE)
             S_t = zeros(Ns * (h+1)) # initialize s_{t:t+h|t-1} vector
             P_t = zeros(Ns * (h+1)) # initialize P_{t:t+h|t-1} matrix
-
+            s_0 = k.s_t
+            P_0 = k.P_t
+            try
+                semi_names = get_setting(m.models[name], :cond_semin_names)
+                do_semi = true
+            catch
+                do_semi = false
+            end
             for t in 1:Nt
+                # Compute unconditional forecast of time t
+                DSGE.forecast!(k)
+
+                # Compute semiconditional forecast
+                if do_semi
+                    obs = get_dict(m.models[name], :obs)
+
                 for j in 0:h
                     if
                     end
