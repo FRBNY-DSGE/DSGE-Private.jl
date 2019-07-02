@@ -60,9 +60,11 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     observables::OrderedDict{Symbol,Int}
     pseudo_observables::OrderedDict{Symbol,Int}
     models::OrderedDict{Symbol,AbstractModel}              # Model name mapped to model object
-    particles::OrderedDict{Symbol,ParticleCloud}           # Model name mapped to ParticleCloud
-    statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
-                                                           # Measurement equation for linear weights
+    datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
+    particles::OrderedDict{Symbol,ParticleCloud}           # Model name " " to ParticleCloud
+    statespace::Dict{Symbol,Function}                      # Transition eq for linear weights
+    loglhs::
+                                                           # Measurement eq for linear weights
     distributions::Dict{Symbol,Distribution}               # Distributions for state space
     spec::String                                           # Model specification number (eg "m990")
     subspec::String                                        # Model subspecification (eg "ss0")
@@ -89,14 +91,14 @@ Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 
 function PoolModel(subspec::String="ss0", models::AbstractModel...;
                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing = false)
+                   testing::Bool = false, verbose::Bool = :low)
     return PoolModel(subspec, [model for model in models];
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing = false)
+                   custom_settings = custom_settings,
+                   testing = testing, verbose = verbose)
 end
 function PoolModel(subspec::String="ss0", models::Vector{AbstractModel}();
                        custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                       testing = false)
+                       testing::Bool = false, verbose::Bool = :low)
 
     # Model-specific specifications
     spec               = split(basename(@__FILE__),'.')[1]
@@ -159,7 +161,7 @@ function PoolModel(subspec::String="ss0", models::Vector{AbstractModel}();
     init_particles!(m)
 
     # Initialize conditional predictive densities
-    init_loglhs!(m)
+    init_loglhs!(m; verbose = verbose)
 
     return m
 end
@@ -284,11 +286,35 @@ function init_particles!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}())
     end
 end
 
-function init_loglhs!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}())
+function init_loglhs!(m::PoolModel; verbose::Symbol = :low)
     # to be done
+    for model in values(m.models)
+        thetas = load_draws(model, :full) # matrix of posterior draws, represents whole posterior
+        @sync @distributed for theta in thetas
+            # Step 1: Evaluate T, R, Z, D given theta
+            system = compute_system(model; verbose = verbose)
+            TTT = system[:TTT]
+            RRR = system[:RRR]
+            ZZ  = system[:ZZ]
+            DD  = system[:DD]
+
+            # Step 2: Run Kalman filter to get an estimate of current state
+
+            for
+        end
+
+# 1. Evaluate T, R, Z, D
+# 2. Run Kalman filter to get
+# s_{t-1|t-1} and P_{t-1|t-1}
+# 3. Compute s_{t|t-1} and P_{t|t-1}
+# a. Unconditional forecast: via Kalman filter
+# b. Semiconditional: Use unconditional forecast, then run time t updating setp of Kalman filter with a measurement equation that only uses time t values of observables
+# 4. Compute recursively for j = 1, ...,h s_{t+j|t-1}, P_{t+j|t-1},
+# then create gian matrices out of these (see paper when creating these)
+# 5. Distribution of y_{t:t+h} is D + Z * s_{t:t+h}, which has the likelihood given in the paper
+# 6. Compute the likelihood for a multivariate normal
+# 7. To integrate out the posterior over theta, just do the Riemann sum approximation (see paper)
 end
-
-
 """
 ```
 Access and update functions for particles, statespace, and distributions
