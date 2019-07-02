@@ -183,7 +183,7 @@ function GHLS(subspec::String="ss0";
             rng,
             testing,
             OrderedDict{Symbol,Observable}(),
-            OrderedDict{Symbol,PseudoObservable}()
+            OrderedDict{Symbol,PseudoObservable}(),
             SmolyakApproximation())
 
     # Set settings

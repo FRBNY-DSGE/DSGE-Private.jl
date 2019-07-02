@@ -37,7 +37,6 @@ function solve(m::AbstractModel; apply_altpolicy = false, verbose::Symbol = :hig
         #    gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = verbose)
         TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = verbose)
 
-
         # Check for LAPACK exception, existence and uniqueness
         if eu[1] != 1 || eu[2] != 1
             throw(GensysError())
@@ -97,12 +96,12 @@ function solve(m::GHLS)
 end
 
 # Matrix multiplication
-function dgemm(α::FLoat64, A::Array{Float64}, B::Array{Float64})
+function dgemm(α::Float64, A::Array{Float64}, B::Array{Float64})
     C = α*A*B
     return C
 end
 
-function fixedpoint(m::GHLS; approx::SmolyakApproximation; α_initial :: Array{Float64})
+function fixedpoint(m::GHLS, approx::SmolyakApproximation, α_initial::Array{Float64})
 
     # Initialize
     α_star = copy(α_initial)
@@ -126,7 +125,7 @@ function fixedpoint(m::GHLS; approx::SmolyakApproximation; α_initial :: Array{F
 
             # Update polynomials using new guess for α
             for k in 1:approx[:ngrid]
-                updated_approx_polynomials[: k], err = decr_euler(k, j, m, approx, α_star)
+                updated_approx_polynomials[:, k], err = decr_euler(k, j, m, approx, α_star)
             end
 
             # Solve for α by multiplying by inverse matrix and then reindex
@@ -154,13 +153,11 @@ function fixedpoint(m::GHLS; approx::SmolyakApproximation; α_initial :: Array{F
         if (avgerror < tolfun)
             convergence = true
             return α_star, convergence
-
+        end
         # Updated α are convex combination of old and new
         α_star = (1.0 - step)*α_star + step*α_new
     end
-
     return α_star, convergence
-
 end
 
 function simulate_linear(m::GHLS, approx::SmolyakApproximation)
@@ -178,7 +175,7 @@ function simulate_linear(m::GHLS, approx::SmolyakApproximation)
     shockindex = Array{Int64}(undef, approx[:nexog] - approx[:nexogcont])
     countzlbstates = zeros(Int64, ns)
     msvhigh = Array{Float64}(undef, approx[:nmsv], 1)
-    msvlow = Array{Float64}(undef, approx[:nmsv]], 1)
+    msvlow = Array{Float64}(undef, approx[:nmsv], 1)
     innovations = Array{Float64}(undef, approx[:nexog], 1)
     xrandn = Array{Float64}(undef, approx[:nexog], total_periods)
     msv_std = zeros(approx[:nmsv] + approx[:nexogcont])

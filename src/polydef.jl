@@ -1,16 +1,17 @@
-module polydef
+#=module polydef
     import FastGaussQuadrature: gausshermite
-    export SmolyakApproximation, initializesolution!, setgridsize,
+    export SmolyakApproximation, init_solution!, init_settings!, setgridsize,
         exoggridindex, ghquadrature,sparsegrid, smolyakpoly, initializelinearsolution!
 using LinearAlgebra
-
+=#
 mutable struct SmolyakApproximation{T} <: AbstractModel{T}
 
     settings::Dict{Symbol, Setting}
 
-    #These should be settings
-```
-    nfunc :: Int
+    testing::Bool
+    keys::OrderedDict{Symbol,Int}
+ # These should be settings
+#= nfunc::Int
     nmsv :: Int
     nvars :: Int
     ngrid :: Int
@@ -44,15 +45,14 @@ mutable struct SmolyakApproximation{T} <: AbstractModel{T}
     statezlbinfo :: Array{Int64}
     convergence :: Bool
     slopeconxx :: Array{Float64}
-```
+=#
 end
 
 function SmolyakApproximation()
-
     #Initialize empty approximation object
-    approx = SmolyakApproximation{Float64}(Dict{Symbol,Setting}())
-
+    approx = SmolyakApproximation{Float64}(Dict{Symbol,Setting}(), false, OrderedDict{Symbol, Int}())
     init_settings!(approx)
+    init_solution!(approx)
     return approx
 end
 
@@ -61,8 +61,8 @@ function init_settings!(approx::SmolyakApproximation)
     approx <= Setting(:nexog,  6)
     approx <= Setting(:nexogcont, 0)
     approx <= Setting(:nvars, 22)
-    approx <= Setting (:nmsv, 7)
-    approx <= Setting (:nfunc, 7)
+    approx <= Setting(:nmsv, 7)
+    approx <= Setting(:nfunc, 7)
     approx <= Setting(:nindplus, 1)
     approx <= Setting(:nshockgrid, [7 3 3 3 3 1])
     approx <= Setting(:indplus, [3])
@@ -241,8 +241,9 @@ function sparsegrid(nmsv,nindplus,ngrid,indplus)
 end
 
 
-function init_solution!(approx::SmolyakApproximation) # ! to indicate that this function mutates and input
+function init_solution!(approx_obj::SmolyakApproximation) # ! to indicate that this function mutates and input
 
+    approx = approx_obj.settings
     #I don't think we need to declare types of these in the future (may not even work)
     nquadsingle = 3
 
@@ -312,7 +313,7 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     return
 
 end
-`IGNORE FOR NOW
+#=IGNORE FOR NOW
 function initializetestsolution!(test_solution)
 
     data=Base.DataFmt.readdlm("solution%poly.txt")
@@ -365,4 +366,5 @@ function initializetestsolution!(test_solution)
     data=readdlm("solution%poly%slopeconmsv.txt")
     test_solution.poly.slopeconmsv=data
 end
-`
+=#
+#end

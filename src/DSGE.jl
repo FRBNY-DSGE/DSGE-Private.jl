@@ -13,6 +13,7 @@ module DSGE
     import Calculus
     import LinearAlgebra: rank
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
+    import FastGaussQuadrature: gausshermite
 
     export
         # distributions_ext.jl
@@ -148,7 +149,10 @@ module DSGE
         shock_groupings,
 
         # models/nonlinear/
-        GHLS,
+       GHLS,
+
+       # polydef
+       SmolyakApproximation,
 
         # util
         @test_matrix_approx_eq, @test_matrix_approx_eq_eps
@@ -166,7 +170,7 @@ module DSGE
     include("observables.jl")
     include("statespace.jl")
     include("util.jl")
-
+#=
     include("benchmark/util.jl")
     include("benchmark/benchmark.jl")
     include("benchmark/io.jl")
@@ -177,10 +181,26 @@ module DSGE
     include("data/transform_data.jl")
     include("data/reverse_transform.jl")
     include("data/util.jl")
+=#
+   #interns start here
+
+    include("polydef.jl")
+    include("models/nonlinear/GHLS.jl")
+    include("models/nonlinear/subspecs.jl")
+    include("models/nonlinear/eqcond.jl")
+    include("models/nonlinear/observables.jl")
+    include("models/nonlinear/measurement.jl")
+    include("models/nonlinear/augment_states.jl")
+
+    include("models/nonlinear/model_details.jl")
+
+#interns end here
+
 
     include("solve/gensys.jl")
     include("solve/solve.jl")
 
+#=
     include("estimate/util.jl")
     include("estimate/kalman.jl")
     include("estimate/filter.jl")
@@ -290,14 +310,5 @@ module DSGE
     include("models/an_schorfheide/pseudo_observables.jl")
     include("models/an_schorfheide/pseudo_measurement.jl")
     include("models/an_schorfheide/augment_states.jl")
-
-    #interns start here
-    include("models/nonlinear/GHLS.jl")
-    include("models/nonlinear/subspecs.jl")
-    include("models/nonlinear/eqcond.jl")
-    include("models/nonlinear/observables.jl")
-    include("models/nonlinear/measurement.jl")
-    include("models/nonlinear/augment_states.jl")
-
-
+=#
 end
