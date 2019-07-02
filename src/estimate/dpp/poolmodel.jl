@@ -62,7 +62,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     models::OrderedDict{Symbol,AbstractModel}              # Model name mapped to model object
     datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
     particles::OrderedDict{Symbol,ParticleCloud}           # Model name " " to ParticleCloud
-    loglhs::OrderedDict{Symbol,Vector{T}}                  # Model name " " to conditional loglhs
+    cond_loglhs::OrderedDict{Symbol,Vector{T}}             # Model name " " to conditional loglh
     statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
                                                            # Measurement eq for linear weights
     distributions::Dict{Symbol,Distribution}               # Distributions for state space
@@ -192,8 +192,8 @@ function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
     end
 
     # Set observable and pseudo-observable transformations
-    init_observable_mappings!(m)
-    init_pseudo_observable_mappings!(m)
+    # init_observable_mappings!(m)
+    # init_pseudo_observable_mappings!(m)
 
     # Initialize parameters
     init_parameters!(m)
@@ -205,7 +205,7 @@ function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
     init_distributions!(m)
 
     # Initialize model indices and subspec
-    init_model_indices!(m)
+    # init_model_indices!(m)
     init_subspec!(m)
     steadystate!(m)
 
@@ -219,7 +219,7 @@ function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
     init_particles!(m)
 
     # Initialize conditional predictive densities
-    init_loglhs!(m, h; verbose = verbose)
+    init_cond_loglhs!(m, h; verbose = verbose)
 
     return m
 end
@@ -303,13 +303,13 @@ function init_statespace!(m::PoolModel)
                               sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)
 
     # measurement equation
-    T = [length(get_loglh(v)) for v in values(m.particles)] # in case we have asymmetric lengths of estimation
-    loglh_mat = zeros(T,length(keys(m.particles))) # matrix of conditional log likelihoods
-    for (i,v) in enumerate(values(m.particles)) # time period vs. model
+    T = [v for v in values(m.cond_loglhs)] case we have asymmetric lengths of estimation
+    loglh_mat = zeros(T,length(m.cond_loglhs)) # matrix of conditional log likelihoods
+    for (i,v) in enumerate(values(m.cond_loglhs)) # time period vs. model
         if tmp[i] > T
-            loglh_mat[:,i] = get_loglh(v)[1:T]
+            loglh_mat[:,i] = v[1:T]
         else
-            loglh_mat[:,i] = get_loglh(v)
+            loglh_mat[:,i] = v
         end
     end
     loglh_mat = loglh_mat'
@@ -335,7 +335,9 @@ function init_models!(m::PoolModel, models::Vector{AbstractModel} = Vector{Abstr
 end
 
 function init_datas!(m::PoolModel, datas::Vector{Matrix{T}}) where T<:AbstractFloat
-
+    for (name,data) in zip(keys(m.models),datas)
+        m.datas[name] = data
+    end
     return m
 end
 
@@ -355,31 +357,40 @@ function init_particles!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}())
     return m
 end
 
-function init_loglhs!(m::PoolModel, h::Int; names::Vector{Symbol} = Vector{Symbol}(),
+function init_cond_loglhs!(m::PoolModel, h::Int; names::Vector{Symbol} = Vector{Symbol}(),
                       verbose::Symbol = :low)
     if isempty(names)
         names = keys(m.models)
     else
     for name in names
-        thetas = load_draws(m.models[name], :full) # matrix of posterior draws, represents whole posterior
-        Nt = size(datas[name],2)
+        θs = load_draws(m.models[name], :full) # matrix of posterior draws, represents whole posterior
+        Nθ = length(θs)
+        Nt = size(datas[name],2) - h # since predict h periods ahead
         Ns = size(compute_system(m)[:TTT],1)
-        @sync @distributed for theta in thetas
-            # Step 1: Evaluate T, R, Z, D given theta
-            system = compute_system(m.models[name]; verbose = verbose)
-            TTT = system[:TTT]
-            RRR = system[:RRR]
-            CCC = system[:CCC]
-            QQQ = system[:QQQ]
-            ZZ  = system[:ZZ]
-            DD  = system[:DD]
-            EE  = system[:EE]
+        cond_loglhs = zeros(Nt, Nθ) # matrix of period t conditional loglhs (on t-1 information set)
+        m.cond_loglhs[name] = @sync @distributed (+) for θi in 1:Nθ
+            # Evaluate T, R, Z, D given theta
+            update!(m.models[name], θs[θi])
+            TTT, RRR, CCC = solve(m.models[name])
+            tmp = measurement(m.models[name], TTT, RRR, CCC)
+            QQ = tmp[:QQ]
+            ZZ = tmp[:ZZ]
+            DD = tmp[:DD]
+            EE = tmp[:EE]
+
+            # Precompute matrices
+            TTT_power = Dict{Int,typeof(TTT)}(1 => TTT)
+            for i in 2:h
+                TTT_power[i] = TTT_power[i-1] * TTT
+            end
+            TTTtp_power = Dict(i => TTT_power[i]' for i in 1:h)
+            Dtild = kron(ones(h+1),DD)
+            Ztild = kron(Matrix(I1.0,h+1,h+1),ZZ)
 
             # Run Kalman filter
-            # loglh, ~, ~, s_filt, P_filt, s_0, P_0, ~, ~,
             k   = KalmanFilter(TTT, RRR, CCC, QQQ, ZZ, DD, EE)
-            S_t = zeros(Ns * (h+1)) # initialize s_{t:t+h|t-1} vector
-            P_t = zeros(Ns * (h+1)) # initialize P_{t:t+h|t-1} matrix
+            SS_t = zeros(Ns * (h+1)) # initialize s_{t:t+h|t-1} vector
+            PP_t = zeros(Ns * (h+1), NS * (h+1)) # initialize P_{t:t+h|t-1} matrix
             s_0 = k.s_t
             P_0 = k.P_t
             try
@@ -388,6 +399,8 @@ function init_loglhs!(m::PoolModel, h::Int; names::Vector{Symbol} = Vector{Symbo
             catch
                 do_semi = false
             end
+
+            cond_loglh_θ = zeros(Nt) # vector of conditional loglhs (on t-1 information set) and fixing θ
             for t in 1:Nt
                 # Compute unconditional forecast of time t
                 DSGE.forecast!(k)
@@ -395,22 +408,41 @@ function init_loglhs!(m::PoolModel, h::Int; names::Vector{Symbol} = Vector{Symbo
                 # Compute semiconditional forecast
                 if do_semi
                     obs = get_dict(m.models[name], :obs)
+                    inds = [obs[semi_name] for semi_name in semi_names]
+                    update!(k, m.datas[name][inds,t])
+                end
 
-                for j in 0:h
-                    if
+                # Recursively forecast by j = 1:h periods
+                SS_t[1:Ns] = k.s_t
+                PP_t[1:NS, 1:Ns] = k.P_t
+                for j in 1:h
+                    PP_t[1:Ns, 1+Ns*j:Ns*(j+1)] = k.P_t * TTTtp_power[j]
+                    PP_t[1+Ns*j:Ns*(j+1)] = TTT_power[j] * k.P_t
+                end
+                for j in 1:h
+                    forecast!(k)
+                    indices = 1+Ns*j:Ns*(j+1)
+                    SS_t[indices] = k.s_t
+                    PP_t[indices, indices] = k.P_t
+                    for m in 1:h-j
+                        PP_t[indices,1+Ns*(m+j):Ns*(m+j+1)] = k.P_t * TTTtp_power[m]
+                        PP_t[1+Ns*(m+j):Ns*(m+j+1),indices] = TTT_power[m] * k.P_t
                     end
+                end
+
+                # Compute conditional log likelihood p(y_t|θ, I_{t-1})
+                μ_mv = Dtild + Ztild * SS_t
+                Σ_mv = Ztild * PP_t * Ztild'
+                inv_Σ_mv = inv(Σ_mv)
+                det_Σ = det(mv)
+                err = vec(datas[name][:,t:t+h]) - μ_mv
+                cond_loglh_θ[t] = (2*pi)^(-length(err)/2) * det_Σ^(-1/2) * exp(-(1/2) * dot(err, inv_Σ * err))
+            end
+            cond_loglhs[:,θi] = cond_loglh_θ
+
         end
-# 1. Evaluate T, R, Z, D
-# 2. Run Kalman filter to get
-# s_{t-1|t-1} and P_{t-1|t-1}
-# 3. Compute s_{t|t-1} and P_{t|t-1}
-# a. Unconditional forecast: via Kalman filter
-# b. Semiconditional: Use unconditional forecast, then run time t updating setp of Kalman filter with a measurement equation that only uses time t values of observables
-# 4. Compute recursively for j = 1, ...,h s_{t+j|t-1}, P_{t+j|t-1},
-# then create giant matrices out of these (see paper when creating these)
-# 5. Distribution of y_{t:t+h} is D + Z * s_{t:t+h}, which has the likelihood given in the paper
-# 6. Compute the likelihood for a multivariate normal
-# 7. To integrate out the posterior over theta, just do the Riemann sum approximation (see paper)
+        m.cond_loglhs[name] ./= Nθ
+    end
 
     return m
 end
@@ -477,7 +509,7 @@ function update_models!(m::PoolModel, models::Vector{AbstractModel};
         init_particles!(m)
 
         # Initialize conditional predictive densities
-        init_loglhs!(m)
+        init_cond_loglhs!(m)
     end
     return nothing
 end
@@ -489,14 +521,14 @@ function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel};
     if populate
         model_keys = Vector(keys(models))
         init_particles!(m; model_keys)
-        init_loglhs!(m; model_keys)
+        init_cond_loglhs!(m; model_keys)
     end
     return nothing
 end
-function update_loglhs!(m::PoolModel, loglhs::Dict{Symbol,Matrix{T}}) where T<:Float64
-    for kv in loglhs
+function update_cond_loglhs!(m::PoolModel, cond_loglhs::Dict{Symbol,Matrix{T}}) where T<:Float64
+    for kv in cond_loglhs
         try
-            m.loglhs[kv[1]] = kv[2]
+            m.cond_loglhs[kv[1]] = kv[2]
         catch
             warning("No model named " * String(kv[1]) * " found.")
         end
