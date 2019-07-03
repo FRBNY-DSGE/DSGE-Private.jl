@@ -4,10 +4,11 @@ once I have a better idea of what the exact structure
 of the PoolModel, etc. type will be
 
 PoolModel type tests
-- Should be able to solve and estimate all underlying models correctly
-- keyword: static = true -> changes the priors of PoolModel for you
-- check all other keywords
+- Should be able to solve all underlying models correctly
 - check instantiation is properly done
+    a. Need to use Matlab to check whether you forecast to T - h or to T
+    b. Load particle clouds
+    c. Load data in properly
 - use Matlab code to check Figure 4/9 results (predictive densities)
 
 Solve tests

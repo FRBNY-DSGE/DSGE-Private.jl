@@ -31,6 +31,9 @@ h = 4
                          h = h, models = [m1, m2])) == PoolModel
 m = PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
                          h = h, models = [m1, m2])
+mstatic = PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
+                         h = h, models = [m1, m2]; static = true)
+@assert mstatic[:ρ] == 1 && mstatic[:ρ].fixed
 
 # Test access and update functions
 @assert get_models(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
