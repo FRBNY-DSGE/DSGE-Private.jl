@@ -1,26 +1,34 @@
 path = dirname(@__FILE__)
+using FileIO, HDF5
+
+###########################################################################
+# Set up for testing PoolModel instantiation
+###########################################################################
 m1 = AnSchorfheide()
+pc1_file = poolspec!(m1)
 m2 = SmetsWouters()
+pc2_file = poolspec!(m2)
 
 # save = normpath(joinpath(dirname(@__FILE__),"save"))
 
-# Load data here, name it data
+# Load true data here, name it data
 # tbd . . .
 
 # Load prediction data here
-# y1 = data
-# y2 = data
+y1 = h5read(get_setting(m1, :dataroot) * "smc.h5")
+y2 = h5read(get_setting(m1, :dataroot) * "sw_orig_smc.h5")
 
 # Load particle clouds here
-# pc1 = ...
-# pc2 = ...
+pc1_filepath = get_setting(m1, :saveroot) * "output_data/an_schorfheide/ss0/estimate/raw/"
+pc2_filepath = get_setting(m2, :saveroot) * "output_data/an_schorfheide/ss1/estimate/raw/"
+pc1 = load(pc1_filepath * pc1_file)
+pc2 = load(pc2_filepath * pc2_file)
 
 # Test outer constructors
 h = 4
 @assert typeof(PoolModel(data = y1, h = h, [m1, m1])) == PoolModel
 @assert typeof(PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
                          h = h, models = [m1, m2])) == PoolModel
-
 m = PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
                          h = h, models = [m1, m2])
 

@@ -134,7 +134,7 @@ function load_draws(m::AbstractModel, input_type::Symbol; subset_inds::AbstractR
             params = map(Float64, h5read(input_file_name, "mhparams"))
         elseif get_setting(m, :sampling_method) == :SMC
             cloud = load(replace(replace(input_file_name, ".h5" => ".jld2"), "smcsave" => "smc_cloud"), "cloud")
-            params_unweighted = get_vals(cloud)
+            params_unweighted = Matrix(get_vals(cloud)')
             # Re-sample SMC draws according to their weights
             W = load(replace(replace(input_file_name, "smcsave" => "smc_cloud"), "h5" => "jld2"), "W")
             weights = W[:, end]
