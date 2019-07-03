@@ -89,71 +89,58 @@ Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
 
-function PoolModel(subspec::String="ss0", data::Matrix{T}, h::Int,
-                   models::AbstractModel...;
+# function PoolModel(data::Matrix{T}, h::Int, subspec::String="ss0", models::AbstractModel...;
+#                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+#                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+#     return PoolModel(subspec, [data for i = 1:length(models)], h, [model for model in models];
+#                    custom_settings = custom_settings, testing = testing, verbose = verbose)
+# end
+# function PoolModel(datas::Vector{Matrix{T}}, h::Int, subspec::String="ss0",
+#                    models::AbstractModel...;
+#                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+#                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+#     return PoolModel(subspec, datas, h, [model for model in models];
+#                    custom_settings = custom_settings, testing = testing, verbose = verbose)
+# end
+# function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, subspec::String="ss0",
+#                    models::AbstractModel...;
+#                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+#                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+#     return PoolModel(subspec, datas, h, [model for model in models];
+#                    custom_settings = custom_settings, testing = testing, verbose = verbose)
+# end
+function PoolModel(data::Matrix{T}, h::Int,
+                   models::Vector{AbstractModel}, subspec::String="ss0",
                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
-    return PoolModel(subspec, [data for i = 1:length(models)], h, [model for model in models];
-                   custom_settings = custom_settings, testing = testing, verbose = verbose)
-end
-function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
-                   models::AbstractModel...;
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
-    return PoolModel(subspec, datas, h, [model for model in models];
-                   custom_settings = custom_settings, testing = testing, verbose = verbose)
-end
-function PoolModel(subspec::String="ss0", datas::Dict{Symbol,Matrix{T}}, h::Int,
-                   models::AbstractModel...;
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
-    return PoolModel(subspec, datas, h, [model for model in models];
-                   custom_settings = custom_settings, testing = testing, verbose = verbose)
-end
-function PoolModel(subspec::String="ss0", data::Matrix{T}, h::Int,
-                   models::Vector{AbstractModel};
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+                   testing::Bool = false, verbose::Bool = :low,
+                   static::Bool = false) where T<:AbstractFloat
     return PoolModel(subspec, [data for i = 1:length(models)], h, models;
                    custom_settings = custom_settings,
-                   testing = testing, verbose = verbose)
+                   testing = testing, verbose = verbose, static = static)
 end
-function PoolModel(subspec::String="ss0", datas::Dict{Symbol,Matrix{T}}, h::Int,
-                   models::Vector{AbstractModel};
+function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int,
+                   models::Vector{AbstractModel}, subspec::String="ss0",;
                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
+                   testing::Bool = false, verbose::Bool = :low,
+                   static::Bool = false) where T<:AbstractFloat
     if length(data) > length(models)
         error("number of data series exceeds number of models")
     else
         error("number of models exceeds number of data series")
     end
-    name_vec = [typeof(model) for model in models]
+    name_vec = [Symbol(typeof(model)) for model in models]
     try
         data_vec = [datas[name] for name in name_vec]
     catch
         error("at least one key in data dictionary does not match any model")
     end
     return PoolModel(subspec, data_vec, h, models; custom_settings = custom_settings,
-                   testing = testing, verbose = verbose)
+                   testing = testing, verbose = verbose, static = static)
 end
-function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
-                   models::AbstractModel...;
+function PoolModel(datas::Vector{Matrix{T}}, h::Int,
+                   models::Vector{AbstractModel}(), subspec::String="ss0";
                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
-    if length(data) > length(models)
-        error("number of data series exceeds number of models")
-    else
-        error("number of models exceeds number of data series")
-    end
-
-    return PoolModel(subspec, datas, h, [model for model in models];
-                   custom_settings = custom_settings,
-                   testing = testing, verbose = verbose)
-end
-function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
-                   models::Vector{AbstractModel}();
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low)
+                   testing::Bool = false, verbose::Bool = :low, static::Bool = false)
 
     # Model-specific specifications
     spec               = split(basename(@__FILE__),'.')[1]
@@ -196,7 +183,7 @@ function PoolModel(subspec::String="ss0", datas::Vector{Matrix{T}}, h::Int,
     # init_pseudo_observable_mappings!(m)
 
     # Initialize parameters
-    init_parameters!(m)
+    init_parameters!(m; static = static)
 
     # Initialize state space equations
     init_statespace!(m)
@@ -233,17 +220,29 @@ Initializes the model's parameters, as well as empty values for the steady-state
 parameters (in preparation for `steadystate!(m)` being called to initialize
 those).
 """
-function init_parameters!(m::PoolModel)
+function init_parameters!(m::PoolModel; static::Bool = false)
     # Initialize parameters
-    m <= parameter(:ρ, 1, (0,1), (0,1), Untransformed(), Uniform(0,1), fixed = false,
-                   description="ρ: persistence of AR processing underlying λ.",
-                   text_label="\\rho")
-    m <= parameter(:μ, 0, fixed = true,
-                   description="μ: drift of AR processing underlying λ.",
-                   text_label="\\rho")
-    m <= parameter(:σ, 1, fixed = true,
-                   description="σ: volatility of AR processing underlying λ.",
-                   text_label="\\rho")
+    if static
+        m <= parameter(:ρ, 1, fixed = true,
+                       description="ρ: persistence of AR processing underlying λ.",
+                       text_label="\\rho")
+        m <= parameter(:μ, 0, fixed = true,
+                       description="μ: drift of AR processing underlying λ.",
+                       text_label="\\rho")
+        m <= parameter(:σ, 1, fixed = true,
+                       description="σ: volatility of AR processing underlying λ.",
+                       text_label="\\rho")
+    else
+        m <= parameter(:ρ, 0.5, (0,1), (0,1), Untransformed(), Uniform(0,1), fixed = false,
+                       description="ρ: persistence of AR processing underlying λ.",
+                       text_label="\\rho")
+        m <= parameter(:μ, 0, fixed = true,
+                       description="μ: drift of AR processing underlying λ.",
+                       text_label="\\rho")
+        m <= parameter(:σ, 1, fixed = true,
+                       description="σ: volatility of AR processing underlying λ.",
+                       text_label="\\rho")
+    end
 end
 """
 ```
@@ -448,15 +447,23 @@ function init_cond_loglhs!(m::PoolModel, h::Int; names::Vector{Symbol} = Vector{
 end
 """
 ```
-Access and update functions for particles, statespace, and distributions
+Access and update functions for PoolModel fields. Append and pop functions not added yet
+because functionality may not be desirable. Instead, we may want the user to simply
+construct a new PoolModel object.
 ```
 """
+function get_models(m::PoolModel, names::Symbol)
+    return get_models(m, [names])
+end
 function get_models(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
         return m.models
     else
         return OrderedDict(name => m.models[name] for name in names)
     end
+end
+function get_datas(m::PoolModel, names::Symbol)
+    return get_datas(m, [names])
 end
 function get_datas(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
@@ -465,12 +472,18 @@ function get_datas(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
         return OrderedDict(name => m.datas[name] for name in names)
     end
 end
+function get_particles(m::PoolModel, names::Symbol)
+    return get_particles(m, [names])
+end
 function get_particles(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
         return m.particles
     else
         return OrderedDict(name => m.particles[name] for name in names)
     else
+end
+function get_cond_loglhs(m::PoolModel, names::Symbol)
+    return get_cond_loglhs(m, [names])
 end
 function get_cond_loglhs(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
@@ -482,15 +495,15 @@ end
 function get_system(m::PoolModel)
     return Dict(:statespace => m.statespace, :distributions => m.distributions)
 end
-function get_statespace(m::PoolModel; F::Symbol = :none)
-    if F == :none
+function get_statespace(m::PoolModel; F::Symbol = :all)
+    if F == :all
         return m.statespace
     else
         return m.statespace[F]
     end
 end
-function get_distributions(m::PoolModel; F::Symbol = :none)
-    if F == :none
+function get_distributions(m::PoolModel; F::Symbol = :all)
+    if F == :all
         return m.distributions
     else
         return m.distributions[F]
@@ -509,16 +522,24 @@ function get_F_u(m::PoolModel)
     return m.distributions[:F_u]
 end
 
+function update_models!(m::PoolModel, models::AbstractModel...;
+                        populate::Bool = true)
+    update_models!(m, models; populate = populate)
+end
 function update_models!(m::PoolModel, models::Vector{AbstractModel};
                         populate::Bool = true)
-    update_models!(m, Dict(typeof(model) => model for model in models);
+    update_models!(m, Dict(Symbol(typeof(model)) => model for model in models);
                    populate = populate)
     return nothing
 end
 function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel};
                         populate::Bool = true)
     for kv in models
-        m.model[kv[1]] = kv[2]
+        if haskey(kv[1])
+            m.model[kv[1]] = kv[2]
+        else
+            @warn "no model named " * String(kv[1]) * " found"
+        end
     end
     if populate
         model_keys = Vector(keys(models))
@@ -532,7 +553,7 @@ function update_datas!(m::PoolModel, datas::Dict{Symbol,Matrix{T}}) where T<:Abs
         try
             m.datas[kv[1]] = kv[2]
         catch
-            warning("No model named " * String(kv[1]) * " found.")
+            @warn "no model named " * String(kv[1]) * " found"
         end
     end
     return nothing
@@ -542,7 +563,7 @@ function update_particles!(m::PoolModel, p::Dict{Symbol,ParticleCloud})
         try
             m.particles[kv[1]] = kv[2]
         catch
-            warning("No model named " * String(kv[1]) * " found.")
+            @warn "no model named " * String(kv[1]) * " found"
         end
     end
     return nothing
@@ -553,7 +574,7 @@ function update_cond_loglhs!(m::PoolModel,
         try
             m.cond_loglhs[kv[1]] = kv[2]
         catch
-            warning("No model named " * String(kv[1]) * " found.")
+            @warn "no model named " * String(kv[1]) * " found"
         end
     end
     return nothing
@@ -574,6 +595,49 @@ function update_F_u!(m::PoolModel, d::Distribution)
     m.distributions[:F_u] = d
     return nothing
 end
+
+# function append_models!(m::PoolModel, models::AbstractModel...)
+#     append_models!(m, models)
+# end
+# function append_models!(m::PoolModel, models::Vector{AbstractModel})
+#     for model in models
+#         if !haskey(Symbol(typeof(model)))
+#             m.model[Symbol(typeof(model))] = model
+#         else
+#             @warn "model named " String(typeof(model)) " is already added, use update! or pop!"
+#         end
+#     end
+#     return nothing
+# end
+# function append_models!(m::PoolModel, models::Vector{AbstractModel},
+#                         datas::Dict{Symbol,Matrix{T}}) where T<:AbstractModel
+#     append_models!(m, models)
+#     for kv in datas
+#         m.datas[kv[1]] = kv[2]
+#     end
+#     return nothing
+# end
+# function append_particles!()
+# end
+# function append_cond_loglhs!()
+# end
+# function append_statespace!()
+# end
+# function append_distributions!()
+# end
+
+# function pop_models!()
+# end
+# function pop_datas!()
+# end
+# function pop_particles!()
+# end
+# function pop_cond_loglhs!()
+# end
+# function pop_statespace!()
+# end
+# function pop_distributions!()
+# end
 
 """
 ```
