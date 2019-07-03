@@ -15,6 +15,10 @@
 save/input_data/
 save/output_data/
 
+# Test
+test/estimate/dpp/save
+test/estimate/dpp/spec
+
 # With git v1.8+
 **/**/*.*~
 **/**/\#*\#
