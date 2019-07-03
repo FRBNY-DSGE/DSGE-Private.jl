@@ -4,14 +4,10 @@
         exoggridindex, ghquadrature,sparsegrid, smolyakpoly, initializelinearsolution!
 using LinearAlgebra
 =#
-mutable struct SmolyakApproximation{T} <: AbstractModel{T}
+mutable struct SmolyakApproximation{T}
 
-    settings::Dict{Symbol, Setting}
-
-    testing::Bool
-    keys::OrderedDict{Symbol,Int}
  # These should be settings
-#= nfunc::Int
+    nfunc::Int
     nmsv :: Int
     nvars :: Int
     ngrid :: Int
@@ -45,12 +41,13 @@ mutable struct SmolyakApproximation{T} <: AbstractModel{T}
     statezlbinfo :: Array{Int64}
     convergence :: Bool
     slopeconxx :: Array{Float64}
-=#
 end
 
 function SmolyakApproximation()
     #Initialize empty approximation object
-    approx = SmolyakApproximation{Float64}(Dict{Symbol,Setting}(), false, OrderedDict{Symbol, Int}())
+    approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
+                                           [0],[0.],[0.],[0.],[0.],[0.],[0.],[0.],
+                                           [0.],0.,[0.],[0.],false,[0.])
     init_settings!(approx)
     init_solution!(approx)
     return approx
@@ -58,14 +55,14 @@ end
 
 function init_settings!(approx::SmolyakApproximation)
 
-    approx <= Setting(:nexog,  6)
-    approx <= Setting(:nexogcont, 0)
-    approx <= Setting(:nvars, 22)
-    approx <= Setting(:nmsv, 7)
-    approx <= Setting(:nfunc, 7)
-    approx <= Setting(:nindplus, 1)
-    approx <= Setting(:nshockgrid, [7 3 3 3 3 1])
-    approx <= Setting(:indplus, [3])
+    approx.nexog = 6
+    approx.nexogcont = 0
+    approx.nvars = 22
+    approx.nmsv = 7
+    approx.nfunc = 7
+    approx.nindplus = 1
+    approx.nshockgrid = [7 3 3 3 3 1]
+    approx.indplus = [3]
 end
 
 function setgridsize(nexog,nshockgrid)
@@ -241,74 +238,73 @@ function sparsegrid(nmsv,nindplus,ngrid,indplus)
 end
 
 
-function init_solution!(approx_obj::SmolyakApproximation) # ! to indicate that this function mutates and input
+function init_solution!(approx::SmolyakApproximation) # ! to indicate that this function mutates and input
 
-    approx = approx_obj.settings
     #I don't think we need to declare types of these in the future (may not even work)
     nquadsingle = 3
 
     #put shocks into polynomial approximation if necessary
-    nexogadj = approx[:nexog] - approx[:nexogcont]
-    nmsvadj = approx[:nmsv] + approx[:nexogcont]
+    nexogadj = approx.nexog - approx.nexogcont
+    nmsvadj = approx.nmsv + approx.nexogcont
 
-    approx <= Setting(:ngrid, 2*(approx[:nmsv]+approx[:nexogcont])+2*approx[:nindplus]+1)
+    approx.ngrid = 2*(approx.nmsv+approx.nexogcont)+2*approx.nindplus+1)
 
     #set nexogshock,ns, and number_shock_values
-    nexogshock,ninter,ns,number_shock_values=setgridsize(nexogadj,approx[:nshockgrid])
-    approx[:nquad] = nquadsingle^(approx[:nexogshock]+approx[:nexogcont])
+    nexogshock,ninter,ns,number_shock_values=setgridsize(nexogadj,approx.nshockgrid)
+    approx.nquad = nquadsingle^(approx.nexogshock+approx.nexogcont)
 
-    approx <= Setting(:nexogshock, nexogshock)
-    approx <= Setting(:ninter, ninter)
-    approx <= Setting(:ns, ns)
+    approx.nexogshock = nexogshock
+    approx.ninter = ninter
+    approx.ns = ns
 
     #Set exogvarinfo
-    exogvarinfo = Array{Int64}(undef,nexogadj,approx[:ns])
-    exogvarinfo[1:approx[:nexogshock],:] = exoggridindex(approx[:nshockgrid],approx[:nexogshock],approx[:ns])
-    exogvarinfo[approx[:nexogshock]+1:nexogadj,:] .= 1
-    approx <= Setting(:exogvarinfo, exogvarinfo)
+    exogvarinfo = Array{Int64}(undef,nexogadj,approx.ns)
+    exogvarinfo[1:approx.nexogshock,:] = exoggridindex(approx.nshockgrid,approx.nexogshock,approx.ns)
+    exogvarinfo[approx.nexogshock+1:nexogadj,:] .= 1
+    approx.exogvarinfo = exogvarinfo
 
     #get matrix used for interpolating the shocks
-    interpolatemat=Array{Int64}(undef,approx[:nexogshock],2^approx[:nexogshock])
+    interpolatemat=Array{Int64}(undef,approx.nexogshock,2^approx.nexogshock)
     blocksize = 1
-    for i in approx[:nexogshock]:-1:1
-        if (i == approx[:nexogshock])
+    for i in approx.nexogshock:-1:1
+        if (i == approx.nexogshock)
             blocksize = 1
         else
             blocksize = 2*blocksize
         end
         #blocksize=2^(approx[:nexogshock]-i)
-        ncall = div(2^(approx[:nexogshock]-1),blocksize)
+        ncall = div(2^(approx.nexogshock-1),blocksize)
         for j in 1:ncall
             for k = 1:2
                 left=2*blocksize*(j-1)+blocksize*(k-1)+1
                 right=2*blocksize*(j-1)+blocksize*k
-                approx.interpolatemat[i,left:right] .= k-1
+                interpolatemat[i,left:right] .= k-1
             end
         end
     end
-    approx <= Setting(:interpolatemat, interpolatemat)
+    approx.interpolatemat = interpolatemat
 
     #get quadrature nodes and weights
-    nquadadj = approx[:nexogshock]+approx[:nexogcont]
+    nquadadj = approx.nexogshock+approx.nexogcont
     nquad,ghnodes,ghweights=ghquadrature(nquadsingle,nquadadj)
 
-    approx <= Setting(:nquad, nquad)
-    approx <= Setting(:ghnodes, ghnodes)
-    approx <= Setting(:ghweights, ghweights)
+    approx.nquad = nquad
+    approx.ghnodes = ghnodes
+    approx.ghweights = ghweights
 
     #construct sparse grid, bb matrix and its inverse
-    xgrid, bbt, bbtinv=sparsegrid(nmsvadj,approx[:nindplus],approx[:ngrid],solution.poly.indplus)
-    approx <= Setting(:xgrid, xgrid)
-    approx <= Setting(:bbt, bbt)
-    approx <= Setting(:bbtinv, bbtinv)
+    xgrid, bbt, bbtinv=sparsegrid(nmsvadj,approx.nindplus,approx.ngrid,approx.indplus)
+    approx.xgrid = xgrid
+    approx.bbt = bbt
+    approx.bbtinv = bbtinv
 
-    approx <= Setting(:startingguess, false)
-    approx <= Setting(:alphacoeff, zeros(solution.poly.nfunc*approx[:ngrid],2*approx[:ns]))
+    approx.startingguess = false
+    approx.alphacoeff = zeros(approx.nfunc*approx.ngrid,2*approx.ns))
 
-    approx <= Setting(:slopeconmsv, Array{Float64}(undef,2*nmsvadj,1))
-    approx <= Setting(:shockbounds, Array{Float64}(undef,approx[:nexogshock],2))
-    approx <= Setting(:shockdistance, Array{Float64}(undef,approx[:nexogshock],1))
-    approx <= Setting(:exoggrid, Array{Float64}(undef,nexogadj,approx[:ns]))
+    approx.slopeconmsv = Array{Float64}(undef,2*nmsvadj,1))
+    approx.shockbounds = Array{Float64}(undef,approx.nexogshock,2))
+    approx.shockdistance = Array{Float64}(undef,approx.nexogshock,1))
+    approx.exoggrid = Array{Float64}(undef,nexogadj,approx.ns))
 
     return
 
