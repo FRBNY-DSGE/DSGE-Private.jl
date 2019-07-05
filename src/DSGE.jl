@@ -101,6 +101,7 @@ module DSGE
         compute_moments, find_density_bands, mutation, resample, smc, smc_mpi, mutation!,
         mvnormal_mixture_draw, nearest_spd, marginal_data_density,
         initial_draw!, ParticleCloud, Particle, Cloud,
+        poolmodel,
 
         # forecast/
         load_draws, forecast_one,
@@ -212,6 +213,8 @@ module DSGE
 
     include("estimate/smc/smc_mpi.jl")
     include("estimate/smc/mutation_mpi.jl")
+
+    include("estimate/dpp/poolmodel.jl")
 
     include("forecast/util.jl")
     include("forecast/io.jl")
