@@ -69,11 +69,6 @@ update_distributions!(m, distributions)
 exp_pool = jldopen("$path/../reference/filter_out_pool.jld2", "r") do file
     read(file, "exp_pool")
 end
-df2 = DataFrame()
-df2[:date] = df[:date] # check if these are the right data arguments
-df2[:obs_cpi] = df[:obs_cpi]
-df2[:obs_gdp] = df[:obs_gdp]
-df2[:obs_nominalrate] = df[:obs_nominalrate]
 
 # Without providing z0 and P0
 @testset "Check Kalman filter outputs without initializing state/state-covariance" begin
