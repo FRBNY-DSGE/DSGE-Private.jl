@@ -61,6 +61,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     pseudo_observables::OrderedDict{Symbol,Int}
     models::OrderedDict{Symbol,AbstractModel}              # Model name mapped to model object
     datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
+    periods::Int                                           # Number of periods for data time series
     particles::OrderedDict{Symbol,ParticleCloud}           # Model name " " to ParticleCloud
     cond_loglhs::OrderedDict{Symbol,Vector{T}}             # Model name " " to conditional loglh
     statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
@@ -302,14 +303,9 @@ function init_statespace!(m::PoolModel)
                               sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)
 
     # measurement equation
-    T = [v for v in values(m.cond_loglhs)] case we have asymmetric lengths of estimation
-    loglh_mat = zeros(T,length(m.cond_loglhs)) # matrix of conditional log likelihoods
+    loglh_mat = zeros(length(m.cond_loglhs), length(m.cond_loglhs[1])) # matrix of conditional log likelihoods
     for (i,v) in enumerate(values(m.cond_loglhs)) # time period vs. model
-        if tmp[i] > T
-            loglh_mat[:,i] = v[1:T]
-        else
-            loglh_mat[:,i] = v
-        end
+        loglh_mat[:,i] = v
     end
     loglh_mat = loglh_mat'
 
@@ -334,8 +330,13 @@ function init_models!(m::PoolModel, models::Vector{AbstractModel} = Vector{Abstr
 end
 
 function init_datas!(m::PoolModel, datas::Vector{Matrix{T}}) where T<:AbstractFloat
+    S = size(datas[1], 2)
+    m.periods = S
     for (name,data) in zip(keys(m.models),datas)
         m.datas[name] = data
+        S1 = size(data, 2)
+        if S != T1
+            error("Data time series must be the same length and assumed to start and end at same dates.")
     end
     return m
 end

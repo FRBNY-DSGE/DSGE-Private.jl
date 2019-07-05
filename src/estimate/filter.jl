@@ -144,31 +144,46 @@ end
 This section defines filter and filter_likelihood for the PoolModel type
 ```
 """
-function filter(m::PoolModel, s_0::Vector{S} = Vector{S}(undef, 0);
-                           cond_type::Symbol = :none,
-                           in_sample::Bool = true,
-                           tol::Float64 = 0.0) where {S<:AbstractFloat}
-    return filter(m; cond_type = cond_type,
-                  in_sample = in_sample, tol = tol)
-end
 
-function filter(m::PoolModel, s_0::Vector{S} = Vector{S}(undef, 0);
-                           cond_type::Symbol = :none,
-                           in_sample::Bool = true,
-                           tol::Float64 = 0.0) where {S<:AbstractFloat}
-    # Run TPF and return loglh
-    data = Vector{Float64}()
+function filter(m::PoolModel, data::AbstractArray = Vector{S}(undef, 0),
+                s_0::Vector{S} = Vector{S}(undef, 0);
+                start_date::Date = date_presample_start(m),
+                cond_type::Symbol = :none, include_presample::Bool = true,
+                in_sample::Bool = true,
+                tol::Float64 = 0.0) where {S<:AbstractFloat}
+
+    if isempty(data)
+        data = zeros(m.periods)
+    end
+    Nt0 = include_presample ? 0 : n_presample_periods(m)
+
     return tempered_particle_filter(data, get_Φ(m), get_Ψ(m), get_F_ϵ(m), get_F_u(m),
-                                    draw_prior(m);
+                                    draw_prior(m); n_presample_periods = Nt0,
+                                    parallel = false,
                                     dynamic_measurement = true, poolmodel = true)
 end
 
-function filter_likelihood(m::PoolModel, s_0::Vector{S} = Vector{S}(undef, 0);
-                           start_date::Date = date_presample_start(m),
-                           include_presample::Bool = true,
-                           tol::Float64 = 0.0) where {S<:AbstractFloat}
+function filter(m::PoolModel, df::DataFrame,
+                s_0::Vector{S} = Vector{S}(undef, 0);
+                start_date::Date = date_presample_start(m),
+                cond_type::Symbol = :none, include_presample::Bool = true,
+                in_sample::Bool = true,
+                tol::Float64 = 0.0) where {S<:AbstractFloat}
 
-    ~, loglhconditional, ~ = filter(m, s_0; start_date = start_date,
+    data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
+    start_date = max(date_presample_start(m), df[1, :date])
+    filter(m, data, s_0; start_date = start_date,
+           include_presample = include_presample, tol = tol)
+end
+
+function filter_likelihood(m::PoolModel, data::AbstractArray = Vector{S}(undef, 0),
+                           s_0::Vector{S} = Vector{S}(undef, 0);
+                           start_date::Date = date_presample_start(m),
+                           cond_type::Symbol = :none, include_presample::Bool = true,
+                           in_sample::Bool = true) where {S<:AbstractFloat}
+
+    ~, loglhconditional, ~ = filter(m, data, s_0; start_date = start_date,
+                                    include_presample = include_presample,
                                     cond_type = cond_type, in_sample = in_sample, tol = tol)
     return loglhconditional
 end
