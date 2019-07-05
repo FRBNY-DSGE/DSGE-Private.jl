@@ -427,9 +427,9 @@ function init_cond_loglhs!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}(
                     indices = 1+Ns*j:Ns*(j+1)
                     SS_t[indices] = k.s_t
                     PP_t[indices, indices] = k.P_t
-                    for m in 1:m.h-j
-                        PP_t[indices,1+Ns*(m+j):Ns*(m+j+1)] = k.P_t * TTTtp_power[m]
-                        PP_t[1+Ns*(m+j):Ns*(m+j+1),indices] = TTT_power[m] * k.P_t
+                    for n in 1:m.h-j
+                        PP_t[indices,1+Ns*(n+j):Ns*(n+j+1)] = k.P_t * TTTtp_power[n]
+                        PP_t[1+Ns*(n+j):Ns*(n+j+1),indices] = TTT_power[n] * k.P_t
                     end
                 end
 

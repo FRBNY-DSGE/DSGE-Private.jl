@@ -69,8 +69,6 @@ Driver to compute the model solution when using the PoolModel type
 - nothing (m holds transition equation separately)
 
 """
-
-
 function solve(m::PoolModel)
     return nothing
 end
