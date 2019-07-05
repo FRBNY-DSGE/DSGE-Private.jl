@@ -66,40 +66,29 @@ update_statespace!(m, statespace)
 update_distributions!(m, distributions)
 
 # Read expected output
-exp_pool = jldopen("$path/../reference/filter_out_pool.jld2", "r") do file
-    read(file, "exp_pool")
+exp_pool, seed_num = jldopen("$path/../reference/filter_out_pool.jld2", "r") do file
+    read(file, "exp_pool"), read(file, "seed_num")
 end
+Random.seed(seed_num)
 
 # Without providing z0 and P0
-@testset "Check Kalman filter outputs without initializing state/state-covariance" begin
-    kal = DSGE.filter(m, df, system)
-    for out in fieldnames(typeof(kal))
-        expect = exp_kal[out]
-        actual = kal[out]
-
-        if ndims(expect) == 0
-            @test expect ≈ actual
-        else
-            @test @test_matrix_approx_eq(expect, actual)
-        end
-    end
+@testset "Check TPF filter outputs without initializing state/state-covariance" begin
+    tpf_sum, tpf_cond, tpf_time = DSGE.filter(m)
+    @test tpf_sum ≈ exp_pool["tfp_sum"]
+    @test tpf_cond ≈ exp_pool["tfp_cond"]
+    @test tpf_time ≈ exp_pool["tfp_time"]
 end
 
 # Providing z0 and P0
-@testset "Check Kalman filter outputs initializing state/state-covariance" begin
-    kal = DSGE.filter(m, df, system, z0, P0)
-    for out in fieldnames(typeof(kal))
-        expect = exp_kal[out]
-        actual = kal[out]
-
-        if ndims(expect) == 0
-            @test expect ≈ actual
-        else
-            @test @test_matrix_approx_eq(expect, actual)
-        end
-    end
+Random.seed!(seed_num)
+@assert draw_prior(m) == z0 # enforce we have the right seed number
+Random.seed!(seed_num)
+@testset "Check TPF filter outputs initializing state/state-covariance" begin
+    tpf_sum, tpf_cond, tpf_time = DSGE.filter(m, z0)
+    @test tpf_sum ≈ exp_pool["tfp_sum"]
+    @test tpf_cond ≈ exp_pool["tfp_cond"]
+    @test tpf_time ≈ exp_pool["tfp_time"]
 end
-
 
 
 
