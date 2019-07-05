@@ -168,7 +168,9 @@ function likelihood(m::AbstractModel, data::AbstractMatrix;
 
     # Return total log-likelihood, excluding the presample
     try
-        if use_chand_recursion==false
+        if typeof(m) == PoolModel
+            return ψ_l * sum(filter_likelihood(m; tol = tol)) + ψ_p * penalty
+        elseif use_chand_recursion==false
             return ψ_l * sum(filter_likelihood(m, data, system;
                                                include_presample = false, tol = tol)) +
                                                    ψ_p * penalty

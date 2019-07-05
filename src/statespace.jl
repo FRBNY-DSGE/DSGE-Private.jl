@@ -244,7 +244,7 @@ compute_system_function(m::PoolModel{S}) where S<:AbstractFloat
 - `F_u::Distributions.MvNormal`: measurement error distribution
 """
 function compute_system_function(m::PoolModel{S}) where S<:AbstractFloat
-    return m.Φ, m.Ψ, m.F_ϵ, m.F_u
+    return get_statespace(m, :Φ), get_statespace(m, :Ψ), get_distributions(m, :F_ϵ), get_distributions(m, :F_u)
 end
 
 function zero_system_constants(system::System{S}) where S<:AbstractFloat

@@ -11,9 +11,6 @@ PoolModel type tests
     c. Load data in properly
 - use Matlab code to check Figure 4/9 results (predictive densities)
 
-Solve tests
-- solve(PoolModel) grabs all the underlying ParticleCloud data from smc output
-  a. compare to actual ParticleCloud data
 
 Check TPF all works properly
 Check if you feed in a non-dynamic model to the dynamic model, it estimates the same thing

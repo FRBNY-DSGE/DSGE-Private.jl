@@ -579,6 +579,22 @@ function update_cond_loglhs!(m::PoolModel,
     end
     return nothing
 end
+function update_statespace!(m::PoolModel, statespace::Dict{Symbol,Function})
+    if !haskey(statespace, :Φ) || !haskey(statespace, :Ψ) || length(statespace) > 2
+        @warn "incorrect dictionary passed, must have only Φ and Ψ key-value pairs"
+    else
+        m.statespace = statespace
+    end
+    return nothing
+end
+function update_distributions!(m::PoolModel, distributions::Dict{Symbol,Function})
+    if !haskey(distributions, :Φ) || !haskey(distributions, :Ψ) || length(distributions) > 2
+        @warn "incorrect dictionary passed, must have only F_ϵ and F_u key-value pairs"
+    else
+        m.distributions = distributions
+    end
+    return nothing
+end
 function update_Φ!(m::PoolModel, f::Function)
     m.statespace[:Φ] = f
     return nothing
