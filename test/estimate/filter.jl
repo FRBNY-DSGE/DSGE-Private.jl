@@ -55,9 +55,11 @@ end
 ############################################################
 # PoolModel tests
 ############################################################
+# PROVIDE ONLY ONE PERIOD OF DATA SO IT RUNS JUST ONE PERIOD
 # Set up arguments
-m = SmetsWoutersFF()
-m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
+SWFF = SmetsWoutersFF()
+m = PoolModel() # to be completed
+# m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
 
 statespace, distributions, z0 = jldopen("$path/../reference/forecast_args_pool.jld2", "r") do file
     read(file, "df"), read(file, "statespace"), read(file, "distributions"), read(file, "z0")
@@ -70,6 +72,8 @@ exp_pool, seed_num = jldopen("$path/../reference/filter_out_pool.jld2", "r") do 
     read(file, "exp_pool"), read(file, "seed_num")
 end
 Random.seed(seed_num)
+
+
 
 # Without providing z0 and P0
 @testset "Check TPF filter outputs without initializing state/state-covariance" begin

@@ -32,11 +32,12 @@ end
 ############################################################
 # PoolModel test
 ############################################################
-custom_settings = Dict{Symbol, Setting}(
-    :date_forecast_start  => Setting(:date_forecast_start, quartertodate("2015-Q4")))
-m = AnSchorfheide(custom_settings = custom_settings, testing = true)
+# custom_settings = Dict{Symbol, Setting}(
+#     :date_forecast_start  => Setting(:date_forecast_start, quartertodate("2015-Q4")))
+SWFF = SmetsWouters() # . . .
+m = PoolModel() # construct this later
 
-file = "$path/../reference/posterior.jld2"
+file = "$path/../reference/posterior_pool.jld2"
 data = Matrix{Float64}(load(file, "data")')
 lh_expected = load(file, "lh_expected")
 post_expected = load(file, "post_expected")
