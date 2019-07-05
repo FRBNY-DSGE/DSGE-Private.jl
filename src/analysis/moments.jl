@@ -48,7 +48,7 @@ function load_posterior_moments(m::AbstractModel;
     parameters = parameters[included_indices]
     params = params[included_indices, :]
     tex_labels = [DSGE.detexify(parameters[i].tex_label) for i in 1:length(parameters)]
-
+    weights = ones(length(cloud))
     load_posterior_moments(params, weights, tex_labels, weighted = weighted, load_bands = load_bands)
 end
 
