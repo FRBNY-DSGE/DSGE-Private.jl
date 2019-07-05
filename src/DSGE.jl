@@ -168,6 +168,7 @@ module DSGE
     include("settings.jl")
     include("defaults.jl")
     include("observables.jl")
+    include("estimate/dpp/poolmodel.jl")
     include("statespace.jl")
     include("util.jl")
     include("grids.jl")
@@ -210,11 +211,8 @@ module DSGE
     include("estimate/smc/mutation.jl")
     include("estimate/smc/resample.jl")
     include("estimate/smc/smc.jl")
-
     include("estimate/smc/smc_mpi.jl")
     include("estimate/smc/mutation_mpi.jl")
-
-    include("estimate/dpp/poolmodel.jl")
 
     include("forecast/util.jl")
     include("forecast/io.jl")

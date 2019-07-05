@@ -144,7 +144,6 @@ end
 This section defines filter and filter_likelihood for the PoolModel type
 ```
 """
-
 function filter(m::PoolModel, data::AbstractArray = Vector{S}(undef, 0),
                 s_0::Vector{S} = Vector{S}(undef, 0);
                 start_date::Date = date_presample_start(m),

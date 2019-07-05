@@ -43,9 +43,10 @@ h = 4
     @test get_datas(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
     @test get_datas(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
     @test get_datas(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
-    @test get_particles(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
-    @test get_particles(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
-    @test get_particles(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
+    # @test get_particles(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
+    # @test get_particles(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
+    # @test get_particles(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :S
+                                                                           metsWouters => m2)
     @test get_cond_loglhs(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
     @test get_cond_loglhs(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
     @test get_cond_loglhs(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
@@ -67,8 +68,8 @@ h = 4
     @test m == oldm
     update_datas!(m, Dict(:AnSchorfheide => y1))
     @test m == oldm
-    update_particles!(m, Dict(:AnSchorfheide => pc1))
-    @test m == oldm
+    # update_particles!(m, Dict(:AnSchorfheide => pc1))
+    # @test m == oldm
     update_cond_loglhs!(m, Dict(:AnSchorfheide => get_loglhs(m, :AnSchorfheide)))
     @test m == oldm
     update_Φ!(m, get_Φ(m))
@@ -101,10 +102,10 @@ y2 = h5read(get_setting(m1, :dataroot) * "sw_orig_smc.h5")
 end
 
 # Check ParticleClouds
-@testset "Check ParticleClouds are correctly added" begin
-    @test get_particles(m, :SWFF) == pc1
-    @test get_particles(m, :SWπ) == pc2
-end
+# @testset "Check ParticleClouds are correctly added" begin
+#     @test get_particles(m, :SWFF) == pc1
+#     @test get_particles(m, :SWπ) == pc2
+# end
 
 # Check solve and statespace functions apply to PoolModel
 Phi, Psi, F_eps, F_uu = compute_system_function(m)
