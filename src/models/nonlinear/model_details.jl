@@ -14,6 +14,7 @@ function msv2xx(msv, nmsv, slopeconmsv)
     slopeconmsv :: Array{Float64}
 
     return slopeconmsv[1:nmsv] .* msv + slopeconmsv[nmsv+1:2*nmsv]
+end
 
 function exogposition(exogvec, nrvec, nlength)
 
@@ -59,13 +60,13 @@ function intermediatedec(m,nvars,nexog,endogvarm1,currentshockvalues,polyvar,ome
     zlbintermediate :: Bool
 
     #Initilize Variables
-    endogvar=Array{Float64}(undef,nvars+nexog,1)
+    endogvar=Array{Float64}(undef,nvars+nexog)
 
     invshk = exp(currentshockvalues[m.exogenous_shocks[:μ_sh]])
     techshk = exp(currentshockvalues[m.exogenous_shocks[:ztil_sh]])
     rrshk = currentshockvalues[m.exogenous_shocks[:rm_sh]]
     gss = 1.0/(1.0-m[:shrgy])
-    gshk = exp( log(gss) + currentshockvalues[m[:g_sh]] )
+    gshk = exp( log(gss) + currentshockvalues[m.exogenous_shocks[:g_sh]] )
     ashk = exp( currentshockvalues[6] ) # Which of the last 3 shocks is this?
 
     capm1 = endogvarm1[1] # There is no k_t1 in m.endogenous_states
@@ -104,6 +105,7 @@ function intermediatedec(m,nvars,nexog,endogvarm1,currentshockvalues,polyvar,ome
     dw = vw*dwtildem1*gzwage
     muc = lam + (m[:γ]/m[:gz])*m[:β]*bc
     cc = m[:γ]*ccm1/(m[:gz]*techshk)+1.0/muc
+    @show [bi, qq, invshk, m[:ϕ_I].value]
     cquad_vi = bi/(qq*invshk)-(1.0-qq*invshk)/(m[:ϕ_I]*qq*invshk)
 
     vi = 0.5*(1.0+sqrt(1.0+4.0*cquad_vi))
@@ -118,11 +120,11 @@ function intermediatedec(m,nvars,nexog,endogvarm1,currentshockvalues,polyvar,ome
     xhp = m[:α]*log(util) + (1-m[:α])*(log(lab)-m[:labss]) # Changed llabss to m[:labss]
 
     lrss = log(m[:gz]*m[:π_bar]/m[:β])
-    notr = exp(lrss+m[:ρ_R]*(log(notrm1)-lrss) + (1.0-m[:ρ_R])*(m[:γ_π]*log(dp/m[:π_bar]) + m[:γ_g]*log(gdp*techshk/gdpm1) + m[:γ_xhp]*xhp ) + rrshk)
+    notr = exp(lrss+m[:ρ_R]*(log(notrm1)-lrss) + (1.0-m[:ρ_R])*(m[:γ_π]*log(dp/m[:π_bar]) + m[:γ_g]*log(gdp*techshk/gdpm1) + m[:γ_x]*xhp ) + rrshk)
 
     mc = rw*lab/((1.0-m[:α])*gdp)
     rentalk = (m[:α]/(1.0-m[:α]))*(rw*lab*m[:gz]*techshk/(util*capm1))
-    cap = (1.0-[:δ])*(capm1/(m[:gz]*techshk)) + invshk*inv*(1.0- (m[:ϕ_I]/2.0)*(vi-1.0)*(vi-1.0) )
+    cap = (1.0-m[:δ])*(capm1/(m[:gz]*techshk)) + invshk*inv*(1.0- (m[:ϕ_I]/2.0)*(vi-1.0)*(vi-1.0) )
     nomr = copy(notr) # copy as to no make it a pointer
 
     #all variables are in levels except for shocks
@@ -146,22 +148,22 @@ function decr(m,endogvarm1,innovations,poly,alphacoeff)
     alphacoeff :: Array{Float64}
 
     #Initilize Variables
-    endogvar=Array{Float64}(undef,poly[:nvars]+poly[:nexog],1)
-    shockindexall=ones(Int64,poly[:nexog]-poly[:nexogcont])
-    shockindex=Array{Int64}(undef,poly[:nexogshock])
-    shockindex_inter=Array{Int64}(undef,poly[:nexogshock])
-    lmsv=Array{Float64}(undef,poly[:nmsv]+poly[:nexogcont])
-    currentshockvalues=Array{Float64}(undef,poly[:nexog])
-    funcmatplus=Array{Float64}(undef,poly[:nfunc],poly[:ninter])
-    weighttemp=Array{Float64}(undef,poly[:nexogshock])
-    funcapp=Array{Float64}(undef,poly[:nfucn])
-    funcapp_plus=Array{Float64}(undef,poly[:nfunc])
-    xx=Array{Float64}(undef,poly[:nmsv])
-    polyvec=Array{Float64}(undef,poly[:ngrid])
+    endogvar=Array{Float64}(undef,poly.nvars+poly.nexog)
+    shockindexall=ones(Int64,poly.nexog-poly.nexogcont)
+    shockindex=Array{Int64}(undef,poly.nexogshock)
+    shockindex_inter=Array{Int64}(undef,poly.nexogshock)
+    lmsv=Array{Float64}(undef,poly.nmsv+poly.nexogcont)
+    currentshockvalues=Array{Float64}(undef,poly.nexog)
+    funcmatplus=Array{Float64}(undef,poly.nfunc,poly.ninter)
+    weighttemp=Array{Float64}(undef,poly.nexogshock)
+    funcapp=Array{Float64}(undef,poly.nfunc)
+    funcapp_plus=Array{Float64}(undef,poly.nfunc)
+    xx=Array{Float64}(undef,poly.nmsv)
+    polyvec=Array{Float64}(undef,poly.ngrid)
 
     omegaweight = 100000.0
 
-    nmsvplus = poly[:nmsv]+poly[:nexogcont]
+    nmsvplus = poly.nmsv+poly.nexogcont
 
     #shock parameters
     # sdevtech = params[24]
@@ -178,64 +180,64 @@ function decr(m,endogvarm1,innovations,poly,alphacoeff)
 
     #update shocks (all shocks in deviation from SS)
     ## Check the parameters replacing endogvarm1
-    currentshockvalues[1] = m[:ρ_η]*m[:b_t] + m[:σ_η]*innovations[1]
-    currentshockvalues[2] = m[:ρ_μ]*m[:μ_t] + m[:σ_μ]*innovations[2]
+    currentshockvalues[1] = m[:ρ_η]*endogvarm1[m.endogenous_states[:b_t]] + m[:σ_η]*innovations[1]
+    currentshockvalues[2] = m[:ρ_μ]*endogvarm1[m.endogenous_states[:μ_t]] + m[:σ_μ]*innovations[2]
     currentshockvalues[3] = m[:σ_Z]*innovations[3]
-    currentshockvalues[4] = m[:ρ_int]*m[:mon_t] + m[:σ_R]*innovations[4]
-    currentshockvalues[5] = m[:ρ_g]*m[:g_t] + m[:σ_g]*innovations[5]
-    currentshockvalues[6] = 0.0*endogvarm1[28] + 0.0*innovations[6] # Which one of the thee is this? Is it unk_t?
+    currentshockvalues[4] = m[:ρ_int]*endogvarm1[m.endogenous_states[:mon_t]] + m[:σ_R]*innovations[4]
+    currentshockvalues[5] = m[:ρ_g]*endogvarm1[m.endogenous_states[:g_t]] + m[:σ_g]*innovations[5]
+    currentshockvalues[6] = 0.0*endogvarm1[28] + 0.0*innovations[6] # Which one of the thee is this? Is it unk_t? Isn't this the a shock?
 
     #find position of shocks for interpolation
-    @simd for i in 1:poly[:nexogshock]
-        if (currentshockvalues[i] < poly[:shockbounds][i,1])   #extrapolation below
+    @simd for i in 1:poly.nexogshock
+        if (currentshockvalues[i] < poly.shockbounds[i,1])   #extrapolation below
             shockindex[i] = 1
-        elseif (currentshockvalues[i] > poly[:shockbounds][i,2])  #extrapolation above
-            shockindex[i] = floor(Int64,(poly[:shockbounds][i,2]-poly[:shockbounds][i,1])/poly[:shockdistance][i] )
+        elseif (currentshockvalues[i] > poly.shockbounds[i,2])  #extrapolation above
+            shockindex[i] = floor(Int64,(poly.shockbounds[i,2]-poly.shockbounds[i,1])/poly.shockdistance[i] )
         else
-            shockindex[i] = floor(Int64,1.0+(currentshockvalues[i]-poly[:shockbounds][i,1])/poly[:shockdistance][i])  #interpolation case
+            shockindex[i] = floor(Int64,1.0+(currentshockvalues[i]-poly.shockbounds[i,1])/poly.shockdistance[i])  #interpolation case
         end
     end
-
     #loop for interpolating between shocks
-    shockindexall[1:poly[:nexogshock]] = shockindex
-    stateindex0 = exogposition(shockindexall,poly[:nshockgrid],poly[:nexog]-poly[:nexogcont])
-    shockindexall[1:poly[:nexogshock]] = shockindex + poly[:interpolatemat][:,poly[:ninter]]
-    stateindex1 = exogposition(shockindexall,poly[:nshockgrid],poly[:nexog]-poly[:nexogcont])
-    funcmat = zeros(poly[:nfunc],poly[:ninter])
-    weightvec = zeros(poly[:ninter],1)
-    lmsv[1:poly[:nmsv]] = log.(endogvarm1[1:poly[:nmsv]])
-    if (poly[:nexogcont] > 0)
-        lmsv[poly[:nmsv]+1:poly[:nmsv]+poly[:nexogcont]] = currentshockvalues[poly[:nexog]-poly[:nexogcont]+1:poly[:nexog]]
-    end
-    xx = msv2xx(lmsv,nmsvplus,poly[:slopeconmsv])
-
-    polyvec = smolyakpoly(nmsvplus,poly[:ngrid],poly[:nindplus],poly[:indplus],xx)
-    prod_sd = prod(poly[:shockdistance])
-    for i in 1:poly[:ninter] # @inbounds, stops the bounds check
-        @fastmath @inbounds @simd for j in 1:poly[:nexogshock]
-            shockindexall[j] = shockindex[j] + poly[:interpolatemat][j,i]
-            weighttemp[j]=(1-poly[:interpolatemat][j,i])*(currentshockvalues[j]-poly[:exoggrid][j,stateindex0]) + (poly[:interpolatemat][j,i])*(poly[:exoggrid][j,stateindex1]-currentshockvalues[j])
-        end
-        stateindex = exogposition(shockindexall,poly[:nshockgrid],poly[:nexog]-poly[:nexogcont])
-        stateindexplus = stateindex+poly[:ns]
-        @fastmath @inbounds @simd for ifunc in 1:poly[:nfunc]
-            funcmat[ifunc,i] = dot(alphacoeff[(ifunc-1)*poly[:ngrid]+1:ifunc*poly[:ngrid],stateindex],polyvec)
-            funcmatplus[ifunc,i] = dot(alphacoeff[(ifunc-1)*poly[:ngrid]+1:ifunc*poly[:ngrid],stateindexplus],polyvec)
-        end
-        weightvec[poly[:ninter]-i+1] = prod(weighttemp)/prod_sd
+    shockindexall[1:poly.nexogshock] = shockindex
+    stateindex0 = exogposition(shockindexall,poly.nshockgrid,poly.nexog-poly.nexogcont)
+    shockindexall[1:poly.nexogshock] = shockindex + poly.interpolatemat[:,poly.ninter]
+    stateindex1 = exogposition(shockindexall,poly.nshockgrid,poly.nexog-poly.nexogcont)
+    funcmat = zeros(poly.nfunc,poly.ninter)
+    weightvec = zeros(poly.ninter)
+    lmsv[1:poly.nmsv] = log.(endogvarm1[1:poly.nmsv])
+    if (poly.nexogcont > 0)
+        lmsv[poly.nmsv+1:poly.nmsv+poly.nexogcont] = currentshockvalues[poly.nexog-poly.nexogcont+1:poly.nexog]
     end
 
+    xx = msv2xx(lmsv,nmsvplus,poly.slopeconmsv)
+
+    polyvec = smolyakpoly(nmsvplus,poly.ngrid,poly.nindplus,poly.indplus,xx)
+    prod_sd = prod(poly.shockdistance)
+
+    for i in 1:poly.ninter # @inbounds, stops the bounds check
+        @fastmath @inbounds @simd for j in 1:poly.nexogshock
+            shockindexall[j] = shockindex[j] + poly.interpolatemat[j,i]
+            weighttemp[j]=(1-poly.interpolatemat[j,i])*(currentshockvalues[j]-poly.exoggrid[j,stateindex0]) + (poly.interpolatemat[j,i])*(poly.exoggrid[j,stateindex1]-currentshockvalues[j])
+        end
+        stateindex = exogposition(shockindexall,poly.nshockgrid,poly.nexog-poly.nexogcont)
+        stateindexplus = stateindex+poly.ns
+        @fastmath @inbounds @simd for ifunc in 1:poly.nfunc
+            funcmat[ifunc,i] = dot(alphacoeff[(ifunc-1)*poly.ngrid+1:ifunc*poly.ngrid,stateindex],polyvec)
+            funcmatplus[ifunc,i] = dot(alphacoeff[(ifunc-1)*poly.ngrid+1:ifunc*poly.ngrid,stateindexplus],polyvec)
+        end
+        weightvec[poly.ninter-i+1] = prod(weighttemp)/prod_sd
+    end
     funcapp = funcmat * weightvec
 
     zlbintermediate = false  #start with evaluation of 1 poly case (omegapoly and 2nd funcapp irrelevant)
     omegapoly = 1.0 #SINCE ZLBINTERMEDIATE IS FALSE
-    endogvar=intermediatedec(m,poly[:nparams],poly[:nvars],poly[:nexog],poly[:nfunc],endogvarm1,currentshockvalues,funcapp,m[:labss],omegapoly,funcapp,zlbintermediate)
+    endogvar=intermediatedec(m,poly.nvars,poly.nexog,endogvarm1,currentshockvalues,funcapp,omegapoly,funcapp,zlbintermediate)
 
-    if ( (endogvar[m.endogenous_states[:rm_t]] < 1.0) & (poly[:zlbswitch] == true) ) #zlb case
+    if ( (endogvar[m.endogenous_states[:rm_t]] < 1.0) & (poly.zlbswitch == true) ) #zlb case
         zlbintermediate = true
         omegapoly = exp(omegaweight*log(endogvar[m.endogenous_states[:rm_t]])) #now omegapoly and funcapp_plus relevant
         funcapp_plus = funcmatplus * weightvec
-        endogvar = intermediatedec(m,poly[:nvars],poly[:nexog],endogvarm1,currentshockvalues,funcapp,omegapoly,funcapp_plus,zlbintermediate)
+        endogvar = intermediatedec(m,poly.nvars,poly.nexog,endogvarm1,currentshockvalues,funcapp,omegapoly,funcapp_plus,zlbintermediate)
         endogvar[9] = 1.0
     end
 
@@ -251,18 +253,19 @@ function decrlin(endogvarm1,innovations,m::GHLS)
 
     # Initilize variables
     nvars = m.approx.nvars
-    nexog = m.approx..nexog
-    endogvar = Array{Float64}(undef,nvars)
-    xxm1 = zeros(nvars)
-    xx = zeros(nvars)
-    exogpart = Array{Float64}(undef,nvars)
+    nexog = m.approx.nexog
+    endogvar = Array{Float64}(undef,nvars+nexog)
+    xxm1 = zeros(nvars+nexog)
+    xx = zeros(nvars+nexog)
+    exogpart = Array{Float64}(undef,nvars+nexog)
+    endogsteady = [i.value for i in m.steady_state]
 
-    xxm1[1:nvars-nexog] = endogvarm1[1:nvars-nexog]-m.approx.endogsteady[1:nvars-nexog]
-    xxm1[nvars-nexog+1:nvars] = endogvarm1[nvars-nexog+1:nvars]
+    xxm1[1:nvars] = endogvarm1[1:nvars]-endogsteady[1:nvars]
+    xxm1[nvars+1:nvars+nexog] = endogvarm1[nvars+1:nvars+nexog]
 
     Γ0, Γ1, C, Ψ, Π = eqcond(m)
 
-    TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = verbose)
+    TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = :high)
 
     # Check for LAPACK exception, existence and uniqueness
     if eu[1] != 1 || eu[2] != 1
@@ -276,7 +279,7 @@ function decrlin(endogvarm1,innovations,m::GHLS)
     # Augment states
     TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
 
-    QQQ = zeroes(8, 8)
+    QQQ = zeros(8, 8)
     QQQ[1, 1] = m[:σ_η]^2.0
     QQQ[2, 2] = m[:σ_μ]^2.0
     QQQ[3, 3] = m[:σ_Z]^2.0
@@ -294,43 +297,40 @@ function decrlin(endogvarm1,innovations,m::GHLS)
     exogpart = sigma * innovations
     xx = xx + exogpart
 
-    endogvar[1:nvars-nexog] = xx[1:nvars-nexog]+m.approx.endogsteady[1:nvars-nexog]
-    endogvar[nvars-nexog+1:nvars] = xx[nvars-nexog+1:nvars]
+    endogvar[1:nvars] = xx[1:nvars]+endogsteady[1:nvars]
+    endogvar[nvars+1:nvars+nexog] = xx[nvars+1:nvars+nexog]
 
     return endogvar
 end
 
 
-function decr_euler(m,shockpos,poly,alphacoeff,zlbinfo)
+function decr_euler(m, gridindex,shockpos,poly,alphacoeff,zlbinfo)
 
     #Input
     m :: GHLS
     poly :: SmolyakApproximation
     shockpos :: Int64
     gridindex :: Int64
-    bbt :: Array{Float64}
-    xgrid :: Array{Float64}
     alphacoeff :: Array{Float64}
-    slopeconxx :: Array{Float64}
     zlbinfo :: Int64
 
     #Initilize Variables
     polyappnew = Array{Float64}(undef,2*poly.nfunc)
-    endogvar = Array{Float64}(undef,poly.nvars+poly.nexog,1)
-    endogvarzlb = Array{Float64}(undef,poly.nvars+poly.nexog,1)
-    endogvarp = Array{Float64}(undef,poly.nvars+poly.nexog,1)
-    endogvarzlbp = Array{Float64}(undef,poly.nvars+poly.nexog,1)
-    slopeconcont = Array{Float64}(undef,2*poly.nexogcont,1)
-    xgridshock = Array{Float64}(undef,poly.nexogcont,1)
-    slopeconxxmsv = Array{Float64}(undef,2*poly.nmsv,1)
-    xgridmsv = Array{Float64}(undef,poly.nmsv,1)
-    abserror = Array{Float64}(undef,2*poly.nfunc,1)
-    ev = Array{Float64}(undef,12,1)
-    exp_eul = Array{Float64}(undef,12,1)
+    endogvar = Array{Float64}(undef,poly.nvars+poly.nexog)
+    endogvarzlb = Array{Float64}(undef,poly.nvars+poly.nexog)
+    endogvarp = Array{Float64}(undef,poly.nvars+poly.nexog)
+    endogvarzlbp = Array{Float64}(undef,poly.nvars+poly.nexog)
+    slopeconcont = Array{Float64}(undef,2*poly.nexogcont)
+    xgridshock = Array{Float64}(undef,poly.nexogcont)
+    slopeconxxmsv = Array{Float64}(undef,2*poly.nmsv)
+    xgridmsv = Array{Float64}(undef,poly.nmsv)
+    abserror = Array{Float64}(undef,2*poly.nfunc)
+    ev = Array{Float64}(undef,12)
+    exp_eul = Array{Float64}(undef,12)
 
     currentshockvalues = zeros(poly.nexog)
-    polyapp = zeros(2*poly.nfunc,1)
-    endogvarm1 = zeros(poly.nvars+poly.nexog,1)
+    polyapp = zeros(2*poly.nfunc)
+    endogvarm1 = zeros(poly.nvars+poly.nexog)
     exp_var = zeros(12)
     innovations = zeros(poly.nexog)
 
@@ -338,18 +338,18 @@ function decr_euler(m,shockpos,poly,alphacoeff,zlbinfo)
     if (poly.nexogcont > 0)
         slopeconcont[1:poly.nexogcont] = poly.slopeconxx[poly.nmsv+1:nmsvplus]
         slopeconcont[poly.nexogcont+1:2*poly.nexogcont] = poly.slopeconxx[nmsvplus+poly.nmsv+1:2*nmsvplus]
-        xgridshock = poly.xgrid[poly.nmsv+1:nmsvplus,poly.gridindex]
+        xgridshock = poly.xgrid[poly.nmsv+1:nmsvplus,gridindex]
         currentshockvalues[poly.nexog-poly.nexogcont+1:poly.nexog] = msv2xx(xgridshock,poly.nexogcont,slopeconcont)
     end
 
     currentshockvalues[1:poly.nexogshock] = poly.exoggrid[1:poly.nexogshock,shockpos]
     shockpospoly = shockpos + poly.ns
     for ifunc in 1:poly.nfunc
-        polyapp[ifunc] = dot(alphacoeff[(ifunc-1)*poly.ngrid+1:ifunc*poly.ngrid,shockpos],poly.bbt[:,poly.gridindex])
-        polyapp[poly.nfunc+ifunc] = dot(alphacoeff[(ifunc-1)*poly.ngrid+1:ifunc*poly.ngrid,shockpospoly],poly.bbt[:,poly.gridindex])
+        polyapp[ifunc] = dot(alphacoeff[(ifunc-1)*poly.ngrid+1:ifunc*poly.ngrid,shockpos],poly.bbt[:,gridindex])
+        polyapp[poly.nfunc+ifunc] = dot(alphacoeff[(ifunc-1)*poly.ngrid+1:ifunc*poly.ngrid,shockpospoly],poly.bbt[:,gridindex])
     end
 
-    xgridmsv = poly.xgrid[1:poly.nmsv,poly.gridindex]
+    xgridmsv = poly.xgrid[1:poly.nmsv,gridindex]
     slopeconxxmsv[1:poly.nmsv] = poly.slopeconxx[1:poly.nmsv]
     slopeconxxmsv[poly.nmsv+1:2*poly.nmsv] = poly.slopeconxx[nmsvplus+1:nmsvplus+poly.nmsv]
     endogvarm1[1:poly.nmsv] = exp.( msv2xx(xgridmsv,poly.nmsv,slopeconxxmsv) )
@@ -497,18 +497,18 @@ function get_shockdetails(m,poly::SmolyakApproximation,number_shock_values,ngrid
 
     #Initilize Variables
     shockbounds = Array{Float64}(undef,poly.nexogshock,2)
-    shockdistance = Array{Float64}(undef,poly.nexogshock,1)
-    currentshockindex = Array{Float64}(undef,poly.nexogshock,1)
-    nshocksum_vec = Array{Float64}(undef,poly.nexogshock,1)
+    shockdistance = Array{Float64}(undef,poly.nexogshock)
+    currentshockindex = Array{Float64}(undef,poly.nexogshock)
+    nshocksum_vec = Array{Float64}(undef,poly.nexogshock)
     exoggrid = zeros(poly.nexog-poly.nexogcont,poly.ns)
 
-    rhovec = [m[:ρ_η],m[:ρ_μ],0.0,m[:ρ_int],m[:ρ_g], 0.0] # Unsure about rhoa
-    sigmavec = [m[:σ_η],m[:σ_μ],m[:σ_Z],m[:σ_R],m[:σ_g],0.0] # Unsure about sdeva
+    rhovec = [m[:ρ_η].value,m[:ρ_μ].value,0.0,m[:ρ_int].value,m[:ρ_g].value, 0.0] # Unsure about rhoa
+    sigmavec = [m[:σ_η].value,m[:σ_μ].value,m[:σ_Z].value,m[:σ_R].value,m[:σ_g].value,0.0] # Unsure about sdeva
 
     nshocksum = 0
     shockvalues = zeros(number_shock_values)
 
-    for i in 1:nexogshock
+    for i in 1:poly.nexogshock
         xshock = Array{Float64}(undef,ngridshocks[i])
         shockdistance[i],xshock=finite_grid(ngridshocks[i],rhovec[i],sigmavec[i])
         shockbounds[i,1] = xshock[1]
@@ -517,13 +517,13 @@ function get_shockdetails(m,poly::SmolyakApproximation,number_shock_values,ngrid
         nshocksum = nshocksum + ngridshocks[i]
     end
 
-    for ss in 1:ns
+    for ss in 1:poly.ns
         currentshockindex = exogvarinfo[:,ss]
-        nshocksum_vec = zeros(Int64,poly.nexogshock,1)
+        nshocksum_vec = zeros(Int64,poly.nexogshock)
         nall = ngridshocks[1]
         shockpos = currentshockindex[1]
         exoggrid[1,ss] = shockvalues[currentshockindex[1]]
-        for i in 2:nexogshock
+        for i in 2:poly.nexogshock
             nshocksum_vec[i] = nshocksum_vec[i-1] + ngridshocks[i-1]
             shockpos = shockpos + nall*(currentshockindex[i]-1)
             nall = nall*ngridshocks[i]
@@ -544,8 +544,8 @@ function calc_premium(m,endogvar,poly,alphacoeff)
     alphacoeff :: Array{Float64}
 
     # Initilize Variables
-    endogvarp = Array{Float64}(undef,poly.nvars+poly.nexog,1)
-    innovations=zeros(poly.nexog,1)
+    endogvarp = Array{Float64}(undef,poly.nvars+poly.nexog)
+    innovations=zeros(poly.nexog)
 
     exp_var = 0.0
     for ss in 1:poly.nquad
@@ -561,8 +561,5 @@ function calc_premium(m,endogvar,poly,alphacoeff)
     premium = exp_var/(endogvar[11]*endogvar[9])
 
     return premium
-
-end
-
 
 end

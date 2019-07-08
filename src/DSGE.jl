@@ -149,7 +149,7 @@ module DSGE
         shock_groupings,
 
         # models/nonlinear/
-       GHLS,
+       GHLS, decrlin,
 
        # polydef
        SmolyakApproximation,
@@ -170,18 +170,17 @@ module DSGE
     include("observables.jl")
     include("statespace.jl")
     include("util.jl")
-#=
+
     include("benchmark/util.jl")
     include("benchmark/benchmark.jl")
     include("benchmark/io.jl")
-
     include("data/load_data.jl")
     include("data/fred_data.jl")
     include("data/transformations.jl")
     include("data/transform_data.jl")
     include("data/reverse_transform.jl")
     include("data/util.jl")
-=#
+
    #interns start here
 
     include("polydef.jl")
@@ -200,7 +199,7 @@ module DSGE
     include("solve/gensys.jl")
     include("solve/solve.jl")
 
-#=
+
     include("estimate/util.jl")
     include("estimate/kalman.jl")
     include("estimate/filter.jl")
@@ -253,7 +252,7 @@ module DSGE
     include("scenarios/forecast.jl")
     include("scenarios/switching.jl")
     include("scenarios/transform.jl")
-
+#=
     include("plot/util.jl")
     include("plot/plot_posterior_intervals.jl")
     include("plot/plot_prior_posterior.jl")

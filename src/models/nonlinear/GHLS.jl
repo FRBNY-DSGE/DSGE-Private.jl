@@ -370,6 +370,34 @@ function init_parameters!(m::GHLS)
 
 
     # Steady states
+    m <= SteadyStateParameter(:cap, NaN, description="Steady-state capital", tex_label="x")
+    m <= SteadyStateParameter(:cc, NaN, description="Steady-state consumption", tex_label="x")
+    m <= SteadyStateParameter(:inv, NaN, description="Steady-state investment", tex_label="x")
+    m <= SteadyStateParameter(:rw, NaN, description="Steady-state real wage", tex_label="x")
+    m <= SteadyStateParameter(:notr, NaN, description="Steady-state notional interest rate", tex_label="x")
+    m <= SteadyStateParameter(:dp, NaN, description="Steady-state inflation", tex_label="x")
+    m <= SteadyStateParameter(:gdp, NaN, description="Steady-state output", tex_label="x")
+    m <= SteadyStateParameter(:xhp, NaN, description="Steady-state output gap", tex_label="x")
+    m <= SteadyStateParameter(:nomr, NaN, description="Steady-state nominal interest rate", tex_label="g")
+    m <= SteadyStateParameter(:lam, NaN, description="Steady-state marginal value of consumption", tex_label="g")
+    m <= SteadyStateParameter(:qq, NaN, description="Steady-state Tobin's q", tex_label="g")
+    m <= SteadyStateParameter(:lab, NaN, description="Steady-state number of hours worked", tex_label="L")
+    m <= SteadyStateParameter(:util, NaN, description="Steady-state capital utilization cost", tex_label="g")
+    m <= SteadyStateParameter(:mc, NaN, description="Steady-state marginal cost", tex_label="g")
+    m <= SteadyStateParameter(:rentalk, NaN, description="Steady-state rental rate of capital", tex_label="g")
+    m <= SteadyStateParameter(:muc, NaN, description="Steady-state marginal utility of consumption", tex_label="g")
+    m <= SteadyStateParameter(:vi, NaN, description="Steady-state investment v", tex_label="g")
+    m <= SteadyStateParameter(:vp, NaN, description="Steady-state inflation v", tex_label="g")
+    m <= SteadyStateParameter(:vw, NaN, description="Steady-state wage v", tex_label="g")
+    m <= SteadyStateParameter(:dw, NaN, description="Steady-state wage inflation", tex_label="g")
+    m <= SteadyStateParameter(:bc, NaN, description="Steady-state bc", tex_label="g")
+    m <= SteadyStateParameter(:bi, NaN, description="Steady-state bi", tex_label="g")
+    m <= SteadyStateParameter(:liqshk, NaN, description="Steady-state liquidity shock", tex_label="g")
+    m <= SteadyStateParameter(:invshk, NaN, description="Steady-state investment shock", tex_label="g")
+    m <= SteadyStateParameter(:techshk, NaN, description="Steady-state technology shock", tex_label="g")
+    m <= SteadyStateParameter(:intshk, NaN, description="Steady-state interest rate shock", tex_label="g")
+    m <= SteadyStateParameter(:gshk, NaN, description="Steady-state government shock", tex_label="g")
+    m <= SteadyStateParameter(:ashk, NaN, description="Steady-state a shock", tex_label="g")
     m <= SteadyStateParameter(:gg, NaN, description="Steady-state government spending", tex_label="g")
     m <= SteadyStateParameter(:gamtil, NaN, tex_label="gamtil")
     m <= SteadyStateParameter(:mc, NaN, description="Steady-state marginal cost of capital", tex_label="mc")
@@ -419,8 +447,39 @@ function steadystate!(m::GHLS)
     m[:lamss] = m[:mucss]*(1.0 - m[:β]*m[:gamtil])
     m[:rss] = m[:gz]*m[:π_bar]/m[:β]
     m[:rkss] = m[:gz]/m[:β] - 1.0 + m[:δ]
-    m[:bw]  =  m[:aw] #Not really a steady state
+    m[:bw]  =  m[:aw]
+
+    #Start of real steady states
+    m[:cap] = log(m[:kss])
+    m[:cc] = log(m[:css])
+    m[:inv] = log(m[:invss])
+    m[:rw] = log(m[:rwss])
+    m[:notr] = log(m[:rss])
+    m[:dp] = log(m[:π_bar])
+    m[:gdp] = log(m[:gdpss])
+    m[:xhp] = 0.0
+    m[:nomr] = log(m[:rss])
+    m[:lam] = log(m[:lamss])
+    m[:qq] = 0.0
+    m[:lab] = log(m[:labss])
+    m[:util] = 0.0
+    m[:mc] = log(m[:mc])
+    m[:rentalk] = log(m[:rkss])
+    m[:muc] = log(m[:mucss])
+    m[:vi] = 0.0
+    m[:vp] = 0.0
+    m[:vw] = 0.0
+    m[:dw] = log(m[:π_bar]*m[:gz])
+    m[:bc] = log(m[:mucss])
+    m[:bi] = 0.0
+    m[:liqshk] = 0.0
+    m[:invshk] = 0.0
+    m[:techshk] = 0.0
+    m[:intshk] = 0.0
+    m[:gshk] = log(m[:gg])
+    m[:ashk] = 0.0
     return m
+
 end
 
 function model_settings!(m::GHLS)

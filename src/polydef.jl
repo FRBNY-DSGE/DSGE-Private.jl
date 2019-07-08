@@ -7,6 +7,7 @@ using LinearAlgebra
 mutable struct SmolyakApproximation{T}
 
  # These should be settings
+    number_shock_values :: Int
     nfunc::Int
     nmsv :: Int
     nvars :: Int
@@ -24,9 +25,14 @@ mutable struct SmolyakApproximation{T}
     indplus :: Array{Int}
     nshockgrid :: Array{Int}
 
-    #These are not really settings
+    exogvarinfo::Array{Int64}
+    xgrid::Array{Float64}
+    bbt::Array{Float64}
+    bbtinv::Array{Float64}
+    startingguess::Bool
+    alphacoeff::Array{Float64}
+
     interpolatemat :: Array{Int}
-    endogsteady :: Array{Float64}
     slopeconmsv :: Array{Float64}
     shockbounds :: Array{Float64}
     shockdistance :: Array{Float64}
@@ -45,8 +51,9 @@ end
 
 function SmolyakApproximation()
     #Initialize empty approximation object
-    approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
-                                           [0],[0.],[0.],[0.],[0.],[0.],[0.],[0.],
+    approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
+                                           [0], [0.], [0.], [0.], false, [0.],
+                                           [0],[0.],[0.],[0.],[0.],[0.],[0.],
                                            [0.],0.,[0.],[0.],false,[0.])
     init_settings!(approx)
     init_solution!(approx)
@@ -129,11 +136,11 @@ function ghquadrature(nquadsingle,nexog)
     nexog :: Int64
 
     # Initilize Variables
-    quadnodes_s=zeros(nquadsingle,1)
-    quadweights_s=zeros(nquadsingle,1)
+    quadnodes_s=zeros(nquadsingle)
+    quadweights_s=zeros(nquadsingle)
     ghnodes=zeros(nexog,nquadsingle^nexog)#Not sure I should make this zeros
     ghweights_mat=zeros(nexog,nquadsingle^nexog)#Not sure I should make this zeros
-    ghweights=Array{Float64}(undef,nquadsingle^nexog,1)#Not sure I should make this zeros
+    ghweights=Array{Float64}(undef,nquadsingle^nexog)#Not sure I should make this zeros
     #const const_pi = 3.14159265358979323846
     const_pi = 3.14159265358979323846
 
@@ -174,7 +181,7 @@ function smolyakpoly(nmsv,ngrid,nindplus,indplus,xx)
     xx:: Array{Float64}
 
     # Initilize Variables
-    smolyakpoly=Array{Float64}(undef,ngrid,1)
+    smolyakpoly=Array{Float64}(undef,ngrid)
 
     smolyakpoly[1] = 1.0
     for i in 1:nmsv
@@ -247,7 +254,7 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     nexogadj = approx.nexog - approx.nexogcont
     nmsvadj = approx.nmsv + approx.nexogcont
 
-    approx.ngrid = 2*(approx.nmsv+approx.nexogcont)+2*approx.nindplus+1)
+    approx.ngrid = 2*(approx.nmsv+approx.nexogcont)+2*approx.nindplus+1
 
     #set nexogshock,ns, and number_shock_values
     nexogshock,ninter,ns,number_shock_values=setgridsize(nexogadj,approx.nshockgrid)
@@ -256,6 +263,7 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     approx.nexogshock = nexogshock
     approx.ninter = ninter
     approx.ns = ns
+    approx.number_shock_values = number_shock_values
 
     #Set exogvarinfo
     exogvarinfo = Array{Int64}(undef,nexogadj,approx.ns)
@@ -299,12 +307,12 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     approx.bbtinv = bbtinv
 
     approx.startingguess = false
-    approx.alphacoeff = zeros(approx.nfunc*approx.ngrid,2*approx.ns))
+    approx.alphacoeff = zeros(approx.nfunc*approx.ngrid,2*approx.ns)
 
-    approx.slopeconmsv = Array{Float64}(undef,2*nmsvadj,1))
-    approx.shockbounds = Array{Float64}(undef,approx.nexogshock,2))
-    approx.shockdistance = Array{Float64}(undef,approx.nexogshock,1))
-    approx.exoggrid = Array{Float64}(undef,nexogadj,approx.ns))
+    approx.slopeconmsv = Array{Float64}(undef,2*nmsvadj)
+    approx.shockbounds = Array{Float64}(undef,approx.nexogshock,2)
+    approx.shockdistance = Array{Float64}(undef,approx.nexogshock)
+    approx.exoggrid = Array{Float64}(undef,nexogadj,approx.ns)
 
     return
 
