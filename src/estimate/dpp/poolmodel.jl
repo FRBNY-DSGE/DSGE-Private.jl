@@ -90,34 +90,35 @@ Arguments:
 Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
-function PoolModel(data::Matrix{T}, h::Int, loglhs::Dict{Symbol,Vector{T}},
+function PoolModel(data::Matrix{T}, h::Int, cond_loglhs::Dict{Symbol,Vector{T}},
                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
                    testing = false, verbose::Symbol = :low,
                    static::Bool = false) where T<:AbstractFloat
+    data_dict = Dict(name => data for name in keys(loglhs))
     return PoolModel([data for i = 1:length(models)], h, models, subspec;
                    custom_settings = custom_settings,
                    testing = testing, verbose = verbose, static = static)
 end
-function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, loglhs::Dict{Symbol,Vector{T}},
-                   models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
-                   custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
-                   testing = false, verbose::Symbol = :low,
-                   static::Bool = false) where T<:AbstractFloat
-    if length(data) > length(models)
-        error("number of data series exceeds number of models")
-    else
-        error("number of models exceeds number of data series")
-    end
-    name_vec = [Symbol(typeof(model)) for model in models]
-    try
-        data_vec = [datas[name] for name in name_vec]
-    catch
-        error("at least one key in data dictionary does not match any model")
-    end
-    return PoolModel(data_vec, h, models, subspec; custom_settings = custom_settings,
-                   testing = testing, verbose = verbose, static = static)
-end
+# function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, loglhs::Dict{Symbol,Vector{T}},
+#                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
+#                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
+#                    testing = false, verbose::Symbol = :low,
+#                    static::Bool = false) where T<:AbstractFloat
+#     if length(data) > length(models)
+#         error("number of data series exceeds number of models")
+#     else
+#         error("number of models exceeds number of data series")
+#     end
+#     name_vec = [Symbol(typeof(model)) for model in models]
+#     try
+#         data_vec = [datas[name] for name in name_vec]
+#     catch
+#         error("at least one key in data dictionary does not match any model")
+#     end
+#     return PoolModel(data_vec, h, models, subspec; custom_settings = custom_settings,
+#                    testing = testing, verbose = verbose, static = static)
+# end
 # function PoolModel(data::Matrix{T}, h::Int, subspec::String="ss0", models::AbstractModel{T}...;
 #                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
 #                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
@@ -138,7 +139,7 @@ end
 #     return PoolModel(subspec, datas, h, [model for model in models];
 #                    custom_settings = custom_settings, testing = testing, verbose = verbose)
 # end
-function PoolModel(datas::Vector{Matrix{T}}, h::Int, loglhs::Dict{Symbol,Vector{T}},
+function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, cond_loglhs::Dict{Symbol,Vector{T}},
                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
                    testing = false, verbose::Symbol = :low,
@@ -160,7 +161,7 @@ function PoolModel(datas::Vector{Matrix{T}}, h::Int, loglhs::Dict{Symbol,Vector{
         OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
 
         # Models-related data
-        Dict{Symbol,AbstractModel{Float64}}(), Dict{Symbol,Matrix{Float64}}(),
+        OrderedDict{Symbol,AbstractModel{Float64}}(), OrderedDict{Symbol,Matrix{Float64}}(),
         0, 0, OrderedDict{Symbol, Vector{Float64}}(),
 
         # nonlinear hidden state model info
@@ -214,7 +215,7 @@ function PoolModel(datas::Vector{Matrix{T}}, h::Int, loglhs::Dict{Symbol,Vector{
             m.cond_loglhs[name] = fill_vec
         end
    else
-        init_cond_loglhs!(m, loglhs)
+        init_cond_loglhs!(m, cond_loglhs)
    end
 
     # Initialize state space equations
@@ -318,7 +319,7 @@ function init_statespace!(m::PoolModel)
                                     sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)))
 
     # measurement equation
-    loglh_mat = zeros(length(m.cond_loglhs), length(m.cond_loglhs[1])) # matrix of conditional log likelihoods
+    loglh_mat = zeros(m.periods, length(m.cond_loglhs)) # matrix of conditional log likelihoods
     for (i,v) in enumerate(values(m.cond_loglhs)) # time period vs. model
         loglh_mat[:,i] = v
     end
@@ -329,7 +330,7 @@ function init_statespace!(m::PoolModel)
     return m
 end
 
-function init_distribution!(m::PoolModel)
+function init_distributions!(m::PoolModel)
     # exogenous shock
     m.distributions[:F_ϵ] = Normal(0,1)
 
@@ -340,17 +341,20 @@ function init_distribution!(m::PoolModel)
 end
 
 function init_models!(m::PoolModel, models::Vector{<:AbstractModel{T}} = Vector{<:AbstractModel{T}}()) where T<:AbstractFloat
-    m.models = models
+    for model in models
+        name = replace(String(Symbol(typeof(model))), "{Float64}" => "")
+        m.models[Symbol(name)] = model
+    end
     return m
 end
 
-function init_datas!(m::PoolModel, datas::Vector{Matrix{T}}) where T<:AbstractFloat
-    S = size(datas[1], 2)
+function init_datas!(m::PoolModel, datas::Dict{Symbol,Matrix{T}}) where T<:AbstractFloat
+    S = minimum([size(data,2) for data in values(datas)])
     m.periods = S
-    for (name,data) in zip(keys(m.models),datas)
+    for (name,data) in zip(keys(m.models),values(datas))
         m.datas[name] = data
         S1 = size(data, 2)
-        if S != T1
+        if S != S1
             error("Data time series must be the same length and assumed to start and end at same dates.")
         end
     end
@@ -373,10 +377,10 @@ end
 #     return m
 # end
 
-function init_cond_loglhs!(m::PoolModel, loglhs::Dict{Symbol,Vector{T}}) where T<:AbstractFloat
-    for kv in loglhs
+function init_cond_loglhs!(m::PoolModel, cond_loglhs::Dict{Symbol,Vector{T}}) where T<:AbstractFloat
+    for kv in cond_loglhs
         try
-            m.loglhs[kv[1]] = kv[2]
+            m.cond_loglhs[kv[1]] = kv[2]
         catch
             @warn "model named " * String(kv[1]) * " not found"
         end
@@ -556,7 +560,12 @@ function update_models!(m::PoolModel, models::AbstractModel{T}...;
 end
 function update_models!(m::PoolModel, models::Vector{<:AbstractModel{T}};
                         populate::Bool = true) where T<:AbstractFloat
-    update_models!(m, Dict(Symbol(typeof(model)) => model for model in models);
+    names = Vector{Symbol}(undef,length(models))
+    for (i,model) in enumerate(models)
+        name = replace(String(Symbol(typeof(model))), "{Float64}" => "")
+        names[i] = Symbol(name)
+    end
+    update_models!(m, Dict(names[i] => model for (i,model) in enumerate(models));
                    populate = populate)
     return nothing
 end

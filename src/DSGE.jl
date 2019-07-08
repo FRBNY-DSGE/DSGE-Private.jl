@@ -76,7 +76,7 @@ module DSGE
         get_statespace, get_distributions, get_Φ, get_Ψ, get_F_ϵ,
         get_F_u, update_models!, update_datas!, update_statespace!,
         update_distributions!, update_Φ!, update_Ψ!, update_F_ϵ!,
-        update_F_u!, draw_prior,
+        update_F_u!, draw_prior, subspecs,
 
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, compute_system,
@@ -220,6 +220,7 @@ module DSGE
     include("estimate/smc/smc.jl")
     include("estimate/smc/smc_mpi.jl")
     include("estimate/smc/mutation_mpi.jl")
+    include("estimate/dpp/subspecs.jl")
 
     include("forecast/util.jl")
     include("forecast/io.jl")
