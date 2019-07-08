@@ -59,7 +59,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
                                                            # parameters and steady-states
     observables::OrderedDict{Symbol,Int}
     pseudo_observables::OrderedDict{Symbol,Int}
-    models::OrderedDict{Symbol,AbstractModel}              # Model name mapped to model object
+    models::OrderedDict{Symbol,AbstractModel{T}}              # Model name mapped to model object
     datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
     forecast_horizon::Int                                  # Number of periods for forecast
     periods::Int                                           # Number of periods for data time series
@@ -67,6 +67,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
                                                            # Measurement eq for linear weights
     distributions::Dict{Symbol,Distribution}               # Distributions for state space
+
     spec::String                                           # Model specification number (eg "m990")
     subspec::String                                        # Model subspecification (eg "ss0")
     settings::Dict{Symbol,Setting}                         # Settings/flags for computation
@@ -89,19 +90,19 @@ Arguments:
 Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
-function PoolModel(data::Matrix{T}, h::Int,
-                   models::Vector{AbstractModel}, subspec::String="ss0",
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low,
+function PoolModel(data::Matrix{T}, h::Int, loglhs::Dict{Symbol,Vector{T}},
+                   models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
+                   custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
+                   testing = false, verbose::Symbol = :low,
                    static::Bool = false) where T<:AbstractFloat
-    return PoolModel(subspec, [data for i = 1:length(models)], h, models;
+    return PoolModel([data for i = 1:length(models)], h, models, subspec;
                    custom_settings = custom_settings,
                    testing = testing, verbose = verbose, static = static)
 end
-function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int,
-                   models::Vector{AbstractModel}, subspec::String="ss0",;
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low,
+function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, loglhs::Dict{Symbol,Vector{T}},
+                   models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
+                   custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
+                   testing = false, verbose::Symbol = :low,
                    static::Bool = false) where T<:AbstractFloat
     if length(data) > length(models)
         error("number of data series exceeds number of models")
@@ -114,33 +115,33 @@ function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int,
     catch
         error("at least one key in data dictionary does not match any model")
     end
-    return PoolModel(subspec, data_vec, h, models; custom_settings = custom_settings,
+    return PoolModel(data_vec, h, models, subspec; custom_settings = custom_settings,
                    testing = testing, verbose = verbose, static = static)
 end
-# function PoolModel(data::Matrix{T}, h::Int, subspec::String="ss0", models::AbstractModel...;
+# function PoolModel(data::Matrix{T}, h::Int, subspec::String="ss0", models::AbstractModel{T}...;
 #                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
 #                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
 #     return PoolModel(subspec, [data for i = 1:length(models)], h, [model for model in models];
 #                    custom_settings = custom_settings, testing = testing, verbose = verbose)
 # end
 # function PoolModel(datas::Vector{Matrix{T}}, h::Int, subspec::String="ss0",
-#                    models::AbstractModel...;
+#                    models::AbstractModel{T}...;
 #                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
 #                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
 #     return PoolModel(subspec, datas, h, [model for model in models];
 #                    custom_settings = custom_settings, testing = testing, verbose = verbose)
 # end
 # function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, subspec::String="ss0",
-#                    models::AbstractModel...;
+#                    models::AbstractModel{T}...;
 #                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
 #                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
 #     return PoolModel(subspec, datas, h, [model for model in models];
 #                    custom_settings = custom_settings, testing = testing, verbose = verbose)
 # end
-function PoolModel(datas::Vector{Matrix{T}}, h::Int,
-                   models::Vector{AbstractModel}, subspec::String="ss0";
-                   custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                   testing::Bool = false, verbose::Bool = :low,
+function PoolModel(datas::Vector{Matrix{T}}, h::Int, loglhs::Dict{Symbol,Vector{T}},
+                   models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
+                   custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
+                   testing = false, verbose::Symbol = :low,
                    static::Bool = false) where T<:AbstractFloat
 
     # Model-specific specifications
@@ -157,6 +158,10 @@ function PoolModel(datas::Vector{Matrix{T}}, h::Int,
 
         # model indices
         OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
+
+        # Models-related data
+        Dict{Symbol,AbstractModel{Float64}}(), Dict{Symbol,Matrix{Float64}}(),
+        0, 0, OrderedDict{Symbol, Vector{Float64}}(),
 
         # nonlinear hidden state model info
         Dict{Symbol,Function}(), Dict{Symbol,Distribution}(),
@@ -203,14 +208,14 @@ function PoolModel(datas::Vector{Matrix{T}}, h::Int,
     # init_particles!(m)
 
     # Initialize conditional predictive densities
-    if testing
+   if testing
         fill_vec = Vector{Float64}(undef,m.periods)
         for name in keys(m.models)
             m.cond_loglhs[name] = fill_vec
         end
-    else
-        init_cond_loglhs!(m; verbose = verbose)
-    end
+   else
+        init_cond_loglhs!(m, loglhs)
+   end
 
     # Initialize state space equations
     init_statespace!(m)
@@ -233,25 +238,25 @@ those).
 function init_parameters!(m::PoolModel; static::Bool = false)
     # Initialize parameters
     if static
-        m <= parameter(:ρ, 1, fixed = true,
+        m <= parameter(:ρ, 1., fixed = true,
                        description="ρ: persistence of AR processing underlying λ.",
-                       text_label="\\rho")
-        m <= parameter(:μ, 0, fixed = true,
+                       tex_label="\\rho")
+        m <= parameter(:μ, 0., fixed = true,
                        description="μ: drift of AR processing underlying λ.",
-                       text_label="\\rho")
-        m <= parameter(:σ, 1, fixed = true,
+                       tex_label="\\rho")
+        m <= parameter(:σ, 1., fixed = true,
                        description="σ: volatility of AR processing underlying λ.",
-                       text_label="\\rho")
+                       tex_label="\\rho")
     else
-        m <= parameter(:ρ, 0.5, (0,1), (0,1), Untransformed(), Uniform(0,1), fixed = false,
+        m <= parameter(:ρ, 0.5, (0.,1.), (0.,1.), Untransformed(), Uniform(0.,1.), fixed = false,
                        description="ρ: persistence of AR processing underlying λ.",
-                       text_label="\\rho")
-        m <= parameter(:μ, 0, fixed = true,
+                       tex_label="\\rho")
+        m <= parameter(:μ, 0., fixed = true,
                        description="μ: drift of AR processing underlying λ.",
-                       text_label="\\rho")
-        m <= parameter(:σ, 1, fixed = true,
+                       tex_label="\\rho")
+        m <= parameter(:σ, 1., fixed = true,
                        description="σ: volatility of AR processing underlying λ.",
-                       text_label="\\rho")
+                       tex_label="\\rho")
     end
 end
 """
@@ -334,7 +339,7 @@ function init_distribution!(m::PoolModel)
     return m
 end
 
-function init_models!(m::PoolModel, models::Vector{AbstractModel} = Vector{AbstractModel}())
+function init_models!(m::PoolModel, models::Vector{<:AbstractModel{T}} = Vector{<:AbstractModel{T}}()) where T<:AbstractFloat
     m.models = models
     return m
 end
@@ -368,95 +373,106 @@ end
 #     return m
 # end
 
-function init_cond_loglhs!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}(),
-                      verbose::Symbol = :low)
-    if isempty(names)
-        names = keys(m.models)
-    end
-    Nt = m.periods # since predict h periods ahead
-    for name in names
-        θs = load_draws(m.models[name], :full) # matrix of posterior draws, represents whole posterior
-        Nθ = length(θs)
-        Ns = size(compute_system(m)[:TTT],1)
-        cond_loglhs = zeros(Nt, Nθ) # matrix of period t conditional loglhs (on t-1 information set)
-        m.cond_loglhs[name] = @sync @distributed (+) for θi in 1:Nθ
-            # Evaluate T, R, Z, D given theta
-            update!(m.models[name], θs[θi])
-            TTT, RRR, CCC = solve(m.models[name])
-            tmp = measurement(m.models[name], TTT, RRR, CCC)
-            QQ = tmp[:QQ]
-            ZZ = tmp[:ZZ]
-            DD = tmp[:DD]
-            EE = tmp[:EE]
-
-            # Precompute matrices
-            TTT_power = Dict{Int,typeof(TTT)}(1 => TTT)
-            for i in 2:m.h
-                TTT_power[i] = TTT_power[i-1] * TTT
-            end
-            TTTtp_power = Dict(i => TTT_power[i]' for i in 1:m.h)
-            Dtild = kron(ones(m.h+1),DD)
-            Ztild = kron(Matrix(I*1.,m.h+1,m.h+1),ZZ)
-
-            # Run Kalman filter
-            k   = KalmanFilter(TTT, RRR, CCC, QQQ, ZZ, DD, EE)
-            SS_t = zeros(Ns * (m.h+1)) # initialize s_{t:t+h|t-1} vector
-            PP_t = zeros(Ns * (m.h+1), NS * (m.h+1)) # initialize P_{t:t+h|t-1} matrix
-            s_0 = k.s_t
-            P_0 = k.P_t
-            try
-                semi_names = get_setting(m.models[name], :cond_semin_names)
-                do_semi = true
-            catch
-                do_semi = false
-            end
-
-            cond_loglh_θ = zeros(Nt) # vector of conditional loglhs (on t-1 information set) and fixing θ
-            for t in 1:Nt
-                # Compute unconditional forecast of time t
-                DSGE.forecast!(k)
-
-                # Compute semiconditional forecast
-                if do_semi
-                    obs = get_dict(m.models[name], :obs)
-                    inds = [obs[semi_name] for semi_name in semi_names]
-                    update!(k, m.datas[name][inds,t])
-                end
-
-                # Recursively forecast by j = 1:h periods
-                SS_t[1:Ns] = k.s_t
-                PP_t[1:NS, 1:Ns] = k.P_t
-                for j in 1:m.h
-                    PP_t[1:Ns, 1+Ns*j:Ns*(j+1)] = k.P_t * TTTtp_power[j]
-                    PP_t[1+Ns*j:Ns*(j+1)] = TTT_power[j] * k.P_t
-                end
-                for j in 1:m.h
-                    forecast!(k)
-                    indices = 1+Ns*j:Ns*(j+1)
-                    SS_t[indices] = k.s_t
-                    PP_t[indices, indices] = k.P_t
-                    for n in 1:m.h-j
-                        PP_t[indices,1+Ns*(n+j):Ns*(n+j+1)] = k.P_t * TTTtp_power[n]
-                        PP_t[1+Ns*(n+j):Ns*(n+j+1),indices] = TTT_power[n] * k.P_t
-                    end
-                end
-
-                # Compute conditional log likelihood p(y_t|θ, I_{t-1})
-                μ_mv = Dtild + Ztild * SS_t
-                Σ_mv = Ztild * PP_t * Ztild'
-                inv_Σ_mv = inv(Σ_mv)
-                det_Σ = det(mv)
-                err = vec(datas[name][:,t:t+m.h]) - μ_mv
-                cond_loglh_θ[t] = (2*pi)^(-length(err)/2) * det_Σ^(-1/2) * exp(-(1/2) * dot(err, inv_Σ * err))
-            end
-            cond_loglhs[:,θi] = cond_loglh_θ
-
+function init_cond_loglhs!(m::PoolModel, loglhs::Dict{Symbol,Vector{T}}) where T<:AbstractFloat
+    for kv in loglhs
+        try
+            m.loglhs[kv[1]] = kv[2]
+        catch
+            @warn "model named " * String(kv[1]) * " not found"
         end
-        m.cond_loglhs[name] ./= Nθ
     end
-
     return m
 end
+
+# function init_cond_loglhs!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}(),
+#                       verbose::Symbol = :low)
+#     if isempty(names)
+#         names = keys(m.models)
+#     end
+#     Nt = m.periods # since predict h periods ahead
+#     for name in names
+#         θs = load_draws(m.models[name], :full) # matrix of posterior draws, represents whole posterior
+#         Nθ = length(θs)
+#         Ns = size(compute_system(m)[:TTT],1)
+#         cond_loglhs = zeros(Nt, Nθ) # matrix of period t conditional loglhs (on t-1 information set)
+#         m.cond_loglhs[name] = @sync @distributed (+) for θi in 1:Nθ
+#             # Evaluate T, R, Z, D given theta
+#             update!(m.models[name], θs[θi])
+#             TTT, RRR, CCC = solve(m.models[name])
+#             tmp = measurement(m.models[name], TTT, RRR, CCC)
+#             QQ = tmp[:QQ]
+#             ZZ = tmp[:ZZ]
+#             DD = tmp[:DD]
+#             EE = tmp[:EE]
+
+#             # Precompute matrices
+#             TTT_power = Dict{Int,typeof(TTT)}(1 => TTT)
+#             for i in 2:m.h
+#                 TTT_power[i] = TTT_power[i-1] * TTT
+#             end
+#             TTTtp_power = Dict(i => TTT_power[i]' for i in 1:m.h)
+#             Dtild = kron(ones(m.h+1),DD)
+#             Ztild = kron(Matrix(I*1.,m.h+1,m.h+1),ZZ)
+
+#             # Run Kalman filter
+#             k   = KalmanFilter(TTT, RRR, CCC, QQQ, ZZ, DD, EE)
+#             SS_t = zeros(Ns * (m.h+1)) # initialize s_{t:t+h|t-1} vector
+#             PP_t = zeros(Ns * (m.h+1), NS * (m.h+1)) # initialize P_{t:t+h|t-1} matrix
+#             s_0 = k.s_t
+#             P_0 = k.P_t
+#             try
+#                 semi_names = get_setting(m.models[name], :cond_semin_names)
+#                 do_semi = true
+#             catch
+#                 do_semi = false
+#             end
+
+#             cond_loglh_θ = zeros(Nt) # vector of conditional loglhs (on t-1 information set) and fixing θ
+#             for t in 1:Nt
+#                 # Compute unconditional forecast of time t
+#                 DSGE.forecast!(k)
+
+#                 # Compute semiconditional forecast
+#                 if do_semi
+#                     obs = get_dict(m.models[name], :obs)
+#                     inds = [obs[semi_name] for semi_name in semi_names]
+#                     update!(k, m.datas[name][inds,t])
+#                 end
+
+#                 # Recursively forecast by j = 1:h periods
+#                 SS_t[1:Ns] = k.s_t
+#                 PP_t[1:NS, 1:Ns] = k.P_t
+#                 for j in 1:m.h
+#                     PP_t[1:Ns, 1+Ns*j:Ns*(j+1)] = k.P_t * TTTtp_power[j]
+#                     PP_t[1+Ns*j:Ns*(j+1)] = TTT_power[j] * k.P_t
+#                 end
+#                 for j in 1:m.h
+#                     forecast!(k)
+#                     indices = 1+Ns*j:Ns*(j+1)
+#                     SS_t[indices] = k.s_t
+#                     PP_t[indices, indices] = k.P_t
+#                     for n in 1:m.h-j
+#                         PP_t[indices,1+Ns*(n+j):Ns*(n+j+1)] = k.P_t * TTTtp_power[n]
+#                         PP_t[1+Ns*(n+j):Ns*(n+j+1),indices] = TTT_power[n] * k.P_t
+#                     end
+#                 end
+
+#                 # Compute conditional log likelihood p(y_t|θ, I_{t-1})
+#                 μ_mv = Dtild + Ztild * SS_t
+#                 Σ_mv = Ztild * PP_t * Ztild'
+#                 inv_Σ_mv = inv(Σ_mv)
+#                 det_Σ = det(mv)
+#                 err = vec(datas[name][:,t:t+m.h]) - μ_mv
+#                 cond_loglh_θ[t] = (2*pi)^(-length(err)/2) * det_Σ^(-1/2) * exp(-(1/2) * dot(err, inv_Σ * err))
+#             end
+#             cond_loglhs[:,θi] = cond_loglh_θ
+
+#         end
+#         m.cond_loglhs[name] ./= Nθ
+#     end
+
+#     return m
+# end
 """
 ```
 Access and update functions for PoolModel fields. Append and pop functions not added yet
@@ -471,7 +487,7 @@ function get_models(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
         return m.models
     else
-        return OrderedDict(name => m.models[name] for name in names)
+        return Dict(name => m.models[name] for name in names)
     end
 end
 function get_datas(m::PoolModel, names::Symbol)
@@ -481,7 +497,7 @@ function get_datas(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
         return m.datas
     else
-        return OrderedDict(name => m.datas[name] for name in names)
+        return Dict(name => m.datas[name] for name in names)
     end
 end
 # function get_particles(m::PoolModel, names::Symbol)
@@ -501,7 +517,7 @@ function get_cond_loglhs(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
         return m.cond_loglhs
     else
-        return OrderedDict(name => m.cond_loglhs[name] for name in names)
+        return Dict(name => m.cond_loglhs[name] for name in names)
     end
 end
 function get_system(m::PoolModel)
@@ -534,18 +550,18 @@ function get_F_u(m::PoolModel)
     return m.distributions[:F_u]
 end
 
-function update_models!(m::PoolModel, models::AbstractModel...;
-                        populate::Bool = true)
+function update_models!(m::PoolModel, models::AbstractModel{T}...;
+                        populate::Bool = true) where T<:AbstractFloat
     update_models!(m, models; populate = populate)
 end
-function update_models!(m::PoolModel, models::Vector{AbstractModel};
-                        populate::Bool = true)
+function update_models!(m::PoolModel, models::Vector{<:AbstractModel{T}};
+                        populate::Bool = true) where T<:AbstractFloat
     update_models!(m, Dict(Symbol(typeof(model)) => model for model in models);
                    populate = populate)
     return nothing
 end
-function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel};
-                        populate::Bool = true)
+function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel{T}};
+                        populate::Bool = true) where T<:AbstractFloat
     for kv in models
         if haskey(kv[1])
             m.model[kv[1]] = kv[2]
@@ -556,7 +572,7 @@ function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel};
     if populate
         names = Vector(keys(models))
         # init_particles!(m; model_keys)
-        init_cond_loglhs!(m; names = names)
+        # init_cond_loglhs!(m; names = names)
     end
     return nothing
 end
@@ -624,10 +640,10 @@ function update_F_u!(m::PoolModel, d::Distribution)
     return nothing
 end
 
-# function append_models!(m::PoolModel, models::AbstractModel...)
+# function append_models!(m::PoolModel, models::AbstractModel{T}...)
 #     append_models!(m, models)
 # end
-# function append_models!(m::PoolModel, models::Vector{AbstractModel})
+# function append_models!(m::PoolModel, models::Vector{AbstractModel{T}})
 #     for model in models
 #         if !haskey(Symbol(typeof(model)))
 #             m.model[Symbol(typeof(model))] = model
@@ -637,8 +653,8 @@ end
 #     end
 #     return nothing
 # end
-# function append_models!(m::PoolModel, models::Vector{AbstractModel},
-#                         datas::Dict{Symbol,Matrix{T}}) where T<:AbstractModel
+# function append_models!(m::PoolModel, models::Vector{AbstractModel{T}},
+#                         datas::Dict{Symbol,Matrix{T}}) where T<:AbstractModel{T}
 #     append_models!(m, models)
 #     for kv in datas
 #         m.datas[kv[1]] = kv[2]

@@ -1,9 +1,10 @@
 path = dirname(@__FILE__)
-using FileIO, HDF5, Random
+using DSGE, FileIO, HDF5, Random
 
 ###########################################################################
 # Set up for testing PoolModel instantiation
 ###########################################################################
+include(String(path) * "/spec/poolspec.jl")
 Random.seed!(42)
 m1 = AnSchorfheide()
 poolspec!(m1)
@@ -22,7 +23,8 @@ y2 = h5read(get_setting(m1, :dataroot) * "sw_orig_smc.h5", "data")
 
 # Test outer constructors
 h = 4
-
+m = PoolModel(y1, h, [m1, m1]; testing = true)
+@assert false
 @testset "Check outer constructors" begin
     @test typeof(PoolModel(data = y1, h = h, [m1, m1]; testing = true)) == PoolModel
     @test typeof(PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
