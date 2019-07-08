@@ -71,6 +71,13 @@ module DSGE
         # observables.jl
         Observable, PseudoObservable, check_mnemonics,
 
+        # poolmodel.jl
+        PoolModel, get_models, get_datas, get_cond_loglhs, get_system,
+        get_statespace, get_distributions, get_Φ, get_Ψ, get_F_ϵ,
+        get_F_u, update_models!, update_datas!, update_statespace!,
+        update_distributions!, update_Φ!, update_Ψ!, update_F_ϵ!,
+        update_F_u!, draw_prior,
+
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, compute_system,
 

@@ -63,7 +63,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
     forecast_horizon::Int                                  # Number of periods for forecast
     periods::Int                                           # Number of periods for data time series
-    cond_loglhs::OrderedDict{Symbol,Vector{T}}             # Model name " " to conditional loglh
+    cond_loglhs::OrderedDict{Symbol, Vector{T}}            # Model name mapped to cond_loglhs
     statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
                                                            # Measurement eq for linear weights
     distributions::Dict{Symbol,Distribution}               # Distributions for state space
@@ -185,12 +185,6 @@ function PoolModel(datas::Vector{Matrix{T}}, h::Int,
     # Initialize parameters
     init_parameters!(m; static = static)
 
-    # Initialize state space equations
-    init_statespace!(m)
-
-    # Initialize distributions for state space
-    init_distributions!(m)
-
     # Initialize model indices and subspec
     # init_model_indices!(m)
     init_subspec!(m)
@@ -209,7 +203,20 @@ function PoolModel(datas::Vector{Matrix{T}}, h::Int,
     # init_particles!(m)
 
     # Initialize conditional predictive densities
-    init_cond_loglhs!(m; verbose = verbose)
+    if testing
+        fill_vec = Vector{Float64}(undef,m.periods)
+        for name in keys(m.models)
+            m.cond_loglhs[name] = fill_vec
+        end
+    else
+        init_cond_loglhs!(m; verbose = verbose)
+    end
+
+    # Initialize state space equations
+    init_statespace!(m)
+
+    # Initialize distributions for state space
+    init_distributions!(m)
 
     return m
 end
@@ -301,8 +308,9 @@ Creates transition and measurement equations as passable functions.
 """
 function init_statespace!(m::PoolModel)
     # transition equation
-    m.statespace[:Φ] = (x,ϵ) -> cdf((1 - m[:ρ]) * m[:μ] + m[:ρ] * quantile(Normal(),x[1]) +
-                              sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)
+    m.statespace[:Φ] = (x,ϵ) -> abs.([0;1] .- (cdf((1 - m[:ρ]) * m[:μ] +
+                                    m[:ρ] * quantile(Normal(),x[1]) +
+                                    sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)))
 
     # measurement equation
     loglh_mat = zeros(length(m.cond_loglhs), length(m.cond_loglhs[1])) # matrix of conditional log likelihoods
@@ -365,10 +373,10 @@ function init_cond_loglhs!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}(
     if isempty(names)
         names = keys(m.models)
     end
+    Nt = m.periods # since predict h periods ahead
     for name in names
         θs = load_draws(m.models[name], :full) # matrix of posterior draws, represents whole posterior
         Nθ = length(θs)
-        Nt = size(datas[name],2) - h # since predict h periods ahead
         Ns = size(compute_system(m)[:TTT],1)
         cond_loglhs = zeros(Nt, Nθ) # matrix of period t conditional loglhs (on t-1 information set)
         m.cond_loglhs[name] = @sync @distributed (+) for θi in 1:Nθ

@@ -1,13 +1,14 @@
 path = dirname(@__FILE__)
-using FileIO, HDF5
+using FileIO, HDF5, Random
 
 ###########################################################################
 # Set up for testing PoolModel instantiation
 ###########################################################################
+Random.seed!(42)
 m1 = AnSchorfheide()
-pc1_file = poolspec!(m1)
+poolspec!(m1)
 m2 = SmetsWouters()
-pc2_file = poolspec!(m2)
+poolspec!(m2)
 
 # save = normpath(joinpath(dirname(@__FILE__),"save"))
 
@@ -15,41 +16,36 @@ pc2_file = poolspec!(m2)
 # tbd . . .
 
 # Load prediction data here
-y1 = h5read(get_setting(m1, :dataroot) * "smc.h5")
-y2 = h5read(get_setting(m1, :dataroot) * "sw_orig_smc.h5")
-
-# Load particle clouds here
-pc1_filepath = get_setting(m1, :saveroot) * "output_data/an_schorfheide/ss0/estimate/raw/"
-pc2_filepath = get_setting(m2, :saveroot) * "output_data/an_schorfheide/ss1/estimate/raw/"
-pc1 = load(pc1_filepath * pc1_file)
-pc2 = load(pc2_filepath * pc2_file)
+# y1 = load(replace(get_setting(m1, :dataroot) * "smc.h5", ".h5" => "jld2")
+y1 = h5read(get_setting(m1, :dataroot) * "smc.h5", "data")
+y2 = h5read(get_setting(m1, :dataroot) * "sw_orig_smc.h5", "data")
 
 # Test outer constructors
 h = 4
+
 @testset "Check outer constructors" begin
-    @test typeof(PoolModel(data = y1, h = h, [m1, m1])) == PoolModel
+    @test typeof(PoolModel(data = y1, h = h, [m1, m1]; testing = true)) == PoolModel
     @test typeof(PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
-                             h = h, models = [m1, m2])) == PoolModel
+                             h = h, models = [m1, m2]; testing = true)) == PoolModel
     m = PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
-                  h = h, models = [m1, m2])
+                  h = h, models = [m1, m2]; testing = true)
     mstatic = PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
-                        h = h, models = [m1, m2]; static = true)
+                        h = h, models = [m1, m2]; static = true, testing = true)
     @test mstatic[:ρ] == 1 && mstatic[:ρ].fixed
 
     # Test access and update functions
     @test get_models(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
     @test get_models(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
     @test get_models(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
-    @test get_datas(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
-    @test get_datas(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
-    @test get_datas(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
+    @test get_datas(m) == OrderedDict(:AnSchorfheide => y1, :SmetsWouters => y2)
+    @test get_datas(m, :AnScorfheide) == OrderedDict(:AnScorfheide => y1)
+    @test get_datas(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => y1, :SmetsWouters => y2)
     # @test get_particles(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
     # @test get_particles(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
-    # @test get_particles(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :S
-                                                                           metsWouters => m2)
-    @test get_cond_loglhs(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
-    @test get_cond_loglhs(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
-    @test get_cond_loglhs(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
+    # @test get_particles(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
+    @test typeof(get_cond_loglhs(m)) == OrderedDict
+    @test length(get_cond_loglhs(m, :AnScorfheide)) == 1
+    @test length(get_cond_loglhs(m, [:AnSchorfheide, :SmetsWouters])) == 2
     @test haskey(get_system(m), :statespace) && haskey(get_system(m), :distributions)
     @test haskey(get_statespace(m), :Φ) && haskey(get_statespace(m), :Ψ)
     @test typeof(get_statespace(m; :Φ)) == Function
@@ -84,21 +80,17 @@ end
 
 
 # Check predictive densities are correct
-# recreate PoolModel object with SWFF and SWπ
-pc1_file = poolspec!(m1)
-pc2_file = poolspec!(m2)
-pc1_filepath = get_setting(m1, :saveroot) * "output_data/an_schorfheide/ss0/estimate/raw/"
-pc2_filepath = get_setting(m2, :saveroot) * "output_data/an_schorfheide/ss1/estimate/raw/"
-pc1 = load(pc1_filepath * pc1_file)
-pc2 = load(pc2_filepath * pc2_file)
-y1 = h5read(get_setting(m1, :dataroot) * "smc.h5")
-y2 = h5read(get_setting(m1, :dataroot) * "sw_orig_smc.h5")
+# recreate PoolModel object with AnSchorfheide and SWFF?
+poolspec!(m2)
+# pc1_filepath = get_setting(m1, :saveroot) * "output_data/an_schorfheide/ss0/estimate/raw/"
+# pc2_filepath = get_setting(m2, :saveroot) * "output_data/an_schorfheide/ss1/estimate/raw/"
+# pc1 = load(pc1_filepath * pc1_file)
+# pc2 = load(pc2_filepath * pc2_file)
+y2 = h5read(get_setting(m2, :dataroot) * "sw_orig_smc.h5", "data")
 
-# cond_loglhs_mat1 = ...
 # cond_loglhs_mat2 = ...
 @testset "Check prediction densities are correctly computed" begin
-    @test @test_matrix_approx_eq get_cond_loglhs(m, :SWFF) ≈ cond_loglhs_mat1
-    @test @test_matrix_appro_eq get_cond_loglhs(m, :SWπ) ≈ cond_loglhs_mat2
+    @test @test_matrix_approx_eq get_cond_loglhs(m, :SWFF) ≈ cond_loglhs_mat2
 end
 
 # Check ParticleClouds
