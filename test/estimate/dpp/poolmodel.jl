@@ -1,5 +1,5 @@
 path = dirname(@__FILE__)
-using DSGE, DSGEModels, CSV, FileIO, HDF5, Random, Dates, Statistics
+using DSGE, DSGEModels, CSV, FileIO, HDF5, Random, Dates, Statistics, Test, DataStructures
 
 ###########################################################################
 # Set up for testing PoolModel instantiation
@@ -48,76 +48,63 @@ pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
 pm4 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
                 Dict(:Model805 => loglhs1_4, :Model904 => loglhs2_4), [m1, m2])
 
-@assert false
 @testset "Check outer constructors" begin
-    @test typeof(PoolModel(data = y1, h = h, [m1, m1]; testing = true)) == PoolModel
-    @test typeof(PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
-                             h = h, models = [m1, m2]; testing = true)) == PoolModel
-    m = PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
-                  h = h, models = [m1, m2]; testing = true)
-    mstatic = PoolModel(datas = Dict(:AnSchorfheide => y1, :SmetsWouters => y2),
-                        h = h, models = [m1, m2]; static = true, testing = true)
-    @test mstatic[:ρ] == 1 && mstatic[:ρ].fixed
+    @test typeof(PoolModel(y1, periods, Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2]; testing = true)) == PoolModel{Float64}
+    @test typeof(pm1) == PoolModel{Float64}
+    mstatic = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
+                Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2]; static = true)
+    @test mstatic[:ρ].value == 1 && mstatic[:ρ].fixed
 
     # Test access and update functions
-    @test get_models(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
-    @test get_models(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
-    @test get_models(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
-    @test get_datas(m) == OrderedDict(:AnSchorfheide => y1, :SmetsWouters => y2)
-    @test get_datas(m, :AnScorfheide) == OrderedDict(:AnScorfheide => y1)
-    @test get_datas(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => y1, :SmetsWouters => y2)
-    # @test get_particles(m) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
+    @test get_models(pm1) == OrderedDict(:Model805 => m1, :Model904 => m2)
+    @test get_models(pm1, :Model805) == OrderedDict(:Model805 => m1)
+    @test get_models(pm1, [:Model805, :Model904]) == OrderedDict(:Model805 => m1, :Model904 => m2)
+    @test get_datas(pm1) == OrderedDict(:Model805 => y1, :Model904 => y2)
+    @test get_datas(pm1, :Model805) == OrderedDict(:Model805 => y1)
+    @test get_datas(pm1, [:Model805, :Model904]) == OrderedDict(:Model805 => y1, :Model904 => y2)
+    # @test get_particles(m) == OrderedDict(:Model805 => m1, :Model904 => m2)
     # @test get_particles(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
-    # @test get_particles(m, [:AnSchorfheide, :SmetsWouters]) == OrderedDict(:AnSchorfheide => m1, :SmetsWouters => m2)
-    @test typeof(get_cond_loglhs(m)) == OrderedDict
-    @test length(get_cond_loglhs(m, :AnScorfheide)) == 1
-    @test length(get_cond_loglhs(m, [:AnSchorfheide, :SmetsWouters])) == 2
-    @test haskey(get_system(m), :statespace) && haskey(get_system(m), :distributions)
-    @test haskey(get_statespace(m), :Φ) && haskey(get_statespace(m), :Ψ)
-    @test typeof(get_statespace(m; :Φ)) == Function
-    @test typeof(get_statespace(m; :Ψ)) == Function
-    @test haskey(get_distributions(m), :F_ϵ)) && haskey(get_distributions(m), :F_u)
-    @test typeof(get_distributions(m; :F_ϵ)) == Distribution
-    @test typeof(get_distributions(m; :F_u)) == Distribution
-    @test get_Φ(m) == get_statespace(m, :Φ)
-    @test get_Ψ(m) == get_statespace(m, :Ψ)
-    @test get_F_ϵ(m) == get_distributions(m, :F_ϵ)
-    @test get_F_u(m) == get_distributions(m, :F_u)
-    oldm = deepcopy(m)
-    update_models!(m, m1, m2; populate = false)
-    @test m == oldm
-    update_models!(m, [m1, m2]; populate = false)
-    @test m == oldm
-    update_datas!(m, Dict(:AnSchorfheide => y1))
-    @test m == oldm
-    # update_particles!(m, Dict(:AnSchorfheide => pc1))
-    # @test m == oldm
-    update_cond_loglhs!(m, Dict(:AnSchorfheide => get_loglhs(m, :AnSchorfheide)))
-    @test m == oldm
-    update_Φ!(m, get_Φ(m))
-    @test m == oldm
-    update_Ψ!(m, get_Ψ(m))
-    @test m == oldm
-    update_F_ϵ!(m, get_F_ϵ(m))
-    @test m == oldm
-    update_F_u!(m, get_F_u(m))
-    @test m == oldm
+    # @test get_particles(m, [:Model805, :Model904]) == OrderedDict(:Model805 => m1, :Model904 => m2)
+    @test typeof(get_cond_loglhs(pm1)) == OrderedDict{Symbol,Vector{Float64}}
+    @test typeof(get_cond_loglhs(pm1, :Model805)) == Vector{Float64}
+    @test length(get_cond_loglhs(pm1, [:Model805, :Model904])) == 2
+    @test haskey(get_system(pm1), :statespace) && haskey(get_system(pm1), :distributions)
+    @test haskey(get_statespace(pm1), :Φ) && haskey(get_statespace(pm1), :Ψ)
+    @test get_statespace(pm1, :Φ) == get_statespace(pm1)[:Φ]
+    @test get_statespace(pm1, :Ψ) == get_statespace(pm1)[:Ψ]
+    @test haskey(get_distributions(pm1),:F_ϵ) && haskey(get_distributions(pm1), :F_u)
+    @test get_distributions(pm1, :F_ϵ) == get_distributions(pm1)[:F_ϵ]
+    @test get_distributions(pm1, :F_u) == get_distributions(pm1)[:F_u]
+    @test get_Φ(pm1) == get_statespace(pm1, :Φ)
+    @test get_Ψ(pm1) == get_statespace(pm1, :Ψ)
+    @test get_F_ϵ(pm1) == get_distributions(pm1, :F_ϵ)
+    @test get_F_u(pm1) == get_distributions(pm1, :F_u)
+    oldm = deepcopy(pm1)
+    update_models!(pm1, m1, m2; populate = false)
+    @test keys(pm1.models) == keys(oldm.models)
+    update_models!(pm1, [m1, m2]; populate = false)
+    @test keys(pm1.models) == keys(oldm.models)
+    update_datas!(pm1, Dict(:Model805 => y1))
+    @test pm1.datas == oldm.datas
+    # update_particles!(pm1, Dict(:Model805 => pc1))
+    # @test pm1 == oldm
+    update_cond_loglhs!(pm1, Dict(:Model805 => get_cond_loglhs(pm1, :Model805)))
+    @test pm1.cond_loglhs == oldm.cond_loglhs
+    # update_Φ!(pm1, get_Φ(pm1))
+    # @test get_statespace(pm1, :Φ) == get_statespace(oldm, :Φ)
+    # update_Ψ!(pm1, get_Ψ(pm1))
+    # @test get_Ψ(pm1, :Ψ) == get_statespace(oldm, :Ψ)
+    update_F_ϵ!(pm1, get_F_ϵ(pm1))
+    @test get_distributions(pm1, :F_ϵ) == get_distributions(oldm, :F_ϵ)
+    update_F_u!(pm1, get_F_u(pm1))
+    @test get_distributions(pm1, :F_u) == get_distributions(oldm, :F_u)
 end
-
 
 # Check predictive densities are correct
-# recreate PoolModel object with AnSchorfheide and SWFF?
-poolspec!(m2)
-# pc1_filepath = get_setting(m1, :saveroot) * "output_data/an_schorfheide/ss0/estimate/raw/"
-# pc2_filepath = get_setting(m2, :saveroot) * "output_data/an_schorfheide/ss1/estimate/raw/"
-# pc1 = load(pc1_filepath * pc1_file)
-# pc2 = load(pc2_filepath * pc2_file)
-y2 = h5read(get_setting(m2, :dataroot) * "sw_orig_smc.h5", "data")
-
 # cond_loglhs_mat2 = ...
-@testset "Check prediction densities are correctly computed" begin
-    @test @test_matrix_approx_eq get_cond_loglhs(m, :SWFF) ≈ cond_loglhs_mat2
-end
+# @testset "Check prediction densities are correctly computed" begin
+#     @test @test_matrix_approx_eq get_cond_loglhs(m, :SWFF) ≈ cond_loglhs_mat2
+# end
 
 # Check ParticleClouds
 # @testset "Check ParticleClouds are correctly added" begin
@@ -126,14 +113,10 @@ end
 # end
 
 # Check solve and statespace functions apply to PoolModel
-Phi, Psi, F_eps, F_uu = compute_system_function(m)
 @testset "Check solve and statespace functions apply to PoolModel" begin
-    @test typeof(solve(m)) == Nothing
-    @test typeof(compute_system(m)) == Nothing
-    @test typeof(Phi) == Function
-    @test typeof(Psi) == Function
-    @test typeof(F_eps) == Distribution
-    @test typeof(F_uu) == Distribution
+    Phi1, Psi1, F_eps1, F_uu1 = compute_system_function(pm1)
+    @test typeof(solve(pm1)) == Nothing
+    @test typeof(compute_system(pm1)) == Nothing
 end
 
 nothing

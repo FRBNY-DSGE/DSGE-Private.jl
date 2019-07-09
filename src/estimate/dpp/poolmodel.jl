@@ -79,24 +79,15 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     pseudo_observable_mappings::OrderedDict{Symbol, PseudoObservable}
 end
 
-description(m::PoolModel) = "Julia implementation of model defined in 'Bayesian Estimation of DSGE Models' by Sungbae An and Frank Schorfheide: PoolModel, $(m.subspec)"
+description(m::PoolModel) = "Julia implementation of dynamic prediction pools defined in 'Dynamic prediction pools: An investigation of financial frictions and forecasting performance' by Marco Del Negro, Raiden B. Hasegawa, and Frank Schorfheide: PoolModel, $(m.subspec)"
 
-"""
-`init_model_indices!(m::PoolModel)`
-
-Arguments:
-`m:: PoolModel`: a model object
-
-Description:
-Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
-"""
 function PoolModel(data::Matrix{T}, h::Int, cond_loglhs::Dict{Symbol,Vector{T}},
                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
                    testing = false, verbose::Symbol = :low,
                    static::Bool = false) where T<:AbstractFloat
-    data_dict = Dict(name => data for name in keys(loglhs))
-    return PoolModel([data for i = 1:length(models)], h, models, subspec;
+    data_dict = Dict(name => data for name in keys(cond_loglhs))
+    return PoolModel(data_dict, h, cond_loglhs, models, subspec;
                    custom_settings = custom_settings,
                    testing = testing, verbose = verbose, static = static)
 end
@@ -292,23 +283,29 @@ function model_settings!(m::PoolModel)
                  "Whether to use population forecasts as data")
 end
 
+# """
+# `init_model_indices!(m::PoolModel)`
 
-function init_model_indices!(m::PoolModel)
-    # Observables
-    observables = keys(m.observable_mappings)
+# Arguments:
+# `m:: PoolModel`: a model object
 
-    # Pseudo-observables
-    pseudo_observables = keys(m.pseudo_observable_mappings)
+# Description:
+# Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
+# """
+# function init_model_indices!(m::PoolModel)
+#     # Observables
+#     observables = keys(m.observable_mappings)
 
-    # Collect into model indices
-    for (i,k) in enumerate(observables);                 m.observables[k]                 = i end
-    for (i,k) in enumerate(pseudo_observables);          m.pseudo_observables[k]          = i end
-end
+#     # Pseudo-observables
+#     pseudo_observables = keys(m.pseudo_observable_mappings)
+
+#     # Collect into model indices
+#     for (i,k) in enumerate(observables);                 m.observables[k]                 = i end
+#     for (i,k) in enumerate(pseudo_observables);          m.pseudo_observables[k]          = i end
+# end
 
 """
-```
-init_statespace!(m::PoolModel)
-```
+`init_statespace!(m::PoolModel)`
 
 Creates transition and measurement equations as passable functions.
 """
@@ -514,8 +511,8 @@ end
 #         return OrderedDict(name => m.particles[name] for name in names)
 #     else
 # end
-function get_cond_loglhs(m::PoolModel, names::Symbol)
-    return get_cond_loglhs(m, [names])
+function get_cond_loglhs(m::PoolModel, name::Symbol)
+    return m.cond_loglhs[name]
 end
 function get_cond_loglhs(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
@@ -527,14 +524,14 @@ end
 function get_system(m::PoolModel)
     return Dict(:statespace => m.statespace, :distributions => m.distributions)
 end
-function get_statespace(m::PoolModel; F::Symbol = :all)
+function get_statespace(m::PoolModel, F::Symbol = :all)
     if F == :all
         return m.statespace
     else
         return m.statespace[F]
     end
 end
-function get_distributions(m::PoolModel; F::Symbol = :all)
+function get_distributions(m::PoolModel, F::Symbol = :all)
     if F == :all
         return m.distributions
     else
@@ -554,9 +551,14 @@ function get_F_u(m::PoolModel)
     return m.distributions[:F_u]
 end
 
+
 function update_models!(m::PoolModel, models::AbstractModel{T}...;
                         populate::Bool = true) where T<:AbstractFloat
-    update_models!(m, models; populate = populate)
+    if length(models) > 1
+        update_models!(m, [model for model in models]; populate = populate)
+    else
+        update_models!(m, [models]; populate = populate)
+    end
 end
 function update_models!(m::PoolModel, models::Vector{<:AbstractModel{T}};
                         populate::Bool = true) where T<:AbstractFloat
@@ -572,8 +574,8 @@ end
 function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel{T}};
                         populate::Bool = true) where T<:AbstractFloat
     for kv in models
-        if haskey(kv[1])
-            m.model[kv[1]] = kv[2]
+        if haskey(models,kv[1])
+            m.models[kv[1]] = kv[2]
         else
             @warn "no model named " * String(kv[1]) * " found"
         end
@@ -699,4 +701,11 @@ Other auxiliary functions that are useful for estimating pooled models.
 """
 function draw_prior(m::PoolModel)
     return rand(Normal(m[:μ], m[:σ]), 1)
+end
+
+function Base.show(io::IO, m::PoolModel)
+    @printf io "Dynamic Prediction Pools\n"
+    @printf io "no. models:             %i\n" length(get_models(m))
+    @printf io "data vintage:           %s\n" data_vintage(m)
+    @printf io "description:\n %s\n"          description(m)
 end
