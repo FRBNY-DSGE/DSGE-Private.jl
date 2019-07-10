@@ -1,6 +1,7 @@
 using DSGE, JLD2, Distributions, PDMats, DataStructures, OrderedCollections, FileIO, Test, DataFrames, Dates, Nullables, Plots, Printf, Distributed, DelimitedFiles, Random
 
 my_tests = [
+            "estimate/dpp/poolmodel",
            "core",
            "parameters",
             "models/representative_agent/an_schorfheide/an_schorfheide",

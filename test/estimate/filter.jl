@@ -52,48 +52,5 @@ end
 end
 
 
-############################################################
-# PoolModel tests
-############################################################
-# PROVIDE ONLY ONE PERIOD OF DATA SO IT RUNS JUST ONE PERIOD
-# Set up arguments
-SWFF = SmetsWoutersFF()
-m = PoolModel() # to be completed
-# m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
-
-statespace, distributions, z0 = jldopen("$path/../reference/forecast_args_pool.jld2", "r") do file
-    read(file, "df"), read(file, "statespace"), read(file, "distributions"), read(file, "z0")
-end
-update_statespace!(m, statespace)
-update_distributions!(m, distributions)
-
-# Read expected output
-exp_pool, seed_num = jldopen("$path/../reference/filter_out_pool.jld2", "r") do file
-    read(file, "exp_pool"), read(file, "seed_num")
-end
-Random.seed(seed_num)
-
-
-
-# Without providing z0 and P0
-@testset "Check TPF filter outputs without initializing state/state-covariance" begin
-    tpf_sum, tpf_cond, tpf_time = DSGE.filter(m)
-    @test tpf_sum ≈ exp_pool["tfp_sum"]
-    @test tpf_cond ≈ exp_pool["tfp_cond"]
-    @test tpf_time ≈ exp_pool["tfp_time"]
-end
-
-# Providing z0 and P0
-Random.seed!(seed_num)
-@assert draw_prior(m) == z0 # enforce we have the right seed number
-Random.seed!(seed_num)
-@testset "Check TPF filter outputs initializing state/state-covariance" begin
-    tpf_sum, tpf_cond, tpf_time = DSGE.filter(m, z0)
-    @test tpf_sum ≈ exp_pool["tfp_sum"]
-    @test tpf_cond ≈ exp_pool["tfp_cond"]
-    @test tpf_time ≈ exp_pool["tfp_time"]
-end
-
-
 
 nothing
