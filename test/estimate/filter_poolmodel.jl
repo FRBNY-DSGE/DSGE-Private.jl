@@ -54,7 +54,7 @@ pm = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
 #                                    s_init; tuning..., verbose = :none,
 #                                    fixed_sched = [1.], parallel = false,
 #                                    dynamic_measurement = true, poolmodel = true)
-jld_data = load("../reference/tpf_poolmodel.jld2")
+jld_data = load("$filepath/../reference/tpf_poolmodel.jld2")
 tpf_out = jld_data["tpf_out"]
 tpf_out_noinit = jld_data["tpf_out_noinit"]
 tuning = jld_data["tuning"]
