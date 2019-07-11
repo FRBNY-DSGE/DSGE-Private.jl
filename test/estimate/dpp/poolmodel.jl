@@ -3,7 +3,8 @@ using DSGEModels, CSV
 ###########################################################################
 # Set up for testing PoolModel instantiation
 ###########################################################################
-filepath = pwd()
+# filepath = pwd()
+filepath = dirname(@__FILE__)
 saveroot = filepath * "/save/"
 dataroot = filepath * "/save/input_data/"
 vint = "990110"

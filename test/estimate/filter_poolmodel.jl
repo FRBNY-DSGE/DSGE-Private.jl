@@ -1,7 +1,8 @@
 using DSGEModels
 
 # Set up underlying models
-filepath = pwd()
+# filepath = pwd()
+filepath = dirname(@__FILE__)
 saveroot = filepath * "/dpp/save/"
 dataroot = filepath * "/dpp/save/input_data/"
 vint = "990110"
