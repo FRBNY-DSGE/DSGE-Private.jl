@@ -76,7 +76,7 @@ module DSGE
         get_statespace, get_distributions, get_Φ, get_Ψ, get_F_ϵ,
         get_F_u, update_models!, update_cond_loglhs!, update_datas!, update_statespace!,
         update_distributions!, update_Φ!, update_Ψ!, update_F_ϵ!,
-        update_F_u!, draw_prior, subspecs,
+        update_F_u!, draw_prior, subspecs, get_periods, get_forecast_horizon,
 
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, compute_system,

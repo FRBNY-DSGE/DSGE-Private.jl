@@ -149,17 +149,18 @@ function filter(m::PoolModel, data::AbstractArray = Vector{S}(undef, 0),
                 start_date::Date = date_presample_start(m),
                 cond_type::Symbol = :none, include_presample::Bool = true,
                 in_sample::Bool = true,
-                tol::Float64 = 0.0) where {S<:AbstractFloat}
+                tol::Float64 = 0.0, parallel::Bool = false) where {S<:AbstractFloat}
 
     if isempty(data)
-        data = zeros(m.periods)
+        data = zeros(1,m.periods)
     end
     Nt0 = include_presample ? 0 : n_presample_periods(m)
 
     return tempered_particle_filter(data, get_Φ(m), get_Ψ(m), get_F_ϵ(m), get_F_u(m),
                                     draw_prior(m); n_presample_periods = Nt0,
-                                    parallel = false,
-                                    dynamic_measurement = true, poolmodel = true)
+                                    parallel = parallel,
+                                    dynamic_measurement = true, poolmodel = true,
+                                    fixed_sched = get_setting(m, :fixed_sched))
 end
 
 function filter(m::PoolModel, df::DataFrame,
@@ -167,22 +168,24 @@ function filter(m::PoolModel, df::DataFrame,
                 start_date::Date = date_presample_start(m),
                 cond_type::Symbol = :none, include_presample::Bool = true,
                 in_sample::Bool = true,
-                tol::Float64 = 0.0) where {S<:AbstractFloat}
+                tol::Float64 = 0.0, parallel::Bool = false) where {S<:AbstractFloat}
 
     data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
     start_date = max(date_presample_start(m), df[1, :date])
     filter(m, data, s_0; start_date = start_date,
-           include_presample = include_presample, tol = tol)
+           include_presample = include_presample, tol = tol, parallel = parallel)
 end
 
 function filter_likelihood(m::PoolModel, data::AbstractArray = Vector{S}(undef, 0),
                            s_0::Vector{S} = Vector{S}(undef, 0);
                            start_date::Date = date_presample_start(m),
                            cond_type::Symbol = :none, include_presample::Bool = true,
-                           in_sample::Bool = true) where {S<:AbstractFloat}
+                           in_sample::Bool = true,
+                           parallel::Bool = false) where {S<:AbstractFloat}
 
     ~, loglhconditional, ~ = filter(m, data, s_0; start_date = start_date,
                                     include_presample = include_presample,
-                                    cond_type = cond_type, in_sample = in_sample, tol = tol)
+                                    cond_type = cond_type, in_sample = in_sample, tol = tol,
+                                    parallel = parallel)
     return loglhconditional
 end

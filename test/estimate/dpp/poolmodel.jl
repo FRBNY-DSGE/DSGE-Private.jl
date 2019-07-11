@@ -4,20 +4,27 @@ using DSGEModels, CSV,HDF5, Statistics
 ###########################################################################
 # Set up for testing PoolModel instantiation
 ###########################################################################
-include(String(path) * "/spec/poolspec.jl")
+path = String(path)
+include(path * "/spec/poolspec.jl")
 Random.seed!(42)
+saveroot = path * "/save/"
+dataroot = path * "/save/input_data/"
+vint = "990110"
+iter = 1
+prev = 980110
+est = 2
 m1 = Model805()
-poolspec!(m1)
 m2 = Model904()
-poolspec!(m2)
-
-# save = normpath(joinpath(dirname(@__FILE__),"save"))
-
-# Load true data here
-# tbd . . .
+for model in [m1, m2]
+    model <= Setting(:sampling_method, :SMC)
+    model <= Setting(:saveroot, saveroot)
+    model <= Setting(:dataroot, dataroot)
+    model <= Setting(:data_vintage, vint, true, "vint", "")
+    model <= Setting(:prev, prev, true, "prev", "")
+    model <= Setting(:est, est, true, "est", "")
+end
 
 # Load prediction data here
-# y1 = load(replace(get_setting(m1, :dataroot) * "smc.h5", ".h5" => "jld2")
 y1 = CSV.read(get_setting(m1, :dataroot) * "realtime_spec=m805_hp=true_vint=170410.csv")
 y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
 y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
@@ -25,28 +32,29 @@ y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # s
 
 # Load loglhs here, second number is the data type, 1 -> no conditional on rate exp,
 # 4 -> conditional on rate exp
+# Based on the online appendix, it appears we should not condition on rate expectations
 file_log1_1 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
-file_log1_4 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+# file_log1_4 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
 file_log2_1 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
-file_log2_4 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+# file_log2_4 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
 
 loglhs1_1 = load(get_setting(m1, :dataroot) * file_log1_1)["logscores"]
-loglhs1_4 = load(get_setting(m1, :dataroot) * file_log1_4)["logscores"]
+# loglhs1_4 = load(get_setting(m1, :dataroot) * file_log1_4)["logscores"]
 loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
-loglhs2_4 = load(get_setting(m2, :dataroot) * file_log2_4)["logscores"]
+# loglhs2_4 = load(get_setting(m2, :dataroot) * file_log2_4)["logscores"]
 
 # Process loglhs (compute means across time periods
 loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
-loglhs1_4 = vec(mean(loglhs1_4, dims = 1))
+# loglhs1_4 = vec(mean(loglhs1_4, dims = 1))
 loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
-loglhs2_4 = vec(mean(loglhs2_4, dims = 1))
+# loglhs2_4 = vec(mean(loglhs2_4, dims = 1))
 
 # Test outer constructors
 periods = 4
 pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
                 Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2])
-pm4 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
-                Dict(:Model805 => loglhs1_4, :Model904 => loglhs2_4), [m1, m2])
+# pm4 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
+#                 Dict(:Model805 => loglhs1_4, :Model904 => loglhs2_4), [m1, m2])
 
 @testset "Check outer constructors" begin
     @test typeof(PoolModel(y1, periods, Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2]; testing = true)) == PoolModel{Float64}
@@ -62,6 +70,8 @@ pm4 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
     @test get_datas(pm1) == OrderedDict(:Model805 => y1, :Model904 => y2)
     @test get_datas(pm1, :Model805) == OrderedDict(:Model805 => y1)
     @test get_datas(pm1, [:Model805, :Model904]) == OrderedDict(:Model805 => y1, :Model904 => y2)
+    @test get_periods(pm1) == 101
+    @test get_forecast_horizon(pm1) == 4
     # @test get_particles(m) == OrderedDict(:Model805 => m1, :Model904 => m2)
     # @test get_particles(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
     # @test get_particles(m, [:Model805, :Model904]) == OrderedDict(:Model805 => m1, :Model904 => m2)

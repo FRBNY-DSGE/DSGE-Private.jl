@@ -281,6 +281,10 @@ function model_settings!(m::PoolModel)
     # Forecast
     m <= Setting(:use_population_forecast, true,
                  "Whether to use population forecasts as data")
+
+    # Tempered particle filter
+    m <= Setting(:fixed_sched, [1.],
+                 "schedule for tempering in tpf; leave empty if want adaptive tempering")
 end
 
 # """
@@ -309,27 +313,29 @@ end
 
 Creates transition and measurement equations as passable functions.
 """
-function init_statespace!(m::PoolModel)
+function init_statespace!(m::PoolModel{T}) where T<:AbstractFloat
     # transition equation
-    m.statespace[:Φ] = (x,ϵ) -> abs.([0;1] .- (cdf((1 - m[:ρ]) * m[:μ] +
+    @inline Φ(x::Vector{T}, ϵ::Vector{T}) = abs.([0;1] .- (cdf.(Normal(), (1 - m[:ρ]) * m[:μ] +
                                     m[:ρ] * quantile(Normal(),x[1]) +
                                     sqrt(1 - m[:ρ]^2) * m[:σ] * ϵ)))
+    m.statespace[:Φ] = Φ
 
     # measurement equation
     loglh_mat = zeros(m.periods, length(m.cond_loglhs)) # matrix of conditional log likelihoods
     for (i,v) in enumerate(values(m.cond_loglhs)) # time period vs. model
         loglh_mat[:,i] = v
     end
-    loglh_mat = loglh_mat'
+    loglh_mat = reshape(loglh_mat, length(m.cond_loglhs), m.periods)
 
-    m.statespace[:Ψ] = (x,t) -> dot(loglh_mat[:,t], x)
+    @inline Ψ(x::Vector{T}, t::Int64) = dot(loglh_mat[:,t], x)
+    m.statespace[:Ψ] = Ψ
 
     return m
 end
 
 function init_distributions!(m::PoolModel)
     # exogenous shock
-    m.distributions[:F_ϵ] = Normal(0,1)
+    m.distributions[:F_ϵ] = Normal(0.,1.)
 
     # measurement error
     m.distributions[:F_u] = DiscreteUniform(0,0)
@@ -500,6 +506,12 @@ function get_datas(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     else
         return Dict(name => m.datas[name] for name in names)
     end
+end
+function get_periods(m::PoolModel)
+    return m.periods
+end
+function get_forecast_horizon(m::PoolModel)
+    return m.forecast_horizon
 end
 # function get_particles(m::PoolModel, names::Symbol)
 #     return get_particles(m, [names])
