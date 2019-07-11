@@ -1,11 +1,9 @@
-using DSGEModels, CSV, StateSpaceRoutines
-
-path = dirname(@__FILE__)
+using DSGEModels
 
 # Set up underlying models
-path = String(path)
-saveroot = path * "/dpp/save/"
-dataroot = path * "/dpp/save/input_data/"
+filepath = pwd()
+saveroot = filepath * "/dpp/save/"
+dataroot = filepath * "/dpp/save/input_data/"
 vint = "990110"
 iter = 1
 prev = 980110
@@ -40,19 +38,30 @@ loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
                Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2])
-tuning = Dict(:r_star => 2., :c_init => 0.3, :target_accept_rate => 0.4,
-              :resampling_method => :systematic, :n_mh_steps => 1,
-              :n_particles => 1000, :n_presample_periods => 0,
-              :allout => true)
+
+# This commented code produces the saved output
+# tuning = Dict(:r_star => 2., :c_init => 0.3, :target_accept_rate => 0.4,
+#               :resampling_method => :systematic, :n_mh_steps => 1,
+#               :n_particles => 1000, :n_presample_periods => 0,
+#               :allout => true)
+# pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
+# data = zeros(1, get_periods(pm))
+# Random.seed!(1793)
+# s_init = reshape(rand(get_F_λ(pm), tuning[:n_particles]), 1, 1000)
+# s_init = [s_init; 1 .- s_init] # this tpf output should be saved later
+# tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(pm), get_F_u(pm),
+#                                    s_init; tuning..., verbose = :none,
+#                                    fixed_sched = [1.], parallel = false,
+#                                    dynamic_measurement = true, poolmodel = true)
+jld_data = load("../reference/tpf_poolmodel.jld2")
+tpf_out = jld_data["tpf_out"]
+tpf_out_noinit = jld_data["tpf_out_noinit"]
+tuning = jld_data["tuning"]
+data = jld_data["data"]
+s_init = jld_data["s_init"]
 pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
-data = zeros(1, get_periods(pm))
-Random.seed!(1793)
-s_init = reshape(rand(get_F_λ(pm), tuning[:n_particles]), 1, 1000)
-s_init = [s_init; 1 .- s_init] # this tpf output should be saved later
-tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(pm), get_F_u(pm),
-                                   s_init; tuning..., verbose = :none,
-                                   fixed_sched = [1.], parallel = false,
-                                   dynamic_measurement = true, poolmodel = true)
+
+
 Random.seed!(1793)
 filt_tpf_out, ~, ~ = DSGE.filter(pm, data; tuning = get_setting(pm, :tuning))
 Random.seed!(1793)
@@ -67,18 +76,13 @@ filt_lik_tpf_out = sum(DSGE.filter_likelihood(pm, data; tuning = get_setting(pm,
 end
 
 Random.seed!(1793)
-tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(pm), get_F_u(pm),
-                                   s_init; tuning..., verbose = :none,
-                                   fixed_sched = [1.], parallel = false,
-                                   dynamic_measurement = true, poolmodel = true)
-Random.seed!(1793)
 filt_tpf_out, ~, ~ = DSGE.filter(pm, data, s_init; tuning = get_setting(pm, :tuning))
 Random.seed!(1793)
 filt_lik_tpf_out = sum(DSGE.filter_likelihood(pm, data, s_init; tuning = get_setting(pm, :tuning)))
 
 @testset "Check call to tempered particle filter when providing initial states" begin
-    @test tpf_out == filt_tpf_out
-    @test tpf_out == filt_lik_tpf_out
+    @test tpf_out_noinit == filt_tpf_out
+    @test tpf_out_noinit == filt_lik_tpf_out
 end
 
 

@@ -1,14 +1,11 @@
-path = dirname(@__FILE__)
 using DSGEModels, CSV
 
 ###########################################################################
 # Set up for testing PoolModel instantiation
 ###########################################################################
-path = String(path)
-include(path * "/spec/poolspec.jl")
-Random.seed!(42)
-saveroot = path * "/save/"
-dataroot = path * "/save/input_data/"
+filepath = pwd()
+saveroot = filepath * "/save/"
+dataroot = filepath * "/save/input_data/"
 vint = "990110"
 iter = 1
 prev = 980110
