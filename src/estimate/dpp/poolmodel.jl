@@ -285,6 +285,12 @@ function model_settings!(m::PoolModel)
     # Tempered particle filter
     m <= Setting(:fixed_sched, [1.],
                  "schedule for tempering in tpf; leave empty if want adaptive tempering")
+    tuning = Dict(:r_star => 2., :c_init => 0.3, :target_accept_rate => 0.4,
+              :resampling_method => :systematic, :n_mh_steps => 1,
+              :n_particles => 1000, :n_presample_periods => 0,
+              :allout => true)
+    m <= Setting(:tuning, tuning, "tuning parameters for TPF")
+
 end
 
 # """
@@ -339,6 +345,9 @@ function init_distributions!(m::PoolModel)
 
     # measurement error
     m.distributions[:F_u] = DiscreteUniform(0,0)
+
+    # initialization distribution for lambda
+    m.distributions[:F_λ] = Uniform(0.,1.)
 
     return m
 end
@@ -562,6 +571,9 @@ end
 function get_F_u(m::PoolModel)
     return m.distributions[:F_u]
 end
+function get_F_λ(m::PoolModel)
+    return m.distributions[:F_λ]
+end
 
 
 function update_models!(m::PoolModel, models::AbstractModel{T}...;
@@ -660,6 +672,10 @@ function update_F_ϵ!(m::PoolModel, d::Distribution)
 end
 function update_F_u!(m::PoolModel, d::Distribution)
     m.distributions[:F_u] = d
+    return nothing
+end
+function update_F_λ!(m::PoolModel, d::Distribution)
+    m.distributions[:F_λ] = d
     return nothing
 end
 

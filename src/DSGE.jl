@@ -74,9 +74,10 @@ module DSGE
         # poolmodel.jl
         PoolModel, get_models, get_datas, get_cond_loglhs, get_system,
         get_statespace, get_distributions, get_Φ, get_Ψ, get_F_ϵ,
-        get_F_u, update_models!, update_cond_loglhs!, update_datas!, update_statespace!,
+        get_F_u, get_F_λ, update_models!, update_cond_loglhs!, update_datas!, update_statespace!,
         update_distributions!, update_Φ!, update_Ψ!, update_F_ϵ!,
-        update_F_u!, draw_prior, subspecs, get_periods, get_forecast_horizon,
+        update_F_u!, update_F_λ!, draw_prior, subspecs, get_periods, get_forecast_horizon,
+
 
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, compute_system,

@@ -1,5 +1,5 @@
 path = dirname(@__FILE__)
-using DSGEModels, CSV,HDF5, Statistics
+using DSGEModels, CSV, HDF5, Statistics
 
 ###########################################################################
 # Set up for testing PoolModel instantiation
@@ -83,12 +83,15 @@ pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
     @test get_statespace(pm1, :Φ) == get_statespace(pm1)[:Φ]
     @test get_statespace(pm1, :Ψ) == get_statespace(pm1)[:Ψ]
     @test haskey(get_distributions(pm1),:F_ϵ) && haskey(get_distributions(pm1), :F_u)
+    @test haskey(get_distributions(pm1),:F_λ)
     @test get_distributions(pm1, :F_ϵ) == get_distributions(pm1)[:F_ϵ]
     @test get_distributions(pm1, :F_u) == get_distributions(pm1)[:F_u]
+    @test get_distributions(pm1, :F_λ) == get_distributions(pm1)[:F_λ]
     @test get_Φ(pm1) == get_statespace(pm1, :Φ)
     @test get_Ψ(pm1) == get_statespace(pm1, :Ψ)
     @test get_F_ϵ(pm1) == get_distributions(pm1, :F_ϵ)
     @test get_F_u(pm1) == get_distributions(pm1, :F_u)
+    @test get_F_λ(pm1) == get_distributions(pm1, :F_λ)
     oldm = deepcopy(pm1)
     update_models!(pm1, m1, m2; populate = false)
     @test keys(pm1.models) == keys(oldm.models)
@@ -108,6 +111,8 @@ pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
     @test get_distributions(pm1, :F_ϵ) == get_distributions(oldm, :F_ϵ)
     update_F_u!(pm1, get_F_u(pm1))
     @test get_distributions(pm1, :F_u) == get_distributions(oldm, :F_u)
+    update_F_λ!(pm1, get_F_λ(pm1))
+    @test get_distributions(pm1, :F_λ) == get_distributions(oldm, :F_λ)
 end
 
 # Check predictive densities are correct
