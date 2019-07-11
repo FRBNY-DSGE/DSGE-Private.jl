@@ -1,62 +1,71 @@
-using FileIO
+using DSGEModels
+# using DSGE, JLD2, Distributions, PDMats, DataStructures, OrderedCollections, FileIO, Test, DataFrames, Dates, Nullables, Plots, Printf, Distributed, DelimitedFiles, Random
+
 path = dirname(@__FILE__)
 
-custom_settings = Dict{Symbol, Setting}(
-    :date_forecast_start  => Setting(:date_forecast_start, quartertodate("2015-Q4")))
-m = AnSchorfheide(custom_settings = custom_settings, testing = true)
-
-file = "$path/../reference/posterior.jld2"
-data = Matrix{Float64}(load(file, "data")')
-lh_expected = load(file, "lh_expected")
-post_expected = load(file, "post_expected")
-
-@testset "Check likelihood and posterior calculations" begin
-    lh = likelihood(m, data)
-    @test lh_expected ≈ lh
-
-    post = posterior(m, data)
-    @test post_expected ≈ post
-
-    x = map(α->α.value, m.parameters)
-    post_at_start = posterior!(m, x, data)
-    @test post_expected ≈ post_at_start
-
-    # Ensure if we are not evaluating at start vector, then we do not get the reference
-    # posterior
-    global y = x .+ 0.01
-    post_not_at_start = posterior!(m, y, data)
-    ϵ = 1.0
-    @test abs(post_at_start - post_not_at_start) > ϵ
+path = String(path)
+saveroot = path * "/dpp/save/"
+dataroot = path * "/dpp/save/input_data/"
+vint = "990110"
+iter = 1
+prev = 980110
+est = 2
+m1 = Model805()
+m2 = Model904()
+for model in [m1, m2]
+    model <= Setting(:sampling_method, :SMC)
+    model <= Setting(:saveroot, saveroot)
+    model <= Setting(:dataroot, dataroot)
+    model <= Setting(:data_vintage, vint, true, "vint", "")
+    model <= Setting(:prev, prev, true, "prev", "")
+    model <= Setting(:est, est, true, "est", "")
 end
+# Read in data for models
+y1 = CSV.read(get_setting(m1, :dataroot) * "realtime_spec=m805_hp=true_vint=170410.csv")
+y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
+y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
 
-############################################################
-# PoolModel test
-############################################################
-# custom_settings = Dict{Symbol, Setting}(
-#     :date_forecast_start  => Setting(:date_forecast_start, quartertodate("2015-Q4")))
-SWFF = SmetsWouters() # . . .
-m = PoolModel() # construct this later
+# Load loglhs here, second number is the data type, 1 -> no conditional on rate exp,
+# 4 -> conditional on rate exp
+# Based on the online appendix, it appears we should not condition on rate expectations
+file_log1_1 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+file_log2_1 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
 
-file = "$path/../reference/posterior_pool.jld2"
-data = Matrix{Float64}(load(file, "data")')
-lh_expected = load(file, "lh_expected")
-post_expected = load(file, "post_expected")
+loglhs1_1 = load(get_setting(m1, :dataroot) * file_log1_1)["logscores"]
+loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
+loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
+loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
+periods = 4
+pm = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
+               Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2])
+tuning = Dict(:r_star => 2., :c_init => 0.3, :target_accept_rate => 0.4,
+              :resampling_method => :systematic, :n_mh_steps => 1,
+              :n_particles => 1000, :n_presample_periods => 0,
+              :allout => true)
+pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
+data = zeros(1, get_periods(pm))
+Random.seed!(1793)
+s_init = reshape(rand(get_F_λ(pm), tuning[:n_particles]), 1, 1000)
+s_init = [s_init; 1 .- s_init] # this tpf output should be saved later
+tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(pm), get_F_u(pm),
+                                   s_init; tuning..., verbose = :none,
+                                   fixed_sched = [1.], parallel = false,
+                                   dynamic_measurement = true, poolmodel = true)
 
 @testset "Check likelihood and posterior calculations" begin
-    lh = likelihood(m, data)
-    @test lh_expected ≈ lh
+    Random.seed!(1793)
+    lh = likelihood(pm, data)
+    @test lh == tpf_out
 
-    post = posterior(m, data)
-    @test post_expected ≈ post
+    Random.seed!(1793)
+    x = map(α->α.value, pm.parameters)
+    post_at_start = posterior!(pm, x, data)
+    @test post_at_start == tpf_out
 
-    x = map(α->α.value, m.parameters)
-    post_at_start = posterior!(m, x, data)
-    @test post_expected ≈ post_at_start
-
-    # Ensure if we are not evaluating at start vector, then we do not get the reference
-    # posterior
-    global y = x .+ 0.01
-    post_not_at_start = posterior!(m, y, data)
-    ϵ = 1.0
+    Random.seed!(1793)
+    global y = x + [.3; -1; -.1]
+    post_not_at_start = posterior!(pm, y, data)
+    ϵ = 0.5
     @test abs(post_at_start - post_not_at_start) > ϵ
 end

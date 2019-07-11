@@ -1,6 +1,8 @@
 using DSGE, JLD2, Distributions, PDMats, DataStructures, OrderedCollections, FileIO, Test, DataFrames, Dates, Nullables, Plots, Printf, Distributed, DelimitedFiles, Random
+using CSV, Statistics, StateSpaceRoutines
 
 my_tests = [
+            "estimate/posterior_poolmodel",
             "estimate/filter_poolmodel",
             "estimate/dpp/poolmodel",
             "core",

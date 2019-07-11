@@ -1,5 +1,5 @@
 path = dirname(@__FILE__)
-using DSGEModels, CSV, HDF5, Statistics
+using DSGEModels, CSV
 
 ###########################################################################
 # Set up for testing PoolModel instantiation

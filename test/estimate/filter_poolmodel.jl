@@ -1,99 +1,85 @@
-using DSGE, DataFrames, JLD2
-using Dates, Test
+using DSGEModels, CSV, StateSpaceRoutines
 
 path = dirname(@__FILE__)
 
-# Set up arguments
-m = AnSchorfheide(testing = true)
-m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
-
-df, system, z0, P0 = jldopen("$path/../reference/forecast_args.jld2", "r") do file
-    read(file, "df"), read(file, "system"), read(file, "z0"), read(file, "P0")
+# Set up underlying models
+path = String(path)
+saveroot = path * "/dpp/save/"
+dataroot = path * "/dpp/save/input_data/"
+vint = "990110"
+iter = 1
+prev = 980110
+est = 2
+m1 = Model805()
+m2 = Model904()
+for model in [m1, m2]
+    model <= Setting(:sampling_method, :SMC)
+    model <= Setting(:saveroot, saveroot)
+    model <= Setting(:dataroot, dataroot)
+    model <= Setting(:data_vintage, vint, true, "vint", "")
+    model <= Setting(:prev, prev, true, "prev", "")
+    model <= Setting(:est, est, true, "est", "")
 end
 
-# Read expected output
-exp_kal = jldopen("$path/../reference/filter_out.jld2", "r") do file
-    read(file, "exp_kal")
-end
-df2 = DataFrame()
-df2[:date] = df[:date]
-df2[:obs_cpi] = df[:obs_cpi]
-df2[:obs_gdp] = df[:obs_gdp]
-df2[:obs_nominalrate] = df[:obs_nominalrate]
+# Read in data for models
+y1 = CSV.read(get_setting(m1, :dataroot) * "realtime_spec=m805_hp=true_vint=170410.csv")
+y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
+y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
 
-# Without providing z0 and P0
-@testset "Check Kalman filter outputs without initializing state/state-covariance" begin
-    kal = DSGE.filter(m, df, system)
-    for out in fieldnames(typeof(kal))
-        expect = exp_kal[out]
-        actual = kal[out]
+# Load loglhs here, second number is the data type, 1 -> no conditional on rate exp,
+# 4 -> conditional on rate exp
+# Based on the online appendix, it appears we should not condition on rate expectations
+file_log1_1 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+file_log2_1 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
 
-        if ndims(expect) == 0
-            @test expect ≈ actual
-        else
-            @test @test_matrix_approx_eq(expect, actual)
-        end
-    end
-end
+loglhs1_1 = load(get_setting(m1, :dataroot) * file_log1_1)["logscores"]
+loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
+loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
+loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
+periods = 4
+pm = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
+               Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2])
+tuning = Dict(:r_star => 2., :c_init => 0.3, :target_accept_rate => 0.4,
+              :resampling_method => :systematic, :n_mh_steps => 1,
+              :n_particles => 1000, :n_presample_periods => 0,
+              :allout => true)
+pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
+data = zeros(1, get_periods(pm))
+Random.seed!(1793)
+s_init = reshape(rand(get_F_λ(pm), tuning[:n_particles]), 1, 1000)
+s_init = [s_init; 1 .- s_init] # this tpf output should be saved later
+tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(pm), get_F_u(pm),
+                                   s_init; tuning..., verbose = :none,
+                                   fixed_sched = [1.], parallel = false,
+                                   dynamic_measurement = true, poolmodel = true)
+Random.seed!(1793)
+filt_tpf_out, ~, ~ = DSGE.filter(pm, data; tuning = get_setting(pm, :tuning))
+Random.seed!(1793)
+filt_nodata_tpf_out, ~, ~ = DSGE.filter(pm; tuning = get_setting(pm, :tuning))
+Random.seed!(1793)
+filt_lik_tpf_out = sum(DSGE.filter_likelihood(pm, data; tuning = get_setting(pm, :tuning)))
 
-# Providing z0 and P0
-@testset "Check Kalman filter outputs initializing state/state-covariance" begin
-    kal = DSGE.filter(m, df, system, z0, P0)
-    for out in fieldnames(typeof(kal))
-        expect = exp_kal[out]
-        actual = kal[out]
-
-        if ndims(expect) == 0
-            @test expect ≈ actual
-        else
-            @test @test_matrix_approx_eq(expect, actual)
-        end
-    end
-end
-
-
-############################################################
-# PoolModel tests
-############################################################
-# PROVIDE ONLY ONE PERIOD OF DATA SO IT RUNS JUST ONE PERIOD
-# Set up arguments
-SWFF = SmetsWoutersFF()
-m = PoolModel() # to be completed
-# m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
-
-statespace, distributions, z0 = jldopen("$path/../reference/forecast_args_pool.jld2", "r") do file
-    read(file, "df"), read(file, "statespace"), read(file, "distributions"), read(file, "z0")
-end
-update_statespace!(m, statespace)
-update_distributions!(m, distributions)
-
-# Read expected output
-exp_pool, seed_num = jldopen("$path/../reference/filter_out_pool.jld2", "r") do file
-    read(file, "exp_pool"), read(file, "seed_num")
-end
-Random.seed(seed_num)
-
-
-
-# Without providing z0 and P0
-@testset "Check TPF filter outputs without initializing state/state-covariance" begin
-    tpf_sum, tpf_cond, tpf_time = DSGE.filter(m)
-    @test tpf_sum ≈ exp_pool["tfp_sum"]
-    @test tpf_cond ≈ exp_pool["tfp_cond"]
-    @test tpf_time ≈ exp_pool["tfp_time"]
+@testset "Check call to tempered particle filter without providing initial states" begin
+    @test tpf_out == filt_tpf_out
+    @test tpf_out == filt_nodata_tpf_out
+    @test tpf_out == filt_lik_tpf_out
 end
 
-# Providing z0 and P0
-Random.seed!(seed_num)
-@assert draw_prior(m) == z0 # enforce we have the right seed number
-Random.seed!(seed_num)
-@testset "Check TPF filter outputs initializing state/state-covariance" begin
-    tpf_sum, tpf_cond, tpf_time = DSGE.filter(m, z0)
-    @test tpf_sum ≈ exp_pool["tfp_sum"]
-    @test tpf_cond ≈ exp_pool["tfp_cond"]
-    @test tpf_time ≈ exp_pool["tfp_time"]
-end
+Random.seed!(1793)
+tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(pm), get_F_u(pm),
+                                   s_init; tuning..., verbose = :none,
+                                   fixed_sched = [1.], parallel = false,
+                                   dynamic_measurement = true, poolmodel = true)
+Random.seed!(1793)
+filt_tpf_out, ~, ~ = DSGE.filter(pm, data, s_init; tuning = get_setting(pm, :tuning))
+Random.seed!(1793)
+filt_lik_tpf_out = sum(DSGE.filter_likelihood(pm, data, s_init; tuning = get_setting(pm, :tuning)))
 
+@testset "Check call to tempered particle filter when providing initial states" begin
+    @test tpf_out == filt_tpf_out
+    @test tpf_out == filt_lik_tpf_out
+end
 
 
 nothing
