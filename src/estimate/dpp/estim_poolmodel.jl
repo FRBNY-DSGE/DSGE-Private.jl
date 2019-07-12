@@ -1,0 +1,67 @@
+using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots
+# This script estimates in real time
+
+filepath = dirname(@__FILE__)
+saveroot = "$filepath/../../../test/estimate/dpp/save/"
+dataroot = "$filepath/../../../test/dpp/save/input_data/"
+vint = "990110"
+iter = 1
+prev = 980110
+est = 2
+m1 = Model805()
+m2 = Model904()
+for model in [m1, m2]
+    model <= Setting(:sampling_method, :SMC)
+    model <= Setting(:saveroot, saveroot)
+    model <= Setting(:dataroot, dataroot)
+    model <= Setting(:data_vintage, vint, true, "vint", "")
+    model <= Setting(:prev, prev, true, "prev", "")
+    model <= Setting(:est, est, true, "est", "")
+end
+
+# Read in data for models
+y1 = CSV.read(get_setting(m1, :dataroot) * "realtime_spec=m805_hp=true_vint=170410.csv")
+datevec = y1.date[y1.date .>= Date("1991-12-31")]
+y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
+y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+
+# Load loglhs here, second number is the data type, 1 -> no conditional on rate exp,
+# 4 -> conditional on rate exp
+# Based on the online appendix, it appears we should not condition on rate expectations
+file_log1_1 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+file_log2_1 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+
+loglhs1_1 = load(get_setting(m1, :dataroot) * file_log1_1)["logscores"]
+loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
+loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
+loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
+periods = 4
+pm = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
+               Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2])
+saveroot = "$filepath/../../../test/estimate/dpp/save/"
+jld_data = load("$filepath/../../../test/reference/tpf_poolmodel.jld2")
+tpf_out = jld_data["tpf_out"]
+tpf_out_noinit = jld_data["tpf_out_noinit"]
+tuning = jld_data["tuning"]
+data = jld_data["data"]
+s_init = jld_data["s_init"]
+pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
+pm <= Setting(:sampling_method, :SMC)
+
+# Construct real time estimation of lambda (evolution over time)
+for t in 1:get_periods(pm)
+    # run smc estimation
+    # estimate(pm, data[:,1:t])
+
+    # for each theta particle, draw a random lambda particle's path
+    # over 1:t from the likelihood particle filter
+    # and choose only the time t set of theta particles
+
+    # save these lambda draws and plot over time
+end
+
+
+# gr()
+# fit(Histogram, λ_draws, bins=:fd, weights =
+# plot(datevec
