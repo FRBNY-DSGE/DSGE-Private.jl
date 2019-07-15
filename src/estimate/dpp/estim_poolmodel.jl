@@ -48,18 +48,35 @@ data = jld_data["data"]
 s_init = jld_data["s_init"]
 pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
 pm <= Setting(:sampling_method, :SMC)
+n_particles = get_setting(pm, tuning)[:n_particles]
 
 # Construct real time estimation of lambda (evolution over time)
-for t in 1:get_periods(pm)
-    # run smc estimation
+# h = get_forecast_horizon(pm)
+# Eλ_tplush = zeros(get_periods(pm)) # equation 25 in the period, tplush = t + h
+# Random.seed!(1793)
+# for t in 1:get_periods(pm)
+    # # run smc estimation
     # estimate(pm, data[:,1:t])
 
-    # for each theta particle, draw a random lambda particle's path
-    # over 1:t from the likelihood particle filter
-    # and choose only the time t set of theta particles
+    # # for each theta particle, draw a random lambda particle's path
+    # # over 1:t from the likelihood particle filter
+    # # and choose only the time t set of theta particles
 
+    # # given posterior distribution of lambda, iterate forward h periods
+    # λ_tplush = zeros(n_particles)
+    # for θ for 1:θ_vec
+        # DSGE.update!(pm, θ)
+        # Eλ_tplush[θ] = @sync @distributed (+) for particle in 1:n_particles
+        #     for m = 1:h
+                # eps = rand(get_F_ϵ(pm), n_particles)
+                # λ_tplush[particle] = get_Φ(pm)(λ_tplush[particle], eps)
+    #         end
+    #         λ_tplush[particle] *= weights[particle] # weights for approxing integral
+    #     end
+    #     Eλ_tplush[θ] /= n_particles
+    # end
     # save these lambda draws and plot over time
-end
+# end
 
 
 # gr()
