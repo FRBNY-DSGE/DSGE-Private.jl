@@ -74,7 +74,7 @@ function estimate(m::PoolModel; verbose::Symbol = :low,
                   intermediate_stage_increment::Int = 10,
 		          save_intermediate::Bool = false)
     # No data to pass, initialize empty vector
-    data = Vector{Float64}()
+    data = Vector{Float64}(undef, get_periods(m))
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
              intermediate_stage_increment = intermediate_stage_increment,

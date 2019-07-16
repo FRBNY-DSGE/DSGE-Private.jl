@@ -182,7 +182,6 @@ function filter(m::PoolModel, data::AbstractArray = Matrix{Float64}(undef,0,0),
     try
         fixed_sched = get_setting(m, :fixed_sched)
     catch KeyError
-        continue
     end
 
     return tempered_particle_filter(data, get_Φ(m), get_Ψ(m), get_F_ϵ(m), get_F_u(m),

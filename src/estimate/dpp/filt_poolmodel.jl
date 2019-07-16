@@ -1,5 +1,5 @@
-using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots
-# This script estimates in real time
+using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots, StateSpaceRoutines, Dates, Random
+# This script fixes ρ = 0.9 and estimates the time path of λ
 
 filepath = dirname(@__FILE__)
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
@@ -38,7 +38,7 @@ loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
 loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
-               Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2])
+               Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2]; static = true)
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
 jld_data = load("$filepath/../../../test/reference/tpf_poolmodel.jld2")
 tpf_out = jld_data["tpf_out"]
@@ -46,43 +46,31 @@ tpf_out_noinit = jld_data["tpf_out_noinit"]
 tuning = jld_data["tuning"]
 data = jld_data["data"]
 s_init = jld_data["s_init"]
+tuning[:get_t_particle_dist] = true
+tuning[:allout] = true
 pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
 pm <= Setting(:sampling_method, :SMC)
-n_particles = get_setting(pm, tuning)[:n_particles]
+n_particles = get_setting(pm, :tuning)[:n_particles]
+pm[:ρ].value = 0.9
 
-# Construct real time estimation of lambda (evolution over time)
-h = get_forecast_horizon(pm)
-T = get_periods(pm)
-Eλ_tplush = zeros(get_periods(pm)) # equation 25 in the period, tplush = t + h
-λhat_t = Dict{Int64,Vector{Float64}}()
-λhat_tplush = Dict{Int64,Vector{Float64}}()
-dpp_loglhs = Vector{Float64}(undef,T)
+T = length(datevec)
+λhat_t = zeros(T)
+λhat_tplush = zeros(T)
 Random.seed!(1793)
+~, ~, ~, λ_particle_dist, λ_weights = DSGE.filter(pm; tuning = tuning)
 for t in 1:T
-    # run smc estimation
-    estimate(pm, data[:,1:t])
-
-    # for each theta particle, draw a random lambda particle's path
-    # over 1:t from the likelihood particle filter
-    # and choose only the time t set of theta particles
-
-    # given posterior distribution of lambda, iterate forward h periods
-    λ_tplush = zeros(n_particles)
-    for θ for 1:θ_vec
-        DSGE.update!(pm, θ)
-        @sync @distributed for particle in 1:n_particles
-            for j = 1:h
-                ϵ_j = rand(get_F_ϵ(pm), 1)
-                λ_tplush[particle] = get_Φ(pm)(λ_tplush[particle], [ϵ_j])
-            end
-            λ_tplush[particle] *= weights[particle] # weights for approxing integral
+    λhat_t[t] = mean(vec(λ_particle_dist[t][1,:]) .* λ_weights[:,t]) # get ̂λ_{t|t} before mutating particle distribution in period t
+    for j in 1:get_forecast_horizon(pm)
+        ϵ = rand(get_F_ϵ(pm), n_particles)
+        for i in 1:n_particles
+            λ_particle_dist[t][:,i] = get_Φ(pm)(λ_particle_dist[t][:,i], [ϵ[i]])
         end
-        Eλ_tplush[θ] = mean(λ_tplush)
     end
-    # save these lambda draws and plot over time
+    λhat_tplush[t] = mean(vec(λ_particle_dist[t][1,:]) .* λ_weights[:,t])
 end
+dpp_loglhs = λhat_tplush .* loglhs1_1 + (1 .- λhat_tplush) .* loglhs2_1
 
-
-# gr()
-# fit(Histogram, λ_draws, bins=:fd, weights =
-# plot(datevec
+gr()
+plot1 = plot(datevec, λhat_t)
+plot2 = plot(datevec, λhat_tplush)
+plot3 = plot(datevec, [dpp_loglhs, loglhs1_1, loglhs2_1])
