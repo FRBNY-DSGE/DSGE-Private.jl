@@ -35,7 +35,7 @@ function plot_posterior_hyperparameter(m::PoolModel, pc::ParticleCloud)
     plots = Dict{Symbol,Any}()
     for (row,param) in zip(rows, values(m.parameters))
         plots[param.key] = histogram(θ_particles[row,:]; weights = weights[row,:])
-        plot!(param.prior)
+        plot!(param.prior.value)
     end
     return plots
 end
