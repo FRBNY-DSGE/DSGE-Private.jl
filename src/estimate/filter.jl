@@ -177,10 +177,18 @@ function filter(m::PoolModel, data::AbstractArray = Matrix{Float64}(undef,0,0),
         parallel = tuning[:parallel]
     end
 
+    # Check if PoolModel has fixed_sched. If not, assume no tempering
+    fixed_sched = [1.]
+    try
+        fixed_sched = get_setting(m, :fixed_sched)
+    catch KeyError
+        continue
+    end
+
     return tempered_particle_filter(data, get_Φ(m), get_Ψ(m), get_F_ϵ(m), get_F_u(m),
                                     s_0; parallel = parallel,
                                     dynamic_measurement = true, poolmodel = true,
-                                    fixed_sched = get_setting(m, :fixed_sched),
+                                    fixed_sched = fixed_sched,
                                     tuning..., verbose = :none)
 end
 
