@@ -15,28 +15,29 @@ function plot_posterior_λ_evolution(m::PoolModel{T}, λmat::Matrix{T},
     if isempty(weights)
         weights = ones(size(λmat))
     end
-
-    # Compute histogram at each t
     T = size(λmat,2)
-    hv = Vector{Histogram}(undef,T) # vector of histograms, i.e. hvec
-    edgesL = Vector{Vector{Float64}}(undef,T) # vector holding edge vectors in each period, may vary in length, hence matrix
-    for t = 1:T
-        nbins = freedman_diaconis(λmat[:,t])
-        hv[t] = fit(Histogram, λmat[:,t], weights[:,t]; nbins = nbins)
+    stack_time_mat = kron(Vector(1:T), ones(size(λmat,2))) # == vec(ones(size(λmat,2)) .* Vector(1:T)')
+    stack_λmat     = vec(λmat)
 
-    end
 
-    # Plot
-
+    # Plot in 3D
+    return histogram2d(stack_time_mat, stack_λmat; weights = weights)
 end
 
-function plot_posterior_hyperparameter(m::PoolModel)
-    if m[:ρ].fixed
+function plot_posterior_hyperparameter(m::PoolModel, pc::ParticleCloud)
+    weights = DSGE.get_weights(pc)
+    θ_particles = DSGE.get_vals(pc)
+    is_estim = falses(size(θ_particles,1))
+    for (i,param) in enumerate(values(m.parameters))
+        is_estim[i] = !param.fixed
     end
-    if m[:σ].fixed
+    rows = Vector(1:size(θ_particles,1))[is_estim]
+    plots = Dict{Symbol,Any}()
+    for (row,param) in zip(rows, values(m.parameters))
+        plots[param.key] = histogram(θ_particles[row,:]; weights = weights[row,:])
+        plot!(param.prior)
     end
-    if m[:μ].fixed
-    end
+    return plots
 end
 
 ####################
