@@ -66,7 +66,7 @@ currentshocks_ref = read(h5, "currentshocks")
 polyvar_ref = read(h5, "polyvar")
 endogvar_ref = read(h5, "endogvar")
 
-endogvar = intermediatedec(m, endogvarm1_ref, currentshocks_ref, polyvar, 1.0, polyvar, false)
+endogvar = intermediatedec(m, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false)
 
 @testset "Compare intermediate endogenous variables to reference output" begin
     @test endogvar_ref ≈ endogvar
@@ -127,3 +127,5 @@ step, grid = finite_grid(7, m[:ρ_η].value, m[:σ_η].scaledvalue)
     @test step_ref ≈ step
     @test grid_ref ≈ grid
 end
+
+nothing
