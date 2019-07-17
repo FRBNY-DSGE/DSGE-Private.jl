@@ -172,8 +172,15 @@ function filter(m::PoolModel, data::AbstractArray = Matrix{Float64}(undef,0,0),
         end
     end
 
-    # Check if tuning continues parallel and change keyword to that if so
-    if haskey(tuning, :parallel)
+    # Check tuning
+    if isempty(tuning)
+        try
+            tuning = get_setting(pm, :tuning)
+        catch
+            warn("no tuning parameters provided; using default tempered particle filter values")
+        end
+    end
+    if haskey(tuning, :parallel) # contains parallel? change keyword to that if so
         parallel = tuning[:parallel]
     end
 
