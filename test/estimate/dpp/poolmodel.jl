@@ -28,7 +28,7 @@ y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # s
 y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
 y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
 
-# Load loglhs here, second number is the data type, 1 -> no conditional on rate exp,
+# Load pred_dens here, second number is the data type, 1 -> no conditional on rate exp,
 # 4 -> conditional on rate exp
 # Based on the online appendix, it appears we should not condition on rate expectations
 file_log1_1 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
@@ -36,29 +36,29 @@ file_log1_1 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data
 file_log2_1 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
 # file_log2_4 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
 
-loglhs1_1 = load(get_setting(m1, :dataroot) * file_log1_1)["logscores"]
-# loglhs1_4 = load(get_setting(m1, :dataroot) * file_log1_4)["logscores"]
-loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
-# loglhs2_4 = load(get_setting(m2, :dataroot) * file_log2_4)["logscores"]
+pred_dens1_1 = exp.(load(get_setting(m1, :dataroot) * file_log1_1)["logscores"])
+# pred_dens1_4 = load(get_setting(m1, :dataroot) * file_log1_4)["logscores"]
+pred_dens2_1 = exp.(load(get_setting(m2, :dataroot) * file_log2_1)["logscores"])
+# pred_dens2_4 = load(get_setting(m2, :dataroot) * file_log2_4)["logscores"]
 
-# Process loglhs (compute means across time periods
-loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
-# loglhs1_4 = vec(mean(loglhs1_4, dims = 1))
-loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
-# loglhs2_4 = vec(mean(loglhs2_4, dims = 1))
+# Process pred_dens (compute means across time periods
+pred_dens1_1 = vec(mean(pred_dens1_1, dims = 1))
+# pred_dens1_4 = vec(mean(pred_dens1_4, dims = 1))
+pred_dens2_1 = vec(mean(pred_dens2_1, dims = 1))
+# pred_dens2_4 = vec(mean(pred_dens2_4, dims = 1))
 
 # Test outer constructors
 periods = 4
 pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
-                Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2])
+                Dict(:Model805 => pred_dens1_1, :Model904 => pred_dens2_1), [m1, m2])
 # pm4 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
-#                 Dict(:Model805 => loglhs1_4, :Model904 => loglhs2_4), [m1, m2])
+#                 Dict(:Model805 => pred_dens1_4, :Model904 => pred_dens2_4), [m1, m2])
 
 @testset "Check outer constructors" begin
-    @test typeof(PoolModel(y1, periods, Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2]; testing = true)) == PoolModel{Float64}
+    @test typeof(PoolModel(y1, periods, Dict(:Model805 => pred_dens1_1, :Model904 => pred_dens2_1), [m1, m2]; testing = true)) == PoolModel{Float64}
     @test typeof(pm1) == PoolModel{Float64}
     mstatic = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
-                Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2]; static = true)
+                Dict(:Model805 => pred_dens1_1, :Model904 => pred_dens2_1), [m1, m2]; static = true)
     @test mstatic[:ρ].value == 1 && mstatic[:ρ].fixed
 
     # Test access and update functions
@@ -73,9 +73,9 @@ pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
     # @test get_particles(m) == OrderedDict(:Model805 => m1, :Model904 => m2)
     # @test get_particles(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
     # @test get_particles(m, [:Model805, :Model904]) == OrderedDict(:Model805 => m1, :Model904 => m2)
-    @test typeof(get_cond_loglhs(pm1)) == OrderedDict{Symbol,Vector{Float64}}
-    @test typeof(get_cond_loglhs(pm1, :Model805)) == Vector{Float64}
-    @test length(get_cond_loglhs(pm1, [:Model805, :Model904])) == 2
+    @test typeof(get_cond_pred_dens(pm1)) == OrderedDict{Symbol,Vector{Float64}}
+    @test typeof(get_cond_pred_dens(pm1, :Model805)) == Vector{Float64}
+    @test length(get_cond_pred_dens(pm1, [:Model805, :Model904])) == 2
     @test haskey(get_system(pm1), :statespace) && haskey(get_system(pm1), :distributions)
     @test haskey(get_statespace(pm1), :Φ) && haskey(get_statespace(pm1), :Ψ)
     @test get_statespace(pm1, :Φ) == get_statespace(pm1)[:Φ]
@@ -99,8 +99,8 @@ pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
     @test pm1.datas == oldm.datas
     # update_particles!(pm1, Dict(:Model805 => pc1))
     # @test pm1 == oldm
-    update_cond_loglhs!(pm1, Dict(:Model805 => get_cond_loglhs(pm1, :Model805)))
-    @test pm1.cond_loglhs == oldm.cond_loglhs
+    update_cond_pred_dens!(pm1, Dict(:Model805 => get_cond_pred_dens(pm1, :Model805)))
+    @test pm1.cond_pred_dens == oldm.cond_pred_dens
     # update_Φ!(pm1, get_Φ(pm1))
     # @test get_statespace(pm1, :Φ) == get_statespace(oldm, :Φ)
     # update_Ψ!(pm1, get_Ψ(pm1))
@@ -114,9 +114,9 @@ pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
 end
 
 # Check predictive densities are correct
-# cond_loglhs_mat2 = ...
+# cond_pred_dens_mat2 = ...
 # @testset "Check prediction densities are correctly computed" begin
-#     @test @test_matrix_approx_eq get_cond_loglhs(m, :SWFF) ≈ cond_loglhs_mat2
+#     @test @test_matrix_approx_eq get_cond_pred_dens(m, :SWFF) ≈ cond_pred_dens_mat2
 # end
 
 # Check ParticleClouds

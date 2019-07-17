@@ -63,7 +63,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
     forecast_horizon::Int                                  # Number of periods for forecast
     periods::Int                                           # Number of periods for data time series
-    cond_loglhs::OrderedDict{Symbol, Vector{T}}            # Model name mapped to cond_loglhs
+    cond_pred_dens::OrderedDict{Symbol, Vector{T}}            # Model name mapped to cond_pred_dens
     statespace::Dict{Symbol,Function}                      # Transition equation for linear weights
                                                            # Measurement eq for linear weights
     distributions::Dict{Symbol,Distribution}               # Distributions for state space
@@ -81,17 +81,17 @@ end
 
 description(m::PoolModel) = "Julia implementation of dynamic prediction pools defined in 'Dynamic prediction pools: An investigation of financial frictions and forecasting performance' by Marco Del Negro, Raiden B. Hasegawa, and Frank Schorfheide: PoolModel, $(m.subspec)"
 
-function PoolModel(data::Matrix{T}, h::Int, cond_loglhs::Dict{Symbol,Vector{T}},
+function PoolModel(data::Matrix{T}, h::Int, cond_pred_dens::Dict{Symbol,Vector{T}},
                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
                    testing = false, verbose::Symbol = :low,
                    static::Bool = false) where T<:AbstractFloat
-    data_dict = Dict(name => data for name in keys(cond_loglhs))
-    return PoolModel(data_dict, h, cond_loglhs, models, subspec;
+    data_dict = Dict(name => data for name in keys(cond_pred_dens))
+    return PoolModel(data_dict, h, cond_pred_dens, models, subspec;
                    custom_settings = custom_settings,
                    testing = testing, verbose = verbose, static = static)
 end
-# function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, loglhs::Dict{Symbol,Vector{T}},
+# function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, pred_dens::Dict{Symbol,Vector{T}},
 #                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
 #                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
 #                    testing = false, verbose::Symbol = :low,
@@ -130,7 +130,7 @@ end
 #     return PoolModel(subspec, datas, h, [model for model in models];
 #                    custom_settings = custom_settings, testing = testing, verbose = verbose)
 # end
-function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, cond_loglhs::Dict{Symbol,Vector{T}},
+function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, cond_pred_dens::Dict{Symbol,Vector{T}},
                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
                    testing = false, verbose::Symbol = :low,
@@ -203,10 +203,10 @@ function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, cond_loglhs::Dict{Symb
    if testing
         fill_vec = Vector{Float64}(undef,m.periods)
         for name in keys(m.models)
-            m.cond_loglhs[name] = fill_vec
+            m.cond_pred_dens[name] = fill_vec
         end
    else
-        init_cond_loglhs!(m, cond_loglhs)
+        init_cond_pred_dens!(m, cond_pred_dens)
    end
 
     # Initialize state space equations
@@ -327,13 +327,13 @@ function init_statespace!(m::PoolModel{T}) where T<:AbstractFloat
     m.statespace[:Φ] = Φ
 
     # measurement equation
-    loglh_mat = zeros(m.periods, length(m.cond_loglhs)) # matrix of conditional log likelihoods
-    for (i,v) in enumerate(values(m.cond_loglhs)) # time period vs. model
-        loglh_mat[:,i] = v
+    pred_dens_mat = zeros(m.periods, length(m.cond_pred_dens)) # matrix of conditional predictive densities
+    for (i,v) in enumerate(values(m.cond_pred_dens)) # time period vs. model
+        pred_dens_mat[:,i] = v
     end
-    loglh_mat = reshape(loglh_mat, length(m.cond_loglhs), m.periods)
+    pred_dens_mat = reshape(pred_dens_mat, length(m.cond_pred_dens), m.periods)
 
-    @inline Ψ(x::Vector{T}, t::Int64) = dot(loglh_mat[:,t], x)
+    @inline Ψ(x::Vector{T}, t::Int64) = dot(pred_dens_mat[:,t], x)
     m.statespace[:Ψ] = Ψ
 
     return m
@@ -389,10 +389,10 @@ end
 #     return m
 # end
 
-function init_cond_loglhs!(m::PoolModel, cond_loglhs::Dict{Symbol,Vector{T}}) where T<:AbstractFloat
-    for kv in cond_loglhs
+function init_cond_pred_dens!(m::PoolModel, cond_pred_dens::Dict{Symbol,Vector{T}}) where T<:AbstractFloat
+    for kv in cond_pred_dens
         try
-            m.cond_loglhs[kv[1]] = kv[2]
+            m.cond_pred_dens[kv[1]] = kv[2]
         catch
             @warn "model named " * String(kv[1]) * " not found"
         end
@@ -400,7 +400,7 @@ function init_cond_loglhs!(m::PoolModel, cond_loglhs::Dict{Symbol,Vector{T}}) wh
     return m
 end
 
-# function init_cond_loglhs!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}(),
+# function init_cond_pred_dens!(m::PoolModel; names::Vector{Symbol} = Vector{Symbol}(),
 #                       verbose::Symbol = :low)
 #     if isempty(names)
 #         names = keys(m.models)
@@ -410,8 +410,8 @@ end
 #         θs = load_draws(m.models[name], :full) # matrix of posterior draws, represents whole posterior
 #         Nθ = length(θs)
 #         Ns = size(compute_system(m)[:TTT],1)
-#         cond_loglhs = zeros(Nt, Nθ) # matrix of period t conditional loglhs (on t-1 information set)
-#         m.cond_loglhs[name] = @sync @distributed (+) for θi in 1:Nθ
+#         cond_pred_dens = zeros(Nt, Nθ) # matrix of period t conditional pred_dens (on t-1 information set)
+#         m.cond_pred_dens[name] = @sync @distributed (+) for θi in 1:Nθ
 #             # Evaluate T, R, Z, D given theta
 #             update!(m.models[name], θs[θi])
 #             TTT, RRR, CCC = solve(m.models[name])
@@ -443,7 +443,7 @@ end
 #                 do_semi = false
 #             end
 
-#             cond_loglh_θ = zeros(Nt) # vector of conditional loglhs (on t-1 information set) and fixing θ
+#             cond_loglh_θ = zeros(Nt) # vector of conditional pred_dens (on t-1 information set) and fixing θ
 #             for t in 1:Nt
 #                 # Compute unconditional forecast of time t
 #                 DSGE.forecast!(k)
@@ -481,10 +481,10 @@ end
 #                 err = vec(datas[name][:,t:t+m.h]) - μ_mv
 #                 cond_loglh_θ[t] = (2*pi)^(-length(err)/2) * det_Σ^(-1/2) * exp(-(1/2) * dot(err, inv_Σ * err))
 #             end
-#             cond_loglhs[:,θi] = cond_loglh_θ
+#             cond_pred_dens[:,θi] = cond_loglh_θ
 
 #         end
-#         m.cond_loglhs[name] ./= Nθ
+#         m.cond_pred_dens[name] ./= Nθ
 #     end
 
 #     return m
@@ -532,14 +532,14 @@ end
 #         return OrderedDict(name => m.particles[name] for name in names)
 #     else
 # end
-function get_cond_loglhs(m::PoolModel, name::Symbol)
-    return m.cond_loglhs[name]
+function get_cond_pred_dens(m::PoolModel, name::Symbol)
+    return m.cond_pred_dens[name]
 end
-function get_cond_loglhs(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
+function get_cond_pred_dens(m::PoolModel, names::Vector{Symbol} = Vector{Symbol}())
     if isempty(names)
-        return m.cond_loglhs
+        return m.cond_pred_dens
     else
-        return Dict(name => m.cond_loglhs[name] for name in names)
+        return Dict(name => m.cond_pred_dens[name] for name in names)
     end
 end
 function get_system(m::PoolModel)
@@ -607,7 +607,7 @@ function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel{T}};
     if populate
         names = Vector(keys(models))
         # init_particles!(m; model_keys)
-        # init_cond_loglhs!(m; names = names)
+        # init_cond_pred_dens!(m; names = names)
     end
     return nothing
 end
@@ -631,11 +631,11 @@ end
 #     end
 #     return nothing
 # end
-function update_cond_loglhs!(m::PoolModel,
-                             cond_loglhs::Dict{Symbol,Vector{T}}) where T<:AbstractFloat
-    for kv in cond_loglhs
+function update_cond_pred_dens!(m::PoolModel,
+                             cond_pred_dens::Dict{Symbol,Vector{T}}) where T<:AbstractFloat
+    for kv in cond_pred_dens
         try
-            m.cond_loglhs[kv[1]] = kv[2]
+            m.cond_pred_dens[kv[1]] = kv[2]
         catch
             @warn "no model named " * String(kv[1]) * " found"
         end
@@ -702,7 +702,7 @@ end
 # end
 # function append_particles!()
 # end
-# function append_cond_loglhs!()
+# function append_cond_pred_dens!()
 # end
 # function append_statespace!()
 # end
@@ -715,7 +715,7 @@ end
 # end
 # function pop_particles!()
 # end
-# function pop_cond_loglhs!()
+# function pop_cond_pred_dens!()
 # end
 # function pop_statespace!()
 # end

@@ -38,7 +38,7 @@ loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
 loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
-               Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2])
+               Dict(:Model805 => exp.(loglhs1_1), :Model904 => exp.(loglhs2_1)), [m1, m2])
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
 jld_data = load("$filepath/../../../test/reference/tpf_poolmodel.jld2")
 tpf_out = jld_data["tpf_out"]
