@@ -1,4 +1,4 @@
-include("../src/polydef.jl")
+include("../../../../zlb-in-julia/jl/src/model/polydef.jl")
 using HDF5
 
 nexog = 6
@@ -45,12 +45,12 @@ h5open("polydef.h5", "w") do file
     @write file smolyak
 end
 
-nshockgrid = [7 3 3 3 3 1]
+nshockgrid2 = [7 3 3 3 3 2]
 
-nexogs2, ninter2, ns2, nsv2 = Main.polydef.setgridsize(nexog,nshockgrid)
+nexogs2, ninter2, ns2, nsv2 = Main.polydef.setgridsize(nexog,nshockgrid2)
 #writedlm("setgridsize2.txt",[nexogs2, ninter2, ns2, nsv2])
 
-exoggridi2 = Main.polydef.exoggridindex(nshockgrid,nexog,ns2)
+exoggridi2 = Main.polydef.exoggridindex(nshockgrid2,nexog,ns2)
 #writedlm("exoggridi2.txt", exoggridi2)
 
 h5open("polydef2.h5", "w") do file

@@ -101,3 +101,9 @@ close(h5)
 @testset "Compare alpha star to reference output" begin
     @test α_star_ref ≈ α_star
 end
+
+### Test fixedpoint_parallel output against reference output
+α_star_parallel = fixedpoint_parallel(m, α_initial_ref)
+@testset "fixedpoint_parallel" begin
+    @test α_star_ref ≈ α_star_parallel
+end
