@@ -25,7 +25,7 @@ h5 = h5open("$path/params.h5")
 params = read(h5, "params")
 close(h5)
 update!(m, params)
-m.nshockgrid = [7 2 2 2 2 1]
+m.approx.nshockgrid = [7 2 2 2 2 1]
 
 ### Test linear model simulation against reference output
 h5 = h5open("$path/shockdetails.h5")
@@ -81,6 +81,7 @@ close(h5)
 end
 
 ### Test initial alphas against reference output
+m.approx.slopeconmsv, m.approx.slopeconxx = slopeconmsv_ref, slopeconxx_ref
 α_initial = initial_α(m)
 
 h5 = h5open("$path/initialalphas.h5")
@@ -92,7 +93,7 @@ close(h5)
 end
 
 ### Test fixedpoint_parallel output against reference output
-α_star_parallel = fixedpoint_parallel(m, α_initial_ref)
+α_star_parallel, convergence = fixedpoint_parallel(m, α_initial_ref)
 
 h5 = h5open("$path/alphastar.h5")
 α_star_ref = read(h5, "alphastar")
@@ -108,3 +109,5 @@ end
 @testset "Compare alpha star to reference output" begin
     @test α_star_ref ≈ α_star
 end
+
+nothing

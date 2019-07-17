@@ -87,7 +87,7 @@ module DSGE
         subtract_quarters, iterate_quarters,
 
         # solve/
-        gensys, solve,
+        gensys, solve, simulate_linear, lindecrule_markov, initial_α, fixedpoint, create_slopes,
 
         # estimate/
         simulated_annealing, combined_optimizer, lbfgs,
@@ -136,10 +136,10 @@ module DSGE
         count_scenario_draws,
 
         # plot/
-        ##plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
-        ##plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
-        ##plot_posterior_intervals, plot_posterior_interval_comparison,
-        ##plot_forecast_decomposition,
+        plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
+        plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
+        plot_posterior_intervals, plot_posterior_interval_comparison,
+        plot_forecast_decomposition,
 
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
@@ -149,7 +149,7 @@ module DSGE
         shock_groupings,
 
         # models/nonlinear/
-       GHLS, decrlin, get_shockdetails,
+        GHLS, decrlin, get_shockdetails, decr_euler, decr, decrlin, intermediatedec, finite_grid, msv2xx, exogposition,
 
         # polydef
         SmolyakApproximation, setgridsize, exoggridindex, ghquadrature, smolyakpoly, sparsegrid,
@@ -181,7 +181,7 @@ module DSGE
     include("data/reverse_transform.jl")
     include("data/util.jl")
 
-   #interns start here
+    #interns start here
 
     include("polydef.jl")
     include("models/nonlinear/GHLS.jl")
@@ -193,7 +193,7 @@ module DSGE
 
     include("models/nonlinear/model_details.jl")
 
-#interns end here
+    #interns end here
 
 
     include("solve/gensys.jl")
@@ -252,7 +252,7 @@ module DSGE
     include("scenarios/forecast.jl")
     include("scenarios/switching.jl")
     include("scenarios/transform.jl")
-#=
+
     include("plot/util.jl")
     include("plot/plot_posterior_intervals.jl")
     include("plot/plot_prior_posterior.jl")
@@ -309,5 +309,4 @@ module DSGE
     include("models/an_schorfheide/pseudo_observables.jl")
     include("models/an_schorfheide/pseudo_measurement.jl")
     include("models/an_schorfheide/augment_states.jl")
-=#
 end

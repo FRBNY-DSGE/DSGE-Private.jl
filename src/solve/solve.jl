@@ -234,9 +234,10 @@ function simulate_linear(m::GHLS)
     endogvar = zeros(approx.nvars+approx.nexog, total_periods+1)
 
     # Set up random generator
+    path = dirname(@__FILE__)
     iseed = MersenneTwister(101294)
     randn!(iseed, xrandn)
-    xrandnFortran=readdlm("xrandn.txt") #For testing
+    xrandnFortran=readdlm("$path/xrandn.txt") #For testing
     xrandn=reshape(xrandnFortran,approx.nexog,total_periods)
 
     # Set up for first period
@@ -390,15 +391,15 @@ end
 function initial_α(m :: GHLS)
 
     #Initilize variables
-    endogvar = Array{Float64}(undef,approx.nvars)
-    exogpart = Array{Float64}(undef,approx.nvars)
-    slopeconxxmsv = Array{Float64}(undef,2*approx.nmsv)
-    slopeconcont = Array{Float64}(undef,2*approx.nexogcont)
-    initialalphas = zeros(approx.nfunc*approx.ngrid,2*approx.ns)
-    alphass = zeros(approx.nfunc,approx.ngrid)
-    endogvarm1 = zeros(approx.nvars,approx.ngrid) #holds lags
-    nmsvplus = approx.nmsv + approx.nexogcont
-    endogsteady = [i.value for i in m.steady_state[1:approx.nvars + approx.nexog]]
+    endogvar = Array{Float64}(undef,m.approx.nvars)
+    exogpart = Array{Float64}(undef,m.approx.nvars)
+    slopeconxxmsv = Array{Float64}(undef,2*m.approx.nmsv)
+    slopeconcont = Array{Float64}(undef,2*m.approx.nexogcont)
+    initialalphas = zeros(m.approx.nfunc*m.approx.ngrid,2*m.approx.ns)
+    alphass = zeros(m.approx.nfunc,m.approx.ngrid)
+    endogvarm1 = zeros(m.approx.nvars,m.approx.ngrid) #holds lags
+    nmsvplus = m.approx.nmsv + m.approx.nexogcont
+    endogsteady = [i.value for i in m.steady_state[1:m.approx.nvars + m.approx.nexog]]
 
     aalin, bblin = lindecrule_markov(m)
 
@@ -507,7 +508,6 @@ function fixedpoint_parallel(m::GHLS, α_initial::Array{Float64})
 
     # Get fixed point using iterative convergence method
     for i in 1:niter
-        @show i
         avg_error = 0.0
 
         # Calculates new α_new and avg_error
@@ -521,7 +521,6 @@ function fixedpoint_parallel(m::GHLS, α_initial::Array{Float64})
 
         # Normalize summed error to get average
         avg_error /= 2*m.approx.ngrid*m.approx.ns
-        @show avg_error
 
         # Convergence fails if new α has non-numerical elements
         if (any([isnan(a) for a in α_new]) == true)
