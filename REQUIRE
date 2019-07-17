@@ -8,6 +8,7 @@ DataStructures
 Dates
 Distributions
 DSGEModels
+FastGaussQuadrature
 FileIO
 FredData
 LinearAlgebra
@@ -18,7 +19,6 @@ Optim
 QuantEcon
 Missings
 Nullables
-Plots
 Printf
 Random
 RecipesBase

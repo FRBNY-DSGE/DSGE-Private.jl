@@ -136,10 +136,10 @@ module DSGE
         count_scenario_draws,
 
         # plot/
-        plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
-        plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
-        plot_posterior_intervals, plot_posterior_interval_comparison,
-        plot_forecast_decomposition,
+        ##plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
+        ##plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
+        ##plot_posterior_intervals, plot_posterior_interval_comparison,
+        ##plot_forecast_decomposition,
 
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
@@ -149,10 +149,10 @@ module DSGE
         shock_groupings,
 
         # models/nonlinear/
-       GHLS, decrlin,
+       GHLS, decrlin, get_shockdetails,
 
-       # polydef
-       SmolyakApproximation,
+        # polydef
+        SmolyakApproximation, setgridsize, exoggridindex, ghquadrature, smolyakpoly, sparsegrid,
 
         # util
         @test_matrix_approx_eq, @test_matrix_approx_eq_eps
