@@ -42,7 +42,7 @@ nexogs2, ninter2, ns2, nsv2 = Main.polydef.setgridsize(nexog,nshockgrid2)
 exoggridi2 = Main.polydef.exoggridindex(nshockgrid2,nexog,ns2)
 
 h5open("polydef2.h5", "w") do file
-    @write file nexogs2
+    @write file nexgs2
     @write file ninter2
     @write file ns2
     @write file nsv2

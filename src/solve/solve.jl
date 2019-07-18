@@ -57,10 +57,7 @@ function solve(m::AbstractModel; apply_altpolicy = false, verbose::Symbol = :hig
     return TTT, RRR, CCC
 end
 
-function solve(m::GHLS,parallel::Bool)
-
-    # Get canonical matrices of linearized solution
-    Γ0, Γ1, C, Ψ, Π  = eqcond(m)
+function solve(m::GHLS, parallel::Bool=true)
 
     m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m)
 
@@ -72,7 +69,13 @@ function solve(m::GHLS,parallel::Bool)
     aalin, bblin = lindecrule_markov(m)
     α_initial = initial_α(m, m.approx, aalin, bblin)
 
-    α_star, convergence = fixedpoint(m, m.approx, α_initial)
+    α_star, convergence = if parallel
+        fixedpoint_parallel(m, m.approx, α_initial)
+    else
+        fixedpoint(m, m.approx, α_initial)
+    end
+
+    return α_star
 end
 
 function create_slopes(m::GHLS)

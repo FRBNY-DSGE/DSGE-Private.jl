@@ -138,7 +138,7 @@ function init_model_indices!(m::GHLS)
     # Additional states added after solving model
     # Lagged states and observables measurement error - WHAT ARE THESE?
     endogenous_states_augmented = [
-        :y_t1, :c_t1, :i_t1, :w_t1, :π_t1, :L_t1, :Et_π_t]
+        :y_t1, :c_t1, :i_t1]
 
     # Observables
     observables = keys(m.observable_mappings)
@@ -359,14 +359,13 @@ function init_parameters!(m::GHLS)
                description="σ_R: The standard deviation of the monetary policy shock.",
                tex_label="\\sigma_{R}")
 
+
     #Measurement errors
-    m <= parameter(:e_y, 0.0, fixed = true, description = "e_y: Measurement error on GDP", tex_label = "e_y")
-    m <= parameter(:e_L, 0.0, fixed = true, description = "e_L: Measurement error on hours worked", tex_label = "e_L")
-    m <= parameter(:e_w, 0.0, fixed = true, description = "e_w: Measurement error on wages", tex_label = "e_w")
-    m <= parameter(:e_π, 0.0, fixed = true, description = "e_π: Measurement error on GDP deflator", tex_label = "e_π")
-    m <= parameter(:e_R, 0.0, fixed = true, description = "e_R: Measurement error on nominal rate of interest", tex_label = "e_R")
-    m <= parameter(:e_c, 0.0, fixed = true, description = "e_c: Measurement error on consumption", tex_label = "e_c")
-    m <= parameter(:e_i, 0.0, fixed = true, description = "e_i: Measurement error on investment", tex_label = "e_i")
+    m <= parameter(:e_y, 0.00323357^2, fixed = true, description = "e_y: Measurement error on GDP", tex_label = "e_y")
+    m <= parameter(:e_π, 0.00122426^2, fixed = true, description = "e_π: Measurement error on GDP deflator", tex_label = "e_π")
+    m <= parameter(:e_R, 0.00358562^2, fixed = true, description = "e_R: Measurement error on nominal rate of interest", tex_label = "e_R")
+    m <= parameter(:e_c, 0.00256811^2, fixed = true, description = "e_c: Measurement error on consumption", tex_label = "e_c")
+    m <= parameter(:e_i, 0.01218603^2, fixed = true, description = "e_i: Measurement error on investment", tex_label = "e_i")
 
 
     # Steady states
