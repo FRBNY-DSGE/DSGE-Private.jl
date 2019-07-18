@@ -3,8 +3,8 @@ using DSGEModels
 # Set up underlying models
 # filepath = pwd()
 filepath = dirname(@__FILE__)
-saveroot = filepath * "/dpp/save/"
-dataroot = filepath * "/dpp/save/input_data/"
+saveroot_pm = filepath * "/dpp/save/"
+dataroot_pm = filepath * "/dpp/save/input_data/"
 vint = "990110"
 iter = 1
 prev = 980110
@@ -13,8 +13,8 @@ m1 = Model805()
 m2 = Model904()
 for model in [m1, m2]
     model <= Setting(:sampling_method, :SMC)
-    model <= Setting(:saveroot, saveroot)
-    model <= Setting(:dataroot, dataroot)
+    model <= Setting(:saveroot, saveroot_pm)
+    model <= Setting(:dataroot, dataroot_pm)
     model <= Setting(:data_vintage, vint, true, "vint", "")
     model <= Setting(:prev, prev, true, "prev", "")
     model <= Setting(:est, est, true, "est", "")
@@ -54,13 +54,14 @@ tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(
                                    s_init; tuning..., verbose = :none,
                                    fixed_sched = [1.], parallel = false,
                                    dynamic_measurement = true, poolmodel = true)
-# jld_data = load("$filepath/../reference/tpf_poolmodel.jld2")
-# tpf_out = jld_data["tpf_out"]
-# tpf_out_noinit = jld_data["tpf_out_noinit"]
-# tuning = jld_data["tuning"]
-# data = jld_data["data"]
-# s_init = jld_data["s_init"]
-# pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
+
+jld_data = load("$filepath/../reference/tpf_poolmodel.jld2")
+tpf_out = jld_data["tpf_out"]
+tpf_out_noinit = jld_data["tpf_out_noinit"]
+tuning = jld_data["tuning"]
+data = jld_data["data"]
+s_init = jld_data["s_init"]
+pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
 
 
 Random.seed!(1793)
