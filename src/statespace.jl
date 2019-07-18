@@ -187,25 +187,19 @@ compute_system_function(system::System{S}) where S<:AbstractFloat
 - `F_ϵ::Distributions.MvNormal`: shock distribution
 - `F_u::Distributions.MvNormal`: measurement error distribution
 """
-function compute_system_function(system::System{S}) where S <: AbstractFloat
-    # Unpack system
-    TTT    = system[:TTT]
-    RRR    = system[:RRR]
-    CCC    = system[:CCC]
-    QQ     = system[:QQ]
-    ZZ     = system[:ZZ]
-    DD     = system[:DD]
-    EE     = system[:EE]
+function compute_system(m::GHLS)
+    # Solve model
+    α_star = solve(m)
+    m_e = 0.2
+    EE = m_e * Diagonal([m[:e_y], m[:e_c], m[:e_i], m[:e_π], m[:e_R]])
 
     # Define transition and measurement functions
-    @inline Φ(s_t1::Vector{S}, ϵ_t::Vector{S}) = TTT*s_t1 + RRR*ϵ_t + CCC
-    @inline Ψ(s_t::Vector{S}) = ZZ*s_t + DD
+    @inline Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64}) = decr(m,s_t1, ϵ_t, α_star)
+    @inline Ψ(s_t::Vector{Float64}, ϵ_t::Vector{Float64}) = measurement(m)
 
     # Define shock and measurement error distributions
-    nshocks = size(QQ, 1)
-    nobs    = size(EE, 1)
-    F_ϵ = Distributions.MvNormal(zeros(nshocks), QQ)
-    F_u = Distributions.MvNormal(zeros(nobs),    EE)
+    F_ϵ = Distributions.MvNormal(zeros(m.approx.nexogshock), Matrix{Float64}(I, m.approx.nexogshock, m.approx.nexogshock))
+    F_u = Distributions.MvNormal(length(EE[:,1]), EE)
 
     return Φ, Ψ, F_ϵ, F_u
 end
