@@ -65,6 +65,7 @@ endogvarm1_ref = read(h5, "endogvarm1")
 currentshocks_ref = read(h5, "currentshocks")
 polyvar_ref = read(h5, "polyvar")
 endogvar_ref = read(h5, "endogvar")
+close(h5)
 
 endogvar = intermediatedec(m, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false)
 
@@ -76,6 +77,7 @@ end
 h5 = h5open("$path/decr.h5")
 innovations_ref = read(h5, "innovations")
 endogvarp_ref = read(h5, "endogvarp")
+close(h5)
 
 endogvarp = decr(m, endogvar_ref, innovations_ref, α_initial_ref)
 
@@ -87,8 +89,9 @@ end
 h5 = h5open("$path/msv2xx.h5")
 lmsv_ref = read(h5, "lmsv")
 xx_ref = read(h5, "xx")
+close(h5)
 
-xx = msv2xx(lmsv, 7.0, slopeconmsv_ref)
+xx = msv2xx(lmsv_ref, 7, slopeconmsv_ref)
 
 @testset "Compare domain conversion to reference output" begin
     @test xx_ref ≈ xx
@@ -111,20 +114,21 @@ close(h5)
 endogvarlin = decrlin(endogvarm1_ref, innovations_ref, m, sigma_ref, pp_ref)
 
 @testset "Compare linearized decision rule to reference output" begin
-    @test endogvarlin_ref \approx endogvarlin
+    @test endogvarlin_ref ≈ endogvarlin
 end
 
 
 ### Test finite_grid against reference output
+step_amt, grid = finite_grid(7, m[:ρ_η].value, m[:σ_η].scaledvalue)
+step_ref = step_amt
+grid_ref= grid
 h5 = h5open("$path/finite_grid.h5")
-step_ref = read(h5, step)
-grid_ref = read(h5, grid)
+step_ref = read(h5, "step_amt")
+grid_ref = read(h5, "grid")
 close(h5)
 
-step, grid = finite_grid(7, m[:ρ_η].value, m[:σ_η].scaledvalue)
-
 @testset "Compare grid to reference output" begin
-    @test step_ref ≈ step
+    @test step_ref ≈ step_amt
     @test grid_ref ≈ grid
 end
 

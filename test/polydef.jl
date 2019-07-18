@@ -28,18 +28,15 @@ end
 nquads, ghnodess, ghweightss = ghquadrature(3,m.approx.nexog)
 @testset "ghquadrature" begin
     @test nquads == nquad_ref
-    @test ghnodess == ghnodes_ref
-    @test ghweightss == ghweights_ref
+    @test ghnodess ≈ ghnodes_ref
+    @test ghweightss ≈ ghweights_ref
 end
-
-
-#@assert(nquads == Int(readdlm(string(path, "nquads.txt"))[1]))
 
 xgrid, bbt, bbtinv = sparsegrid(m.approx.nmsv, m.approx.nindplus, m.approx.ngrid, m.approx.indplus)
 @testset "sparsegrid" begin
-    @test xgrid == xgrid_ref
-    @test bbt == bbt_ref
-    @test bbtinv == bbtinv_ref
+    @test xgrid ≈ xgrid_ref
+    @test bbt ≈ bbt_ref
+    @test bbtinv ≈ bbtinv_ref
 end
 
 smolyak = smolyakpoly(m.approx.nmsv, m.approx.ngrid, m.approx.nindplus, m.approx.indplus, xgrid[:,4])
@@ -64,10 +61,8 @@ nexogs2, ninter2, ns2, nsv2 = setgridsize(m.approx.nexog, m.approx.nshockgrid)
     @test nsv2 == nsv_ref2
 end
 
-#@assert([nexogs2, ninter2, ns2, nsv2] == round.(Int, vec(readdlm(string(path,"setgridsize2.txt")))))
-
 exoggridi2 = exoggridindex(m.approx.nshockgrid,m.approx.nexog,ns2)
 @testset "exogridindex2" begin
     @test exoggridi2 == exoggridi_ref2
 end
-#@assert(exoggridi2 == readdlm(string(path, "exoggridi2.txt")))
+nothing
