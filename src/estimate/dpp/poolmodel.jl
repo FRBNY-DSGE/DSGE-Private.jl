@@ -245,7 +245,7 @@ function init_parameters!(m::PoolModel; static::Bool = false)
                        tex_label="\\rho")
         m <= parameter(:μ, 0., fixed = true,
                        description="μ: drift of AR processing underlying λ.",
-                       tex_label="\\mu"))
+                       tex_label="\\mu")
         m <= parameter(:σ, 1., fixed = true,
                        description="σ: volatility of AR processing underlying λ.",
                        tex_label="\\sigma")

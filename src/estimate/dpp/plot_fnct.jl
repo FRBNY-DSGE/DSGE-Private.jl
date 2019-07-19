@@ -6,19 +6,20 @@
 function plot_posterior_λ_evolution(m::PoolModel{T}, λmat::Matrix{T},
                                     weights::Matrix{T} = Matrix{Float64}(undef,0,0);
                                     bins::Symbol = :freedman_diaconis) where T<:AbstractFloat
+    # Set weights to one if empty
+    if isempty(weights)
+        weights = ones(size(λmat))
+    end
+
     # Check λmat and weights are same size
     if size(λmat) != size(weights)
         error("λmat must be the same size as weights")
     end
 
-    # Set weights to one if empty
-    if isempty(weights)
-        weights = ones(size(λmat))
-    end
+    # Create inputs to histogram2d
     T = size(λmat,2)
     stack_time_mat = kron(Vector(1:T), ones(size(λmat,2))) # == vec(ones(size(λmat,2)) .* Vector(1:T)')
     stack_λmat     = vec(λmat)
-
 
     # Plot in 3D
     return histogram2d(stack_time_mat, stack_λmat; weights = weights)
