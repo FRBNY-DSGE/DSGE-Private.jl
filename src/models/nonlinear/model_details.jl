@@ -1,4 +1,4 @@
-function float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true} SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true},y::Array{Float64})
+function float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true},y::Array{Float64})
 
     dot=0.0
     @simd for i in 1:length(y)
@@ -9,7 +9,7 @@ end
 
 @views view(x,l,u,i) = x[l:u,i]  #More quickly takes slice of an array
 
-function msv2xx(msv::Int, nmsv::Array{Float64}, slopeconmsv::Array{Float64})
+function msv2xx(msv::Array{Float64}, nmsv::Int, slopeconmsv::Array{Float64})
     return slopeconmsv[1:nmsv] .* msv + slopeconmsv[nmsv+1:2*nmsv]
 end
 
@@ -250,7 +250,7 @@ function decrlin(endogvarm1::Array{Float64},innovations::Array{Float64},m::GHLS,
 end
 
 
-function decr_euler(m::GHLS,gridindex::Int64,shockpos::Int64,alphacoeff:Array{Float64})
+function decr_euler(m::GHLS,gridindex::Int64,shockpos::Int64,alphacoeff::Array{Float64})
 
     #Initilize Variables
     zlbinfo  = m.approx.statezlbinfo[shockpos]

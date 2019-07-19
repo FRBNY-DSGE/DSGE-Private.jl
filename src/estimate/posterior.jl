@@ -141,7 +141,7 @@ function likelihood(m::AbstractModel, data::Matrix{T};
     # Return total log-likelihood, excluding the presample
     try
         if use_chand_recursion==false
-            return sum(filter_likelihood(m, data, system;
+            return sum(filter_likelihood(m, data, system[1], system[2], system[3], system[4];
                                          include_presample = false, tol = tol))
         else
             return chand_recursion(data, system[:TTT], system[:RRR], system[:CCC],

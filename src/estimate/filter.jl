@@ -137,3 +137,54 @@ function filter_likelihood(m::AbstractModel, data::Matrix{S}, system::System{S},
     kalman_likelihood(regime_inds, data, TTTs, RRRs, CCCs, QQs,
                       ZZs, DDs, EEs, s_0, P_0; Nt0 = Nt0, tol = tol)
 end
+
+### Nonlinear (Interns)
+
+
+function filter_likelihood(m::GHLS, df::DataFrame, Φ::Function, Ψ::Function,
+                           F_ϵ::Distribution, F_u::Distribution,
+                           s_0::Vector{S} = Vector{S}(undef, 0),
+                           P_0::Matrix{S} = Matrix{S}(undef, 0, 0);
+                           cond_type::Symbol = :none, include_presample::Bool = true,
+                           in_sample::Bool = true,
+                           tol::Float64 = 0.0) where {S<:AbstractFloat}
+
+    data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
+    start_date = max(date_presample_start(m), df[1, :date])
+
+    filter_likelihood(m, data, Φ, Ψ, F_ϵ, F_u, s_0, P_0; start_date = start_date,
+                      include_presample = include_presample, tol = tol)
+end
+
+function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
+                           F_ϵ::Distribution, F_u::Distribution,
+                           s_0::Vector{S} = Vector{S}(undef, 0),
+                           P_0::Matrix{S} = Matrix{S}(undef, 0, 0);
+                           start_date::Date = date_presample_start(m),
+                           include_presample::Bool = true,
+                           tol::Float64 = 0.0) where {S<:AbstractFloat}
+
+    # Partition sample into pre- and post-ZLB regimes
+    # Note that the post-ZLB regime may be empty if we do not impose the ZLB
+    # regime_inds = zlb_regime_indices(m, data, start_date)
+
+    # Get system matrices for each regime
+    #TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = zlb_regime_matrices(m, system, start_date)
+
+    # If s_0 and P_0 provided, check that rows and columns corresponding to
+    # anticipated shocks are zero in P_0
+    if !isempty(s_0) && !isempty(P_0)
+        ant_state_inds = setdiff(1:n_states_augmented(m), inds_states_no_ant(m))
+        @assert all(x -> x == 0, P_0[:, ant_state_inds])
+        @assert all(x -> x == 0, P_0[ant_state_inds, :])
+    end
+
+    # Specify number of presample periods if we don't want to include them in
+    # the final results
+    Nt0 = include_presample ? 0 : n_presample_periods(m)
+
+    # Run Tempered Particle filter, returns log-likelihoods
+    loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,
+                             s_0; n_presample_periods = Nt0)
+    return loglh
+end

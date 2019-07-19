@@ -69,61 +69,6 @@ function estimate(m::AbstractModel, data::AbstractArray;
     # Specify starting mode
 
     vint = get_setting(m, :data_vintage)
-    if reoptimize(m)
-        println("Reoptimizing...")
-
-        # Inputs to optimization algorithm
-        n_iterations       = get_setting(m, :optimization_iterations)
-        ftol               = get_setting(m, :optimization_ftol)
-        xtol               = get_setting(m, :optimization_xtol)
-        gtol               = get_setting(m, :optimization_gtol)
-        step_size          = get_setting(m, :optimization_step_size)
-        converged          = false
-
-        # If the algorithm stops only because we have exceeded the maximum number of
-        # iterations, continue improving guess of modal parameters
-        total_iterations = 0
-        optimization_time = 0
-        max_attempts = get_setting(m, :optimization_attempts)
-        attempts = 1
-
-        while !converged
-            begin_time = time_ns()
-            out, H = optimize!(m, data;
-                               method = get_setting(m, :optimization_method),
-                               ftol = ftol, grtol = gtol, xtol = xtol,
-                               iterations = n_iterations, show_trace = true, step_size = step_size,
-                               verbose = verbose,
-                               mle = mle)
-
-            attempts += 1
-            total_iterations += out.iterations
-            converged = out.converged || attempts > max_attempts
-
-            end_time = (time_ns() - begin_time)/1e9
-
-            println(verbose, :low, @sprintf "Total iterations completed: %d\n" total_iterations)
-            println(verbose, :low, @sprintf "Optimization time elapsed: %5.2f\n" optimization_time += end_time)
-
-            # Write params to file after every `n_iterations` iterations
-            params = map(θ->θ.value, m.parameters)
-            h5open(rawpath(m, "estimate", "paramsmode.h5"),"w") do file
-                file["params"] = params
-            end
-        end
-
-        # write parameters to file one last time so we have the final mode
-        h5open(rawpath(m, "estimate", "paramsmode.h5"),"w") do file
-            file["params"] = params
-        end
-    end
-
-    params = map(θ->θ.value, m.parameters)
-
-    # Sampling does not make sense if mle=true
-    if mle || !sampling
-        return nothing
-    end
 
     if get_setting(m,:sampling_method) == :MH
         ########################################################################################
@@ -134,6 +79,64 @@ function estimate(m::AbstractModel, data::AbstractArray;
         ### normal centered at the mode. Its variance is the inverse of
         ### the hessian. We find the inverse via eigenvalue decomposition.
         ########################################################################################
+
+        if reoptimize(m)
+            println("Reoptimizing...")
+
+            # Inputs to optimization algorithm
+            n_iterations       = get_setting(m, :optimization_iterations)
+            ftol               = get_setting(m, :optimization_ftol)
+            xtol               = get_setting(m, :optimization_xtol)
+            gtol               = get_setting(m, :optimization_gtol)
+            step_size          = get_setting(m, :optimization_step_size)
+            converged          = false
+
+            # If the algorithm stops only because we have exceeded the maximum number of
+            # iterations, continue improving guess of modal parameters
+            total_iterations = 0
+            optimization_time = 0
+            max_attempts = get_setting(m, :optimization_attempts)
+            attempts = 1
+
+            while !converged
+                begin_time = time_ns()
+                out, H = optimize!(m, data;
+                                   method = get_setting(m, :optimization_method),
+                                   ftol = ftol, grtol = gtol, xtol = xtol,
+                                   iterations = n_iterations, show_trace = true, step_size = step_size,
+                                   verbose = verbose,
+                                   mle = mle)
+
+                attempts += 1
+                total_iterations += out.iterations
+                converged = out.converged || attempts > max_attempts
+
+                end_time = (time_ns() - begin_time)/1e9
+
+                println(verbose, :low, @sprintf "Total iterations completed: %d\n" total_iterations)
+                println(verbose, :low, @sprintf "Optimization time elapsed: %5.2f\n" optimization_time += end_time)
+
+                # Write params to file after every `n_iterations` iterations
+                params = map(θ->θ.value, m.parameters)
+                h5open(rawpath(m, "estimate", "paramsmode.h5"),"w") do file
+                    file["params"] = params
+                end
+            end
+
+            # write parameters to file one last time so we have the final mode
+            h5open(rawpath(m, "estimate", "paramsmode.h5"),"w") do file
+                file["params"] = params
+            end
+        end
+
+        params = map(θ->θ.value, m.parameters)
+
+        # Sampling does not make sense if mle=true
+        if mle || !sampling
+            return nothing
+        end
+
+
 
         ## Calculate the Hessian at the posterior mode
         hessian = if calculate_hessian(m)
