@@ -187,11 +187,12 @@ compute_system_function(system::System{S}) where S<:AbstractFloat
 - `F_ϵ::Distributions.MvNormal`: shock distribution
 - `F_u::Distributions.MvNormal`: measurement error distribution
 """
-function compute_system(m::GHLS)
+function compute_system(m::GHLS; apply_altpolicy = false,
+                        verbose::Symbol = :high)
     # Solve model
     α_star = solve(m)
     m_e = 0.2
-    EE = m_e * Diagonal([m[:e_y], m[:e_c], m[:e_i], m[:e_π], m[:e_R]])
+    EE = m_e * diagm([m[:e_y].value, m[:e_c].value, m[:e_i].value, m[:e_π].value, m[:e_R].value])
 
     # Define transition and measurement functions
     @inline Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64}) = decr(m,s_t1, ϵ_t, α_star)
@@ -199,7 +200,7 @@ function compute_system(m::GHLS)
 
     # Define shock and measurement error distributions
     F_ϵ = Distributions.MvNormal(zeros(m.approx.nexogshock), Matrix{Float64}(I, m.approx.nexogshock, m.approx.nexogshock))
-    F_u = Distributions.MvNormal(length(EE[:,1]), EE)
+    F_u = Distributions.MvNormal(zeros(length(EE[:,1])), EE)
 
     return Φ, Ψ, F_ϵ, F_u
 end

@@ -18,7 +18,7 @@ Var(u_t) = EE
 Cov(ϵ_t, u_t) = 0
 ```
 """
-function measurement(m::GHLS{T})
+function measurement(m::GHLS)
     endo      = m.endogenous_states
     endo_addl = m.endogenous_states_augmented
     exo       = m.exogenous_shocks

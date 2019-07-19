@@ -1,7 +1,5 @@
-function float_dot(x,y)
+function float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true} SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true},y::Array{Float64})
 
-    #x :: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true}
-    #y :: Array{Float64}
     dot=0.0
     @simd for i in 1:length(y)
         dot = dot+x[i]*y[i]
@@ -11,22 +9,11 @@ end
 
 @views view(x,l,u,i) = x[l:u,i]  #More quickly takes slice of an array
 
-function msv2xx(msv, nmsv, slopeconmsv)
-
-    #Input
-    nmsv :: Int
-    msv :: Array{Float64}
-    slopeconmsv :: Array{Float64}
-
+function msv2xx(msv::Int, nmsv::Array{Float64}, slopeconmsv::Array{Float64})
     return slopeconmsv[1:nmsv] .* msv + slopeconmsv[nmsv+1:2*nmsv]
 end
 
-function exogposition(exogvec, nrvec, nlength)
-
-    # Input
-    nlength :: Int64
-    nrvec :: Array{Int64}
-    exogvec :: Array{Int64}
+function exogposition(exogvec::Array{Int64}, nrvec::Array{Int64}, nlength::Int64)
 
     #Initilize variables
     exogposition =0
@@ -51,18 +38,11 @@ function exogposition(exogvec, nrvec, nlength)
 
 end
 
-function intermediatedec(m,endogvarm1,currentshockvalues,polyvar,omegapoly,polyvarplus,zlbintermediate)
+function intermediatedec(m::GHLS,endogvarm1::Array{Float64},currentshockvalues::Array{Float64},polyvar::Array{Float64},omegapoly::Float64,polyvarplus::Array{Float64},zlbintermediate::Bool)
 
     #Input
-    m :: GHLS
     nvars = m.approx.nvars
     nexog = m.approx.nexog
-    endogvarm1 :: Array{Float64}
-    currentshockvalues :: Array{Float64}
-    polyvar :: Array{Float64}
-    omegapoly :: Float64
-    polyvarplus :: Array{Float64}
-    zlbintermediate :: Bool
 
     #Initilize Variables
     endogvar=Array{Float64}(undef,nvars+nexog)
@@ -142,13 +122,7 @@ function intermediatedec(m,endogvarm1,currentshockvalues,polyvar,omegapoly,polyv
     return endogvar
 end
 
-function decr(m,endogvarm1,innovations,alphacoeff)
-
-    #Input
-    m :: GHLS
-    endogvarm1 :: Array{Float64}
-    innovations :: Array{Float64}
-    alphacoeff :: Array{Float64}
+function decr(m::GHLS,endogvarm1::Array{Float64},innovations::Array{Float64},alphacoeff::Array{Float64})
 
     #Initilize Variables
     endogvar=Array{Float64}(undef,m.approx.nvars+m.approx.nexog)
@@ -250,11 +224,8 @@ function decr(m,endogvarm1,innovations,alphacoeff)
 
 end
 
-function decrlin(endogvarm1,innovations,m::GHLS,sigma,pp)
+function decrlin(endogvarm1::Array{Float64},innovations::Array{Float64},m::GHLS,sigma::Array{Float64},pp::Array{Float64})
 
-    # Input
-    innovations :: Array{Float64}
-    endogvarm1 :: Array{Float64}
 
     # Initilize variables
     nvars = m.approx.nvars
@@ -279,13 +250,7 @@ function decrlin(endogvarm1,innovations,m::GHLS,sigma,pp)
 end
 
 
-function decr_euler(m,gridindex,shockpos,alphacoeff)
-
-    #Input
-    m :: GHLS
-    shockpos :: Int64
-    gridindex :: Int64
-    alphacoeff :: Array{Float64}
+function decr_euler(m::GHLS,gridindex::Int64,shockpos::Int64,alphacoeff:Array{Float64})
 
     #Initilize Variables
     zlbinfo  = m.approx.statezlbinfo[shockpos]
@@ -435,12 +400,7 @@ function decr_euler(m,gridindex,shockpos,alphacoeff)
 end
 
 
-function finite_grid(n,rho,sigmaep)
-
-    #Input
-    n :: Int64
-    rho :: Float64
-    sigmaep :: Float64
+function finite_grid(n::Int64,rho::Float64,sigmaep::Float64)
 
     #Initilize Variables
     shockgrid=zeros(n)
@@ -506,12 +466,7 @@ function get_shockdetails(m::GHLS)
 
 end
 
-function calc_premium(m,endogvar,alphacoeff)
-
-    # Input
-    m :: GHLS
-    endogvar :: Array{Float64}
-    alphacoeff :: Array{Float64}
+function calc_premium(m::GHLS,endogvar::Array{Float64},alphacoeff::Array{Float64})
 
     # Initilize Variables
     endogvarp = Array{Float64}(undef,m.approx.nvars+m.approx.nexog)

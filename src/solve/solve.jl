@@ -63,16 +63,15 @@ function solve(m::GHLS, parallel::Bool=true)
 
     m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = simulate_linear(m)
 
-    m.approx.slopeconsmsv, m.approx.slopeconxx = create_slopes(m)
+    m.approx.slopeconmsv, m.approx.slopeconxx = create_slopes(m)
 
     # Construct starting guess
-    aalin, bblin = lindecrule_markov(m)
-    α_initial = initial_α(m, m.approx, aalin, bblin)
+    α_initial = initial_α(m)
 
     α_star, convergence = if parallel
-        fixedpoint_parallel(m, m.approx, α_initial)
+        fixedpoint_parallel(m, α_initial)
     else
-        fixedpoint(m, m.approx, α_initial)
+        fixedpoint(m, α_initial)
     end
 
     return α_star
@@ -112,12 +111,12 @@ function lindecrule_markov(m::GHLS)
     if eu[1] != 1 || eu[2] != 1
         throw(GensysError())
     end
-    TTT_gensys = real(TTT_gensys)
-    RRR_gensys = real(RRR_gensys)
-    CCC_gensys = real(CCC_gensys)
+    TTT = real(TTT_gensys)
+    RRR = real(RRR_gensys)
+    CCC = real(CCC_gensys)
 
     # Augment states
-    TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
+    #TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
 
     QQQ = zeros(8, 8)
     QQQ[1, 1] = m[:σ_η]^2.0
@@ -471,7 +470,7 @@ function parallel_help(m::GHLS,α_star::Array{Float64},j::Int)
 
     # Update polynomials using new guess for α
     for k in 1:m.approx.ngrid
-        updated_approx_polynomials[:, k], err2 = decr_euler(m, k, j, m.approx, α_star, m.approx.statezlbinfo[j])
+        updated_approx_polynomials[:, k], err2 = decr_euler(m, k, j, α_star)
         err += err2
     end
 

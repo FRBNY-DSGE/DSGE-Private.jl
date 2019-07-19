@@ -88,7 +88,7 @@ module DSGE
         subtract_quarters, iterate_quarters,
 
         # solve/
-        gensys, solve, simulate_linear, lindecrule_markov, initial_α, fixedpoint, create_slopes,
+        gensys, solve, simulate_linear, lindecrule_markov, initial_α, fixedpoint, fixedpoint_parallel, create_slopes,
 
         # estimate/
         simulated_annealing, combined_optimizer, lbfgs,
@@ -169,7 +169,7 @@ module DSGE
     include("settings.jl")
     include("defaults.jl")
     include("observables.jl")
-    include("statespace.jl")
+    # include("statespace.jl")
     include("util.jl")
 
     include("benchmark/util.jl")
@@ -186,6 +186,7 @@ module DSGE
 
     include("polydef.jl")
     include("models/nonlinear/GHLS.jl")
+    include("statespace.jl")
     include("models/nonlinear/subspecs.jl")
     include("models/nonlinear/eqcond.jl")
     include("models/nonlinear/observables.jl")
