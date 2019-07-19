@@ -36,7 +36,7 @@ datevec = datevec[1:78]
 # loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
 # loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
 # loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
-matdata = matread(dataroot * "pred_dens_wrong.mat")
+matdata = matread(datapath * "pred_dens_wrong.mat")
 preddens1_1 = vec(matdata["p805"])
 preddens2_1 = vec(matdata["p904"])
 
@@ -65,9 +65,9 @@ for t in 1:T
     # given posterior distribution of θ, sample λ
     λmat[t] = sample_λ(pm, θmat, t)
     λhat_tplush[t], λhat_t[t] = compute_Eλ(pm, λmat)
-
-    # save these lambda draws
 end
 
 # Plot!
-hist_post_λ_evol = plot_posterior_λ_evolution(pm, λmat[t],
+# hist_post_λ_evol = plot_posterior_λ_evolution(pm, λmat[t])
+# pc = load(get_setting(pm, :saveroot) * "smc.jld2")
+# plot_post_θ = plot_posterior_hyperparameter(pm, pc)
