@@ -72,11 +72,7 @@ function init_settings!(approx::SmolyakApproximation)
     approx.indplus = [3]
 end
 
-function setgridsize(nexog,nshockgrid)
-
-    #Input
-    nexog :: Int
-    nshockgrid :: Array{Int}
+function setgridsize(nexog::Int,nshockgrid::Array{Int})
 
     nexogshock = 0
     for i in 1:nexog
@@ -100,12 +96,7 @@ function setgridsize(nexog,nshockgrid)
 
 end
 
-function exoggridindex(ngrid,nexog,ns)
-
-    # Input
-    nexog :: Int
-    ns :: Int
-    ngrid :: Array{Int}
+function exoggridindex(ngrid::Array{Int},nexog::Int,ns::Int)
 
     #Initilize Variables
     exoggridindex = zeros(Int,nexog,ns)
@@ -129,11 +120,7 @@ function exoggridindex(ngrid,nexog,ns)
 
 end
 
-function ghquadrature(nquadsingle,nexog)
-
-    # Input
-    nquadsingle :: Int64
-    nexog :: Int64
+function ghquadrature(nquadsingle::Int64,nexog::Int64)
 
     # Initilize Variables
     quadnodes_s=zeros(nquadsingle)
@@ -171,14 +158,7 @@ function ghquadrature(nquadsingle,nexog)
 
 end
 
-function smolyakpoly(nmsv,ngrid,nindplus,indplus,xx)
-
-    # Input
-    nmsv :: Int
-    ngrid :: Int
-    nindplus :: Int
-    indplus :: Array{Int}
-    xx:: Array{Float64}
+function smolyakpoly(nmsv::Int,ngrid::Int,nindplus::Int,indplus::Array{Int},xx::Array{Float64})
 
     # Initilize Variables
     smolyakpoly=Array{Float64}(undef,ngrid)
@@ -201,13 +181,7 @@ function smolyakpoly(nmsv,ngrid,nindplus,indplus,xx)
 end
 
 
-function sparsegrid(nmsv,nindplus,ngrid,indplus)
-
-    # Input
-    nmsv :: Int
-    nindplus :: Int
-    ngrid :: Int
-    indplus :: Array{Int}
+function sparsegrid(nmsv::Int,nindplus::Int,ngrid::Int,indplus::Array{Int})
 
     #Initilize Variables
     xgrid = zeros(nmsv,ngrid)

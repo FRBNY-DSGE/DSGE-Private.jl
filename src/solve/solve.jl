@@ -455,12 +455,7 @@ function initial_α(m :: GHLS)
 
 end
 
-function dgemv(alpha,A,x)
-
-    #Input
-    alpha :: Real
-    A :: Array
-    x :: Array
+function dgemv(alpha::Real,A::Array,x::Array)
 
     z = alpha*A*x
 
@@ -468,7 +463,7 @@ function dgemv(alpha,A,x)
 
 end
 
-function parallel_help(m::GHLS,α_star,j)
+function parallel_help(m::GHLS,α_star::Array{Float64},j::Int)
     col1 = zeros(m.approx.nfunc*m.approx.ngrid,3)
 
     updated_approx_polynomials = zeros(2*m.approx.nfunc, m.approx.ngrid)
