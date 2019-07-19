@@ -183,6 +183,10 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
     # the final results
     Nt0 = include_presample ? 0 : n_presample_periods(m)
 
+    steady_states = [i.value for i in m.steady_state[1:m.approx.nvars]]
+    n_particles = 1000
+    s0 = repeat(steady_states, 1, n_particles)
+
     # Run Tempered Particle filter, returns log-likelihoods
     loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,
                              s_0; n_presample_periods = Nt0)
