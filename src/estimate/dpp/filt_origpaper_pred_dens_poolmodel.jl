@@ -37,12 +37,12 @@ datevec = datevec[1:78]
 # loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
 # loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
 matdata = matread(dataroot * "pred_dens_wrong.mat")
-loglhs1_1 = vec(log.(matdata["p805"]))
-loglhs2_1 = vec(log.(matdata["p904"]))
+preddens1_1 = vec(matdata["p805"])
+preddens2_1 = vec(matdata["p904"])
 
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
-               Dict(:Model805 => loglhs1_1, :Model904 => loglhs2_1), [m1, m2]; static = true)
+               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m1, m2]; static = true)
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
 jld_data = load("$filepath/../../../test/reference/tpf_poolmodel.jld2")
 tpf_out = jld_data["tpf_out"]
@@ -72,9 +72,14 @@ for t in 1:T
     end
     λhat_tplush[t] = mean(vec(λ_particle_dist[t][1,:]) .* λ_weights[:,t])
 end
-dpp_loglhs = λhat_tplush .* loglhs1_1 + (1 .- λhat_tplush) .* loglhs2_1
+dpp_preddens = λhat_tplush .* preddens1_1 + (1 .- λhat_tplush) .* preddens2_1
 
 gr()
-plot1 = plot(datevec, λhat_t)
-plot2 = plot(datevec, λhat_tplush)
-plot3 = plot(datevec, [dpp_loglhs, loglhs1_1, loglhs2_1])
+# plot1 = plot(datevec, λhat_t)
+# plot2 = plot(datevec, λhat_tplush)
+plot3 = plot(datevec, [log.(dpp_preddens), log.(preddens1_1), log.(preddens2_1)],
+             xlabel = "Date",
+             ylabel = "Log predictive densities",
+             plot_title = "Log score comparison for SWFF vs. SWπ",
+             label = ["SWFF", "SW Inflation", "DP"],
+             legend = :bottomleft)

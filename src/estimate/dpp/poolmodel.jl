@@ -235,20 +235,20 @@ function init_parameters!(m::PoolModel; static::Bool = false)
                        tex_label="\\rho")
         m <= parameter(:μ, 0., fixed = true,
                        description="μ: drift of AR processing underlying λ.",
-                       tex_label="\\rho")
+                       tex_label="\\mu")
         m <= parameter(:σ, 1., fixed = true,
                        description="σ: volatility of AR processing underlying λ.",
-                       tex_label="\\rho")
+                       tex_label="\\sigma")
     else
         m <= parameter(:ρ, 0.5, (0.,1.), (0.,1.), Untransformed(), Uniform(0.,1.), fixed = false,
                        description="ρ: persistence of AR processing underlying λ.",
                        tex_label="\\rho")
         m <= parameter(:μ, 0., fixed = true,
                        description="μ: drift of AR processing underlying λ.",
-                       tex_label="\\rho")
+                       tex_label="\\mu"))
         m <= parameter(:σ, 1., fixed = true,
                        description="σ: volatility of AR processing underlying λ.",
-                       tex_label="\\rho")
+                       tex_label="\\sigma")
     end
 end
 """

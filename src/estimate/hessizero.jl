@@ -44,10 +44,13 @@ function hessizero(fcn::Function,
     off_diag_inds = Vector{Tuple{Int,Int}}(undef, n_off_diag_els)
     k=1
     for i=1:(n_para-1), j=(i+1):n_para
-        off_diag_inds[k] = (i,j)
+        if n_off_diag_els > 0
+            off_diag_inds[k] = (i,j)
+        end
         k = k+1
     end
 
+    if n_off_diag_els > 0
     # Iterate over off diag elements
     if distr
         off_diag_out = @sync @distributed (hcat) for (i,j) in off_diag_inds
@@ -76,7 +79,7 @@ function hessizero(fcn::Function,
             invalid_corr[(i, j)] = ρ_xy
         end
     end
-
+    end
     has_errors = false
     if !isempty(invalid_corr)
         println("Errors: $invalid_corr")

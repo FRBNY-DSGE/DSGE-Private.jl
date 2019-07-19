@@ -71,7 +71,6 @@ function initial_draw!(m::AbstractModel, data::Matrix{Float64},
     # For each particle, finds valid parameter draw and returns likelihood & posterior
     draws, loglh, logpost = if parallel
         @sync @distributed (vector_reduce) for i in 1:n_parts
-            print(i)
             one_draw_closure()
         end
     else
