@@ -163,21 +163,9 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
                            start_date::Date = date_presample_start(m),
                            include_presample::Bool = true,
                            tol::Float64 = 0.0) where {S<:AbstractFloat}
-
     # Partition sample into pre- and post-ZLB regimes
     # Note that the post-ZLB regime may be empty if we do not impose the ZLB
     # regime_inds = zlb_regime_indices(m, data, start_date)
-
-    # Get system matrices for each regime
-    #TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = zlb_regime_matrices(m, system, start_date)
-
-    # If s_0 and P_0 provided, check that rows and columns corresponding to
-    # anticipated shocks are zero in P_0
-    if !isempty(s_0) && !isempty(P_0)
-        ant_state_inds = setdiff(1:n_states_augmented(m), inds_states_no_ant(m))
-        @assert all(x -> x == 0, P_0[:, ant_state_inds])
-        @assert all(x -> x == 0, P_0[ant_state_inds, :])
-    end
 
     # Specify number of presample periods if we don't want to include them in
     # the final results
@@ -186,9 +174,10 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
     steady_states = [i.value for i in m.steady_state[1:m.approx.nvars]]
     n_particles = 1000
     s0 = repeat(steady_states, 1, n_particles)
-
+    println("tpf runs")
     # Run Tempered Particle filter, returns log-likelihoods
     loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,
                              s_0; n_presample_periods = Nt0)
+    println("tpf done")
     return loglh
 end
