@@ -177,7 +177,7 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
     println("tpf runs")
     # Run Tempered Particle filter, returns log-likelihoods
     loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,
-                             s_0; n_presample_periods = Nt0)
+                             s0; n_presample_periods = Nt0)
     println("tpf done")
     return loglh
 end
