@@ -14,6 +14,7 @@ function initial_draw!(m::AbstractModel, data::Matrix{Float64}, c::ParticleCloud
     loglh   = zeros(n_parts)
     logpost = zeros(n_parts)
     if parallel
+        println("draws")
         draws, loglh, logpost = @sync @distributed (vector_reduce) for i in 1:n_parts
             draw         = vec(rand(m.parameters, 1))
             draw_loglh   = 0.
@@ -22,6 +23,7 @@ function initial_draw!(m::AbstractModel, data::Matrix{Float64}, c::ParticleCloud
             while !success
                 try
                     update!(m, draw)
+                    println("likelihood")
                     draw_loglh = likelihood(m, data, catch_errors = true,
                                             use_chand_recursion=use_chand_recursion,
                                             verbose = verbose)

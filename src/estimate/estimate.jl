@@ -200,7 +200,7 @@ function estimate(m::AbstractModel, data::AbstractArray;
         # Set the jump size for sampling
         cc0 = get_setting(m, :mh_cc0)
         cc = get_setting(m, :mh_cc)
-
+        println("mh")
         metropolis_hastings(propdist, m, data, cc0, cc; verbose=verbose);
 
     elseif get_setting(m, :sampling_method) == :SMC
@@ -212,6 +212,7 @@ function estimate(m::AbstractModel, data::AbstractArray;
         ### of the posterior. Portions of this method are executed in
         ### parallel.
         ########################################################################################
+        println("smc")
         smc(m, data; verbose = verbose)
     end
 
