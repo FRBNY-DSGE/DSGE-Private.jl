@@ -1,5 +1,6 @@
 using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots, StateSpaceRoutines, Dates, Random, MAT
-# This script fixes ρ = 0.9 and estimates the time path of λ
+
+print("Starting file")
 
 filepath = dirname(@__FILE__)
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
@@ -42,7 +43,6 @@ preddens2_1 = vec(matdata["p904"])
 
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
-               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m1, m2]; static = false)
+               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = false)
 pm <= Setting(:sampling_method, :SMC)
-# out = estimate(pm, zeros(1, get_periods(pm)))
-out = estimate(pm, zeros(1, 5))
+out = estimate(pm, zeros(1, 3))

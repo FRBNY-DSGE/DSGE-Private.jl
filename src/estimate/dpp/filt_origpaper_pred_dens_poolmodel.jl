@@ -1,6 +1,8 @@
 using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots, StateSpaceRoutines, Dates, Random, MAT
 # This script fixes ρ = 0.9 and estimates the time path of λ
 
+include("plot_fnct.jl")
+
 filepath = dirname(@__FILE__)
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
 dataroot = "$filepath/../../../test/estimate/dpp/save/input_data/"
@@ -21,7 +23,7 @@ end
 
 # Read in data for models
 y1 = CSV.read(get_setting(m1, :dataroot) * "realtime_spec=m805_hp=true_vint=170410.csv")
-datevec = y1.date[y1.date .>= Date("1991-12-31")]
+datevec = Vector{Date}(y1.date[y1.date .>= Date("1991-12-31")])
 y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
 y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
 y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
@@ -42,7 +44,7 @@ preddens2_1 = vec(matdata["p904"])
 
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
-               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m1, m2]; static = true)
+               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = true)
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
 jld_data = load("$filepath/../../../test/reference/tpf_poolmodel.jld2")
 tpf_out = jld_data["tpf_out"]
@@ -52,6 +54,7 @@ data = jld_data["data"][1:78]
 s_init = jld_data["s_init"]
 tuning[:get_t_particle_dist] = true
 tuning[:allout] = true
+tuning[:n_particles] = 10000
 pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
 pm <= Setting(:sampling_method, :SMC)
 n_particles = get_setting(pm, :tuning)[:n_particles]
@@ -72,7 +75,7 @@ for t in 1:T
     end
     λhat_tplush[t] = mean(vec(λ_particle_dist[t][1,:]) .* λ_weights[:,t])
 end
-dpp_preddens = λhat_tplush .* preddens1_1 + (1 .- λhat_tplush) .* preddens2_1
+dpp_preddens = λhat_tplush .* preddens2_1 + (1 .- λhat_tplush) .* preddens1_1
 
 gr()
 # plot1 = plot(datevec, λhat_t)
@@ -81,5 +84,15 @@ plot3 = plot(datevec, [log.(dpp_preddens), log.(preddens1_1), log.(preddens2_1)]
              xlabel = "Date",
              ylabel = "Log predictive densities",
              plot_title = "Log score comparison for SWFF vs. SWπ",
-             label = ["SWFF", "SW Inflation", "DP"],
+             label = ["DP", "SW Inflation", "SWFF"],
              legend = :bottomleft)
+
+λ_t_evol = zeros(n_particles, T)
+datemat = Matrix{Date}(undef,n_particles,T)
+for t in 1:T
+    λ_t_evol[:,t] = vec(λ_particle_dist[t][1,:])
+    datemat[:,t] .= datevec[t]
+end
+
+plot4 = heatmap_posterior_λ_evolution(pm, datevec, λ_t_evol, λ_weights)
+plot5, λedges, dates, λwts, λmodes = surface_posterior_λ_evolution(pm, datevec, λ_t_evol, λ_weights)

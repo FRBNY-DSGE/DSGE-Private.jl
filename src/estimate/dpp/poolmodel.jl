@@ -59,7 +59,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
                                                            # parameters and steady-states
     observables::OrderedDict{Symbol,Int}
     pseudo_observables::OrderedDict{Symbol,Int}
-    models::OrderedDict{Symbol,AbstractModel{T}}              # Model name mapped to model object
+    models::OrderedDict{Symbol,AbstractModel{T}}           # Model name mapped to model object
     datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
     forecast_horizon::Int                                  # Number of periods for forecast
     periods::Int                                           # Number of periods for data time series
@@ -81,16 +81,16 @@ end
 
 description(m::PoolModel) = "Julia implementation of dynamic prediction pools defined in 'Dynamic prediction pools: An investigation of financial frictions and forecasting performance' by Marco Del Negro, Raiden B. Hasegawa, and Frank Schorfheide: PoolModel, $(m.subspec)"
 
-function PoolModel(data::Matrix{T}, h::Int, cond_pred_dens::Dict{Symbol,Vector{T}},
-                   models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
-                   custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
-                   testing = false, verbose::Symbol = :low,
-                   static::Bool = false) where T<:AbstractFloat
-    data_dict = Dict(name => data for name in keys(cond_pred_dens))
-    return PoolModel(data_dict, h, cond_pred_dens, models, subspec;
-                   custom_settings = custom_settings,
-                   testing = testing, verbose = verbose, static = static)
-end
+# function PoolModel(data::Matrix{T}, h::Int, cond_pred_dens::Dict{Symbol,Vector{T}},
+#                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
+#                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
+#                    testing = false, verbose::Symbol = :low,
+#                    static::Bool = false) where T<:AbstractFloat
+#     data_dict = Dict(name => data for name in keys(cond_pred_dens))
+#     return PoolModel(data_dict, h, cond_pred_dens, models, subspec;
+#                    custom_settings = custom_settings,
+#                    testing = testing, verbose = verbose, static = static)
+# end
 # function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, pred_dens::Dict{Symbol,Vector{T}},
 #                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
 #                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
@@ -240,7 +240,7 @@ function init_parameters!(m::PoolModel; static::Bool = false)
                        description="σ: volatility of AR processing underlying λ.",
                        tex_label="\\sigma")
     else
-        m <= parameter(:ρ, 0.5, (0.,1.), (0.,1.), Untransformed(), Uniform(0.,1.), fixed = false,
+        m <= parameter(:ρ, 0.5, (1e-20,1-1e7), (1e-20,1-1e7), SquareRoot(), Uniform(0.,1.), fixed = false,
                        description="ρ: persistence of AR processing underlying λ.",
                        tex_label="\\rho")
         m <= parameter(:μ, 0., fixed = true,
@@ -327,11 +327,11 @@ function init_statespace!(m::PoolModel{T}) where T<:AbstractFloat
     m.statespace[:Φ] = Φ
 
     # measurement equation
-    pred_dens_mat = zeros(m.periods, length(m.cond_pred_dens)) # matrix of conditional predictive densities
-    for (i,v) in enumerate(values(m.cond_pred_dens)) # time period vs. model
-        pred_dens_mat[:,i] = v
+    pred_dens_mat = zeros(m.periods, length(m.models)) # matrix of conditional predictive densities
+    for (i,key) in enumerate(keys(m.models))
+        pred_dens_mat[:,i] = m.cond_pred_dens[key]
     end
-    pred_dens_mat = reshape(pred_dens_mat, length(m.cond_pred_dens), m.periods)
+    pred_dens_mat = reshape(pred_dens_mat, length(m.models), m.periods)
 
     @inline Ψ(x::Vector{T}, t::Int64) = dot(pred_dens_mat[:,t], x)
     m.statespace[:Ψ] = Ψ

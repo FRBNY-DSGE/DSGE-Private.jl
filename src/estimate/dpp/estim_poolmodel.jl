@@ -42,7 +42,7 @@ preddens2_1 = vec(matdata["p904"])
 
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
-               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m1, m2]; static = false)
+               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = false)
 
 # Construct real time estimation of lambda (evolution over time)
 h = get_forecast_horizon(pm)
