@@ -1,4 +1,3 @@
-using ProgressMeter
 """
 ```
 solve(m::AbstractModel; apply_altpolicy = false)
@@ -169,7 +168,8 @@ function fixedpoint(m::GHLS, α_initial::Array{Float64})
     step  = 7.0e-01
 
     # Get fixed point using iterative convergence method
-    @showprogress for i in 1:niter
+    for i in 1:niter
+        @show i
         avg_error = 0.0
 
         for j in 1:m.approx.ns
@@ -506,6 +506,7 @@ function fixedpoint_parallel(m::GHLS, α_initial::Array{Float64})
 
     # Get fixed point using iterative convergence method
     for i in 1:niter
+        @show i
         avg_error = 0.0
 
         # Calculates new α_new and avg_error

@@ -52,7 +52,7 @@ function intermediatedec(m::GHLS,endogvarm1::Array{Float64},currentshockvalues::
     rrshk = currentshockvalues[m.exogenous_shocks[:rm_sh]]
     gss = 1.0/(1.0-m[:shrgy])
     gshk = exp( log(gss) + currentshockvalues[m.exogenous_shocks[:g_sh]] )
-    ashk = exp( currentshockvalues[6] ) # Which of the last 3 shocks is this?
+    ashk = exp(0) # Which of the last 3 shocks is this?
 
     capm1 = endogvarm1[1] # There is no k_t1 in m.endogenous_states
     ccm1 = endogvarm1[2]
@@ -162,7 +162,7 @@ function decr(m::GHLS,endogvarm1::Array{Float64},innovations::Array{Float64},alp
     currentshockvalues[3] = m[:σ_Z]*innovations[3]
     currentshockvalues[4] = m[:ρ_int]*endogvarm1[m.endogenous_states[:mon_t]] + m[:σ_R]*innovations[4]
     currentshockvalues[5] = m[:ρ_g]*endogvarm1[m.endogenous_states[:g_t]] + m[:σ_g]*innovations[5]
-    currentshockvalues[6] = 0.0*endogvarm1[28] + 0.0*innovations[6] # Which one of the three is this? Is it unk_t? Isn't this the a shock?
+    currentshockvalues[6] = 0.0 #a shock?
 
     #find position of shocks for interpolation
     @simd for i in 1:m.approx.nexogshock

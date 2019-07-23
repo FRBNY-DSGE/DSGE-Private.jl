@@ -151,7 +151,7 @@ function init_model_indices!(m::GHLS)
     for (i,k) in enumerate(expected_shocks);             m.expected_shocks[k]             = i end
     for (i,k) in enumerate(equilibrium_conditions);      m.equilibrium_conditions[k]      = i end
     for (i,k) in enumerate(endogenous_states);           m.endogenous_states[k]           = i end
-    for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i+length(endogenous_states) end
+    for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i+length(endogenous_states) - 14 end #THIS IS NOT A GREAT WAY TO DO THIS
     for (i,k) in enumerate(observables);                 m.observables[k]                 = i end
     for (i,k) in enumerate(pseudo_observables);          m.pseudo_observables[k]          = i end
 end
@@ -498,6 +498,7 @@ function model_settings!(m::GHLS)
     m <= Setting(:data_id, 1, "Dataset identifier")
     m <= Setting(:cond_full_names, [:obs_gdp, :obs_nominalrate])
     m <= Setting(:cond_semi_names, [:obs_nominalrate])
+    m <= Setting(:date_mainsample_start, quartertodate("1983-Q1"))
 end
 
 """

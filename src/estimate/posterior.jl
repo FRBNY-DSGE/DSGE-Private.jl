@@ -116,7 +116,7 @@ function likelihood(m::AbstractModel, data::Matrix{T};
                     use_chand_recursion::Bool = false, tol::Float64 = 0.0,
                     verbose::Symbol = :high) where {T<:AbstractFloat}
     catch_errors = catch_errors | sampler
-
+    println("getting likelihood")
     # During Metropolis-Hastings, return -∞ if any parameters are not within their bounds
     if sampler
         for θ in m.parameters
@@ -126,7 +126,7 @@ function likelihood(m::AbstractModel, data::Matrix{T};
             end
         end
     end
-
+    println("computing system")
     # Compute state-space system
     system = try
         compute_system(m, verbose = verbose)
@@ -139,6 +139,7 @@ function likelihood(m::AbstractModel, data::Matrix{T};
     end
 
     # Return total log-likelihood, excluding the presample
+    println("filtering likelihood")
     try
         if use_chand_recursion==false
             return sum(filter_likelihood(m, data, system[1], system[2], system[3], system[4];

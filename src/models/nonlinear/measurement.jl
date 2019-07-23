@@ -28,9 +28,13 @@ function measurement(m::GHLS)
     _n_states = n_states_augmented(m)
     _n_shocks_exogenous = n_shocks_exogenous(m)
 
-    @inline Ψ(s_t::Vector{Float64}, ϵ_t::Vector{Float64}) = [log(s_t[endo[:y_t]] * m[:gz] / s_t[endo_addl[:y_t1]]) + ϵ_t[exo[:ztil_sh]],
-log(s_t[endo[:c_t]] * m[:gz] / s_t[endo_addl[:c_t1]]) + ϵ_t[exo[:ztil_sh]],
-log(s_t[endo[:i_t]] * m[:gz] / s_t[endo_addl[:i_t1]]) + ϵ_t[exo[:ztil_sh]],
-log(s_t[endo[:π_t]]),log(s_t[endo[:R_t]])]
+    # We store the innovation as the last state since TPF isn't built to take in innovations as well as states
+    @inline Ψ(s_t::Vector{Float64}) = [log(s_t[endo[:y_t]] * m[:gz] / s_t[endo_addl[:y_t1]]) + s_t[end],
+log(s_t[endo[:π_t]]),
+log(s_t[endo[:R_t]]),
+log(s_t[endo[:c_t]] * m[:gz] / s_t[endo_addl[:c_t1]]) + s_t[end],
+log(s_t[endo[:i_t]] * m[:gz] / s_t[endo_addl[:i_t1]]) + s_t[end]]
+
+    return Ψ
 
 end

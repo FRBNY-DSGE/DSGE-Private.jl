@@ -20,7 +20,7 @@ function init_observable_mappings!(m::GHLS)
     observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
                                        gdp_fwd_transform, gdp_rev_transform,
                                        "Real GDP Growth", "Real GDP Growth Per Capita")
-
+#=
     ############################################################################
     ## 2. Hours per-capita
     ############################################################################
@@ -58,7 +58,7 @@ function init_observable_mappings!(m::GHLS)
                                          wages_fwd_transform, wages_rev_transform,
                                          "Percent Change in Wages",
                                          "Q-to-Q Percent Change of Real Compensation (using GDP deflator)")
-
+=#
     ############################################################################
     ## 4. GDP Deflator
     ############################################################################
@@ -68,7 +68,8 @@ function init_observable_mappings!(m::GHLS)
         # TO:   Approximate quarter-to-quarter percent change of gdp deflator,
         #       i.e.  quarterly gdp deflator inflation
 
-        oneqtrpctchange(levels[:GDPDEF])
+        onequtrpctchange(levels[:GDPDEF])
+        #levels[:GDPDEF]
     end
 
 
