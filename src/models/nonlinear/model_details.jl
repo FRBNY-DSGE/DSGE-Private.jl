@@ -1,4 +1,14 @@
-function float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true},y::Array{Float64})
+"""
+    float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true},y::Array{Float64, 1})
+
+Computes the dot product between two vectors with the same length, the first given by aplpying the view function below.
+# Examples
+```julia-repl
+julia> float_dot(view([1,2,4,6], 1, 3, 1), [1, 2, 4])
+1
+```
+"""
+function float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true},y::Array{Float64, 1})
 
     dot=0.0
     @simd for i in 1:length(y)
@@ -7,13 +17,37 @@ function float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64
     return dot
 end
 
-@views view(x,l,u,i) = x[l:u,i]  #More quickly takes slice of an array
+"""
+    view(x, l::Int, u::Int, i::Int)
+Returns the ith column of x  at the rows between l and u. u must be at least as large as l and l >= 1 while u <= nrow(x). Also, 1 <= i <= ncol(x).
+"""
+@views view(x,l::Int,u::Int,i::Int) = x[l:u,i]  #More quickly takes slice of an array
 
-function msv2xx(msv::Array{Float64}, nmsv::Int, slopeconmsv::Array{Float64})
+"""
+    msv2xx(msv::Array{Float64, 1}, nmsv::Int, slopeconmsv::Array{Float64, 1})
+Returns endogenous state variables in [-1,1] domain or the inverse function depending on slopeconmsv.
+...
+# Arguments
+- `msv::Array{Float64, 1}`: Endogenous state variables.
+- `nmsv::Int`: Minimum number of endogenous state variables.
+- `slopeconmsv::Array{Float64, 1}`: Slope and constants that depend on the upper and lower bounds of minimum state variables.
+...
+"""
+function msv2xx(msv::Array{Float64, 1}, nmsv::Int, slopeconmsv::Array{Float64, 1})
     return slopeconmsv[1:nmsv] .* msv + slopeconmsv[nmsv+1:2*nmsv]
 end
 
-function exogposition(exogvec::Array{Int64}, nrvec::Array{Int64}, nlength::Int64)
+"""
+    exogposition(exogvec::Array{Int64, 1}, nrvec::Array{Int64, 1}, nlength::Int64)
+
+Computes the position of the regime and position on exogenous grid.  Hard-wired for 6 or 7 variable for speed. Returns the index for the exogenous grid.
+...
+- `exogvec::Array{Int64, 1}`: Array with index for each shock value.
+- `nrvec::Array{Int64, 1}`: Number of realizations for each shock.
+- `nlength::Int64`: Length of exogenous processes.
+...
+"""
+function exogposition(exogvec::Array{Int64, 1}, nrvec::Array{Int64, 1}, nlength::Int64)
 
     #Initilize variables
     exogposition =0
@@ -38,7 +72,28 @@ function exogposition(exogvec::Array{Int64}, nrvec::Array{Int64}, nlength::Int64
 
 end
 
-function intermediatedec(m::GHLS,endogvarm1::Array{Float64},currentshockvalues::Array{Float64},polyvar::Array{Float64},omegapoly::Float64,polyvarplus::Array{Float64},zlbintermediate::Bool)
+"""
+    intermediatedec(m::GHLS,endogvarm1::Array{Float64,1},currentshockvalues::Array{Float64,1},polyvar::Array{Float64,1},omegapoly::Float64,polyvarplus::Array{Float64,1},zlbintermediate::Bool)
+
+Returns endogenous variables and shock values given their lagged values and polynomial approximation.
+...
+# Arguments
+- `m::GHLS`: GHLS model object. Relevantly contains:
+      `nparams::Int`: Number of structural model parameters.
+      `nvars::Int`: Number of endogenous variables.
+      `nexog::Int`: Number of exogenous shocks.
+      `nfunc::Int`: Number of functions approximated.
+      Model parameters, inclduing m[:labss], the steady state of labor
+      Endogenous variables and shock values
+- `endogvarm1::Array{Float64, 1}`: Lagged endogenous variables and shock values.
+- `currentshockvalues::Array{Float64, 1}`: Current shock values.
+- `polyvar::Array{Float64, 1}`: Values of polynomial functions in normal times.
+- `omegapoly::Float64`: Weight on ZLB polynomials.
+- `polyvarplus::Array{Float64, 1}`: Values of polynomial functions in zlb times.
+- `zlbintermediate::Bool`: Indicator for whether there are two regimes for the polynomial or not.
+...
+"""
+function intermediatedec(m::GHLS,endogvarm1::Array{Float64,1},currentshockvalues::Array{Float64,1},polyvar::Array{Float64,1},omegapoly::Float64,polyvarplus::Array{Float64,1},zlbintermediate::Bool)
 
     #Input
     nvars = m.approx.nvars
@@ -122,7 +177,19 @@ function intermediatedec(m::GHLS,endogvarm1::Array{Float64},currentshockvalues::
     return endogvar
 end
 
-function decr(m::GHLS,endogvarm1::Array{Float64},innovations::Array{Float64},alphacoeff::Array{Float64})
+"""
+    decr(m::GHLS,endogvarm1::Array{Float64},innovations::Array{Float64},alphacoeff::Array{Float64})
+
+The decision rule -- returns endogenous variables and shocks given lagged endogenous values and innovations.
+...
+# Arguments
+- `m::GHLS`: GHLS model object, including the parameters, SmolyakApproximation object, and endogenou variables and shock values
+- `endogvarm1::Array{Float64, 1}`: Lagged endogenous variables and shock values.
+- `innovations::Array{Float64, 1}`: Innovations to the shocks.
+- `alphacoeff::Arary{Float64, 2}`: Polynomial coefficients.
+...
+"""
+function decr(m::GHLS,endogvarm1::Array{Float64,1},innovations::Array{Float64,1},alphacoeff::Array{Float64,2})
 
     #Initilize Variables
     endogvar=Array{Float64}(undef,m.approx.nvars+m.approx.nexog)
@@ -224,7 +291,20 @@ function decr(m::GHLS,endogvarm1::Array{Float64},innovations::Array{Float64},alp
 
 end
 
-function decrlin(endogvarm1::Array{Float64},innovations::Array{Float64},m::GHLS,sigma::Array{Float64},pp::Array{Float64})
+"""
+    decrlin(endogvarm1::Array{Float64},innovations::Array{Float64},m::GHLS,sigma::Array{Float64},pp::Array{Float64})
+
+Linear decision rule -- returns endogenous variables and shocks given lagged endogenous values and innovations.
+...
+# Arguments
+- `endogvarm1::Array{Float64, 1}`: Lagged endogenous variables and shock values.
+- `innovations::Array{Float64, 1}`: Innovations to the shocks.
+- `m::GHLS`: GHLS model object, including the SmolyakApproximation object
+- `pp::Array{Float64, 2}`: T matrix to which s_{t-1} is multiplied in the transition equation. Only for the first 28 minimum state variables.
+- `sigma::Array{Float64, 2}`: R matrix to which ϵ_t is multiplied in the transition equation. Only for the first 28 minimum state variables and first 6 shocks
+...
+"""
+function decrlin(endogvarm1::Array{Float64,1},innovations::Array{Float64,1},m::GHLS,sigma::Array{Float64,2},pp::Array{Float64,2})
 
 
     # Initilize variables
@@ -249,8 +329,22 @@ function decrlin(endogvarm1::Array{Float64},innovations::Array{Float64},m::GHLS,
     return endogvar
 end
 
+"""
+decr_euler(m::GHLS,gridindex::Int64,shockpos::Int64,alphacoeff::Array{Float64})
 
-function decr_euler(m::GHLS,gridindex::Int64,shockpos::Int64,alphacoeff::Array{Float64})
+For a given collocation point, return associated errors.
+...
+# Arguments
+- `m::GHLS`: GHLS model object, which relevantly includes model parameters and SmolyakApprox object. SmolyakApprox relevantly includes:
+        `slopeconxx::Array{Float64, 1}`: Slope coefficients and constants for converting xx to msv space.
+        `bbt::Array{Float64, 2}`: Matrix with Smolyak basis functions along its columns evaluated at each grid point (rows).
+        `xgrid::Array{Float64, 2}`: Matrix of grid points along its columns. Each grid point is NmsvX1
+- `gridindex::Int64`: Index of one of the collocation points.
+- `shockpos::Int64`: Index of current exogenous state.
+- `alphacoeff::Array{Float64, 2}`: Polynomial coefficients.
+...
+"""
+function decr_euler(m::GHLS,gridindex::Int64,shockpos::Int64,alphacoeff::Array{Float64,2})
 
     #Initilize Variables
     zlbinfo  = m.approx.statezlbinfo[shockpos]
@@ -399,7 +493,17 @@ function decr_euler(m::GHLS,gridindex::Int64,shockpos::Int64,alphacoeff::Array{F
 
 end
 
+"""
+    finite_grid(n::Int64,rho::Float64,sigmaep::Float64)
 
+Returns an array containing the values of shock at which model is solved.
+...
+# Arguments
+- `n::Int64`: Number of shock realizations.
+- `rho::Float64`: AR(1) coefficient.
+- `sigmaep::Float64`: Standard deviation of innovation.
+...
+"""
 function finite_grid(n::Int64,rho::Float64,sigmaep::Float64)
 
     #Initilize Variables
@@ -419,6 +523,22 @@ function finite_grid(n::Int64,rho::Float64,sigmaep::Float64)
 
 end
 
+"""
+    get_shockdetails(m::GHLS)
+
+Get the markov processes for the shocks.
+...
+- `m::GHLS`: GHLS model object, which relevantly includes (within SmolyakApprox object):
+        - `nparams::Int`: Number of parameter values.
+        - `nexog::Int`: Number of exogenous shock processes.
+        - `nexogshock::Int`: Number of exogenous shock processes in finite-element part of approximation.
+        - `nexogcont::Int`: number of exogenous shocks used in poly approximation.
+        - `ns::Int`: Number of exogenous states.
+        - `number_shock_values::Int`: Number of shock values.
+        - `nshockgrid::Array{Float64, 1}`: Array indexing number of realizations for each shock (length nexog).
+        - `exogvarinfo`
+...
+"""
 function get_shockdetails(m::GHLS)
 
     #Input
@@ -466,7 +586,17 @@ function get_shockdetails(m::GHLS)
 
 end
 
-function calc_premium(m::GHLS,endogvar::Array{Float64},alphacoeff::Array{Float64})
+"""
+    calc_premium(m::GHLS,endogvar::Array{Float64},alphacoeff::Array{Float64})
+
+Calculates the capital financial premium in the model.
+...
+- `m::GHLS`: GHLS model object
+- `endogvar::Array{Flaot64, 1}`: Endogenous variables and shocks (lagged) necessary for the particle filter.
+- `alphacoeff::Array{Float64, 2}`: Polynomial coefficients.
+...
+"""
+function calc_premium(m::GHLS,endogvar::Array{Float64,1},alphacoeff::Array{Float64,2})
 
     # Initilize Variables
     endogvarp = Array{Float64}(undef,m.approx.nvars+m.approx.nexog)

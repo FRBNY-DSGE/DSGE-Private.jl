@@ -193,8 +193,9 @@ function compute_system(m::GHLS; apply_altpolicy = false,
     println("solving model")
     α_star = solve(m)
     println("done solving")
-    m_e = 0.2
-    EE = m_e * diagm([m[:e_y].value, m[:e_c].value, m[:e_i].value, m[:e_π].value, m[:e_R].value])
+    m_e = 0.25
+    EE = m_e * diagm([1.13^2, 0.04^2, 0.07^2, .78^2, 4.96^2])
+    #EE = m_e * diagm([m[:e_y].value, m[:e_π].value, m[:e_R].value, m[:e_c].value, m[:e_i].value])
 
     # Define transition and measurement functions
     @inline Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64}) = append!(append!(decr(m,s_t1, ϵ_t, α_star), [s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]]), ϵ_t[m.exogenous_shocks[:ztil_sh]])

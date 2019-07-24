@@ -68,7 +68,7 @@ function init_observable_mappings!(m::GHLS)
         # TO:   Approximate quarter-to-quarter percent change of gdp deflator,
         #       i.e.  quarterly gdp deflator inflation
 
-        onequtrpctchange(levels[:GDPDEF])
+        levels[:GDPDEF]
         #levels[:GDPDEF]
     end
 
