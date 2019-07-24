@@ -153,7 +153,7 @@ function dgemm(α::Float64, A::Array{Float64}, B::Array{Float64})
     return C
 end
 
-function fixedpoint(m::GHLS, α_initial::Array{Float64})
+function fixedpoint(m::GHLS, α_initial::Array{Float64,2})
 
     # Initialize
     α_star = copy(α_initial)
@@ -245,8 +245,8 @@ function simulate_linear(m::GHLS)
 
     # Set up for first period
     endogvar[1:approx.nmsv,1]= [i.value for i in m.steady_state[1:approx.nmsv]]
-    msvhigh = log.(exp.(m.steady_state[1:approx.nmsv])*2.0)
-    msvlow = log.(exp.(m.steady_state[1:approx.nmsv])*0.01)
+    msvhigh = log(2.0) + endogvar[1:approx.nmsv, 1]
+    msvlow = log(0.01) + endogvar[1:approx.nmsv, 1]
 
     Γ0, Γ1, C, Ψ, Π = eqcond(m)
     TTT_gensys, CCC_gensys, RRR_gensys, eu= gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = :high)
@@ -463,7 +463,7 @@ function dgemv(alpha::Real,A::Array,x::Array)
 
 end
 
-function parallel_help(m::GHLS,α_star::Array{Float64},j::Int)
+function parallel_help(m::GHLS,α_star::Array{Float64,2},j::Int)
     col1 = zeros(m.approx.nfunc*m.approx.ngrid,3)
 
     updated_approx_polynomials = zeros(2*m.approx.nfunc, m.approx.ngrid)
@@ -491,7 +491,7 @@ end
 
 
 # Parallel Fixedpoint
-function fixedpoint_parallel(m::GHLS, α_initial::Array{Float64})
+function fixedpoint_parallel(m::GHLS, α_initial::Array{Float64,2})
 
     # Initialize
     α_star = copy(α_initial)
