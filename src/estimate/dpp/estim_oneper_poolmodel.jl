@@ -1,7 +1,5 @@
 using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots, StateSpaceRoutines, Dates, Random, MAT
 
-print("Starting file")
-
 filepath = dirname(@__FILE__)
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
 dataroot = "$filepath/../../../test/estimate/dpp/save/input_data/"
@@ -45,4 +43,8 @@ periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
                Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = false)
 pm <= Setting(:sampling_method, :SMC)
-out = estimate(pm, zeros(1, 3))
+pm <= Setting(:n_particles, 1000)
+# pm <= Setting(:saveroot, "$filepath/save/")
+print("Starting to run SMC\n")
+print("Number of periods: " * string(get_periods(pm)) * "\n")
+out = estimate(pm, zeros(1, get_periods(pm)))

@@ -240,7 +240,7 @@ function init_parameters!(m::PoolModel; static::Bool = false)
                        description="σ: volatility of AR processing underlying λ.",
                        tex_label="\\sigma")
     else
-        m <= parameter(:ρ, 0.5, (1e-20,1-1e7), (1e-20,1-1e7), SquareRoot(), Uniform(0.,1.), fixed = false,
+        m <= parameter(:ρ, 0.5, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.), fixed = false,
                        description="ρ: persistence of AR processing underlying λ.",
                        tex_label="\\rho")
         m <= parameter(:μ, 0., fixed = true,
