@@ -49,6 +49,10 @@ mutable struct SmolyakApproximation{T}
     slopeconxx :: Array{Float64}
 end
 
+"""
+    SmolyakApproximation()
+Initializes the values in the SmolyakApproximation object to defaults
+"""
 function SmolyakApproximation()
     #Initialize empty approximation object
     approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
@@ -60,6 +64,10 @@ function SmolyakApproximation()
     return approx
 end
 
+"""
+    init_settings!(approx::SmolyakApproximation)
+Initializes some of the values in the model's SmolyakApprox type to desired values.
+"""
 function init_settings!(approx::SmolyakApproximation)
 
     approx.nexog = 6
@@ -72,7 +80,21 @@ function init_settings!(approx::SmolyakApproximation)
     approx.indplus = [3]
 end
 
-function setgridsize(nexog::Int,nshockgrid::Array{Int})
+"""
+setgridsize(nexog::Int,nshockgrid::Array{Int})
+
+Sets grid size for exogenous shocks.
+# Returns:
+    nexogshock: Number of active shocks (with states greater than one).
+    ns: Total number of grid points.
+    number_shock_values: Values of shocks at the gridpoints.
+...
+# Arguments
+- `nexog::Int`: Number of exogenous variables including those shocks held constant.
+- `nshockgrid::Array{Int,1}`: Vector containing grid size for each shock.
+...
+"""
+function setgridsize(nexog::Int,nshockgrid::Array{Int,1})
 
     nexogshock = 0
     for i in 1:nexog
@@ -96,7 +118,18 @@ function setgridsize(nexog::Int,nshockgrid::Array{Int})
 
 end
 
-function exoggridindex(ngrid::Array{Int},nexog::Int,ns::Int)
+"""
+    exoggridindex(ngrid::Array{Int},nexog::Int,ns::Int)
+
+Returns the matrix of index values for each shock in the grid. The grid has a total of ns points of dimension nexogX1. Thus, the function returns the matrix of all possible states for the exogenous variables.
+...
+# Arguments
+- `ngrid::Array{Int, 1}`: Array containing number of shock values in the grid for each of the nexogshockX1 shocks.
+- `nexog::Int`: Number of exogenous variables including shocks -- must be greater than nexogshock.
+- `ns::Int`: Total number of grid points.
+...
+"""
+function exoggridindex(ngrid::Array{Int,1},nexog::Int,ns::Int)
 
     #Initilize Variables
     exoggridindex = zeros(Int,nexog,ns)
@@ -120,6 +153,17 @@ function exoggridindex(ngrid::Array{Int},nexog::Int,ns::Int)
 
 end
 
+"""
+    ghquadrature(nquadsingle::Int64,nexog::Int64)
+
+Produces gauss-hermite quadrature weights and nodes for mulivariate case from univariate case.
+Returns total number of quadrature ndoes, multivariate quadrature nodes, and multivariate quadrature weights.
+...
+# Arguments
+- `nquadsingle::Int64`: Number of univariate quadrature points (must be 3,5 or 7).
+- `nexog::Int64`: Number of shocks.
+...
+"""
 function ghquadrature(nquadsingle::Int64,nexog::Int64)
 
     # Initilize Variables
@@ -158,7 +202,20 @@ function ghquadrature(nquadsingle::Int64,nexog::Int64)
 
 end
 
-function smolyakpoly(nmsv::Int,ngrid::Int,nindplus::Int,indplus::Array{Int},xx::Array{Float64})
+"""
+    smolyakpoly(nmsv::Int,ngrid::Int,nindplus::Int,indplus::Array{Int},xx::Array{Float64})
+
+Returns vector of Smolyak polynomials.
+...
+# Arguments
+- `nmsv::Int`: Minimum number of state variables.
+- `ngrid::Int`: Number of grid points.
+- `nindplus::Int`: Number of variables to include up to fourth order in polynomial
+- `indplus::Array{Int, 1}1: Indicator array for variables that go to fourth order.
+- `xx::Array{Float64, 1}`: Endogenous state variables defined over [-1,1] domain.
+...
+"""
+function smolyakpoly(nmsv::Int,ngrid::Int,nindplus::Int,indplus::Array{Int,1},xx::Array{Float64,1})
 
     # Initilize Variables
     smolyakpoly=Array{Float64}(undef,ngrid)
@@ -180,8 +237,23 @@ function smolyakpoly(nmsv::Int,ngrid::Int,nindplus::Int,indplus::Array{Int},xx::
 
 end
 
+"""
+    sparsegrid(nmsv::Int,nindplus::Int,ngrid::Int,indplus::Array{Int})
 
-function sparsegrid(nmsv::Int,nindplus::Int,ngrid::Int,indplus::Array{Int})
+Returns Smolyak grid points and Smolyak matrix bbt and its inverse. bbt is the matrix of Smolyak basis functions and xgrid the matrix of grid points.
+
+The bb matrix (in JMM 2013) contains the basis functions evaluated at one point along its rows.
+We compute its transpose (bbt) since we will use it to grab points in column major form later.
+We also need the inverse of bbt to update the polynomial coefficients.
+...
+# Arguments
+- `nmsv::Int`: Minimum number of state variables.
+- `nindplus::Int`: Number of variables to include up to fourth order in polynomial
+- `ngrid::Int`: Number of grid points.
+- `indplus::Array{Int, 1}`: Indicator array for variables that go to fourth order.
+...
+"""
+function sparsegrid(nmsv::Int,nindplus::Int,ngrid::Int,indplus::Array{Int,1})
 
     #Initilize Variables
     xgrid = zeros(nmsv,ngrid)
@@ -218,7 +290,10 @@ function sparsegrid(nmsv::Int,nindplus::Int,ngrid::Int,indplus::Array{Int})
 
 end
 
-
+"""
+    init_solution!(approx::SmolyakApproximation)
+Calculates the inital values for most of the values in the SmolyakApproximation object.
+"""
 function init_solution!(approx::SmolyakApproximation) # ! to indicate that this function mutates and input
 
     #I don't think we need to declare types of these in the future (may not even work)
