@@ -12,10 +12,26 @@ function init_observable_mappings!(m::GHLS)
 
         levels[:temp] = percapita(m, :GDP, levels)
         gdp = 1000 * nominal_to_real(:temp, levels)
-        oneqtrpctchange(gdp)
+        oneqtrpctchange(gdp)/100.0
+
     end
 
-    gdp_rev_transform = loggrowthtopct_annualized_percapita
+    function gdp_rev_transform(y::AbstractArray, pop_growth::AbstractVector)
+        # `y` is either a vector of length `nperiods` or an
+        # `ndraws` x `nperiods` matrix
+        if ndims(y) == 1
+            nperiods = length(y)
+        else
+            nperiods = size(y, 2)
+
+            # Transpose `pop_growth` to a 1 x `nperiods` row vector so it can be broadcasted to match the dimensions of `y`
+            pop_growth = pop_growth'
+        end
+
+        @assert length(pop_growth) == nperiods "Length of pop_growth ($(length(pop_growth))) must equal number of periods of y ($nperiods)"
+
+        100. * (exp.(y .+ pop_growth).^4 .- 1.)
+    end
 
     observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
                                        gdp_fwd_transform, gdp_rev_transform,
@@ -68,12 +84,12 @@ function init_observable_mappings!(m::GHLS)
         # TO:   Approximate quarter-to-quarter percent change of gdp deflator,
         #       i.e.  quarterly gdp deflator inflation
 
-        levels[:GDPDEF]
+        oneqtrpctchange(levels[:GDPDEF])
         #levels[:GDPDEF]
     end
 
 
-    gdpdeflator_rev_transform = loggrowthtopct_annualized
+    @inline gdpdeflator_rev_transform(y::AbstractArray) = 100. * exp.(y).^4 .- 1.
 
     observables[:obs_gdpdeflator] = Observable(:obs_gdpdeflator, [:GDPDEF__FRED],
                                                gdpdeflator_fwd_transform, gdpdeflator_rev_transform,
@@ -89,10 +105,10 @@ function init_observable_mappings!(m::GHLS)
         #       quarterly frequency at an annual rate)
         # TO:   Nominal effective fed funds rate, at a quarterly rate
 
-        annualtoquarter(levels[:DFF])
+        log(1.0 + annualtoquarter(levels[:DFF]))
     end
 
-    nominalrate_rev_transform = quartertoannual
+    @inline nominalrate_rev_transform(v) = quartertoannual(exp.(v)-1.0)
 
     observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:DFF__FRED],
                                                nominalrate_fwd_transform, nominalrate_rev_transform,
@@ -110,10 +126,25 @@ function init_observable_mappings!(m::GHLS)
 
         levels[:temp] = percapita(m, :PCE, levels)
         cons = 1000 * nominal_to_real(:temp, levels)
-        oneqtrpctchange(cons)
+        oneqtrpctchange(cons) / 100.0
     end
 
-    consumption_rev_transform = loggrowthtopct_annualized_percapita
+    function consumption_rev_transform(y::AbstractArray, pop_growth::AbstractVector)
+        # `y` is either a vector of length `nperiods` or an
+        # `ndraws` x `nperiods` matrix
+        if ndims(y) == 1
+            nperiods = length(y)
+        else
+            nperiods = size(y, 2)
+
+            # Transpose `pop_growth` to a 1 x `nperiods` row vector so it can be broadcasted to match the dimensions of `y`
+            pop_growth = pop_growth'
+        end
+
+        @assert length(pop_growth) == nperiods "Length of pop_growth ($(length(pop_growth))) must equal number of periods of y ($nperiods)"
+
+        100. * (exp.(y .+ pop_growth).^4 .- 1.)
+    end
 
     observables[:obs_consumption] = Observable(:obs_consumption, [:PCE__FRED, population_mnemonic],
                                                consumption_fwd_transform, consumption_rev_transform,
