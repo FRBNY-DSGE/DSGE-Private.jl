@@ -47,7 +47,7 @@ Computes the position of the regime and position on exogenous grid.  Hard-wired 
 - `nlength::Int64`: Length of exogenous processes.
 ...
 """
-function exogposition(exogvec::Array{Int64, 1}, nrvec::Array{Int64, 1}, nlength::Int64)
+function exogposition(exogvec::Array{Int64, 1}, nrvec::Array{Int64, 2}, nlength::Int64)
 
     #Initilize variables
     exogposition =0

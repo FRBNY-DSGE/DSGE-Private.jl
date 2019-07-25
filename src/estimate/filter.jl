@@ -152,6 +152,30 @@ function filter_likelihood(m::GHLS, df::DataFrame, Φ::Function, Ψ::Function,
     data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
     start_date = max(date_presample_start(m), df[1, :date])
 
+    # Transforming data to align with GHLS observables
+
+    ## Getting proper indices in matrix for GHLS model
+    #for i in 1:length(names(df))
+    #    findall(x->x==names(df)[i],
+
+    #names(df) %in% [:obs_gdp, :obs_gdpdeflator, ]
+
+    gdp_ind = 1
+    inf_ind = 2
+    nom_ind = 3
+    con_ind = 4
+    inv_ind = 5
+
+    #gdp_ind = findall(x->x==:obs_gdp, names(df))[1] - 1
+    #inf_ind = findall(x->x==:obs_gdpdeflator, names(df))[1] - 3
+    #nom_ind = findall(x->x==:obs_nominalrate, names(df))[1] - 3
+    #con_ind = findall(x->x==:obs_consumption, names(df))[1] - 3
+    #inv_ind = findall(x->x==:obs_investment, names(df))[1] - 3
+
+    println("Hello?")
+    data[inf_ind,:] = log.(data[inf_ind,:] ./ 100.0 .+ 1.0)
+    data[nom_ind,:] = log.(data[nom_ind,:] ./ 100.0 .+ 1.0)
+
     filter_likelihood(m, data, Φ, Ψ, F_ϵ, F_u, s_0, P_0; start_date = start_date,
                       include_presample = include_presample, tol = tol)
 end
@@ -170,6 +194,15 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
     # Specify number of presample periods if we don't want to include them in
     # the final results
     Nt0 = include_presample ? 0 : n_presample_periods(m)
+
+    gdp_ind = 1
+    inf_ind = 2
+    nom_ind = 3
+    con_ind = 4
+    inv_ind = 5
+
+    data[inf_ind,:] = log.(data[inf_ind,:] ./ 100.0 .+ 1.0)
+    data[nom_ind,:] = log.(data[nom_ind,:] ./ 100.0 .+ 1.0)
 
     # Steady states are in logged form but when passed to decr are treated as if were not logged already so need to take exponential
     steady_states = exp.([i.value for i in m.steady_state[1:m.approx.nvars]])
