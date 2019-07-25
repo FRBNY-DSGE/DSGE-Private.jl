@@ -94,7 +94,7 @@ Sets grid size for exogenous shocks.
 - `nshockgrid::Array{Int,1}`: Vector containing grid size for each shock.
 ...
 """
-function setgridsize(nexog::Int,nshockgrid::Array{Int,1})
+function setgridsize(nexog::Int,nshockgrid::Array{Int,2})
 
     nexogshock = 0
     for i in 1:nexog
@@ -129,7 +129,7 @@ Returns the matrix of index values for each shock in the grid. The grid has a to
 - `ns::Int`: Total number of grid points.
 ...
 """
-function exoggridindex(ngrid::Array{Int,1},nexog::Int,ns::Int)
+function exoggridindex(ngrid::Array{Int,2},nexog::Int,ns::Int)
 
     #Initilize Variables
     exoggridindex = zeros(Int,nexog,ns)
