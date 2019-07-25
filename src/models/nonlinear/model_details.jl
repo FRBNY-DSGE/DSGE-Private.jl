@@ -83,7 +83,7 @@ Returns endogenous variables and shock values given their lagged values and poly
       `nvars::Int`: Number of endogenous variables.
       `nexog::Int`: Number of exogenous shocks.
       `nfunc::Int`: Number of functions approximated.
-      Model parameters, inclduing m[:labss], the steady state of labor
+      Model parameters, including m[:labss], the steady state of labor
       Endogenous variables and shock values
 - `endogvarm1::Array{Float64, 1}`: Lagged endogenous variables and shock values.
 - `currentshockvalues::Array{Float64, 1}`: Current shock values.
@@ -249,6 +249,8 @@ function decr(m::GHLS,endogvarm1::Array{Float64,1},innovations::Array{Float64,1}
     stateindex1 = exogposition(shockindexall,m.approx.nshockgrid,m.approx.nexog-m.approx.nexogcont)
     funcmat = zeros(m.approx.nfunc,m.approx.ninter)
     weightvec = zeros(m.approx.ninter)
+
+    #Log the minimum state variables
     lmsv[1:m.approx.nmsv] = log.(endogvarm1[1:m.approx.nmsv])
     if (m.approx.nexogcont > 0)
         lmsv[m.approx.nmsv+1:m.approx.nmsv+m.approx.nexogcont] = currentshockvalues[m.approx.nexog-m.approx.nexogcont+1:m.approx.nexog]
