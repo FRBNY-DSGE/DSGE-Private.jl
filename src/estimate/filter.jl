@@ -209,7 +209,7 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
     s0 = append!(s0, zeros(m.approx.nexog))
     lagged_variable_indices = [m.endogenous_states[:y_t], m.endogenous_states[:c_t], m.endogenous_states[:i_t]]
     s0 = append!(s0, s0[lagged_variable_indices])
-    s0 = append!s0, 0.0) #for innovation
+    s0 = append!(s0, 0.0) #for innovation
     s_init = initialize_state_draws(s0, F_ϵ, Φ, m[:n_particles].value)
     println("tpf runs")
     # Run Tempered Particle filter, returns log-likelihoods
