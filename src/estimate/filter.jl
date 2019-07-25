@@ -155,6 +155,8 @@ function filter_likelihood(m::GHLS, df::DataFrame, Φ::Function, Ψ::Function,
     # Transforming data to align with GHLS observables
 
     ## Getting proper indices in matrix for GHLS model
+    #relevant = names(df)
+    #for i in 1:
     #for i in 1:length(names(df))
     #    findall(x->x==names(df)[i],
 
@@ -171,10 +173,6 @@ function filter_likelihood(m::GHLS, df::DataFrame, Φ::Function, Ψ::Function,
     #nom_ind = findall(x->x==:obs_nominalrate, names(df))[1] - 3
     #con_ind = findall(x->x==:obs_consumption, names(df))[1] - 3
     #inv_ind = findall(x->x==:obs_investment, names(df))[1] - 3
-
-    println("Hello?")
-    data[inf_ind,:] = log.(data[inf_ind,:] ./ 100.0 .+ 1.0)
-    data[nom_ind,:] = log.(data[nom_ind,:] ./ 100.0 .+ 1.0)
 
     filter_likelihood(m, data, Φ, Ψ, F_ϵ, F_u, s_0, P_0; start_date = start_date,
                       include_presample = include_presample, tol = tol)
