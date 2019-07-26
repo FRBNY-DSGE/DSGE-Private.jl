@@ -274,9 +274,9 @@ function model_settings!(m::PoolModel)
     m <= Setting(:cond_semi_names, [:obs_nominalrate],
         "Observables used in semiconditional forecasts")
 
-    # Metropolis-Hastings
-    m <= Setting(:mh_cc, 0.27,
-                 "Jump size for Metropolis-Hastings (after initialization)")
+    # SMC estimation
+    m <= Setting(:sampling_method, :SMC)
+    m <= Setting(:n_particles, 2000)
 
     # Forecast
     m <= Setting(:use_population_forecast, true,
@@ -331,7 +331,7 @@ function init_statespace!(m::PoolModel{T}) where T<:AbstractFloat
     for (i,key) in enumerate(keys(m.models))
         pred_dens_mat[:,i] = m.cond_pred_dens[key]
     end
-    pred_dens_mat = reshape(pred_dens_mat, length(m.models), m.periods)
+    pred_dens_mat = Matrix{T}(pred_dens_mat')
 
     @inline Ψ(x::Vector{T}, t::Int64) = dot(pred_dens_mat[:,t], x)
     m.statespace[:Ψ] = Ψ

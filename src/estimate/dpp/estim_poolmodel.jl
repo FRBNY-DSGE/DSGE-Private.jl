@@ -1,9 +1,9 @@
-using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots
+using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots, Dates, StateSpaceRoutines, Random, MAT, Distributions
 # This script estimates in real time
 
 filepath = dirname(@__FILE__)
-savepath = "$filepath/../../../test/estimate/dpp/save/"
-datapath = "$filepath/../../../test/estimate/dpp/save/input_data/"
+savepath = "$(filepath)/../../../test/estimate/dpp/save/"
+datapath = "$(filepath)/../../../test/estimate/dpp/save/input_data/"
 vint = "990110"
 iter = 1
 prev = 980110
@@ -21,17 +21,17 @@ end
 
 # Read in data for models
 y1 = CSV.read(get_setting(m1, :dataroot) * "realtime_spec=m805_hp=true_vint=170410.csv")
-datevec = y1.date[y1.date .>= Date("1991-12-31")]
-y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+datevec = y1.date[y1.date .>= Date("1991-06-30")]
+y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-06-30"),:])[:,2:end]') # subset for desired data
 y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
-y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-06-30"),:])[:,2:end]') # subset for desired data
 datevec = datevec[1:78]
 
 # Load loglhs here, second number is the data type, 1 -> no conditional on rate exp,
 # 4 -> conditional on rate exp
 # Based on the online appendix, it appears we should not condition on rate expectations
-# file_log1_1 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
-# file_log2_1 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+# file_log1_1 = "m805_preddens/logscores_T0=1991-06-30_T=2016-06-30_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+# file_log2_1 = "m904_preddens/logscores_T0=1991-06-30_T=2016-06-30_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
 # loglhs1_1 = load(get_setting(m1, :dataroot) * file_log1_1)["logscores"]
 # loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
 # loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
@@ -44,30 +44,72 @@ periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
                Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = false)
 
+# Construct save path
+filepath = dirname(@__FILE__)
+pm <= Setting(:saveroot, "$(filepath)/save")
+
 # Construct real time estimation of lambda (evolution over time)
 h = get_forecast_horizon(pm)
 T = get_periods(pm)
-λmat = Dict{Int64, Vector{Float64}}()
-λhat_t = Vector{Float64}(undef,T) # E[λ_t|I_t^P, P]
-λhat_tplush = Vector{Float64}(undef,T) # E[λ_{t+h}|I_t^P, P]
-λ_plots = Dict{Int64,Any}()
-dpp_loglhs = Vector{Float64}(undef,T)
+data = zeros(1,T)
+print("Starting to run SMC\n")
 Random.seed!(1793)
 for t in 1:T
     # run smc estimation
-    estimate(pm, data[:,1:t])
+    estimate(pm, data[:,1:t]; filestring_addl = ["period=$(t)", "preddens=wrongorigmatlab"])
+end
 
+
+# analyze smc output
+λvec = Dict{Int64, Vector{Float64}}()
+λhat_t = Vector{Float64}(undef,T) # E[λ_t|I_t^P, P]
+λhat_tplush = Vector{Float64}(undef,T) # E[λ_{t+h}|I_t^P, P]
+for t in 1:T
     # for each theta particle, draw a random lambda particle's path
     # over 1:t from the likelihood particle filter
     # and choose only the time t set of theta particles
-    θmat = load_draws(pm) # since resample from posterior, these particles should have equal weight
+    θmat = load_draws(pm, :full; filestring_addl = ["period=$(t)", "preddens=wrongorigmatlab"]) # since resample from posterior, these particles should have equal weight
 
     # given posterior distribution of θ, sample λ
-    λmat[t] = sample_λ(pm, θmat, t)
-    λhat_tplush[t], λhat_t[t] = compute_Eλ(pm, λmat)
+    λvec[t] = sample_λ(pm, θmat, t)
+    λhat_tplush[t], λhat_t[t] = compute_Eλ(pm, λvec)
+end
+dpp_preddens = @. λhat_tplush * get_cond_pred_dens(pm, :Model904) +
+    (1 - λhat_tplush) * get_cond_pred_dens(pm, :Model805)
+
+λ_t_evol = Matrix{Float64}(undef,length(λvec[1]),T)
+datemat = Matrix{Date}(undef,length(λvec[1]),T)
+for t in 1:T
+    λ_t_evol[:,t] = λvec[t]
+    datemat[:,t] .= datevec[t]
+end
+
+# save analysis
+analysis_savefile = saveroot(m)
+restofsave = "/output_data/poolmodel/ss0/estimate/work/"
+jldopen(analysis_savefile * restofsave * "analyze_realtime_estimation_preddens=wrongorigmatlab.jld2", true, true, true, IOStream) do file
+    file["lambda_t_evol"] = λ_t_evol
+    file["datemat"] = datemat
+    file["datevec"] = datevec
+    file["dpp_preddens"] = dpp_preddens
+    file["lambdahat_t"] = λhat_t
+    file["lambdahat_tplush"] = λhat_tplush
 end
 
 # Plot!
-# hist_post_λ_evol = plot_posterior_λ_evolution(pm, λmat[t])
-# pc = load(get_setting(pm, :saveroot) * "smc.jld2")
-# plot_post_θ = plot_posterior_hyperparameter(pm, pc)
+gr()
+plot1 = plot(datevec, λhat_t)
+plot2 = plot(datevec, λhat_tplush)
+plot3 = plot(datevec, [log.(dpp_preddens), log.(get_cond_pred_dens(pm, :Model805)),
+                       log.(get_cond_pred_dens(pm, :Model805))],
+             xlabel = "Date",
+             ylabel = "Log predictive densities",
+             plot_title = "Log score comparison for SWFF vs. SWπ",
+             label = ["DP", "SW Inflation", "SWFF"],
+             legend = :bottomleft)
+plot4 = heatmap_posterior_λ_evolution(pm, datevec, λ_t_evol)
+
+png(plot1, analysis_savefile * restofsave * "lambdahat_t_preddens=wrongorigmatlab.png")
+png(plot2, analysis_savefile * restofsave * "lambdahat_tplush_preddens=wrongorigmatlab.png")
+png(plot3, analysis_savefile * restofsave * "log_pred_dens_compare_preddens=wrongorigmatlab.png")
+png(plot4, analysis_savefile * restofsave * "heatmap_posterior_lambda_t_preddens=wrongorigmatlab.png")

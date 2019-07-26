@@ -34,13 +34,13 @@ particle in `θs`, which represents the posterior distribution.
 """
 function sample_λ(m::PoolModel{T}, θs::Matrix{T}, T::Int64 = -1;
                   parallel::Bool = true) where T<:AbstractFloat
-    # Check size and orientation of θs is correct: assume parameter_num x particle_num
+    # Check size and orientation of θs is correct: assume particle_num x parameter_num
     if length(m.parameters) != size(θs,1)
         error("number of parameters in PoolModel do not match number of parameters in matrix of posterior draws of θ")
     end
 
     # Initialize necessary objects
-    λ_sample = parallel ? SharedVector{Float64}(undef, size(θs,2)) : Vector{Float64}(undef, size(θs,2))
+    λ_sample = parallel ? SharedVector{Float64}(undef, size(θs,1)) : Vector{Float64}(undef, size(θs,1))
     if parallel
         θs_share = SharedArray(θs)
     end
@@ -50,8 +50,8 @@ function sample_λ(m::PoolModel{T}, θs::Matrix{T}, T::Int64 = -1;
 
     # Sample from p(λ|θ, I_t^P, P) for each θ in posterior
     if parallel
-        @distributed for i in 1:size(θs_share,2)
-            m.update!(θs_share[:,i])
+        @distributed for i in 1:size(θs_share,1)
+            m.update!(vec(θs_share[i,:]))
             tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
             tuning[:get_t_particle_dist] = true
             tuning[:allout] = false
@@ -61,7 +61,7 @@ function sample_λ(m::PoolModel{T}, θs::Matrix{T}, T::Int64 = -1;
         λ_sample = Array(λ_sample)
     else
         for i in 1:size(θs,2)
-            m.update!(θs[:,i])
+            m.update!(vec(θs[i,:]))
             tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
             tuning[:get_t_particle_dist] = true
             tuning[:allout] = false
@@ -75,7 +75,7 @@ end
 
 """
 ```
-compute_Eλ(m, λmat, weights = []; current_period = true, parallel = true) where T<:AbstractFloat
+compute_Eλ(m, λvec, weights = []; current_period = true, parallel = true) where T<:AbstractFloat
 ```
 
 Computes and samples from the conditional density p(λ_t|θ, I_t, P) for
@@ -84,7 +84,7 @@ particle in `θs`, which represents the posterior distribution.
 ### Inputs
 
 - `m::PoolModel{T}`: `PoolModel` object
-- `λmat::Vector{T}`: vector of particles of λ samples from (θ,λ) joint distribution
+- `λvec::Vector{T}`: vector of particles of λ samples from (θ,λ) joint distribution
 - `weights::Vector{T}`: weights of λ particles, defaults to equal weights
 
 ### Keyword Argument
@@ -100,24 +100,24 @@ particle in `θs`, which represents the posterior distribution.
 
 ```
 """
-function compute_Eλ(m::PoolModel{T}, λmat::Vector{T}, weights::Vector{T} = Vector{Float64}(undef,0);
+function compute_Eλ(m::PoolModel{T}, λvec ::Vector{T}, weights::Vector{T} = Vector{Float64}(undef,0);
                     current_period::Bool = true, parallel::Bool = false) where T<:AbstractFloat
 
     # Set up
     if isempty(weights)
-        weights = ones(length(λmat)) # assume equal weights
+        weights = ones(length(λvec)) # assume equal weights
     end
-    λ_mat = parallel ? SharedArray(λmat) : copy(λmat) # so we don't alter this matrix in place
-    n_particles = length(λ_mat)
+    λ_vec = parallel ? SharedArray(λvec) : copy(λvec) # so we don't alter this vector in place
+    n_particles = length(λ_vec)
     h = get_forecast_horizon(m)
-    λhat_t = if current_period mean(λ_mat .* weights) end # compute expected lambda in current period t
+    λhat_t = if current_period mean(λ_vec .* weights) end # compute expected lambda in current period t
 
     # Push forward states and compute mean
     if parallel
         λhat_tplush = @sync @distributed (+) for i in 1:n_particles
             ϵ = rand(get_F_ϵ(pm), h)
             for j in 1:h
-                λ_mat[i] = get_Φ(pm)([λ_mat[i]; 1 - λ_mat[i]], [ϵ[j]])
+                λ_vec[i] = get_Φ(pm)([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])
             end
         end
         λhat_tplush /= n_particles
@@ -125,10 +125,10 @@ function compute_Eλ(m::PoolModel{T}, λmat::Vector{T}, weights::Vector{T} = Vec
         for i in 1:n_particles
             ϵ = rand(get_F_ϵ(pm), h) # h is small, so this is not expensive to loop through
             for j in 1:h
-                λ_mat[i] = get_Φ(pm)([λ_mat[i]; 1 - λ_mat[i]], [ϵ[j]])
+                λ_vec[i] = get_Φ(pm)([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])
             end
         end
-        λhat_tplush = mean(λ_mat .* weights)
+        λhat_tplush = mean(λ_vec .* weights)
     end
 
     if current_period

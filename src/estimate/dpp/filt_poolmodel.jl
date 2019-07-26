@@ -21,16 +21,16 @@ end
 
 # Read in data for models
 y1 = CSV.read(get_setting(m1, :dataroot) * "realtime_spec=m805_hp=true_vint=170410.csv")
-datevec = y1.date[y1.date .>= Date("1991-12-31")]
-y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+datevec = y1.date[y1.date .>= Date("1991-06-30")]
+y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-06-30"),:])[:,2:end]') # subset for desired data
 y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
-y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-06-30"),:])[:,2:end]') # subset for desired data
 
 # Load loglhs here, second number is the data type, 1 -> no conditional on rate exp,
 # 4 -> conditional on rate exp
 # Based on the online appendix, it appears we should not condition on rate expectations
-file_log1_1 = "m805_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
-file_log2_1 = "m904_preddens/logscores_T0=1991-12-31_T=2016-12-31_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+file_log1_1 = "m805_preddens/logscores_T0=1991-06-30_T=2016-06-30_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
+file_log2_1 = "m904_preddens/logscores_T0=1991-06-30_T=2016-06-30_cond=semi_data=1_est=2_hor=4_samp=SMC.jld2"
 loglhs1_1 = load(get_setting(m1, :dataroot) * file_log1_1)["logscores"]
 loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
 loglhs1_1 = vec(mean(loglhs1_1, dims = 1))

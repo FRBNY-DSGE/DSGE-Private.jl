@@ -3,12 +3,12 @@ using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots, StateSpaceRoutines, Dates
 # particle filtering used by the Matlab code
 
 # matlab values
-mat_n_particles = 1000
-mat_ρ = 0.9
+mat_n_particles = 5000
+mat_ρ = 0.5
 mat_μ = 0.
 mat_σ = 1.
 mat_seed = 1793 # this probably doesn't work cuz they have different rng probably
-mat_T = 1
+mat_T = 5
 
 filepath = dirname(@__FILE__)
 savefile = "$filepath/save/julia_rep_mat.jld2"
@@ -31,22 +31,23 @@ end
 
 # Read in data for models
 y1 = CSV.read(get_setting(m1, :dataroot) * "realtime_spec=m805_hp=true_vint=170410.csv")
-datevec = Vector{Date}(y1.date[y1.date .>= Date("1991-12-31")])
-y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+datevec = Vector{Date}(y1.date[y1.date .>= Date("1991-06-30")])
+y1 = Matrix{Float64}(Matrix(y1[y1.date .>= Date("1991-06-30"),:])[:,2:end]') # subset for desired data
 y2 = CSV.read(get_setting(m2, :dataroot) * "realtime_spec=m904_hp=true_vint=170410.csv")
-y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-12-31"),:])[:,2:end]') # subset for desired data
+y2 = Matrix{Float64}(Matrix(y2[y2.date .>= Date("1991-06-30"),:])[:,2:end]') # subset for desired data
 datevec = datevec[1:78]
 matdata = matread(dataroot * "pred_dens_wrong.mat")
 preddens1_1 = vec(matdata["p805"])
 preddens2_1 = vec(matdata["p904"])
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
-               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = true)
+               Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = false)
 saveroot = "$filepath/../../../test/estimate/dpp/save/"
 jld_data = load("$filepath/../../../test/reference/tpf_poolmodel.jld2")
 tuning = jld_data["tuning"]
 tuning[:get_t_particle_dist] = true
 tuning[:allout] = true
+tuning[:parallel] = true
 tuning[:n_particles] = mat_n_particles
 pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
 pm <= Setting(:sampling_method, :MH)
@@ -56,11 +57,11 @@ pm[:μ].value = mat_μ
 pm[:σ].value = mat_σ
 
 T = length(datevec)
-λhat_t = zeros(T)
-λhat_tplush = zeros(T)
+λhat_t = zeros(mat_T)
+λhat_tplush = zeros(mat_T)
 Random.seed!(mat_seed)
 ~, ~, ~, λ_particle_dist, λ_weights = DSGE.filter(pm, zeros(1,mat_T); tuning = tuning)
-for t in 1:T
+for t in mat_T:mat_T
     λhat_t[t] = mean(vec(λ_particle_dist[t][1,:]) .* λ_weights[:,t]) # get ̂λ_{t|t} before mutating particle distribution in period t
     for j in 1:get_forecast_horizon(pm)
         ϵ = rand(get_F_ϵ(pm), n_particles)
@@ -70,7 +71,7 @@ for t in 1:T
     end
     λhat_tplush[t] = mean(vec(λ_particle_dist[t][1,:]) .* λ_weights[:,t])
 end
-dpp_preddens = λhat_tplush .* preddens2_1 + (1 .- λhat_tplush) .* preddens1_1
+# dpp_preddens = λhat_tplush .* preddens2_1 + (1 .- λhat_tplush) .* preddens1_1
 
 gr()
 # plot1 = plot(datevec, λhat_t)
@@ -82,14 +83,17 @@ gr()
 #              label = ["DP", "SW Inflation", "SWFF"],
 #              legend = :bottomleft)
 
-λ_t_evol = zeros(n_particles, T)
-datemat = Matrix{Date}(undef,n_particles,T)
-for t in 1:T
+λ_t_evol = zeros(n_particles, mat_T)
+datemat = Matrix{Date}(undef,n_particles,mat_T)
+for t in 1:mat_T
     λ_t_evol[:,t] = vec(λ_particle_dist[t][1,:])
     datemat[:,t] .= datevec[t]
 end
 
-save(savefile, "particle_dist", λ_particle_dist, "weights", λ_weights, "preddens805", preddens1_1, "preddens904", preddens2_1, "lambda_evol", λ_t_evol, "datemat", datemat, "datevec", datevec)
+i = 0
+i += 1; histogram(λ_particle_dist[i][1,:]; weights = λ_weights[:,i], nbins = 15)
+
+# save(savefile, "particle_dist", λ_particle_dist, "weights", λ_weights, "preddens805", preddens1_1, "preddens904", preddens2_1, "lambda_evol", λ_t_evol, "datemat", datemat, "datevec", datevec)
 
 # plot4 = heatmap_posterior_λ_evolution(pm, datevec, λ_t_evol, λ_weights)
 # plot5, λedges, dates, λwts, λmodes = surface_posterior_λ_evolution(pm, datevec, λ_t_evol, λ_weights)
