@@ -172,11 +172,11 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
     Nt0 = include_presample ? 0 : n_presample_periods(m)
 
     # Steady states are in logged form but when passed to decr are treated as if were not logged already so need to take exponential
-    s0 = exp.([i.value for i in m.steady_state[1:m.approx.nvars]]) #for endog var
-    s0 = append!(s0, zeros(m.approx.nexog)) #for shocks
+    s0 = exp.([i.value for i in m.steady_state[1:m.approx.nvars]])
+    append!(s0, zeros(m.approx.nexog))
     lagged_variable_indices = [m.endogenous_states[:y_t], m.endogenous_states[:c_t], m.endogenous_states[:i_t]]
-    s0 = append!(s0, s0[lagged_variable_indices]) #for necessary lags
-    s_init = initialize_state_draws(s0, F_ϵ, Φ,1000)# m[:n_particles].value)
+    append!(s0, s0[lagged_variable_indices]) # for necessary lags
+    s_init = initialize_state_draws(s0, F_ϵ, Φ, 1000)# m[:n_particles].value)
     println("tpf runs")
     # Run Tempered Particle filter, returns log-likelihoods
     loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,

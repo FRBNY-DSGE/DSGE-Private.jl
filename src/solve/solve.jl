@@ -59,7 +59,7 @@ end
 
 function solve(m::GHLS, parallel::Bool=true)
 
-    m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m)
+    m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m.approx,m.parameters,m.keys)
 
     m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = simulate_linear(m)
 
@@ -178,7 +178,7 @@ function fixedpoint(m::GHLS, α_initial::Array{Float64,2})
 
             # Update polynomials using new guess for α
             for k in 1:m.approx.ngrid
-                updated_approx_polynomials[:, k], err2 = decr_euler(m, k, j, α_star)
+                updated_approx_polynomials[:, k], err2 = decr_euler(m.approx, k, j, m.parameters, m.keys, α_star, m[:labss], m.exogenous_shocks, m.endogenous_states)
                 err += err2
             end
 
@@ -299,7 +299,7 @@ function simulate_linear(m::GHLS)
             end
 
             #THIS SHOULD BE DONE DIFFERENTLY HERE
-            endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1],innovations,m,sigma,pp)
+            endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1],innovations,m.approx.nvars,m.approx.nexog,sigma,pp,m.steady_state)
 
             # Account for ZLB, why is this not 1 though?
             if (endogvar[5,ttsim] < 0.0)
@@ -471,7 +471,7 @@ function parallel_help(m::GHLS,α_star::Array{Float64,2},j::Int)
 
     # Update polynomials using new guess for α
     for k in 1:m.approx.ngrid
-        updated_approx_polynomials[:, k], err2 = decr_euler(m, k, j, α_star)
+        updated_approx_polynomials[:, k], err2 = decr_euler(m.approx, k, j, m.parameters, m.keys, α_star, m[:labss], m.exogenous_shocks, m.endogenous_states)
         err += err2
     end
 
