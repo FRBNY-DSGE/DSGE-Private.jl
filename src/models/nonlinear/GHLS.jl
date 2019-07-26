@@ -117,7 +117,7 @@ Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
 function init_model_indices!(m::GHLS)
-    # Endogenous states
+    # Endogenous states, note ztil_t is techshock
     endogenous_states = [[
         :k_t, :c_t, :i_t, :w_t, :rm_t, :π_t, :y_t, :x_t, :R_t, :λc, :qk_t, :L_t, :u_t, :mc_t, :rk_t, :muc_t, :Vi_t, :Vp_t, :Vw_t, :π_w, :bc_t, :bi_t, :b_t, :μ_t, :ztil_t, :mon_t, :g_t, :elast_t, :elastw_t, :unk_t, :y_t1, :c_t1, :i_t1, :w_t1, :Ei_t, :Erk_t, :Ec_t, :EVw_t, :Etechshock_t, :Eπ_t, :Eqk_t, :Eλ_c];
         [Symbol("rm_tl$i") for i = 1:n_anticipated_shocks(m)]]

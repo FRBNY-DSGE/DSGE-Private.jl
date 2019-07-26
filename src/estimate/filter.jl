@@ -152,28 +152,6 @@ function filter_likelihood(m::GHLS, df::DataFrame, Φ::Function, Ψ::Function,
     data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
     start_date = max(date_presample_start(m), df[1, :date])
 
-    # Transforming data to align with GHLS observables
-
-    ## Getting proper indices in matrix for GHLS model
-    #relevant = names(df)
-    #for i in 1:
-    #for i in 1:length(names(df))
-    #    findall(x->x==names(df)[i],
-
-    #names(df) %in% [:obs_gdp, :obs_gdpdeflator, ]
-
-    gdp_ind = 1
-    inf_ind = 2
-    nom_ind = 3
-    con_ind = 4
-    inv_ind = 5
-
-    #gdp_ind = findall(x->x==:obs_gdp, names(df))[1] - 1
-    #inf_ind = findall(x->x==:obs_gdpdeflator, names(df))[1] - 3
-    #nom_ind = findall(x->x==:obs_nominalrate, names(df))[1] - 3
-    #con_ind = findall(x->x==:obs_consumption, names(df))[1] - 3
-    #inv_ind = findall(x->x==:obs_investment, names(df))[1] - 3
-
     filter_likelihood(m, data, Φ, Ψ, F_ϵ, F_u, s_0, P_0; start_date = start_date,
                       include_presample = include_presample, tol = tol)
 end
@@ -193,22 +171,12 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
     # the final results
     Nt0 = include_presample ? 0 : n_presample_periods(m)
 
-    gdp_ind = 1
-    inf_ind = 2
-    nom_ind = 3
-    con_ind = 4
-    inv_ind = 5
-
-    data[inf_ind,:] = log.(data[inf_ind,:] ./ 100.0 .+ 1.0)
-    data[nom_ind,:] = log.(data[nom_ind,:] ./ 100.0 .+ 1.0)
-
     # Steady states are in logged form but when passed to decr are treated as if were not logged already so need to take exponential
-    s0 = exp.([i.value for i in m.steady_state[1:m.approx.nvars]])
-    s0 = append!(s0, zeros(m.approx.nexog))
+    s0 = exp.([i.value for i in m.steady_state[1:m.approx.nvars]]) #for endog var
+    s0 = append!(s0, zeros(m.approx.nexog)) #for shocks
     lagged_variable_indices = [m.endogenous_states[:y_t], m.endogenous_states[:c_t], m.endogenous_states[:i_t]]
-    s0 = append!(s0, s0[lagged_variable_indices])
-    s0 = append!(s0, 0.0) #for innovation
-    s_init = initialize_state_draws(s0, F_ϵ, Φ, 1000)# m[:n_particles].value)
+    s0 = append!(s0, s0[lagged_variable_indices]) #for necessary lags
+    s_init = initialize_state_draws(s0, F_ϵ, Φ,1000)# m[:n_particles].value)
     println("tpf runs")
     # Run Tempered Particle filter, returns log-likelihoods
     loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,

@@ -198,7 +198,7 @@ function compute_system(m::GHLS; apply_altpolicy = false,
     EE = m_e * diagm([m[:e_y].value, m[:e_π].value, m[:e_R].value, m[:e_c].value, m[:e_i].value])
 
     # Define transition and measurement functions
-    @inline Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64}) = append!(append!(decr(m,s_t1, ϵ_t, α_star), [s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]]), ϵ_t[m.exogenous_shocks[:ztil_sh]])
+    @inline Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64}) = append!(decr(m,s_t1, ϵ_t, α_star), [s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]])
     Ψ = measurement(m)
 
     # Define shock and measurement error distributions
