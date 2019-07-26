@@ -12,7 +12,7 @@ close(h5)
 m.approx.nshockgrid = [7 2 2 2 2 1]
 
 ### Test shock details against reference output
-exoggrid, shockbounds, shockdistance = get_shockdetails(m)
+exoggrid, shockbounds, shockdistance = get_shockdetails(m.approx,m.parameters,m.keys)
 
 h5 = h5open("$path/shockdetails.h5")
 exoggrid_ref = read(h5, "exoggrid")
@@ -49,7 +49,7 @@ h5 = h5open("$path/initialalphas.h5")
 α_initial_ref = read(h5, "initialalphas")
 close(h5)
 
-updated_approx_polynomials, err = decr_euler(m, 1, 1, α_initial_ref)
+updated_approx_polynomials, err = decr_euler(m.approx, 1, 1, m.parameters, m.keys, α_initial_ref, m[:labss], m.exogenous_shocks, m.endogenous_states)
 
 h5 = h5open("$path/decr_euler.h5")
 updated_approx_polynomials_ref = read(h5, "updated_approx_polynomials")
@@ -67,7 +67,7 @@ polyvar_ref = read(h5, "polyvar")
 endogvar_ref = read(h5, "endogvar")
 close(h5)
 
-endogvar = intermediatedec(m, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false)
+endogvar = intermediatedec(m.approx.nvars, m.approx.nexog, m.parameters, m[:labss], endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false, m.exogenous_shocks)
 
 @testset "Compare intermediate endogenous variables to reference output" begin
     @test endogvar_ref ≈ endogvar
@@ -79,7 +79,7 @@ innovations_ref = read(h5, "innovations")
 endogvarp_ref = read(h5, "endogvarp")
 close(h5)
 
-endogvarp = decr(m, endogvar_ref, innovations_ref, α_initial_ref)
+endogvarp = decr(m.approx, endogvar_ref, innovations_ref, m.parameters, m.keys, m[:labss], α_initial_ref, m.exogenous_shocks, m.endogenous_states)
 
 @testset "Compare decision rule output to reference output" begin
     @test endogvarp_ref ≈ endogvarp
@@ -111,7 +111,7 @@ pp_ref = read(h5, "pp")
 endogvarlin_ref = read(h5, "endogvarlin")
 close(h5)
 
-endogvarlin = decrlin(endogvarm1_ref, innovations_ref, m, sigma_ref, pp_ref)
+endogvarlin = decrlin(endogvarm1_ref, innovations_ref, m.approx.nvars, m.approx.nexog, sigma_ref, pp_ref, m.steady_state)
 
 @testset "Compare linearized decision rule to reference output" begin
     @test endogvarlin_ref ≈ endogvarlin
