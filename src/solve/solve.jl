@@ -59,7 +59,7 @@ end
 
 function solve(m::GHLS, parallel::Bool=true)
 
-    m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m.approx.number_shock_values, m.approx.nshockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog,m.parameters,m.keys)
+    m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m.approx.nexogcont, m.approx.number_shock_values, m.approx.nshockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog,m.parameters,m.keys)
 
     Γ0, Γ1, C, Ψ, Π = eqcond(m)
     TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = :high)

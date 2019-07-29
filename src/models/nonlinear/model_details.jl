@@ -93,12 +93,7 @@ Returns endogenous variables and shock values given their lagged values and poly
 - `zlbintermediate::Bool`: Indicator for whether there are two regimes for the polynomial or not.
 ...
 """
-function intermediatedec(nvars::Int,nexog::Int,labss::Float64,endogvarm1::Vector{Float64},currentshockvalues::Vector{Float64},polyvar::Vector{Float64},omegapoly::Float64,polyvarplus::Vector{Float64},zlbintermediate::Bool,exogenous_shocks::OrderedDict{Symbol,Int64}, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
-
-    #Input
-    keys = [i.key for i in params]
-    values = [i.value for i in params]
-    shrgy = values[findfirst(keys .== ":shrgy")]
+function intermediatedec(nvars::Int,nexog::Int,labss::Float64,endogvarm1::Vector{Float64},currentshockvalues::Vector{Float64},polyvar::Vector{Float64},omegapoly::Float64,polyvarplus::Vector{Float64},zlbintermediate::Bool,exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64}, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
 
     #Initilize Variables
     endogvar=Array{Float64}(undef,nvars+nexog)
@@ -106,7 +101,7 @@ function intermediatedec(nvars::Int,nexog::Int,labss::Float64,endogvarm1::Vector
     invshk = exp(currentshockvalues[exogenous_shocks[:μ_sh]])
     techshk = exp(currentshockvalues[exogenous_shocks[:ztil_sh]])
     rrshk = currentshockvalues[exogenous_shocks[:rm_sh]]
-    gss = 1.0/(1.0-shrgy)
+    gss = 1.0/(1.0-params[keys[:shrgy]])
     gshk = exp( log(gss) + currentshockvalues[exogenous_shocks[:g_sh]] )
     ashk = exp(0) # Which of the last 3 shocks is this?
 
@@ -141,7 +136,7 @@ function intermediatedec(nvars::Int,nexog::Int,labss::Float64,endogvarm1::Vector
     vw = (sqrt(1.0+4.0*bww)+1.0)/2.0
     dptildem1 = (params[keys[:π_bar]]^params[keys[:ap]])*(dpm1^(1.0-params[keys[:ap]]))
     dwtildem1 = (params[keys[:π_bar]]^params[keys[:aw]])*(dpm1^(1.0-params[keys[:aw]]))
-    gzwage = params[keys[:gz]]*techshk^(1.0-params[keys[:bw]])
+    gzwage = params[keys[:gz]]*techshk^(1.0-params[keys[:aw]]) #Note that aw should be bw but in steady state they are equal, might be better style to pass bw though
     dp = vp*dptildem1
     dw = vw*dwtildem1*gzwage
     muc = lam + (params[keys[:γ]]/params[keys[:gz]])*params[keys[:β]]*bc
@@ -190,7 +185,7 @@ The decision rule -- returns endogenous variables and shocks given lagged endoge
 - `alphacoeff::Arary{Float64, 2}`: Polynomial coefficients.
 ...
 """
-function decr(nvars::Int, nexog::Int, nexogcont::Int, nexogshock::Int, nfunc::Int, ninter::Int, nmsv::Int, ngrid::Int, nshockgrid::Array{Int, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Float64, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int, 1}, exoggrid::Array{Float64, 2},ns::Int, zlbswitch::Bool, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64})
+function decr(nvars::Int, nexog::Int, nexogcont::Int, nexogshock::Int, nfunc::Int, ninter::Int, nmsv::Int, ngrid::Int, nshockgrid::Array{Int, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int, 1}, exoggrid::Array{Float64, 2}, ns::Int, zlbswitch::Bool, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64})
 
     #Initilize Variables
     endogvar=Array{Float64}(undef,nvars+nexog)
@@ -396,10 +391,10 @@ function decr_euler(nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogco
     zlbintermediate = false  #force evaluation of 1 poly case at date t
     omegapoly = 1.0 #SET OMEGAPOLY TO 1 SINCE ZLBINTERMEDIATE IS FALSE
 
-    endogvar=intermediatedec(nvars,nexog, labss, endogvarm1,currentshockvalues, polyapp[1:nfunc],omegapoly,polyapp[1:nfunc],zlbintermediate, params, keys)
+    endogvar=intermediatedec(nvars,nexog, labss, endogvarm1,currentshockvalues, polyapp[1:nfunc],omegapoly,polyapp[1:nfunc],zlbintermediate, exogenous_shocks, params, keys)
 
     if ((zlbinfo != 0) & (zlbswitch == true))
-        endogvarzlb= intermediatedec(nvars,nexog, labss, endogvarm1,currentshockvalues, polyapp[nfunc+1:2*nfunc], omegapoly,polyapp[nfunc+1:2*nfunc],zlbintermediate, params, keys)
+        endogvarzlb= intermediatedec(nvars,nexog, labss, endogvarm1,currentshockvalues, polyapp[nfunc+1:2*nfunc], omegapoly,polyapp[nfunc+1:2*nfunc],zlbintermediate, exogenous_shocks, params, keys)
         endogvarzlb[9] = 1.0
     end
 
@@ -409,13 +404,13 @@ function decr_euler(nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogco
             innovations[nexog-nexogcont+1:nexog] =  ghnodes[nexogshock+1:nexogshock+nexogcont,ss]
         end
 
-        endogvarp=decr(nvars, nexog, nexogcont, nexogshock, nfunc, nmsv, ngrid, nshockgrid, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, exoggrid, ns, zlbswitch,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states) # NOT SURE WHAT TO DO WITH THIS
+        endogvarp=decr(nvars, nexog, nexogcont, nexogshock, nfunc, ninter, nmsv, ngrid, nshockgrid, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, exoggrid, ns, zlbswitch,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states) # NOT SURE WHAT TO DO WITH THIS
 
         techshkp = exp(endogvarp[25])
         invshkp = exp(endogvarp[24])
         ev[1] = endogvarp[10]/(endogvarp[6]*techshkp)
 
-        utilcostp = (params[keys[:rkss]]/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarp[13]-1.0))-1.0) # a(u_t)
+        utilcostp = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarp[13]-1.0))-1.0) # a(u_t)
         ev[2] = (endogvarp[10]/techshkp)*( (endogvarp[15]*endogvarp[13])-utilcostp+(1.0-params[keys[:δ]])*endogvarp[11])
         ev[3] = endogvarp[10]*(endogvarp[18]-1.0)*endogvarp[18]*endogvarp[7]
         ev[4] = (endogvarp[19]-1.0)*endogvarp[19]
@@ -423,9 +418,9 @@ function decr_euler(nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogco
         ev[6] = endogvarp[10]*endogvarp[11]*invshkp*(endogvarp[17]-1.0)*endogvarp[17]*endogvarp[17]
 
         if ((zlbinfo != 0) & (zlbswitch == true))
-            endogvarzlbp=decr(nvars, nexog, nexogcont, nexogshock, nfunc, nmsv, ngrid, nshockgrid, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, exoggrid, ns, zlbswitch,endogvarzlb,innovations, params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, test)
+            endogvarzlbp=decr(nvars, nexog, nexogcont, nexogshock, nfunc, ninter, nmsv, ngrid, nshockgrid, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, exoggrid, ns, zlbswitch,endogvarzlb,innovations, params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, test)
             ev[7] = endogvarzlbp[10]/(endogvarzlbp[6]*techshkp)
-            utilcostp = (params[keys[:rkss]]/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarzlbp[13]-1.0))-1.0)
+            utilcostp = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarzlbp[13]-1.0))-1.0)
             ev[8] = (endogvarzlbp[10]/techshkp)*( (endogvarzlbp[15]*endogvarzlbp[13])-utilcostp+(1-params[16])*endogvarzlbp[11] )
             ev[9] = endogvarzlbp[10]*(endogvarzlbp[18]-1.0)*endogvarzlbp[18]*endogvarzlbp[7]
             ev[10] = (endogvarzlbp[19]-1.0)*endogvarzlbp[19]
@@ -455,7 +450,7 @@ function decr_euler(nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogco
     polyappnew[4] = exp_eul[4]
     polyappnew[5] = log(exp_eul[5])
     polyappnew[6] = exp_eul[6]
-    polyappnew[7] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvar[15]/params[keys[:rkss]]) )
+    polyappnew[7] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvar[15]/rkss) )
 
     if ((zlbinfo != 0) & (zlbswitch == true))
         exp_eul[7] =  (params[keys[:β]]/params[keys[:gz]])*liqshk*endogvarzlb[9]*exp_var[7]
@@ -472,7 +467,7 @@ function decr_euler(nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogco
         polyappnew[11] = exp_eul[10]
         polyappnew[12] = log(exp_eul[11])
         polyappnew[13] = exp_eul[12]
-        polyappnew[14] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvarzlb[15]/params[keys[:rkss]]) )
+        polyappnew[14] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvarzlb[15]/rkss) )
     else
         exp_eul[7:12] = exp_eul[1:6]
         polyappnew[8:14] = polyappnew[1:7]
@@ -543,7 +538,7 @@ Get the markov processes for the shocks.
         - `exogvarinfo`
 ...
 """
-function get_shockdetails(number_shock_values::Int, nshockgrid::Array{Int,2}, exogvarinfo::Array{Int64, 2}, nexogshock::Int, ns::Int, nexog::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64})
+function get_shockdetails(nexogcont::Int, number_shock_values::Int, nshockgrid::Array{Int,2}, exogvarinfo::Array{Int64, 2}, nexogshock::Int, ns::Int, nexog::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
 
     #Initilize Variables
     shockbounds = Array{Float64}(undef,nexogshock,2)

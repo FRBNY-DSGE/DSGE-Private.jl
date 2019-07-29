@@ -55,9 +55,9 @@ Initializes the values in the SmolyakApproximation object to defaults
 """
 function SmolyakApproximation()
     #Initialize empty approximation object
-    approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
-                                           [0], [0.], [0.], [0.], false, [0.],
-                                           [0],[0.],[0.],[0.],[0.],[0.],[0.],
+    approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0 0],
+                                           [0 0], [0. 0.], [0. 0.], [0. 0.], false, [0. 0.],
+                                           [0 0],[0.],[0. 0.],[0.],[0. 0.],[0. 0.],[0.],
                                            [0.],0.,[0.],[0.],false,[0.])
     init_settings!(approx)
     init_solution!(approx)
@@ -171,7 +171,7 @@ function ghquadrature(nquadsingle::Int64,nexog::Int64)
     quadweights_s=zeros(nquadsingle)
     ghnodes=zeros(nexog,nquadsingle^nexog)#Not sure I should make this zeros
     ghweights_mat=zeros(nexog,nquadsingle^nexog)#Not sure I should make this zeros
-    ghweights=Array{Float64}(undef,nquadsingle^nexog)#Not sure I should make this zeros
+    ghweights=Array{Float64, 1}(undef,nquadsingle^nexog)#Not sure I should make this zeros
     #const const_pi = 3.14159265358979323846
     const_pi = 3.14159265358979323846
 
@@ -196,7 +196,7 @@ function ghquadrature(nquadsingle::Int64,nexog::Int64)
         end
     end
 
-    ghweights = (1.0/const_pi)^(nexog/2.0)*prod(ghweights_mat,dims=1) # product of ghweights_mat along the first dimension
+    ghweights = vec((1.0/const_pi)^(nexog/2.0)*prod(ghweights_mat,dims=1)) # product of ghweights_mat along the first dimension
 
     return nquad,ghnodes,ghweights
 
@@ -344,7 +344,6 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     #get quadrature nodes and weights
     nquadadj = approx.nexogshock+approx.nexogcont
     nquad,ghnodes,ghweights=ghquadrature(nquadsingle,nquadadj)
-
     approx.nquad = nquad
     approx.ghnodes = ghnodes
     approx.ghweights = ghweights

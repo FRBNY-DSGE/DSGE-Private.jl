@@ -15,7 +15,7 @@ m.approx.nshockgrid = [7 2 2 2 2 1]
 suite = BenchmarkGroup()
 
 ### Test shock details
-suite["shocks"] = @benchmarkable get_shockdetails($m.approx,$m.parameters,$m.keys)
+suite["shocks"] = @benchmarkable get_shockdetails($m.approx.nexogcont, $m.approx.number_shock_values, $m.approx.nshockgrid, $m.approx.exogvarinfo, $m.approx.nexogshock, $m.approx.ns, $m.approx.nexog,$m.parameters, $m.keys)
 
 h5 = h5open("$path/shockdetails.h5")
 exoggrid_ref = read(h5, "exoggrid")
@@ -46,7 +46,7 @@ h5 = h5open("$path/initialalphas.h5")
 α_initial_ref = read(h5, "initialalphas")
 close(h5)
 
-suite["decr_euler"] = @benchmarkable decr_euler($m.approx, $1, $1, $m.parameters, $m.keys, $α_initial_ref, $m[:labss], $m.exogenous_shocks, $m.endogenous_states)
+suite["decr_euler"] = @benchmarkable decr_euler($m[:rkss].value, $m.approx.ninter, $m.approx.nexogshock, $m.approx.nfunc, $m.approx.nexog, $m.approx.nvars, $m.approx.nexogcont, $m.approx.nmsv, $m.approx.xgrid, $m.approx.slopeconxx, $m.approx.exoggrid, $1, $1, $m.approx.ngrid, $m.approx.nshockgrid, $m.approx.bbt, $m.approx.statezlbinfo, $m.approx.zlbswitch, $m.approx.nquad, $m.approx.ghweights, $m.approx.ghnodes, $m.approx.shockbounds, $m.approx.shockdistance, $m.approx.interpolatemat, $m.approx.slopeconmsv, $m.approx.nindplus, $m.approx.indplus, $m.approx.ns, $m.parameters, $m.keys, $α_initial_ref, $m[:labss].value, $m.exogenous_shocks, $m.endogenous_states)
 
 ### Test intermediatedec
 h5 = h5open("$path/intermediatedec.h5")
@@ -56,14 +56,14 @@ polyvar_ref = read(h5, "polyvar")
 endogvar_ref = read(h5, "endogvar")
 close(h5)
 
-suite["intermediatedec"] = @benchmarkable intermediatedec($m.approx.nvars, $m.approx.nexog, $m.parameters, $m[:labss], $endogvarm1_ref, $currentshocks_ref, $polyvar_ref, $1.0, $polyvar_ref, $false, $m.exogenous_shocks)
+suite["intermediatedec"] = @benchmarkable intermediatedec($m.approx.nvars, $m.approx.nexog, $m[:labss].value, $endogvarm1_ref, $currentshocks_ref, $polyvar_ref, $1.0, $polyvar_ref, $false, $m.exogenous_shocks, $m.parameters, $m.keys)
 
 ### Test decr
 h5 = h5open("$path/decr.h5")
 innovations_ref = read(h5, "innovations")
 close(h5)
 
-suite["decr"] = @benchmarkable decr($m.approx, $endogvar_ref, $innovations_ref, $m.parameters, $m.keys, $m[:labss] $α_initial_ref, $m.exogenous_shocks, $m.endogenous_states)
+suite["decr"] = @benchmarkable decr($m.approx.nvars, $m.approx.nexog, $m.approx.nexogcont, $m.approx.nexogshock, $m.approx.nfunc, $m.approx.ninter, $m.approx.nmsv, $m.approx.ngrid, $m.approx.nshockgrid, $m.approx.shockbounds, $m.approx.shockdistance, $m.approx.interpolatemat, $m.approx.slopeconmsv, $m.approx.nindplus, $m.approx.indplus, $m.approx.exoggrid, $m.approx.ns, $m.approx.zlbswitch, $endogvar_ref, $innovations_ref, $m.parameters, $m.keys, $m[:labss].value, $α_initial_ref, $m.exogenous_shocks, $m.endogenous_states)
 
 ### Test conversion between msv and xx domains
 h5 = h5open("$path/msv2xx.h5")
