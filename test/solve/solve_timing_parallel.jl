@@ -54,7 +54,7 @@ file = jldopen("results_parallel.jld", "w")
 
 for j in 1:10
   println(j)
-  b = @benchmarkable fixedpoint_parallel($m, $α_initial_ref) samples = 2 evals = 1
+  b = @benchmarkable fixedpoint_parallel($m.approx.nfunc, $m.approx.ngrid, $m.approx.ns, $m.approx.bbtinv, $α_initial_ref) samples = 2 evals = 1
   t = run(b)
   println(t)
   write(file, "results$j", t)
