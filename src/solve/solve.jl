@@ -167,6 +167,10 @@ function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
     tolfun = 1.0e-04
     step  = 7.0e-01
 
+    K = repeat(1:ngrid, inner=nfunc)
+    L = repeat(1:nfunc, ngrid)
+    W = (L .- 1) .* ngrid .+ K
+
     # Get fixed point using iterative convergence method
     for i in 1:niter
         @show i
@@ -182,23 +186,23 @@ function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
             end
 
             # Solve for α by multiplying by inverse matrix and then reindex
-            α_temp = dgemm(1.0, updated_approx_polynomials,bbtinv)
-#=
-            K = repeat(1:ngrid, inner=nfunc)
-            L = repeat(1:nfunc, ngrid)
-            W = zip(L,K)
-            X = zip(nfunc .+ L, K)
+            @elapsed α_temp = dgemm(1.0, updated_approx_polynomials,bbtinv)
 
-            α_new[(L .- 1) .* ngrid .+ K, j] = α_temp[for (i,k) in enumerate(W)]
-            α_new[(L .- 1) .* ngrid .+ K, ns + j] = α_temp[for (i,k) in enumerate(X)]
-=#
-             for k in 1:ngrid
+            #W = zip(L,K)
+            #X = zip(nfunc .+ L, K)
+
+            @elapsed α_new[W, j] = vec(α_temp[1:nfunc, 1:ngrid])
+            @elapsed α_new[W, ns + j] = vec(α_temp[nfunc+1:2*nfunc,1:ngrid])
+            #@elapsed α_new[W, j] = vec(α_temp[1:nfunc, 1:ngrid]')
+            #@elapsed α_new[W, ns + j] = vec(α_temp[nfunc+1:2*nfunc,1:ngrid]')
+#=
+            for k in 1:ngrid
                  for l in 1:nfunc
                     α_new[(l - 1)*ngrid+ k, j] = α_temp[l, k]
                     α_new[(l - 1)*ngrid+ k, ns + j] = α_temp[nfunc + l, k]
                 end
             end
-
+=#
             avg_error += err
         end
 
