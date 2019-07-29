@@ -12,7 +12,7 @@ close(h5)
 m.approx.nshockgrid = [7 2 2 2 2 1]
 
 ### Test shock details against reference output
-exoggrid, shockbounds, shockdistance = get_shockdetails(m.approx.number_shock_values, m.approx.nsockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog, m.parameters, m.keys)
+exoggrid, shockbounds, shockdistance = get_shockdetails(m.approx.nexogcont, m.approx.number_shock_values,m.approx.nshockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog, m.parameters, m.keys)
 
 h5 = h5open("$path/shockdetails.h5")
 exoggrid_ref = read(h5, "exoggrid")
@@ -49,7 +49,7 @@ h5 = h5open("$path/initialalphas.h5")
 α_initial_ref = read(h5, "initialalphas")
 close(h5)
 
-updated_approx_polynomials, err = decr_euler(m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, 1, 1, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, α_initial_ref, m[:labss].value, m.exogenous_shocks, m.endogenous_states)
+updated_approx_polynomials, err = decr_euler(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, 1, 1, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, α_initial_ref, m[:labss].value, m.exogenous_shocks, m.endogenous_states)
 
 h5 = h5open("$path/decr_euler.h5")
 updated_approx_polynomials_ref = read(h5, "updated_approx_polynomials")
@@ -67,7 +67,7 @@ polyvar_ref = read(h5, "polyvar")
 endogvar_ref = read(h5, "endogvar")
 close(h5)
 
-endogvar = intermediatedec(m.approx.nvars, m.approx.nexog, m[:labss].value, m.parameters, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false, m.exogenous_shocks, m.parameters, m.keys)
+endogvar = intermediatedec(m.approx.nvars, m.approx.nexog, m[:labss].value, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false, m.exogenous_shocks, m.parameters, m.keys)
 
 @testset "Compare intermediate endogenous variables to reference output" begin
     @test endogvar_ref ≈ endogvar
