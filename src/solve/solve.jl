@@ -177,7 +177,7 @@ function fixedpoint(nfunc::Int, ngrid::Int, ns::Int, bbtinv::Array{Float64, 2}, 
 
             # Update polynomials using new guess for α
             for k in 1:ngrid
-                updated_approx_polynomials[:, k], err2 = decr_euler(m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indpuls, m.approx.ns, m.parameters, m.keys, α_star, m.exogenous_shocks, m.endogenous_states)
+                updated_approx_polynomials[:, k], err2 = decr_euler(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, α_star, m[:labss].value, m.exogenous_shocks, m.endogenous_states)
                 err += err2
             end
 
@@ -437,7 +437,7 @@ function parallel_help(nfunc::Int, ngrid::Int, bbtinv::Array{Float64, 2},α_star
 
     # Update polynomials using new guess for α
     for k in 1:ngrid
-        updated_approx_polynomials[:, k], err2 = decr_euler(m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indpuls, m.approx.ns, m.parameters, m.keys, α_star, m.exogenous_shocks, m.endogenous_states)
+        updated_approx_polynomials[:, k], err2 = decr_euler(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, α_star, m[:labss].value, m.exogenous_shocks, m.endogenous_states)
         err += err2
     end
 
