@@ -243,7 +243,6 @@ function decr(nvars::Int, nexog::Int, nexogcont::Int, nexogshock::Int, nfunc::In
         end
     end
 
-
     #loop for interpolating between shocks
     shockindexall[1:nexogshock] = shockindex
     stateindex0 = exogposition(shockindexall,nshockgrid,nexog-nexogcont)
@@ -349,7 +348,7 @@ For a given collocation point, return associated errors.
 ...
 """
 function decr_euler(nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, gridindex::Int64,shockpos::Int64, ngrid::Array{Int, 1}, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Float64, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64})
-    #APPROX OBJECT NEEDS TO BE DELETED
+
     #Initilize Variables
     zlbinfo  = statezlbinfo[shockpos]
     polyappnew = Array{Float64}(undef,2*nfunc)
