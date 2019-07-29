@@ -22,31 +22,31 @@ mutable struct SmolyakApproximation{T}
     ninter :: Int
     nquad :: Int
     zlbswitch :: Bool
-    indplus :: Array{Int}
-    nshockgrid :: Array{Int}
+    indplus :: Array{Int, 1}
+    nshockgrid :: Array{Int, 2}
 
-    exogvarinfo::Array{Int64}
-    xgrid::Array{Float64}
-    bbt::Array{Float64}
-    bbtinv::Array{Float64}
+    exogvarinfo::Array{Int64, 2}
+    xgrid::Array{Float64, 2}
+    bbt::Array{Float64, 2}
+    bbtinv::Array{Float64, 2}
     startingguess::Bool
-    alphacoeff::Array{Float64}
+    alphacoeff::Array{Float64, 2}
 
-    interpolatemat :: Array{Int}
-    slopeconmsv :: Array{Float64}
-    shockbounds :: Array{Float64}
-    shockdistance :: Array{Float64}
-    exoggrid :: Array{Float64}
-    ghnodes :: Array{Float64}
-    ghweights :: Array{Float64}
+    interpolatemat :: Array{Int, 2}
+    slopeconmsv :: Array{Float64, 1}
+    shockbounds :: Array{Float64, 2}
+    shockdistance :: Array{Float64, 1}
+    exoggrid :: Array{Float64, 2}
+    ghnodes :: Array{Float64, 2}
+    ghweights :: Array{Float64, 1}
 
     # simulate_linear
-    endog_emean :: Array{Float64}
+    endog_emean :: Array{Float64, 1}
     zlbfrequency :: Float64
-    msvbounds :: Array{Float64}
-    statezlbinfo :: Array{Int64}
+    msvbounds :: Array{Float64, 1}
+    statezlbinfo :: Array{Int64, 1}
     convergence :: Bool
-    slopeconxx :: Array{Float64}
+    slopeconxx :: Array{Float64, 1}
 end
 
 """

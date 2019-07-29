@@ -59,7 +59,7 @@ end
 
 function solve(m::GHLS, parallel::Bool=true)
 
-    m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m.approx,m.parameters,m.keys)
+    m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m.approx.number_shock_values, m.approx.nshockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog,m.parameters,m.keys)
 
     Γ0, Γ1, C, Ψ, Π = eqcond(m)
     TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = :high)
@@ -177,7 +177,7 @@ function fixedpoint(nfunc::Int, ngrid::Int, ns::Int, bbtinv::Array{Float64, 2}, 
 
             # Update polynomials using new guess for α
             for k in 1:ngrid
-                updated_approx_polynomials[:, k], err2 = decr_euler(m, k, j, α_star)
+                updated_approx_polynomials[:, k], err2 = decr_euler(m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indpuls, m.approx.ns, m.parameters, m.keys, α_star, m.exogenous_shocks, m.endogenous_states)
                 err += err2
             end
 
@@ -242,7 +242,7 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogcont::
     xrandn=reshape(xrandnFortran,nexog,total_periods)
 
     # Set up for first period
-    endogvar[1:nmsv,1]= steady_states[1:nmsv]]
+    endogvar[1:nmsv,1]= steady_states[1:nmsv]
     msvhigh = log(2.0) + endogvar[1:nmsv, 1]
     msvlow = log(0.01) + endogvar[1:nmsv, 1]
 
@@ -267,7 +267,7 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogcont::
             end
 
             #THIS SHOULD BE DONE DIFFERENTLY HERE
-            endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1],innovations,m,sigma,pp)
+            endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1],innovations,m.approx.nvars, m.approx.nexog,sigma,pp, m.steady_state)
 
             # Account for ZLB, why is this not 1 though?
             if (endogvar[5,ttsim] < 0.0)
@@ -437,7 +437,7 @@ function parallel_help(nfunc::Int, ngrid::Int, bbtinv::Array{Float64, 2},α_star
 
     # Update polynomials using new guess for α
     for k in 1:ngrid
-        updated_approx_polynomials[:, k], err2 = decr_euler(m, k, j, α_star)
+        updated_approx_polynomials[:, k], err2 = decr_euler(m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indpuls, m.approx.ns, m.parameters, m.keys, α_star, m.exogenous_shocks, m.endogenous_states)
         err += err2
     end
 
