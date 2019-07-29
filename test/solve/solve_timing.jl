@@ -93,7 +93,7 @@ tune!(suite)
 suite["linear"] = @benchmarkable simulate_linear($m.approx.ns, $m.approx.nvars, $m.approx.nexog, $m.approx.nmsv, $m.approx.nexogcont, $m.approx.nexogshock, steady_states, $m.approx.nshockgrid, $m.approx.shockbounds, $m.approx.shockdistance, pp, sigma)
 
 ### Test fixed point output against reference output
-suite["fixedpoint"] = @benchmarkable fixedpoint($m.approx.nfunc, $m.approx.ngrid, $m.approx.ns, $m.approx.bbtinv, $α_initial_ref) samples = 1 evals = 1
+suite["fixedpoint"] = @benchmarkable fixedpoint($m[:rkss].value, $m.approx.ninter, $m.approx.nexogshock, $m.approx.nfunc, $m.approx.nexog, $m.approx.nvars, $m.approx.nexogcont, $m.approx.nmsv, $m.approx.xgrid, $m.approx.slopeconxx, $m.approx.exoggrid, $1, $1, $m.approx.ngrid, $m.approx.nshockgrid, $m.approx.bbt, $m.approx.statezlbinfo, $m.approx.zlbswitch, $m.approx.nquad, $m.approx.ghweights, $m.approx.ghnodes, $m.approx.shockbounds, $m.approx.shockdistance, $m.approx.interpolatemat, $m.approx.slopeconmsv, $m.approx.nindplus, $m.approx.indplus, $m.approx.ns, $m.parameters, $m.keys, $m[:labss].value, $m.exogenous_shocks, $m.endogenous_states, $m.approx.bbtinv, $α_initial_ref) samples = 1 evals = 1
 
 ### Run benchmarks
 results = run(suite, verbose = true)

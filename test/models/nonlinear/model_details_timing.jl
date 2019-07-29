@@ -83,8 +83,9 @@ innovations_ref = read(h5, "innovations")
 sigma_ref = read(h5, "sigma")
 pp_ref = read(h5, "pp")
 close(h5)
+steady_states = [i.value for i in m.steady_state]
 
-suite["decrlin"] = @benchmarkable decrlin($endogvarm1_ref, $innovations_ref, $m.approx.nvars, $m.approx.nexog, $sigma_ref, $pp_ref, $m.steady_state)
+suite["decrlin"] = @benchmarkable decrlin($endogvarm1_ref, $innovations_ref, $m.approx.nvars, $m.approx.nexog, $sigma_ref, $pp_ref, $steady_states)
 
 ### Test finite_grid
 suite["finite_grid"] = @benchmarkable finite_grid($7, $m[:ρ_η].value, $m[:σ_η].scaledvalue)

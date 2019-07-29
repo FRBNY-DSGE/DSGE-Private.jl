@@ -110,8 +110,9 @@ sigma_ref = read(h5, "sigma")
 pp_ref = read(h5, "pp")
 endogvarlin_ref = read(h5, "endogvarlin")
 close(h5)
+steady_states = [i.value for i in m.steady_state]
 
-endogvarlin = decrlin(endogvarm1_ref, innovations_ref, m.approx.nvars, m.approx.nexog, sigma_ref, pp_ref, m.steady_state)
+endogvarlin = decrlin(endogvarm1_ref, innovations_ref, m.approx.nvars, m.approx.nexog, sigma_ref, pp_ref, steady_states)
 
 @testset "Compare linearized decision rule to reference output" begin
     @test endogvarlin_ref ≈ endogvarlin

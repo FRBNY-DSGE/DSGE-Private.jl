@@ -304,7 +304,7 @@ Linear decision rule -- returns endogenous variables and shocks given lagged end
 - `pp::Array{Float64, 2}`: T matrix to which s_{t-1} is multiplied in the transition equation. Only for the first 28 minimum state variables.
 ...
 """
-function decrlin(endogvarm1::Vector{Float64},innovations::Vector{Float64},nvars::Int,nexog::Int,sigma::Array{Float64,2},pp::Array{Float64,2},steady_states::Array{AbstractParameter{Float64},1})
+function decrlin(endogvarm1::Vector{Float64},innovations::Vector{Float64},nvars::Int,nexog::Int,sigma::Array{Float64,2},pp::Array{Float64,2},steady_states::Array{Float64,1})
 
 
     # Initilize variables
@@ -312,7 +312,7 @@ function decrlin(endogvarm1::Vector{Float64},innovations::Vector{Float64},nvars:
     xxm1 = zeros(nvars+nexog)
     xx = zeros(nvars+nexog)
     exogpart = Array{Float64}(undef,nvars+nexog)
-    endogsteady = [i.value for i in steady_states[1:nvars + nexog]]
+    endogsteady = steady_states[1:nvars + nexog]
 
     xxm1[1:nvars] = endogvarm1[1:nvars]-endogsteady[1:nvars]
     xxm1[nvars+1:nvars+nexog] = endogvarm1[nvars+1:nvars+nexog]
@@ -342,7 +342,7 @@ For a given collocation point, return associated errors.
 - `alphacoeff::Array{Float64, 2}`: Polynomial coefficients.
 ...
 """
-function decr_euler(nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, gridindex::Int64,shockpos::Int64, ngrid::Array{Int, 1}, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Float64, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64})
+function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, gridindex::Int64,shockpos::Int64, ngrid::Int, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64})
 
     #Initilize Variables
     zlbinfo  = statezlbinfo[shockpos]

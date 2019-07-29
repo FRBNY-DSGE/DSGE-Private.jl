@@ -99,9 +99,9 @@ function solve(m::GHLS, parallel::Bool=true)
     α_initial = initial_α(m.approx.nvars, m.approx.nmsv, m.approx.nexogcont, m.approx.ns, m.approx.ngrid, steady_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv)
 
     α_star, convergence = if parallel
-        fixedpoint_parallel(m.approx.nfunc, m.approx.ngrid, m.approx.ns, m.approx.bbtinv, α_initial)
+        fixedpoint_parallel(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial)
     else
-        fixedpoint(m.approx.nfunc, m.approx.ngrid, m.approx.ns, m.approx.bbtinv, α_initial)
+        fixedpoint(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial)
     end
 
     return α_star
@@ -152,12 +152,13 @@ function dgemm(α::Float64, A::Array{Float64}, B::Array{Float64})
     return C
 end
 
-function fixedpoint(nfunc::Int, ngrid::Int, ns::Int, bbtinv::Array{Float64, 2}, α_initial::Array{Float64,2})
+function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, gridindex::Int64,shockpos::Int64, ngrid::Int, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64, 2}, α_initial::Array{Float64,2})
 
     # Initialize
     α_star = copy(α_initial)
     α_new = zeros(Float64, nfunc*ngrid, 2*ns)
     α_temp = zeros(Float64, 2*nfunc, ngrid)
+    updated_approx_polynomials = zeros(2*nfunc, ngrid)
     convergence = false
     avg_error = 0.0
 
@@ -172,19 +173,27 @@ function fixedpoint(nfunc::Int, ngrid::Int, ns::Int, bbtinv::Array{Float64, 2}, 
         avg_error = 0.0
 
         for j in 1:ns
-            updated_approx_polynomials = zeros(2*nfunc, ngrid)
             err = 0.0
 
             # Update polynomials using new guess for α
             for k in 1:ngrid
-                updated_approx_polynomials[:, k], err2 = decr_euler(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, α_star, m[:labss].value, m.exogenous_shocks, m.endogenous_states)
+                updated_approx_polynomials[:, k], err2 = decr_euler(rkss, ninter, nexogshock, nfunc, nexog, nvars, nexogcont, nmsv, xgrid, slopeconxx, exoggrid, k, j, ngrid, nshockgrid, bbt, statezlbinfo, zlbswitch, nquad, ghweights, ghnodes, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, ns, params, keys, α_star, labss, exogenous_shocks, endogenous_states)
                 err += err2
             end
 
             # Solve for α by multiplying by inverse matrix and then reindex
             α_temp = dgemm(1.0, updated_approx_polynomials,bbtinv)
-            for k in 1:ngrid
-                for l in 1:nfunc
+#=
+            K = repeat(1:ngrid, inner=nfunc)
+            L = repeat(1:nfunc, ngrid)
+            W = zip(L,K)
+            X = zip(nfunc .+ L, K)
+
+            α_new[(L .- 1) .* ngrid .+ K, j] = α_temp[for (i,k) in enumerate(W)]
+            α_new[(L .- 1) .* ngrid .+ K, ns + j] = α_temp[for (i,k) in enumerate(X)]
+=#
+             for k in 1:ngrid
+                 for l in 1:nfunc
                     α_new[(l - 1)*ngrid+ k, j] = α_temp[l, k]
                     α_new[(l - 1)*ngrid+ k, ns + j] = α_temp[nfunc + l, k]
                 end
@@ -267,7 +276,7 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogcont::
             end
 
             #THIS SHOULD BE DONE DIFFERENTLY HERE
-            endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1],innovations,m.approx.nvars, m.approx.nexog,sigma,pp, m.steady_state)
+            endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1], innovations, nvars, nexog, sigma, pp, steady_states)
 
             # Account for ZLB, why is this not 1 though?
             if (endogvar[5,ttsim] < 0.0)
@@ -359,7 +368,7 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogcont::
 
 end
 
-function initial_α(nvars::Int, nmsv::Int, nexogcont::Int, ns::Int, ngrid::Int, steady_states::Array{Float64,1}, slopeconxx::Array{Float64, 1}, xgrid::Array{Float64, 2}, nfunc::Int, bbtinv::Array{Float64,2}, aalin::Array{Float64, 2}, bblin::Array{Float64, 2})
+function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, nexogcont::Int, ns::Int, ngrid::Int, exoggrid::Array{Float64, 2}, steady_states::Array{Float64,1}, slopeconxx::Array{Float64, 1}, xgrid::Array{Float64, 2}, nfunc::Int, bbtinv::Array{Float64,2}, aalin::Array{Float64, 2}, bblin::Array{Float64, 2})
 
     #Initilize variables
     endogvar = Array{Float64}(undef,nvars)
@@ -429,7 +438,7 @@ function dgemv(alpha::Real,A::Array,x::Array)
 
 end
 
-function parallel_help(nfunc::Int, ngrid::Int, bbtinv::Array{Float64, 2},α_star::Array{Float64,2},j::Int)
+function parallel_help(rkss::Float64, exogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, gridindex::Int64,shockpos::Int64, ngrid::Array{Int, 1}, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64, 2}, α_initial::Array{Float64,2}, α_star::Array{Float64,2},j::Int)
     col1 = zeros(nfunc*ngrid,3)
 
     updated_approx_polynomials = zeros(2*nfunc, ngrid)
@@ -437,18 +446,18 @@ function parallel_help(nfunc::Int, ngrid::Int, bbtinv::Array{Float64, 2},α_star
 
     # Update polynomials using new guess for α
     for k in 1:ngrid
-        updated_approx_polynomials[:, k], err2 = decr_euler(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, k, j, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, α_star, m[:labss].value, m.exogenous_shocks, m.endogenous_states)
+        updated_approx_polynomials[:, k], err2 = decr_euler(rkss, ninter, nexogshock, nfunc, nexog, nvars, nexogcont, nmsv, xgrid, slopeconxx, exoggrid, k, j, ngrid, nshockgrid, bbt, statezlbinfo, zlbswitch, nquad, ghweights, ghnodes, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, ns, params, keys, α_star, labss, exogenous_shocks, endogenous_states)
         err += err2
     end
 
-        # Solve for α by multiplying by inverse matrix and then reindex
-        α_temp = dgemm(1.0, updated_approx_polynomials,bbtinv)
-        for k in 1:ngrid
-            for l in 1:nfunc
-                col1[(l - 1)*ngrid+ k,1] = α_temp[l,k]
-                col1[(l - 1)*ngrid+ k,2] = α_temp[nfunc + l, k]
-            end
+    # Solve for α by multiplying by inverse matrix and then reindex
+    α_temp = dgemm(1.0, updated_approx_polynomials,bbtinv)
+    for k in 1:ngrid
+        for l in 1:nfunc
+            col1[(l - 1)*ngrid+ k,1] = α_temp[l,k]
+            col1[(l - 1)*ngrid+ k,2] = α_temp[nfunc + l, k]
         end
+    end
 
     col1[1,3] = err
 
@@ -457,7 +466,7 @@ end
 
 
 # Parallel Fixedpoint
-function fixedpoint_parallel(nfunc::Int, ngrid::Int, ns::Int, bbtinv::Array{Float64,2}, α_initial::Array{Float64,2})
+function fixedpoint_parallel(rkss::Float64, ninter::Int, exogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, gridindex::Int64,shockpos::Int64, ngrid::Array{Int, 1}, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64,2}, α_initial::Array{Float64,2})
 
     # Initialize
     α_star = copy(α_initial)
@@ -477,7 +486,7 @@ function fixedpoint_parallel(nfunc::Int, ngrid::Int, ns::Int, bbtinv::Array{Floa
 
         # Calculates new α_new and avg_error
         α_here = @sync @distributed (hcat) for j in 1:ns #mystart:myend
-            parallel_help(nfunc, ngrid, bbtinv,α_star,j)
+            parallel_help(rkss, ninter, nexogshock, nfunc, nexog, nvars, nexogcont, nmsv, xgrid, slopeconxx, exoggrid, k, j, ngrid, nshockgrid, bbt, statezlbinfo, zlbswitch, nquad, ghweights, ghnodes, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, ns, params, keys, labss, exogenous_shocks, endogenous_states, bbtinv,α_star,j)
         end
 
         α_new[:,1:ns] = α_here[:,1:3:end]
