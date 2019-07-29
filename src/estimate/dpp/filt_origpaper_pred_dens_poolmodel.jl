@@ -54,6 +54,7 @@ data = jld_data["data"][1:78]
 s_init = jld_data["s_init"]
 tuning[:get_t_particle_dist] = true
 tuning[:allout] = true
+tuning[:parallel] = true
 tuning[:n_particles] = 10000
 pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
 pm <= Setting(:sampling_method, :SMC)
@@ -80,6 +81,7 @@ dpp_preddens = λhat_tplush .* preddens2_1 + (1 .- λhat_tplush) .* preddens1_1
 gr()
 # plot1 = plot(datevec, λhat_t)
 # plot2 = plot(datevec, λhat_tplush)
+plot_datevec = vcat(datevec[4:end], [Date("2010-12-31"), Date("2011-03-31"), Date("2011-06-30")])
 plot3 = plot(datevec, [log.(dpp_preddens), log.(preddens1_1), log.(preddens2_1)],
              xlabel = "Date",
              ylabel = "Log predictive densities",
@@ -95,4 +97,12 @@ for t in 1:T
 end
 
 plot4 = heatmap_posterior_λ_evolution(pm, datevec, λ_t_evol, λ_weights)
-plot5, λedges, dates, λwts, λmodes = surface_posterior_λ_evolution(pm, datevec, λ_t_evol, λ_weights)
+plot5, λedges, dates, λwts, λmodes = surface_posterior_λ_evolution(datevec, λ_t_evol, λ_weights)
+
+date_floats = zeros(length(datemat[1:20,:]))
+tofloats = Dict{String,Float64}("03" => .25, "06" => .5, "09" => .75, "12" => 0.)
+for (i,d) in enumerate(datemat[1:20,:])
+    tmp = string(d)
+    s = tmp[6:7]
+    date_floats[i] = parse(Float64,tmp[1:4]) + tofloats[s]
+end

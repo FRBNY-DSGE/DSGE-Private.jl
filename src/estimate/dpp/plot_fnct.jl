@@ -1,3 +1,5 @@
+using StatsBase
+
 # This script temporarily holds functions for replicating the
 # Dynamic Prediction Pools paper before being later refactored
 # once the functionality of the code is made more apparent
@@ -45,7 +47,7 @@ function plot_posterior_hyperparameter(m::PoolModel, pc::ParticleCloud)
     return plots
 end
 
-function surface_posterior_λ_evolution(m::PoolModel{S}, datevec::Vector{Date}, λmat::Matrix{S},
+function surface_posterior_λ_evolution(datevec::Vector{Date}, λmat::Matrix{S},
                                     λweight::Matrix{S} = Matrix{Float64}(undef,0,0);
                                     bins::Symbol = :freedman_diaconis) where S<:AbstractFloat
     # Set weights to one if empty
@@ -63,6 +65,7 @@ function surface_posterior_λ_evolution(m::PoolModel{S}, datevec::Vector{Date}, 
     dates = Dict{Int64,Vector{Date}}() # y, vector of repeated values for the date
     λ_plotwts = Dict{Int64,Vector{Float64}}() # z, height of histogram
     t_nbins = Dict{Int64,Int64}()
+    T = length(datevec)
     λ_modes = Vector{Float64}(undef,T)
     n_elem = 0 # number of elements
     for t in 1:T
@@ -81,21 +84,18 @@ function surface_posterior_λ_evolution(m::PoolModel{S}, datevec::Vector{Date}, 
 
     # Insert inputs into vectors for plotting
     X = Vector{Float64}(undef, n_elem)
-    Y = Vector{Date}(undef, n_elem)
     Z = Vector{Float64}(undef, n_elem)
     i = 0
     for t in 1:T
         X[i+1:i+t_nbins[t]] = λ_edges[t]
-        Y[i+1:i+t_nbins[t]] = dates[t]
         Z[i+1:i+t_nbins[t]] = λ_plotwts[t]
         i += t_nbins[t]
     end
+    Y = date_to_floats(datevec, length(λ_edges[1]))
 
     # Plot in 3D
-    return surface(X, Y, Z), λ_edges, dates, λ_plotwts, λ_modes
+    return surface(X, Y, Z, size = (800,600), camera = (50,60)), λ_edges, dates, λ_plotwts, λ_modes
 end
-
-
 
 ####################
 # Helper functions
@@ -107,4 +107,16 @@ end
 
 @inline function scott(data::Vector{S}) where S<:AbstractFloat
     return 3.5 * Statistics.std(data) * length(data)^(-1/3)
+end
+
+function date_to_floats(datevec::Vector{Date}, reps::Int64)
+    date_floats = zeros(reps, length(datevec))
+    tofloats = Dict{String,Float64}("03" => .25, "06" => .5, "09" => .75, "12" => 0.)
+    for j = 1:length(datevec)
+        tmp = string(datevec[j])
+        s = tmp[6:7]
+        num = parse(Float64,tmp[1:4]) + tofloats[s]
+        date_floats[:,j] .= num
+    end
+    return date_floats
 end

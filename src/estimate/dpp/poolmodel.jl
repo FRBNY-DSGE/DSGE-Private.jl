@@ -240,7 +240,7 @@ function init_parameters!(m::PoolModel; static::Bool = false)
                        description="σ: volatility of AR processing underlying λ.",
                        tex_label="\\sigma")
     else
-        m <= parameter(:ρ, 0.5, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.), fixed = false,
+        m <= parameter(:ρ, 0.8, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.), fixed = false,
                        description="ρ: persistence of AR processing underlying λ.",
                        tex_label="\\rho")
         m <= parameter(:μ, 0., fixed = true,
@@ -291,6 +291,15 @@ function model_settings!(m::PoolModel)
               :allout => true)
     m <= Setting(:tuning, tuning, "tuning parameters for TPF")
 
+    # MH estimation
+    m <= Setting(:mh_cc, 0.15^2)
+    m <= Setting(:mh_cc0, 0.15^2)
+    m <= Setting(:calculate_hessian, false)
+    m <= Setting(:reoptimize, false)
+    m <= Setting(:n_mh_simulations, 1000)
+    m <= Setting(:n_mh_blocks, 1)
+    m <= Setting(:mh_thin, 1)
+    m <= Setting(:n_mh_burn, 0)
 end
 
 # """

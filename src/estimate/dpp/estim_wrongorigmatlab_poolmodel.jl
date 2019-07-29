@@ -36,7 +36,7 @@ datevec = datevec[1:78]
 # loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
 # loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
 # loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
-matdata = matread(datapath * "pred_dens_wrong.mat")
+matdata = matread(datapath * "pred_dens_wrong805_orig904.mat")
 preddens1_1 = vec(matdata["p805"])
 preddens2_1 = vec(matdata["p904"])
 
@@ -44,27 +44,23 @@ periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
                Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = false)
 
-# Edit estimation to implement MH
-tuning = get_setting(pm, :tuning)
-tuning[:parallel] = true
-pm <= Setting(:tuning, tuning)
-pm <= Setting(:sampling_method, :MH)
-pm <= Setting(:hessian_path, "$(filepath)/save/input_data/mh_hessian.h5")
+# Construct save path
+filepath = dirname(@__FILE__)
 pm <= Setting(:saveroot, "$(filepath)/save")
 
 # Construct real time estimation of lambda (evolution over time)
 h = get_forecast_horizon(pm)
 T = get_periods(pm)
 data = zeros(1,T)
-print("Starting to run MH\n")
+print("Starting to run SMC\n")
 Random.seed!(1793)
+pm <= Setting(:n_particles, 10)
 for t in 1:T
-    # run MH estimation
-    DSGE.estimate(pm, data[:,1:t]; filestring_addl = ["period=$(t)", "preddens=wrongorigmatlab"],
-                  proposal_covariance = [1 0 0; 0 0 0; 0 0 0])
+    # run smc estimation
+    DSGE.estimate(pm, data[:,1:t]; filestring_addl = ["period=$(t)", "preddens=wrongorigmatlab"])
 end
-
 @assert false
+
 # analyze smc output
 λvec = Dict{Int64, Vector{Float64}}()
 λhat_t = Vector{Float64}(undef,T) # E[λ_t|I_t^P, P]
@@ -79,11 +75,11 @@ for t in 1:T
     λvec[t] = sample_λ(pm, θmat, t)
     λhat_tplush[t], λhat_t[t] = compute_Eλ(pm, λvec)
 end
+
 dpp_preddens = @. λhat_tplush * get_cond_pred_dens(pm, :Model904) +
     (1 - λhat_tplush) * get_cond_pred_dens(pm, :Model805)
-
-λ_t_evol = Matrix{Float64}(undef,length(λvec[1]),T)
 θmat_T = load_draws(pm, :full; filestring_addl = ["period=$(T)", "preddens=wrongorigmatlab"])
+λ_t_evol = Matrix{Float64}(undef,length(λvec[1]),T)
 datemat = Matrix{Date}(undef,length(λvec[1]),T)
 for t in 1:T
     λ_t_evol[:,t] = λvec[t]
@@ -94,7 +90,12 @@ end
 gr()
 plot_datevec = datevec
 plot1 = plot(plot_datevec, [log.(get_cond_pred_dens(pm, :Model805)),
-                       log.(get_cond_pred_dens(pm, :Model904))]
+                       log.(get_cond_pred_dens(pm, :Model904))],
+             xlabel = "Date",
+             ylable = "Log predictive densities",
+             plot_title = "Log score comparison for SWFF vs. SWπ",
+             label = ["SWπ", "SWFF"],
+             legend = :bottomleft)
 plot3 = plot(plot_datevec, [log.(dpp_preddens), log.(get_cond_pred_dens(pm, :Model805)),
                        log.(get_cond_pred_dens(pm, :Model904))],
              xlabel = "Date",
@@ -108,7 +109,7 @@ plot5 = histogram(vec(θmat_T[:,1]))
 # save analysis
 analysis_savefile = saveroot(m)
 restofsave = "/output_data/poolmodel/ss0/estimate/work/"
-jldopen(analysis_savefile * restofsave * "mh_analyze_realtime_estimation_preddens=wrongorigmatlab.jld2", true, true, true, IOStream) do file
+jldopen(analysis_savefile * restofsave * "analyze_realtime_estimation_preddens=wrongorigmatlab.jld2", true, true, true, IOStream) do file
     file["lambda_t_evol"] = λ_t_evol
     file["datemat"] = datemat
     file["datevec"] = datevec
@@ -122,9 +123,9 @@ jldopen(analysis_savefile * restofsave * "mh_analyze_realtime_estimation_predden
     file["posterior_rho"] = plot5
 end
 
-# save individual plots as png
-png(plot1, analysis_savefile * restofsave * "mh_lambdahat_t_preddens=wrongorigmatlab.png")
-png(plot2, analysis_savefile * restofsave * "mh_lambdahat_tplush_preddens=wrongorigmatlab.png")
-png(plot3, analysis_savefile * restofsave * "mh_log_pred_dens_compare_preddens=wrongorigmatlab.png")
-png(plot4, analysis_savefile * restofsave * "mh_heatmap_posterior_lambda_t_preddens=wrongorigmatlab.png")
-png(plot5, analysis_savefile * restofsave * "mh_posterior_rho_preddens=wrongorigmatlab.png")
+# save individual plots as pngs
+png(plot1, analysis_savefile * restofsave * "lambdahat_t_preddens=wrongorigmatlab.png")
+png(plot2, analysis_savefile * restofsave * "lambdahat_tplush_preddens=wrongorigmatlab.png")
+png(plot3, analysis_savefile * restofsave * "log_pred_dens_compare_preddens=wrongorigmatlab.png")
+png(plot4, analysis_savefile * restofsave * "heatmap_posterior_lambda_t_preddens=wrongorigmatlab.png")
+png(plot5, analysis_savefile * restofsave * "posterior_rho_preddens=wrongorigmatlab.png")
