@@ -54,7 +54,8 @@ file = jldopen("results_parallel.jld", "w")
 
 for j in 1:10
   println(j)
-  b = @benchmarkable fixedpoint_parallel($m.approx.nfunc, $m.approx.ngrid, $m.approx.ns, $m.approx.bbtinv, $α_initial_ref) samples = 2 evals = 1
+  b = @benchmarkable fixedpoint_parallel($m[:rkss].value, $m.approx.ninter, $m.approx.nex\
+     ogshock, $m.approx.nfunc, $m.approx.nexog, $m.approx.nvars, $m.approx.nexogcont, $m.approx.nmsv,$m.approx.xgrid, $m.approx.slopeconxx, $m.approx.exoggrid, $m.approx.ngrid, $m.approx.nshockgrid, $m.approx.bbt, $m.approx.statezlbinfo, $m.approx.zlbswitch, $m.approx.nquad, $m.approx.ghweights, $m.approx.ghnodes, $m.approx.shockbounds, $m.approx.shockdistance, $m.approx.interpolatemat, $m.approx.slopeconmsv, $m.approx.nindplus, $m.approx.indplus, $m.approx.ns, $m.parameters, $m.keys, $m[:labss].value, $m.exogenous_shocks, $m.endogenous_states, $m.approx.bbtinv, $α_initial_ref) samples = 2 evals = 1
   t = run(b)
   println(t)
   write(file, "results$j", t)
