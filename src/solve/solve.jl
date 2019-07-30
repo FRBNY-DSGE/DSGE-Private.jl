@@ -98,7 +98,6 @@ function solve(m::GHLS, parallel::Bool=true)
     # Construct starting guess
     α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv, m.approx.nexogcont, m.approx.ns, m.approx.ngrid, m.approx.exoggrid, steady_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
 
-
     α_star, convergence = if parallel
         fixedpoint_parallel(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial)
     else
@@ -157,9 +156,10 @@ function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
 
     # Initialize
     α_star = copy(α_initial)
-    α_new = zeros(Float64, nfunc*ngrid, 2*ns)
-    α_temp = zeros(Float64, 2*nfunc, ngrid)
-    updated_approx_polynomials = zeros(2*nfunc, ngrid)
+    α_new = Array{Float64}(undef, nfunc*ngrid, 2*ns)
+    #α_temp = Array{Float64}(undef, 2*nfunc, ngrid)
+    α_temp = Array{Float64}(undef, ngrid, 2*nfunc)
+    updated_approx_polynomials = Array{Float64}(undef, 2*nfunc, ngrid)
     convergence = false
     avg_error = 0.0
 
@@ -167,10 +167,6 @@ function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
     niter = 150
     tolfun = 1.0e-04
     step  = 7.0e-01
-
-    K = repeat(1:ngrid, inner=nfunc)
-    L = repeat(1:nfunc, ngrid)
-    W = (L .- 1) .* ngrid .+ K
 
     # Get fixed point using iterative convergence method
     for i in 1:niter
@@ -186,34 +182,27 @@ function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
                 err += err2
             end
 
-            # Solve for α by multiplying by inverse matrix and then reindex
-            α_temp = dgemm(1.0, updated_approx_polynomials,bbtinv)
+            # Solve for α by multiplying by inverse matrix
+            #mul!(α_temp, updated_approx_polynomials,bbtinv)
+            mul!(α_temp, bbtinv', updated_approx_polynomials')
 
-            #W = zip(L,K)
-            #X = zip(nfunc .+ L, K)
-
-            #α_new[W, j] = vec(α_temp[1:nfunc, 1:ngrid])
-            #α_new[W, ns + j] = vec(α_temp[nfunc+1:2*nfunc,1:ngrid])
-
-            #println("Assignment")
-            #println(@elapsed α_temp = dgemm(1.0, updated_approx_polynomials,bbtinv))
-
-            #W = zip(L,K)
-            #X = zip(nfunc .+ L, K)
-
-            #println("Vec")
-            #println(@elapsed α_new[W, j] = vec(α_temp[1:nfunc, 1:ngrid]))
-            #@elapsed α_new[W, j] = vec(α_temp[1:nfunc, 1:ngrid]')
-            #@elapsed α_new[W, ns + j] = vec(α_temp[nfunc+1:2*nfunc,1:ngrid]')
-
-            #println("Loop")
-            #println(@elapsed(
-            for k in 1:ngrid
+            #Reindex
+            α_new[:, j] = vec(α_temp[:, 1:nfunc])
+            α_new[:, j + ns] = vec(α_temp[:, nfunc+1:2*nfunc])
+            #=
+             for k in 1:ngrid
                  for l in 1:nfunc
                     α_new[(l - 1)*ngrid+ k, j] = α_temp[l, k]
                     α_new[(l - 1)*ngrid+ k, ns + j] = α_temp[nfunc + l, k]
                 end
-            end#))
+            end
+
+            for l in 1:nfunc
+                α_new[(l-1)*ngrid+1:l*ngrid, j] = α_temp[l, :]
+                α_new[(l-1)*ngrid+1:l*ngrid, ns+j] = α_temp[nfunc + 1, :]
+            end
+            =#
+
             avg_error += err
         end
 
