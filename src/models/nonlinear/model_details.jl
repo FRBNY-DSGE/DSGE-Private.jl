@@ -309,16 +309,16 @@ function decrlin(endogvarm1::Vector{Float64},innovations::Vector{Float64},nvars:
 
     # Initilize variables
     endogvar = Array{Float64}(undef,nvars+nexog)
-    xxm1 = zeros(nvars+nexog)
-    xx = zeros(nvars+nexog)
+    xxm1 = Vector{Float64}(undef,nvars+nexog)
+    xx = Vector{Float64}(undef,nvars+nexog)
     exogpart = Array{Float64}(undef,nvars+nexog)
     endogsteady = steady_states[1:nvars + nexog]
 
     xxm1[1:nvars] = endogvarm1[1:nvars]-endogsteady[1:nvars]
     xxm1[nvars+1:nvars+nexog] = endogvarm1[nvars+1:nvars+nexog]
 
-    xx = dgemv(1.0,pp, xxm1)
-    exogpart = dgemv(1.0,sigma, innovations)
+    mul!(xx, pp, xxm1)
+    mul!(exogpart,sigma,innovations)
     xx = xx + exogpart
 
     endogvar[1:nvars] = xx[1:nvars]+endogsteady[1:nvars]
