@@ -22,9 +22,9 @@ end
 ### Model to test nonlinear solve
 m = GHLS()
 h5 = h5open("$path/params.h5")
-params = read(h5, "params")
+model_params = read(h5, "params")
 close(h5)
-update!(m, params)
+update!(m, model_params)
 m.approx.nshockgrid = [7 2 2 2 2 1]
 
 # Getting pp and sigma for tests
