@@ -54,7 +54,6 @@ T = get_periods(pm)
 data = zeros(1,T)
 print("Starting to run SMC\n")
 Random.seed!(1793)
-pm <= Setting(:n_particles, 10)
 for t in 1:T
     # run smc estimation
     DSGE.estimate(pm, data[:,1:t]; filestring_addl = ["period=$(t)", "preddens=right805current904"])

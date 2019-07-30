@@ -193,21 +193,15 @@ function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, cond_pred_dens::Dict{S
     # Initialize datas dictionary
     init_datas!(m, datas)
 
-    # Initialize forecast horizong
+    # Initialize forecast horizon and number of forecast periods
     m.forecast_horizon = h
+    m.periods = length(collect(values(cond_pred_dens))[1])
 
     # Initialize particle clouds
     # init_particles!(m)
 
     # Initialize conditional predictive densities
-   if testing
-        fill_vec = Vector{Float64}(undef,m.periods)
-        for name in keys(m.models)
-            m.cond_pred_dens[name] = fill_vec
-        end
-   else
-        init_cond_pred_dens!(m, cond_pred_dens)
-   end
+    init_cond_pred_dens!(m, cond_pred_dens)
 
     # Initialize state space equations
     init_statespace!(m)
@@ -361,6 +355,13 @@ function init_distributions!(m::PoolModel)
     return m
 end
 
+# function init_λ_prior(m::PoolModel)
+#     # initialization distribution for lambda
+#     m.distributions[:F_λ] = Uniform(0.,1.)
+
+#     return m
+# end
+
 function init_models!(m::PoolModel, models::Vector{<:AbstractModel{T}} = Vector{<:AbstractModel{T}}()) where T<:AbstractFloat
     for model in models
         name = replace(String(Symbol(typeof(model))), "{Float64}" => "")
@@ -371,7 +372,6 @@ end
 
 function init_datas!(m::PoolModel, datas::Dict{Symbol,Matrix{T}}) where T<:AbstractFloat
     S = minimum([size(data,2) for data in values(datas)])
-    m.periods = S
     for (name,data) in zip(keys(m.models),values(datas))
         m.datas[name] = data
         S1 = size(data, 2)

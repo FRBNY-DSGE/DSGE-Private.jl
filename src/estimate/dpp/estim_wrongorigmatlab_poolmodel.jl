@@ -36,7 +36,7 @@ datevec = datevec[1:78]
 # loglhs2_1 = load(get_setting(m2, :dataroot) * file_log2_1)["logscores"]
 # loglhs1_1 = vec(mean(loglhs1_1, dims = 1))
 # loglhs2_1 = vec(mean(loglhs2_1, dims = 1))
-matdata = matread(datapath * "pred_dens_wrong805_orig904.mat")
+matdata = matread("save/input_data/pred_dens_wrong805_orig904.mat")
 preddens1_1 = vec(matdata["p805"])
 preddens2_1 = vec(matdata["p904"])
 
@@ -54,7 +54,6 @@ T = get_periods(pm)
 data = zeros(1,T)
 print("Starting to run SMC\n")
 Random.seed!(1793)
-pm <= Setting(:n_particles, 10)
 for t in 1:T
     # run smc estimation
     DSGE.estimate(pm, data[:,1:t]; filestring_addl = ["period=$(t)", "preddens=wrongorigmatlab"])

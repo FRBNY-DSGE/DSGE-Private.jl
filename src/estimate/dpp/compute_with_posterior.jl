@@ -1,16 +1,7 @@
-# This script temporarily holds functions related to any posterior computations
-# done after estimating a PoolModel. For example,
-# sample_λ constructs pdfs of λ by sampling from the
-# the joint density of (λ,θ) in the sense that,
-# given the posterior of θ, which is not conditional on θ,
-# we are then sampling from the density of p(λ|θ), hence
-# the resulting pair (λ,θ) will be a sample from the joint density.
-# If we have lots of samples of θ, this will be a good
-# approximation of the joint density.
-
+using SharedArrays
 """
 ```
-sample_λ(m, θs, T = -1; parallel = true) where T<:AbstractFloat
+sample_λ(m, θs, T = -1; parallel = true) where S<:AbstractFloat
 ```
 
 Computes and samples from the conditional density p(λ_t|θ, I_t, P) for
@@ -18,29 +9,31 @@ particle in `θs`, which represents the posterior distribution.
 
 ### Inputs
 
-- `m::PoolModel{T}`: `PoolModel` object
-- `θs::Matrix{T}`: matrix of particles representing posterior distribution of θ
+- `m::PoolModel{S}`: `PoolModel` object
+- `θs::Matrix{S}`: matrix of particles representing posterior distribution of θ
 - `T::Int64`: final period for tempered particle filter
+
+where `S<:AbstractFloat`.
 
 ### Keyword Argument
 
-- `parallel::Bool`: use parallel computing to compute and sample λ
+- `parallel::Bool`: use parallel computing to compute and sample draws of λ
 
 ### Outputs
 
-- `λ_sample::Vector{Float64}`: sample of λs; together with (θ,λ) represents a joint density
+- `λ_sample::Vector{Float64}`: sample of draws of λs; together with (θ,λ) represents a joint density
 
 ```
 """
-function sample_λ(m::PoolModel{T}, θs::Matrix{T}, T::Int64 = -1;
-                  parallel::Bool = true) where T<:AbstractFloat
+function update_λ!(λmat, m::PoolModel{S}, θs::Matrix{S}, T::Int64 = -1;
+                  parallel::Bool = false) where S<:AbstractFloat
     # Check size and orientation of θs is correct: assume particle_num x parameter_num
-    if length(m.parameters) != size(θs,1)
+    if length(m.parameters) != size(θs,2)
         error("number of parameters in PoolModel do not match number of parameters in matrix of posterior draws of θ")
     end
 
     # Initialize necessary objects
-    λ_sample = parallel ? SharedVector{Float64}(undef, size(θs,1)) : Vector{Float64}(undef, size(θs,1))
+    λ_sample = parallel ? SharedVector{Float64}(size(θs,1)) : Vector{Float64}(undef, size(θs,1))
     if parallel
         θs_share = SharedArray(θs)
     end
@@ -51,22 +44,24 @@ function sample_λ(m::PoolModel{T}, θs::Matrix{T}, T::Int64 = -1;
     # Sample from p(λ|θ, I_t^P, P) for each θ in posterior
     if parallel
         @distributed for i in 1:size(θs_share,1)
-            m.update!(vec(θs_share[i,:]))
+            update!(m, vec(θs_share[i,:]))
             tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
             tuning[:get_t_particle_dist] = true
             tuning[:allout] = false
             ~, λ_particles, λ_weights = DSGE.filter(m, zeros(1,T); tuning = tuning)
-            λ_sample[i] = DSGE.sample(λ_particles, DSGE.Weights(λ_weights))
+            λ_sample[i] = DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,T]))
         end
         λ_sample = Array(λ_sample)
+        # λmat[:,T] = Array(λ_sample)
     else
-        for i in 1:size(θs,2)
-            m.update!(vec(θs[i,:]))
+        for i in 1:size(θs,1)
+            update!(m, vec(θs[i,:]))
             tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
             tuning[:get_t_particle_dist] = true
             tuning[:allout] = false
             ~, λ_particles, λ_weights = DSGE.filter(m, zeros(1,T); tuning = tuning)
-            λ_sample[i] = DSGE.sample(λ_particles, DSGE.Weights(λ_weights))
+            # λ_sample[i] = DSGE.sample(λ_particles, DSGE.Weights(λ_weights[:,T]))
+            λmat[i,T] = DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,T]))
         end
     end
 
@@ -114,22 +109,21 @@ function compute_Eλ(m::PoolModel{T}, λvec ::Vector{T}, weights::Vector{T} = Ve
 
     # Push forward states and compute mean
     if parallel
-        λhat_tplush = @sync @distributed (+) for i in 1:n_particles
+        @sync @distributed for i in 1:n_particles
             ϵ = rand(get_F_ϵ(pm), h)
             for j in 1:h
-                λ_vec[i] = get_Φ(pm)([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])
+                λ_vec[i] = get_Φ(pm)([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])[1]
             end
         end
-        λhat_tplush /= n_particles
     else
         for i in 1:n_particles
             ϵ = rand(get_F_ϵ(pm), h) # h is small, so this is not expensive to loop through
             for j in 1:h
-                λ_vec[i] = get_Φ(pm)([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])
+                λ_vec[i] = get_Φ(pm)([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])[1]
             end
         end
-        λhat_tplush = mean(λ_vec .* weights)
     end
+    λhat_tplush = mean(λ_vec .* weights)
 
     if current_period
         return λhat_tplush, λhat_t
