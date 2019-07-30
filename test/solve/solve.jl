@@ -110,7 +110,7 @@ end
 
 ### Test initial alphas against reference output
 m.approx.slopeconmsv, m.approx.slopeconxx = slopeconmsv_ref, slopeconxx_ref
-α_initial = initial_α(m.approx.nvars, m.approx.nnmsv,m.approx.nexogcont,m.approx.ns,m.approx.ngrid,steady_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
+α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv,m.approx.nexogcont,m.approx.ns,m.approx.ngrid, m.approx.exoggrid, steady_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
 
 h5 = h5open("$path/initialalphas.h5")
 α_initial_ref = read(h5, "initialalphas")
@@ -121,7 +121,7 @@ close(h5)
 end
 
 ### Test fixedpoint_parallel output against reference output
-α_star_parallel, convergence = fixedpoint_parallel(m.approx.nfunc, m.approx.ngrid, m.approx.ns, m.approx.bbtinv, α_initial_ref)
+α_star_parallel, convergence = fixedpoint_parallel(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial_ref)
 
 h5 = h5open("$path/alphastar.h5")
 α_star_ref = read(h5, "alphastar")
@@ -132,7 +132,7 @@ close(h5)
 end
 
 ### Test fixed point output against reference output
-α_star = fixedpoint(m.approx.nfunc, m.approx.ngrid, m.approx.ns, m.approx.bbtinv, α_initial_ref)
+α_star, convergence = fixedpoint(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial_ref)
 
 @testset "Compare alpha star to reference output" begin
     @test α_star_ref ≈ α_star
