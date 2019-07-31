@@ -270,7 +270,7 @@ function model_settings!(m::PoolModel)
 
     # SMC estimation
     m <= Setting(:sampling_method, :SMC)
-    m <= Setting(:n_particles, 2000)
+    m <= Setting(:n_particles, 4000)
 
     # Forecast
     m <= Setting(:use_population_forecast, true,

@@ -7,6 +7,8 @@ include("compute_with_posterior.jl")
 # save_fn = "right805_current904"
 estim_fn = "wrongorigmatlab"
 save_fn = "wrong805_orig904"
+vintage = "190729"
+sampling_method = :MH
 
 # Make poolmodel object
 filepath = dirname(@__FILE__)
@@ -43,15 +45,18 @@ preddens2_1 = vec(matdata["p904"])
 periods = 4
 pm = PoolModel(Dict(:Model805 => y1[:,1:78], :Model904 => y2[:,1:78]), periods,
                Dict(:Model805 => preddens1_1, :Model904 => preddens2_1), [m2, m1]; static = false)
-pm <= Setting(:data_vintage, "190726", true, "vint", "")
+pm <= Setting(:data_vintage, vintage, true, "vint", "")
+pm <= Setting(:sampling_method, sampling_method)
 
 # Construct save path
 pm <= Setting(:saveroot, "$(filepath)/save")
 T = get_periods(pm)
 h = get_forecast_horizon(pm)
 
-# analyze smc output
-pm <= Setting(:n_particles, 10)
+# analyze estimation output
+tmp = load_draws(pm, :full; filestring_addl = ["period=1", "preddens=$(estim_fn)"],
+                  verbose = :none) # since resample from posterior, these particles should have
+pm <= Setting(:n_particles, size(tmp,1))
 λvec = Dict{Int64, Vector{Float64}}()
 λ_t_evol = Matrix{Float64}(undef,get_setting(pm,:n_particles),T)
 λhat_t = Vector{Float64}(undef,T) # E[λ_t|I_t^P, P]
@@ -73,7 +78,6 @@ for t in 1:T
     end
     λhat_tplush[t], λhat_t[t] = compute_Eλ(pm, λ_t_evol[:,t])
 end
-@assert false
 dpp_preddens = λhat_tplush .* get_cond_pred_dens(pm, :Model904) .+
     (1 .- λhat_tplush) .* get_cond_pred_dens(pm, :Model805)
 θmat_T = load_draws(pm, :full; filestring_addl = ["period=$(T)", "preddens=$(estim_fn)"])
