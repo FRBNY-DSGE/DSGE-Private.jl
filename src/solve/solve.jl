@@ -454,7 +454,15 @@ function parallel_help(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, 
         err += err2
     end
 
-    # Solve for α by multiplying by inverse matrix and then reindex
+    # Solve for α by multiplying by inverse matrix
+    #mul!(α_temp, updated_approx_polynomials,bbtinv)
+    mul!(α_temp, bbtinv', updated_approx_polynomials')
+
+    #Reindex
+    col1[:, 1] = vec(α_temp[:, 1:nfunc])
+    col1[:, 2] = vec(α_temp[:, nfunc+1:2*nfunc])
+    col1[1,3] = err
+    #=
     α_temp = dgemm(1.0, updated_approx_polynomials,bbtinv)
     for k in 1:ngrid
         for l in 1:nfunc
@@ -462,8 +470,7 @@ function parallel_help(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, 
             col1[(l - 1)*ngrid+ k,2] = α_temp[nfunc + l, k]
         end
     end
-
-    col1[1,3] = err
+    =#
 
     return col1
 end
