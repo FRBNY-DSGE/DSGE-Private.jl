@@ -123,13 +123,13 @@ function intermediatedec(nvars::Int,nexog::Int,labss::Float64,endogvarm1::Vector
         bi::Float64 = omegapoly*polyvar[6] + (1.0-omegapoly)*polyvarplus[6]
         util::Float64 = omegapoly*exp(polyvar[7]) + (1.0-omegapoly)*exp(polyvarplus[7])
     else
-        lam::Float64 = exp(polyvar[1])
-        qq::Float64 = exp(polyvar[2])
-        bp::Float64 = polyvar[3]
-        bww::Float64 = polyvar[4]
-        bc::Float64 = exp(polyvar[5])
-        bi::Float64 = polyvar[6]
-        util::Float64 = exp(polyvar[7])
+        lam = exp(polyvar[1])
+        qq = exp(polyvar[2])
+        bp = polyvar[3]
+        bww = polyvar[4]
+        bc = exp(polyvar[5])
+        bi = polyvar[6]
+        util = exp(polyvar[7])
     end
 
     vp::Float64 = (sqrt(1.0+4.0*bp)+1.0)/2.0
