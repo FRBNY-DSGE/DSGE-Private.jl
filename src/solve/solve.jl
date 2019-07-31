@@ -456,7 +456,8 @@ function parallel_help(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, 
 
     # Solve for α by multiplying by inverse matrix
     #mul!(α_temp, updated_approx_polynomials,bbtinv)
-    mul!(α_temp, bbtinv', updated_approx_polynomials')
+    #Should eventuall try to make this in place
+    α_temp = BLAS.gemm('T', 'T', bbtinv, updated_approx_polynomials)
 
     #Reindex
     col1[:, 1] = vec(α_temp[:, 1:nfunc])
