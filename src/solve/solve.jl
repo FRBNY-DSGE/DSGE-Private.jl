@@ -152,7 +152,7 @@ function dgemm(α::Float64, A::Array{Float64}, B::Array{Float64})
     return C
 end
 
-function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, ngrid::Int, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64, 2}, α_initial::Array{Float64,2})
+function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, ngrid::Int, nshockgrid::Array{Int, 1}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64, 2}, α_initial::Array{Float64,2})
 
     # Initialize
     α_star = copy(α_initial)
@@ -226,7 +226,7 @@ function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
     return α_star, convergence
 end
 
-function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogcont::Int, nexogshock::Int, steady_states::Array{Float64, 1}, nshockgrid:: Array{Int, 2}, shockbounds::Array{Float64}, shockdistance::Array{Float64}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
+function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogcont::Int, nexogshock::Int, steady_states::Array{Float64, 1}, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64}, shockdistance::Array{Float64}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
     # Initialize variables - some of these should be in model settings
     total_periods = 100000
     periods_per_iter = 400
@@ -442,7 +442,7 @@ function dgemv(alpha::Real,A::Array,x::Array)
 
 end
 
-function parallel_help(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, ngrid::Int, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64, 2}, α_star::Array{Float64,2},j::Int)
+function parallel_help(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, ngrid::Int, nshockgrid::Array{Int, 1}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64, 2}, α_star::Array{Float64,2},j::Int)
     col1 = zeros(nfunc*ngrid,3)
 
     updated_approx_polynomials = zeros(2*nfunc, ngrid)
@@ -478,7 +478,7 @@ end
 
 
 # Parallel Fixedpoint
-function fixedpoint_parallel(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, ngrid::Int, nshockgrid::Array{Int, 2}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64,2}, α_initial::Array{Float64,2})
+function fixedpoint_parallel(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nexog::Int, nvars::Int, nexogcont::Int, nmsv::Int, xgrid::Array{Float64, 2}, slopeconxx::Array{Float64, 1}, exoggrid::Array{Float64, 2}, ngrid::Int, nshockgrid::Array{Int, 1}, bbt::Array{Float64, 2}, statezlbinfo::Array{Int64, 1}, zlbswitch::Bool, nquad::Int, ghweights::Array{Float64, 1}, ghnodes::Array{Float64, 2}, shockbounds::Array{Float64, 2}, shockdistance::Array{Float64, 1}, interpolatemat::Array{Int, 2}, slopeconmsv::Array{Float64, 1}, nindplus::Int, indplus::Array{Int ,1}, ns::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, bbtinv::Array{Float64,2}, α_initial::Array{Float64,2})
 
     # Initialize
     α_star = copy(α_initial)
