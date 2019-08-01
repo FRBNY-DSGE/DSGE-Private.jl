@@ -1,6 +1,8 @@
 """
 ```
 load_data(m::AbstractModel; try_disk::Bool = true, verbose::Symbol = :low)
+
+load_data(m::PoolModel)
 ```
 
 Create a DataFrame with all data series for this model, fully transformed.
@@ -21,6 +23,11 @@ Then, the series in levels are transformed as specified in `m.observable_mapping
 
 If `m.testing` is false, then the resulting DataFrame is saved to disk as `data_<yymmdd>.csv`.
 The data are then returned to the caller.
+
+If the model object is a PoolModel, then the input_series field of an Observables type
+follows a different syntax. The first symbol of the Vector in that
+field is the name of the csv file in the dataroot, and the second symbol is the name
+of the variable to be loaded as a data series. A column named date must exist.
 """
 function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool = true, verbose::Symbol=:low)
     recreate_data = false
@@ -71,6 +78,45 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool =
         # check that dataset is valid
         isvalid_data(m, df)
     end
+
+    return df
+end
+
+function load_data(m::PoolModel{T}; cond_type::Symbol = :none,
+                   verbose::Symbol = :low) where T<:AbstractFloat
+    # Load predictive densities into DataFrame
+    df = DataFrame()
+    start_date = date_presample_start(m)
+    end_data = date_mainsample_end(m)
+    for obs in values(m.observable_mappings)
+        if isempty(df)
+            tmp_df = CSV.read(dataroot(m) * string(obs.input_series[1]) * ".csv")
+            df[:date] = Vector{Dates.Date}(tmp_df[:date])
+            df[obs.input_series[2]] = Vector{Float64}(tmp_df[obs.input_series[2]])
+        else
+            tmp_df = CSV.read(dataroot(m) * string(obs.input_series[1]) * ".csv")
+            tmp_df[:date] = Vector{Dates.Date}(tmp_df[:date])
+            tmp_df[obs.input_series[2]] = Vector{Float64}(tmp_df[obs.input_series[2]])
+            df = join(df, tmp_df[[:date, obs.input_series[2]]], on = :date, kind = :outer)
+        end
+    end
+
+    # Ensure that only appropriate rows make it into the returned DataFrame.
+    start_date = date_presample_start(m)
+    end_date   = if cond_type in [:semi, :full]
+        date_conditional_end(m)
+    else
+        date_mainsample_end(m)
+    end
+    df = df[start_date .<= df[:date] .<= end_date, :]
+
+    # save_data(m, df; cond_type=cond_type)
+    println(verbose, :low, "dataset creation successful")
+
+    missing_cond_vars!(m, df; cond_type = cond_type)
+
+    # check that dataset is valid
+    isvalid_data(m, df)
 
     return df
 end

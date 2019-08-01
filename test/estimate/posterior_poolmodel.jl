@@ -45,6 +45,9 @@ tuning = Dict(:r_star => 2., :c_init => 0.3, :target_accept_rate => 0.4,
               :n_particles => 1000, :n_presample_periods => 0,
               :allout => true)
 pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
+pm[:ρ].value = 0.8
+pm[:μ].value = 0.
+pm[:σ].value = 1.
 data = zeros(1, get_periods(pm))
 Random.seed!(1793)
 s_init = reshape(rand(get_F_λ(pm), tuning[:n_particles]), 1, 1000)
@@ -70,7 +73,7 @@ tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(
     @test post_at_start == tpf_out
 
     Random.seed!(1793)
-    global y = x + [.3; -300; 5]
+    global y = x + [-.7; -300; 5]
     post_not_at_start = posterior!(pm, y, data)
     ϵ = 0.0004
     @test abs(post_at_start - post_not_at_start) > ϵ

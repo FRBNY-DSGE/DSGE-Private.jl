@@ -185,6 +185,8 @@ corresponding to the PoolModel model `m`. Currently returns nothing.
 """
 function compute_system(m::PoolModel{T};
                         verbose::Symbol = :high) where T<:AbstractFloat
+    # Φ = transition(m)
+    # Ψ = measurement(m)
     return nothing
 end
 
@@ -225,26 +227,6 @@ function compute_system_function(system::System{S}) where S<:AbstractFloat
     F_u = Distributions.MvNormal(zeros(nobs),    EE)
 
     return Φ, Ψ, F_ϵ, F_u
-end
-
-"""
-```
-compute_system_function(m::PoolModel{S}) where S<:AbstractFloat
-```
-
-### Inputs
-
-- `m::PoolModel`
-
-### Outputs
-
-- `Φ::Function`: transition equation
-- `Ψ::Function`: measurement equation
-- `F_ϵ::Distributions.MvNormal`: shock distribution
-- `F_u::Distributions.MvNormal`: measurement error distribution
-"""
-function compute_system_function(m::PoolModel{S}) where S<:AbstractFloat
-    return get_statespace(m, :Φ), get_statespace(m, :Ψ), get_distributions(m, :F_ϵ), get_distributions(m, :F_u)
 end
 
 function zero_system_constants(system::System{S}) where S<:AbstractFloat

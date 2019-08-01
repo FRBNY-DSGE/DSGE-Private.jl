@@ -55,7 +55,6 @@ pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
 #                 Dict(:Model805 => pred_dens1_4, :Model904 => pred_dens2_4), [m1, m2])
 
 @testset "Check outer constructors" begin
-    @test typeof(PoolModel(y1, periods, Dict(:Model805 => pred_dens1_1, :Model904 => pred_dens2_1), [m1, m2]; testing = true)) == PoolModel{Float64}
     @test typeof(pm1) == PoolModel{Float64}
     mstatic = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
                 Dict(:Model805 => pred_dens1_1, :Model904 => pred_dens2_1), [m1, m2]; static = true)
@@ -73,8 +72,7 @@ pm1 = PoolModel(Dict(:Model805 => y1, :Model904 => y2), periods,
     # @test get_particles(m) == OrderedDict(:Model805 => m1, :Model904 => m2)
     # @test get_particles(m, :AnScorfheide) == OrderedDict(:AnScorfheide => m1)
     # @test get_particles(m, [:Model805, :Model904]) == OrderedDict(:Model805 => m1, :Model904 => m2)
-    @test typeof(get_cond_pred_dens(pm1)) == OrderedDict{Symbol,Vector{Float64}}
-    @test typeof(get_cond_pred_dens(pm1, :Model805)) == Vector{Float64}
+    @test get_cond_pred_dens(pm1,:Model805) == pred_dens1_1
     @test length(get_cond_pred_dens(pm1, [:Model805, :Model904])) == 2
     @test haskey(get_system(pm1), :statespace) && haskey(get_system(pm1), :distributions)
     @test haskey(get_statespace(pm1), :Φ) && haskey(get_statespace(pm1), :Ψ)
@@ -127,7 +125,6 @@ end
 
 # Check solve and statespace functions apply to PoolModel
 @testset "Check solve and statespace functions apply to PoolModel" begin
-    Phi1, Psi1, F_eps1, F_uu1 = compute_system_function(pm1)
     @test typeof(solve(pm1)) == Nothing
     @test typeof(compute_system(pm1)) == Nothing
 end

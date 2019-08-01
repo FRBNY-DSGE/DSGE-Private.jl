@@ -1,4 +1,5 @@
 using DSGEModels
+# Note that this test assumes TPF properly works
 
 # Set up underlying models
 # filepath = pwd()
@@ -46,23 +47,17 @@ tuning = Dict(:r_star => 2., :c_init => 0.3, :target_accept_rate => 0.4,
               :n_particles => 1000, :n_presample_periods => 0,
               :allout => true)
 pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
+pm[:ρ].value = 0.5
+pm[:μ].value = 0.
+pm[:σ].value = 1.
 data = zeros(1, get_periods(pm))
 Random.seed!(1793)
 s_init = reshape(rand(get_F_λ(pm), tuning[:n_particles]), 1, 1000)
-s_init = [s_init; 1 .- s_init] # this tpf output should be saved later
+s_init = [s_init; 1 .- s_init]
 tpf_out, ~, ~ = tempered_particle_filter(data, get_Φ(pm), get_Ψ(pm), get_F_ϵ(pm), get_F_u(pm),
                                    s_init; tuning..., verbose = :none,
                                    fixed_sched = [1.], parallel = false,
                                    dynamic_measurement = true, poolmodel = true)
-
-jld_data = load("$filepath/../reference/tpf_poolmodel.jld2")
-tpf_out = jld_data["tpf_out"]
-tpf_out_noinit = jld_data["tpf_out_noinit"]
-tuning = jld_data["tuning"]
-data = jld_data["data"]
-s_init = jld_data["s_init"]
-pm <= Setting(:tuning, tuning, "tuning parameters for TPF")
-
 
 Random.seed!(1793)
 filt_tpf_out, ~, ~ = DSGE.filter(pm, data; tuning = get_setting(pm, :tuning))
@@ -78,13 +73,17 @@ filt_lik_tpf_out = sum(DSGE.filter_likelihood(pm, data; tuning = get_setting(pm,
 end
 
 Random.seed!(1793)
+s_init = reshape(rand(get_F_λ(pm), tuning[:n_particles]), 1, 1000)
+s_init = [s_init; 1 .- s_init] # this tpf output should be saved later
 filt_tpf_out, ~, ~ = DSGE.filter(pm, data, s_init; tuning = get_setting(pm, :tuning))
 Random.seed!(1793)
+s_init = reshape(rand(get_F_λ(pm), tuning[:n_particles]), 1, 1000)
+s_init = [s_init; 1 .- s_init] # this tpf output should be saved later
 filt_lik_tpf_out = sum(DSGE.filter_likelihood(pm, data, s_init; tuning = get_setting(pm, :tuning)))
 
 @testset "Check call to tempered particle filter when providing initial states" begin
-    @test tpf_out_noinit == filt_tpf_out
-    @test tpf_out_noinit == filt_lik_tpf_out
+    @test tpf_out == filt_tpf_out
+    @test tpf_out == filt_lik_tpf_out
 end
 
 
