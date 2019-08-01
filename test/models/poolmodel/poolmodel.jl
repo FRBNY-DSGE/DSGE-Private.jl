@@ -15,12 +15,17 @@ filepath = dirname(@__FILE__)
     @test mstatic[:ρ].value == 1 && mstatic[:ρ].fixed
 end
 
-# Check solve and statespace functions apply to PoolModel
+# Check compute_system, transition and measurement functions apply to PoolModel
 @testset "Check solve and statespace functions apply to PoolModel" begin
-    Φ1, Ψ2 = compute_system(pm)
-    Φ2, Ψ2 = solve(pm)
+    Φ1, Ψ1, F_ϵ1, F_u1, F_λ1 = compute_system(pm)
+    Φ2, F_ϵ2, F_λ2 = transition(pm)
+    Ψ2, F_u2 = measurement(pm)
+
     @test Φ1 == Φ2
     @test Ψ1 == Ψ2
+    @test F_ϵ1 == F_ϵ2
+    @test F_λ1 == F_λ2
+    @test F_u1 == F_u2
 end
 
 nothing

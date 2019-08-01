@@ -185,9 +185,9 @@ corresponding to the PoolModel model `m`. Currently returns nothing.
 """
 function compute_system(m::PoolModel{T};
                         verbose::Symbol = :high) where T<:AbstractFloat
-    # Φ = transition(m)
-    # Ψ = measurement(m)
-    return nothing
+    Φ, F_ϵ, F_λ = transition(m)
+    Ψ, F_u = measurement(m)
+    return Φ, Ψ, F_ϵ, F_u, F_λ
 end
 
 """

@@ -64,23 +64,6 @@ function estimate(m::AbstractModel;
 	         save_intermediate = save_intermediate)
 end
 
-function estimate(m::PoolModel; verbose::Symbol = :low,
-                  proposal_covariance::Matrix = Matrix(undef, 0,0),
-                  mle::Bool = false,
-                  sampling::Bool = true,
-                  filestring_addl::Vector{String} = Vector{String}(),
-                  continue_intermediate::Bool = false,
-                  intermediate_stage_start::Int = 0,
-                  intermediate_stage_increment::Int = 10,
-		          save_intermediate::Bool = false)
-    # No data to pass, initialize empty vector
-    data = Vector{Float64}(undef, get_periods(m))
-    estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
-             mle = mle, sampling = sampling,
-             intermediate_stage_increment = intermediate_stage_increment,
-	         save_intermediate = save_intermediate)
-end
-
 function estimate(m::AbstractModel, data::AbstractArray;
                   verbose::Symbol = :low,
                   proposal_covariance::Matrix = Matrix(undef, 0,0),

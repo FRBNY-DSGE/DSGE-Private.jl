@@ -66,11 +66,13 @@ Driver to compute the model solution when using the PoolModel type
 - `m`: the PoolModel object
 
 ### Outputs
-- nothing (m holds transition equation separately)
+- Φ: transition function
+- F_ϵ: distribution of structural shock
+- F_λ: prior on the initial λ_0
 
 """
 function solve(m::PoolModel)
-    return nothing
+    return transition(m)
 end
 
 """

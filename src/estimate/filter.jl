@@ -144,7 +144,7 @@ end
 This section defines filter and filter_likelihood for the PoolModel type
 ```
 """
-function filter(m::PoolModel, data::AbstractArray = Matrix{Float64}(undef,0,0),
+function filter(m::PoolModel, data::AbstractArray,
                 s_0::Matrix{S} = Matrix{Float64}(undef,0,0);
                 start_date::Date = date_presample_start(m),
                 cond_type::Symbol = :none, include_presample::Bool = true,
@@ -153,18 +153,18 @@ function filter(m::PoolModel, data::AbstractArray = Matrix{Float64}(undef,0,0),
                 tuning::Dict{Symbol,Any} = Dict{Symbol,Any}()) where {S<:AbstractFloat}
 
     # Handle data
-    if isempty(data)
-        data = zeros(1,get_periods(m))
-    end
     Nt0 = include_presample ? 0 : n_presample_periods(m)
     if haskey(tuning, :n_presample_periods)
         tuning[:n_presample_periods] = Nt0
     end
 
+    # Compute transition and measurement equations
+    Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
+
     # Check initial states
     n_particles = haskey(tuning, :n_particles) ? tuning[:n_particles] : 1000
     if isempty(s_0)
-        s_0 = reshape(rand(get_F_λ(m), n_particles), 1, n_particles)
+        s_0 = reshape(F_λ, n_particles), 1, n_particles)
         s_0 = [s_0; 1 .- s_0]
     else
         if size(s_0,2) != n_particles
@@ -191,15 +191,15 @@ function filter(m::PoolModel, data::AbstractArray = Matrix{Float64}(undef,0,0),
     catch KeyError
     end
 
-    return tempered_particle_filter(data, get_Φ(m), get_Ψ(m), get_F_ϵ(m), get_F_u(m),
-                                    s_0; parallel = parallel,
-                                    dynamic_measurement = true, poolmodel = true,
+
+    return tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u, s_0; parallel = parallel,
+                                    poolmodel = true,
                                     fixed_sched = fixed_sched,
                                     tuning..., verbose = :none)
 end
 
 
-function filter_likelihood(m::PoolModel, data::AbstractArray = Matrix{Float64}(undef,0,0),
+function filter_likelihood(m::PoolModel, data::AbstractArray,
                            s_0::Matrix{S} = Matrix{Float64}(undef,0,0);
                            start_date::Date = date_presample_start(m),
                            cond_type::Symbol = :none, include_presample::Bool = true,
