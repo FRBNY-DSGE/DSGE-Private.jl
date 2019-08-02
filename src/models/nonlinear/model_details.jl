@@ -70,9 +70,9 @@ function exogposition(exogvec::Vector{Int64}, nrvec::Array{Int64, 1}, nlength::I
 end
 
 """
-    intermediatedec(nvars::Int,nexog::Int,params,labss::Float64,endogvarm1::Vector{Float64},currentshockvalues::Vector{Float64},polyvar::Vector{Float64},omegapoly::Float64,polyvarplus::Vector{Float64},zlbintermediate::Bool)
+    intermediatedec!(endogvar::Vector{Float64}, nvars::Int,nexog::Int,params,labss::Float64,endogvarm1::Vector{Float64},currentshockvalues::Vector{Float64},polyvar::Vector{Float64},omegapoly::Float64,polyvarplus::Vector{Float64},zlbintermediate::Bool)
 
-Returns endogenous variables and shock values given their lagged values and polynomial approximation.
+Updates endogenous variables given their lagged values and polynomial approximation.
 ...
 # Arguments
 - `m::GHLS`: GHLS model object. Relevantly contains:
@@ -91,160 +91,72 @@ Returns endogenous variables and shock values given their lagged values and poly
 ...
 """
 function intermediatedec!(endogvar::Vector{Float64},nvars::Int,nexog::Int,labss::Float64,endogvarm1::Vector{Float64},currentshockvalues::Vector{Float64},polyvar::Vector{Float64},omegapoly::Float64,polyvarplus::Vector{Float64},zlbintermediate::Bool,exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64}, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
-#=
-    #Initilize Variables
-    endogvar=Array{Float64}(undef,nvars+nexog)
 
+    # Transform shocks from log-level deviations from steady state to levels
     invshk::Float64 = exp(currentshockvalues[exogenous_shocks[:μ_sh]])
     techshk::Float64 = exp(currentshockvalues[exogenous_shocks[:ztil_sh]])
     rrshk::Float64 = currentshockvalues[exogenous_shocks[:rm_sh]]
     gss::Float64 = 1.0/(1.0-params[keys[:shrgy]])
     gshk::Float64 = exp( log(gss) + currentshockvalues[exogenous_shocks[:g_sh]] )
-    ashk::Float64 = exp(0.) # Which of the last 3 shocks is this?
+    ashk::Float64 = exp(0.)
 
-    capm1::Float64 = endogvarm1[1] # There is no k_t1 in m.endogenous_states
-    ccm1::Float64 = endogvarm1[2]
-    invm1::Float64 = endogvarm1[3]
-    rwm1::Float64 = endogvarm1[4]
-    notrm1::Float64 = endogvarm1[5] # Add in endogenous_states
-    dpm1::Float64 = endogvarm1[6] # Add in endogenous_states
-    gdpm1::Float64 = endogvarm1[7]
-
-    # Not changing the values in model object
+    # Update levels of  endogenous variables
     if (zlbintermediate == true)
-        lam = omegapoly*exp(polyvar[1]) + (1.0-omegapoly)*exp(polyvarplus[1])
-        qq = omegapoly*exp(polyvar[2]) + (1.0-omegapoly)*exp(polyvarplus[2])
+        endogvar[10] = omegapoly*exp(polyvar[1]) + (1.0-omegapoly)*exp(polyvarplus[1]) #lam
+        endogvar[11] = omegapoly*exp(polyvar[2]) + (1.0-omegapoly)*exp(polyvarplus[2]) #qq
         bp = omegapoly*polyvar[3] + (1.0-omegapoly)*polyvarplus[3]
         bww = omegapoly*polyvar[4] + (1.0-omegapoly)*polyvarplus[4]
-        bc = omegapoly*exp(polyvar[5]) + (1.0-omegapoly)*exp(polyvarplus[5])
-        bi = omegapoly*polyvar[6] + (1.0-omegapoly)*polyvarplus[6]
-        util = omegapoly*exp(polyvar[7]) + (1.0-omegapoly)*exp(polyvarplus[7])
+        endogvar[21] = omegapoly*exp(polyvar[5]) + (1.0-omegapoly)*exp(polyvarplus[5]) #bc
+        endogvar[22] = omegapoly*polyvar[6] + (1.0-omegapoly)*polyvarplus[6] #bi
+        endogvar[13] = omegapoly*exp(polyvar[7]) + (1.0-omegapoly)*exp(polyvarplus[7]) #util
     else
-        lam = exp(polyvar[1])
-        qq = exp(polyvar[2])
-        bp = polyvar[3]
-        bww = polyvar[4]
-        bc = exp(polyvar[5])
-        bi = polyvar[6]
-        util = exp(polyvar[7])
-    end
-
-    vp::Float64 = (sqrt(1.0+4.0*bp)+1.0)/2.0
-    vw::Float64 = (sqrt(1.0+4.0*bww)+1.0)/2.0
-    dptildem1::Float64 = (params[keys[:π_bar]]^params[keys[:ap]])*(dpm1^(1.0-params[keys[:ap]]))
-    dwtildem1::Float64 = (params[keys[:π_bar]]^params[keys[:aw]])*(dpm1^(1.0-params[keys[:aw]]))
-    gzwage::Float64 = params[keys[:gz]]*techshk^(1.0-params[keys[:aw]]) #Note that aw should be bw but in steady state they are equal, might be better style to pass bw though
-    dp::Float64 = vp*dptildem1
-    dw::Float64 = vw*dwtildem1*gzwage
-    muc::Float64 = lam + (params[keys[:γ]]/params[keys[:gz]])*params[keys[:β]]*bc
-    cc::Float64 = params[keys[:γ]]*ccm1/(params[keys[:gz]]*techshk)+1.0/muc
-    cquad_vi::Float64 = bi/(qq*invshk)-(1.0-qq*invshk)/(params[keys[:ϕ_I]].value*qq*invshk)
-
-    vi::Float64 = 0.5*(1.0+sqrt(1.0+4.0*cquad_vi))
-
-    inv::Float64 = vi*invm1/techshk
-    aayy::Float64 = 1.0/gshk-(params[keys[:ϕ_p]]/2.0)*(vp-1.0)*(vp-1.0)
-    rkss::Float64 = params[keys[:gz]]/params[keys[:β]]-1.0+params[keys[:δ]]
-    utilcost::Float64 = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(util-1.0))-1.0)
-    gdp::Float64 = (1.0/aayy)*( cc+inv + utilcost*(capm1/(params[keys[:gz]]*techshk)) )
-    rw::Float64 = rwm1*dw/(params[keys[:gz]]*techshk*dp)
-    lab::Float64 = gdp^(1.0/(1.0-params[keys[:α]]))*(util*capm1/(params[keys[:gz]]*techshk))^(params[keys[:α]]/(params[keys[:α]]-1.0))/ashk
-    xhp::Float64 = params[keys[:α]]*log(util) + (1-params[keys[:α]])*(log(lab)-log(labss)) # Changed llabss to log(m[:labss])
-
-    lrss::Float64 = log(params[keys[:gz]]*params[keys[:π_bar]]/params[keys[:β]])
-    notr::Float64 = exp(lrss+params[keys[:ρ_R]]*(log(notrm1)-lrss) + (1.0-params[keys[:ρ_R]])*(params[keys[:γ_π]]*log(dp/params[keys[:π_bar]]) + params[keys[:γ_g]]*log(gdp*techshk/gdpm1) + params[keys[:γ_x]]*xhp ) + rrshk)
-
-    mc::Float64 = rw*lab/((1.0-params[keys[:α]])*gdp)
-    rentalk::Float64 = (params[keys[:α]]/(1.0-params[keys[:α]]))*(rw*lab*params[keys[:gz]]*techshk/(util*capm1))
-    cap::Float64 = (1.0-params[keys[:δ]])*(capm1/(params[keys[:gz]]*techshk)) + invshk*inv*(1.0- (params[keys[:ϕ_I]]/2.0)*(vi-1.0)*(vi-1.0) )
-    nomr::Float64 = copy(notr) # copy as to no make it a pointer
-
-    #all variables are in levels except for shocks
-    #shocks are in log-level deviations from SS
-    #(1) cap, (2) cc, (3) inv, (4) rw, (5) notr, (6) dp, (7) gdp, (8) xhp, (9) nomr, (10) lam, (11) qq,
-    #(12) lab, (13) util, (14) mc, (15) rentalk, (16) muc, (17) vi, (18) vp, (19) vw, (20) dw, (21) bc, (22) bi,
-    #(23) liqshk, (24) invshk, (25) techshk, (26) rrshk, (27) gshk, (28) ashk
-
-    endogvar = vcat([cap, cc, inv, rw, notr, dp, gdp, xhp, nomr, lam, qq, lab, util, mc, rentalk, muc, vi, vp, vw, dw, bc, bi], currentshockvalues) #Concatenate two arrays
-
-    return endogvar
-=#
-
-    #Initilize Variables
-
-    invshk::Float64 = exp(currentshockvalues[exogenous_shocks[:μ_sh]])
-    techshk::Float64 = exp(currentshockvalues[exogenous_shocks[:ztil_sh]])
-    rrshk::Float64 = currentshockvalues[exogenous_shocks[:rm_sh]]
-    gss::Float64 = 1.0/(1.0-params[keys[:shrgy]])
-    gshk::Float64 = exp( log(gss) + currentshockvalues[exogenous_shocks[:g_sh]] )
-    ashk::Float64 = exp(0.) # Which of the last 3 shocks is this?
-
-    # Not changing the values in model object
-    if (zlbintermediate == true)
-        endogvar[10] = omegapoly*exp(polyvar[1]) + (1.0-omegapoly)*exp(polyvarplus[1])
-        endogvar[11] = omegapoly*exp(polyvar[2]) + (1.0-omegapoly)*exp(polyvarplus[2])
-        bp = omegapoly*polyvar[3] + (1.0-omegapoly)*polyvarplus[3]
-        bww = omegapoly*polyvar[4] + (1.0-omegapoly)*polyvarplus[4]
-        endogvar[21] = omegapoly*exp(polyvar[5]) + (1.0-omegapoly)*exp(polyvarplus[5])
-        endogvar[22] = omegapoly*polyvar[6] + (1.0-omegapoly)*polyvarplus[6]
-        endogvar[13] = omegapoly*exp(polyvar[7]) + (1.0-omegapoly)*exp(polyvarplus[7])
-    else
-        endogvar[10]::Float64 = exp(polyvar[1])
-        endogvar[11]::Float64 = exp(polyvar[2])
+        endogvar[10] = exp(polyvar[1]) #lam
+        endogvar[11] = exp(polyvar[2]) #qq
         bp::Float64 = polyvar[3]
         bww::Float64 = polyvar[4]
-        endogvar[21]::Float64 = exp(polyvar[5])
-        endogvar[22]::Float64 = polyvar[6]
-        endogvar[13]::Float64 = exp(polyvar[7])
+        endogvar[21] = exp(polyvar[5]) #bc
+        endogvar[22] = polyvar[6] #bi
+        endogvar[13] = exp(polyvar[7]) #util
     end
 
-    endogvar[18]::Float64 = (sqrt(1.0+4.0*bp)+1.0)/2.0
-    endogvar[19]::Float64 = (sqrt(1.0+4.0*bww)+1.0)/2.0
+    endogvar[18] = (sqrt(1.0+4.0*bp)+1.0)/2.0 #vp
+    endogvar[19] = (sqrt(1.0+4.0*bww)+1.0)/2.0 #vw
     dptildem1::Float64 = (params[keys[:π_bar]]^params[keys[:ap]])*(endogvarm1[6]^(1.0-params[keys[:ap]]))
     dwtildem1::Float64 = (params[keys[:π_bar]]^params[keys[:aw]])*(endogvarm1[6]^(1.0-params[keys[:aw]]))
     gzwage::Float64 = params[keys[:gz]]*techshk^(1.0-params[keys[:aw]]) #Note that aw should be bw but in steady state they are equal, might be better style to pass bw though
 
-    endogvar[6]::Float64 = endogvar[18]*dptildem1
-    endogvar[20]::Float64 = endogvar[19]*dwtildem1*gzwage
-    endogvar[16]::Float64 = endogvar[10] + (params[keys[:γ]]/params[keys[:gz]])*params[keys[:β]]*endogvar[21]
-    endogvar[2]::Float64 = params[keys[:γ]]*endogvarm1[2]/(params[keys[:gz]]*techshk)+1.0/endogvar[16]
+    endogvar[6] = endogvar[18]*dptildem1 #dp
+    endogvar[20] = endogvar[19]*dwtildem1*gzwage #dw
+    endogvar[16] = endogvar[10] + (params[keys[:γ]]/params[keys[:gz]])*params[keys[:β]]*endogvar[21] #muc
+    endogvar[2] = params[keys[:γ]]*endogvarm1[2]/(params[keys[:gz]]*techshk)+1.0/endogvar[16] #cc
     cquad_vi::Float64 = endogvar[22]/(endogvar[11]*invshk)-(1.0-endogvar[11]*invshk)/(params[keys[:ϕ_I]].value*endogvar[11]*invshk)
 
-    endogvar[17]::Float64 = 0.5*(1.0+sqrt(1.0+4.0*cquad_vi))
+    endogvar[17] = 0.5*(1.0+sqrt(1.0+4.0*cquad_vi)) #vi
 
-    endogvar[3]::Float64 = endogvar[17]*endogvarm1[3]/techshk
+    endogvar[3] = endogvar[17]*endogvarm1[3]/techshk #inv
     aayy::Float64 = 1.0/gshk-(params[keys[:ϕ_p]]/2.0)*(endogvar[18]-1.0)*(endogvar[18]-1.0)
     rkss::Float64 = params[keys[:gz]]/params[keys[:β]]-1.0+params[keys[:δ]]
     utilcost::Float64 = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvar[13]-1.0))-1.0)
-    endogvar[7]::Float64 = (1.0/aayy)*( endogvar[2]+endogvar[3] + utilcost*(endogvarm1[1]/(params[keys[:gz]]*techshk)) )
-    endogvar[4]::Float64 = endogvarm1[4]*endogvar[20]/(params[keys[:gz]]*techshk*endogvar[6])
-    endogvar[12]::Float64 = endogvar[7]^(1.0/(1.0-params[keys[:α]]))*(endogvar[13]*endogvarm1[1]/(params[keys[:gz]]*techshk))^(params[keys[:α]]/(params[keys[:α]]-1.0))/ashk
-    endogvar[8]::Float64 = params[keys[:α]]*log(endogvar[13]) + (1-params[keys[:α]])*(log(endogvar[12])-log(labss)) # Changed llabss to log(m[:labss])
+    endogvar[7] = (1.0/aayy)*( endogvar[2]+endogvar[3] + utilcost*(endogvarm1[1]/(params[keys[:gz]]*techshk)) ) #gdp
+    endogvar[4] = endogvarm1[4]*endogvar[20]/(params[keys[:gz]]*techshk*endogvar[6]) #rw
+    endogvar[12] = endogvar[7]^(1.0/(1.0-params[keys[:α]]))*(endogvar[13]*endogvarm1[1]/(params[keys[:gz]]*techshk))^(params[keys[:α]]/(params[keys[:α]]-1.0))/ashk #lab
+    endogvar[8] = params[keys[:α]]*log(endogvar[13]) + (1-params[keys[:α]])*(log(endogvar[12])-log(labss)) # Changed llabss to log(m[:labss]), this is xhp
 
     lrss::Float64 = log(params[keys[:gz]]*params[keys[:π_bar]]/params[keys[:β]])
-    endogvar[5]::Float64 = exp(lrss+params[keys[:ρ_R]]*(log(endogvarm1[5])-lrss) + (1.0-params[keys[:ρ_R]])*(params[keys[:γ_π]]*log(endogvar[6]/params[keys[:π_bar]]) + params[keys[:γ_g]]*log(endogvar[7]*techshk/endogvarm1[7]) + params[keys[:γ_x]]*endogvar[8] ) + rrshk)
+    endogvar[5] = exp(lrss+params[keys[:ρ_R]]*(log(endogvarm1[5])-lrss) + (1.0-params[keys[:ρ_R]])*(params[keys[:γ_π]]*log(endogvar[6]/params[keys[:π_bar]]) + params[keys[:γ_g]]*log(endogvar[7]*techshk/endogvarm1[7]) + params[keys[:γ_x]]*endogvar[8] ) + rrshk) #notr
 
-    endogvar[14]::Float64 = endogvar[4]*endogvar[12]/((1.0-params[keys[:α]])*endogvar[7])
-    endogvar[15]::Float64 = (params[keys[:α]]/(1.0-params[keys[:α]]))*(endogvar[4]*endogvar[12]*params[keys[:gz]]*techshk/(endogvar[13]*endogvarm1[1]))
-    endogvar[1]::Float64 = (1.0-params[keys[:δ]])*(endogvarm1[1]/(params[keys[:gz]]*techshk)) + invshk*endogvar[3]*(1.0- (params[keys[:ϕ_I]]/2.0)*(endogvar[17]-1.0)*(endogvar[17]-1.0) )
-    endogvar[9]::Float64 = copy(endogvar[5]) # copy as to no make it a pointer
+    endogvar[14] = endogvar[4]*endogvar[12]/((1.0-params[keys[:α]])*endogvar[7]) #mc
+    endogvar[15] = (params[keys[:α]]/(1.0-params[keys[:α]]))*(endogvar[4]*endogvar[12]*params[keys[:gz]]*techshk/(endogvar[13]*endogvarm1[1])) #rentalk
+    endogvar[1] = (1.0-params[keys[:δ]])*(endogvarm1[1]/(params[keys[:gz]]*techshk)) + invshk*endogvar[3]*(1.0- (params[keys[:ϕ_I]]/2.0)*(endogvar[17]-1.0)*(endogvar[17]-1.0) ) #cap
+    endogvar[9] = copy(endogvar[5]) # copy as to no make it a pointer, this is nomr
 
     endogvar[nvars+1:nvars+nexog] = currentshockvalues
-
-    #all variables are in levels except for shocks
-    #shocks are in log-level deviations from SS
-    #(1) cap, (2) cc, (3) inv, (4) rw, (5) notr, (6) dp, (7) gdp, (8) xhp, (9) nomr, (10) lam, (11) qq,
-    #(12) lab, (13) util, (14) mc, (15) rentalk, (16) muc, (17) vi, (18) vp, (19) vw, (20) dw, (21) bc, (22) bi,
-    #(23) liqshk, (24) invshk, (25) techshk, (26) rrshk, (27) gshk, (28) ashk
-
-    #return vcat(endogvar, currentshockvalues) #Concatenate two arrays
-    return endogvar
 end
 
 """
-    decr(approx::SmolyakApproximation,endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, endog_st, alphacoeff::Array{Float64,2})
+    decr!(approx::SmolyakApproximation,endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, endog_st, alphacoeff::Array{Float64,2})
 
-The decision rule -- returns endogenous variables and shocks given lagged endogenous values and innovations.
+The decision rule -- updates endogenous variables and shocks given lagged endogenous values and innovations.
 ...
 # Arguments
 - `m::GHLS`: GHLS model object, including the parameters, SmolyakApproximation object, and endogenou variables and shock values
@@ -279,7 +191,7 @@ function decr!(endogvar::Vector{Float64}, nvars::Int, nexog::Int, nexogcont::Int
     currentshockvalues[3]::Float64 = params[keys[:σ_Z]]*innovations[3]
     currentshockvalues[4]::Float64 = params[keys[:ρ_int]]*endogvarm1[endogenous_states[:mon_t]] + params[keys[:σ_R]]*innovations[4]
     currentshockvalues[5]::Float64 = params[keys[:ρ_g]]*endogvarm1[endogenous_states[:g_t]] + params[keys[:σ_g]]*innovations[5]
-    currentshockvalues[6] = 0.0 #a shock?
+    currentshockvalues[6] = 0.0 #a shock
 
     #find position of shocks for interpolation
     @simd for i in 1:nexogshock
@@ -312,25 +224,20 @@ function decr!(endogvar::Vector{Float64}, nvars::Int, nexog::Int, nexogcont::Int
 
     prod_sd = prod(shockdistance)
 
-    @fastmath @inbounds @simd for i in 1:ninter # @inbounds, stops the bounds check
-        @fastmath @inbounds @simd for j in 1:nexogshock
+    @inbounds @simd for i in 1:ninter # @inbounds, stops the bounds check
+        @inbounds @simd for j in 1:nexogshock
             shockindexall[j] = shockindex[j] + interpolatemat[j,i]
             weighttemp[j]=(1.0-interpolatemat[j,i])*(currentshockvalues[j]-exoggrid[j,stateindex0]) + (interpolatemat[j,i])*(exoggrid[j,stateindex1]-currentshockvalues[j])
         end
         stateindex = exogposition(shockindexall,nshockgrid,nexog-nexogcont)
         stateindexplus = stateindex+ns
-        @fastmath @inbounds @simd for ifunc in 1:nfunc
+        @inbounds @simd for ifunc in 1:nfunc
             funcmat[ifunc,i] = float_dot(view(alphacoeff,(ifunc-1)*ngrid+1,ifunc*ngrid,stateindex),polyvec)
             funcmatplus[ifunc,i] = float_dot(view(alphacoeff,(ifunc-1)*ngrid+1,ifunc*ngrid,stateindexplus),polyvec)
         end
         weightvec[ninter-i+1] = prod(weighttemp)/prod_sd
     end
-#=
-    @fastmath @inbounds @simd for i in 1:ninter
-        weighttemp = (1.0 .- interpolatemat[:,i]) .* (currentshockvalues .- exoggrid[:,stateindex0]) .+ (interpolatemat[:,i] .* exoggrid[:, stateindex1] .- currentshockvalues)
-        weightvec[ninter-i+1] = prod(weighttemp)/prod_sd
-    end
-=#
+
     #In-place version of funcapp = funcmat*weightvec
     mul!(funcapp, funcmat, weightvec)
 
@@ -346,9 +253,6 @@ function decr!(endogvar::Vector{Float64}, nvars::Int, nexog::Int, nexogcont::Int
         intermediatedec!(endogvar,nvars,nexog, labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp_plus,zlbintermediate, exogenous_shocks, params, keys)
         endogvar[9] = 1.0
     end
-
-    return endogvar
-
 end
 
 """
@@ -445,17 +349,12 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
     zlbintermediate = false  #force evaluation of 1 poly case at date t
     omegapoly = 1.0 #SET OMEGAPOLY TO 1 SINCE ZLBINTERMEDIATE IS FALSE
 
-    endogvar = Array{Float64}(undef, nvars+nexog)
     intermediatedec!(endogvar,nvars,nexog, labss, endogvarm1,currentshockvalues, polyapp[1:nfunc],omegapoly,polyapp[1:nfunc],zlbintermediate, exogenous_shocks, params, keys)
 
     if ((zlbinfo != 0) & (zlbswitch == true))
-        endogvarzlb = Array{Float64}(undef, nvars+nexog)
         intermediatedec!(nvars,nexog, labss, endogvarm1,currentshockvalues, polyapp[nfunc+1:2*nfunc], omegapoly,polyapp[nfunc+1:2*nfunc],zlbintermediate, exogenous_shocks, params, keys)
         endogvarzlb[9] = 1.0
     end
-
-    endogvarp = Array{Float64}(undef,nvars+nexog)
-    endogvarzlbp = Array{Float64}(undef,nvars+nexog)
 
     for ss in 1:nquad
         innovations[1:nexogshock] = ghnodes[:,ss]
@@ -554,31 +453,39 @@ end
 """
     finite_grid(n::Int64,rho::Float64,sigmaep::Float64)
 
-Returns an array containing the values of shock at which model is solved.
+For a given shock, this populates the shockgrid array with the possible values of the shock, spanning -nu to nu and evenly spaced. It also records the shockdistance (distance between shock values) and shockbounds (min and max shock values).
 ...
 # Arguments
-- `n::Int64`: Number of shock realizations.
+- `shockgrid::Array{Float64, 1}: Array containing possible values of shock
+- `shockdistance::Float64: Distance between values of shocks on grid
+- `shockbounds::Array{Float64, 2}: Minimum and maximum values of shock
+- `n::Int`: Number of shock realizations.
 - `rho::Float64`: AR(1) coefficient.
 - `sigmaep::Float64`: Standard deviation of innovation.
 ...
 """
-function finite_grid(n::Int64,rho::Float64,sigmaep::Float64)
+function finite_grid!(shockgrid::Array{Float64, 1}, shockdistance::Float64, shockbounds::Array{Float64, 2}, n::Int,rho::Float64,sigmaep::Float64)
 
-    #Initilize Variables
-    shockgrid=Array{Float64}(undef,n)
+    #Initialize variables
     maxgridstd = 3.0
 
-    nu = sqrt(1.0/(1.0-rho^2))*maxgridstd*sigmaep
-    shockgrid[n]  = nu
+    #Maximum value shock will take on
+    @fastmath nu = sqrt(1.0/(1.0-rho^2))*maxgridstd*sigmaep
+
+    #The last point on the grid is the max value
+    shockgrid[n] = nu
+    shockbounds[2]  = nu #Note that shockbounds is actually a row vector and therefore 2D, this syntax gets the second element in column-major order
+
+    #The first point is the minimum (which is negative of the maximum)
     shockgrid[1]  = -1*shockgrid[n]
-    zstep = (shockgrid[n] - shockgrid[1]) / (n - 1)
+    shockbounds[1] = -1*shockgrid[n]
 
-    for i in 2:n-1
-        shockgrid[i] = shockgrid[1] + zstep * (i - 1)
+    #Every point in between is evenly spaced
+    shockdistance = @fastmath (shockgrid[n] - shockgrid[1]) / (n - 1)
+
+    @inbounds @simd for i in 2:n-1
+        shockgrid[i] = @fastmath shockgrid[1] + shockdistance * (i - 1)
     end
-
-    return zstep,shockgrid
-
 end
 
 """
@@ -604,24 +511,24 @@ function get_shockdetails(nexogcont::Int, number_shock_values::Int, nshockgrid::
     shockdistance = Array{Float64}(undef,nexogshock)
     currentshockindex = Array{Float64}(undef,nexogshock)
     nshocksum_vec = Array{Float64}(undef,nexogshock)
-    exoggrid = Array{Float64}(undef,nexog-nexogcont,ns)
-
-    rhovec = [params[keys[:ρ_η]].value,params[keys[:ρ_μ]].value,0.0,params[keys[:ρ_int]].value,params[keys[:ρ_g]].value, 0.0] # Unsure about rhoa
-    sigmavec = [params[keys[:σ_η]].scaledvalue,params[keys[:σ_μ]].scaledvalue,params[keys[:σ_Z]].scaledvalue,params[keys[:σ_R]].scaledvalue,params[keys[:σ_g]].scaledvalue,0.0] # Unsure about sdeva
-
-    nshocksum = 0
     shockvalues = Array{Float64}(undef,number_shock_values)
+    exoggrid = zeros(nexog-nexogcont,ns) #Not undef since sometimes not every row is initialized (when nexogshock < nexog-nexogcont)
 
-    @fastmath @inbounds @simd for i in 1:nexogshock
-        xshock = Array{Float64}(undef,nshockgrid[i])
-        shockdistance[i],xshock=finite_grid(nshockgrid[i],rhovec[i],sigmavec[i])
-        shockbounds[i,1] = xshock[1]
-        shockbounds[i,2] = xshock[nshockgrid[i]]
-        shockvalues[nshocksum+1:nshocksum+nshockgrid[i]] = xshock
-        nshocksum = nshocksum + nshockgrid[i]
+    rhovec = [params[keys[:ρ_η]].value,params[keys[:ρ_μ]].value,0.0,params[keys[:ρ_int]].value,params[keys[:ρ_g]].value, 0.0]
+    sigmavec = [params[keys[:σ_η]].scaledvalue,params[keys[:σ_μ]].scaledvalue,params[keys[:σ_Z]].scaledvalue,params[keys[:σ_R]].scaledvalue,params[keys[:σ_g]].scaledvalue,0.0] #we should remove ashk it is not used
+
+    # Tracks the total number of shock values that have been inputted into shockvalues array
+    numshockvalues = 0
+
+    # For each shock populate the shockvalues array with the values it can take on
+    @inbounds @simd for i in 1:nexogshock
+
+        #Use views so that array slices can be mutated
+        @views finite_grid!(shockvalues[nshocksum+1:nshocksum+nshockgrid[i]], shockdistance[i], shockbounds[i, :], nshockgrid[i],rhovec[i],sigmavec[i])
+        numshockvalues += nshockgrid[i]
     end
 
-    @fastmath @inbounds @simd for ss in 1:ns
+    @simd for ss in 1:ns
         currentshockindex = exogvarinfo[:,ss]
         nshocksum_vec = zeros(Int64,nexogshock)
         nall = nshockgrid[1]

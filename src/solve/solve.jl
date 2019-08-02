@@ -172,35 +172,21 @@ function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
         @show i
         avg_error = 0.0
 
-        @fastmath @inbounds @simd for j in 1:ns
+        for j in 1:ns
             err = 0.0
 
             # Update polynomials using new guess for α
-            @fastmath @inbounds @simd for k in 1:ngrid
+            for k in 1:ngrid
                 updated_approx_polynomials[:, k], err2 = decr_euler(rkss, ninter, nexogshock, nfunc, nexog, nvars, nexogcont, nmsv, xgrid, slopeconxx, exoggrid, k, j, ngrid, nshockgrid, bbt, statezlbinfo, zlbswitch, nquad, ghweights, ghnodes, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, ns, params, keys, α_star, labss, exogenous_shocks, endogenous_states)
                 err += err2
             end
 
-            # Solve for α by multiplying by inverse matrix
-            #mul!(α_temp, updated_approx_polynomials,bbtinv)
+            # Solve for α by multiplying by inverse matrix (we take transpose since julia is column major so this will be faster to reindex)
             mul!(α_temp, bbtinv', updated_approx_polynomials')
 
             #Reindex
             α_new[:, j] = vec(α_temp[:, 1:nfunc])
             α_new[:, j + ns] = vec(α_temp[:, nfunc+1:2*nfunc])
-            #=
-             for k in 1:ngrid
-                 for l in 1:nfunc
-                    α_new[(l - 1)*ngrid+ k, j] = α_temp[l, k]
-                    α_new[(l - 1)*ngrid+ k, ns + j] = α_temp[nfunc + l, k]
-                end
-            end
-
-            for l in 1:nfunc
-                α_new[(l-1)*ngrid+1:l*ngrid, j] = α_temp[l, :]
-                α_new[(l-1)*ngrid+1:l*ngrid, ns+j] = α_temp[nfunc + 1, :]
-            end
-            =#
 
             avg_error += err
         end
@@ -395,7 +381,7 @@ function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, nexogcon
     end
 
     # Converts endog var back to msv domain
-    @fastmath @inbounds @simd for i in 1:ngrid
+    @inbounds @simd for i in 1:ngrid
         endogvarm1[1:nmsv,i] = msv2xx(xgrid[1:nmsv,i],nmsv,slopeconxxmsv)-endogsteady[1:nmsv] #CHECK THIS FUNCTION
     end
 

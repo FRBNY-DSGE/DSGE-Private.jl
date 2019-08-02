@@ -9,7 +9,7 @@ h5 = h5open("$path/params.h5")
 params = read(h5, "params")
 update!(m, params)
 close(h5)
-m.approx.nshockgrid = [7 2 2 2 2 1]
+m.approx.nshockgrid = [7,2,2,2,2,1]
 
 ### Set up benchmarking test suite
 suite = BenchmarkGroup()
@@ -56,14 +56,18 @@ polyvar_ref = read(h5, "polyvar")
 endogvar_ref = read(h5, "endogvar")
 close(h5)
 
-suite["intermediatedec"] = @benchmarkable intermediatedec($m.approx.nvars, $m.approx.nexog, $m[:labss].value, $endogvarm1_ref, $currentshocks_ref, $polyvar_ref, $1.0, $polyvar_ref, $false, $m.exogenous_shocks, $m.parameters, $m.keys)
+endogvar = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
+
+suite["intermediatedec"] = @benchmarkable intermediatedec!($endogvar, $m.approx.nvars, $m.approx.nexog, $m[:labss].value, $endogvarm1_ref, $currentshocks_ref, $polyvar_ref, $1.0, $polyvar_ref, $false, $m.exogenous_shocks, $m.parameters, $m.keys)
 
 ### Test decr
 h5 = h5open("$path/decr.h5")
 innovations_ref = read(h5, "innovations")
 close(h5)
 
-suite["decr"] = @benchmarkable decr($m.approx.nvars, $m.approx.nexog, $m.approx.nexogcont, $m.approx.nexogshock, $m.approx.nfunc, $m.approx.ninter, $m.approx.nmsv, $m.approx.ngrid, $m.approx.nshockgrid, $m.approx.shockbounds, $m.approx.shockdistance, $m.approx.interpolatemat, $m.approx.slopeconmsv, $m.approx.nindplus, $m.approx.indplus, $m.approx.exoggrid, $m.approx.ns, $m.approx.zlbswitch, $endogvar_ref, $innovations_ref, $m.parameters, $m.keys, $m[:labss].value, $α_initial_ref, $m.exogenous_shocks, $m.endogenous_states)
+endogvarp = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
+
+suite["decr"] = @benchmarkable decr!($m.approx.endogvarp, $m.approx.nvars, $m.approx.nexog, $m.approx.nexogcont, $m.approx.nexogshock, $m.approx.nfunc, $m.approx.ninter, $m.approx.nmsv, $m.approx.ngrid, $m.approx.nshockgrid, $m.approx.shockbounds, $m.approx.shockdistance, $m.approx.interpolatemat, $m.approx.slopeconmsv, $m.approx.nindplus, $m.approx.indplus, $m.approx.exoggrid, $m.approx.ns, $m.approx.zlbswitch, $endogvar_ref, $innovations_ref, $m.parameters, $m.keys, $m[:labss].value, $α_initial_ref, $m.exogenous_shocks, $m.endogenous_states)
 
 ### Test conversion between msv and xx domains
 h5 = h5open("$path/msv2xx.h5")

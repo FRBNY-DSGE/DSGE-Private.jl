@@ -9,8 +9,8 @@ h5 = h5open("$path/params.h5")
 params = read(h5, "params")
 update!(m, params)
 close(h5)
-m.approx.nshockgrid = [7 2 2 2 2 1]
-
+m.approx.nshockgrid = [7,2,2,2,2,1]
+println("model ready")
 ### Test shock details against reference output
 exoggrid, shockbounds, shockdistance = get_shockdetails(m.approx.nexogcont, m.approx.number_shock_values,m.approx.nshockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog, m.parameters, m.keys)
 
@@ -19,6 +19,8 @@ exoggrid_ref = read(h5, "exoggrid")
 shockbounds_ref = read(h5, "shockbounds")
 shockdistance_ref = read(h5, "shockdistance")
 close(h5)
+
+@testset "All tests" begin
 
 @testset "Compare shock details to reference output" begin
     @test exoggrid_ref ≈ exoggrid
@@ -67,7 +69,9 @@ polyvar_ref = read(h5, "polyvar")
 endogvar_ref = read(h5, "endogvar")
 close(h5)
 
-endogvar = intermediatedec(m.approx.nvars, m.approx.nexog, m[:labss].value, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false, m.exogenous_shocks, m.parameters, m.keys)
+endogvar = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
+
+intermediatedec!(endogvar, m.approx.nvars, m.approx.nexog, m[:labss].value, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false, m.exogenous_shocks, m.parameters, m.keys)
 
 @testset "Compare intermediate endogenous variables to reference output" begin
     @test endogvar_ref ≈ endogvar
@@ -79,7 +83,9 @@ innovations_ref = read(h5, "innovations")
 endogvarp_ref = read(h5, "endogvarp")
 close(h5)
 
-endogvarp = decr(m.approx.nvars, m.approx.nexog, m.approx.nexogcont, m.approx.nexogshock, m.approx.nfunc, m.approx.ninter, m.approx.nmsv, m.approx.ngrid, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.exoggrid, m.approx.ns, m.approx.zlbswitch, endogvar_ref, innovations_ref, m.parameters, m.keys, m[:labss].value, α_initial_ref, m.exogenous_shocks, m.endogenous_states)
+endogvarp = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
+
+decr!(endogvarp, m.approx.nvars, m.approx.nexog, m.approx.nexogcont, m.approx.nexogshock, m.approx.nfunc, m.approx.ninter, m.approx.nmsv, m.approx.ngrid, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.exoggrid, m.approx.ns, m.approx.zlbswitch, endogvar_ref, innovations_ref, m.parameters, m.keys, m[:labss].value, α_initial_ref, m.exogenous_shocks, m.endogenous_states)
 
 @testset "Compare decision rule output to reference output" begin
     @test endogvarp_ref ≈ endogvarp
@@ -99,7 +105,7 @@ end
 
 ### Test exogposition against reference output
 @testset "Compare exogposition to reference output" begin
-    @test 1 == exogposition(ones(Int64, 6), [7 2 2 2 2 1], 6)
+    @test 1 == exogposition(ones(Int64, 6), [7,2,2,2,2,1], 6)
 end
 
 ### Test decrlin against reference output
@@ -133,4 +139,4 @@ close(h5)
     @test grid_ref ≈ grid
 end
 
-nothing
+end

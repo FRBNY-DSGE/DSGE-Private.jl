@@ -30,7 +30,6 @@ mutable struct SmolyakApproximation{T}
     bbt::Array{Float64, 2}
     bbtinv::Array{Float64, 2}
     startingguess::Bool
-    alphacoeff::Array{Float64, 2}
 
     interpolatemat :: Array{Int, 2}
     slopeconmsv :: Array{Float64, 1}
@@ -76,7 +75,7 @@ function init_settings!(approx::SmolyakApproximation)
     approx.nmsv = 7
     approx.nfunc = 7
     approx.nindplus = 1
-    approx.nshockgrid = [7,2,2,2,2,1]# CHANGE TO THIS AFTER DONE TESTING: [7 3 3 3 3 1]
+    approx.nshockgrid = [7,2,2,2,2,1]# CHANGE TO THIS AFTER DONE TESTING: [7,3,3,3,3,1]
     approx.indplus = [3]
 end
 
@@ -119,34 +118,41 @@ function setgridsize(nexog::Int,nshockgrid::Array{Int,1})
 end
 
 """
-    exoggridindex(ngrid::Array{Int},nexog::Int,ns::Int)
+    exoggridindex(nshockgrid::Array{Int},nexog::Int,ns::Int)
 
-Returns the matrix of index values for each shock in the grid. The grid has a total of ns points of dimension nexogX1. Thus, the function returns the matrix of all possible states for the exogenous variables.
+For each exogenous shock, this associates a given grid point with the value that that shock takes on at that grid point.
 ...
 # Arguments
-- `ngrid::Array{Int, 1}`: Array containing number of shock values in the grid for each of the nexogshockX1 shocks.
+- `nshockgrid::Array{Int, 1}`: Array containing number of shock values in the grid for each of the nexogshock shocks.
 - `nexog::Int`: Number of exogenous variables including shocks -- must be greater than nexogshock.
-- `ns::Int`: Total number of grid points.
+- `ns::Int`: Total number of grid points, equals the product of elements in nshockgrid since this is the number of possible shock value combinations.
 ...
 """
-function exoggridindex(ngrid::Array{Int,1},nexog::Int,ns::Int)
+function exoggridindex(nshockgrid::Array{Int,1},nexog::Int,ns::Int)
 
     #Initilize Variables
     exoggridindex = zeros(Int,nexog,ns)
-    blocksize = 1 #Initilize blocksize
+    blocksize = 1 #This will record the number of possible shock value combinations
 
-    for ie in nexog:-1:1
-        if ie == nexog
-            blocksize = 1
-        else
-            blocksize = blocksize*ngrid[ie+1]
-        end
-        ncall = div(ns,blocksize*ngrid[ie]) #use div function to keep Int type
-        for ic in 1:ncall
-            for ib in 1:ngrid[ie]
-                exoggridindex[ie,ngrid[ie]*blocksize*(ic-1)+blocksize*(ib-1)+1:ngrid[ie]*blocksize*(ic-1)+blocksize*ib] .= ib
+    # For each exogenous shock
+    for i in nexog:-1:1
+
+        # Split up the ns possible shock value combinations into groups, with each group
+        # representing a distinct combination of shock values among the shocks that have already
+        # been looped through and the current shock
+        ngroups = ns/(blocksize*nshockgrid[i])
+
+        for j in 1:ngroups
+
+            #For each value of the shock
+            for k in 1:nshockgrid[i]
+
+                #START HERE NEXT TIME
+                exoggridindex[i,nshockgrid[i]*blocksize*(j-1)+blocksize*(k-1)+1:nshockgrid[i]*blocksize*(j-1)+blocksize*k] .= k
             end
         end
+
+        blocksize *= nshockgrid[i] #The number of possible shock value combinations increases multiplicatively by the number of shock values this shock can take on
     end
 
     return exoggridindex
@@ -355,7 +361,6 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     approx.bbtinv = bbtinv
 
     approx.startingguess = false
-    approx.alphacoeff = zeros(approx.nfunc*approx.ngrid,2*approx.ns)
 
     approx.slopeconmsv = Array{Float64}(undef,2*nmsvadj)
     approx.shockbounds = Array{Float64}(undef,approx.nexogshock,2)
