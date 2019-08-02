@@ -296,7 +296,6 @@ function decr!(endogvar::Vector{Float64}, nvars::Int, nexog::Int, nexogcont::Int
     shockindexall[1:nexogshock] = shockindex
     stateindex0 = exogposition(shockindexall,nshockgrid,nexog-nexogcont)
     shockindexall[1:nexogshock] = shockindex + interpolatemat[:,ninter]
-
     stateindex1 = exogposition(shockindexall,nshockgrid,nexog-nexogcont)
     funcmat = Array{Float64}(undef,nfunc,ninter)
     weightvec = Array{Float64}(undef,ninter)
@@ -417,9 +416,6 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
     ev = Array{Float64}(undef,12)
     exp_eul = Array{Float64}(undef,12)
 
-    #keys = [i.key for i in params]
-    #values = [i.value for i in params]
-
     currentshockvalues = Array{Float64}(undef,nexog)
     polyapp = Array{Float64}(undef,2*nfunc)
     endogvarm1 = Array{Float64}(undef,nvars+nexog)
@@ -538,12 +534,14 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
 
     errsum = 0.0
     errmax = 0.0
+    imax = 0
 
     for ifunc in 1:2*nfunc
         abserror[ifunc] = abs(polyappnew[ifunc]-polyapp[ifunc])
         errsum = errsum + abserror[ifunc]
         if (abserror[ifunc] > errmax)
             errmax = abserror[ifunc]
+            imax = copy(ifunc)
         end
     end
 
