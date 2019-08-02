@@ -20,7 +20,7 @@ p_2 = predictive density according to model 2
 function measurement(m::PoolModel{T}) where {T<:AbstractFloat}
     obs = m.observables
     # Want λ to be weight on Model904
-    @inline Ψ(x::Vector{Float64}, data::Vector{Float64}) = dot(data[[m[:Model904]; m[:Model805]]], x)
+    @inline Ψ(x::Vector{Float64}, data::Vector{Float64}) = dot(data[[obs[:Model904]; obs[:Model805]]], x)
     F_u = DiscreteUniform(0,0)
     return Ψ, F_u
 end
