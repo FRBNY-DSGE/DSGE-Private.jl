@@ -25,7 +25,7 @@ h5 = h5open("$path/params.h5")
 model_params = read(h5, "params")
 close(h5)
 update!(m, model_params)
-m.approx.nshockgrid = [7 2 2 2 2 1]
+m.approx.nshockgrid = [7,2,2,2,2,1]
 
 # Getting pp and sigma for tests
 Γ0, Γ1, C, Ψ, Π = eqcond(m)
@@ -120,22 +120,22 @@ close(h5)
     @test α_initial_ref ≈ α_initial
 end
 
-### Test fixedpoint_parallel output against reference output
-α_star_parallel, convergence = fixedpoint_parallel(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial_ref)
-
 h5 = h5open("$path/alphastar.h5")
 α_star_ref = read(h5, "alphastar")
 close(h5)
-
-@testset "fixedpoint_parallel" begin
-    @test α_star_ref ≈ α_star_parallel
-end
 
 ### Test fixed point output against reference output
 α_star, convergence = fixedpoint(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial_ref)
 
 @testset "Compare alpha star to reference output" begin
     @test α_star_ref ≈ α_star
+end
+
+### Test fixedpoint_parallel output against reference output
+α_star_parallel, convergence = fixedpoint_parallel(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial_ref)
+
+@testset "fixedpoint_parallel" begin
+    @test α_star_ref ≈ α_star_parallel
 end
 
 nothing

@@ -132,12 +132,11 @@ function lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nvar
     bblin=zeros(nvars,nexog)
 
     aalin = pp[1:nvars,1:nvars]
-    for i in 1:nexogshock
+    @fastmath @inbounds @simd for i in 1:nexogshock
         bblin[:,i] = sigma[1:nvars,i]/sigma[nvars+i,i]
     end
 
-    for i in 1:nexogcont
-
+    @fastmath @inbounds @simd for i in 1:nexogcont
         bblin[:,nexog-i+1] = sigma[1:nvars,nexog-i+1]/sigma[nvars+nexog-i+1,nexog-i+1]
     end
 
@@ -173,11 +172,11 @@ function fixedpoint(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
         @show i
         avg_error = 0.0
 
-        for j in 1:ns
+        @fastmath @inbounds @simd for j in 1:ns
             err = 0.0
 
             # Update polynomials using new guess for α
-            for k in 1:ngrid
+            @fastmath @inbounds @simd for k in 1:ngrid
                 updated_approx_polynomials[:, k], err2 = decr_euler(rkss, ninter, nexogshock, nfunc, nexog, nvars, nexogcont, nmsv, xgrid, slopeconxx, exoggrid, k, j, ngrid, nshockgrid, bbt, statezlbinfo, zlbswitch, nquad, ghweights, ghnodes, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, ns, params, keys, α_star, labss, exogenous_shocks, endogenous_states)
                 err += err2
             end
@@ -263,6 +262,7 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogcont::
     if (nexogshock + nexogcont < nexog)
         sigma[:,nexogshock+1:nexog-nexogcont] .= 0.0
     end
+    stateindex = 0
 
     while counter <= total_periods + 1
         explosiveerror = false
@@ -395,33 +395,34 @@ function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, nexogcon
     end
 
     # Converts endog var back to msv domain
-    for i in 1:ngrid
+    @fastmath @inbounds @simd for i in 1:ngrid
         endogvarm1[1:nmsv,i] = msv2xx(xgrid[1:nmsv,i],nmsv,slopeconxxmsv)-endogsteady[1:nmsv] #CHECK THIS FUNCTION
     end
 
+    yy = zeros(nfunc,ngrid)
     # For each shock grid point
-    for ss in 1:ns
-        yy = zeros(nfunc,ngrid)
+    @fastmath @inbounds @simd for ss in 1:ns
         exogval = zeros(nexog)
 
-        for i in 1:ngrid
-            exogval[1:nexogshock] = exoggrid[1:nexogshock,ss]   #update shocks (in deviation from ss)
+        exogval[1:nexogshock] = exoggrid[1:nexogshock,ss]   #update shocks (in deviation from ss)
+
+        @fastmath @inbounds @simd for i in 1:ngrid
 
             if (nexogcont > 0)
                 exogval[nexog-nexogcont+1:nexog] = msv2xx(xgrid[nmsv+1:nmsv+nexogcont,i],nexogcont,slopeconcont)-endogsteady[nvars+nexog-nexogcont+1:nvars+nexog]
             end
 
             #get linear solution
-            endogvar=dgemv(1.0, aalin, endogvarm1[:,i]) #REMAKE THIS FUNCTION
-            exogpart=dgemv(1.0, bblin, exogval) # REMAKE THIS FUNCTION
+            mul!(endogvar, aalin, endogvarm1[:,i]) #REMAKE THIS FUNCTION
+            mul!(exogpart, bblin, exogval) # REMAKE THIS FUNCTION
             endogvar = endogsteady[1:nvars] + endogvar + exogpart
             yy[:,i] = endogvar[[10,11,18,19,21,22,13] ]
         end
 
         # Get alphas by inverting approximation function
-        alphass=dgemm(1.0,yy,bbtinv)
-        for i in 1:ngrid
-            for ifunc in 1:nfunc
+        mul!(alphass,yy,bbtinv)
+        @fastmath @inbounds @simd for i in 1:ngrid
+            @fastmath @inbounds @simd for ifunc in 1:nfunc
                 #if (alphass(ifunc,i) < 1.0e-8) alphass(ifunc,i) = 0.0d0
                 initialalphas[(ifunc-1)*ngrid+i,ss] = alphass[ifunc,i]
                 #initial guess for ZLB polynomials
@@ -449,7 +450,7 @@ function parallel_help(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, 
     err = 0.0
 
     # Update polynomials using new guess for α
-    for k in 1:ngrid
+    @fastmath @inbounds @simd for k in 1:ngrid
         updated_approx_polynomials[:, k], err2 = decr_euler(rkss, ninter, nexogshock, nfunc, nexog, nvars, nexogcont, nmsv, xgrid, slopeconxx, exoggrid, k, j, ngrid, nshockgrid, bbt, statezlbinfo, zlbswitch, nquad, ghweights, ghnodes, shockbounds, shockdistance, interpolatemat, slopeconmsv, nindplus, indplus, ns, params, keys, α_star, labss, exogenous_shocks, endogenous_states)
         err += err2
     end
