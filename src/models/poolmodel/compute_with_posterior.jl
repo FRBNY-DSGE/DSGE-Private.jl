@@ -1,7 +1,7 @@
 using SharedArrays
 """
 ```
-sample_λ(m, θs, T = -1; parallel = true) where S<:AbstractFloat
+update_λ!(λmat, m, pred_dens, θs, T = -1; parallel = true) where S<:AbstractFloat
 ```
 
 Computes and samples from the conditional density p(λ_t|θ, I_t, P) for
@@ -9,7 +9,10 @@ particle in `θs`, which represents the posterior distribution.
 
 ### Inputs
 
+- `λmat`: matrix to populate with samples of λ from posterior distribution of θ, assumed to
+    have dimensions n_particles × n_periods
 - `m::PoolModel{S}`: `PoolModel` object
+- `pred_dens`: n_model × n_periods matrix of predictive densities for each underlying model
 - `θs::Matrix{S}`: matrix of particles representing posterior distribution of θ
 - `T::Int64`: final period for tempered particle filter
 
@@ -25,8 +28,9 @@ where `S<:AbstractFloat`.
 
 ```
 """
-function update_λ!(λmat, m::PoolModel{S}, θs::Matrix{S}, T::Int64 = -1;
-                  parallel::Bool = false) where S<:AbstractFloat
+function update_λ!(λmat::Matrix{S}, m::PoolModel{S}, pred_dens::Matrix{S},
+                   θs::Matrix{S}, T::Int64 = -1;
+                   parallel::Bool = false) where S<:AbstractFloat
     # Check size and orientation of θs is correct: assume particle_num x parameter_num
     if length(m.parameters) != size(θs,2)
         error("number of parameters in PoolModel do not match number of parameters in matrix of posterior draws of θ")
@@ -37,8 +41,8 @@ function update_λ!(λmat, m::PoolModel{S}, θs::Matrix{S}, T::Int64 = -1;
     if parallel
         θs_share = SharedArray(θs)
     end
-    if T == -1
-        T = get_periods(m) # No period provided, so default to entire length of loglhs in PoolModel
+    if T <= 0
+        T = size(pred_dens,2)
     end
 
     # Sample from p(λ|θ, I_t^P, P) for each θ in posterior
@@ -48,7 +52,7 @@ function update_λ!(λmat, m::PoolModel{S}, θs::Matrix{S}, T::Int64 = -1;
             tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
             tuning[:get_t_particle_dist] = true
             tuning[:allout] = false
-            ~, λ_particles, λ_weights = DSGE.filter(m, zeros(1,T); tuning = tuning)
+            ~, λ_particles, λ_weights = DSGE.filter(m, pred_dens(:,T); tuning = tuning)
             λ_sample[i] = DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,T]))
         end
         λ_sample = Array(λ_sample)
@@ -59,7 +63,7 @@ function update_λ!(λmat, m::PoolModel{S}, θs::Matrix{S}, T::Int64 = -1;
             tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
             tuning[:get_t_particle_dist] = true
             tuning[:allout] = false
-            ~, λ_particles, λ_weights = DSGE.filter(m, zeros(1,T); tuning = tuning)
+            ~, λ_particles, λ_weights = DSGE.filter(m, pred_dens[:,T]); tuning = tuning)
             # λ_sample[i] = DSGE.sample(λ_particles, DSGE.Weights(λ_weights[:,T]))
             λmat[i,T] = DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,T]))
         end
@@ -70,7 +74,7 @@ end
 
 """
 ```
-compute_Eλ(m, λvec, weights = []; current_period = true, parallel = true) where T<:AbstractFloat
+compute_Eλ(m, h, λvec, weights = []; current_period = true, parallel = true) where T<:AbstractFloat
 ```
 
 Computes and samples from the conditional density p(λ_t|θ, I_t, P) for
@@ -79,6 +83,7 @@ particle in `θs`, which represents the posterior distribution.
 ### Inputs
 
 - `m::PoolModel{T}`: `PoolModel` object
+- `h::Int64`: forecast horizon
 - `λvec::Vector{T}`: vector of particles of λ samples from (θ,λ) joint distribution
 - `weights::Vector{T}`: weights of λ particles, defaults to equal weights
 
@@ -95,7 +100,7 @@ particle in `θs`, which represents the posterior distribution.
 
 ```
 """
-function compute_Eλ(m::PoolModel{T}, λvec ::Vector{T}, weights::Vector{T} = Vector{Float64}(undef,0);
+function compute_Eλ(m::PoolModel{T}, h::Int64, λvec ::Vector{T}, weights::Vector{T} = Vector{Float64}(undef,0);
                     current_period::Bool = true, parallel::Bool = false) where T<:AbstractFloat
 
     # Set up
@@ -104,22 +109,22 @@ function compute_Eλ(m::PoolModel{T}, λvec ::Vector{T}, weights::Vector{T} = Ve
     end
     λ_vec = parallel ? SharedArray(λvec) : copy(λvec) # so we don't alter this vector in place
     n_particles = length(λ_vec)
-    h = get_forecast_horizon(m)
     λhat_t = if current_period mean(λ_vec .* weights) end # compute expected lambda in current period t
 
     # Push forward states and compute mean
+    Φ, F_ϵ, ~ = solve(pm)
     if parallel
         @sync @distributed for i in 1:n_particles
-            ϵ = rand(get_F_ϵ(pm), h)
+            ϵ = rand(F_ϵ, h)
             for j in 1:h
-                λ_vec[i] = get_Φ(pm)([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])[1]
+                λ_vec[i] = Φ([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])[1]
             end
         end
     else
         for i in 1:n_particles
-            ϵ = rand(get_F_ϵ(pm), h) # h is small, so this is not expensive to loop through
+            ϵ = rand(F_ϵ, h) # h is small, so this is not expensive to loop through
             for j in 1:h
-                λ_vec[i] = get_Φ(pm)([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])[1]
+                λ_vec[i] = Φ([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])[1]
             end
         end
     end

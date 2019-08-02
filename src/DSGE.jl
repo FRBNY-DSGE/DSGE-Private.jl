@@ -71,14 +71,6 @@ module DSGE
         # observables.jl
         Observable, PseudoObservable, check_mnemonics,
 
-        # poolmodel.jl
-        PoolModel, get_models, get_datas, get_cond_pred_dens, get_system,
-        get_statespace, get_distributions, get_Φ, get_Ψ, get_F_ϵ,
-        get_F_u, get_F_λ, update_models!, update_cond_pred_dens!, update_datas!, update_statespace!,
-        update_distributions!, update_Φ!, update_Ψ!, update_F_ϵ!,
-        update_F_u!, update_F_λ!, draw_prior, subspecs, get_periods, get_forecast_horizon,
-
-
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, compute_system,
 
@@ -109,7 +101,6 @@ module DSGE
         compute_moments, find_density_bands, mutation, resample, smc, smc_mpi, mutation!,
         mvnormal_mixture_draw, nearest_spd, marginal_data_density,
         initial_draw!, ParticleCloud, Particle, Cloud,
-        poolmodel,
 
         # forecast/
         load_draws, forecast_one,
@@ -160,7 +151,16 @@ module DSGE
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, SmetsWouters, AnSchorfheide,
-        KrusellSmith, eqcond, measurement, pseudo_measurement, shock_groupings,
+        KrusellSmith, PoolModel, eqcond, measurement, pseudo_measurement,
+        shock_groupings, transition,
+
+        # poolmodel.jl
+        PoolModel, get_models, get_datas, get_cond_pred_dens, get_system,
+        get_statespace, get_distributions, get_Φ, get_Ψ, get_F_ϵ,
+        get_F_u, get_F_λ, update_models!, update_cond_pred_dens!, update_datas!, update_statespace!,
+        update_distributions!, update_Φ!, update_Ψ!, update_F_ϵ!,
+        update_F_u!, update_F_λ!, draw_prior, subspecs, get_periods, get_forecast_horizon,
+
 
         # util
         @test_matrix_approx_eq, @test_matrix_approx_eq_eps, speye, min, max
@@ -176,7 +176,7 @@ module DSGE
     include("settings.jl")
     include("defaults.jl")
     include("observables.jl")
-    include("estimate/dpp/poolmodel.jl")
+    include("models/poolmodel/poolmodel.jl")
     include("statespace.jl")
     include("util.jl")
     include("grids.jl")
@@ -221,7 +221,6 @@ module DSGE
     include("estimate/smc/smc.jl")
     include("estimate/smc/smc_mpi.jl")
     include("estimate/smc/mutation_mpi.jl")
-    include("estimate/dpp/subspecs.jl")
 
     include("forecast/util.jl")
     include("forecast/io.jl")
@@ -310,4 +309,10 @@ module DSGE
     include("models/representative_agent/an_schorfheide/pseudo_observables.jl")
     include("models/representative_agent/an_schorfheide/pseudo_measurement.jl")
     include("models/representative_agent/an_schorfheide/augment_states.jl")
+
+    # PoolModel
+    include("models/poolmodel/subspecs.jl")
+    include("models/poolmodel/observables.jl")
+    include("models/poolmodel/measurement.jl")
+    include("models/poolmodel/transition.jl")
 end

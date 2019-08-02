@@ -164,7 +164,7 @@ function filter(m::PoolModel, data::AbstractArray,
     # Check initial states
     n_particles = haskey(tuning, :n_particles) ? tuning[:n_particles] : 1000
     if isempty(s_0)
-        s_0 = reshape(F_λ, n_particles), 1, n_particles)
+        s_0 = reshape(rand(F_λ, n_particles), 1, n_particles)
         s_0 = [s_0; 1 .- s_0]
     else
         if size(s_0,2) != n_particles

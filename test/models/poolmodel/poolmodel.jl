@@ -1,15 +1,13 @@
-using DSGEModels, CSV
-
 ###########################################################################
 # Set up for testing PoolModel instantiation
 ###########################################################################
 # filepath = pwd()
 filepath = dirname(@__FILE__)
 
+pm = PoolModel()
+# pm <= Setting(:saveroot, "$(filepath)/../reference/")
+pm <= Setting(:dataroot, "$(filepath)/../reference/")
 @testset "Check constructors" begin
-    pm = PoolModel()
-    # pm <= Setting(:saveroot, "$(filepath)/../reference/")
-    pm <= Setting(:dataroot, "$(filepath)/../reference/")
     @test typeof(pm) == PoolModel{Float64}
     mstatic = PoolModel(static = true)
     @test mstatic[:ρ].value == 1 && mstatic[:ρ].fixed

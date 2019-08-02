@@ -55,7 +55,6 @@ The PoolModel type permits dynamic predictive pooling of structural models.
 mutable struct PoolModel{T} <: AbstractModel{T}
     parameters::ParameterVector{T}                         # vector of all time-invariant model parameters
     keys::OrderedDict{Symbol,Int}                          # human-readable names for all the model
-                                                           # parameters and steady-states
     observables::OrderedDict{Symbol,Int}                   # Model names to observables (predictive densities)
 
     spec::String                                           # Model specification number (eg "m990")
@@ -70,10 +69,12 @@ end
 
 description(m::PoolModel) = "Julia implementation of dynamic prediction pools defined in 'Dynamic prediction pools: An investigation of financial frictions and forecasting performance' by Marco Del Negro, Raiden B. Hasegawa, and Frank Schorfheide: PoolModel, $(m.subspec)"
 
-function init_model_indices!(m::AnSchorfheide)
+function init_model_indices!(m::PoolModel)
     # Observables
     observables = keys(m.observable_mappings)
-    for (i,k) in enumerate(observables); m.observables[k] = i end
+
+    # Make indices
+    for (i,k) in enumerate(observables);       m.observables[k]       = i end
 end
 
 function PoolModel(subspec::String="ss0";
@@ -90,8 +91,8 @@ function PoolModel(subspec::String="ss0";
 
     # initialize empty model
     m = PoolModel{Float64}(
-        # model parameters and steady state values
-        Vector{AbstractParameter{Float64}}(), Vector{Float64}(), OrderedDict{Symbol,Int}(),
+        # model parameters
+        Vector{AbstractParameter{Float64}}(), OrderedDict{Symbol,Int}(),
 
         # Observable indices
         OrderedDict{Symbol,Int}(),
@@ -192,22 +193,18 @@ function model_settings!(m::PoolModel)
     m <= Setting(:n_mh_burn, 0)
 end
 
-"""
-```
-Access, update, and show functions for PoolModel.
-```
-"""
-# function get_forecast_horizon(m::PoolModel{T}) where T<:AbstractFloat
-#     return m.forecast_horizon
-# end
-
-# function update_forecast_horizon!(m::PoolModel{T}, h::Int) where T<:AbstractFloat
-#     m.forecast_horizon = h
-# end
-
-# function Base.show(io::IO, m::PoolModel)
-#     @printf io "Dynamic Prediction Pools\n"
-#     @printf io "no. models:             %i\n" length(get_models(m))
-#     @printf io "data vintage:           %s\n" data_vintage(m)
-#     @printf io "description:\n %s\n"          description(m)
-# end
+function Base.show(io::IO, m::PoolModel)
+    model_str = ""
+    n_obs = n_observables(m)
+    for i in 1:n_obs
+        if i < n_obs
+            model_str *= string(m.observable_mappings[get_key(m, :obs, i)].key) * ", "
+        else
+            model_str *= string(m.observable_mappings[get_key(m, :obs, i)].key) * "\n"
+        end
+    end
+    @printf io "Dynamic Prediction Pool Method\n"
+    @printf io "models: %s\n"                 model_str
+    @printf io "data vintage:           %s\n" data_vintage(m)
+    @printf io "description:\n %s\n"          description(m)
+end
