@@ -57,7 +57,7 @@ function SmolyakApproximation()
     approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
                                            [0 0], [0. 0.], [0. 0.], [0. 0.], false,
                                            [0 0],[0.],[0. 0.],[0.],[0. 0.],[0. 0.],[0.],
-                                           [0.],0.,[0.],[0.],false,[0.])
+                                           [0.],0.,[0.],[0],false,[0.])
     init_settings!(approx)
     init_solution!(approx)
     return approx

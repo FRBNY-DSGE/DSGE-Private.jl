@@ -309,6 +309,7 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
     ev = Array{Float64}(undef,12)
     exp_eul = Array{Float64}(undef,12)
 
+    currentshockvalues = Array{Float64}(undef,nexog)
     polyapp = Array{Float64}(undef,2*nfunc)
     endogvarm1 = Array{Float64}(undef,nvars+nexog)
     exp_var = zeros(12)
@@ -441,7 +442,7 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
 end
 
 """
-    finite_grid(n::Int64,rho::Float64,sigmaep::Float64)
+    finite_grid!(nshockgrid::Array{Float64, 1}, shockdistance::Float64, n::Int64,rho::Float64,sigmaep::Float64)
 
 For a given shock, this populates the shockgrid array with the possible values of the shock, spanning -nu to nu and evenly spaced. It also records the shockdistance (distance between shock values) and shockbounds (min and max shock values).
 ...
