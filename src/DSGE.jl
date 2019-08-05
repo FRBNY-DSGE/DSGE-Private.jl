@@ -120,7 +120,7 @@ module DSGE
         write_meansbands_tables_timeseries, write_means_tables_shockdec,
         prepare_meansbands_table_irf,
         write_meansbands_tables_all, construct_fcast_and_hist_dfs,
-        df_to_table, load_posterior_moments,
+        df_to_table, load_posterior_moments, sample_λ, compute_Eλ,
 
         # decomp/
         decompose_forecast, decomposition_means,
@@ -145,7 +145,7 @@ module DSGE
         plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
         plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
         plot_posterior_intervals, plot_posterior_interval_comparison,
-        plot_forecast_decomposition,
+        plot_forecast_decomposition, date_to_float,
 
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
@@ -154,12 +154,12 @@ module DSGE
         KrusellSmith, PoolModel, eqcond, measurement, pseudo_measurement,
         shock_groupings, transition,
 
-        # poolmodel.jl
-        PoolModel, get_models, get_datas, get_cond_pred_dens, get_system,
-        get_statespace, get_distributions, get_Φ, get_Ψ, get_F_ϵ,
-        get_F_u, get_F_λ, update_models!, update_cond_pred_dens!, update_datas!, update_statespace!,
-        update_distributions!, update_Φ!, update_Ψ!, update_F_ϵ!,
-        update_F_u!, update_F_λ!, draw_prior, subspecs, get_periods, get_forecast_horizon,
+        # # poolmodel.jl
+        # PoolModel, get_models, get_datas, get_cond_pred_dens, get_system,
+        # get_statespace, get_distributions, get_Φ, get_Ψ, get_F_ϵ,
+        # get_F_u, get_F_λ, update_models!, update_cond_pred_dens!, update_datas!, update_statespace!,
+        # update_distributions!, update_Φ!, update_Ψ!, update_F_ϵ!,
+        # update_F_u!, update_F_λ!, draw_prior, subspecs, get_periods, get_forecast_horizon,
 
 
         # util

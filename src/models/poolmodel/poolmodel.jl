@@ -193,6 +193,9 @@ function model_settings!(m::PoolModel)
     m <= Setting(:n_mh_burn, 0)
 end
 
+#########################################################
+# Overloading various functions for PoolModel type
+#########################################################
 function Base.show(io::IO, m::PoolModel)
     model_str = ""
     n_obs = n_observables(m)
@@ -207,4 +210,19 @@ function Base.show(io::IO, m::PoolModel)
     @printf io "models: %s\n"                 model_str
     @printf io "data vintage:           %s\n" data_vintage(m)
     @printf io "description:\n %s\n"          description(m)
+end
+
+"""
+```
+update!(m::AbstractModel, values::Vector{T}) where T<:AbstractFloat
+```
+
+Update `m.parameters` with `values`, recomputing the steady-state parameter values.
+
+### Arguments:
+- `m`: the model object
+- `values`: the new values to assign to non-steady-state parameters.
+"""
+function update!(m::PoolModel, values::Vector{T}) where T<:AbstractFloat
+    DSGE.update!(m.parameters, values)
 end

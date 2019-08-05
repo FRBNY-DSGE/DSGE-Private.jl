@@ -1,6 +1,9 @@
 using DSGE, JLD2, Distributions, PDMats, DataStructures, OrderedCollections, FileIO, Test, DataFrames, Dates, Nullables, Plots, Printf, Distributed, DelimitedFiles, Random, CSV, Statistics, StateSpaceRoutines
 
 my_tests = [
+            "models/poolmodel/poolmodel",
+            "estimate/filter_poolmodel",
+            "estimate/posterior_poolmodel",
             "core",
             "parameters",
             "models/representative_agent/an_schorfheide/an_schorfheide",
@@ -8,7 +11,7 @@ my_tests = [
             "models/representative_agent/m990/m990",
             "models/representative_agent/m1002/m1002",
             "models/representative_agent/m1010/m1010",
-            "data/misc",
+    "data/misc",
             "data/load_data",
             "solve/gensys",
             "solve/solve",
@@ -26,9 +29,6 @@ my_tests = [
             "estimate/smc/resample",
             "estimate/smc/util",
             # "estimate/smc/mutation",
-            "estimate/posterior_poolmodel",
-            "estimate/filter_poolmodel",
-            "estimate/dpp/poolmodel",
             "forecast/smooth",
             "forecast/forecast",
             "forecast/shock_decompositions",

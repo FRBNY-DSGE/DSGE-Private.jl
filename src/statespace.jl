@@ -175,13 +175,23 @@ function compute_system(m::AbstractModel{T}; apply_altpolicy = false,
         return System(transition_equation, measurement_equation)
     end
 end
+
 """
 ```
 compute_system(m::PoolModel{T})
 ```
 
 Given the current model parameters, compute the state-space system
-corresponding to the PoolModel model `m`. Currently returns nothing.
+corresponding to the PoolModel model `m`.
+
+Outputs
+
+```
+Φ: state transition function
+Ψ: likelihood function, given weights on underlying models (the states) and predictive densities
+F_ϵ: structural shock distribution
+F_u: likelihood function measurement error distribution
+F_λ: initial distribution of λ for state transition function
 """
 function compute_system(m::PoolModel{T};
                         verbose::Symbol = :high) where T<:AbstractFloat
