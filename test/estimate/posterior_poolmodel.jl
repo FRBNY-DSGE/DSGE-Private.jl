@@ -1,6 +1,6 @@
 # Note that this test asumes TPF properly works
 
-pm = PoolModel()
+pm = PoolModel("ss0")
 filepath = dirname(@__FILE__)
 pm <= Setting(:dataroot, "$(filepath)/../reference/")
 df = CSV.read(dataroot(pm) * "wrongorigmatlab.csv")

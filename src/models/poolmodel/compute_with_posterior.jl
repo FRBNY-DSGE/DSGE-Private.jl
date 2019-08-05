@@ -28,7 +28,7 @@ where `S<:AbstractFloat`.
 
 ```
 """
-function update_λ!(λmat::Matrix{S}, m::PoolModel{S}, pred_dens::Matrix{S},
+function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S},
                    θs::Matrix{S}, T::Int64 = -1;
                    parallel::Bool = false) where S<:AbstractFloat
     # Check size and orientation of θs is correct: assume particle_num x parameter_num
@@ -52,7 +52,7 @@ function update_λ!(λmat::Matrix{S}, m::PoolModel{S}, pred_dens::Matrix{S},
             tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
             tuning[:get_t_particle_dist] = true
             tuning[:allout] = false
-            ~, λ_particles, λ_weights = DSGE.filter(m, pred_dens(:,T); tuning = tuning)
+            ~, λ_particles, λ_weights = DSGE.filter(m, pred_dens[:,T]; tuning = tuning)
             λ_sample[i] = DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,T]))
         end
         λ_sample = Array(λ_sample)
