@@ -897,7 +897,7 @@ function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, θs::Matrix{S}, T::Int
             tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
             tuning[:get_t_particle_dist] = true
             tuning[:allout] = false
-            ~, λ_particles, λ_weights = DSGE.filter(m, pred_dens[:,,T]; tuning = tuning)
+            ~, λ_particles, λ_weights = DSGE.filter(m, pred_dens[:,T]; tuning = tuning)
             λ_sample[i] = DSGE.sample(λ_particles, DSGE.Weights(λ_weights[:,T]))
             # λmat[i,T] = DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,T]))
         end
