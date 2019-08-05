@@ -55,7 +55,7 @@ Initializes the values in the SmolyakApproximation object to defaults
 function SmolyakApproximation()
     #Initialize empty approximation object
     approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
-                                           [0 0], [0. 0.], [0. 0.], [0. 0.], false, [0. 0.],
+                                           [0 0], [0. 0.], [0. 0.], [0. 0.], false,
                                            [0 0],[0.],[0. 0.],[0.],[0. 0.],[0. 0.],[0.],
                                            [0.],0.,[0.],[0.],false,[0.])
     init_settings!(approx)
@@ -118,9 +118,9 @@ function setgridsize(nexog::Int,nshockgrid::Array{Int,1})
 end
 
 """
-    exoggridindex(nshockgrid::Array{Int},nexog::Int,ns::Int)
+    exoggridindex(nshockgrid::Array{Int, 1},nexog::Int,ns::Int)
 
-For each exogenous shock, this associates a given grid point with the value that that shock takes on at that grid point.
+For each exogenous shock, this associates a given grid point with the index of the value that that shock takes on at that grid point. In total there are 'ns' such points, with each point representing a distinct combination of shock values.
 ...
 # Arguments
 - `nshockgrid::Array{Int, 1}`: Array containing number of shock values in the grid for each of the nexogshock shocks.
@@ -130,29 +130,29 @@ For each exogenous shock, this associates a given grid point with the value that
 """
 function exoggridindex(nshockgrid::Array{Int,1},nexog::Int,ns::Int)
 
-    #Initilize Variables
+    #Initialize Variables
     exoggridindex = zeros(Int,nexog,ns)
     blocksize = 1 #This will record the number of possible shock value combinations
 
     # For each exogenous shock
     for i in nexog:-1:1
 
-        # Split up the ns possible shock value combinations into groups, with each group
-        # representing a distinct combination of shock values among the shocks that have already
-        # been looped through and the current shock
-        ngroups = ns/(blocksize*nshockgrid[i])
+        # Split up the ns possible shock value combinations into groups. A group contains all distinct combination of shock values among the shocks that have already been looped through (inclusive of the current shock)
+        ngroups = ns ÷ (blocksize*nshockgrid[i])
 
+        # For each group
         for j in 1:ngroups
-
-            #For each value of the shock
+            # Break into 'nshockgrid[i]' blocks of size 'blocksize', with each block containing all distinct combinations of shock values among previous shocks (exclusive of current shock)
+            # Each block is assigned a distinct value from the possible values of the current shock, so that the end result is that each column represents a distinct combination of shock values and taken together all columns represent all possible distinct combinations
             for k in 1:nshockgrid[i]
-
-                #START HERE NEXT TIME
-                exoggridindex[i,nshockgrid[i]*blocksize*(j-1)+blocksize*(k-1)+1:nshockgrid[i]*blocksize*(j-1)+blocksize*k] .= k
+                for l in blocksize*(k-1)+1:blocksize*k
+                    exoggridindex[i,nshockgrid[i]*blocksize*(j-1)+l] .= k
+                end
             end
         end
 
-        blocksize *= nshockgrid[i] #The number of possible shock value combinations increases multiplicatively by the number of shock values this shock can take on
+        #The number of possible shock value combinations increases multiplicatively by the number of shock values a shock can take on
+        blocksize *= nshockgrid[i]
     end
 
     return exoggridindex
@@ -330,20 +330,15 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     interpolatemat=Array{Int64}(undef,approx.nexogshock,2^approx.nexogshock)
     blocksize = 1
     for i in approx.nexogshock:-1:1
-        if (i == approx.nexogshock)
-            blocksize = 1
-        else
-            blocksize = 2*blocksize
-        end
         #blocksize=2^(approx[:nexogshock]-i)
-        ncall = div(2^(approx.nexogshock-1),blocksize)
-        for j in 1:ncall
+        ngroups = 2^(approx.nexogshock-1 ÷ blocksize
+        for j in 1:ngroups
             for k = 1:2
-                left=2*blocksize*(j-1)+blocksize*(k-1)+1
-                right=2*blocksize*(j-1)+blocksize*k
-                interpolatemat[i,left:right] .= k-1
+                for l in 2*blocksize*(j-1)+blocksize*(k-1)+1:2*blocksize*(j-1)+blocksize*k
+                    interpolatemat[i,l] = k-1
             end
         end
+        blocksize *= 2
     end
     approx.interpolatemat = interpolatemat
 
