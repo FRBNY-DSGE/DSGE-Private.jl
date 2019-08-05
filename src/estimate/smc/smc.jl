@@ -322,7 +322,7 @@ function smc(m::AbstractModel, data::DataFrame; verbose::Symbol=:low)
 end
 
 function smc(m::AbstractModel; verbose::Symbol=:low)
-    data = load_data(m)
+    data = load_data(m;try_disk=false)
     data_mat = df_to_matrix(m, data)
     return smc(m, data_mat, verbose=verbose)
 end

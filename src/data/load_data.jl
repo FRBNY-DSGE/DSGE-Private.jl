@@ -45,12 +45,14 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool =
         println(verbose, :low, "Creating dataset...")
 
         levels = load_data_levels(m; verbose=verbose)
+        @show levels
         if cond_type in [:semi, :full]
             cond_levels = load_cond_data_levels(m; verbose=verbose)
             levels, cond_levels = reconcile_column_names(levels, cond_levels)
             levels = vcat(levels, cond_levels)
         end
         df = transform_data(m, levels; cond_type=cond_type, verbose=verbose)
+        @show df
 
         # Ensure that only appropriate rows make it into the returned DataFrame.
         start_date = date_presample_start(m)

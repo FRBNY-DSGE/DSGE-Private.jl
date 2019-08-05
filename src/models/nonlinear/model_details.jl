@@ -151,6 +151,8 @@ function intermediatedec!(endogvar::Vector{Float64},nvars::Int,nexog::Int,labss:
     endogvar[9] = copy(endogvar[5]) # copy as to no make it a pointer, this is nomr
 
     endogvar[nvars+1:nvars+nexog] = currentshockvalues
+
+    return endogvar
 end
 
 """
@@ -253,6 +255,8 @@ function decr!(endogvar::Vector{Float64}, nvars::Int, nexog::Int, nexogcont::Int
         intermediatedec!(endogvar,nvars,nexog, labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp_plus,zlbintermediate, exogenous_shocks, params, keys)
         endogvar[9] = 1.0
     end
+
+    return endogvar
 end
 
 """
@@ -433,14 +437,12 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
 
     errsum = 0.0
     errmax = 0.0
-    imax = 0
 
     for ifunc in 1:2*nfunc
         abserror[ifunc] = abs(polyappnew[ifunc]-polyapp[ifunc])
         errsum = errsum + abserror[ifunc]
         if (abserror[ifunc] > errmax)
             errmax = abserror[ifunc]
-            imax = copy(ifunc)
         end
     end
 
@@ -451,7 +453,7 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
 end
 
 """
-    finite_grid(n::Int64,rho::Float64,sigmaep::Float64)
+    finite_grid!(nshockgrid::Array{Float64, 1}, shockdistance::Float64, n::Int64,rho::Float64,sigmaep::Float64)
 
 For a given shock, this populates the shockgrid array with the possible values of the shock, spanning -nu to nu and evenly spaced. It also records the shockdistance (distance between shock values) and shockbounds (min and max shock values).
 ...
@@ -486,6 +488,9 @@ function finite_grid!(shockgrid::Array{Float64, 1}, shockdistance::Float64, shoc
     @inbounds @simd for i in 2:n-1
         shockgrid[i] = @fastmath shockgrid[1] + shockdistance * (i - 1)
     end
+
+    return shockdistance,shockgrid
+
 end
 
 """

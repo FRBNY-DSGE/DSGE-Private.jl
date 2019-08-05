@@ -494,11 +494,16 @@ function model_settings!(m::GHLS)
     m <= Setting(:recalculate_hessian, true)
 
     # Data
-    m <= Setting(:data_vintage, "150827")
+    m <= Setting(:data_vintage, "190712")
+    m <= Setting(:cond_vintage, "190719")
     m <= Setting(:data_id, 1, "Dataset identifier")
-    m <= Setting(:cond_full_names, [:obs_gdp, :obs_nominalrate])
+    m <= Setting(:cond_full_names, [:obs_gdp, :obs_gdpdeflator, :obs_nominalrate, :obs_consumption, :obs_investment])
     m <= Setting(:cond_semi_names, [:obs_nominalrate])
     m <= Setting(:date_mainsample_start, quartertodate("1983-Q1"))
+    m <= Setting(:date_presample_start, quartertodate("1983-Q1"))
+    m <= Setting(:date_mainsample_end, quartertodate("2014-Q1"))
+    m <= Setting(:date_conditional_end, quartertodate("2014-Q1"))
+    m <= Setting(:date_forecast_start, quartertodate("2014-Q1"))
 end
 
 """

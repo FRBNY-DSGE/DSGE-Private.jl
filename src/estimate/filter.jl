@@ -163,6 +163,10 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
                            start_date::Date = date_presample_start(m),
                            include_presample::Bool = true,
                            tol::Float64 = 0.0) where {S<:AbstractFloat}
+
+    #data = readdlm("../glss_data.txt")[:,[1,2,5,6,7]]
+    #data = data'
+
     # Partition sample into pre- and post-ZLB regimes
     # Note that the post-ZLB regime may be empty if we do not impose the ZLB
     # regime_inds = zlb_regime_indices(m, data, start_date)
@@ -178,6 +182,8 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
     append!(s0, s0[lagged_variable_indices]) # for necessary lags
     s_init = initialize_state_draws(s0, F_ϵ, Φ, 1000)# m[:n_particles].value)
     println("tpf runs")
+    @show data[:,1:10]
+
     # Run Tempered Particle filter, returns log-likelihoods
     loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,
                              s_init; n_presample_periods = Nt0) #,m[:n_particles].value)
