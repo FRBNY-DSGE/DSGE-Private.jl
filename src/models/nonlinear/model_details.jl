@@ -216,8 +216,8 @@ function decr!(endogvar::Vector{Float64}, nvars::Int, nexog::Int, nexogcont::Int
         stateindex = exogposition(shockindexall,nshockgrid,nexog-nexogcont)
         stateindexplus = stateindex+ns
         @inbounds @simd for ifunc in 1:nfunc
-            @views funcmat[ifunc,i] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid, 1, stateindex],polyvec, 1)
-            @views funcmatplus[ifunc,i] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid, 1, stateindexplus],polyvec, 1)
+            @views funcmat[ifunc,i] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid, stateindex], 1, polyvec, 1)
+            @views funcmatplus[ifunc,i] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid, stateindexplus],1, polyvec, 1)
         end
 
         # Give weight to inverse interpolation, so that in the end interpolations that are closer to actual shocks are given high weights
@@ -442,20 +442,20 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
 end
 
 """
-    finite_grid!(nshockgrid::Array{Float64, 1}, shockdistance::Float64, n::Int64,rho::Float64,sigmaep::Float64)
+    finite_grid!(shockgrid::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}, shockdistance::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}, shockbounds::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}, n::Int64,rho::Float64,sigmaep::Float64)
 
 For a given shock, this populates the shockgrid array with the possible values of the shock, spanning -nu to nu and evenly spaced. It also records the shockdistance (distance between shock values) and shockbounds (min and max shock values).
 ...
 # Arguments
-- `shockgrid::Array{Float64, 1}: Array containing possible values of shock
-- `shockdistance::Float64: Distance between values of shocks on grid
-- `shockbounds::Array{Float64, 2}: Minimum and maximum values of shock
+- `shockgrid::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}: Array containing possible values of shock
+- `shockdistance::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}: Distance between values of shocks on grid
+- `shockbounds::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}: Minimum and maximum values of shock
 - `n::Int`: Number of shock realizations.
 - `rho::Float64`: AR(1) coefficient.
 - `sigmaep::Float64`: Standard deviation of innovation.
 ...
 """
-function finite_grid!(shockgrid::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}, shockdistance::Float64, shockbounds::SubArray{Float64, 1, Array{Float64,2}, Tuple{Int64,Base.Slice{Base.OneTo{Int64}}},true}, n::Int,rho::Float64,sigmaep::Float64)
+function finite_grid!(shockgrid::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}, shockdistance::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}, shockbounds::SubArray{Float64, 1, Array{Float64,2}, Tuple{Int64,Base.Slice{Base.OneTo{Int64}}},true}, n::Int,rho::Float64,sigmaep::Float64)
 
     #Initialize variables
     maxgridstd = 3.0
@@ -472,10 +472,10 @@ function finite_grid!(shockgrid::SubArray{Float64, 1, Array{Float64,1}, Tuple{Un
     shockbounds[1] = -1*shockgrid[n]
 
     #Every point in between is evenly spaced
-    shockdistance = @fastmath (shockgrid[n] - shockgrid[1]) / (n - 1)
+    shockdistance[1] = @fastmath (shockgrid[n] - shockgrid[1]) / (n - 1)
 
     @inbounds @simd for i in 2:n-1
-        shockgrid[i] = @fastmath shockgrid[1] + shockdistance * (i - 1)
+        shockgrid[i] = @fastmath shockgrid[1] + shockdistance[1] * (i - 1)
     end
 
     return nothing
@@ -517,7 +517,7 @@ function get_shockdetails(nexogcont::Int, number_shock_values::Int, nshockgrid::
     @simd for i in 1:nexogshock
 
         # Use views so that array slices can be mutated
-        @views finite_grid!(shockvalues[numshockvalues+1:numshockvalues+nshockgrid[i]], shockdistance[i], shockbounds[i, :], nshockgrid[i],rhovec[i],sigmavec[i])
+        @views finite_grid!(shockvalues[numshockvalues+1:numshockvalues+nshockgrid[i]], shockdistance[i:i], shockbounds[i, :], nshockgrid[i],rhovec[i],sigmavec[i])
         numshockvalues += nshockgrid[i]
     end
 
