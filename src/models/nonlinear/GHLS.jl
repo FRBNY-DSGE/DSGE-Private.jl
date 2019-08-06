@@ -506,6 +506,7 @@ function model_settings!(m::GHLS)
     m <= Setting(:date_forecast_start, quartertodate("2014-Q1"))
 
     m <= Setting(:n_particles, 100)
+    m <= Setting(:sampling_method, :SMC)
 end
 
 """

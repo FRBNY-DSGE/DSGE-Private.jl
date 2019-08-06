@@ -57,7 +57,7 @@ function solve(m::AbstractModel; apply_altpolicy = false, verbose::Symbol = :hig
     return TTT, RRR, CCC
 end
 
-function solve(m::GHLS, parallel::Bool=true)
+function solve(m::GHLS, parallel::Bool=false)
 
     m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m.approx.nexogcont, m.approx.number_shock_values, m.approx.nshockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog,m.parameters,m.keys)
 

@@ -11,6 +11,6 @@ m <= Setting(:date_mainsample_end, quartertodate("2014-Q1"))
 # Reads in data and keeps only series we need
 data_raw = readdlm("glss_data.txt")
 data_matrix = data_raw[:, [1, 2, 3, 6, 7]]
-data_matrix_transpose = zeros(Float64, 5, 125) #we want the data with periods as columns
 
-estimate(m, transpose!(data_matrix_transpose, data_matrix))
+#we want the data with periods as columns
+estimate(m, data_matrix')
