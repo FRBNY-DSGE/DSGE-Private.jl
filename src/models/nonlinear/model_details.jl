@@ -1,29 +1,4 @@
 """
-    float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true},y::Array{Float64, 1})
-
-Computes the dot product between two vectors with the same length, the first given by aplpying the view function below.
-# Examples
-```julia-repl
-julia> float_dot(view([1,2,4,6], 1, 3, 1), [1, 2, 4])
-1
-```
-"""
-function float_dot(x:: SubArray{Float64,1,Array{Float64,2},Tuple{UnitRange{Int64},Int64},true},y::Array{Float64, 1})
-
-    dot=0.0
-    @simd for i in 1:length(y)
-        dot = dot+x[i]*y[i]
-    end
-    return dot
-end
-
-"""
-    view(x, l::Int, u::Int, i::Int)
-Returns the ith column of x  at the rows between l and u. u must be at least as large as l and l >= 1 while u <= nrow(x). Also, 1 <= i <= ncol(x).
-"""
-@views view(x,l::Int,u::Int,i::Int) = x[l:u,i]  #More quickly takes slice of an array
-
-"""
     msv2xx(msv::Vector{Float64}, nmsv::Int, slopeconmsv::Vector{Float64})
 Returns endogenous state variables in [-1,1] domain or the inverse function depending on slopeconmsv.
 ...
@@ -235,16 +210,18 @@ function decr!(endogvar::Vector{Float64}, nvars::Int, nexog::Int, nexogcont::Int
         @inbounds @simd for j in 1:nexogshock
             shockindexall[j] = shockindex[j] + interpolatemat[j,i]
 
-            # Shock grid points that are closer to actual shock values are given higher weights
+            # Shock grid points that are closer to actual shock values result in lower weights
             weighttemp[j]=(1-interpolatemat[j,i])*(currentshockvalues[j]-exoggrid[j,stateindex0]) + (interpolatemat[j,i])*(exoggrid[j,stateindex1]-currentshockvalues[j])
         end
         stateindex = exogposition(shockindexall,nshockgrid,nexog-nexogcont)
         stateindexplus = stateindex+ns
         @inbounds @simd for ifunc in 1:nfunc
-            funcmat[ifunc,i] = float_dot(view(alphacoeff,(ifunc-1)*ngrid+1,ifunc*ngrid,stateindex),polyvec)
-            funcmatplus[ifunc,i] = float_dot(view(alphacoeff,(ifunc-1)*ngrid+1,ifunc*ngrid,stateindexplus),polyvec)
+            @views funcmat[ifunc,i] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid, 1, stateindex],polyvec, 1)
+            @views funcmatplus[ifunc,i] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid, 1, stateindexplus],polyvec, 1)
         end
 
+        # Give weight to inverse interpolation, so that in the end interpolations that are closer to actual shocks are given high weights
+        # Note prod_sd is the most prod(weighttemp) can be
         weightvec[ninter+1-i] = prod(weighttemp)/prod_sd
     end
 

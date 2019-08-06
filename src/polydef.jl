@@ -330,8 +330,7 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     interpolatemat=Array{Int64}(undef,approx.nexogshock,2^approx.nexogshock)
     blocksize = 1
     for i in approx.nexogshock:-1:1
-        #blocksize=2^(approx[:nexogshock]-i)
-        ngroups = 2^(approx.nexogshock-1 ÷ blocksize
+        ngroups = 2^(approx.nexogshock-1) ÷ blocksize
         for j in 1:ngroups
             for k = 1:2
                 for l in 2*blocksize*(j-1)+blocksize*(k-1)+1:2*blocksize*(j-1)+blocksize*k
