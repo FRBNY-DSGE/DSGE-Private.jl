@@ -455,7 +455,7 @@ For a given shock, this populates the shockgrid array with the possible values o
 - `sigmaep::Float64`: Standard deviation of innovation.
 ...
 """
-function finite_grid!(shockgrid::Array{Float64, 1}, shockdistance::Float64, shockbounds::Array{Float64, 2}, n::Int,rho::Float64,sigmaep::Float64)
+function finite_grid!(shockgrid::SubArray{Float64, 1, Array{Float64,1}, Tuple{UnitRange{Int64}},true}, shockdistance::Float64, shockbounds::SubArray{Float64, 1, Array{Float64,2}, Tuple{Int64,Base.Slice{Base.OneTo{Int64}}},true}, n::Int,rho::Float64,sigmaep::Float64)
 
     #Initialize variables
     maxgridstd = 3.0

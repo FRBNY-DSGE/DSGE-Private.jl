@@ -335,6 +335,7 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
             for k = 1:2
                 for l in 2*blocksize*(j-1)+blocksize*(k-1)+1:2*blocksize*(j-1)+blocksize*k
                     interpolatemat[i,l] = k-1
+                end
             end
         end
         blocksize *= 2
@@ -361,7 +362,7 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     approx.shockdistance = Array{Float64}(undef,approx.nexogshock)
     approx.exoggrid = Array{Float64}(undef,nexogadj,approx.ns)
 
-    return
+    return nothing
 
 end
 #=IGNORE FOR NOW
