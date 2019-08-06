@@ -3,6 +3,17 @@ using HDF5, Test, JLD, BenchmarkTools
 
 path =  dirname(@__FILE__)
 
+### Move old results if they exist
+results_old = try
+    load("results.jld", "results")
+    catch
+    load("speedtests_old/results.jld", "results")
+end
+try
+    mv("results.jld", "speedtests_old/results.jld", force=true)
+catch
+end
+
 ### Model
 m = GHLS()
 h5 = h5open("$path/params.h5")
@@ -67,7 +78,7 @@ close(h5)
 
 endogvarp = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
 
-suite["decr"] = @benchmarkable decr!($m.approx.endogvarp, $m.approx.nvars, $m.approx.nexog, $m.approx.nexogcont, $m.approx.nexogshock, $m.approx.nfunc, $m.approx.ninter, $m.approx.nmsv, $m.approx.ngrid, $m.approx.nshockgrid, $m.approx.shockbounds, $m.approx.shockdistance, $m.approx.interpolatemat, $m.approx.slopeconmsv, $m.approx.nindplus, $m.approx.indplus, $m.approx.exoggrid, $m.approx.ns, $m.approx.zlbswitch, $endogvar_ref, $innovations_ref, $m.parameters, $m.keys, $m[:labss].value, $α_initial_ref, $m.exogenous_shocks, $m.endogenous_states)
+suite["decr"] = @benchmarkable decr!($endogvarp, $m.approx.nvars, $m.approx.nexog, $m.approx.nexogcont, $m.approx.nexogshock, $m.approx.nfunc, $m.approx.ninter, $m.approx.nmsv, $m.approx.ngrid, $m.approx.nshockgrid, $m.approx.shockbounds, $m.approx.shockdistance, $m.approx.interpolatemat, $m.approx.slopeconmsv, $m.approx.nindplus, $m.approx.indplus, $m.approx.exoggrid, $m.approx.ns, $m.approx.zlbswitch, $endogvar_ref, $innovations_ref, $m.parameters, $m.keys, $m[:labss].value, $α_initial_ref, $m.exogenous_shocks, $m.endogenous_states)
 
 ### Test conversion between msv and xx domains
 h5 = h5open("$path/msv2xx.h5")
@@ -78,7 +89,7 @@ suite["msv2xx"] = @benchmarkable msv2xx($lmsv_ref, $7, $slopeconmsv_ref)
 
 
 ### Test exogposition
-suite["exogpos"] = @benchmarkable exogposition($ones(Int64, 6), $[7 2 2 2 2 1], $6)
+suite["exogpos"] = @benchmarkable exogposition($ones(Int64, 6), $[7,2,2,2,2,1], $6)
 
 ### Test decrlin
 h5 = h5open("$path/decrlin.h5")
@@ -92,11 +103,19 @@ steady_states = [i.value for i in m.steady_state]
 suite["decrlin"] = @benchmarkable decrlin($endogvarm1_ref, $innovations_ref, $m.approx.nvars, $m.approx.nexog, $sigma_ref, $pp_ref, $steady_states)
 
 ### Test finite_grid
-suite["finite_grid"] = @benchmarkable finite_grid($7, $m[:ρ_η].value, $m[:σ_η].scaledvalue)
+#suite["finite_grid"] = @benchmarkable finite_grid($7, $m[:ρ_η].value, $m[:σ_η].scaledvalue)
 
 ### Run and save benchmarks
 tune!(suite)
 results = run(suite, verbose = true)
 save("results.jld", "results", results)
+
+### Compare to previous
+io = IOContext(stdout, :compact => false)
+for trial in keys(results)
+    println("$trial:")
+    show(io, judge(BenchmarkTools.median(results[trial]), BenchmarkTools.median(results_old[trial]), time_tolerance = 0.06))
+    println("")
+end
 
 nothing

@@ -329,8 +329,8 @@ function decr_euler(rkss::Float64, ninter::Int, nexogshock::Int, nfunc::Int, nex
     # Calculates T(ϕ(X_{t-1}))α_{l,j,k} for each function
     shockpospoly = shockpos + ns
     for ifunc in 1:nfunc
-        polyapp[ifunc] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid,shockpos],1,bbt[:,gridindex], 1)
-        polyapp[nfunc+ifunc] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid,shockpospoly],1,bbt[:,gridindex], 1)
+        @views polyapp[ifunc] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid,shockpos],1,bbt[:,gridindex], 1)
+        @views polyapp[nfunc+ifunc] = BLAS.dot(ngrid, alphacoeff[(ifunc-1)*ngrid+1:ifunc*ngrid,shockpospoly],1,bbt[:,gridindex], 1)
     end
 
     # Get endogenous variable values for that grid point and convert back from [-1, 1] domain
