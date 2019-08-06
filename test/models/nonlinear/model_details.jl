@@ -10,7 +10,7 @@ params = read(h5, "params")
 update!(m, params)
 close(h5)
 m.approx.nshockgrid = [7,2,2,2,2,1]
-println("model ready")
+
 ### Test shock details against reference output
 exoggrid, shockbounds, shockdistance = get_shockdetails(m.approx.nexogcont, m.approx.number_shock_values,m.approx.nshockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog, m.parameters, m.keys)
 
@@ -126,17 +126,22 @@ end
 
 
 ### Test finite_grid against reference output
-step_amt, grid = finite_grid(7, m[:ρ_η].value, m[:σ_η].scaledvalue)
-step_ref = step_amt
-grid_ref= grid
+shockbounds = zeros(5,2)
+shockdistance = zeros(5)
+shockvalues = zeros(15)
+
+@views finite_grid!(shockvalues[1:7], shockdistance[1:1], shockbounds[1, :], 7, m[:ρ_η].value, m[:σ_η].scaledvalue)
+
 h5 = h5open("$path/finite_grid.h5")
-step_ref = read(h5, "step_amt")
-grid_ref = read(h5, "grid")
+shockbounds_ref = read(h5, "shockbounds")
+shockdistance_ref = read(h5, "shockdistance")
+shockvalues_ref = read(h5, "shockvalues")
 close(h5)
 
 @testset "Compare grid to reference output" begin
-    @test step_ref ≈ step_amt
-    @test grid_ref ≈ grid
+    @test shockbounds_ref ≈ shockbounds
+    @test shockdistance_ref ≈ shockdistance
+    @test shockvalues_ref ≈ shockvalues
 end
 
 end
