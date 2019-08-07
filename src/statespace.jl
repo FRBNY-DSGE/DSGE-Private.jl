@@ -194,21 +194,19 @@ function compute_system(m::GHLS; apply_altpolicy = false,
     α_star = solve(m)
     println("done solving")
     m_e = 0.25
-    #EE = m_e * diagm([1.13^2, 0.04^2, 0.07^2, .78^2, 4.96^2])
+
+    # Covariance Matrix for F_u (measurement error distribution)
     EE = m_e * diagm([m[:e_y].value, m[:e_π].value, m[:e_R].value, m[:e_c].value, m[:e_i].value])
 
     # Define transition and measurement functions
     function Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64})
         endogvar = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
-        decr!(endogvar, m.approx.nvars, m.approx.nexog, m.approx.nexogcont, m.approx.nexogshock, m.approx.nfunc, m.approx.ninter, m.approx.nmsv, m.approx.ngrid, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.exoggrid, m.approx.ns, m.approx.zlbswitch, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states)
+        decr!(endogvar, m.approx, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states)
 
         append!(endogvar,[s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]])
         return endogvar
     end
 
-#=
-    @inline Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64}) = append!(decr!(endogvar, m.approx.nvars, m.approx.nexog, m.approx.nexogcont, m.approx.nexogshock, m.approx.nfunc, m.approx.ninter, m.approx.nmsv, m.approx.ngrid, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.exoggrid, m.approx.ns, m.approx.zlbswitch, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states),[s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]])
-=#
     Ψ = measurement(m)
 
     # Define shock and measurement error distributions

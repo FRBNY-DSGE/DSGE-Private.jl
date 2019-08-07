@@ -85,6 +85,7 @@ setgridsize(nexog::Int,nshockgrid::Array{Int})
 Sets grid size for exogenous shocks.
 # Returns:
     nexogshock: Number of active shocks (with states greater than one).
+    ninter
     ns: Total number of grid points.
     number_shock_values: Values of shocks at the gridpoints.
 ...
