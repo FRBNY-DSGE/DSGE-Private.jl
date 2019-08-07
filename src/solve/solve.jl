@@ -137,6 +137,11 @@ end
     create_slopes(nmsv::Int, nexogcont::Int, msvbounds::Array{Float64, 1})
 
 Find the slopes coefficients and constants to go from msv space to [-1,1] domain and vice-versa.
+
+## Inputs
+`nmsv`::Int - Number of minimum state endogenous variables
+`nexogcont`::Int - Shocks on smooth part of approximated nonlinear decision rule.
+`msvbounds`::Array{Float64,1} - Bounds on minimum state variables (first nmsv are lower, rest are uper).
 """
 function create_slopes(nmsv::Int, nexogcont::Int, msvbounds::Array{Float64, 1})
 
@@ -156,13 +161,28 @@ function create_slopes(nmsv::Int, nexogcont::Int, msvbounds::Array{Float64, 1})
     return slopeconmsv, slopeconxx
 end
 
+"""
+    lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nvars::Int, nexog::Int, nexogcont::Int, nexogshock::In
+
+Transform linear solution into representation that can be used to simulate shocks rather than innovations directly.
+Used to get initial guess for nonlinear solution.
+The transformed system has the form:
+    $y_t = A y_{t-1} + B s_{t}$,
+where y_t are the endogenous variables excluding the shocks and s_t are the shocks.
+...
+# Arguments
+- `pp`::Array{Float64,2} - Part of the linear decision rule (feedback part).
+- `sigma`::Array{Float64,2} - Part of the linear decision rule (innovation part).
+- `nvars`::Int - Number of endogenous variables.
+- `nexog`::Int - Number of exogenous variables (shocks and fixed values).
+- `nexogshock`::Int - Number of exogenous shocks
+...
+"""
 function lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nvars::Int, nexog::Int, nexogcont::Int, nexogshock::Int)
 
     #Initilize Variables
-    aalin=zeros(nvars,nvars)
     bblin=zeros(nvars,nexog)
 
-    aalin = pp[1:nvars,1:nvars]
     @fastmath @inbounds @simd for i in 1:nexogshock
         bblin[:,i] = sigma[1:nvars,i]/sigma[nvars+i,i]
     end
@@ -171,10 +191,26 @@ function lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nvar
         bblin[:,nexog-i+1] = sigma[1:nvars,nexog-i+1]/sigma[nvars+nexog-i+1,nexog-i+1]
     end
 
-    return aalin,bblin
+    return pp[1:nvars,1:nvars],bblin
 
 end
 
+"""
+    fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
+
+Runs fixedpoint convergence to solve for α⋆
+...
+# Arguments
+- `rkss::Float64`: Steady State value for rental rate of capital
+- `approx::SmolyakApproximation`: Object containing various details for Smolyak approximation
+- `params::Array{AbstractParameter{Float64},1}`: Model parameters (obtianed with m.parameters if m is a model of type GHLS)
+- `keys::OrderedDict{Symbol,Int64}`: Keys for the model parameters (obtained with m.keys)
+- `labss::Float64`: Steady State Total Labor
+- `exogenous_shocks::OrderedDict{Symbol,Int64}`: Exogenous shocks in model (m.exogenous_shocks)
+- `endogenous_states::OrderedDict{Symbol,Int64}`: Endogenous states in model (m.endogenous_states)
+- `α_initial::Array{Float64,2}`: Initial guess for polynomial coefficients, α (from initial_α)
+...
+"""
 function fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
 
     # Initialize
@@ -245,7 +281,7 @@ Simulate data to compute ergodic means of economy's variables.
 - `nvars`::Int - Number of endogenous variables.
 - `nexog`::Int - Number of exogenous variables (shocks and fixed values).
 - `nmsv`::Int - Number of minimum state endogenous variables
-- `nexogcont`::Int
+- `nexogcont`::Int - Shocks on smooth part of approximated nonlinear decision rule.
 - `nexogshock`::Int - Number of exogenous shocks
 - `steady_states`::Vector{Float64} - The model's steady state values
 - `nshockgrid`::Vector{Int} - Vector containing grid size for each shock.
@@ -401,6 +437,19 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogcont::
 
 end
 
+"""
+
+Takes steady states, Smolyak grid, and aalin and bblin from lindecrule_markov and calculates an initial guess for α.
+...
+# Arguments
+- `approx::SmolyakApproximation`: Object containing various details for Smolyak approximation
+- `steady_states::Array{Float64,1}`: Values for steady states from model object
+
+A and B below refer to this equation: e_t = A*e_{t-1} + B*ν_t where A is aalin, B is bblin, e_t is endogenous states and ν_t are the shocks.
+- `aalin::Array{Float64, 2}`: After lindecrule_markov, this is A
+- `bblin::Array{Float64,2}`: After lindecrule_markov, this is B
+...
+"""
 function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, nexogcont::Int, ns::Int, ngrid::Int, exoggrid::Array{Float64, 2}, steady_states::Array{Float64,1}, slopeconxx::Array{Float64, 1}, xgrid::Array{Float64, 2}, nfunc::Int, bbtinv::Array{Float64,2}, aalin::Array{Float64, 2}, bblin::Array{Float64, 2})
 
     #Initilize variables
@@ -464,14 +513,22 @@ function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, nexogcon
 
 end
 
-function dgemv(alpha::Real,A::Array,x::Array)
+"""
+    parallel_help(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},j::Int)
 
-    z = alpha*A*x
-
-    return z
-
-end
-
+Helper function for the parallel implementation of fixedpoint.
+...
+# Arguments
+- `rkss::Float64`: Steady State value for rental rate of capital
+- `approx::SmolyakApproximation`: Object containing various details for Smolyak approximation
+- `params::Array{AbstractParameter{Float64},1}`: Model parameters (obtianed with m.parameters if m is a model of type GHLS)
+- `keys::OrderedDict{Symbol,Int64}`: Keys for the model parameters (obtained with m.keys)
+- `labss::Float64`: Steady State Total Labor
+- `exogenous_shocks::OrderedDict{Symbol,Int64}`: Exogenous shocks in model (m.exogenous_shocks)
+- `endogenous_states::OrderedDict{Symbol,Int64}`: Endogenous states in model (m.endogenous_states)
+- `α_initial::Array{Float64,2}`: Initial guess for polynomial coefficients, α (from initial_α)
+...
+"""
 function parallel_help(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},j::Int)
     col1 = zeros(nfunc*ngrid,3)
 
@@ -497,6 +554,22 @@ end
 
 
 # Parallel Fixedpoint
+"""
+    fixedpoint_parallel(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
+
+Runs fixedpoint convergence to solve for α⋆ in parallel
+...
+# Arguments
+- `rkss::Float64`: Steady State value for rental rate of capital
+- `approx::SmolyakApproximation`: Object containing various details for Smolyak approximation
+- `params::Array{AbstractParameter{Float64},1}`: Model parameters (obtianed with m.parameters if m is a model of type GHLS)
+- `keys::OrderedDict{Symbol,Int64}`: Keys for the model parameters (obtained with m.keys)
+- `labss::Float64`: Steady State Total Labor
+- `exogenous_shocks::OrderedDict{Symbol,Int64}`: Exogenous shocks in model (m.exogenous_shocks)
+- `endogenous_states::OrderedDict{Symbol,Int64}`: Endogenous states in model (m.endogenous_states)
+- `α_initial::Array{Float64,2}`: Initial guess for polynomial coefficients, α (from initial_α)
+...
+"""
 function fixedpoint_parallel(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
 
     # Initialize
