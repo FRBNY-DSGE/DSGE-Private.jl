@@ -92,12 +92,12 @@ function load_data(m::PoolModel{T}; cond_type::Symbol = :none,
         if isempty(df)
             tmp_df = CSV.read(dataroot(m) * "raw/"* string(obs.input_series[1]) * ".csv")
             df[:date] = Vector{Dates.Date}(tmp_df[:date])
-            df[obs.input_series[2]] = Vector{Float64}(tmp_df[obs.input_series[2]])
+            df[obs.key] = Vector{Float64}(tmp_df[obs.input_series[2]])
         else
             tmp_df = CSV.read(dataroot(m) * "raw/" * string(obs.input_series[1]) * ".csv")
             tmp_df[:date] = Vector{Dates.Date}(tmp_df[:date])
-            tmp_df[obs.input_series[2]] = Vector{Float64}(tmp_df[obs.input_series[2]])
-            df = join(df, tmp_df[[:date, obs.input_series[2]]], on = :date, kind = :outer)
+            tmp_df[obs.key] = Vector{Float64}(tmp_df[obs.input_series[2]])
+            df = join(df, tmp_df[[:date, obs.key]], on = :date, kind = :outer)
         end
     end
 
@@ -112,11 +112,6 @@ function load_data(m::PoolModel{T}; cond_type::Symbol = :none,
 
     # save_data(m, df; cond_type=cond_type)
     println(verbose, :low, "dataset creation successful")
-
-    missing_cond_vars!(m, df; cond_type = cond_type)
-
-    # check that dataset is valid
-    isvalid_data(m, df)
 
     return df
 end

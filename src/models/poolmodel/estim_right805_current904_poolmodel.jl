@@ -1,4 +1,4 @@
-using DSGE, DSGEModels, FileIO, CSV, StatsBase, Plots, Dates, StateSpaceRoutines, Random, MAT, Distributions
+using DSGE, Dates, Random
 # This script estimates in real time
 
 filepath = "$(filepath)/../../../"
@@ -11,9 +11,8 @@ h = 4
 data = df_to_matrix(load_data(pm))
 print("Starting to run SMC\n")
 Random.seed!(1793)
+@everywhere using DSGE, OrderedCollections
 for t in 1:size(data,2)
     # run smc estimation
     DSGE.estimate(pm, data[:,1:t]; filestring_addl = ["period=$(t)", "preddens=right805current904"])
 end
-
-
