@@ -214,6 +214,7 @@ function decr!(endogvar::Vector{Float64}, approx::SmolyakApproximation, endogvar
             shockindexall[j] = shockindex[j] + approx.interpolatemat[j,i]
 
             # Shock grid points that are closer to actual shock values result in lower weights
+            # Can we not precalculate?
             weighttemp[j]=(1-approx.interpolatemat[j,i])*(currentshockvalues[j]-approx.exoggrid[j,stateindex0]) + (approx.interpolatemat[j,i])*(approx.exoggrid[j,stateindex1]-currentshockvalues[j])
         end
         stateindex = exogposition(shockindexall,approx.nshockgrid,approx.nexog-approx.nexogcont)
