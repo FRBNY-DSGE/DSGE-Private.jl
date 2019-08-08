@@ -189,13 +189,13 @@ function lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nend
 end
 
 """
-    fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
+    fixedpoint(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
 
 Runs fixedpoint convergence to solve for α⋆
 ...
 # Arguments
 - `rkss::Float64`: Steady State value for rental rate of capital
-- `approx::SmolyakApproximation`: Object containing various details for Smolyak approximation
+- `approx::Approximation`: Object containing various details for Smolyak approximation
 - `params::Array{AbstractParameter{Float64},1}`: Model parameters (obtianed with m.parameters if m is a model of type GHLS)
 - `keys::OrderedDict{Symbol,Int64}`: Keys for the model parameters (obtained with m.keys)
 - `labss::Float64`: Steady State Total Labor
@@ -204,7 +204,7 @@ Runs fixedpoint convergence to solve for α⋆
 - `α_initial::Array{Float64,2}`: Initial guess for polynomial coefficients, α (from initial_α)
 ...
 """
-function fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
+function fixedpoint(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
 
     # Initialize
     α_star = copy(α_initial)
@@ -423,7 +423,7 @@ end
 Takes steady states, Smolyak grid, and aalin and bblin from lindecrule_markov and calculates an initial guess for α.
 ...
 # Arguments
-- `approx::SmolyakApproximation`: Object containing various details for Smolyak approximation
+- `approx::Approximation`: Object containing various details for Smolyak approximation
 - `steady_states::Array{Float64,1}`: Values for steady states from model object
 
 A and B below refer to this equation: e_t = A*e_{t-1} + B*ν_t where A is aalin, B is bblin, e_t is endogenous states and ν_t are the shocks.
@@ -484,13 +484,13 @@ function initial_α(nendogvars::Int, nexogvars::Int, nexogshocks::Int, nmsv::Int
 end
 
 """
-    parallel_help(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},j::Int)
+    parallel_help(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},j::Int)
 
 Helper function for the parallel implementation of fixedpoint.
 ...
 # Arguments
 - `rkss::Float64`: Steady State value for rental rate of capital
-- `approx::SmolyakApproximation`: Object containing various details for Smolyak approximation
+- `approx::Approximation`: Object containing various details for Smolyak approximation
 - `params::Array{AbstractParameter{Float64},1}`: Model parameters (obtianed with m.parameters if m is a model of type GHLS)
 - `keys::OrderedDict{Symbol,Int64}`: Keys for the model parameters (obtained with m.keys)
 - `labss::Float64`: Steady State Total Labor
@@ -499,7 +499,7 @@ Helper function for the parallel implementation of fixedpoint.
 - `α_initial::Array{Float64,2}`: Initial guess for polynomial coefficients, α (from initial_α)
 ...
 """
-function parallel_help(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},j::Int)
+function parallel_help(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},j::Int)
     col1 = zeros(approx.nfunc*approx.ngridpoints,3)
 
     updated_approx_polynomials = zeros(2*approx.nfunc, approx.ngridpoints)
@@ -525,13 +525,13 @@ end
 
 # Parallel Fixedpoint
 """
-    fixedpoint_parallel(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
+    fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
 
 Runs fixedpoint convergence to solve for α⋆ in parallel
 ...
 # Arguments
 - `rkss::Float64`: Steady State value for rental rate of capital
-- `approx::SmolyakApproximation`: Object containing various details for Smolyak approximation
+- `approx::Approximation`: Object containing various details for Smolyak approximation
 - `params::Array{AbstractParameter{Float64},1}`: Model parameters (obtianed with m.parameters if m is a model of type GHLS)
 - `keys::OrderedDict{Symbol,Int64}`: Keys for the model parameters (obtained with m.keys)
 - `labss::Float64`: Steady State Total Labor
@@ -540,7 +540,7 @@ Runs fixedpoint convergence to solve for α⋆ in parallel
 - `α_initial::Array{Float64,2}`: Initial guess for polynomial coefficients, α (from initial_α)
 ...
 """
-function fixedpoint_parallel(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
+function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2})
 
     # Initialize
     α_star = copy(α_initial)

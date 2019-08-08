@@ -133,18 +133,18 @@ function intermediatedec!(endogvar::Vector{Float64},nendogvars::Int,nexog::Int,l
 end
 
 """
-    decr!(approx::SmolyakApproximation,endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, endog_st, alphacoeff::Array{Float64,2})
+    decr!(approx::Approximation,endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, endog_st, alphacoeff::Array{Float64,2})
 
 The decision rule -- updates endogenous variables and shocks given lagged endogenous values and innovations.
 ...
 # Arguments
-- `m::GHLS`: GHLS model object, including the parameters, SmolyakApproximation object, and endogenou variables and shock values
+- `m::GHLS`: GHLS model object, including the parameters, Approximation object, and endogenou variables and shock values
 - `endogvarm1::Vector{Float64}`: Lagged endogenous variables and shock values.
 - `innovations::Vector{Float64}`: Innovations to the shocks.
 - `alphacoeff::Arary{Float64, 2}`: Polynomial coefficients.
 ...
 """
-function decr!(endogvar::Vector{Float64}, approx::SmolyakApproximation, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64})
+function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64})
 
     #Initialize Variables
     shockindexall=ones(Int64,approx.nexogvars)
@@ -276,7 +276,7 @@ function decrlin(endogvarm1::Vector{Float64},innovations::Vector{Float64},nendog
 end
 
 """
-    decr_euler(approx::SmolyakApproximation,gridindex::Int64,shockpos::Int64,params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2})
+    decr_euler(approx::Approximation,gridindex::Int64,shockpos::Int64,params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2})
 
 For a given collocation point, return associated errors.
 ...
@@ -290,7 +290,7 @@ For a given collocation point, return associated errors.
 - `alphacoeff::Array{Float64, 2}`: Polynomial coefficients.
 ...
 """
-function decr_euler(rkss::Float64, approx::SmolyakApproximation, gridindex::Int64,shockpos::Int64, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64})
+function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shockpos::Int64, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64})
 
     #Initilize Variables
     zlbinfo  = approx.statezlbinfo[shockpos]
@@ -471,7 +471,7 @@ function finite_grid!(shockgrid::SubArray{Float64, 1, Array{Float64,1}, Tuple{Un
 end
 
 """
-    get_shockdetails(approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}
+    get_shockdetails(approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}
 
 For each exogenous shock, this associates a given grid point with the value that that shock takes on at that grid point. In total there are  'ns' such points, with each point representing a distinct combination of shock values. Also returns the upper and lower bounds of each shock, as well as the distance between shock values for any two grid points.
 ...

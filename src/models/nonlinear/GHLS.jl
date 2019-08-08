@@ -102,7 +102,7 @@ mutable struct GHLS{T} <: AbstractModel{T}
     observable_mappings::OrderedDict{Symbol, Observable}
     pseudo_observable_mappings::OrderedDict{Symbol, PseudoObservable}
 
-    approx::SmolyakApproximation
+    approx::Approximation
 end
 
 description(m::GHLS) = "GHLS Model"
@@ -184,7 +184,7 @@ function GHLS(subspec::String="ss0";
             testing,
             OrderedDict{Symbol,Observable}(),
             OrderedDict{Symbol,PseudoObservable}(),
-            SmolyakApproximation())
+            Approximation())
 
     # Set settings
     model_settings!(m)
