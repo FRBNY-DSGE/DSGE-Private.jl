@@ -78,7 +78,7 @@ Driver to compute the model solution and corresponding coefficients matrix
 function solve(m::GHLS, parallel::Bool=false)
 
     # Find grid points of each combination of shock values, and lower and upper bounds of each shock, and the distance between shock values for any two grid points.
-    m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m.approx.number_shock_values, m.approx.nshockgrid, m.approx.exogvarinfo, m.approx.nexogshock, m.approx.ns, m.approx.nexog,m.parameters,m.keys)
+    m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = get_shockdetails(m.approx.nshockgrid, m.approx.nexogshocks, m.approx.ns, m.approx.nexogvars,m.parameters,m.keys)
 
     # Get Equilibrium Conditions and run gensys
     Γ0, Γ1, C, Ψ, Π = eqcond(m)
@@ -110,7 +110,7 @@ function solve(m::GHLS, parallel::Bool=false)
     steady_states = [i.value for i in m.steady_state]
 
     # Compute ergodic means of the endogenous variables (endog_emean)
-    m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogshock, steady_states, m.endogenous_states[:rm_t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
+    m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = simulate_linear(m.approx.ns, m.approx.nendogvars, m.approx.nexogvars, m.approx.nmsv, m.approx.nexogshocks, steady_states, m.endogenous_states[:rm__t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
 
     # Find the slopes coefficients and constants to go from msv space to [-1,1] domain and vice-versa.
     m.approx.slopeconmsv, m.approx.slopeconxx = create_slopes(m.approx.nmsv, m.approx.msvbounds)
@@ -118,10 +118,10 @@ function solve(m::GHLS, parallel::Bool=false)
     # Transform linear solution into representation using shocks directly rather than innovations:
     #     e_t = A*e_{t-1} + B*ν_t where A is aalin, B is bblin, e_t is endogenous states and ν_t are the shocks.
     # Used to get initial guess for nonlinear solution when fed into initial_α
-    aalin, bblin = lindecrule_markov(pp, sigma, m.approx.nvars, m.approx.nexog, m.approx.nexogshock)
+    aalin, bblin = lindecrule_markov(pp, sigma, m.approx.nendogvars, m.approx.nexogvars, m.approx.nexogshocks)
 
     # Construct starting guess for α matrix
-    α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv, m.approx.ns, m.approx.ngrid, m.approx.exoggrid, steady_states, m.endogenous_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
+    α_initial = initial_α(m.approx.nendogvars, m.approx.nexogvars, m.approx.nexogshocks, m.approx.nmsv, m.approx.ns, m.approx.ngridpoints, m.approx.exoggrid, steady_states, m.endogenous_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
 
     # Runs the fixedpoint convergence algorithm to find α⋆
     α_star, convergence = if parallel
@@ -159,7 +159,7 @@ function create_slopes(nmsv::Int, msvbounds::Array{Float64, 1})
 end
 
 """
-    lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nvars::Int, nexog::Int, nexogshock::In
+    lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nendogvars::Int, nexogvars::Int, nexogshocks::In
 
 Transform linear solution into representation that can be used to simulate shocks rather than innovations directly.
 Used to get initial guess for nonlinear solution.
@@ -170,21 +170,21 @@ where y_t are the endogenous variables excluding the shocks and s_t are the shoc
 # Arguments
 - `pp`::Array{Float64,2} - Part of the linear decision rule (feedback part).
 - `sigma`::Array{Float64,2} - Part of the linear decision rule (innovation part).
-- `nvars`::Int - Number of endogenous variables.
-- `nexog`::Int - Number of exogenous variables (shocks and fixed values).
-- `nexogshock`::Int - Number of exogenous shocks
+- `nendogvars`::Int - Number of endogenous variables.
+- `nexogvars`::Int - Number of exogenous variables (shocks and fixed values).
+- `nexogshocks`::Int - Number of exogenous shocks
 ...
 """
-function lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nvars::Int, nexog::Int, nexogshock::Int)
+function lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nendogvars::Int, nexogvars::Int, nexogshocks::Int)
 
     #Initilize Variables
-    bblin=zeros(nvars,nexog)
+    bblin=zeros(nendogvars,nexogvars)
 
-    @fastmath @inbounds @simd for i in 1:nexogshock
-        bblin[:,i] = sigma[1:nvars,i]/sigma[nvars+i,i]
+    @fastmath @inbounds @simd for i in 1:nexogshocks
+        bblin[:,i] = sigma[1:nendogvars,i]/sigma[nendogvars+i,i]
     end
 
-    return pp[1:nvars,1:nvars],bblin
+    return pp[1:nendogvars,1:nendogvars],bblin
 
 end
 
@@ -208,9 +208,9 @@ function fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{A
 
     # Initialize
     α_star = copy(α_initial)
-    α_new = Array{Float64}(undef, approx.nfunc*approx.ngrid, 2*approx.ns)
-    α_temp = Array{Float64}(undef, approx.ngrid, 2*approx.nfunc)
-    updated_approx_polynomials = Array{Float64}(undef, 2*approx.nfunc, approx.ngrid)
+    α_new = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 2*approx.ns)
+    α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
+    updated_approx_polynomials = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
     convergence = false
     avg_error = 0.0
 
@@ -229,7 +229,7 @@ function fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{A
             err = 0.0
 
             # Update polynomials using new guess for α
-            for k in 1:approx.ngrid
+            for k in 1:approx.ngridpoints
                 updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states)
                 err += err2
             end
@@ -245,7 +245,7 @@ function fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{A
         end
 
         # Normalize summed error to get average
-        avg_error /= 2*approx.ngrid*approx.ns
+        avg_error /= 2*approx.ngridpoints*approx.ns
 
         # Convergence fails if new α has non-numerical elements
         if (any([isnan(a) for a in α_new]) == true)
@@ -265,24 +265,25 @@ function fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{A
 end
 
 """
-    simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock::Int, steady_states::Array{Float64, 1}, rm_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
+    simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, nexogshocks::Int, steady_states::Array{Float64, 1}, rm_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
 
 Simulate data to compute ergodic means of economy's variables.
 
 ## Inputs
 - `ns`::Int - Total number of grid points (Possible combinations of shock values at grid points)
-- `nvars`::Int - Number of endogenous variables.
-- `nexog`::Int - Number of exogenous variables (shocks and fixed values).
+- `nendogvars`::Int - Number of endogenous variables.
+- `nexogvars`::Int - Number of exogenous variables (shocks and fixed values).
 - `nmsv`::Int - Number of minimum state endogenous variables
-- `nexogshock`::Int - Number of exogenous shocks
+- `nexogshocks`::Int - Number of exogenous shocks
 - `steady_states`::Vector{Float64} - The model's steady state values
+- `rm_t::Int`: Index of rm_t
 - `nshockgrid`::Vector{Int} - Vector containing grid size for each shock.
 - `shockbounds`::Array{Float64,2} - Lower and upper bounds on each exogenous shock.
 - `shockdistance`::Array{Float64,1} - Distance between grid points for each shock.
 - `pp`::Array{Float64,2} - Part of the linear decision rule (feedback part).
 - `sigma`::Array{Float64,2} - Part of the linear decision rule (innovation part).
 """
-function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock::Int, steady_states::Array{Float64, 1}, rm_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
+function simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, nexogshocks::Int, steady_states::Array{Float64, 1}, rm_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
     # Initialize variables - some of these should be in model settings
     total_periods = 100000
     periods_per_iter = 400
@@ -292,23 +293,23 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock:
     convergence = true
 
     statezlbinfo = zeros(Int64, ns)
-    endog_emean = Array{Float64}(undef, nvars + nexog)
+    endog_emean = Array{Float64}(undef, nendogvars + nexogvars)
     msvbounds = Array{Float64}(undef, 2*nmsv)
-    shockindex = Array{Int64}(undef, nexog)
+    shockindex = Array{Int64}(undef, nexogvars)
     countzlbstates = zeros(Int64, ns)
     msvhigh = Array{Float64}(undef, nmsv)
     msvlow = Array{Float64}(undef, nmsv)
-    innovations = Array{Float64}(undef, nexog)
-    xrandn = Array{Float64}(undef, nexog, total_periods)
+    innovations = Array{Float64}(undef, nexogvars)
+    xrandn = Array{Float64}(undef, nexogvars, total_periods)
     msv_std = zeros(nmsv)
-    endogvar = zeros(nvars+nexog, total_periods+1)
+    endogvar = zeros(nendogvars+nexogvars, total_periods+1)
 
     # Set up random generator
     path = dirname(@__FILE__)
     iseed = MersenneTwister(101294)
     randn!(iseed, xrandn)
     xrandnFortran=readdlm("$path/xrandn.txt") #For testing
-    xrandn=reshape(xrandnFortran,nexog,total_periods)
+    xrandn=reshape(xrandnFortran,nexogvars,total_periods)
 
     # Set up for first period
     endogvar[1:nmsv,1]= steady_states[1:nmsv]
@@ -316,8 +317,8 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock:
     msvlow = log(0.01) + endogvar[1:nmsv, 1]
 
     #zero out shocks not included in nonlinear model
-    if (nexogshock < nexog)
-        sigma[:,nexogshock+1:nexog] .= 0.0
+    if (nexogshocks < nexogvars)
+        sigma[:,nexogshocks+1:nexogvars] .= 0.0
     end
     stateindex = 0
 
@@ -330,10 +331,10 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock:
         for ttsim in llim:ulim
 
             # Draw innovations
-            innovations[1:nexogshock] = xrandn[1:nexogshock,ttsim-1]
+            innovations[1:nexogshocks] = xrandn[1:nexogshocks,ttsim-1]
 
             #THIS SHOULD BE DONE DIFFERENTLY HERE
-            endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1], innovations, nvars, nexog, sigma, pp, steady_states)
+            endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1], innovations, nendogvars, nexogvars, sigma, pp, steady_states)
 
             # Account for ZLB, why is this not 1 though?
             if (endogvar[rm_t,ttsim] < 0.0)
@@ -342,19 +343,19 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock:
                 fill!(shockindex,1)
 
                 # Assigns each shock to position in grid
-                for i in 1:nexogshock
+                for i in 1:nexogshocks
                     # If lower than lowest grid value assign lowest possible index
-                    if (endogvar[nvars+i,ttsim] < shockbounds[i,1])
+                    if (endogvar[nendogvars+i,ttsim] < shockbounds[i,1])
                         shockindex[i] = 1
 
                     # Otherwise assign it the index whose corresponding value is closest (rounding down)
                     else
-                        shockindex[i]  = min(nshockgrid[i], floor(1.0+(endogvar[nvars+i,ttsim]-shockbounds[i,1])/shockdistance[i]))
+                        shockindex[i]  = min(nshockgrid[i], floor(1.0+(endogvar[nendogvars+i,ttsim]-shockbounds[i,1])/shockdistance[i]))
                     end
                 end
 
                 # Indexes state that gave zlb
-                stateindex = exogposition(shockindex,nshockgrid,nexog)
+                stateindex = exogposition(shockindex,nshockgrid,nexogvars)
 
                 countzlbstates[stateindex] = countzlbstates[stateindex] + 1
                 if (countzlbstates[stateindex] > 5)
@@ -430,50 +431,50 @@ A and B below refer to this equation: e_t = A*e_{t-1} + B*ν_t where A is aalin,
 - `bblin::Array{Float64,2}`: After lindecrule_markov, this is B
 ...
 """
-function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, ns::Int, ngrid::Int, exoggrid::Array{Float64, 2}, steady_states::Array{Float64,1}, endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64}, slopeconxx::Array{Float64, 1}, xgrid::Array{Float64, 2}, nfunc::Int, bbtinv::Array{Float64,2}, aalin::Array{Float64, 2}, bblin::Array{Float64, 2})
+function initial_α(nendogvars::Int, nexogvars::Int, nexogshocks::Int, nmsv::Int, ns::Int, ngridpoints::Int, exoggrid::Array{Float64, 2}, steady_states::Array{Float64,1}, endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64}, slopeconxx::Array{Float64, 1}, xgrid::Array{Float64, 2}, nfunc::Int, bbtinv::Array{Float64,2}, aalin::Array{Float64, 2}, bblin::Array{Float64, 2})
 
     #Initilize variables
-    endogvar = Array{Float64}(undef,nvars)
-    exogpart = Array{Float64}(undef,nvars)
+    endogvar = Array{Float64}(undef,nendogvars)
+    exogpart = Array{Float64}(undef,nendogvars)
     slopeconxxmsv = Array{Float64}(undef,2*nmsv)
-    initialalphas = zeros(nfunc*ngrid,2*ns)
-    alphass = zeros(nfunc,ngrid)
-    endogvarm1 = zeros(nvars,ngrid) #holds lags
-    endogsteady = steady_states[1:nvars + nexog]
+    initialalphas = zeros(nfunc*ngridpoints,2*ns)
+    alphass = zeros(nfunc,ngridpoints)
+    endogvarm1 = zeros(nendogvars,ngridpoints) #holds lags
+    endogsteady = steady_states[1:nendogvars + nexogvars]
 
     # Get conversion from xx to msv
     slopeconxxmsv[1:nmsv] = slopeconxx[1:nmsv]
     slopeconxxmsv[nmsv+1:2*nmsv] = slopeconxx[nmsv+1:nmsv+nmsv]
 
     # Converts endog var back to msv domain
-    @inbounds @simd for i in 1:ngrid
+    @inbounds @simd for i in 1:ngridpoints
         endogvarm1[1:nmsv,i] = msv2xx(xgrid[1:nmsv,i],nmsv,slopeconxxmsv)-endogsteady[1:nmsv] #CHECK THIS FUNCTION
     end
 
-    yy = zeros(nfunc,ngrid)
+    yy = zeros(nfunc,ngridpoints)
     # For each shock grid point
     @fastmath @inbounds @simd for ss in 1:ns
-        exogval = zeros(nexog)
+        exogval = zeros(nexogvars)
 
-        exogval[1:nexogshock] = exoggrid[1:nexogshock,ss]   #update shocks (in deviation from ss)
+        exogval[1:nexogshocks] = exoggrid[1:nexogshocks,ss]   #update shocks (in deviation from ss)
 
-        @fastmath @inbounds @simd for i in 1:ngrid
+        @fastmath @inbounds @simd for i in 1:ngridpoints
 
             #get linear solution
             mul!(endogvar, aalin, endogvarm1[:,i]) #REMAKE THIS FUNCTION
             mul!(exogpart, bblin, exogval) # REMAKE THIS FUNCTION
-            endogvar = endogsteady[1:nvars] + endogvar + exogpart
+            endogvar = endogsteady[1:nendogvars] + endogvar + exogpart
             yy[:,i] = endogvar[[endogenous_states[:λc],endogenous_states[:qk_t],endogenous_states[:Vp_t],endogenous_states[:Vw_t],endogenous_states[:bc_t],endogenous_states[:bi_t],endogenous_states[:u_t]] ] # We take these 7 variables because they are the approximated polynomial functions.
         end
 
         # Get alphas by inverting approximation function
         mul!(alphass,yy,bbtinv)
-        @fastmath @inbounds @simd for i in 1:ngrid
+        @fastmath @inbounds @simd for i in 1:ngridpoints
             @fastmath @inbounds @simd for ifunc in 1:nfunc
                 #if (alphass(ifunc,i) < 1.0e-8) alphass(ifunc,i) = 0.0d0
-                initialalphas[(ifunc-1)*ngrid+i,ss] = alphass[ifunc,i]
+                initialalphas[(ifunc-1)*ngridpoints+i,ss] = alphass[ifunc,i]
                 #initial guess for ZLB polynomials
-                initialalphas[(ifunc-1)*ngrid+i,ns+ss] = alphass[ifunc,i]
+                initialalphas[(ifunc-1)*ngridpoints+i,ns+ss] = alphass[ifunc,i]
             end
         end
     end
@@ -499,13 +500,13 @@ Helper function for the parallel implementation of fixedpoint.
 ...
 """
 function parallel_help(rkss::Float64, approx::SmolyakApproximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},j::Int)
-    col1 = zeros(approx.nfunc*approx.ngrid,3)
+    col1 = zeros(approx.nfunc*approx.ngridpoints,3)
 
-    updated_approx_polynomials = zeros(2*approx.nfunc, approx.ngrid)
+    updated_approx_polynomials = zeros(2*approx.nfunc, approx.ngridpoints)
     err = 0.0
 
     # Update polynomials using new guess for α
-    @fastmath @inbounds @simd for k in 1:approx.ngrid
+    @fastmath @inbounds @simd for k in 1:approx.ngridpoints
         updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states)
         err += err2
     end
@@ -543,8 +544,8 @@ function fixedpoint_parallel(rkss::Float64, approx::SmolyakApproximation, params
 
     # Initialize
     α_star = copy(α_initial)
-    α_new = zeros(Float64, approx.nfunc*approx.ngrid, 2*approx.ns)
-    α_temp = zeros(Float64, 2*approx.nfunc, approx.ngrid)
+    α_new = zeros(Float64, approx.nfunc*approx.ngridpoints, 2*approx.ns)
+    α_temp = zeros(Float64, 2*approx.nfunc, approx.ngridpoints)
     convergence = false
 
     # Settings - should probably be stored in model
@@ -567,7 +568,7 @@ function fixedpoint_parallel(rkss::Float64, approx::SmolyakApproximation, params
         avg_error = sum(α_here[1,3:3:end])
 
         # Normalize summed error to get average
-        avg_error /= 2*approx.ngrid*approx.ns
+        avg_error /= 2*approx.ngridpoints*approx.ns
 
         # Convergence fails if new α has non-numerical elements
         if (any([isnan(a) for a in α_new]) == true)
