@@ -218,7 +218,7 @@ function decr!(endogvar::Vector{Float64}, approx::SmolyakApproximation, endogvar
             @views funcmatplus[ifunc,i] = BLAS.dot(approx.ngridpoints, alphacoeff[(ifunc-1)*approx.ngridpoints+1:ifunc*approx.ngridpoints, stateindexplus],1, polyvec, 1)
         end
 
-        # Give weight to inverse interpolation, so that in the end interpolations that are closer to actual shocks are given high weights
+        # Give weight to inverse interpolation, so that in the end interpolations that are closer to actual shocks are given high weights, note this is Γ_{k}
         # Note prod_sd is the most prod(weighttemp) can be
         weightvec[approx.ninter+1-i] = prod(weighttemp)/prod_sd
     end
@@ -315,6 +315,7 @@ function decr_euler(rkss::Float64, approx::SmolyakApproximation, gridindex::Int6
     currentshockvalues[1:approx.nexogshocks] = approx.exoggrid[1:approx.nexogshocks,shockpos]
 
     # Calculates T(ϕ(X_{t-1}))α_{l,j,k} for each function
+    # Note Γ_{k} is one here for the shock grid point we are at and zero everywhere else
     shockpospoly = shockpos + approx.ns
     for ifunc in 1:approx.nfunc
         @views polyapp[ifunc] = BLAS.dot(approx.ngridpoints, alphacoeff[(ifunc-1)*approx.ngridpoints+1:ifunc*approx.ngridpoints,shockpos],1,approx.bbt[:,gridindex], 1)
