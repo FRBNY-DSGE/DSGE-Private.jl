@@ -71,7 +71,7 @@ close(h5)
 
 endogvar = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
 
-intermediatedec!(endogvar, m.approx.nvars, m.approx.nexog, m[:labss].value, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false, m.exogenous_shocks, m.parameters, m.keys)
+intermediatedec!(endogvar, m.approx.nvars, m.approx.nexog, m[:labss].value, endogvarm1_ref, currentshocks_ref, polyvar_ref, 1.0, polyvar_ref, false, m.endogenous_states, m.exogenous_shocks, m.parameters, m.keys)
 
 @testset "Compare intermediate endogenous variables to reference output" begin
     @test endogvar_ref ≈ endogvar

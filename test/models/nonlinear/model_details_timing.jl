@@ -74,7 +74,7 @@ close(h5)
 
 endogvar = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
 
-suite["intermediatedec"] = @benchmarkable intermediatedec!($endogvar, $m.approx.nvars, $m.approx.nexog, $m[:labss].value, $endogvarm1_ref, $currentshocks_ref, $polyvar_ref, $1.0, $polyvar_ref, $false, $m.exogenous_shocks, $m.parameters, $m.keys)
+suite["intermediatedec"] = @benchmarkable intermediatedec!($endogvar, $m.approx.nvars, $m.approx.nexog, $m[:labss].value, $endogvarm1_ref, $currentshocks_ref, $polyvar_ref, $1.0, $polyvar_ref, $false, $m.endogenous_states, $m.exogenous_shocks, $m.parameters, $m.keys)
 
 ### Test decr
 h5 = h5open("$path/decr.h5")

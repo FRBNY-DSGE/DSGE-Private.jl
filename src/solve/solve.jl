@@ -121,7 +121,7 @@ function solve(m::GHLS, parallel::Bool=false)
     aalin, bblin = lindecrule_markov(pp, sigma, m.approx.nvars, m.approx.nexog, m.approx.nexogshock)
 
     # Construct starting guess for α matrix
-    α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv, m.approx.ns, m.approx.ngrid, m.approx.exoggrid, steady_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
+    α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv, m.approx.ns, m.approx.ngrid, m.approx.exoggrid, steady_states, m.endogenous_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
 
     # Runs the fixedpoint convergence algorithm to find α⋆
     α_star, convergence = if parallel
@@ -430,7 +430,7 @@ A and B below refer to this equation: e_t = A*e_{t-1} + B*ν_t where A is aalin,
 - `bblin::Array{Float64,2}`: After lindecrule_markov, this is B
 ...
 """
-function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, ns::Int, ngrid::Int, exoggrid::Array{Float64, 2}, steady_states::Array{Float64,1}, slopeconxx::Array{Float64, 1}, xgrid::Array{Float64, 2}, nfunc::Int, bbtinv::Array{Float64,2}, aalin::Array{Float64, 2}, bblin::Array{Float64, 2})
+function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, ns::Int, ngrid::Int, exoggrid::Array{Float64, 2}, steady_states::Array{Float64,1}, endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64}, slopeconxx::Array{Float64, 1}, xgrid::Array{Float64, 2}, nfunc::Int, bbtinv::Array{Float64,2}, aalin::Array{Float64, 2}, bblin::Array{Float64, 2})
 
     #Initilize variables
     endogvar = Array{Float64}(undef,nvars)
@@ -463,7 +463,7 @@ function initial_α(nvars::Int, nexog::Int, nexogshock::Int, nmsv::Int, ns::Int,
             mul!(endogvar, aalin, endogvarm1[:,i]) #REMAKE THIS FUNCTION
             mul!(exogpart, bblin, exogval) # REMAKE THIS FUNCTION
             endogvar = endogsteady[1:nvars] + endogvar + exogpart
-            yy[:,i] = endogvar[[10,11,18,19,21,22,13] ]
+            yy[:,i] = endogvar[[endogenous_states[:λc],endogenous_states[:qk_t],endogenous_states[:Vp_t],endogenous_states[:Vw_t],endogenous_states[:bc_t],endogenous_states[:bi_t],endogenous_states[:u_t]] ] # We take these 7 variables because they are the approximated polynomial functions.
         end
 
         # Get alphas by inverting approximation function

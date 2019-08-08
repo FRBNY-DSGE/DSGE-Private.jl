@@ -85,7 +85,7 @@ steady_states = [i.value for i in m.steady_state]
 
 ### Test initial alphas
 m.approx.slopeconmsv, m.approx.slopeconxx = slopeconmsv_ref, slopeconxx_ref
-suite["initial"] = @benchmarkable initial_α($m.approx.nvars, $m.approx.nexog, $m.approx.nexogshock, $m.approx.nmsv, $m.approx.nexogcont, $m.approx.ns, $m.approx.ngrid, $m.approx.exoggrid, steady_states, $m.approx.slopeconxx, $m.approx.xgrid, $m.approx.nfunc, $m.approx.bbtinv, aalin_ref, bblin_ref)
+suite["initial"] = @benchmarkable initial_α($m.approx.nvars, $m.approx.nexog, $m.approx.nexogshock, $m.approx.nmsv, $m.approx.nexogcont, $m.approx.ns, $m.approx.ngrid, $m.approx.exoggrid, steady_states, $m.endogenous_states, $m.approx.slopeconxx, $m.approx.xgrid, $m.approx.nfunc, $m.approx.bbtinv, aalin_ref, bblin_ref)
 
 h5 = h5open("$path/initialalphas.h5")
 α_initial_ref = read(h5, "initialalphas")

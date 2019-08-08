@@ -54,7 +54,7 @@ m.approx.slopeconmsv, m.approx.slopeconxx = create_slopes(m.approx.nmsv, m.appro
 aalin, bblin = lindecrule_markov(pp, sigma, m.approx.nvars, m.approx.nexog, m.approx.nexogcont, m.approx.nexogshock)
 
 ### Test initial alphas against reference output
-α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv,m.approx.nexogcont,m.approx.ns,m.approx.ngrid, m.approx.exoggrid, steady_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
+α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv,m.approx.nexogcont,m.approx.ns,m.approx.ngrid, m.approx.exoggrid, steady_states, m.endogenous_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
 
 
 ### Test fixed point output against reference output
