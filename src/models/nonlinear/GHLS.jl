@@ -507,6 +507,8 @@ function model_settings!(m::GHLS)
 
     m <= Setting(:n_particles, 100)
     m <= Setting(:sampling_method, :SMC)
+
+    m <= Setting(:zero_lower_bound, true)
 end
 
 """

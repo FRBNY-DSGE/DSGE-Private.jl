@@ -45,7 +45,7 @@ sigma = RRR[1:28, 1:6]
 
 steady_states = [i.value for i in m.steady_state]
 
-m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogcont, m.approx.nexogshock, steady_states, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
+m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogcont, m.approx.nexogshock, steady_states, m.endogenous_states[:rm_t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
 
 m.approx.slopeconmsv, m.approx.slopeconxx = create_slopes(m.approx.nmsv, m.approx.nexogcont, m.approx.msvbounds)
 

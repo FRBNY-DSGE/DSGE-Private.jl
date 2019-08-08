@@ -123,7 +123,7 @@ function intermediatedec!(endogvar::Vector{Float64},nvars::Int,nexog::Int,labss:
     lrss::Float64 = log(params[keys[:gz]]*params[keys[:π_bar]]/params[keys[:β]]) # Log of steady state nominal interest rate - see (1.43) in TA
     endogvar[endogenous_states[:rm_t]] = exp(lrss+params[keys[:ρ_R]]*(log(endogvarm1[endogenous_states[:rm_t]])-lrss) + (1.0-params[keys[:ρ_R]])*(params[keys[:γ_π]]*log(endogvar[endogenous_states[:π_t]]/params[keys[:π_bar]]) + params[keys[:γ_g]]*log(endogvar[endogenous_states[:y_t]]*techshk/endogvarm1[endogenous_states[:y_t]]) + params[keys[:γ_x]]*endogvar[endogenous_states[:x_t]] ) + rrshk) #Notional interest rate (Interest rate without a zero lower bound) - see (1.39) in TA
 
-    endogvar[endogenous_states[:mc_t]] = endogvar[endogenous_states[:w_t]]*endogvar[endogenous_states[:L_t]]/((1.0-params[keys[:α]])*endogvar[endogenous_states[:y-t]]) #Marginal Cost: mc_t from (1.36) in TA
+    endogvar[endogenous_states[:mc_t]] = endogvar[endogenous_states[:w_t]]*endogvar[endogenous_states[:L_t]]/((1.0-params[keys[:α]])*endogvar[endogenous_states[:y_t]]) #Marginal Cost: mc_t from (1.36) in TA
     endogvar[endogenous_states[:rk_t]] = (params[keys[:α]]/(1.0-params[keys[:α]]))*(endogvar[endogenous_states[:w_t]]*endogvar[endogenous_states[:L_t]]*params[keys[:gz]]*techshk/(endogvar[endogenous_states[:u_t]]*endogvarm1[endogenous_states[:k_t]])) #rentalk: r_t^k from (1.37) in TA
     endogvar[endogenous_states[:k_t]] = (1.0-params[keys[:δ]])*(endogvarm1[endogenous_states[:k_t]]/(params[keys[:gz]]*techshk)) + invshk*endogvar[endogenous_states[:i_t]]*(1.0- (params[keys[:ϕ_I]]/2.0)*(endogvar[endogenous_states[:Vi_t]]-1.0)*(endogvar[endogenous_states[:Vi_t]]-1.0) ) #cap: \bar{k}_{t+1} from (1.38) in TA
     endogvar[endogenous_states[:R_t]] = copy(endogvar[endogenous_states[:rm_t]]) # copy as to no make it a pointer, this is nomr (Nominal Interest Rate) - see (1.18) in TA
@@ -335,7 +335,7 @@ function decr_euler(rkss::Float64, approx::SmolyakApproximation, gridindex::Int6
     intermediatedec!(endogvar,approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, polyapp[1:approx.nfunc],omegapoly,polyapp[1:approx.nfunc],zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
 
     if ((zlbinfo != 0) & (approx.zlbswitch == true))
-        intermediatedec!(endogvar, approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, polyapp[approx.nfunc+1:2*approx.nfunc], omegapoly,polyapp[approx.nfunc+1:2*approx.nfunc],zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
+        intermediatedec!(endogvarzlb, approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, polyapp[approx.nfunc+1:2*approx.nfunc], omegapoly,polyapp[approx.nfunc+1:2*approx.nfunc],zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
         endogvarzlb[9] = 1.0
     end
 

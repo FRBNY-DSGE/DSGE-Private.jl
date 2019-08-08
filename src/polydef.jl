@@ -75,6 +75,11 @@ function init_settings!(approx::SmolyakApproximation)
     approx.nindplus = 1
     approx.nshockgrid = [7,2,2,2,2,1]# CHANGE TO THIS AFTER DONE TESTING: [7,3,3,3,3,1]
     approx.indplus = [3]
+
+    # Zero Lower Bound
+    if m.settings[:zero_lower_bound]
+        m.approx.zlbswitch = true
+    end
 end
 
 """

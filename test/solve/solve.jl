@@ -67,7 +67,7 @@ shockdistance_ref = read(h5, "shockdistance")
 close(h5)
 m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = exoggrid_ref, shockbounds_ref, shockdistance_ref
 
-endog_emean, zlbfrequency, msvbounds, statezlbinfo, convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogshock, steady_states, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
+endog_emean, zlbfrequency, msvbounds, statezlbinfo, convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogshock, steady_states, m.endogenous_states[:rm_t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
 
 h5 = h5open("$path/simulatelinear.h5")
 endog_emean_ref = read(h5, "endog_emean")

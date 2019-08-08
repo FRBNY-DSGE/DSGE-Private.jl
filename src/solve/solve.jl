@@ -110,7 +110,7 @@ function solve(m::GHLS, parallel::Bool=false)
     steady_states = [i.value for i in m.steady_state]
 
     # Compute ergodic means of the endogenous variables (endog_emean)
-    m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogshock, steady_states, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
+    m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogshock, steady_states, m.endogenous_states[:rm_t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
 
     # Find the slopes coefficients and constants to go from msv space to [-1,1] domain and vice-versa.
     m.approx.slopeconmsv, m.approx.slopeconxx = create_slopes(m.approx.nmsv, m.approx.msvbounds)
@@ -265,7 +265,7 @@ function fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{A
 end
 
 """
-    simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock::Int, steady_states::Array{Float64, 1}, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
+    simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock::Int, steady_states::Array{Float64, 1}, rm_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
 
 Simulate data to compute ergodic means of economy's variables.
 
@@ -282,7 +282,7 @@ Simulate data to compute ergodic means of economy's variables.
 - `pp`::Array{Float64,2} - Part of the linear decision rule (feedback part).
 - `sigma`::Array{Float64,2} - Part of the linear decision rule (innovation part).
 """
-function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock::Int, steady_states::Array{Float64, 1}, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
+function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock::Int, steady_states::Array{Float64, 1}, rm_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
     # Initialize variables - some of these should be in model settings
     total_periods = 100000
     periods_per_iter = 400
@@ -336,7 +336,7 @@ function simulate_linear(ns::Int, nvars::Int, nexog::Int, nmsv::Int, nexogshock:
             endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1], innovations, nvars, nexog, sigma, pp, steady_states)
 
             # Account for ZLB, why is this not 1 though?
-            if (endogvar[5,ttsim] < 0.0)
+            if (endogvar[rm_t,ttsim] < 0.0)
                 countzlb = countzlb + 1
 
                 fill!(shockindex,1)
