@@ -228,6 +228,7 @@ function fixedpoint(rkss::Float64, approx::SmolyakApproximation, params::Array{A
     step  = 7.0e-01
 
     # Get fixed point using iterative convergence method
+    ## Loop until convergence (avg_error < tolfun) or niter reached
     for i in 1:niter
         @show i
         avg_error = 0.0

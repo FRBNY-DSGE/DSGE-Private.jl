@@ -65,7 +65,7 @@ Updates endogenous variables given their lagged values and polynomial approximat
 - `zlbintermediate::Bool`: Indicator for whether there are two regimes for the polynomial or not.
 ...
 """
-function intermediatedec!(endogvar::Vector{Float64},nvars::Int,nexog::Int,labss::Float64,endogvarm1::Vector{Float64},currentshockvalues::Vector{Float64},polyvar::Vector{Float64},omegapoly::Float64,polyvarplus::Vector{Float64},zlbintermediate::Bool,exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64}, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
+function intermediatedec!(endogvar::Vector{Float64},nvars::Int,nexog::Int,labss::Float64,endogvarm1::Vector{Float64},currentshockvalues::Vector{Float64},polyvar::Vector{Float64},omegapoly::Float64,polyvarplus::Vector{Float64},zlbintermediate::Bool,endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64}, exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64}, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
 
     # Transform shocks from log-level deviations from steady state to levels
     invshk::Float64 = exp(currentshockvalues[exogenous_shocks[:μ_sh]])
@@ -76,54 +76,57 @@ function intermediatedec!(endogvar::Vector{Float64},nvars::Int,nexog::Int,labss:
     ashk::Float64 = exp(0.)
 
     # Update levels of endogenous variables
+    ## The variables below are initially set to the polynomial approximations.
+    ## Thus, they refer to the V_{l,j}(X_{t-1},τ_t)functions given in equations (2.14) - (2.20) in Technical Appendix of GHLS (2017)
     if (zlbintermediate == true)
-        endogvar[10] = omegapoly*exp(polyvar[1]) + (1.0-omegapoly)*exp(polyvarplus[1]) #lam
-        endogvar[11] = omegapoly*exp(polyvar[2]) + (1.0-omegapoly)*exp(polyvarplus[2]) #qq
+        endogvar[endogenous_states[:λc]] = omegapoly*exp(polyvar[1]) + (1.0-omegapoly)*exp(polyvarplus[1]) #lam
+        endogvar[endogenous_states[:qk_t]] = omegapoly*exp(polyvar[2]) + (1.0-omegapoly)*exp(polyvarplus[2]) #qq
         bp = omegapoly*polyvar[3] + (1.0-omegapoly)*polyvarplus[3]
         bww = omegapoly*polyvar[4] + (1.0-omegapoly)*polyvarplus[4]
-        endogvar[21] = omegapoly*exp(polyvar[5]) + (1.0-omegapoly)*exp(polyvarplus[5]) #bc
-        endogvar[22] = omegapoly*polyvar[6] + (1.0-omegapoly)*polyvarplus[6] #bi
-        endogvar[13] = omegapoly*exp(polyvar[7]) + (1.0-omegapoly)*exp(polyvarplus[7]) #util
+        endogvar[endogenous_states[:bc_t]] = omegapoly*exp(polyvar[5]) + (1.0-omegapoly)*exp(polyvarplus[5]) #bc
+        endogvar[endogenous_states[:bi_t]] = omegapoly*polyvar[6] + (1.0-omegapoly)*polyvarplus[6] #bi
+        endogvar[endogenous_states[:u_t]] = omegapoly*exp(polyvar[7]) + (1.0-omegapoly)*exp(polyvarplus[7]) #util
     else
-        endogvar[10] = exp(polyvar[1]) #lam
-        endogvar[11] = exp(polyvar[2]) #qq
+        endogvar[endogenous_states[:λc]] = exp(polyvar[1]) #lam
+        endogvar[endogenous_states[:qk_t]] = exp(polyvar[2]) #qq
         bp::Float64 = polyvar[3]
         bww::Float64 = polyvar[4]
-        endogvar[21] = exp(polyvar[5]) #bc
-        endogvar[22] = polyvar[6] #bi
-        endogvar[13] = exp(polyvar[7]) #util
+        endogvar[endogenous_states[:bc_t]] = exp(polyvar[5]) #bc
+        endogvar[endogenous_states[:bi_t]] = polyvar[6] #bi
+        endogvar[endogenous_states[:u_t]] = exp(polyvar[7]) #util
     end
 
-    endogvar[18] = (sqrt(1.0+4.0*bp)+1.0)/2.0 #vp
-    endogvar[19] = (sqrt(1.0+4.0*bww)+1.0)/2.0 #vw
-    dptildem1::Float64 = (params[keys[:π_bar]]^params[keys[:ap]])*(endogvarm1[6]^(1.0-params[keys[:ap]]))
-    dwtildem1::Float64 = (params[keys[:π_bar]]^params[keys[:aw]])*(endogvarm1[6]^(1.0-params[keys[:aw]]))
-    gzwage::Float64 = params[keys[:gz]]*techshk^(1.0-params[keys[:aw]]) #Note that aw should be bw but in steady state they are equal, might be better style to pass bw though
+    endogvar[endogenous_states[:Vp_t]] = (sqrt(1.0+4.0*bp)+1.0)/2.0 #vp - see (2.5) in GHLS (2017) Technical Appendix (TA). vp = \frac{π(X_{t-1},τ_t)}{\tilde{π}_{t-1}/2} where (X_{t-1},τ_t) is the minimum state vector. (see (2.1) and (2.2) in TA)
+    endogvar[endogenous_states[:Vw_t]] = (sqrt(1.0+4.0*bww)+1.0)/2.0 #vw = π_w(X_{t-1},τ_t)/\tilde{π}_{w,t} (see (2.6) in TA)
+    dptildem1::Float64 = (params[keys[:π_bar]]^params[keys[:ap]])*(endogvarm1[endogenous_states[:π_t]]^(1.0-params[keys[:ap]])) # Indexation term for price changes - (1.4) of TA --> Expectation of future inflation
+    dwtildem1::Float64 = (params[keys[:π_bar]]^params[keys[:aw]])*(endogvarm1[endogenous_states[:π_t]]^(1.0-params[keys[:aw]])) # Component of indexation term for wage changes - (1.10) in TA - see dw below
+    gzwage::Float64 = params[keys[:gz]]*techshk^(1.0-params[keys[:aw]]) # Component of indexation term for wage changes - (1.10) in TA. Note the indexation is dwtildem1*gzwage
+    ##Note that aw should be bw but in steady state they are equal, might be better style to pass bw though
 
-    endogvar[6] = endogvar[18]*dptildem1 #dp
-    endogvar[20] = endogvar[19]*dwtildem1*gzwage #dw
-    endogvar[16] = endogvar[10] + (params[keys[:γ]]/params[keys[:gz]])*params[keys[:β]]*endogvar[21] #muc
-    endogvar[2] = params[keys[:γ]]*endogvarm1[2]/(params[keys[:gz]]*techshk)+1.0/endogvar[16] #cc
-    cquad_vi::Float64 = endogvar[22]/(endogvar[11]*invshk)-(1.0-endogvar[11]*invshk)/(params[keys[:ϕ_I]].value*endogvar[11]*invshk)
+    endogvar[endogenous_states[:π_t]] = endogvar[endogenous_states[:Vp_t]]*dptildem1 #dp = π(X_{t-1},τ_t) from (2.5) of TA
+    endogvar[endogenous_states[:π_w]] = endogvar[endogenous_states[:Vw_t]]*dwtildem1*gzwage #dw = π_w (X_{t-1},τ_t) from (2.6) of TA
+    endogvar[endogenous_states[:muc_t]] = endogvar[endogenous_states[:λc]] + (params[keys[:γ]]/params[keys[:gz]])*params[keys[:β]]*endogvar[endogenous_states[:bc_t]] #muc (marginal utility of consumption), see last term in (2.8) of TA or (1.27) of TA
+    endogvar[endogenous_states[:c_t]] = params[keys[:γ]]*endogvarm1[endogenous_states[:c_t]]/(params[keys[:gz]]*techshk)+1.0/endogvar[endogenous_states[:muc_t]] #cc = c (X_{t-1},τ_t) (see (2.8) in TA)
+    cquad_vi::Float64 = endogvar[endogenous_states[:bi_t]]/(endogvar[endogenous_states[:qk_t]]*invshk)-(1.0-endogvar[endogenous_states[:qk_t]]*invshk)/(params[keys[:ϕ_I]].value*endogvar[endogenous_states[:qk_t]]*invshk)# This is is term in the square root minus 1 divided by 4 of (2.9) of TA
 
-    endogvar[17] = 0.5*(1.0+sqrt(1.0+4.0*cquad_vi)) #vi
+    endogvar[endogenous_states[:Vi_t]] = 0.5*(1.0+sqrt(1.0+4.0*cquad_vi)) #vi = i(X_{t-1},τ_t)/i_{t-1} from (2.9) in TA
 
-    endogvar[3] = endogvar[17]*endogvarm1[3]/techshk #inv
-    aayy::Float64 = 1.0/gshk-(params[keys[:ϕ_p]]/2.0)*(endogvar[18]-1.0)*(endogvar[18]-1.0)
-    rkss::Float64 = params[keys[:gz]]/params[keys[:β]]-1.0+params[keys[:δ]]
-    utilcost::Float64 = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvar[13]-1.0))-1.0)
-    endogvar[7] = (1.0/aayy)*( endogvar[2]+endogvar[3] + utilcost*(endogvarm1[1]/(params[keys[:gz]]*techshk)) ) #gdp
-    endogvar[4] = endogvarm1[4]*endogvar[20]/(params[keys[:gz]]*techshk*endogvar[6]) #rw
-    endogvar[12] = endogvar[7]^(1.0/(1.0-params[keys[:α]]))*(endogvar[13]*endogvarm1[1]/(params[keys[:gz]]*techshk))^(params[keys[:α]]/(params[keys[:α]]-1.0))/ashk #lab
-    endogvar[8] = params[keys[:α]]*log(endogvar[13]) + (1-params[keys[:α]])*(log(endogvar[12])-log(labss)) # Changed llabss to log(m[:labss]), this is xhp
+    endogvar[endogenous_states[:i_t]] = endogvar[endogenous_states[:Vi_t]]*endogvarm1[endogenous_states[:i_t]]/techshk #inv = i(X_{t-1},τ_t) from (2.9) in TA
+    aayy::Float64 = 1.0/gshk-(params[keys[:ϕ_p]]/2.0)*(endogvar[endogenous_states[:Vp_t]]-1.0)*(endogvar[endogenous_states[:Vp_t]]-1.0) #A_{y,t} from (1.33) in TA
+    rkss::Float64 = params[keys[:gz]]/params[keys[:β]]-1.0+params[keys[:δ]] #r^k from (1.46) in TA
+    utilcost::Float64 = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvar[endogenous_states[:u_t]]-1.0))-1.0) #Utilization Cost = a(u_t) from (1.14) in TA
+    endogvar[endogenous_states[:y_t]] = (1.0/aayy)*( endogvar[endogenous_states[:c_t]]+endogvar[endogenous_states[:i_t]] + utilcost*(endogvarm1[endogenous_states[:k_t]]/(params[keys[:gz]]*techshk)) ) #gdp = y_t - see (1.32) in TA
+    endogvar[endogenous_states[:w_t]] = endogvarm1[endogenous_states[:w_t]]*endogvar[endogenous_states[:π_w]]/(params[keys[:gz]]*techshk*endogvar[endogenous_states[:π_t]]) #rw = w_t (1.34) in TA
+    endogvar[endogenous_states[:L_t]] = endogvar[endogenous_states[:y_t]]^(1.0/(1.0-params[keys[:α]]))*(endogvar[endogenous_states[:u_t]]*endogvarm1[endogenous_states[:k_t]]/(params[keys[:gz]]*techshk))^(params[keys[:α]]/(params[keys[:α]]-1.0))/ashk #lab = N_t (1.35) in TA
+    endogvar[endogenous_states[:x_t]] = params[keys[:α]]*log(endogvar[endogenous_states[:u_t]]) + (1-params[keys[:α]])*(log(endogvar[endogenous_states[:L_t]])-log(labss)) # Changed llabss to log(m[:labss]), this is xhp = x_t^g from (1.17) in TA. This is same as loged version of the formula at the bottom of pg. 1978 in the main paper for GHLS (2017).
 
-    lrss::Float64 = log(params[keys[:gz]]*params[keys[:π_bar]]/params[keys[:β]])
-    endogvar[5] = exp(lrss+params[keys[:ρ_R]]*(log(endogvarm1[5])-lrss) + (1.0-params[keys[:ρ_R]])*(params[keys[:γ_π]]*log(endogvar[6]/params[keys[:π_bar]]) + params[keys[:γ_g]]*log(endogvar[7]*techshk/endogvarm1[7]) + params[keys[:γ_x]]*endogvar[8] ) + rrshk) #notr
+    lrss::Float64 = log(params[keys[:gz]]*params[keys[:π_bar]]/params[keys[:β]]) # Log of steady state nominal interest rate - see (1.43) in TA
+    endogvar[endogenous_states[:rm_t]] = exp(lrss+params[keys[:ρ_R]]*(log(endogvarm1[endogenous_states[:rm_t]])-lrss) + (1.0-params[keys[:ρ_R]])*(params[keys[:γ_π]]*log(endogvar[endogenous_states[:π_t]]/params[keys[:π_bar]]) + params[keys[:γ_g]]*log(endogvar[endogenous_states[:y_t]]*techshk/endogvarm1[endogenous_states[:y_t]]) + params[keys[:γ_x]]*endogvar[endogenous_states[:x_t]] ) + rrshk) #Notional interest rate (Interest rate without a zero lower bound) - see (1.39) in TA
 
-    endogvar[14] = endogvar[4]*endogvar[12]/((1.0-params[keys[:α]])*endogvar[7]) #mc
-    endogvar[15] = (params[keys[:α]]/(1.0-params[keys[:α]]))*(endogvar[4]*endogvar[12]*params[keys[:gz]]*techshk/(endogvar[13]*endogvarm1[1])) #rentalk
-    endogvar[1] = (1.0-params[keys[:δ]])*(endogvarm1[1]/(params[keys[:gz]]*techshk)) + invshk*endogvar[3]*(1.0- (params[keys[:ϕ_I]]/2.0)*(endogvar[17]-1.0)*(endogvar[17]-1.0) ) #cap
-    endogvar[9] = copy(endogvar[5]) # copy as to no make it a pointer, this is nomr
+    endogvar[endogenous_states[:mc_t]] = endogvar[endogenous_states[:w_t]]*endogvar[endogenous_states[:L_t]]/((1.0-params[keys[:α]])*endogvar[endogenous_states[:y-t]]) #Marginal Cost: mc_t from (1.36) in TA
+    endogvar[endogenous_states[:rk_t]] = (params[keys[:α]]/(1.0-params[keys[:α]]))*(endogvar[endogenous_states[:w_t]]*endogvar[endogenous_states[:L_t]]*params[keys[:gz]]*techshk/(endogvar[endogenous_states[:u_t]]*endogvarm1[endogenous_states[:k_t]])) #rentalk: r_t^k from (1.37) in TA
+    endogvar[endogenous_states[:k_t]] = (1.0-params[keys[:δ]])*(endogvarm1[endogenous_states[:k_t]]/(params[keys[:gz]]*techshk)) + invshk*endogvar[endogenous_states[:i_t]]*(1.0- (params[keys[:ϕ_I]]/2.0)*(endogvar[endogenous_states[:Vi_t]]-1.0)*(endogvar[endogenous_states[:Vi_t]]-1.0) ) #cap: \bar{k}_{t+1} from (1.38) in TA
+    endogvar[endogenous_states[:R_t]] = copy(endogvar[endogenous_states[:rm_t]]) # copy as to no make it a pointer, this is nomr (Nominal Interest Rate) - see (1.18) in TA
 
     endogvar[nvars+1:nvars+nexog] = currentshockvalues
 
@@ -232,12 +235,12 @@ function decr!(endogvar::Vector{Float64}, approx::SmolyakApproximation, endogvar
     omegapoly = 1.0 #SINCE ZLBINTERMEDIATE IS FALSE
 
     #endogvar = Array{Float64}(undef, nvars+nexog)
-    intermediatedec!(endogvar,approx.nvars,approx.nexog,labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp,zlbintermediate, exogenous_shocks, params, keys)
+    intermediatedec!(endogvar,approx.nvars,approx.nexog,labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp,zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
     if ( (endogvar[endogenous_states[:rm_t]] < 1.0) & (approx.zlbswitch == true) ) #zlb case
         zlbintermediate = true
         omegapoly = exp(omegaweight*log(endogvar[endogenous_states[:rm_t]])) #now omegapoly and funcapp_plus relevant
         mul!(funcapp_plus, funcmatplus,  weightvec)
-        intermediatedec!(endogvar,approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp_plus,zlbintermediate, exogenous_shocks, params, keys)
+        intermediatedec!(endogvar,approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp_plus,zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
         endogvar[9] = 1.0
     end
 
@@ -343,10 +346,10 @@ function decr_euler(rkss::Float64, approx::SmolyakApproximation, gridindex::Int6
     omegapoly = 1.0 #SET OMEGAPOLY TO 1 SINCE ZLBINTERMEDIATE IS FALSE
 
     # Updates given polynomial approximations
-    intermediatedec!(endogvar,approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, polyapp[1:approx.nfunc],omegapoly,polyapp[1:approx.nfunc],zlbintermediate, exogenous_shocks, params, keys)
+    intermediatedec!(endogvar,approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, polyapp[1:approx.nfunc],omegapoly,polyapp[1:approx.nfunc],zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
 
     if ((zlbinfo != 0) & (approx.zlbswitch == true))
-        intermediatedec!(endogvar, approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, polyapp[approx.nfunc+1:2*approx.nfunc], omegapoly,polyapp[approx.nfunc+1:2*approx.nfunc],zlbintermediate, exogenous_shocks, params, keys)
+        intermediatedec!(endogvar, approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, polyapp[approx.nfunc+1:2*approx.nfunc], omegapoly,polyapp[approx.nfunc+1:2*approx.nfunc],zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
         endogvarzlb[9] = 1.0
     end
 
@@ -359,26 +362,28 @@ function decr_euler(rkss::Float64, approx::SmolyakApproximation, gridindex::Int6
 
         decr!(endogvarp,approx,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states)
 
-        techshkp = exp(endogvarp[25])
-        invshkp = exp(endogvarp[24])
-        ev[1] = endogvarp[10]/(endogvarp[6]*techshkp)
+        techshkp = exp(endogvarp[endogenous_states[:ztil_t]])
+        invshkp = exp(endogvarp[endogenous_states[:μ_t]])
+        ## Note below that when multiple equations are cited, they are both the same expression, just in different places
+        ev[1] = endogvarp[endogenous_states[:λc]]/(endogvarp[endogenous_states[:π_t]]*techshkp) # This is what's inside the expectation in from (1.26) in Technical Appendix of GHLS (2017), for V_{λ,t}, same as expectation in (2.14)
 
-        utilcostp = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarp[13]-1.0))-1.0) # a(u_t)
-        ev[2] = (endogvarp[10]/techshkp)*( (endogvarp[15]*endogvarp[13])-utilcostp+(1.0-params[keys[:δ]])*endogvarp[11])
-        ev[3] = endogvarp[10]*(endogvarp[18]-1.0)*endogvarp[18]*endogvarp[7]
-        ev[4] = (endogvarp[19]-1.0)*endogvarp[19]
-        ev[5] = endogvarp[16]/techshkp
-        ev[6] = endogvarp[10]*endogvarp[11]*invshkp*(endogvarp[17]-1.0)*endogvarp[17]*endogvarp[17]
+        utilcostp = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarp[13]-1.0))-1.0) # a(u_t) - see equation (5) on pg. 1977 of GHLS (2017), same as (1.14) in Technical Appendix (TA)
+        ev[2] = (endogvarp[endogenous_states[:λc]]/techshkp)*( (endogvarp[endogenous_states[:rk_t]]*endogvarp[endogenous_states[:u_t]])-utilcostp+(1.0-params[keys[:δ]])*endogvarp[endogenous_states[:qk_t]]) # Expectation in (1.29) of TA, for V_{q,t} or (2.16) - same expectation
+        ev[3] = endogvarp[endogenous_states[:λc]]*(endogvarp[endogenous_states[:Vp_t]]-1.0)*endogvarp[endogenous_states[:Vp_t]]*endogvarp[endogenous_states[:y_t]] # Expectation in (2.18) and (2.3) of TA, for V_{π,j} and V_{π,t}
+        ev[4] = (endogvarp[endogenous_states[:Vw_t]]-1.0)*endogvarp[endogenous_states[:Vw_t]] # Expectation in (2.19) and(2.4) of TA, for V_{w,j} and V_{w,t}
+        ev[5] = endogvarp[endogenous_states[:muc_t]]/techshkp # Expectation in (2.15) of TA, for V_{c,j} or (1.28) of TA
+        ev[6] = endogvarp[endogenous_states[:λc]]*endogvarp[endogenous_states[:qk_t]]*invshkp*(endogvarp[endogenous_states[:Vi_t]]-1.0)*endogvarp[endogenous_states[:Vi_t]]*endogvarp[endogenous_states[:Vi_t]] # Expectation in (2.17) of TA, for V_{i,j} or (1.31) of TA
 
+        # Equation sources are same as above, just endogvarzlbp is used instead of endogvarp
         if ((zlbinfo != 0) & (approx.zlbswitch == true))
             decr!(endogvarzlbp,approx,endogvarzlb,innovations, params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states)
-            ev[7] = endogvarzlbp[10]/(endogvarzlbp[6]*techshkp)
-            utilcostp = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarzlbp[13]-1.0))-1.0)
-            ev[8] = (endogvarzlbp[10]/techshkp)*( (endogvarzlbp[15]*endogvarzlbp[13])-utilcostp+(1-params[16])*endogvarzlbp[11] )
-            ev[9] = endogvarzlbp[10]*(endogvarzlbp[18]-1.0)*endogvarzlbp[18]*endogvarzlbp[7]
-            ev[10] = (endogvarzlbp[19]-1.0)*endogvarzlbp[19]
-            ev[11] = endogvarzlbp[16]/techshkp
-            ev[12] = endogvarzlbp[10]*endogvarzlbp[11]*invshkp*(endogvarzlbp[17]-1.0)*endogvarzlbp[17]*endogvarzlbp[17]
+            ev[7] = endogvarzlbp[endogenous_states[:λc]]/(endogvarzlbp[endogenous_states[:π_t]]*techshkp)
+            utilcostp = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarzlbp[endogenous_states[:u_t]]-1.0))-1.0)
+            ev[8] = (endogvarzlbp[endogenous_states[:λc]]/techshkp)*( (endogvarzlbp[endogenous_states[:rk_t]]*endogvarzlbp[endogenous_states[:u_t]])-utilcostp+(1-params[keys[:δ]])*endogvarzlbp[endogenous_states[:qk_t]] )
+            ev[9] = endogvarzlbp[endogenous_states[:λc]]*(endogvarzlbp[endogenous_states[:Vp_t]]-1.0)*endogvarzlbp[endogenous_states[:Vp_t]]*endogvarzlbp[endogenous_states[:y_t]]
+            ev[10] = (endogvarzlbp[endogenous_states[:Vw_t]]-1.0)*endogvarzlbp[endogenous_states[:Vw_t]]
+            ev[11] = endogvarzlbp[endogenous_states[:muc_t]]/techshkp
+            ev[12] = endogvarzlbp[endogenous_states[:λc]]*endogvarzlbp[endogenous_states[:qk_t]]*invshkp*(endogvarzlbp[endogenous_states[:Vi_t]]-1.0)*endogvarzlbp[endogenous_states[:Vi_t]]*endogvarzlbp[endogenous_states[:Vi_t]]
         else
             ev[7:12] = ev[1:6]
         end
@@ -387,17 +392,17 @@ function decr_euler(rkss::Float64, approx::SmolyakApproximation, gridindex::Int6
         exp_var += approx.ghweights[ss]*ev
     end
 
-    liqshk = exp(endogvar[23]) # Change to m.endogenous_states[:b_t]?
-    invshk = exp(endogvar[24]) # Change to m.endogenous_states[:μ_t]?
+    liqshk = exp(endogvar[endogenous_states[:b_t]])
+    invshk = exp(endogvar[endogenous_states[:μ_t]])
     ep = params[keys[:ϵ_p]].scaledvalue # Is this constant elasticity of demand?
 
-    exp_eul[1] =  (params[keys[:β]]/params[keys[:gz]])*liqshk*endogvar[9]*exp_var[1]
-    exp_eul[2] =  (params[keys[:β]]/params[keys[:gz]])*exp_var[2]/endogvar[10]
-    exp_eul[3] =  params[keys[:β]]*exp_var[3]/(endogvar[10]*endogvar[7])+(params[keys[:ϵ_p]]/params[keys[:ϕ_p]])*(endogvar[14]-(params[keys[:ϵ_p]]-1.0)/params[keys[:ϵ_p]])
-    exp_eul[4] = params[keys[:β]]*exp_var[4]+(params[keys[:ϵ_w]]/params[keys[:ϕ_w]])*endogvar[10]*endogvar[12]*
-           ( (params[keys[:ψ_L]]*endogvar[12]^params[keys[:σ_L]]/endogvar[10])-((params[keys[:ϵ_w]]-1.0)/params[keys[:ϵ_w]])*endogvar[4] )
-    exp_eul[5] = exp_var[5]
-    exp_eul[6] = (params[keys[:β]]/params[keys[:gz]])*exp_var[6]/endogvar[10] - 0.5*endogvar[11]*invshk*(endogvar[17]-1.0)*(endogvar[17]-1.0)
+    exp_eul[1] =  (params[keys[:β]]/params[keys[:gz]])*liqshk*endogvar[endogenous_states[:R_t]]*exp_var[1] # λ_t from equation (1.26) in TA
+    exp_eul[2] =  (params[keys[:β]]/params[keys[:gz]])*exp_var[2]/endogvar[endogenous_states[:λc]] # q_t from equation (1.29) in TA
+    exp_eul[3] =  params[keys[:β]]*exp_var[3]/(endogvar[endogenous_states[:λc]]*endogvar[endogenous_states[:y_t]])+(params[keys[:ϵ_p]]/params[keys[:ϕ_p]])*(endogvar[endogenous_states[:mc_t]]-(params[keys[:ϵ_p]]-1.0)/params[keys[:ϵ_p]]) #V_{π_t} from (2.3) in TA
+    exp_eul[4] = params[keys[:β]]*exp_var[4]+(params[keys[:ϵ_w]]/params[keys[:ϕ_w]])*endogvar[endogenous_states[:λc]]*endogvar[endogenous_states[:L_t]]*
+           ( (params[keys[:ψ_L]]*endogvar[endogenous_states[:L_t]]^params[keys[:σ_L]]/endogvar[endogenous_states[:λc]])-((params[keys[:ϵ_w]]-1.0)/params[keys[:ϵ_w]])*endogvar[endogenous_states[:w_t]] ) # V_{w,t} from (2.4) in TA
+    exp_eul[5] = exp_var[5] # V_{c,t} from (1.28) in TA
+    exp_eul[6] = (params[keys[:β]]/params[keys[:gz]])*exp_var[6]/endogvar[endogenous_states[:λc]] - 0.5*endogvar[endogenous_states[:qk_t]]*invshk*(endogvar[endogenous_states[:Vi_t]]-1.0)*(endogvar[endogenous_states[:Vi_t]]-1.0) # V_{i,t} from (1.31) in TA (This not being multiplied by m[:ϕ_I]  since in cquad_vi of intermediatedec! we don't divide V_{i,t} by m[:ϕ_I])
 
     polyappnew[1] = log(exp_eul[1])
     polyappnew[2] = log(exp_eul[2])
@@ -405,16 +410,17 @@ function decr_euler(rkss::Float64, approx::SmolyakApproximation, gridindex::Int6
     polyappnew[4] = exp_eul[4]
     polyappnew[5] = log(exp_eul[5])
     polyappnew[6] = exp_eul[6]
-    polyappnew[7] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvar[15]/rkss) )
+    polyappnew[7] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvar[endogenous_states[:rk_t]]/rkss) ) # V_{u,t} from (2.20)
 
+    # Below equations are the same as above, just for the zero lower bound case.
     if ((zlbinfo != 0) & (approx.zlbswitch == true))
-        exp_eul[7] =  (params[keys[:β]]/params[keys[:gz]])*liqshk*endogvarzlb[9]*exp_var[7]
-        exp_eul[8] = (params[keys[:β]]/params[keys[:gz]])*exp_var[8]/endogvarzlb[10]
-        exp_eul[9] =  params[keys[:β]]*exp_var[9]/(endogvarzlb[10]*endogvarzlb[7])+(params[keys[:ϵ_p]]/params[keys[:ϕ_p]])*( endogvarzlb[14]-(params[keys[:ϵ_p]]-1.0)/params[keys[:ϵ_p]])
-        exp_eul[10] = params[keys[:β]]*exp_var[10]+(params[keys[:ϵ_w]]/params[keys[:ϕ_w]])*endogvarzlb[10]*endogvarzlb[12]*
-           ( (params[keys[:ψ_L]]*endogvarzlb[12]^params[keys[:σ_L]]/endogvarzlb[10])-((params[keys[:ϵ_w]]-1.0)/params[keys[:ϵ_w]])*endogvarzlb[4])
+        exp_eul[7] =  (params[keys[:β]]/params[keys[:gz]])*liqshk*endogvarzlb[endogenous_states[:R_t]]*exp_var[7]
+        exp_eul[8] = (params[keys[:β]]/params[keys[:gz]])*exp_var[8]/endogvarzlb[endogenous_states[:λc]]
+        exp_eul[9] =  params[keys[:β]]*exp_var[9]/(endogvarzlb[endogenous_states[:λc]]*endogvarzlb[endogenous_states[:y_t]])+(params[keys[:ϵ_p]]/params[keys[:ϕ_p]])*( endogvarzlb[endogenous_states[:mc_t]]-(params[keys[:ϵ_p]]-1.0)/params[keys[:ϵ_p]])
+        exp_eul[10] = params[keys[:β]]*exp_var[10]+(params[keys[:ϵ_w]]/params[keys[:ϕ_w]])*endogvarzlb[endogenous_states[:λc]]*endogvarzlb[endogenous_states[:L_t]]*
+           ( (params[keys[:ψ_L]]*endogvarzlb[endogenous_states[:L_t]]^params[keys[:σ_L]]/endogvarzlb[endogenous_states[:λc]])-((params[keys[:ϵ_w]]-1.0)/params[keys[:ϵ_w]])*endogvarzlb[endogenous_states[:w_t]])
         exp_eul[11] = exp_var[11]
-        exp_eul[12] = (params[keys[:β]]/params[keys[:gz]])*exp_var[12]/endogvarzlb[10] - 0.5*endogvarzlb[11]*invshk*(endogvarzlb[17]-1.0)*(endogvarzlb[17]-1.0)
+        exp_eul[12] = (params[keys[:β]]/params[keys[:gz]])*exp_var[12]/endogvarzlb[endogenous_states[:λc]] - 0.5*endogvarzlb[endogenous_states[:qk_t]]*invshk*(endogvarzlb[endogenous_states[:Vi_t]]-1.0)*(endogvarzlb[endogenous_states[:Vi_t]]-1.0)
 
         polyappnew[8] = log(exp_eul[7])
         polyappnew[9] = log(exp_eul[8])
@@ -422,7 +428,7 @@ function decr_euler(rkss::Float64, approx::SmolyakApproximation, gridindex::Int6
         polyappnew[11] = exp_eul[10]
         polyappnew[12] = log(exp_eul[11])
         polyappnew[13] = exp_eul[12]
-        polyappnew[14] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvarzlb[15]/rkss) )
+        polyappnew[14] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvarzlb[endogenous_states[:rk_t]]/rkss) )
     else
         exp_eul[7:12] = exp_eul[1:6]
         polyappnew[8:14] = polyappnew[1:7]
