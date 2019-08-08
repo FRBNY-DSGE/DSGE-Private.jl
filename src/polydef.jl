@@ -6,7 +6,6 @@ using LinearAlgebra
 =#
 mutable struct SmolyakApproximation{T}
 
- # These should be settings
     number_shock_values :: Int
     nfunc::Int
     nmsv :: Int
@@ -16,7 +15,6 @@ mutable struct SmolyakApproximation{T}
     nindplus :: Int
     nexog :: Int
     nexogshock :: Int
-    nexogcont :: Int
     ns :: Int
     nsexog :: Int
     ninter :: Int
@@ -53,8 +51,9 @@ end
 Initializes the values in the SmolyakApproximation object to defaults
 """
 function SmolyakApproximation()
+
     #Initialize empty approximation object
-    approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
+    approx = SmolyakApproximation{Float64}(0,0,0,0,0,0,0,0,0,0,0,0,0,false,[0],[0],
                                            [0 0], [0. 0.], [0. 0.], [0. 0.], false,
                                            [0 0],[0.],[0. 0.],[0.],[0. 0.],[0. 0.],[0.],
                                            [0.],0.,[0.],[0],false,[0.])
@@ -70,7 +69,6 @@ Initializes some of the values in the model's SmolyakApprox type to desired valu
 function init_settings!(approx::SmolyakApproximation)
 
     approx.nexog = 6
-    approx.nexogcont = 0
     approx.nvars = 22
     approx.nmsv = 7
     approx.nfunc = 7
@@ -303,18 +301,12 @@ Calculates the inital values for most of the values in the SmolyakApproximation 
 """
 function init_solution!(approx::SmolyakApproximation) # ! to indicate that this function mutates and input
 
-    #I don't think we need to declare types of these in the future (may not even work)
     nquadsingle = 3
-
-    #put shocks into polynomial approximation if necessary
-    nexogadj = approx.nexog - approx.nexogcont
-    nmsvadj = approx.nmsv + approx.nexogcont
-
-    approx.ngrid = 2*(approx.nmsv+approx.nexogcont)+2*approx.nindplus+1
+    approx.ngrid = 2*(approx.nmsv)+2*approx.nindplus+1
 
     #set nexogshock,ns, and number_shock_values
-    nexogshock,ninter,ns,number_shock_values=setgridsize(nexogadj,approx.nshockgrid)
-    approx.nquad = nquadsingle^(approx.nexogshock+approx.nexogcont)
+    nexogshock,ninter,ns,number_shock_values=setgridsize(approx.nexog,approx.nshockgrid)
+    approx.nquad = nquadsingle^(approx.nexogshock)
 
     approx.nexogshock = nexogshock
     approx.ninter = ninter
@@ -322,9 +314,9 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     approx.number_shock_values = number_shock_values
 
     #Set exogvarinfo
-    exogvarinfo = Array{Int64}(undef,nexogadj,approx.ns)
+    exogvarinfo = Array{Int64}(undef,approx.nexog,approx.ns)
     exogvarinfo[1:approx.nexogshock,:] = exoggridindex(approx.nshockgrid,approx.nexogshock,approx.ns)
-    exogvarinfo[approx.nexogshock+1:nexogadj,:] .= 1
+    exogvarinfo[approx.nexogshock+1:approx.nexog,:] .= 1
     approx.exogvarinfo = exogvarinfo
 
     #get matrix used for interpolating the shocks
@@ -344,24 +336,23 @@ function init_solution!(approx::SmolyakApproximation) # ! to indicate that this 
     approx.interpolatemat = interpolatemat
 
     #get quadrature nodes and weights
-    nquadadj = approx.nexogshock+approx.nexogcont
-    nquad,ghnodes,ghweights=ghquadrature(nquadsingle,nquadadj)
+    nquad,ghnodes,ghweights=ghquadrature(nquadsingle,approx.nexogshock)
     approx.nquad = nquad
     approx.ghnodes = ghnodes
     approx.ghweights = ghweights
 
     #construct sparse grid, bb matrix and its inverse
-    xgrid, bbt, bbtinv=sparsegrid(nmsvadj,approx.nindplus,approx.ngrid,approx.indplus)
+    xgrid, bbt, bbtinv=sparsegrid(approx.nmsv,approx.nindplus,approx.ngrid,approx.indplus)
     approx.xgrid = xgrid
     approx.bbt = bbt
     approx.bbtinv = bbtinv
 
     approx.startingguess = false
 
-    approx.slopeconmsv = Array{Float64}(undef,2*nmsvadj)
+    approx.slopeconmsv = Array{Float64}(undef,2*approx.nmsv)
     approx.shockbounds = Array{Float64}(undef,approx.nexogshock,2)
     approx.shockdistance = Array{Float64}(undef,approx.nexogshock)
-    approx.exoggrid = Array{Float64}(undef,nexogadj,approx.ns)
+    approx.exoggrid = Array{Float64}(undef,approx.nexog,approx.ns)
 
     return nothing
 

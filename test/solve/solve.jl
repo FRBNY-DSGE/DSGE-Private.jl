@@ -6,17 +6,17 @@ path = dirname(@__FILE__)
 
 ### Test linear solver
 file = "$path/../reference/solve.h5"
-TTT_expected = h5read(file, "TTT")
-CCC_expected = h5read(file, "CCC")
-RRR_expected = h5read(file, "RRR")
+TTT_ref = h5read(file, "TTT")
+CCC_ref = h5read(file, "CCC")
+RRR_ref = h5read(file, "RRR")
 
 m = AnSchorfheide()
 TTT, RRR, CCC = solve(m)
 
 @testset "Check state-space system matches reference" begin
-    @test @test_matrix_approx_eq TTT_expected TTT
-    @test @test_matrix_approx_eq RRR_expected RRR
-    @test @test_matrix_approx_eq CCC_expected CCC
+    @test @test_matrix_approx_eq TTT_ref TTT
+    @test @test_matrix_approx_eq RRR_ref RRR
+    @test @test_matrix_approx_eq CCC_ref CCC
 end
 
 ### Model to test nonlinear solve
@@ -25,7 +25,11 @@ h5 = h5open("$path/params.h5")
 model_params = read(h5, "params")
 close(h5)
 update!(m, model_params)
-m.approx.nshockgrid = [7,2,2,2,2,1]
+
+### Testing requires smaller shock grid
+if (m.approx.nshockgrid != [7,2,2,2,2,1])
+    println("Testing requires nshockgrid = [7,2,2,2,2,1]")
+end
 
 # Getting pp and sigma for tests
 Γ0, Γ1, C, Ψ, Π = eqcond(m)
@@ -63,7 +67,7 @@ shockdistance_ref = read(h5, "shockdistance")
 close(h5)
 m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = exoggrid_ref, shockbounds_ref, shockdistance_ref
 
-endog_emean, zlbfrequency, msvbounds, statezlbinfo, convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogcont, m.approx.nexogshock, steady_states, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
+endog_emean, zlbfrequency, msvbounds, statezlbinfo, convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogshock, steady_states, m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
 
 h5 = h5open("$path/simulatelinear.h5")
 endog_emean_ref = read(h5, "endog_emean")
@@ -83,7 +87,7 @@ end
 ### Test slopes against reference output
 m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = endog_emean_ref, zlbfrequency_ref, msvbounds_ref, statezlbinfo_ref, true
 
-slopeconmsv, slopeconxx = create_slopes(m.approx.nmsv, m.approx.nexogcont, m.approx.msvbounds)
+slopeconmsv, slopeconxx = create_slopes(m.approx.nmsv, m.approx.msvbounds)
 
 h5 = h5open("$path/slopes.h5")
 slopeconmsv_ref = read(h5, "slopeconmsv")
@@ -96,7 +100,7 @@ close(h5)
 end
 
 ## Test lindecrule_markov against reference output
-aalin, bblin = lindecrule_markov(pp, sigma, m.approx.nvars, m.approx.nexog, m.approx.nexogcont, m.approx.nexogshock)
+aalin, bblin = lindecrule_markov(pp, sigma, m.approx.nvars, m.approx.nexog, m.approx.nexogshock)
 
 h5 = h5open("$path/lindecrule_markov.h5")
 aalin_ref = read(h5, "aalin")
@@ -110,7 +114,7 @@ end
 
 ### Test initial alphas against reference output
 m.approx.slopeconmsv, m.approx.slopeconxx = slopeconmsv_ref, slopeconxx_ref
-α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv,m.approx.nexogcont,m.approx.ns,m.approx.ngrid, m.approx.exoggrid, steady_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
+α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv,m.approx.ns,m.approx.ngrid, m.approx.exoggrid, steady_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
 
 h5 = h5open("$path/initialalphas.h5")
 α_initial_ref = read(h5, "initialalphas")
@@ -125,14 +129,14 @@ h5 = h5open("$path/alphastar.h5")
 close(h5)
 
 ### Test fixed point output against reference output
-α_star, convergence = fixedpoint(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial_ref)
+α_star, convergence = fixedpoint(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial_ref)
 
 @testset "Compare alpha star to reference output" begin
     @test α_star_ref ≈ α_star
 end
 
 ### Test fixedpoint_parallel output against reference output
-α_star_parallel, convergence = fixedpoint_parallel(m[:rkss].value, m.approx.ninter, m.approx.nexogshock, m.approx.nfunc, m.approx.nexog, m.approx.nvars, m.approx.nexogcont, m.approx.nmsv, m.approx.xgrid, m.approx.slopeconxx, m.approx.exoggrid, m.approx.ngrid, m.approx.nshockgrid, m.approx.bbt, m.approx.statezlbinfo, m.approx.zlbswitch, m.approx.nquad, m.approx.ghweights, m.approx.ghnodes, m.approx.shockbounds, m.approx.shockdistance, m.approx.interpolatemat, m.approx.slopeconmsv, m.approx.nindplus, m.approx.indplus, m.approx.ns, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, m.approx.bbtinv, α_initial_ref)
+α_star_parallel, convergence = fixedpoint_parallel(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial_ref)
 
 @testset "fixedpoint_parallel" begin
     @test α_star_ref ≈ α_star_parallel
