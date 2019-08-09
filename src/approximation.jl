@@ -13,12 +13,12 @@ The `Approximation` type defines the structure of the approximation methods used
 * `nindplus::Int`: Number of functions with higher approximation level
 * `indplus::Array{Int, 1}`: Index of functions that get hhigher approximation level
 * `nshockgrid::Array{Int ,1}`: Number of possible values each shock can take on
-* `xgrid::Array{Float64, 2}`: Value of each minimum state variable (transformed to [-1, 1] domain) at each grid point
+* `xgrid::Array{Float64, 2}`: Value of each minimum state variable (transformed to [-1, 1] domain) at each Smolyak grid point
 * `nexogvars::Int`: Number of enxogenous variables
 * `nexogshocks::Int`: Number of exogenous shocks
 * `ns::Int`: Number of exogenous states, equal to the number of distinct combinations of shock values
 * `ninter::Int`: Number of points used to calculate interpolated value of shock
-* `bbt::Array{Float64, 2}`: Transposed matrix of Smolyak basis functions evaluated at each grid point
+* `bbt::Array{Float64, 2}`: Transposed matrix of Smolyak basis functions evaluated at each Smolyak grid point
 * `bbtinv::Array{Float64, 2}`: Inverse of bbt
 * `slopeconxx::Array{Float64, 1}`: Slope and constant to convert from [-1, 1] domain of endogenous variables to normal domain
 * `slopeconmsv::Array{Float64, 1}`: Slope to convert from normal domain of endogenous variables to [-1, 1] domain
@@ -37,7 +37,6 @@ The `Approximation` type defines the structure of the approximation methods used
 * `zlbfrequency::Float64`: Frequency of reaching zero lower bound during linear simulation
 * `statezlbinfo::Array{Int64, 1}`: Holds whether a given exogenous state was at zero lower bound
 """
-
 mutable struct Approximation
 
     nfunc::Int
@@ -47,31 +46,31 @@ mutable struct Approximation
     nshockgrid :: Array{Int, 1}
     xgrid::Array{Float64, 2}
 
-    nendogvars :: Int
-    ngridpoints :: Int
-    nexogvars :: Int
-    nexogshocks :: Int
-    ns :: Int
-    ninter :: Int
+    nendogvars::Int
+    ngridpoints::Int
+    nexogvars::Int
+    nexogshocks::Int
+    ns::Int
+    ninter::Int
 
     bbt::Array{Float64, 2}
     bbtinv::Array{Float64, 2}
 
-    slopeconxx :: Array{Float64, 1}
-    slopeconmsv :: Array{Float64, 1}
-    shockbounds :: Array{Float64, 2}
-    shockdistance :: Array{Float64, 1}
-    exoggrid :: Array{Float64, 2}
-    interpolatemat :: Array{Int, 2}
+    slopeconxx::Array{Float64, 1}
+    slopeconmsv::Array{Float64, 1}
+    shockbounds::Array{Float64, 2}
+    shockdistance::Array{Float64, 1}
+    exoggrid::Array{Float64, 2}
+    interpolatemat::Array{Int, 2}
 
-    nquad :: Int
-    ghnodes :: Array{Float64, 2}
-    ghweights :: Array{Float64, 1}
+    nquad::Int
+    ghnodes::Array{Float64, 2}
+    ghweights::Array{Float64, 1}
 
-    endog_emean :: Array{Float64, 1}
-    zlbfrequency :: Float64
-    msvbounds :: Array{Float64, 1}
-    statezlbinfo :: Array{Int, 1}
+    endog_emean::Array{Float64, 1}
+    zlbfrequency::Float64
+    msvbounds::Array{Float64, 1}
+    statezlbinfo::Array{Int, 1}
 
 end
 
@@ -85,7 +84,7 @@ Initializes a default Apprxomation object for working with the model in Gust et.
 function Approximation()
 
     #Initialize empty approximation object
-    approx = Approximation{Float64}(0,0,0,[0],[0],[0. 0.],
+    approx = Approximation(0,0,0,[0],[0],[0. 0.],
                                     0,0,0,0,0,0,
                                     [0. 0.], [0. 0.],
                                     [0.],[0.],[0. 0.],[0.],[0. 0.],[0. 0.],
@@ -114,11 +113,6 @@ function init_settings!(approx::Approximation)
     approx.nindplus = 1
     approx.nshockgrid = [7,2,2,2,2,1]# CHANGE TO THIS AFTER DONE TESTING: [7,3,3,3,3,1]
     approx.indplus = [3]
-
-    # Zero Lower Bound
-    if m.settings[:zero_lower_bound]
-        m.approx.zlbswitch = true
-    end
 end
 
 """
@@ -132,7 +126,7 @@ setgridsize(nexogvars::Int,nshockgrid::Array{Int})
 Sets grid size for exogenous shocks.
 
 # Returns:
-- `nexogshock`: Number of non-constant shocks.
+- `nexogshocks`: Number of non-constant shocks.
 - `ninter`:  Number of points used to calculate interpolated value of shock
 - `ns`: Total number of exogenous states.
 ...
@@ -140,7 +134,7 @@ Sets grid size for exogenous shocks.
 function setgridsize(nexogvars::Int,nshockgrid::Array{Int,1})
 
     # Counts how many elements of nshockgrid are strictly greater than one
-    nexogshock = count(x -> x > 1, nshockgrid)
+    nexogshocks = count(x -> x > 1, nshockgrid)
 
     # Each shock can be interpolated using two points, so the total number of ways to interpolate  is  2^nexogshocks
     ninter = 2^nexogshocks
@@ -368,12 +362,10 @@ function init_solution!(approx::Approximation)
     approx.interpolatemat = interpolatemat
 
     #get quadrature nodes and weights
-    approx.nquad,approx.ghnodes,approx.ghweights=ghquadrature(nquadsingle,approx.nexogshocks)s
+    approx.nquad,approx.ghnodes,approx.ghweights=ghquadrature(nquadsingle,approx.nexogshocks)
 
     #construct sparse grid, bb matrix and its inverse
     approx.xgrid, approx.bbt, approx.bbtinv=sparsegrid(approx.nmsv,approx.nindplus,approx.ngridpoints,approx.indplus)
-
-    approx.startingguess = false
 
     approx.slopeconmsv = Array{Float64}(undef,2*approx.nmsv)
     approx.shockbounds = Array{Float64}(undef,approx.nexogshocks,2)

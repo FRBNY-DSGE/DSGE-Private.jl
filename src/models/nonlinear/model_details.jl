@@ -133,18 +133,25 @@ function intermediatedec!(endogvar::Vector{Float64},nendogvars::Int,nexog::Int,l
 end
 
 """
-    decr!(approx::Approximation,endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, endog_st, alphacoeff::Array{Float64,2})
+    decr!(endogvar::Vector{Float64}, approx::Approximation,endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2}, exogenous_shocks::OrderedCollections.OrderedDict{Symbol, Int64}, endogenous_states::OrderedCollections.OrderedDict(Symbol, Int64}, zlbswitch::Bool)
 
-The decision rule -- updates endogenous variables and shocks given lagged endogenous values and innovations.
-...
-# Arguments
-- `m::GHLS`: GHLS model object, including the parameters, Approximation object, and endogenou variables and shock values
-- `endogvarm1::Vector{Float64}`: Lagged endogenous variables and shock values.
-- `innovations::Vector{Float64}`: Innovations to the shocks.
-- `alphacoeff::Arary{Float64, 2}`: Polynomial coefficients.
-...
+# Arguments:
+- `endogvar::Vector{Float64}`: A vector to contain the updated endogenous variables
+- `approx::Approximation`: Approximation object for use in construction function approximations
+- `endogvarm1::Vector{Float64}`: Current state variables
+- `innovations::Vector{Float64}`: Vector of innovations to shocks
+- `params::Array{AbstractParameter{Float64}, 1}`: Vector of model parameters
+- `keys::OrderedCollections.OrderedDict{Symbol, Int64}`: Map from human-readable names of parameters and steady-staetes to their indices
+- `labss::Float64`: The steady state of labor, which is the only steady state required in the decision rule
+- `alphacoeff::Array{Float64,2}`: The coefficients on Smolyak basis polynomials
+- `exogenous_shocks::OrderedCollections.OrderedDict{Symbol, Int64}`: Maps shocks to indices
+- `endogenous_states::OrderedCollections.OrderedDict{Symbol, Int64}`: Maps endogenous states to indices
+- `zlbswitch::Bool`: Determines whether the model treats the zero lower bound as a binding constraint or not
+
+# Description:
+The decision rule, which updates endogenous variables and shocks given current endogenous values and innovations. Will first approximate the necessary functions before calling intermediatedec! to update state variables.
 """
-function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64})
+function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64}, zlbswitch::Bool)
 
     #Initialize Variables
     shockindexall=ones(Int64,approx.nexogvars)
@@ -231,7 +238,7 @@ function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vec
 
     #endogvar = Array{Float64}(undef, nendogvars+nexogvars)
     intermediatedec!(endogvar,approx.nendogvars,approx.nexogvars,labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp,zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
-    if ( (endogvar[endogenous_states[:rm_t]] < 1.0) & (approx.zlbswitch == true) ) #zlb case
+    if ( (endogvar[endogenous_states[:rm_t]] < 1.0) & (zlbswitch == true) ) #zlb case
         zlbintermediate = true
         omegapoly = exp(omegaweight*log(endogvar[endogenous_states[:rm_t]])) #now omegapoly and funcapp_plus relevant
         mul!(funcapp_plus, funcmatplus,  weightvec)
@@ -290,7 +297,7 @@ For a given collocation point, return associated errors.
 - `alphacoeff::Array{Float64, 2}`: Polynomial coefficients.
 ...
 """
-function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shockpos::Int64, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64})
+function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shockpos::Int64, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, zlbswitch::Bool)
 
     #Initilize Variables
     zlbinfo  = approx.statezlbinfo[shockpos]
@@ -334,7 +341,7 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
     # Updates given polynomial approximations
     intermediatedec!(endogvar,approx.nendogvars,approx.nexogvars, labss, endogvarm1,currentshockvalues, polyapp[1:approx.nfunc],omegapoly,polyapp[1:approx.nfunc],zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
 
-    if ((zlbinfo != 0) & (approx.zlbswitch == true))
+    if ((zlbinfo != 0) & (zlbswitch == true))
         intermediatedec!(endogvarzlb, approx.nvars,approx.nexog, labss, endogvarm1,currentshockvalues, polyapp[approx.nfunc+1:2*approx.nfunc], omegapoly,polyapp[approx.nfunc+1:2*approx.nfunc],zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
         endogvarzlb[9] = 1.0
     end
@@ -343,7 +350,7 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
     for ss in 1:approx.nquad
         innovations[1:approx.nexogshocks] = approx.ghnodes[:,ss]
 
-        decr!(endogvarp,approx,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states)
+        decr!(endogvarp,approx,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, zlbswitch)
 
         techshkp = exp(endogvarp[endogenous_states[:ztil_t]])
         invshkp = exp(endogvarp[endogenous_states[:μ_t]])
@@ -358,8 +365,8 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
         ev[6] = endogvarp[endogenous_states[:λc]]*endogvarp[endogenous_states[:qk_t]]*invshkp*(endogvarp[endogenous_states[:Vi_t]]-1.0)*endogvarp[endogenous_states[:Vi_t]]*endogvarp[endogenous_states[:Vi_t]] # Expectation in (2.17) of TA, for V_{i,j} or (1.31) of TA
 
         # Equation sources are same as above, just endogvarzlbp is used instead of endogvarp
-        if ((zlbinfo != 0) & (approx.zlbswitch == true))
-            decr!(endogvarzlbp,approx,endogvarzlb,innovations, params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states)
+        if ((zlbinfo != 0) & (zlbswitch == true))
+            decr!(endogvarzlbp,approx,endogvarzlb,innovations, params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, zlbswitch)
             ev[7] = endogvarzlbp[endogenous_states[:λc]]/(endogvarzlbp[endogenous_states[:π_t]]*techshkp)
             utilcostp = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvarzlbp[endogenous_states[:u_t]]-1.0))-1.0)
             ev[8] = (endogvarzlbp[endogenous_states[:λc]]/techshkp)*( (endogvarzlbp[endogenous_states[:rk_t]]*endogvarzlbp[endogenous_states[:u_t]])-utilcostp+(1-params[keys[:δ]])*endogvarzlbp[endogenous_states[:qk_t]] )
@@ -396,7 +403,7 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
     polyappnew[7] = log( 1.0 + (1/params[keys[:σ_a]])*log(endogvar[endogenous_states[:rk_t]]/rkss) ) # V_{u,t} from (2.20)
 
     # Below equations are the same as above, just for the zero lower bound case.
-    if ((zlbinfo != 0) & (approx.zlbswitch == true))
+    if ((zlbinfo != 0) & (zlbswitch == true))
         exp_eul[7] =  (params[keys[:β]]/params[keys[:gz]])*liqshk*endogvarzlb[endogenous_states[:R_t]]*exp_var[7]
         exp_eul[8] = (params[keys[:β]]/params[keys[:gz]])*exp_var[8]/endogvarzlb[endogenous_states[:λc]]
         exp_eul[9] =  params[keys[:β]]*exp_var[9]/(endogvarzlb[endogenous_states[:λc]]*endogvarzlb[endogenous_states[:y_t]])+(params[keys[:ϵ_p]]/params[keys[:ϕ_p]])*( endogvarzlb[endogenous_states[:mc_t]]-(params[keys[:ϵ_p]]-1.0)/params[keys[:ϵ_p]])
@@ -471,18 +478,19 @@ function finite_grid!(shockgrid::SubArray{Float64, 1, Array{Float64,1}, Tuple{Un
 end
 
 """
-    get_shockdetails(approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}
+    gen_shockgrid(nshockgrid::Array{Int,1}, nexogshocks::Int, ns::Int, nexogvars::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
 
-For each exogenous shock, this associates a given grid point with the value that that shock takes on at that grid point. In total there are  'ns' such points, with each point representing a distinct combination of shock values. Also returns the upper and lower bounds of each shock, as well as the distance between shock values for any two grid points.
-...
-- `m::GHLS`: GHLS model object, which relevantly includes (within SmolyakApprox object):
-        - `nexogvars::Int`: Number of exogenous shock processes.
-        - `nexogshocks::Int`: Number of exogenous shock processes in finite-element part of approximation.
-        - `ns::Int`: Number of exogenous states.
-        - `nshockgrid::Vector{Float64}`: Array indexing number of realizations for each shock (length nexogvars).
-...
+- `nshockgrid::Array{Int, 1}`: Array indexing number of realizations for each shock (length nexogvars).
+- `nexogshocks::Int`: Number of exogenous shock processes that are active (number of possible values is strictly greater than one)
+- `ns::Int`: Number of exogenous states.
+- `nexogvars::Int`: Number of exogenous shock processes.
+- `params::Array{AbstractParameter{Float64},1}`: Model parameters
+- `keys::OrderedCollections.OrderedDict{Symbol,Int64}`: Maps human-readable parameter names to indices
+
+# Description:
+Creates a grid of shock values for use in interpolation. For each exogenous shock, a grid point is associated with the value that that shock takes on at that grid point. In total there are  'ns' such grid points, with each point representing a distinct combination of shock values. Also returns the upper and lower bounds of each shock, as well as the distance between shock values for any two grid points, which is a constant for each shock since the grid is evenly spaced along each dimension (although different dimensions, which correspond to different shocks, could have different spacing).
 """
-function get_shockdetails(nshockgrid::Array{Int,1}, nexogshocks::Int, ns::Int, nexogvars::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
+function gen_shockgrid(nshockgrid::Array{Int,1}, nexogshocks::Int, ns::Int, nexogvars::Int, params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64})
 
     #Initilize Variables
     shockbounds = Array{Float64}(undef,nexogshocks,2)

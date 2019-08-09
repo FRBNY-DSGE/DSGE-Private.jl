@@ -184,6 +184,8 @@ function GHLS(subspec::String="ss0";
             testing,
             OrderedDict{Symbol,Observable}(),
             OrderedDict{Symbol,PseudoObservable}(),
+
+            # Function and integral approximation
             Approximation())
 
     # Set settings
@@ -492,6 +494,8 @@ function model_settings!(m::GHLS)
     # Estimation
     m <= Setting(:reoptimize, true)
     m <= Setting(:recalculate_hessian, true)
+    m <= Setting(:n_particles, 100)
+    m <= Setting(:sampling_method, :SMC)
 
     # Data
     m <= Setting(:data_vintage, "190712")
@@ -505,10 +509,8 @@ function model_settings!(m::GHLS)
     m <= Setting(:date_conditional_end, quartertodate("2014-Q1"))
     m <= Setting(:date_forecast_start, quartertodate("2014-Q1"))
 
-    m <= Setting(:n_particles, 100)
-    m <= Setting(:sampling_method, :SMC)
-
-    m <= Setting(:zero_lower_bound, true)
+    # Zero lower bound
+    m <= Setting(:zero_lower_bound, false)
 end
 
 """

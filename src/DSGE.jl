@@ -152,8 +152,8 @@ module DSGE
         # models/nonlinear/
         GHLS, decrlin, get_shockdetails, decr_euler, decr!, decrlin, intermediatedec!, finite_grid!, msv2xx, exogposition,
 
-        # polydef
-        SmolyakApproximation, setgridsize, exoggridindex, ghquadrature, smolyakpoly, sparsegrid,
+        # approximation
+        Approximation, setgridsize, exoggridindex, ghquadrature, smolyakpoly, sparsegrid,
 
         # util
         @test_matrix_approx_eq, @test_matrix_approx_eq_eps
@@ -184,7 +184,7 @@ module DSGE
 
     #interns start here
 
-    include("polydef.jl")
+    include("approximation.jl")
     include("models/nonlinear/GHLS.jl")
     include("statespace.jl")
     include("models/nonlinear/subspecs.jl")
