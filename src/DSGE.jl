@@ -150,7 +150,7 @@ module DSGE
         shock_groupings,
 
         # models/nonlinear/
-        GHLS, decrlin, get_shockdetails, decr_euler, decr!, decrlin, intermediatedec!, finite_grid!, msv2xx, exogposition,
+        GHLS, decrlin, gen_shockgrid, decr_euler, decr!, decrlin, intermediatedec!, finite_grid!, msv2xx, exogstate,
 
         # approximation
         Approximation, setgridsize, exoggridindex, ghquadrature, smolyakpoly, sparsegrid,

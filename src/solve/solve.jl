@@ -107,7 +107,7 @@ function solve(m::GHLS, parallel::Bool=false)
     steady_states = [i.value for i in m.steady_state]
 
     # Compute ergodic means of the endogenous variables (endog_emean), frequency of encountering zero lower bound, bounds of high probability region of endogenous variable domain, and at which exogenous states we hit zlb frequently
-    m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, convergence = simulate_linear(m.approx.ns, m.approx.nendogvars, m.approx.nexogvars, m.approx.nmsv, m.approx.nexogshocks, steady_states, m.endogenous_states[:rm_t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
+    m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, convergence = simulate_linear(m.approx.ns, m.approx.nendogvars, m.approx.nexogvars, m.approx.nmsv, m.approx.nexogshocks, steady_states, m.endogenous_states[:Rnotional_t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
 
     # Find the slopes coefficients and constants to go from msv space to [-1,1] domain and vice-versa.
     m.approx.slopeconmsv, m.approx.slopeconxx = create_slopes(m.approx.nmsv, m.approx.msvbounds)
@@ -175,7 +175,7 @@ where y_t are the endogenous variables excluding the shocks and s_t are the shoc
 """
 function lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nendogvars::Int, nexogvars::Int, nexogshocks::Int)
 
-    #Initilize Variables
+    #Initialize Variables
     bblin=zeros(nendogvars,nexogvars)
 
     @fastmath @inbounds @simd for i in 1:nexogshocks
@@ -188,7 +188,7 @@ end
 
 
 """
-    simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, nexogshocks::Int, steady_states::Array{Float64, 1}, rm_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
+    simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, nexogshocks::Int, steady_states::Array{Float64, 1}, Rnotional_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
 
 # Arguments:
 - `ns::Int`: Total number of grid points on exogenous shock grid (equal to the number of distinct possible combinations of shock values)
@@ -197,7 +197,7 @@ end
 - `nmsv::Int`: Number of minimum state endogenous variables
 - `nexogshocks::Int`: Number of active exogenous shocks (those with strictly greater than one possible values)
 - `steady_states::Vector{Float64}`: The model's steady state values
-- `rm_t::Int`: Index of rm_t
+- `Rnotional_t::Int`: Index of Rnotional_t
 - `nshockgrid::Vector{Int}`: Vector containing number of possible values for each shock.
 - `shockbounds::Array{Float64,2}`: Lower and upper bounds for each exogenous shock on the exogenous shock grid.
 - `shockdistance::Array{Float64,1}`: Distance between grid points for each shock.
@@ -207,7 +207,7 @@ end
 Description:
 Simulates a linearized version of the model in order to compute high probability region of endogenous variable domain as well as frequency of hitting zero lower bound (and at which states)
 """
-function simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, nexogshocks::Int, steady_states::Array{Float64, 1}, rm_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
+function simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, nexogshocks::Int, steady_states::Array{Float64, 1}, Rnotional_t::Int, nshockgrid:: Array{Int, 1}, shockbounds::Array{Float64,2}, shockdistance::Array{Float64,1}, pp::Array{Float64,2}, sigma::Array{Float64, 2})
 
     # Initialize variables
     total_periods = 100000
@@ -264,7 +264,7 @@ function simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, ne
             endogvar[:,ttsim] = decrlin(endogvar[:,ttsim-1], innovations, nendogvars, nexogvars, sigma, pp, steady_states)
 
             # Determine if zlb was hit
-            if (endogvar[rm_t,ttsim] < 0.0)
+            if (endogvar[Rnotional_t,ttsim] < 0.0)
                 countzlb = countzlb + 1
 
                 fill!(shockindex,1)
@@ -282,7 +282,7 @@ function simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, ne
                 end
 
                 # Indexes state that hit zlb
-                stateindex = exogposition(shockindex,nshockgrid,nexogvars)
+                stateindex = exogstate(shockindex,nshockgrid,nexogvars)
 
                 # If that state hits zlb enough times then consider it a zlb state
                 countzlbstates[stateindex] = countzlbstates[stateindex] + 1
@@ -356,7 +356,7 @@ end
 - `ngridpoints::Int`: Number of grid points on the Smolyak grid
 - `exoggrid::Array{Float64, 2}`: Grid containing the values of each shock at each exogenous state
 - `steady_states::Array{Float64,1}`: Steady state values of model
-- `endogenous_states::OrderedDict{Symbol,Int64}`: Maps human-readable endogenous states to indice
+- `endogenous_states::OrderedDict{Symbol,Int64}`: Maps human-readable endogenous states to indices
 - `xgrid::Array{Float64, 2}`: Value of each minimum state variable (transformed to [-1, 1] domain) at each Smolyak grid point
 - `nfunc::Int`: Number of functions to approximate
 - `bbtinv::Array{Float64, 2}`: Inverse of the transposed matrix of Smolyak basis functions evaluated at each Smolyak grid point
@@ -400,7 +400,7 @@ function initial_α(nendogvars::Int, nexogvars::Int, nexogshocks::Int, nmsv::Int
             mul!(endogvar, aalin, endogvarm1[:,i])
             mul!(exogpart, bblin, exogval)
             endogvar = endogsteady[1:nendogvars] + endogvar + exogpart
-            yy[:,i] = endogvar[[endogenous_states[:λc],endogenous_states[:qk_t],endogenous_states[:Vp_t],endogenous_states[:Vw_t],endogenous_states[:bc_t],endogenous_states[:bi_t],endogenous_states[:u_t]] ]
+            yy[:,i] = endogvar[[endogenous_states[:λ],endogenous_states[:qk_t],endogenous_states[:Vp_t],endogenous_states[:Vw_t],endogenous_states[:bc_t],endogenous_states[:bi_t],endogenous_states[:u_t]] ]
         end
 
         # Get alphas by multiplying by inverse of Smoylak basis functions (since we want alphas to solve yy = bbt*alphass)
@@ -455,6 +455,7 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
     # Get fixed point using iterative convergence method
     # Loop until convergence (avg_error < tolfun) or niter reached
     for i in 1:niter
+        @show i
         avg_error = 0.0
 
         # Calculate g(f) to get new guess for f and then calculate new approximation
@@ -462,12 +463,12 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
         for j in 1:approx.ns
             err = 0.0
             for k in 1:approx.ngridpoints
-                updated_approx_fucntions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, m[:zero_lower_bound])
+                updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
                 err += err2
             end
 
             # Solve for α by multiplying by inverse matrix of Smolyak basis polynomials
-            mul!(α_temp, approx.bbtinv', updated_approx_polynomials')
+            mul!(α_temp, approx.bbtinv', updated_approx_functions')
 
             # Transform the matrix of α coefficients associated with this exogenous state to a vector and store in the matrix of new α coefficients
             α_new[:, j] = vec(α_temp[:, 1:approx.nfunc])
@@ -516,12 +517,9 @@ Uses a parallel version of the fixed point convergence algorithm to determine th
 """
 function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2}, zlbswitch::Bool)
 
-
     # Initialize
     α_star = copy(α_initial)
     α_new = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 2*approx.ns)
-    α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
-    updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
     convergence = false
     avg_error = 0.0
 
@@ -533,6 +531,7 @@ function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array
     # Get fixed point using iterative convergence method
     # Loop until convergence (avg_error < tolfun) or niter reached
     for i in 1:niter
+        @show i
         avg_error = 0.0
 
         # Calculates new α_new and avg_error
@@ -588,17 +587,18 @@ function parallel_help(rkss::Float64, approx::Approximation, params::Array{Abstr
 
     # Initialize variables
     parallel_info = zeros(approx.nfunc*approx.ngridpoints,3)
+    α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
     updated_approx_functions = zeros(2*approx.nfunc, approx.ngridpoints)
     err = 0.0
 
     # Calculate g(f) to get new guess for f at given exogenous state and then calculate new approximation
     @inbounds @simd for k in 1:approx.ngridpoints
-        updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, m[:zero_lower_bound])
+        updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
         err += err2
     end
 
     # Solve for α by multiplying by inverse matrix of Smolyak basis polynomials
-    mul!(α_temp, approx.bbtinv', updated_approx_polynomials')
+    mul!(α_temp, approx.bbtinv', updated_approx_functions')
 
     # Transform the matrix of α coefficients associated with this exogenous state to a vector and store in the matrix of new α coefficient
     parallel_info[:, 1] = vec(α_temp[:, 1:approx.nfunc])

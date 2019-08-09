@@ -26,6 +26,9 @@ model_params = read(h5, "params")
 close(h5)
 update!(m, model_params)
 
+### Test without zlb
+# SET SETTING HERE
+
 ### Testing requires smaller shock grid
 if (m.approx.nshockgrid != [7,2,2,2,2,1])
     println("Testing requires nshockgrid = [7,2,2,2,2,1]")
@@ -67,14 +70,15 @@ shockdistance_ref = read(h5, "shockdistance")
 close(h5)
 m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = exoggrid_ref, shockbounds_ref, shockdistance_ref
 
-endog_emean, zlbfrequency, msvbounds, statezlbinfo, convergence = simulate_linear(m.approx.ns, m.approx.nvars, m.approx.nexog, m.approx.nmsv, m.approx.nexogshock, steady_states, m.endogenous_states[:rm_t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
-
+endog_emean, zlbfrequency, msvbounds, statezlbinfo, convergence = simulate_linear(m.approx.ns, m.approx.nendogvars, m.approx.nexogvars, m.approx.nmsv, m.approx.nexogshocks, steady_states, m.endogenous_states[:Rnotional_t], m.approx.nshockgrid, m.approx.shockbounds, m.approx.shockdistance, pp, sigma)
 h5 = h5open("$path/simulatelinear.h5")
 endog_emean_ref = read(h5, "endog_emean")
 zlbfrequency_ref = read(h5, "zlbfrequency")
 msvbounds_ref = read(h5, "msvbounds")
 statezlbinfo_ref = read(h5, "statezlbinfo")
 close(h5)
+
+@testset "All tests" begin
 
 @testset "Compare linear simulation to reference output" begin
     @test endog_emean_ref ≈ endog_emean
@@ -85,7 +89,7 @@ close(h5)
 end
 
 ### Test slopes against reference output
-m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo, m.approx.convergence = endog_emean_ref, zlbfrequency_ref, msvbounds_ref, statezlbinfo_ref, true
+m.approx.endog_emean, m.approx.zlbfrequency, m.approx.msvbounds, m.approx.statezlbinfo = endog_emean_ref, zlbfrequency_ref, msvbounds_ref, statezlbinfo_ref, true
 
 slopeconmsv, slopeconxx = create_slopes(m.approx.nmsv, m.approx.msvbounds)
 
@@ -100,7 +104,7 @@ close(h5)
 end
 
 ## Test lindecrule_markov against reference output
-aalin, bblin = lindecrule_markov(pp, sigma, m.approx.nvars, m.approx.nexog, m.approx.nexogshock)
+aalin, bblin = lindecrule_markov(pp, sigma, m.approx.nendogvars, m.approx.nexogvars, m.approx.nexogshocks)
 
 h5 = h5open("$path/lindecrule_markov.h5")
 aalin_ref = read(h5, "aalin")
@@ -114,7 +118,7 @@ end
 
 ### Test initial alphas against reference output
 m.approx.slopeconmsv, m.approx.slopeconxx = slopeconmsv_ref, slopeconxx_ref
-α_initial = initial_α(m.approx.nvars, m.approx.nexog, m.approx.nexogshock, m.approx.nmsv,m.approx.ns,m.approx.ngrid, m.approx.exoggrid, steady_states, m.endogenous_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
+α_initial = initial_α(m.approx.nendogvars, m.approx.nexogvars, m.approx.nexogshocks, m.approx.nmsv,m.approx.ns,m.approx.ngridpoints, m.approx.exoggrid, steady_states, m.endogenous_states, m.approx.slopeconxx, m.approx.xgrid, m.approx.nfunc, m.approx.bbtinv, aalin, bblin)
 
 h5 = h5open("$path/initialalphas.h5")
 α_initial_ref = read(h5, "initialalphas")
@@ -129,17 +133,17 @@ h5 = h5open("$path/alphastar.h5")
 close(h5)
 
 ### Test fixed point output against reference output
-α_star, convergence = fixedpoint(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial_ref)
+α_star, convergence = fixedpoint(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial_ref, get_setting(m, :zero_lower_bound))
 
 @testset "Compare alpha star to reference output" begin
     @test α_star_ref ≈ α_star
 end
 
 ### Test fixedpoint_parallel output against reference output
-α_star_parallel, convergence = fixedpoint_parallel(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial_ref)
+α_star_parallel, convergence = fixedpoint_parallel(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial_ref, get_setting(m, :zero_lower_bound))
 
 @testset "fixedpoint_parallel" begin
     @test α_star_ref ≈ α_star_parallel
 end
 
-nothing
+end

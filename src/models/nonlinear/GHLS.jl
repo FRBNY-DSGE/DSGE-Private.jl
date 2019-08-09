@@ -1,7 +1,7 @@
 """
 GHLS{T} <: AbstractModel{T}
 
-The `GHLS` type defines the structure of the linearized version of the non-linear model in Gust et. al (2017).
+The `GHLS` type defines the structure of the non-linear model in Gust et. al (2017). It also contains the linearized version of the model.
 
 ### Fields
 
@@ -77,6 +77,8 @@ the model.
 * `pseudo_observable_mappings::OrderedDict{Symbol,PseudoObservable}`: A
   dictionary that stores names and transformations to/from model units. See
   `PseudoObservable` for further details.
+
+* `approx::Approximation`: Approximation object for use in constructing function and integral approximations
 """
 mutable struct GHLS{T} <: AbstractModel{T}
     parameters::ParameterVector{T}                         # vector of all time-invariant model parameters
@@ -117,26 +119,35 @@ Description:
 Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 """
 function init_model_indices!(m::GHLS)
-    # Endogenous states, note ztil_t is techshock
+    # Endogenous states
+    # λc to λ - DONE
+    # rm_t to Rnotional - DONE
+    # R to Rnominal_t - DONE
+    # L to N - DONE
+    # rm_sh to Rnotional_sh, mon_t to Rnotionalshock_t - DONE
+    # ztil to z, ztil_sh to z_sh - DONE
+    # b to eta - DONE
+    #techshock to zshock, Etechshock to Ezshock - DONE
+    # Eλ_c to Eλ_t - DONE
     endogenous_states = [[
-        :k_t, :c_t, :i_t, :w_t, :rm_t, :π_t, :y_t, :x_t, :R_t, :λc, :qk_t, :L_t, :u_t, :mc_t, :rk_t, :muc_t, :Vi_t, :Vp_t, :Vw_t, :π_w, :bc_t, :bi_t, :b_t, :μ_t, :ztil_t, :mon_t, :g_t, :elast_t, :elastw_t, :unk_t, :y_t1, :c_t1, :i_t1, :w_t1, :Ei_t, :Erk_t, :Ec_t, :EVw_t, :Etechshock_t, :Eπ_t, :Eqk_t, :Eλ_c];
+        :k_t, :c_t, :i_t, :w_t, :Rnotional_t, :π_t, :y_t, :x_t, :Rnominal_t, :λ, :qk_t, :N_t, :u_t, :mc_t, :rk_t, :muc_t, :Vi_t, :Vp_t, :Vw_t, :π_w, :bc_t, :bi_t, :η_t, :μ_t, :z_t, :Rnotionalshock_t, :g_t, :elast_t, :elastw_t, :a_t, :y_t1, :c_t1, :i_t1, :w_t1, :Ei_t, :Erk_t, :Ec_t, :EVw_t, :Ez_t, :Eπ_t, :Eqk_t, :Eλ_t];
         [Symbol("rm_tl$i") for i = 1:n_anticipated_shocks(m)]]
 
     # Exogenous shocks
     exogenous_shocks = [[
-        :b_sh, :μ_sh, :ztil_sh, :rm_sh, :g_sh, :elast_sh, :elastw_sh, :unk_sh];
+        :η_sh, :μ_sh, :z_sh, :Rnotional_sh, :g_sh, :elast_sh, :elastw_sh, :a_sh];
         [Symbol("rm_shl$i") for i = 1:n_anticipated_shocks(m)]]
 
-    # Expectations shocks - WHAT ARE THESE?
-    expected_shocks = [:Ei_sh, :Erk_sh, :Ec_sh, :EVw_sh, :Etechshock_sh, :Eπ_sh, :Eqk_sh, :Eλc_sh]
+    # Expectations shocks
+    expected_shocks = [:Ei_sh, :Erk_sh, :Ec_sh, :EVw_sh, :Ez_sh, :Eπ_sh, :Eqk_sh, :Eλ_sh]
 
     # Equilibrium conditions
     equilibrium_conditions = [[
-        :eq_capval, :eq_euler, :eq_inv, :eq_wage, :eq_mp, :eq_phlps, :eq_output, :eq_outgap, :eq_mpnom, :eq_λc, :eq_tobq, :eq_L, :eq_caputil,:eq_mcost, :eq_capsrv, :eq_muc, :eq_vi, :eq_vp, :eq_vw, :eq_π_w, :eq_bc, :eq_bi, :eq_laggdp, :eq_lagcc, :eq_lagit, :eq_lagwage, :eq_b, :eq_μ, :eq_ztil, :eq_mon, :eq_g, :eq_elast, :eq_elastw, :eq_unk, :eq_Ei, :eq_Erk, :eq_Ec, :eq_EVw, :eq_Ez, :eq_Eπ, :eq_Eqk, :eq_Eλc];
+        :eq_capval, :eq_euler, :eq_inv, :eq_wage, :eq_mpnot, :eq_phlps, :eq_output, :eq_outgap, :eq_mpnom, :eq_λ, :eq_tobq, :eq_N, :eq_caputil,:eq_mcost, :eq_capsrv, :eq_muc, :eq_vi, :eq_vp, :eq_vw, :eq_π_w, :eq_bc, :eq_bi, :eq_laggdp, :eq_lagc, :eq_lagi, :eq_lagwage, :eq_η, :eq_μ, :eq_z, :eq_Rnotionalshock, :eq_g, :eq_elast, :eq_elastw, :eq_a, :eq_Ei, :eq_Erk, :eq_Ec, :eq_EVw, :eq_Ez, :eq_Eπ, :eq_Eqk, :eq_Eλ];
         [Symbol("eq_rml$i") for i=1:n_anticipated_shocks(m)]]
 
     # Additional states added after solving model
-    # Lagged states and observables measurement error - WHAT ARE THESE?
+    # In this case these are the lags of GDP, consumption, and investment
     endogenous_states_augmented = [
         :y_t1, :c_t1, :i_t1]
 
@@ -151,7 +162,7 @@ function init_model_indices!(m::GHLS)
     for (i,k) in enumerate(expected_shocks);             m.expected_shocks[k]             = i end
     for (i,k) in enumerate(equilibrium_conditions);      m.equilibrium_conditions[k]      = i end
     for (i,k) in enumerate(endogenous_states);           m.endogenous_states[k]           = i end
-    for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i+length(endogenous_states) - 14 end #THIS IS NOT A GREAT WAY TO DO THIS
+    for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i+m.approx.nendogvars + m.approx.nexogvars end # Augmented states are only used in non-linear portion of model only so indices are offset by number of total state variables in the non-linear rather than linear verrsion of model
     for (i,k) in enumerate(observables);                 m.observables[k]                 = i end
     for (i,k) in enumerate(pseudo_observables);          m.pseudo_observables[k]          = i end
 end
@@ -288,11 +299,11 @@ function init_parameters!(m::GHLS)
 
     m <= parameter(:γ_x, 0.0893, (1e-5, 5.), (1e-5, 5.), Exponential(), Normal(0.4, 0.3), fixed=false,
                    description="γ_x: Weight on output gap in monetary policy rule.",
-                   tex_label="\\gamma_x") #Different from Smets Wouters output gap
+                   tex_label="\\gamma_x")
 
     m <= parameter(:γ_g, 0.2239, (1e-5, 5.), (1e-5, 5.), Exponential(), Normal(0.4, 0.3), fixed=false,
                    description="γ_g: Weight on output growth in the monetary policy rule.",
-                   tex_label="\\γ_g") #Is this correct?
+                   tex_label="\\γ_g")
 
     m <= parameter(:ρ_R, 0.3000, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ρ_R: Coefficient on past interest rate in the monetary policy shock process.",
@@ -362,7 +373,7 @@ function init_parameters!(m::GHLS)
                tex_label="\\sigma_{R}")
 
 
-    #Measurement errors
+    #Measurement errors - calculated  as the observed variance in each data series
     m <= parameter(:e_y, 0.00323357^2, fixed = true, description = "e_y: Measurement error on GDP", tex_label = "e_y")
     m <= parameter(:e_π, 0.00122426^2, fixed = true, description = "e_π: Measurement error on GDP deflator", tex_label = "e_π")
     m <= parameter(:e_R, 0.00358562^2, fixed = true, description = "e_R: Measurement error on nominal rate of interest", tex_label = "e_R")
@@ -429,28 +440,30 @@ steadystate!(m::GHLS)
 Calculates the model's steady-state values. `steadystate!(m)` must be called whenever the parameters of `m` are updated.
 """
 function steadystate!(m::GHLS)
+
+    # Intermediate values used to help calculate steady states as well as in solving the model
     m[:gg] = 1.0/(1.0-m[:shrgy])
     m[:gamtil] = m[:γ]/m[:gz]
-    m[:mc] = (m[:ϵ_p]-1.0)/m[:ϵ_p]
-    m[:k2yrat] = ((m[:mc]*m[:α])/(m[:gz]/m[:β]-(1.0-m[:δ])))*m[:gz]
-    m[:shriy] = (1.0 - (1.0-m[:δ])/m[:gz])*m[:k2yrat]
-    m[:shrcy] = (1.0 - m[:shrgy] - m[:shriy])
-    m[:labss] = (((m[:ϵ_w] - 1.0)/m[:ϵ_w])*(1.0-m[:α])*(1.0 - m[:β]*m[:gamtil])*((m[:ϵ_p]-1.0)/m[:ϵ_p])*(1.0/(m[:ψ_L]*(1.0 - m[:gamtil])))*(1.0/m[:shrcy]))^(1.0/(m[:σ_L]+1))
+    m[:mc] = (m[:ϵ_p]-1.0)/m[:ϵ_p] #Equation 1.40 in technical appendix to Gust et. al (2017)
+    m[:k2yrat] = ((m[:mc]*m[:α])/(m[:gz]/m[:β]-(1.0-m[:δ])))*m[:gz] # See page 61 of TA
+    m[:shriy] = (1.0 - (1.0-m[:δ])/m[:gz])*m[:k2yrat] # See page 61 of TA
+    m[:shrcy] = (1.0 - m[:shrgy] - m[:shriy]) # See page 61 of TA
+    m[:labss] = (((m[:ϵ_w] - 1.0)/m[:ϵ_w])*(1.0-m[:α])*(1.0 - m[:β]*m[:gamtil])*((m[:ϵ_p]-1.0)/m[:ϵ_p])*(1.0/(m[:ψ_L]*(1.0 - m[:gamtil])))*(1.0/m[:shrcy]))^(1.0/(m[:σ_L]+1)) # Equation 1.50 in TA
     m[:κ_w] = ((1.0-m[:gamtil])/(1.0-m[:β]*m[:gamtil]))*m[:ϵ_w]*m[:ψ_L]*m[:labss]^(1.0+m[:σ_L])/m[:ϕ_w]
     m[:κ_p] = (m[:ϵ_p]-1.0)/(m[:ϕ_p]*(1.0+m[:β]*(1-m[:ap])))
     m[:kss] = m[:labss]*(m[:gz]^(m[:α]/(m[:α]-1.0)))*m[:k2yrat]^(1.0/(1.0-m[:α]))
-    m[:gdpss] = (m[:kss]/m[:gz])^m[:α]*m[:labss]^(1.0-m[:α])
+    m[:gdpss] = (m[:kss]/m[:gz])^m[:α]*m[:labss]^(1.0-m[:α]) #Equation 1.45 in TA
     m[:invss]  = m[:shriy]*m[:gdpss]
     m[:phii_jpt] = m[:ϕ_I]/m[:invss]
     m[:css] = m[:shrcy]*m[:gdpss]
     m[:rwss] = (1.0 - m[:α])*m[:mc]*m[:gdpss]/m[:labss]
     m[:mucss] = (1.0/m[:css])*(1.0/(1.0 - m[:gamtil]))
-    m[:lamss] = m[:mucss]*(1.0 - m[:β]*m[:gamtil])
-    m[:rss] = m[:gz]*m[:π_bar]/m[:β]
-    m[:rkss] = m[:gz]/m[:β] - 1.0 + m[:δ]
+    m[:lamss] = m[:mucss]*(1.0 - m[:β]*m[:gamtil]) #Equation 1.42 in TA
+    m[:rss] = m[:gz]*m[:π_bar]/m[:β] #Equation 1.43 in TA
+    m[:rkss] = m[:gz]/m[:β] - 1.0 + m[:δ]  #Equation 1.48 in TA
     m[:bw]  =  m[:aw]
 
-    #Start of real steady states
+    #Start of true steady states
     m[:cap] = log(m[:kss])
     m[:cc] = log(m[:css])
     m[:inv] = log(m[:invss])

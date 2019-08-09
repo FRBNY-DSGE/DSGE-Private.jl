@@ -292,7 +292,7 @@ We also need the inverse of bbt to update the polynomial coefficients.
 """
 function sparsegrid(nmsv::Int,nindplus::Int,ngridpoints::Int,indplus::Array{Int,1})
 
-    #Initilize Variables
+    #Initialize Variables
     xgrid = zeros(nmsv,ngridpoints)
     bbt = zeros(ngridpoints,ngridpoints)
 

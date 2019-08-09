@@ -1,21 +1,12 @@
 """
 ```
-measurement(m::GHLS{T}, TTT::Matrix{T}, RRR::Matrix{T},
-            CCC::Vector{T}) where {T<:AbstractFloat}
+measurement(m::GHLS{T})
 ```
 
 Assign measurement equation
 
 ```
-y_t = ZZ*s_t + DD + u_t
-```
-
-where
-
-```
-Var(ϵ_t) = QQ
-Var(u_t) = EE
-Cov(ϵ_t, u_t) = 0
+y_t = Ψ(s_t) + u_t
 ```
 """
 function measurement(m::GHLS)
@@ -29,11 +20,11 @@ function measurement(m::GHLS)
     _n_shocks_exogenous = n_shocks_exogenous(m)
 
     @inline Ψ(s_t::Vector{Float64}) =
-[log(s_t[endo[:y_t]] * m[:gz] / s_t[endo_addl[:y_t1]]) + s_t[endo[:ztil_t]],
-log(s_t[endo[:c_t]] * m[:gz] / s_t[endo_addl[:c_t1]]) + s_t[endo[:ztil_t]],
-log(s_t[endo[:i_t]] * m[:gz] / s_t[endo_addl[:i_t1]]) + s_t[endo[:ztil_t]],
+[log(s_t[endo[:y_t]] * m[:gz] / s_t[endo_addl[:y_t1]]) + s_t[endo[:z_t]],
+log(s_t[endo[:c_t]] * m[:gz] / s_t[endo_addl[:c_t1]]) + s_t[endo[:z_t]],
+log(s_t[endo[:i_t]] * m[:gz] / s_t[endo_addl[:i_t1]]) + s_t[endo[:z_t]],
 log(s_t[endo[:π_t]]),
-log(s_t[endo[:R_t]])]
+log(s_t[endo[:Rnominal_t]])]
 
     return Ψ
 end
