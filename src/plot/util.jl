@@ -153,7 +153,7 @@ end
 
 function date_to_float(datevec::Vector{Date}, reps::Int64)
     date_floats = zeros(reps, length(datevec))
-    tofloats = Dict{String,Float64}("03" => .25, "06" => .5, "09" => .75, "12" => 0.)
+    tofloats = Dict{String,Float64}("03" => .25, "06" => .5, "09" => .75, "12" => 1.)
     for j = 1:length(datevec)
         tmp = string(datevec[j])
         s = tmp[6:7]

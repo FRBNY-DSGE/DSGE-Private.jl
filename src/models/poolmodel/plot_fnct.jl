@@ -109,14 +109,14 @@ end
     return 3.5 * Statistics.std(data) * length(data)^(-1/3)
 end
 
-function date_to_floats(datevec::Vector{Date}, reps::Int64)
-    date_floats = zeros(reps, length(datevec))
-    tofloats = Dict{String,Float64}("03" => .25, "06" => .5, "09" => .75, "12" => 0.)
-    for j = 1:length(datevec)
-        tmp = string(datevec[j])
-        s = tmp[6:7]
-        num = parse(Float64,tmp[1:4]) + tofloats[s]
-        date_floats[:,j] .= num
-    end
-    return date_floats
-end
+# function date_to_floats(datevec::Vector{Date}, reps::Int64)
+#     date_floats = zeros(reps, length(datevec))
+#     tofloats = Dict{String,Float64}("03" => .25, "06" => .5, "09" => .75, "12" => 0.)
+#     for j = 1:length(datevec)
+#         tmp = string(datevec[j])
+#         s = tmp[6:7]
+#         num = parse(Float64,tmp[1:4]) + tofloats[s]
+#         date_floats[:,j] .= num
+#     end
+#     return date_floats
+# end
