@@ -863,43 +863,53 @@ where `S<:AbstractFloat`.
 
 ```
 """
+function sample_λ(m::PoolModel{S}, data::Matrix{S}, θ::Vector{S},
+                  tuning::Dict{Symbol,Any}) where S<:AbstractFloat
+    update!(m, θ)
+    loglik, λ_particles, λ_weights = DSGE.filter(m, data; tuning = tuning)
+    return DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,end]))
+end
+
 function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, θs::Matrix{S}, T::Int64 = -1;
-                  parallel::Bool = false) where S<:AbstractFloat
+                  parallel::Bool = false,
+                  tuning0::Dict{Symbol,Any} = Dict{Symbol,Any}()) where S<:AbstractFloat
     # Check size and orientation of θs is correct: assume particle_num x parameter_num
     if length(m.parameters) != size(θs,2)
         error("number of parameters in PoolModel do not match number of parameters in matrix of posterior draws of θ")
     end
 
     # Initialize necessary objects
-    λ_sample = parallel ? SharedVector{Float64}(size(θs,1)) : Vector{Float64}(undef, size(θs,1))
-    if parallel
-        θs_share = SharedArray(θs)
-    end
     if T < 0
          error("T must be positive") # No period provided or is invalid
     end
+    tuning = isempty(tuning0) ? deepcopy(get_setting(m, :tuning)) : deepcopy(tuning0)
+    tuning[:get_t_particle_dist] = true
+    tuning[:parallel] = false
+    tuning[:allout] = false
 
     # Sample from p(λ|θ, I_t^P, P) for each θ in posterior
+    data = T == 1 ? reshape(pred_dens[:,1], 2, 1) : pred_dens[:,T]
     if parallel
-        @distributed for i in 1:size(θs_share,1)
-            update!(m, vec(θs_share[i,:]))
-            tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
-            tuning[:get_t_particle_dist] = true
-            tuning[:allout] = false
-            ~, λ_particles, λ_weights = DSGE.filter(m, pred_dens[:,T]; tuning = tuning)
-            λ_sample[i] = DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,T]))
+        # Send variables to workers to avoid issues with serialization
+        # across workers with different Julia system images
+        sendto(workers(), m = m)
+        sendto(workers(), data = data)
+        sendto(workers(), θs = θs)
+        sendto(workers(), tuning = tuning)
+
+        # Sample from λ distribution given θ
+        λ_sample = @sync @distributed (vcat) for i in 1:size(θs,1)
+            sample_λ(m, data, vec(θs[i,:]), tuning)
+        end
+        if sum(λ_sample) == 0
+            error("Sums to zero")
         end
         λ_sample = Array(λ_sample)
-        # λmat[:,T] = Array(λ_sample)
     else
+        # Same as above but everything is serialized
+        λ_sample = Vector{Float64}(undef, size(θs,1))
         for i in 1:size(θs,1)
-            update!(m, vec(θs[i,:]))
-            tuning = deepcopy(get_setting(m, :tuning)) # avoid changing settings of m
-            tuning[:get_t_particle_dist] = true
-            tuning[:allout] = false
-            ~, λ_particles, λ_weights = DSGE.filter(m, pred_dens[:,T]; tuning = tuning)
-            λ_sample[i] = DSGE.sample(λ_particles, DSGE.Weights(λ_weights[:,T]))
-            # λmat[i,T] = DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,T]))
+            λ_sample[i] = sample_λ(m, data, vec(θs[i,:]), tuning)
         end
     end
 
@@ -946,7 +956,7 @@ function compute_Eλ(m::PoolModel{T}, h::Int64, λvec ::Vector{T},
     λhat_t = if current_period mean(λ_vec .* weights) end # compute expected lambda in current period t
 
     # Push forward states and compute mean
-    Φ, F_ϵ, ~ = solve(pm)
+    Φ, F_ϵ, ~ = solve(m)
     if parallel
         @sync @distributed for i in 1:n_particles
             ϵ = rand(F_ϵ, h)

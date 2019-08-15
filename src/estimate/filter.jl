@@ -206,6 +206,10 @@ function filter_likelihood(m::PoolModel, data::AbstractArray,
                            in_sample::Bool = true, parallel::Bool = false, tol::Float64 = 0.,
                            tuning::Dict{Symbol,Any} = Dict{Symbol,Any}()) where {S<:AbstractFloat}
 
+    # Guarantee output settings in tuning give desired output
+    tuning[:allout] = true
+    tuning[:get_t_particle_dist] = false
+
     ~, loglhconditional, ~ = filter(m, data, s_0; start_date = start_date,
                                     include_presample = include_presample,
                                     cond_type = cond_type, in_sample = in_sample, tol = tol,
