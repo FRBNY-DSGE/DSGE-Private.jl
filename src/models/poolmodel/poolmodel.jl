@@ -77,7 +77,7 @@ function init_model_indices!(m::PoolModel)
     for (i,k) in enumerate(observables);       m.observables[k]       = i end
 end
 
-function PoolModel(subspec::String="ss0";
+function PoolModel(subspec::String="ss2";
                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
                    testing = false, verbose::Symbol = :low,
                    static::Bool = false) where T<:AbstractFloat
