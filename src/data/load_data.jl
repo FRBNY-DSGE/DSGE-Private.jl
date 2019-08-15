@@ -88,13 +88,17 @@ function load_data(m::PoolModel{T}; cond_type::Symbol = :none,
     df = DataFrame()
     start_date = date_presample_start(m)
     end_data = date_mainsample_end(m)
+    savedir = dataroot(m)
+    if savedir[end] != "/"
+        savedir *= "/"
+    end
     for obs in values(m.observable_mappings)
         if isempty(df)
-            tmp_df = CSV.read(dataroot(m) * "raw/"* string(obs.input_series[1]) * ".csv")
+            tmp_df = CSV.read(savedir * "raw/"* string(obs.input_series[1]) * ".csv")
             df[:date] = Vector{Dates.Date}(tmp_df[:date])
             df[obs.key] = Vector{Float64}(tmp_df[obs.input_series[2]])
         else
-            tmp_df = CSV.read(dataroot(m) * "raw/" * string(obs.input_series[1]) * ".csv")
+            tmp_df = CSV.read(savedir * "raw/" * string(obs.input_series[1]) * ".csv")
             tmp_df[:date] = Vector{Dates.Date}(tmp_df[:date])
             tmp_df[obs.key] = Vector{Float64}(tmp_df[obs.input_series[2]])
             df = join(df, tmp_df[[:date, obs.key]], on = :date, kind = :outer)
