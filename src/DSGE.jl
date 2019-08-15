@@ -5,7 +5,7 @@ module DSGE
     using DataFrames, DataStructures, Dates, Distributed, Distributions
     using FileIO, FFTW, ForwardDiff, FredData, HDF5, JLD2, LinearAlgebra
     using Missings, Nullables, Optim, OrderedCollections, Printf, Random, RecipesBase
-    using SparseArrays, SpecialFunctions, StateSpaceRoutines, StatsPlots, Test
+    using SharedArrays, SparseArrays, SpecialFunctions, StateSpaceRoutines, StatsPlots, Test
     using DataStructures: SortedDict, insert!, ForwardOrdering
     using QuantEcon: solve_discrete_lyapunov
     using DifferentialEquations: ODEProblem, Tsit5, Euler
@@ -30,7 +30,7 @@ module DSGE
         default_settings!, default_test_settings!,
 
         # abstractdsgemodel.jl
-        AbstractModel, description,
+        AbstractModel, AbstractRepModel, description,
         n_anticipated_shocks, n_anticipated_shocks_padding,
         date_presample_start, date_mainsample_start, date_zlb_start,
         date_presample_end, date_prezlb_end, date_mainsample_end, date_conditional_end,
