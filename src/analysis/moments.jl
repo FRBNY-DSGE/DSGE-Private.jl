@@ -863,13 +863,6 @@ where `S<:AbstractFloat`.
 
 ```
 """
-function sample_λ(m::PoolModel{S}, data::Matrix{S}, θ::Vector{S},
-                  tuning::Dict{Symbol,Any}) where S<:AbstractFloat
-    update!(m, θ)
-    loglik, λ_particles, λ_weights = DSGE.filter(m, data; tuning = tuning)
-    return DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,end]))
-end
-
 function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, θs::Matrix{S}, T::Int64 = -1;
                   parallel::Bool = false,
                   tuning0::Dict{Symbol,Any} = Dict{Symbol,Any}()) where S<:AbstractFloat
@@ -879,7 +872,7 @@ function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, θs::Matrix{S}, T::Int
     end
 
     # Initialize necessary objects
-    if T < 0
+    if T <= 0
          error("T must be positive") # No period provided or is invalid
     end
     tuning = isempty(tuning0) ? deepcopy(get_setting(m, :tuning)) : deepcopy(tuning0)
@@ -888,7 +881,13 @@ function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, θs::Matrix{S}, T::Int
     tuning[:allout] = false
 
     # Sample from p(λ|θ, I_t^P, P) for each θ in posterior
-    data = T == 1 ? reshape(pred_dens[:,1], 2, 1) : pred_dens[:,T]
+    data = (T == 1) ? reshape(pred_dens[:,1], 2, 1) : pred_dens[:,1:T]
+    if typeof(data) != Matrix{Float64}
+        println(T)
+        println(size(data))
+        println(typeof(data))
+        @assert false
+    end
     if parallel
         # Send variables to workers to avoid issues with serialization
         # across workers with different Julia system images
@@ -915,6 +914,16 @@ function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, θs::Matrix{S}, T::Int
 
     return λ_sample
 end
+
+# This function actually does the sampling for a given θ,
+# but we provide a wrapper for an easier user experience
+function sample_λ(m::PoolModel{S}, data::Matrix{S}, θ::Vector{S},
+                  tuning::Dict{Symbol,Any}) where S<:AbstractFloat
+    update!(m, θ)
+    loglik, λ_particles, λ_weights = DSGE.filter(m, data; tuning = tuning)
+    return DSGE.sample(λ_particles[1], DSGE.Weights(λ_weights[:,end]))
+end
+
 
 """
 ```
@@ -951,26 +960,22 @@ function compute_Eλ(m::PoolModel{T}, h::Int64, λvec ::Vector{T},
     if isempty(weights)
         weights = ones(length(λvec)) # assume equal weights
     end
-    λ_vec = parallel ? SharedArray(λvec) : copy(λvec) # so we don't alter this vector in place
-    n_particles = length(λ_vec)
-    λhat_t = if current_period mean(λ_vec .* weights) end # compute expected lambda in current period t
+    λhat_t = if current_period mean(λvec .* weights) end # compute expected lambda in current period t
 
     # Push forward states and compute mean
     Φ, F_ϵ, ~ = solve(m)
     if parallel
-        @sync @distributed for i in 1:n_particles
-            ϵ = rand(F_ϵ, h)
-            for j in 1:h
-                λ_vec[i] = Φ([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])[1]
-            end
+        # Send data to all workers
+        sendto(workers(), h = h)
+        sendto(workers(), Φ = Φ)
+        sendto(workers(), F_ϵ = F_ϵ)
+
+        # Propagate forward!
+        λ_vec = @sync @distributed (vcat) for i in 1:length(λvec)
+            propgate_λ(λvec[i], h, Φ, F_ϵ)
         end
     else
-        for i in 1:n_particles
-            ϵ = rand(F_ϵ, h) # h is small, so this is not expensive to loop through
-            for j in 1:h
-                λ_vec[i] = Φ([λ_vec[i]; 1 - λ_vec[i]], [ϵ[j]])[1]
-            end
-        end
+        λ_vec = map(x -> propagate_λ(x, h, Φ, F_ϵ), λvec)
     end
     λhat_tplush = mean(λ_vec .* weights)
 
@@ -979,4 +984,29 @@ function compute_Eλ(m::PoolModel{T}, h::Int64, λvec ::Vector{T},
     else
         return λhat_tplush
     end
+end
+
+"""
+```
+propgate_λ(λvec, h, Φ, F_ϵ; parallel = true) where T<:AbstractFloat
+```
+
+Propagates a λ particle h periods forward.
+
+### Inputs
+
+- `λ::T`: λ sample from (θ,λ) joint distribution
+- `h::Int64`: forecast horizon
+- `Φ::Function`: state transition function of the form Φ(s_t, ϵ_t) for a PoolModel object
+- `F_ϵ::Distribution`: distribution of structural shock
+
+```
+"""
+function propagate_λ(λ::T, h::Int64, Φ::Function,
+                   F_ϵ::Distribution) where T<:AbstractFloat
+    ϵ = rand(F_ϵ, h)
+    for j in 1:h
+        λ = Φ([λ; 1 - λ], [ϵ[j]])[1]
+    end
+    return λ
 end
