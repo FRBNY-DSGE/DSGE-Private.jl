@@ -151,7 +151,7 @@ function relocate_annotations!(p::Plots.Plot{Plots.GRBackend},
     end
 end
 
-function date_to_float(datevec::Vector{Date}, reps::Int64)
+function date_to_float(datevec::Vector{Date}, reps::Int64 = 1)
     date_floats = zeros(reps, length(datevec))
     tofloats = Dict{String,Float64}("03" => .25, "06" => .5, "09" => .75, "12" => 1.)
     for j = 1:length(datevec)

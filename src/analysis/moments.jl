@@ -882,12 +882,6 @@ function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, θs::Matrix{S}, T::Int
 
     # Sample from p(λ|θ, I_t^P, P) for each θ in posterior
     data = (T == 1) ? reshape(pred_dens[:,1], 2, 1) : pred_dens[:,1:T]
-    if typeof(data) != Matrix{Float64}
-        println(T)
-        println(size(data))
-        println(typeof(data))
-        @assert false
-    end
     if parallel
         # Send variables to workers to avoid issues with serialization
         # across workers with different Julia system images
