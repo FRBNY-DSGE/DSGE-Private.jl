@@ -18,15 +18,13 @@ path = dirname(@__FILE__)
                                         "Model 805 conditional predictive density scores")
     m.observable_mappings = observables
     df1 = load_data(m)
-    df2 = CSV.read(dataroot(m) * "wrongorigmatlab.csv")
-    df1[:date] = Vector{Dates.Date}(df1[:date])
-    df1[:p904] = Vector{Float64}(df1[:p904])
-    df1[:p805] = Vector{Float64}(df1[:p805])
+    df2 = CSV.read(joinpath(dataroot(m), "raw/wrongorigmatlab.csv"))
     df2[:date] = Vector{Dates.Date}(df2[:date])
     df2[:p904] = Vector{Float64}(df2[:p904])
     df2[:p805] = Vector{Float64}(df2[:p805])
 
-    @test df1 == df2
+    @test df1[:Model904] == df2[:p904]
+    @test df1[:Model805] == df2[:p805]
 end
 
 nothing
