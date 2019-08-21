@@ -4,7 +4,7 @@ using Test, DataFrames, HDF5, JLD2
 path = dirname(@__FILE__)
 
 @testset "Test various forms of data loading" begin
-    m = PoolModel()
+    m = PoolModel("ss1")
     fp = dirname(@__FILE__)
     m <= Setting(:dataroot, "$(fp)/../reference/")
     observables = OrderedDict{Symbol,Observable}()
