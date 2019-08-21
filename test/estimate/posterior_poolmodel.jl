@@ -1,10 +1,9 @@
 # Note that this test asumes TPF properly works
 
-pm = PoolModel("ss0")
+pm = PoolModel("ss1")
 filepath = dirname(@__FILE__)
 pm <= Setting(:dataroot, "$(filepath)/../reference/")
-df = CSV.read(dataroot(pm) * "wrongorigmatlab.csv")
-data = Matrix{Float64}(Matrix{Float64}(df[[:p904, :p805]])')
+data = df_to_matrix(pm, load_data(pm))
 
 # This commented code produces the saved output
 tuning = Dict(:r_star => 2., :c_init => 0.3, :target_accept_rate => 0.4,

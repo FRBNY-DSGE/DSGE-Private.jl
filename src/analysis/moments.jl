@@ -966,7 +966,7 @@ function compute_Eλ(m::PoolModel{T}, h::Int64, λvec ::Vector{T},
 
         # Propagate forward!
         λ_vec = @sync @distributed (vcat) for i in 1:length(λvec)
-            propgate_λ(λvec[i], h, Φ, F_ϵ)
+            propagate_λ(λvec[i], h, Φ, F_ϵ)
         end
     else
         λ_vec = map(x -> propagate_λ(x, h, Φ, F_ϵ), λvec)
