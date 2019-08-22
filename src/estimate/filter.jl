@@ -201,7 +201,7 @@ function filter(m::PoolModel, data::AbstractArray,
         loglhconditional = log.(mapslices(x -> Φ([0.], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional
     elseif :weight_type == :static
-        loglhconditional = log.(mapslices(x -> Φ([m[:λ].value; 1 - m[:λ].value], x, data, dims = 1))
+        loglhconditional = log.(mapslices(x -> Φ([m[:λ].value; 1 - m[:λ].value], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional
     end
 end

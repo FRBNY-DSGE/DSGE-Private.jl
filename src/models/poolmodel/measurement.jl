@@ -22,14 +22,15 @@ function measurement(m::PoolModel{T}) where {T<:AbstractFloat}
     weight_type = get_setting(m, :weight_type)
 
     # Assumes λ to be weight on the first model
-    if weight_type == :dynamic
-        Ψ(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
-    elseif weight_type == :equal
-        Ψ(x::Vector{Float64}, data::Vector{Float64}) = dot(data, [0.5; 0.5])
-    elseif weight_type == :static
-        Ψ(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
-    end
-
     F_u = DiscreteUniform(0,0)
-    return Ψ, F_u
+    if weight_type == :dynamic
+        Ψ_dynamic_pm(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
+        return Ψ_dynamic_pm, F_u
+    elseif weight_type == :equal
+        Ψ_equal_pm(x::Vector{Float64}, data::Vector{Float64}) = dot(data, [0.5; 0.5])
+        return Ψ_equal_pm, F_u
+    elseif weight_type == :static
+        Ψ_static_pm(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
+        return Ψ_static_pm, F_u
+    end
 end
