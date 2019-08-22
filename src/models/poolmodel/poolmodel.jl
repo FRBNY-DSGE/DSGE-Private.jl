@@ -80,7 +80,7 @@ end
 function PoolModel(subspec::String="ss2";
                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
                    testing = false, verbose::Symbol = :low,
-                   static::Bool = false) where T<:AbstractFloat
+                   weight_type::Symbol = :dynamic) where T<:AbstractFloat
 
     # Model-specific specifications
     spec               = split(basename(@__FILE__),'.')[1]
@@ -107,7 +107,7 @@ function PoolModel(subspec::String="ss2";
         OrderedDict{Symbol,Observable}())
 
     # Set settings
-    model_settings!(m)
+    model_settings!(m; weight_type = weight_type)
     default_test_settings!(m)
     for custom_setting in values(custom_settings)
         m <= custom_setting
@@ -117,7 +117,7 @@ function PoolModel(subspec::String="ss2";
     init_observable_mappings!(m)
 
     # Initialize parameters
-    init_parameters!(m; static = static)
+    init_parameters!(m)
 
     # Initialize model indices and subspec
     init_model_indices!(m)
@@ -135,9 +135,21 @@ Initializes the model's parameters, as well as empty values for the steady-state
 parameters (in preparation for `steadystate!(m)` being called to initialize
 those).
 """
-function init_parameters!(m::PoolModel; static::Bool = false)
+function init_parameters!(m::PoolModel)
     # Initialize parameters
-    if static
+    weight_type = get_setting(m, :weight_type)
+    if weight_type == :dynamic
+        m <= parameter(:ρ, 0.8, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.),
+                       fixed = false,
+                       description="ρ: persistence of AR processing underlying λ.",
+                       tex_label="\\rho")
+        m <= parameter(:μ, 0., fixed = true,
+                       description="μ: drift of AR processing underlying λ.",
+                       tex_label="\\mu")
+        m <= parameter(:σ, 1., fixed = true,
+                       description="σ: volatility of AR processing underlying λ.",
+                       tex_label="\\sigma")
+    elseif weight_type == :equal_weight
         m <= parameter(:ρ, 1., fixed = true,
                        description="ρ: persistence of AR processing underlying λ.",
                        tex_label="\\rho")
@@ -147,8 +159,11 @@ function init_parameters!(m::PoolModel; static::Bool = false)
         m <= parameter(:σ, 1., fixed = true,
                        description="σ: volatility of AR processing underlying λ.",
                        tex_label="\\sigma")
-    else
-        m <= parameter(:ρ, 0.8, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.), fixed = false,
+    elseif weight_type == :static
+        m <= parameter(:λ, 0.5, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.),
+                       fixed = false, description="λ: weight on model 1's predictive density",
+                       tex_label="\\lambda")
+        m <= parameter(:ρ, 1., fixed = true,
                        description="ρ: persistence of AR processing underlying λ.",
                        tex_label="\\rho")
         m <= parameter(:μ, 0., fixed = true,
@@ -160,17 +175,29 @@ function init_parameters!(m::PoolModel; static::Bool = false)
     end
 end
 
-function model_settings!(m::PoolModel)
+function model_settings!(m::PoolModel; weight_type::Symbol = :dynamic_weight)
     default_settings!(m)
 
+    # Weight type: dynamic, equal_weight, or static
+    if !(weight_type in [:dynamic, :equal_weight, :static])
+        error("Weight type of a PoolModel object must be :dynamic, :equal_weight, or :static.")
+    else
+        m <= Setting(:weight_type, weight_type, "How to weight predictive densities")
+    end
+
     # Data
+    m <= Setting(:population_mnemonic, Nullable())
+    m <= Setting(:data_id, 1922016, "Dataset identifier")
+    m <= Setting(:date_presample_start, quartertodate("1992-Q1"))
+    m <= Setting(:date_mainsample_start, quartertodate("1992-Q1"))
+    m <= Setting(:date_forecast_start, quartertodate("2011-Q3"))
 
     # SMC estimation
     m <= Setting(:sampling_method, :SMC)
     m <= Setting(:n_particles, 2000)
 
     # Forecast
-    m <= Setting(:use_population_forecast, true,
+    m <= Setting(:use_population_forecast, false,
                  "Whether to use population forecasts as data")
 
     # Tempered particle filter

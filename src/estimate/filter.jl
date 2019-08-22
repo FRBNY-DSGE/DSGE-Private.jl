@@ -191,11 +191,19 @@ function filter(m::PoolModel, data::AbstractArray,
     catch KeyError
     end
 
-
-    return tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u, s_0; parallel = parallel,
-                                    poolmodel = true,
-                                    fixed_sched = fixed_sched,
-                                    tuning..., verbose = :none)
+    weight_type = get_setting(m, :weight_type)
+    if weight_type == :dynamic
+        return tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u, s_0; parallel = parallel,
+                                        poolmodel = true,
+                                        fixed_sched = fixed_sched,
+                                        tuning..., verbose = :none)
+    elseif weight_type == :equal_weight
+        loglhconditional = log.(Φ([0.], data))
+        return sum(loglhconditional), loglhconditional
+    elseif :weight_type == :static
+        loglhconditional = log.(Φ([m[:λ].value; 1 - m[:λ].value], data))
+        return sum(loglhconditional), loglhconditional
+    end
 end
 
 
@@ -210,9 +218,17 @@ function filter_likelihood(m::PoolModel, data::AbstractArray,
     tuning[:allout] = true
     tuning[:get_t_particle_dist] = false
 
-    ~, loglhconditional, ~ = filter(m, data, s_0; start_date = start_date,
-                                    include_presample = include_presample,
-                                    cond_type = cond_type, in_sample = in_sample, tol = tol,
-                                    parallel = parallel, tuning = tuning)
+    if get_setting(m, :weight_type) == :dynamic_weight
+        ~, loglhconditional, ~ = filter(m, data, s_0; start_date = start_date,
+                                        include_presample = include_presample,
+                                        cond_type = cond_type, in_sample = in_sample, tol = tol,
+                                        parallel = parallel, tuning = tuning)
+    else
+        ~, loglhconditional = filter(m, data, s_0; start_date = start_date,
+                                     include_presample = include_presample,
+                                     cond_type = cond_type, in_sample = in_sample, tol = tol,
+                                     parallel = parallel, tuning = tuning)
+    end
+
     return loglhconditional
 end
