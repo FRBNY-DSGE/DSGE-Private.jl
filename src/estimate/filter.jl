@@ -177,7 +177,9 @@ function filter(m::PoolModel, data::AbstractArray,
         try
             tuning = get_setting(pm, :tuning)
         catch
-            warn("no tuning parameters provided; using default tempered particle filter values")
+            if get_setting(pm, :weight_type) == :dynamic
+                warn("no tuning parameters provided; using default tempered particle filter values")
+            end
         end
     end
     if haskey(tuning, :parallel) # contains parallel? change keyword to that if so
@@ -198,10 +200,10 @@ function filter(m::PoolModel, data::AbstractArray,
                                         fixed_sched = fixed_sched,
                                         tuning..., verbose = :none)
     elseif weight_type == :equal
-        loglhconditional = log.(mapslices(x -> Φ([0.], x), data, dims = 1))
+        loglhconditional = log.(mapslices(x -> Ψ([0.], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional
     elseif :weight_type == :static
-        loglhconditional = log.(mapslices(x -> Φ([m[:λ].value; 1 - m[:λ].value], x), data, dims = 1))
+        loglhconditional = log.(mapslices(x -> Ψ([m[:λ].value; 1 - m[:λ].value], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional
     end
 end
