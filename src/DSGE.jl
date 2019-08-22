@@ -100,7 +100,7 @@ module DSGE
         metropolis_hastings, compute_parameter_covariance, prior, get_estimation_output_files,
         compute_moments, find_density_bands, mutation, resample, smc, smc_mpi, mutation!,
         mvnormal_mixture_draw, nearest_spd, marginal_data_density,
-        initial_draw!, ParticleCloud, Particle, Cloud,
+        initial_draw!, ParticleCloud, Particle, Cloud, estimate_bma,
 
         # forecast/
         load_draws, forecast_one,
@@ -211,6 +211,7 @@ module DSGE
     include("estimate/nelder_mead.jl")
     include("estimate/marginal_data_density.jl")
     include("estimate/estimate.jl")
+    include("estimate/estimate_bma.jl")
     include("estimate/nearest_spd.jl")
     include("estimate/smc/particle.jl")
     include("estimate/smc/initialization.jl")

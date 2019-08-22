@@ -150,28 +150,17 @@ function init_parameters!(m::PoolModel)
                        description="σ: volatility of AR processing underlying λ.",
                        tex_label="\\sigma")
     elseif weight_type == :equal
-        m <= parameter(:ρ, 1., fixed = true,
-                       description="ρ: persistence of AR processing underlying λ.",
-                       tex_label="\\rho")
-        m <= parameter(:μ, 0., fixed = true,
-                       description="μ: drift of AR processing underlying λ.",
-                       tex_label="\\mu")
-        m <= parameter(:σ, 1., fixed = true,
-                       description="σ: volatility of AR processing underlying λ.",
-                       tex_label="\\sigma")
+        m <= parameter(:λ, 0.5, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.),
+                       fixed = true, description="λ: weight on model 1's predictive density",
+                       tex_label="\\lambda")
     elseif weight_type == :static
         m <= parameter(:λ, 0.5, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.),
                        fixed = false, description="λ: weight on model 1's predictive density",
                        tex_label="\\lambda")
-        m <= parameter(:ρ, 1., fixed = true,
-                       description="ρ: persistence of AR processing underlying λ.",
-                       tex_label="\\rho")
-        m <= parameter(:μ, 0., fixed = true,
-                       description="μ: drift of AR processing underlying λ.",
-                       tex_label="\\mu")
-        m <= parameter(:σ, 1., fixed = true,
-                       description="σ: volatility of AR processing underlying λ.",
-                       tex_label="\\sigma")
+    elseif weight_type == :bma
+        m <= parameter(:λ, 0.5, (1e-5,0.999), (1e-5,0.999), SquareRoot(), Uniform(0.,1.),
+                       fixed = false, description="λ: weight on model 1's predictive density",
+                       tex_label="\\lambda")
     end
 end
 
@@ -179,8 +168,8 @@ function model_settings!(m::PoolModel; weight_type::Symbol = :dynamic_weight)
     default_settings!(m)
 
     # Weight type: dynamic, equal, or static
-    if !(weight_type in [:dynamic, :equal, :static])
-        error("Weight type of a PoolModel object must be :dynamic, :equal, or :static.")
+    if !(weight_type in [:dynamic, :equal, :static, :bma])
+        error("Weight type of a PoolModel object must be :dynamic, :equal, :static, or :bma.")
     else
         m <= Setting(:weight_type, weight_type, "How to weight predictive densities")
     end

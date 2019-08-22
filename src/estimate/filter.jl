@@ -205,6 +205,8 @@ function filter(m::PoolModel, data::AbstractArray,
     elseif weight_type == :static
         loglhconditional = log.(mapslices(x -> Ψ([m[:λ].value; 1 - m[:λ].value], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional
+    elseif weight_type == :bma
+        error("Estimation for Bayesian Model Averaging is computed directly by the estimate_bma function, so the filter function does not return anything.")
     end
 end
 
