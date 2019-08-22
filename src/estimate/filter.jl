@@ -175,9 +175,9 @@ function filter(m::PoolModel, data::AbstractArray,
     # Check tuning
     if isempty(tuning)
         try
-            tuning = get_setting(pm, :tuning)
+            tuning = get_setting(m, :tuning)
         catch
-            if get_setting(pm, :weight_type) == :dynamic
+            if get_setting(m, :weight_type) == :dynamic
                 warn("no tuning parameters provided; using default tempered particle filter values")
             end
         end
