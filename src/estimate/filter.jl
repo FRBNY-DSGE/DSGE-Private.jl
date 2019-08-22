@@ -166,7 +166,7 @@ function filter(m::PoolModel, data::AbstractArray,
     if isempty(s_0)
         s_0 = reshape(rand(F_λ, n_particles), 1, n_particles)
         s_0 = [s_0; 1 .- s_0]
-    else
+    elseif get_setting(m, :weight_type) == :dynamic
         if size(s_0,2) != n_particles
             error("s0 does not contain enough particles")
         end
