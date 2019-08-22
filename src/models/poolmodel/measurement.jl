@@ -24,7 +24,7 @@ function measurement(m::PoolModel{T}) where {T<:AbstractFloat}
     # Assumes λ to be weight on the first model
     if weight_type == :dynamic
         Ψ(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
-    elseif weight_type == :equal_weight
+    elseif weight_type == :equal
         Ψ(x::Vector{Float64}, data::Vector{Float64}) = dot(data, [0.5; 0.5])
     elseif weight_type == :static
         Ψ(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)

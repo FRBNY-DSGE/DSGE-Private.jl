@@ -145,7 +145,7 @@ This section defines filter and filter_likelihood for the PoolModel type
 ```
 """
 function filter(m::PoolModel, data::AbstractArray,
-                s_0::Matrix{S} = Matrix{Float64}(undef,0,0);
+                s_0::AbstractArray{S} = Matrix{Float64}(undef,0,0);
                 start_date::Date = date_presample_start(m),
                 cond_type::Symbol = :none, include_presample::Bool = true,
                 in_sample::Bool = true,
@@ -197,18 +197,18 @@ function filter(m::PoolModel, data::AbstractArray,
                                         poolmodel = true,
                                         fixed_sched = fixed_sched,
                                         tuning..., verbose = :none)
-    elseif weight_type == :equal_weight
-        loglhconditional = log.(Φ([0.], data))
+    elseif weight_type == :equal
+        loglhconditional = log.(mapslices(x -> Φ([0.], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional
     elseif :weight_type == :static
-        loglhconditional = log.(Φ([m[:λ].value; 1 - m[:λ].value], data))
+        loglhconditional = log.(mapslices(x -> Φ([m[:λ].value; 1 - m[:λ].value], x, data, dims = 1))
         return sum(loglhconditional), loglhconditional
     end
 end
 
 
 function filter_likelihood(m::PoolModel, data::AbstractArray,
-                           s_0::Matrix{S} = Matrix{Float64}(undef,0,0);
+                           s_0::AbstractArray{S} = Matrix{Float64}(undef,0,0);
                            start_date::Date = date_presample_start(m),
                            cond_type::Symbol = :none, include_presample::Bool = true,
                            in_sample::Bool = true, parallel::Bool = false, tol::Float64 = 0.,
