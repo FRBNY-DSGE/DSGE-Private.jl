@@ -82,43 +82,44 @@ function load_data(m::AbstractModel; cond_type::Symbol = :none, try_disk::Bool =
     return df
 end
 
-function load_data(m::PoolModel{T}; cond_type::Symbol = :none,
-                   verbose::Symbol = :low) where T<:AbstractFloat
-    # Load predictive densities into DataFrame
-    df = DataFrame()
-    start_date = date_presample_start(m)
-    end_data = date_mainsample_end(m)
-    savedir = dataroot(m)
-    if savedir[end] == "/"
-        savedir = savedir[1:end-1]
-    end
-    for obs in values(m.observable_mappings)
-        if isempty(df)
-            tmp_df = CSV.read(joinpath(savedir, "raw/" * string(obs.input_series[1]) * ".csv"))
-            df[:date] = Vector{Dates.Date}(tmp_df[:date])
-            df[obs.key] = Vector{Float64}(tmp_df[obs.input_series[2]])
-        else
-            tmp_df = CSV.read(joinpath(savedir, "raw/" * string(obs.input_series[1]) * ".csv"))
-            tmp_df[:date] = Vector{Dates.Date}(tmp_df[:date])
-            tmp_df[obs.key] = Vector{Float64}(tmp_df[obs.input_series[2]])
-            df = join(df, tmp_df[[:date, obs.key]], on = :date, kind = :outer)
-        end
-    end
+# function load_data(m::PoolModel{T}; cond_type::Symbol = :none,
+#                    verbose::Symbol = :low) where T<:AbstractFloat
+#     # Load predictive densities into DataFrame
+#     df = DataFrame()
+#     start_date = date_presample_start(m)
+#     end_data = date_mainsample_end(m)
+#     savedir = dataroot(m)
+#     if savedir[end] == "/"
+#         savedir = savedir[1:end-1]
+#     end
+#     for obs in values(m.observable_mappings)
+#         if isempty(df)
+#             mnemonic = string(obs.input_series[1])
+#             tmp_df = CSV.read(joinpath(savedir, "raw/" * string(obs.input_series[1]) * ".csv"))
+#             df[:date] = Vector{Dates.Date}(tmp_df[:date])
+#             df[obs.key] = Vector{Float64}(tmp_df[obs.input_series[2]])
+#         else
+#             tmp_df = CSV.read(joinpath(savedir, "raw/" * string(obs.input_series[1]) * ".csv"))
+#             tmp_df[:date] = Vector{Dates.Date}(tmp_df[:date])
+#             tmp_df[obs.key] = Vector{Float64}(tmp_df[obs.input_series[2]])
+#             df = join(df, tmp_df[[:date, obs.key]], on = :date, kind = :outer)
+#         end
+#     end
 
-    # Ensure that only appropriate rows make it into the returned DataFrame.
-    start_date = date_presample_start(m)
-    end_date   = if cond_type in [:semi, :full]
-        date_conditional_end(m)
-    else
-        date_mainsample_end(m)
-    end
-    df = df[start_date .<= df[:date] .<= end_date, :]
+#     # Ensure that only appropriate rows make it into the returned DataFrame.
+#     start_date = date_presample_start(m)
+#     end_date   = if cond_type in [:semi, :full]
+#         date_conditional_end(m)
+#     else
+#         date_mainsample_end(m)
+#     end
+#     df = df[start_date .<= df[:date] .<= end_date, :]
 
-    # save_data(m, df; cond_type=cond_type)
-    println(verbose, :low, "dataset creation successful")
+#     # save_data(m, df; cond_type=cond_type)
+#     println(verbose, :low, "dataset creation successful")
 
-    return df
-end
+#     return df
+# end
 
 """
 ```
@@ -222,8 +223,6 @@ function load_data_levels(m::AbstractModel; verbose::Symbol=:low)
             @warn "$file was not found; missings used"
         end
     end
-
-    sort!(df, :date)
 
     # print population level data to a file
     if !m.testing
