@@ -80,7 +80,7 @@ the model.
 
 * `approx::Approximation`: Approximation object for use in constructing function and integral approximations
 """
-mutable struct GHLS{T} <: AbstractModel{T}
+mutable struct GHLS{T} <: AbstractDSGEModel{T}
     parameters::ParameterVector{T}                         # vector of all time-invariant model parameters
     steady_state::ParameterVector{T}                       # model steady-state values
     keys::OrderedDict{Symbol,Int}                          # human-readable names for all the model
