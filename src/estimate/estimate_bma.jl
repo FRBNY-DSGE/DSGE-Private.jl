@@ -1,6 +1,6 @@
 """
 ```
-estimate_bma(m, data, prior; return_output = false)
+estimate_bma(m, data, prior; return_output = false, filestring_addl = [])
 ```
 
 Estimate a Bayesian Model Average.
@@ -14,15 +14,19 @@ Estimate a Bayesian Model Average.
 
 ### Keyword Arguments:
 - `return_output::Bool`: option to return output. If false, `nothing` is returned.
+- `filestring_addl::Vector{String}`: Additional strings to append to output files.
 
 """
 function estimate_bma(m::PoolModel, df::DataFrame, prior::Float64 = 0.5;
-                      return_output::Bool = false)
-    return estimate_bma(m, df_to_matrix(m, df))
+                      return_output::Bool = false,
+                      filestring_addl::Vector{String} = Vector{String}(undef,0))
+    return estimate_bma(m, df_to_matrix(m, df), prior;
+                        return_output = return_output, filestring_addl = filestring_addl)
 end
 
 function estimate_bma(m::PoolModel, data::Matrix{Float64} = Matrix{Float64}(0,0),
-                      prior::Float64 = 0.5; return_output::Bool = false)
+                      prior::Float64 = 0.5; return_output::Bool = false,
+                      filestring_addl::Vector{String} = Vector{String}(undef,0))
 
     # Compute λ weights
     λ = zeros(size(data,2))
