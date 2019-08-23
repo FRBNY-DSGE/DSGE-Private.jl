@@ -18,14 +18,15 @@ Estimate a Bayesian Model Average.
 
 """
 function estimate_bma(m::PoolModel, df::DataFrame, prior::Float64 = 0.5;
-                      return_output::Bool = false,
+                      return_output::Bool = false, save_output::Bool = true,
                       filestring_addl::Vector{String} = Vector{String}(undef,0))
     return estimate_bma(m, df_to_matrix(m, df), prior;
-                        return_output = return_output, filestring_addl = filestring_addl)
+                        return_output = return_output, save_output = save_output,
+                        filestring_addl = filestring_addl)
 end
 
 function estimate_bma(m::PoolModel, data::Matrix{Float64} = Matrix{Float64}(0,0),
-                      prior::Float64 = 0.5; return_output::Bool = false,
+                      prior::Float64 = 0.5; return_output::Bool = false, save_output::Bool = true,
                       filestring_addl::Vector{String} = Vector{String}(undef,0))
 
     # Compute λ weights
@@ -36,8 +37,10 @@ function estimate_bma(m::PoolModel, data::Matrix{Float64} = Matrix{Float64}(0,0)
     end
 
     # Save weights
-    h5open(rawpath(m, "estimate", "bmasave.h5", filestring_addl), "w") do file
-        write(file, "bmaparams", λ)
+    if save_output
+        h5open(rawpath(m, "estimate", "bmasave.h5", filestring_addl), "w") do file
+            write(file, "bmaparams", λ)
+        end
     end
 
     if return_output
