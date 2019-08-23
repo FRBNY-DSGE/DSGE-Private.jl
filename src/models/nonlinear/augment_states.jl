@@ -24,9 +24,9 @@ function augment_states(m::GHLS{T}, TTT::Matrix{T}, RRR::Matrix{T},
     TTT_aug[endo_addl[:y_t1], endo[:y_t]] = 1.0
     TTT_aug[endo_addl[:c_t1], endo[:c_t]] = 1.0
     TTT_aug[endo_addl[:i_t1], endo[:i_t]] = 1.0
-    TTT_aug[endo_addl[:w_t1], endo[:w_t]] = 1.0
+   #= TTT_aug[endo_addl[:w_t1], endo[:w_t]] = 1.0
     TTT_aug[endo_addl[:π_t1], endo[:π_t]] = 1.0
-    TTT_aug[endo_addl[:L_t1], endo[:L_t]]  = 1.0
+    TTT_aug[endo_addl[:L_t1], endo[:L_t]]  = 1.0=#
 
     ## We construct state for expected inflation using the fact
     ##
@@ -36,7 +36,7 @@ function augment_states(m::GHLS{T}, TTT::Matrix{T}, RRR::Matrix{T},
     ## So to construct the state for E_t[p_{t+1}], we need to make all these
     ## objects, and just index out the row relevant to pi_t
 
-    T2 = TTT^2
+  #=  T2 = TTT^2
     TR = TTT*RRR
     CTC = CCC+TTT*CCC
 
@@ -44,7 +44,7 @@ function augment_states(m::GHLS{T}, TTT::Matrix{T}, RRR::Matrix{T},
     TTT_aug[endo_addl[:Et_π_t],:] = [T2[endo[:π_t],:]; zeros(n_addl_states)]
 
     RRR_aug[endo_addl[:Et_π_t],:] = TR[endo[:π_t],:]
-    CCC_aug[endo_addl[:Et_π_t],:] = CTC[endo[:π_t],:]
+    CCC_aug[endo_addl[:Et_π_t],:] = CTC[endo[:π_t],:]=#
 
     return TTT_aug, RRR_aug, CCC_aug
 end

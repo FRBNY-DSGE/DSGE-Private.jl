@@ -143,7 +143,7 @@ function Base.copy(system::System)
     pseudo_meas = PseudoMeasurement(system[:ZZ_pseudo], system[:DD_pseudo])
     return System(trans, meas, pseudo_meas)
 end
-
+#=
 """
 ```
 compute_system(m; apply_altpolicy = false)
@@ -169,7 +169,7 @@ function compute_system(m::AbstractModel{T}; apply_altpolicy = false,
     else
         return System(transition_equation, measurement_equation)
     end
-end
+end=#
 
 """
 ```
@@ -190,7 +190,7 @@ compute_system(m, verbose = high)
 # Description:
 Solves the model and creates the transition and measurement functions for the non-linear GHLS model.
 """
-function compute_system(m::GHLS,
+function compute_system(m::GHLS;
                         verbose::Symbol = :high)
     # Solve model
     α_star = solve(m)
@@ -202,8 +202,8 @@ function compute_system(m::GHLS,
 
     # Define transition and measurement functions
     function Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64})
-        endogvar = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
-        decr!(endogvar, m.approx, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states)
+        endogvar = Array{Float64}(undef, m.approx.nendogvars+m.approx.nexogvars)
+        decr!(endogvar, m.approx, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states, get_setting(m, :zero_lower_bound))
 
         # The current period state includes the lags of GDP, consumption, and investment
         append!(endogvar,[s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]])
@@ -213,7 +213,7 @@ function compute_system(m::GHLS,
     Ψ = measurement(m)
 
     # Define shock and measurement error distributions
-    F_ϵ = Distributions.MvNormal(zeros(m.approx.nexogshock), Matrix{Float64}(I, m.approx.nexogshock, m.approx.nexogshock))
+    F_ϵ = Distributions.MvNormal(zeros(m.approx.nexogshocks), Matrix{Float64}(I, m.approx.nexogshocks, m.approx.nexogshocks))
     F_u = Distributions.MvNormal(zeros(length(EE[:,1])), EE)
 
     return Φ, Ψ, F_ϵ, F_u

@@ -127,7 +127,7 @@ function intermediatedec!(endogvar::Vector{Float64},nendogvars::Int,nexog::Int,l
     endogvar[endogenous_states[:k_t]] = (1.0-params[keys[:δ]])*(endogvarm1[endogenous_states[:k_t]]/(params[keys[:gz]]*techshk)) + invshk*endogvar[endogenous_states[:i_t]]*(1.0- (params[keys[:ϕ_I]]/2.0)*(endogvar[endogenous_states[:Vi_t]]-1.0)*(endogvar[endogenous_states[:Vi_t]]-1.0) ) #cap: \bar{k}_{t+1} from (1.38) in TA
     endogvar[endogenous_states[:R_t]] = copy(endogvar[endogenous_states[:rm_t]]) # copy as to no make it a pointer, this is nomr (Nominal Interest Rate) - see (1.18) in TA
 
-    endogvar[nendogvars+1:nendogvars+nexogvars] = currentshockvalues
+    endogvar[nendogvars+1:nendogvars+nexog] = currentshockvalues
 
     return nothing
 end

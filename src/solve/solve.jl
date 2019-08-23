@@ -462,12 +462,12 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
         for j in 1:approx.ns
             err = 0.0
             for k in 1:approx.ngridpoints
-                updated_approx_fucntions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, m[:zero_lower_bound])
+                updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
                 err += err2
             end
 
             # Solve for α by multiplying by inverse matrix of Smolyak basis polynomials
-            mul!(α_temp, approx.bbtinv', updated_approx_polynomials')
+            mul!(α_temp, approx.bbtinv', updated_approx_functions')
 
             # Transform the matrix of α coefficients associated with this exogenous state to a vector and store in the matrix of new α coefficients
             α_new[:, j] = vec(α_temp[:, 1:approx.nfunc])
