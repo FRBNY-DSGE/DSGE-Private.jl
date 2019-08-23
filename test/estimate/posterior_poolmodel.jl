@@ -1,6 +1,7 @@
 # Note that this test asumes TPF properly works
 
 pm = PoolModel("ss1")
+pm <= Setting(:data_vintage, "190822")
 filepath = dirname(@__FILE__)
 pm <= Setting(:dataroot, "$(filepath)/../reference/")
 data = df_to_matrix(pm, load_data(pm))
@@ -22,7 +23,7 @@ tpf_out, ~, ~ = tempered_particle_filter(data, Φpost, Ψpost, F_ϵpost, F_upost
                                    s_init; tuning..., verbose = :none,
                                    fixed_sched = [1.], parallel = false, poolmodel = true)
 
-@testset "Check likelihood and posterior calculations" begin
+@testset "Check likelihood and posterior calculations for dynamic weight" begin
     Random.seed!(1793)
     lh = likelihood(pm, data)
     @test lh == tpf_out
@@ -36,6 +37,27 @@ tpf_out, ~, ~ = tempered_particle_filter(data, Φpost, Ψpost, F_ϵpost, F_upost
     global y = x + [-.7; -300; 5]
     post_not_at_start = posterior!(pm, y, data)
     ϵ = 0.0004
+    @test abs(post_at_start - post_not_at_start) > ϵ
+end
+
+pm = PoolModel("ss1", weight_type = :static)
+Random.seed!(1793)
+static_out = sum(DSGE.filter_likelihood(pm, data))
+
+@testset "Check likelihood and posterior calculations for static weight" begin
+    Random.seed!(1793)
+    lh = likelihood(pm, data)
+    @test lh == static_out
+
+    Random.seed!(1793)
+    x = map(α->α.value, pm.parameters)
+    post_at_start = posterior!(pm, x, data)
+    @test post_at_start == static_out
+
+    Random.seed!(1793)
+    global y = x + (1 - x) ./ 2
+    post_not_at_start = posterior!(pm, y, data)
+    ϵ = 1
     @test abs(post_at_start - post_not_at_start) > ϵ
 end
 

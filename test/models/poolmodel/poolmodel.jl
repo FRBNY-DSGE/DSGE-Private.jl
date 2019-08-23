@@ -4,17 +4,23 @@
 # filepath = pwd()
 filepath = dirname(@__FILE__)
 
-pm = PoolModel()
-# pm <= Setting(:saveroot, "$(filepath)/../reference/")
-pm <= Setting(:dataroot, "$(filepath)/../reference/")
-@testset "Check constructors" begin
+@testset "Check constructors with dynamic, equal, and static weight options" begin
+    pm = PoolModel()
     @test typeof(pm) == PoolModel{Float64}
-    mstatic = PoolModel(static = true)
-    @test mstatic[:ρ].value == 1 && mstatic[:ρ].fixed
+    pm = PoolModel(weight_type = :dynamic)
+    @test typeof(pm) == PoolModel{Float64}
+    @test get_setting(pm, :weight_type) == :dynamic
+    pm = PoolModel(weight_type = :equal)
+    @test typeof(pm) == PoolModel{Float64}
+    @test get_setting(pm, :weight_type) == :equal
+    pm = PoolModel(weight_type = :static)
+    @test typeof(pm) == PoolModel{Float64}
+    @test get_setting(pm, :weight_type) == :static
 end
 
 # Check compute_system, transition and measurement functions apply to PoolModel
 @testset "Check solve and statespace functions apply to PoolModel" begin
+    pm = PoolModel()
     Φ1, Ψ1, F_ϵ1, F_u1, F_λ1 = compute_system(pm)
     Φ2, F_ϵ2, F_λ2 = transition(pm)
     Ψ2, F_u2 = measurement(pm)

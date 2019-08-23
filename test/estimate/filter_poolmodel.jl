@@ -1,5 +1,6 @@
 # Note that this test assumes TPF properly works
 pm = PoolModel("ss1")
+pm <= Setting(:data_vintage, "190822")
 filepath = dirname(@__FILE__)
 pm <= Setting(:dataroot, "$(filepath)/../reference/")
 data = df_to_matrix(pm, load_data(pm))
@@ -44,6 +45,30 @@ filt_lik_tpf_out = sum(DSGE.filter_likelihood(pm, data, s_init; tuning = get_set
     @test tpf_out == filt_tpf_out
     @test tpf_out == filt_lik_tpf_out
 end
+
+@testset "Check equal weights computes properly" begin
+    pm = PoolModel("ss1", weight_type = :equal)
+    pm <= Setting(:data_vintage, "190822")
+    data = df_to_matrix(pm, load_data(pm))
+    filt_out, ~ = DSGE.filter(pm, data[:,1:2])
+    filtlik_out = sum(DSGE.filter_likelihood(pm, data[:,1:2]))
+    truefilt_out = sum(log.(sum(data[:,1:2] ./ 2, dims = 1)))
+    @test filt_out == truefilt_out
+    @test filtlik_out == truefilt_out
+end
+
+@testset "Check static weights computes properly" begin
+    pm = PoolModel("ss1", weight_type = :static)
+    pm <= Setting(:data_vintage, "190822")
+    data = df_to_matrix(pm, load_data(pm))
+    s_init = [0.5, 0.5]
+    filt_out, ~  = DSGE.filter(pm, data[:,1:2], s_init)
+    filtlik_out = sum(DSGE.filter_likelihood(pm, data[:,1:2], s_init))
+    truefilt_out = sum(log.(sum(data[:,1:2] ./ 2, dims = 1)))
+    @test filt_out == truefilt_out
+    @test filtlik_out == truefilt_out
+end
+
 
 
 nothing
