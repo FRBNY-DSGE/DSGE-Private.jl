@@ -1,4 +1,5 @@
-isdefined(Base, :__precompile__) && __precompile__(false)
+isdefined(Base, :__precompile__) && __precompile__()
+# Added below line since CSV wasn't precompiling otherwise
 
 module DSGE
     using ModelConstructors, SMC
@@ -12,6 +13,7 @@ module DSGE
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample, Weights
     using StatsFuns: chisqinvcdf
+    import Base: isempty
     import Calculus
     import Base.isempty, Base.<, Base.min, Base.max
     import LinearAlgebra: rank
@@ -19,6 +21,7 @@ module DSGE
     import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks
     import ModelConstructors
     import ModelConstructors: @test_matrix_approx_eq, @test_matrix_approx_eq_eps
+    import FastGaussQuadrature: gausshermite
 
     export
         # distributions_ext.jl
@@ -82,11 +85,11 @@ module DSGE
         subtract_quarters, iterate_quarters,
 
         # solve/
-        gensys, solve,
+        gensys, solve, simulate_linear, lindecrule_markov, initial_α, fixedpoint, fixedpoint_parallel, create_slopes,
 
         # estimate/
         simulated_annealing, combined_optimizer, lbfgs,
-        filter, filter_shocks, likelihood, posterior, posterior!,
+        filter, filter_shocks, filter_likelihood, likelihood, posterior, posterior!,
         optimize!, csminwel, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance, prior, get_estimation_output_files,
         compute_moments, find_density_bands, mutation, resample, smc,
@@ -152,6 +155,15 @@ module DSGE
         pseudo_measurement,
         shock_groupings
 
+       	# models/nonlinear/
+        GHLS, decrlin, gen_shockgrid, decr_euler, decr!, decrlin, intermediatedec!, finite_grid!, msv2xx, exogstate,
+
+        # approximation
+        Approximation, setgridsize, exoggridindex, ghquadrature, smolyakpoly, sparsegrid,
+
+        # util
+        @test_matrix_approx_eq, @test_matrix_approx_eq_eps
+
     const VERBOSITY = Dict(:none => 0, :low => 1, :high => 2)
     const DSGE_DATE_FORMAT = "yymmdd"
     const DSGE_DATASERIES_DELIM = "__"
@@ -160,7 +172,7 @@ module DSGE
     include("abstractdsgemodel.jl")
     include("settings.jl")
     include("defaults.jl")
-    include("statespace.jl")
+    # include("statespace.jl")
     include("util.jl")
 
     include("benchmark/util.jl")
@@ -173,6 +185,22 @@ module DSGE
     include("data/transform_data.jl")
     include("data/reverse_transform.jl")
     include("data/util.jl")
+
+    #interns start here
+
+    include("approximation.jl")
+    include("models/nonlinear/GHLS.jl")
+    include("statespace.jl")
+    include("models/nonlinear/subspecs.jl")
+    include("models/nonlinear/eqcond.jl")
+    include("models/nonlinear/observables.jl")
+    include("models/nonlinear/measurement.jl")
+    include("models/nonlinear/augment_states.jl")
+
+    include("models/nonlinear/model_details.jl")
+
+    #interns end here
+
 
     include("solve/gensys.jl")
     include("solve/solve.jl")
@@ -192,7 +220,6 @@ module DSGE
     include("estimate/marginal_data_density.jl")
     include("estimate/estimate.jl")
     include("estimate/nearest_spd.jl")
-
     include("estimate/smc/particle.jl")
     include("estimate/smc/initialization.jl")
     include("estimate/smc/helpers.jl")

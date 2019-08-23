@@ -195,3 +195,56 @@ function filter_shocks(m::AbstractDSGEModel, df::DataFrame, system::System{S},
 
     return ϵ_filt
 end
+
+### Nonlinear (Interns)
+
+
+function filter_likelihood(m::GHLS, df::DataFrame, Φ::Function, Ψ::Function,
+                           F_ϵ::Distribution, F_u::Distribution,
+                           s_0::Vector{S} = Vector{S}(undef, 0),
+                           P_0::Matrix{S} = Matrix{S}(undef, 0, 0);
+                           cond_type::Symbol = :none, include_presample::Bool = true,
+                           in_sample::Bool = true,
+                           tol::Float64 = 0.0) where {S<:AbstractFloat}
+
+    data = df_to_matrix(m, df; cond_type = cond_type, in_sample = in_sample)
+    start_date = max(date_presample_start(m), df[1, :date])
+
+    filter_likelihood(m, data, Φ, Ψ, F_ϵ, F_u, s_0, P_0; start_date = start_date,
+                      include_presample = include_presample, tol = tol)
+end
+
+function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
+                           F_ϵ::Distribution, F_u::Distribution,
+                           s_0::Vector{S} = Vector{S}(undef, 0),
+                           P_0::Matrix{S} = Matrix{S}(undef, 0, 0);
+                           start_date::Date = date_presample_start(m),
+                           include_presample::Bool = true,
+                           tol::Float64 = 0.0) where {S<:AbstractFloat}
+
+    #data = readdlm("../glss_data.txt")[:,[1,2,5,6,7]]
+    #data = data'
+
+    # Partition sample into pre- and post-ZLB regimes
+    # Note that the post-ZLB regime may be empty if we do not impose the ZLB
+    # regime_inds = zlb_regime_indices(m, data, start_date)
+
+    # Specify number of presample periods if we don't want to include them in
+    # the final results
+    Nt0 = include_presample ? 0 : n_presample_periods(m)
+
+    # Steady states are in logged form but when passed to decr are treated as if were not logged already so need to take exponential
+    s0 = exp.([i.value for i in m.steady_state[1:m.approx.nvars]])
+    append!(s0, zeros(m.approx.nexog))
+    lagged_variable_indices = [m.endogenous_states[:y_t], m.endogenous_states[:c_t], m.endogenous_states[:i_t]]
+    append!(s0, s0[lagged_variable_indices]) # for necessary lags
+    s_init = initialize_state_draws(s0, F_ϵ, Φ, m.settings[:n_particles].value)
+    println("tpf runs")
+    @show data[:,1:10]
+
+    # Run Tempered Particle filter, returns log-likelihoods
+    loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,
+                             s_init; n_presample_periods = Nt0, n_particles = m.settings[:n_particles].value)
+    println("tpf done")
+    return loglh
+end

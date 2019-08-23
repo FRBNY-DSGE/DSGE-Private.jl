@@ -173,7 +173,55 @@ end
 
 """
 ```
-compute_system_function(system::System{S}) where S<:AbstractFloat
+compute_system(m, verbose = high)
+```
+
+# Arguemnts:
+
+- `m::GHLS`: The GHLS model
+
+# Outputs:
+
+- `Φ::Function`: transition equation
+- `Ψ::Function`: measurement equation
+- `F_ϵ::Distributions.MvNormal`: shock distribution
+- `F_u::Distributions.MvNormal`: measurement error distribution
+
+# Description:
+Solves the model and creates the transition and measurement functions for the non-linear GHLS model.
+"""
+function compute_system(m::GHLS,
+                        verbose::Symbol = :high)
+    # Solve model
+    α_star = solve(m)
+
+    # Covariance Matrix for F_u (measurement error distribution)
+    #See page 13 of Gust et. al (2017) for explananation of values
+    m_e = 0.25
+    EE = m_e * diagm([m[:e_y].value, m[:e_π].value, m[:e_R].value, m[:e_c].value, m[:e_i].value])
+
+    # Define transition and measurement functions
+    function Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64})
+        endogvar = Array{Float64}(undef, m.approx.nvars+m.approx.nexog)
+        decr!(endogvar, m.approx, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states)
+
+        # The current period state includes the lags of GDP, consumption, and investment
+        append!(endogvar,[s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]])
+        return endogvar
+    end
+
+    Ψ = measurement(m)
+
+    # Define shock and measurement error distributions
+    F_ϵ = Distributions.MvNormal(zeros(m.approx.nexogshock), Matrix{Float64}(I, m.approx.nexogshock, m.approx.nexogshock))
+    F_u = Distributions.MvNormal(zeros(length(EE[:,1])), EE)
+
+    return Φ, Ψ, F_ϵ, F_u
+end
+
+"""
+```
+compute_system_function{S<:AbstractFloat}(system::System{S})
 ```
 
 ### Inputs
@@ -199,7 +247,7 @@ function compute_system_function(system::System{S}) where S<:AbstractFloat
 
     # Define transition and measurement functions
     @inline Φ(s_t1::Vector{S}, ϵ_t::Vector{S}) = TTT*s_t1 + RRR*ϵ_t + CCC
-    @inline Ψ(s_t::Vector{S}) = ZZ*s_t + DD
+    @inline Ψ(s_t::Vector{S},  u_t::Vector{S}) = ZZ*s_t + DD + u_t
 
     # Define shock and measurement error distributions
     nshocks = size(QQ, 1)
