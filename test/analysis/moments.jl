@@ -27,3 +27,19 @@ save_λhatplush_parallel = load("$(fp)/../reference/moments_poolmodel_outputs.jl
     @test λhat_t == 0.5
     @test λhat_t_parallel == 0.5
 end
+
+Random.seed!(1793)
+sm = PoolModel("ss1"; weight_type = :static)
+sm <= Setting(:saveroot, "$(fp)/../reference/")
+sm <= Setting(:hessian_path, "$(fp)/../reference/mh_hessian_poolmodel.h5")
+sm <= Setting(:n_mh_simulations, 1000)
+save_sλmat_noparallel = load("$(fp)/../reference/moments_poolmodel_outputs.jld2", "slammat_noparallel")
+save_sλmat_parallel = load("$(fp)/../reference/moments_poolmodel_outputs.jld2", "slammat_parallel")
+sλmat_noparallel = sample_λ(sm, pred_dens, 1)
+sλmat_parallel   = sample_λ(sm, pred_dens, 1; parallel = true)
+rm(joinpath(saveroot(sm), "output_data/poolmodel"); recursive = true)
+
+@testset "Check sample_λ works for a static pool" begin
+    @test sλmat_noparallel == save_sλmat_noparallel
+    @test sλmat_parallel == save_sλmat_parallel
+end

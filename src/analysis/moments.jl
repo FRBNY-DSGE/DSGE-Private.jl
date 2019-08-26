@@ -839,10 +839,15 @@ end
 """
 ```
 sample_λ(m, pred_dens, θs, T = -1; parallel = true) where S<:AbstractFloat
+sample_λ(m, pred_dens, T = -1; parallel = true) where S<:AbstractFloat
 ```
 
 Computes and samples from the conditional density p(λ_t|θ, I_t, P) for
-particle in `θs`, which represents the posterior distribution.
+particle in `θs`, which represents the posterior distribution. The sampled
+λ particles represent the posterior distribution p(λ_{t|t} | I_t, P).
+
+If no posterior distribution is passed in, then the function computes
+the distribution of λ_{t|t} for a static pool.
 
 ### Inputs
 
@@ -918,6 +923,34 @@ function sample_λ(m::PoolModel{S}, data::Matrix{S}, θ::Vector{S},
     return λ_particles[size(data,2)][1,DSGE.sample(DSGE.Weights(λ_weights[:,end]))]
 end
 
+function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, T::Int64 = -1;
+                  parallel::Bool = false,
+                  filestring_addl::Vector{String} = Vector{String}(undef,0),
+                  tuning0::Dict{Symbol,Any} = Dict{Symbol,Any}()) where S<:AbstractFloat
+
+    # Check m is static
+    if get_setting(m, :weight_type) != :static
+        error("PoolModel is not static. Set the keyword argument weight_type = :static to create a static PoolModel object.")
+    end
+
+    # Initialize necessary objects
+    if T <= 0
+         error("T must be positive") # No period provided or is invalid
+    end
+    tuning = isempty(tuning0) ? deepcopy(get_setting(m, :tuning)) : deepcopy(tuning0)
+    tuning[:get_t_particle_dist] = true
+    tuning[:parallel] = parallel
+    tuning[:allout] = false
+    orig_samp_method = get_setting(m, :sampling_method)
+    m <= Setting(:sampling_method, :MH)
+
+    # Compute posterior from a static pool
+    data = (T == 1) ? reshape(pred_dens[:,1], 2, 1) : pred_dens[:,1:T] # make sure it is matrix
+    estimate(m, data; filestring_addl = filestring_addl, proposal_covariance = ones(1,1))
+    m <= Setting(:sampling_method, orig_samp_method)
+
+    return h5read(rawpath(m, "estimate", "mhsave.h5", filestring_addl), "mhparams")
+end
 
 """
 ```
