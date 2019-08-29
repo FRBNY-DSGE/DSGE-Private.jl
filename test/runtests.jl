@@ -2,15 +2,31 @@ using ModelConstructors, SMC, Test, Distributed, Dates, DataFrames, OrderedColle
 import ModelConstructors: @test_matrix_approx_eq, @test_matrix_approx_eq_eps
 @everywhere using DSGE, JLD2, Printf, LinearAlgebra, ModelConstructors, SMC
 
+HETDSGEGOVDEBT = "/home/rceexm14/.julia/dev/DSGE/src/models/heterogeneous_agent/het_dsge_gov_debt/reference"
+
 my_tests = [
-            "core",
-            "parameters",
-            "models/an_schorfheide/an_schorfheide",
-            "models/smets_wouters/smets_wouters",
-            "models/smets_wouters_orig/smets_wouters_orig",
-            "models/m990/m990",
-            "models/m1002/m1002",
-            "models/m1010/m1010",
+            "models/heterogeneous_agent/het_dsge_gov_debt/het_dsge_gov_debt_reduce_ell",
+            "models/heterogeneous_agent/het_dsge_gov_debt/het_dsge_gov_debt",
+            "models/representative_agent/rep_dsge_gov_debt/rep_dsge_gov_debt",
+            # "models/heterogeneous_agent/het_dsge_simple_taylor/het_dsge_simple_taylor",
+            # "models/heterogeneous_agent/het_dsge/het_dsge",
+            # "models/heterogeneous_agent/het_dsge_lag/het_dsge_lag",
+           "core",
+           "parameters",
+            # "models/heterogeneous_agent/het_dsge/het_dsge",
+            # "models/representative_agent/an_schorfheide/an_schorfheide",
+            # "models/representative_agent/smets_wouters/smets_wouters",
+            # "models/representative_agent/m990/m990",
+            # "models/representative_agent/m1002/m1002",
+            # "models/representative_agent/m1010/m1010",
+            # "models/heterogeneous_agent/krusell_smith/krusell_smith",
+            # "models/heterogeneous_agent/bond_labor/bond_labor",
+            "models/heterogeneous_agent/real_bond/real_bond",
+            "models/heterogeneous_agent/real_bond_mkup/real_bond_mkup",
+            # "models/heterogeneous_agent/krusell_smith_ct/krusell_smith_ct",
+            # "models/heterogeneous_agent/one_asset_hank/one_asset_hank",
+            # "models/heterogeneous_agent/one_asset_hank/interns",
+
             "data/misc",
             "data/load_data",
             "solve/gensys",
