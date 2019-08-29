@@ -3,16 +3,38 @@
 PoolModel{T}
 ```
 
-The PoolModel type permits dynamic predictive pooling of structural models.
+Implements several model averaging methods to pool
+the predictions of different models. Currently, `PoolModel`
+only works for pooling two different models, although
+it can be extended to more models. Confer with the paper for details.
+
+The available methods are
+
+* dynamic: weights on pooled models evolve over time and are
+           treated as a stochastic process.
+
+* static:  weights on pooled models are assumed time-invariant.
+
+* equal:   weights are set to 1/2.
+
+* bma:     weights are updated according to Bayesian model averaging.
+
+The default method is dynamic, which implements the Dynamic Pools method
+developed by Del Negro et al. (2016). To choose another method,
+use the keyword `weight_type::Symbol`, e.g.
+
+```
+pm = PoolModel(weight_type = :static) # creates a static PoolModel
+```
 
 ### Fields
 
 #### Parameters
-* `parameters::Vector{AbstractParameter}`: Vector of all time-invariant model
-  parameters.
+* `parameters::Vector{AbstractParameter}`: Vector of all time-invariant hyperparameters
+    for the chosen method of model averaging.
 
-* `keys::OrderedDict{Symbol,Int}`: Maps human-readable names for all model
-  parameters.
+* `keys::OrderedDict{Symbol,Int}`: Maps human-readable names for predictive densities
+    of pooled models.
 
 #### Inputs to Measurement and Equilibrium Condition Equations
 
@@ -47,10 +69,6 @@ The PoolModel type permits dynamic predictive pooling of structural models.
   DSGE.jl will fetch data from the Federal Reserve Bank of
   St. Louis's FRED database; all other data must be downloaded by the
   user. See `load_data` and `Observable` for further details.
-
-* `pseudo_observable_mappings::OrderedDict{Symbol,PseudoObservable}`: A
-  dictionary that stores names and transformations to/from model units. See
-  `PseudoObservable` for further details.
 """
 mutable struct PoolModel{T} <: AbstractModel{T}
     parameters::ParameterVector{T}                         # vector of all time-invariant model parameters
@@ -67,7 +85,7 @@ mutable struct PoolModel{T} <: AbstractModel{T}
     observable_mappings::OrderedDict{Symbol, Observable}
 end
 
-description(m::PoolModel) = "Julia implementation of dynamic prediction pools defined in 'Dynamic prediction pools: An investigation of financial frictions and forecasting performance' by Marco Del Negro, Raiden B. Hasegawa, and Frank Schorfheide: PoolModel, $(m.subspec)"
+description(m::PoolModel) = "Julia implementation of prediction pool methods defined in 'Dynamic prediction pools: An investigation of financial frictions and forecasting performance' by Marco Del Negro, Raiden B. Hasegawa, and Frank Schorfheide: PoolModel, $(m.subspec)"
 
 function init_model_indices!(m::PoolModel)
     # Observables
