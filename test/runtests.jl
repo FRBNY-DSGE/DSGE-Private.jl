@@ -2,8 +2,6 @@ using ModelConstructors, SMC, Test, Distributed, Dates, DataFrames, OrderedColle
 import ModelConstructors: @test_matrix_approx_eq, @test_matrix_approx_eq_eps
 @everywhere using DSGE, JLD2, Printf, LinearAlgebra, ModelConstructors, SMC
 
-HETDSGEGOVDEBT = "/home/rceexm14/.julia/dev/DSGE/src/models/heterogeneous_agent/het_dsge_gov_debt/reference"
-
 my_tests = [
             "models/heterogeneous_agent/het_dsge_gov_debt/het_dsge_gov_debt_reduce_ell",
             "models/heterogeneous_agent/het_dsge_gov_debt/het_dsge_gov_debt",
@@ -31,6 +29,9 @@ my_tests = [
             "data/load_data",
             "solve/gensys",
             "solve/solve",
+            # "solve/solve_ct",
+            # "solve/gensys_ct",
+            # "solve/reduction",
             "estimate/filter",
             "estimate/cat",
             "estimate/posterior",

@@ -16,11 +16,11 @@ module DSGE
     import Base.isempty, Base.<, Base.min, Base.max
     import LinearAlgebra: rank
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
+    import SparseArrays: sparse
     import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks
     import ModelConstructors
     import ModelConstructors: posterior!, posterior,
                               @test_matrix_approx_eq, @test_matrix_approx_eq_eps
-
     export
         # defaults.jl
         default_settings!, default_test_settings!,
@@ -191,6 +191,7 @@ module DSGE
 
     include("solve/gensys.jl")
     include("solve/solve.jl")
+    include("solve/klein.jl")
 
     include("estimate/util.jl")
     include("estimate/kalman.jl")
@@ -277,61 +278,6 @@ module DSGE
     include("plot/plot_forecast_decomposition.jl")
     include("plot/plot_forecast_sequence.jl")
 
-    include("models/financial_frictions.jl")
-
-    include("models/m990/m990.jl")
-    include("models/m990/subspecs.jl")
-    include("models/m990/eqcond.jl")
-    include("models/m990/observables.jl")
-    include("models/m990/measurement.jl")
-    include("models/m990/pseudo_observables.jl")
-    include("models/m990/pseudo_measurement.jl")
-    include("models/m990/augment_states.jl")
-
-    include("models/m1002/m1002.jl")
-    include("models/m1002/subspecs.jl")
-    include("models/m1002/eqcond.jl")
-    include("models/m1002/observables.jl")
-    include("models/m1002/measurement.jl")
-    include("models/m1002/pseudo_observables.jl")
-    include("models/m1002/pseudo_measurement.jl")
-    include("models/m1002/augment_states.jl")
-
-    include("models/m1010/m1010.jl")
-    include("models/m1010/subspecs.jl")
-    include("models/m1010/eqcond.jl")
-    include("models/m1010/observables.jl")
-    include("models/m1010/measurement.jl")
-    include("models/m1010/pseudo_observables.jl")
-    include("models/m1010/pseudo_measurement.jl")
-    include("models/m1010/augment_states.jl")
-
-    include("models/smets_wouters/smets_wouters.jl")
-    include("models/smets_wouters/subspecs.jl")
-    include("models/smets_wouters/eqcond.jl")
-    include("models/smets_wouters/observables.jl")
-    include("models/smets_wouters/measurement.jl")
-    include("models/smets_wouters/augment_states.jl")
-
-    include("models/smets_wouters_orig/smets_wouters_orig.jl")
-    include("models/smets_wouters_orig/subspecs.jl")
-    include("models/smets_wouters_orig/eqcond.jl")
-    include("models/smets_wouters_orig/observables.jl")
-    include("models/smets_wouters_orig/measurement.jl")
-    include("models/smets_wouters_orig/augment_states.jl")
-
-    include("models/an_schorfheide/an_schorfheide.jl")
-    include("models/an_schorfheide/subspecs.jl")
-    include("models/an_schorfheide/eqcond.jl")
-    include("models/an_schorfheide/observables.jl")
-    include("models/an_schorfheide/measurement.jl")
-    include("models/an_schorfheide/pseudo_observables.jl")
-    include("models/an_schorfheide/pseudo_measurement.jl")
-    include("models/an_schorfheide/augment_states.jl")
-
-
-<<<<<<< HEAD
-=======
     # Representative Agent Models
     include("models/representative_agent/financial_frictions.jl")
 
@@ -368,6 +314,13 @@ module DSGE
     include("models/representative_agent/smets_wouters/observables.jl")
     include("models/representative_agent/smets_wouters/measurement.jl")
     include("models/representative_agent/smets_wouters/augment_states.jl")
+
+    include("models/representative_agent/smets_wouters_orig/smets_wouters_orig.jl")
+    include("models/representative_agent/smets_wouters_orig/subspecs.jl")
+    include("models/representative_agent/smets_wouters_orig/eqcond.jl")
+    include("models/representative_agent/smets_wouters_orig/observables.jl")
+    include("models/representative_agent/smets_wouters_orig/measurement.jl")
+    include("models/representative_agent/smets_wouters_orig/augment_states.jl")
 
     include("models/representative_agent/an_schorfheide/an_schorfheide.jl")
     include("models/representative_agent/an_schorfheide/subspecs.jl")
@@ -469,5 +422,4 @@ module DSGE
     include("models/heterogeneous_agent/one_asset_hank/measurement.jl")
     include("models/heterogeneous_agent/one_asset_hank/eqcond.jl")
     include("models/heterogeneous_agent/one_asset_hank/helpers.jl")
->>>>>>> parent of 7dccc64... Edit DSGE.jl file, miscellaneous other deletions
 end
