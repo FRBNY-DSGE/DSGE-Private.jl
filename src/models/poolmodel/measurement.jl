@@ -3,7 +3,7 @@
 measurement(m::PoolModel{T}) where {T<:AbstractFloat}
 ```
 
-Assign measurement equation
+Assign measurement equation for Dynamic Pools
 
 ```
 p(y_t) = λ_t * p_1 + (1 - λ_t) * p_2
@@ -16,6 +16,13 @@ where
 p_1 = predictive density according to model 1
 p_2 = predictive density according to model 2
 ```
+
+Equal weights fixes λ = 1/2, and static weights computes the likelihood
+as if λ is time-invariant. For Bayesian Model Averaging,
+we compute the average according to weights computed according to BMA.
+
+The outputs are a function that computes the average of
+passed predictive densities and a degenerate measurement error Distribution.
 """
 function measurement(m::PoolModel{T}) where {T<:AbstractFloat}
     obs = m.observables

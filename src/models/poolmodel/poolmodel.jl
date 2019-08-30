@@ -27,6 +27,9 @@ use the keyword `weight_type::Symbol`, e.g.
 pm = PoolModel(weight_type = :static) # creates a static PoolModel
 ```
 
+The `weight_type` is stored as a setting, so users can retrieve
+at any point by using `get_setting`.
+
 ### Fields
 
 #### Parameters
