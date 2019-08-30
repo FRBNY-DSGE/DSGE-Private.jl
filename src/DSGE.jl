@@ -88,7 +88,7 @@ module DSGE
         initial_draw!, ParticleCloud, Particle,
 
         # backwards_compatibility.jl
-        smc2, old_to_new_cloud,# TO REMOVE
+        smc2, old_to_new_cloud, # TO REMOVE
 
         # forecast/
         load_draws, forecast_one,
@@ -228,7 +228,7 @@ module DSGE
     include("estimate/transform_transition_matrices.jl")
     include("estimate/ct_filters/ct_kalman_filter.jl")
     include("estimate/ct_filters/block_kalman_filter.jl")
-#    include("estimate/ct_filters/ct_block_kalman_filter.jl")
+    # include("estimate/ct_filters/ct_block_kalman_filter.jl")
 
     include("forecast/util.jl")
     include("forecast/io.jl")
@@ -333,6 +333,7 @@ module DSGE
 
     # Heterogeneous Agent Models
     include("models/heterogeneous_agent/util.jl")
+    include("grids.jl")
 
     include("models/heterogeneous_agent/krusell_smith/krusell_smith.jl")
     include("models/heterogeneous_agent/krusell_smith/steady_state.jl")

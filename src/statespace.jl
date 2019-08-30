@@ -153,6 +153,7 @@ Given the current model parameters, compute the state-space system
 corresponding to model `m`. Returns a `System` object.
 """
 function compute_system(m::AbstractDSGEModel{T}; apply_altpolicy = false,
+                        solution_method::Symbol = get_setting(m, :solution_method),
                         verbose::Symbol = :high) where T<:AbstractFloat
 
     if solution_method == :gensys
