@@ -8,7 +8,7 @@ SwitchingScenario scen. See `SwitchingScenario` for more
 info. Returns a dictionary of results and the proportion
 of times a switch actually occured.
 """
-function simulate_switching(m::AbstractModel, scen::SwitchingScenario;
+function simulate_switching(m::AbstractDSGEModel, scen::SwitchingScenario;
                             verbose::Symbol = :low)
 
     info_print(verbose, :low, "Simulating switching for " * string(scen.key) * "...")

@@ -16,7 +16,7 @@ The PoolModel type permits dynamic predictive pooling of structural models.
 
 #### Inputs to Measurement and Equilibrium Condition Equations
 
-* `model::OrderedDict{Symbol,AbstractModel}`: Maps name to its underlying model
+* `model::OrderedDict{Symbol,AbstractDSGEModel}`: Maps name to its underlying model
   object.
 
 #### Model Specifications and Settings
@@ -52,7 +52,7 @@ The PoolModel type permits dynamic predictive pooling of structural models.
   dictionary that stores names and transformations to/from model units. See
   `PseudoObservable` for further details.
 """
-mutable struct PoolModel{T} <: AbstractModel{T}
+mutable struct PoolModel{T} <: AbstractDSGEModel{T}
     parameters::ParameterVector{T}                         # vector of all time-invariant model parameters
     keys::OrderedDict{Symbol,Int}                          # human-readable names for all the model
                                                            # parameters and steady-states

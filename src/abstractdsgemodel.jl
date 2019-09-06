@@ -1,6 +1,6 @@
-abstract type AbstractModel{T} end
+abstract type AbstractDSGEModel{T} end
 
-function Base.show(io::IO, m::AbstractModel)
+function Base.show(io::IO, m::AbstractDSGEModel)
     @printf io "Dynamic Stochastic General Equilibrium Model\n"
     @printf io "no. states:             %i\n" n_states(m)
     @printf io "no. anticipated shocks: %i\n" n_anticipated_shocks(m)
@@ -8,7 +8,7 @@ function Base.show(io::IO, m::AbstractModel)
     @printf io "description:\n %s\n"          description(m)
 end
 
-@inline function Base.getindex(m::AbstractModel, i::Integer)
+@inline function Base.getindex(m::AbstractDSGEModel, i::Integer)
     if i <= (j = length(m.parameters))
         return m.parameters[i]
     else
@@ -17,7 +17,7 @@ end
 end
 
 # need to define like this so we can disable bounds checking
-@inline function Base.getindex(m::AbstractModel, k::Symbol)
+@inline function Base.getindex(m::AbstractDSGEModel, k::Symbol)
     i = m.keys[k]
     @inbounds if i <= (j = length(m.parameters))
         return m.parameters[i]
@@ -26,7 +26,7 @@ end
     end
 end
 
-@inline function Base.setindex!(m::AbstractModel, value::Number, i::Integer)
+@inline function Base.setindex!(m::AbstractDSGEModel, value::Number, i::Integer)
     if i <= (j = length(m.parameters))
         param = m.parameters[i]
         param.value = value
@@ -41,9 +41,9 @@ end
     end
 end
 
-Base.setindex!(m::AbstractModel, value::Array, k::Symbol) = Base.setindex!(m, value, m.keys[k])
+Base.setindex!(m::AbstractDSGEModel, value::Array, k::Symbol) = Base.setindex!(m, value, m.keys[k])
 
-@inline function Base.setindex!(m::AbstractModel, value::Array, i::Integer)
+@inline function Base.setindex!(m::AbstractDSGEModel, value::Array, i::Integer)
     if i <= (j = length(m.parameters))
         param = m.parameters[i]
         param.value = value
@@ -60,13 +60,13 @@ end
 
 """
 ```
-setindex!(m::AbstractModel, param::AbstractParameter, i::Integer)
+setindex!(m::AbstractDSGEModel, param::AbstractParameter, i::Integer)
 ```
 
 If `i`<length(m.parameters), overwrites m.parameters[i] with
 param. Otherwise, overwrites m.steady_state[i-length(m.parameters).
 """
-@inline function Base.setindex!(m::AbstractModel, param::AbstractParameter, i::Integer)
+@inline function Base.setindex!(m::AbstractDSGEModel, param::AbstractParameter, i::Integer)
     if i <= (j = length(m.parameters))
         m.parameters[i] = param
     else
@@ -75,19 +75,19 @@ param. Otherwise, overwrites m.steady_state[i-length(m.parameters).
     return param
 end
 
-Base.setindex!(m::AbstractModel, value, k::Symbol) = Base.setindex!(m, value, m.keys[k])
+Base.setindex!(m::AbstractDSGEModel, value, k::Symbol) = Base.setindex!(m, value, m.keys[k])
 
 
 """
 ```
-(<=)(m::AbstractModel{T}, p::AbstractParameter{T}) where T
+(<=)(m::AbstractDSGEModel{T}, p::AbstractParameter{T}) where T
 ```
 
 Syntax for adding a parameter to a model: m <= parameter.
 NOTE: If `p` is added to `m` and length(m.steady_state) > 0, `keys(m)` will not generate the
 index of `p` in `m.parameters`.
 """
-function (<=)(m::AbstractModel{T}, p::AbstractParameter{T}) where T
+function (<=)(m::AbstractDSGEModel{T}, p::AbstractParameter{T}) where T
 
     if !in(p.key, keys(m.keys))
 
@@ -107,13 +107,13 @@ end
 
 """
 ```
-(<=)(m::AbstractModel{T}, ssp::Union{SteadyStateParameter,SteadyStateParameterArray}) where {T}
+(<=)(m::AbstractDSGEModel{T}, ssp::Union{SteadyStateParameter,SteadyStateParameterArray}) where {T}
 ```
 
 Add a new steady-state value to the model by appending `ssp` to the `m.steady_state` and
 adding `ssp.key` to `m.keys`.
 """
-function (<=)(m::AbstractModel{T}, ssp::Union{SteadyStateParameter, SteadyStateParameterArray}) where {T}
+function (<=)(m::AbstractDSGEModel{T}, ssp::Union{SteadyStateParameter, SteadyStateParameterArray}) where {T}
 
     if !in(ssp.key, keys(m.keys))
         new_param_index = length(m.keys) + 1
@@ -131,14 +131,14 @@ end
 
 """
 ```
-(<=)(m::AbstractModel{T}, ssp::SteadyStateParameterGrid) where {T}
+(<=)(m::AbstractDSGEModel{T}, ssp::SteadyStateParameterGrid) where {T}
 
 ```
 
 Add a new steady-state value to the model by appending `ssp` to the `m.steady_state` and
 adding `ssp.key` to `m.keys`.
 """
-function (<=)(m::AbstractModel{T}, ssp::SteadyStateParameterGrid) where {T}
+function (<=)(m::AbstractDSGEModel{T}, ssp::SteadyStateParameterGrid) where {T}
 
     if !in(ssp.key, keys(m.keys))
         new_param_index = length(m.keys) + 1
@@ -154,74 +154,74 @@ function (<=)(m::AbstractModel{T}, ssp::SteadyStateParameterGrid) where {T}
     end
 end
 
-Distributions.logpdf(m::AbstractModel) = logpdf(m.parameters)
-Distributions.pdf(m::AbstractModel) = exp(logpdf(m))
+Distributions.logpdf(m::AbstractDSGEModel) = logpdf(m.parameters)
+Distributions.pdf(m::AbstractDSGEModel) = exp(logpdf(m))
 
 # Number of anticipated policy shocks
-n_anticipated_shocks(m::AbstractModel) = get_setting(m, :n_anticipated_shocks)
-n_anticipated_shocks_padding(m::AbstractModel) = get_setting(m, :n_anticipated_shocks_padding)
+n_anticipated_shocks(m::AbstractDSGEModel) = get_setting(m, :n_anticipated_shocks)
+n_anticipated_shocks_padding(m::AbstractDSGEModel) = get_setting(m, :n_anticipated_shocks_padding)
 
 # Dates, indices, number of periods for each regime
-date_presample_start(m::AbstractModel) = get_setting(m, :date_presample_start)
-date_mainsample_start(m::AbstractModel) = get_setting(m, :date_mainsample_start)
-date_zlb_start(m::AbstractModel) = get_setting(m, :date_zlb_start)
+date_presample_start(m::AbstractDSGEModel) = get_setting(m, :date_presample_start)
+date_mainsample_start(m::AbstractDSGEModel) = get_setting(m, :date_mainsample_start)
+date_zlb_start(m::AbstractDSGEModel) = get_setting(m, :date_zlb_start)
 
-date_presample_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_mainsample_start) - Dates.Month(3))
-date_prezlb_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_zlb_start) - Dates.Month(3))
-date_mainsample_end(m::AbstractModel) = Dates.lastdayofquarter(get_setting(m, :date_forecast_start) - Dates.Month(3))
-date_conditional_end(m::AbstractModel) = get_setting(m, :date_conditional_end)
+date_presample_end(m::AbstractDSGEModel) = Dates.lastdayofquarter(get_setting(m, :date_mainsample_start) - Dates.Month(3))
+date_prezlb_end(m::AbstractDSGEModel) = Dates.lastdayofquarter(get_setting(m, :date_zlb_start) - Dates.Month(3))
+date_mainsample_end(m::AbstractDSGEModel) = Dates.lastdayofquarter(get_setting(m, :date_forecast_start) - Dates.Month(3))
+date_conditional_end(m::AbstractDSGEModel) = get_setting(m, :date_conditional_end)
 
-index_presample_start(m::AbstractModel) = 1
-index_mainsample_start(m::AbstractModel) = subtract_quarters(date_mainsample_start(m), date_presample_start(m)) + 1
-index_zlb_start(m::AbstractModel) = subtract_quarters(date_zlb_start(m), date_presample_start(m)) + 1
-index_forecast_start(m::AbstractModel) = subtract_quarters(date_forecast_start(m), date_presample_start(m)) + 1
+index_presample_start(m::AbstractDSGEModel) = 1
+index_mainsample_start(m::AbstractDSGEModel) = subtract_quarters(date_mainsample_start(m), date_presample_start(m)) + 1
+index_zlb_start(m::AbstractDSGEModel) = subtract_quarters(date_zlb_start(m), date_presample_start(m)) + 1
+index_forecast_start(m::AbstractDSGEModel) = subtract_quarters(date_forecast_start(m), date_presample_start(m)) + 1
 
 """
 ```
-index_shockdec_start(m::AbstractModel)
+index_shockdec_start(m::AbstractDSGEModel)
 ```
 
 Returns the index starting from which the shock decomposition is saved, where 1 is the index corresponding to date_mainsample_start(m).
 """
-index_shockdec_start(m::AbstractModel) = subtract_quarters(date_shockdec_start(m), date_mainsample_start(m)) + 1
+index_shockdec_start(m::AbstractDSGEModel) = subtract_quarters(date_shockdec_start(m), date_mainsample_start(m)) + 1
 
 """
 ```
-index_shockdec_end(m::AbstractModel)
+index_shockdec_end(m::AbstractDSGEModel)
 ```
 
 Returns the last index for which the shock decomposition is saved, where 1 is the index corresponding to date_mainsample_start(m).
 """
-index_shockdec_end(m::AbstractModel) = subtract_quarters(date_shockdec_end(m), date_mainsample_start(m)) + 1
+index_shockdec_end(m::AbstractDSGEModel) = subtract_quarters(date_shockdec_end(m), date_mainsample_start(m)) + 1
 
-n_presample_periods(m::AbstractModel)   = subtract_quarters(date_mainsample_start(m), date_presample_start(m))
-n_prezlb_periods(m::AbstractModel)      = subtract_quarters(date_zlb_start(m), date_mainsample_start(m))
-n_zlb_periods(m::AbstractModel)         = subtract_quarters(date_forecast_start(m), date_zlb_start(m))
-n_mainsample_periods(m::AbstractModel)  = subtract_quarters(date_forecast_start(m), date_mainsample_start(m))
-n_conditional_periods(m::AbstractModel) = subtract_quarters(date_conditional_end(m), date_mainsample_end(m))
+n_presample_periods(m::AbstractDSGEModel)   = subtract_quarters(date_mainsample_start(m), date_presample_start(m))
+n_prezlb_periods(m::AbstractDSGEModel)      = subtract_quarters(date_zlb_start(m), date_mainsample_start(m))
+n_zlb_periods(m::AbstractDSGEModel)         = subtract_quarters(date_forecast_start(m), date_zlb_start(m))
+n_mainsample_periods(m::AbstractDSGEModel)  = subtract_quarters(date_forecast_start(m), date_mainsample_start(m))
+n_conditional_periods(m::AbstractDSGEModel) = subtract_quarters(date_conditional_end(m), date_mainsample_end(m))
 
-inds_presample_periods(m::AbstractModel)  = collect(index_presample_start(m):(index_mainsample_start(m)-1))
-inds_prezlb_periods(m::AbstractModel)     = collect(index_mainsample_start(m):(index_zlb_start(m)-1))
-inds_zlb_periods(m::AbstractModel)        = collect(index_zlb_start(m):(index_forecast_start(m)-1))
-inds_mainsample_periods(m::AbstractModel) = collect(index_mainsample_start(m):(index_forecast_start(m)-1))
+inds_presample_periods(m::AbstractDSGEModel)  = collect(index_presample_start(m):(index_mainsample_start(m)-1))
+inds_prezlb_periods(m::AbstractDSGEModel)     = collect(index_mainsample_start(m):(index_zlb_start(m)-1))
+inds_zlb_periods(m::AbstractDSGEModel)        = collect(index_zlb_start(m):(index_forecast_start(m)-1))
+inds_mainsample_periods(m::AbstractDSGEModel) = collect(index_mainsample_start(m):(index_forecast_start(m)-1))
 
 # Convenience functions
-n_states(m::AbstractModel)                  = length(m.endogenous_states)
-n_states_augmented(m::AbstractModel)        = n_states(m) + length(m.endogenous_states_augmented)
-n_shocks_exogenous(m::AbstractModel)        = length(m.exogenous_shocks)
-n_shocks_expectational(m::AbstractModel)    = length(m.expected_shocks)
-n_observables(m::AbstractModel)             = length(m.observables)
-n_pseudo_observables(m::AbstractModel)      = length(m.pseudo_observables)
-n_equilibrium_conditions(m::AbstractModel)  = length(m.equilibrium_conditions)
-n_parameters(m::AbstractModel)              = length(m.parameters)
-n_parameters_steady_state(m::AbstractModel) = length(m.steady_state)
-n_parameters_free(m::AbstractModel)         = sum([!α.fixed for α in m.parameters])
+n_states(m::AbstractDSGEModel)                  = length(m.endogenous_states)
+n_states_augmented(m::AbstractDSGEModel)        = n_states(m) + length(m.endogenous_states_augmented)
+n_shocks_exogenous(m::AbstractDSGEModel)        = length(m.exogenous_shocks)
+n_shocks_expectational(m::AbstractDSGEModel)    = length(m.expected_shocks)
+n_observables(m::AbstractDSGEModel)             = length(m.observables)
+n_pseudo_observables(m::AbstractDSGEModel)      = length(m.pseudo_observables)
+n_equilibrium_conditions(m::AbstractDSGEModel)  = length(m.equilibrium_conditions)
+n_parameters(m::AbstractDSGEModel)              = length(m.parameters)
+n_parameters_steady_state(m::AbstractDSGEModel) = length(m.steady_state)
+n_parameters_free(m::AbstractDSGEModel)         = sum([!α.fixed for α in m.parameters])
 
 # Convenience functions for working with heterogeneous agent models
 # that differentiate between backward looking "state" variables and "jump" variables
-n_backward_looking_states(m::AbstractModel) = get_setting(m, :n_backward_looking_states)
-n_jumps(m::AbstractModel) = get_setting(m, :n_jumps)
-n_model_states(m::AbstractModel) = get_setting(m, :n_model_states)
+n_backward_looking_states(m::AbstractDSGEModel) = get_setting(m, :n_backward_looking_states)
+n_jumps(m::AbstractDSGEModel) = get_setting(m, :n_jumps)
+n_model_states(m::AbstractDSGEModel) = get_setting(m, :n_model_states)
 
 # The numbers for n_states, and n_jumps assumes normalization
 # There is a procedure in klein_solve that normalizes the state variable grids
@@ -229,19 +229,19 @@ n_model_states(m::AbstractModel) = get_setting(m, :n_model_states)
 # tracked should be 1 less if normalized
 # However, the number of jumps and states unnormalized are required for
 # the construction of the Jacobian, hence the reason for these helpers
-n_jumps_unnormalized(m::AbstractModel) = n_jumps(m) + get_setting(m, :jumps_normalization_factor)
-n_backward_looking_states_unnormalized(m::AbstractModel) = n_backward_looking_states(m) + get_setting(m, :backward_looking_states_normalization_factor)
-n_model_states_unnormalized(m::AbstractModel) = n_jumps_unnormalized(m) + n_backward_looking_states_unnormalized(m)
-n_model_states_original(m::AbstractModel) = get_setting(m, :n_model_states_original)
+n_jumps_unnormalized(m::AbstractDSGEModel) = n_jumps(m) + get_setting(m, :jumps_normalization_factor)
+n_backward_looking_states_unnormalized(m::AbstractDSGEModel) = n_backward_looking_states(m) + get_setting(m, :backward_looking_states_normalization_factor)
+n_model_states_unnormalized(m::AbstractDSGEModel) = n_jumps_unnormalized(m) + n_backward_looking_states_unnormalized(m)
+n_model_states_original(m::AbstractDSGEModel) = get_setting(m, :n_model_states_original)
 
 """
 ```
-AbstractRepModel{T} <: AbstractModel{T}
+AbstractRepModel{T} <: AbstractDSGEModel{T}
 ```
 
-The AbstractRepresentativeModel is defined as a subtype of AbstractModel to accomodate a bunch of stuff, but for now just different impulse response functions.
+The AbstractRepresentativeModel is defined as a subtype of AbstractDSGEModel to accomodate a bunch of stuff, but for now just different impulse response functions.
 """
-abstract type AbstractRepModel{T} <: AbstractModel{T} end
+abstract type AbstractRepModel{T} <: AbstractDSGEModel{T} end
 
 
 """
@@ -249,7 +249,7 @@ abstract type AbstractRepModel{T} <: AbstractModel{T} end
 get_dict(m, class, index)
 ```
 """
-function get_dict(m::AbstractModel, class::Symbol)
+function get_dict(m::AbstractDSGEModel, class::Symbol)
     if class == :states
         m.endogenous_states
     elseif class == :obs
@@ -272,7 +272,7 @@ Returns the name of the state (`class = :states`), observable (`:obs`),
 pseudo-observable (`:pseudo`), or shock (`:shocks` or `:stdshocks`)
 corresponding to the given `index`.
 """
-function get_key(m::AbstractModel, class::Symbol, index::Int)
+function get_key(m::AbstractDSGEModel, class::Symbol, index::Int)
     dict = get_dict(m, class)
     out = Base.filter(key -> dict[key] == index, collect(keys(dict)))
     if length(out) == 0
@@ -285,7 +285,7 @@ function get_key(m::AbstractModel, class::Symbol, index::Int)
 end
 
 # Parse population mnemonic into 2 Nullable{Symbol}s from one
-function parse_population_mnemonic(m::AbstractModel)
+function parse_population_mnemonic(m::AbstractDSGEModel)
     mnemonic = get_setting(m, :population_mnemonic)
     if isnull(mnemonic)
         return [Nullable{Symbol}(), Nullable{Symbol}()]
@@ -296,7 +296,7 @@ end
 
 # From an augmented state space with anticipated policy shocks, get indices
 # corresponding to pre-ZLB states, shocks, and observables
-function inds_states_no_ant(m::AbstractModel)
+function inds_states_no_ant(m::AbstractDSGEModel)
     if n_anticipated_shocks(m) > 0
         ind_ant1 = m.endogenous_states[:rm_tl1]
         ind_antn = m.endogenous_states[Symbol("rm_tl$(n_anticipated_shocks(m))")]
@@ -306,7 +306,7 @@ function inds_states_no_ant(m::AbstractModel)
     end
 end
 
-function inds_shocks_no_ant(m::AbstractModel)
+function inds_shocks_no_ant(m::AbstractDSGEModel)
     if n_anticipated_shocks(m) > 0
         ind_ant1 = m.exogenous_shocks[:rm_shl1]
         ind_antn = m.exogenous_shocks[Symbol("rm_shl$(n_anticipated_shocks(m))")]
@@ -316,7 +316,7 @@ function inds_shocks_no_ant(m::AbstractModel)
     end
 end
 
-function inds_obs_no_ant(m::AbstractModel)
+function inds_obs_no_ant(m::AbstractDSGEModel)
     if n_anticipated_shocks(m) > 0
         ind_ant1 = m.observables[:obs_nominalrate1]
         ind_antn = m.observables[Symbol("obs_nominalrate$(n_anticipated_shocks(m))")]
@@ -327,58 +327,58 @@ function inds_obs_no_ant(m::AbstractModel)
 end
 
 # Interface for I/O settings
-spec(m::AbstractModel)         = m.spec
-subspec(m::AbstractModel)      = m.subspec
-saveroot(m::AbstractModel)     = get_setting(m, :saveroot)
-dataroot(m::AbstractModel)     = get_setting(m, :dataroot)
+spec(m::AbstractDSGEModel)         = m.spec
+subspec(m::AbstractDSGEModel)      = m.subspec
+saveroot(m::AbstractDSGEModel)     = get_setting(m, :saveroot)
+dataroot(m::AbstractDSGEModel)     = get_setting(m, :dataroot)
 
 # Interface for data
-data_vintage(m::AbstractModel)    = get_setting(m, :data_vintage)
-data_id(m::AbstractModel)         = get_setting(m, :data_id)
-cond_vintage(m::AbstractModel)    = get_setting(m, :cond_vintage)
-cond_id(m::AbstractModel)         = get_setting(m, :cond_id)
-cond_full_names(m::AbstractModel) = get_setting(m, :cond_full_names)
-cond_semi_names(m::AbstractModel) = get_setting(m, :cond_semi_names)
-use_population_forecast(m::AbstractModel) = get_setting(m, :use_population_forecast)
-hpfilter_population(m::AbstractModel)     = get_setting(m, :hpfilter_population)
+data_vintage(m::AbstractDSGEModel)    = get_setting(m, :data_vintage)
+data_id(m::AbstractDSGEModel)         = get_setting(m, :data_id)
+cond_vintage(m::AbstractDSGEModel)    = get_setting(m, :cond_vintage)
+cond_id(m::AbstractDSGEModel)         = get_setting(m, :cond_id)
+cond_full_names(m::AbstractDSGEModel) = get_setting(m, :cond_full_names)
+cond_semi_names(m::AbstractDSGEModel) = get_setting(m, :cond_semi_names)
+use_population_forecast(m::AbstractDSGEModel) = get_setting(m, :use_population_forecast)
+hpfilter_population(m::AbstractDSGEModel)     = get_setting(m, :hpfilter_population)
 
 # Interface for general computation settings
-use_parallel_workers(m::AbstractModel)    = get_setting(m, :use_parallel_workers)
+use_parallel_workers(m::AbstractDSGEModel)    = get_setting(m, :use_parallel_workers)
 
 # Interface for estimation settings
-reoptimize(m::AbstractModel)          = get_setting(m, :reoptimize)
-calculate_hessian(m::AbstractModel) = get_setting(m, :calculate_hessian)
-hessian_path(m::AbstractModel)      = get_setting(m, :hessian_path)
-n_hessian_test_params(m::AbstractModel) = get_setting(m, :n_hessian_test_params)
+reoptimize(m::AbstractDSGEModel)          = get_setting(m, :reoptimize)
+calculate_hessian(m::AbstractDSGEModel) = get_setting(m, :calculate_hessian)
+hessian_path(m::AbstractDSGEModel)      = get_setting(m, :hessian_path)
+n_hessian_test_params(m::AbstractDSGEModel) = get_setting(m, :n_hessian_test_params)
 
 # Interface for Metropolis-Hastings settings
-n_mh_blocks(m::AbstractModel)      =  get_setting(m, :n_mh_blocks)
-n_mh_simulations(m::AbstractModel) =  get_setting(m, :n_mh_simulations)
-n_mh_burn(m::AbstractModel)        =  get_setting(m, :n_mh_burn)
-mh_thin(m::AbstractModel)          =  get_setting(m, :mh_thin)
+n_mh_blocks(m::AbstractDSGEModel)      =  get_setting(m, :n_mh_blocks)
+n_mh_simulations(m::AbstractDSGEModel) =  get_setting(m, :n_mh_simulations)
+n_mh_burn(m::AbstractDSGEModel)        =  get_setting(m, :n_mh_burn)
+mh_thin(m::AbstractDSGEModel)          =  get_setting(m, :mh_thin)
 
 # Interface for forecast settings
-date_forecast_start(m::AbstractModel)   = get_setting(m, :date_forecast_start)
-forecast_block_size(m::AbstractModel)   = get_setting(m, :forecast_block_size)
-forecast_start_block(m::AbstractModel)  = get_setting(m, :forecast_start_block)
-forecast_input_file_overrides(m::AbstractModel) = get_setting(m, :forecast_input_file_overrides)
-forecast_uncertainty_override(m::AbstractModel) = get_setting(m, :forecast_uncertainty_override)
-forecast_smoother(m::AbstractModel)     = get_setting(m, :forecast_smoother)
-forecast_tdist_df_val(m::AbstractModel) = get_setting(m, :forecast_tdist_df_val)
-forecast_tdist_shocks(m::AbstractModel) = get_setting(m, :forecast_tdist_shocks)
-forecast_zlb_value(m::AbstractModel)    = get_setting(m, :forecast_zlb_value)
-impulse_response_horizons(m::AbstractModel) = get_setting(m, :impulse_response_horizons)
-n_shockdec_periods(m::AbstractModel)    = index_shockdec_end(m) - index_shockdec_start(m) + 1
+date_forecast_start(m::AbstractDSGEModel)   = get_setting(m, :date_forecast_start)
+forecast_block_size(m::AbstractDSGEModel)   = get_setting(m, :forecast_block_size)
+forecast_start_block(m::AbstractDSGEModel)  = get_setting(m, :forecast_start_block)
+forecast_input_file_overrides(m::AbstractDSGEModel) = get_setting(m, :forecast_input_file_overrides)
+forecast_uncertainty_override(m::AbstractDSGEModel) = get_setting(m, :forecast_uncertainty_override)
+forecast_smoother(m::AbstractDSGEModel)     = get_setting(m, :forecast_smoother)
+forecast_tdist_df_val(m::AbstractDSGEModel) = get_setting(m, :forecast_tdist_df_val)
+forecast_tdist_shocks(m::AbstractDSGEModel) = get_setting(m, :forecast_tdist_shocks)
+forecast_zlb_value(m::AbstractDSGEModel)    = get_setting(m, :forecast_zlb_value)
+impulse_response_horizons(m::AbstractDSGEModel) = get_setting(m, :impulse_response_horizons)
+n_shockdec_periods(m::AbstractDSGEModel)    = index_shockdec_end(m) - index_shockdec_start(m) + 1
 
 # Interface for alternative policy settings
-alternative_policy(m::AbstractModel) = get_setting(m, :alternative_policy)
+alternative_policy(m::AbstractDSGEModel) = get_setting(m, :alternative_policy)
 
-function date_forecast_end(m::AbstractModel)
+function date_forecast_end(m::AbstractDSGEModel)
     date = date_forecast_start(m) + Dates.Month(3 * (forecast_horizons(m)-1))
     return Dates.lastdayofquarter(date)
 end
 
-function forecast_horizons(m::AbstractModel; cond_type::Symbol = :none)
+function forecast_horizons(m::AbstractDSGEModel; cond_type::Symbol = :none)
     horizons = get_setting(m, :forecast_horizons)
     if cond_type == :none
         return horizons
@@ -387,7 +387,7 @@ function forecast_horizons(m::AbstractModel; cond_type::Symbol = :none)
     end
 end
 
-function date_shockdec_start(m::AbstractModel)
+function date_shockdec_start(m::AbstractDSGEModel)
     startdate = get_setting(m, :shockdec_startdate)
     if (Nullables.isnull(startdate)) | (startdate===nothing)
         return DSGE.date_mainsample_start(m)
@@ -396,7 +396,7 @@ function date_shockdec_start(m::AbstractModel)
     end
 end
 
-function date_shockdec_end(m::AbstractModel)
+function date_shockdec_end(m::AbstractDSGEModel)
     enddate =  get_setting(m, :shockdec_enddate)
     if !isnull(enddate)
         return get(enddate)
@@ -407,11 +407,11 @@ end
 
 """
 ```
-load_parameters_from_file(m::AbstractModel,path::String)
+load_parameters_from_file(m::AbstractDSGEModel,path::String)
 ```
 Returns a vector of parameters, read from a file, suitable for updating `m`.
 """
-function load_parameters_from_file(m::AbstractModel, path::String)
+function load_parameters_from_file(m::AbstractDSGEModel, path::String)
 
     if isfile(path) && splitext(path)[2] == ".h5"
         x  = h5open(path, "r") do file
@@ -436,7 +436,7 @@ end
 
 """
 ```
-specify_mode!(m::AbstractModel, mode_file::String=""; verbose=:low)
+specify_mode!(m::AbstractDSGEModel, mode_file::String=""; verbose=:low)
 ```
 
 Updates the values of `m.parameters` with the values from
@@ -448,7 +448,7 @@ Usage: should be run before calling `estimate(m)`, e.g.:
     specify_mode!(m, modefile)
     estimate(m)
 """
-function specify_mode!(m::AbstractModel, mode_file::String = ""; verbose=:low)
+function specify_mode!(m::AbstractDSGEModel, mode_file::String = ""; verbose=:low)
 
     m <= Setting(:reoptimize, false)
 
@@ -464,13 +464,13 @@ end
 
 """
 ```
-specify_hessian(m::AbstractModel, path::String=""; verbose=:low)
+specify_hessian(m::AbstractDSGEModel, path::String=""; verbose=:low)
 ```
 
 Specify a Hessian matrix calculated at the posterior mode to use in the model estimation. If
 no path is provided, will attempt to detect location.
 """
-function specify_hessian(m::AbstractModel, path::String=""; verbose=:low)
+function specify_hessian(m::AbstractDSGEModel, path::String=""; verbose=:low)
     if isempty(path)
         path = inpath(m, "user", "hessian.h5")
     end
@@ -515,7 +515,7 @@ Note: we refer to the savepathroot/output_data/<spec>/<subspec>/ directory as sa
 # <output root>/output_data/<spec>/<subspec>/log/log_<filestring>.log
 # ```
 # """
-# function logpath(m::AbstractModel)
+# function logpath(m::AbstractDSGEModel)
 #     return savepath(m, "log", "log.log")
 # end
 
@@ -524,7 +524,7 @@ fns = [Symbol(x, "path") for x in strs]
 for (str, fn) in zip(strs, fns)
     @eval begin
         # First eval function
-        function $fn(m::AbstractModel,
+        function $fn(m::AbstractDSGEModel,
                      out_type::String,
                      file_name::String = "",
                      filestring_addl::Vector{String}=Vector{String}())
@@ -535,7 +535,7 @@ for (str, fn) in zip(strs, fns)
         @doc $(
         """
         ```
-        $fn(m::AbstractModel, out_type::String, file_name::String="", filestring_addl::Vector{String}=Vector{String}())
+        $fn(m::AbstractDSGEModel, out_type::String, file_name::String="", filestring_addl::Vector{String}=Vector{String}())
         ```
 
         Returns path to specific $str output file, creating containing directory as needed. If
@@ -550,7 +550,7 @@ for (str, fn) in zip(strs, fns)
 end
 
 # Not exposed to user. Actually create path and insert model string to file name.
-function savepath(m::AbstractModel,
+function savepath(m::AbstractDSGEModel,
                   out_type::String,
                   sub_type::String,
                   file_name::String = "",
@@ -589,7 +589,7 @@ end
 # Input data handled slightly differently, because it is not model-specific.
 """
 ```
-inpath(m::AbstractModel, in_type::T, file_name::T="") where T<:String
+inpath(m::AbstractDSGEModel, in_type::T, file_name::T="") where T<:String
 ```
 
 Returns path to specific input data file, creating containing directory as needed. If
@@ -607,7 +607,7 @@ Path built as
 <data root>/<in_type>/<file_name>
 ```
 """
-function inpath(m::AbstractModel, in_type::String, file_name::String="")
+function inpath(m::AbstractDSGEModel, in_type::String, file_name::String="")
     path = dataroot(m)
     # Normal cases.
     if in_type in ["raw", "data", "cond", "scenarios"]
@@ -632,7 +632,7 @@ function inpath(m::AbstractModel, in_type::String, file_name::String="")
     return path
 end
 
-function filestring_base(m::AbstractModel)
+function filestring_base(m::AbstractDSGEModel)
     if !m.testing
         base = Vector{String}()
         for (skey, sval) in m.settings
@@ -646,9 +646,9 @@ function filestring_base(m::AbstractModel)
     end
 end
 
-filestring(m::AbstractModel) = filestring(m, Vector{String}(undef, 0))
-filestring(m::AbstractModel, d::String) = filestring(m, [String(d)])
-function filestring(m::AbstractModel, d::Vector{String})
+filestring(m::AbstractDSGEModel) = filestring(m, Vector{String}(undef, 0))
+filestring(m::AbstractDSGEModel, d::String) = filestring(m, [String(d)])
+function filestring(m::AbstractDSGEModel, d::Vector{String})
     base = filestring_base(m)
     return filestring(base, d)
 end
@@ -666,7 +666,7 @@ end
 
 """
 ```
-transform_to_model_space!(m::AbstractModel, values::Vector{T}) where T<:AbstractFloat
+transform_to_model_space!(m::AbstractDSGEModel, values::Vector{T}) where T<:AbstractFloat
 ```
 
 Transforms `values` from the real line to the model space, and assigns `values[i]` to
@@ -677,7 +677,7 @@ paramter values.
 - `m`: the model object
 - `values`: the new values to assign to non-steady-state parameters.
 """
-function transform_to_model_space!(m::AbstractModel, values::Vector{T}) where {T<:AbstractFloat}
+function transform_to_model_space!(m::AbstractDSGEModel, values::Vector{T}) where {T<:AbstractFloat}
     new_values = transform_to_model_space(m.parameters, values)
     DSGE.update!(m, new_values)
     steadystate!(m)
@@ -685,7 +685,7 @@ end
 
 """
 ```
-update!(m::AbstractModel, values::Vector{T}) where T<:AbstractFloat
+update!(m::AbstractDSGEModel, values::Vector{T}) where T<:AbstractFloat
 ```
 
 Update `m.parameters` with `values`, recomputing the steady-state parameter values.
@@ -694,28 +694,28 @@ Update `m.parameters` with `values`, recomputing the steady-state parameter valu
 - `m`: the model object
 - `values`: the new values to assign to non-steady-state parameters.
 """
-function update!(m::AbstractModel, values::Vector{T}) where T<:AbstractFloat
+function update!(m::AbstractDSGEModel, values::Vector{T}) where T<:AbstractFloat
     DSGE.update!(m.parameters, values)
     steadystate!(m)
 end
 
 """
 ```
-rand(d::DegenerateMvNormal, m::AbstractModel; cc::AbstractFloat = 1.0)
+rand(d::DegenerateMvNormal, m::AbstractDSGEModel; cc::AbstractFloat = 1.0)
 ```
 
 Generate a draw from `d` with variance optionally scaled by `cc^2`.
 """
-function rand(d::DegenerateMvNormal, m::AbstractModel; cc::AbstractFloat = 1.0)
+function rand(d::DegenerateMvNormal, m::AbstractDSGEModel; cc::AbstractFloat = 1.0)
     return d.μ + cc*d.σ*randn(m.rng, length(d))
 end
 
 """
-`rand_prior(m::AbstractModel; ndraws::Int = 100_000)`
+`rand_prior(m::AbstractDSGEModel; ndraws::Int = 100_000)`
 
 Draw a random sample from the model's prior distribution.
 """
-function rand_prior(m::AbstractModel; ndraws::Int = 100_000)
+function rand_prior(m::AbstractDSGEModel; ndraws::Int = 100_000)
     T = typeof(m.parameters[1].value)
     npara = length(m.parameters)
     priorsim = Array{T}(undef, ndraws, npara)

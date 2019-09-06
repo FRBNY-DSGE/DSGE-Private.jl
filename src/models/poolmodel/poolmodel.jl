@@ -41,7 +41,7 @@ at any point by using `get_setting`.
 
 #### Inputs to Measurement and Equilibrium Condition Equations
 
-* `model::OrderedDict{Symbol,AbstractModel}`: Maps name to its underlying model
+* `model::OrderedDict{Symbol,AbstractDSGEModel}`: Maps name to its underlying model
   object.
 
 #### Model Specifications and Settings
@@ -73,7 +73,7 @@ at any point by using `get_setting`.
   St. Louis's FRED database; all other data must be downloaded by the
   user. See `load_data` and `Observable` for further details.
 """
-mutable struct PoolModel{T} <: AbstractModel{T}
+mutable struct PoolModel{T} <: AbstractDSGEModel{T}
     parameters::ParameterVector{T}                         # vector of all time-invariant model parameters
     keys::OrderedDict{Symbol,Int}                          # human-readable names for all the model
     observables::OrderedDict{Symbol,Int}                   # Model names to observables (predictive densities)
@@ -251,7 +251,7 @@ end
 
 """
 ```
-update!(m::AbstractModel, values::Vector{T}) where T<:AbstractFloat
+update!(m::AbstractDSGEModel, values::Vector{T}) where T<:AbstractFloat
 ```
 
 Update `m.parameters` with `values`, recomputing the steady-state parameter values.

@@ -2,7 +2,7 @@ function get_decomp_filename(m_new::M, m_old::M, input_type::Symbol,
                              cond_new::Symbol, cond_old::Symbol,
                              product::Symbol, class::Symbol;
                              pathfcn::Function = rawpath,
-                             fileformat::Symbol = :jld2) where M<:AbstractModel
+                             fileformat::Symbol = :jld2) where M<:AbstractDSGEModel
     output_var = Symbol(product, class)
 
     fn_new = get_forecast_filename(m_new, input_type, cond_new, output_var,
@@ -20,7 +20,7 @@ end
 
 function get_decomp_output_files(m_new::M, m_old::M, input_type::Symbol,
                                  cond_new::Symbol, cond_old::Symbol,
-                                 classes::Vector{Symbol}) where M<:AbstractModel
+                                 classes::Vector{Symbol}) where M<:AbstractDSGEModel
     output_files = Dict{Symbol, String}()
     for comp in [:data, :news, :shockdec, :dettrend, :para, :total]
         for class in classes
@@ -36,7 +36,7 @@ end
 
 function get_decomp_mean_file(m_new::M, m_old::M, input_type::Symbol,
                               cond_new::Symbol, cond_old::Symbol,
-                              class::Symbol) where M<:AbstractModel
+                              class::Symbol) where M<:AbstractDSGEModel
     get_decomp_filename(m_new, m_old, input_type, cond_new, cond_old, :decomp, class,
                         pathfcn = workpath, fileformat = :jld2)
 end
@@ -47,7 +47,7 @@ function write_forecast_decomposition(m_new::M, m_old::M, input_type::Symbol,
                                       decomps::Dict{Symbol, Array{Float64}};
                                       block_number::Nullable{Int} = Nullable{Int}(),
                                       block_inds::AbstractRange{Int} = 1:0,
-                                      verbose::Symbol = :low) where M<:AbstractModel
+                                      verbose::Symbol = :low) where M<:AbstractDSGEModel
     for comp in [:data, :news, :shockdec, :dettrend, :para, :total]
         for class in classes
             prod = Symbol(:decomp, comp)

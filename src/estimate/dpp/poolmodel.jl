@@ -16,7 +16,7 @@ The PoolModel type permits dynamic predictive pooling of structural models.
 
 #### Inputs to Measurement and Equilibrium Condition Equations
 
-* `model::OrderedDict{Symbol,AbstractModel}`: Maps name to its underlying model
+* `model::OrderedDict{Symbol,AbstractDSGEModel}`: Maps name to its underlying model
   object.
 
 #### Model Specifications and Settings
@@ -52,14 +52,14 @@ The PoolModel type permits dynamic predictive pooling of structural models.
   dictionary that stores names and transformations to/from model units. See
   `PseudoObservable` for further details.
 """
-mutable struct PoolModel{T} <: AbstractModel{T}
+mutable struct PoolModel{T} <: AbstractDSGEModel{T}
     parameters::ParameterVector{T}                         # vector of all time-invariant model parameters
     steady_state::ParameterVector{T}
     keys::OrderedDict{Symbol,Int}                          # human-readable names for all the model
                                                            # parameters and steady-states
     observables::OrderedDict{Symbol,Int}
     pseudo_observables::OrderedDict{Symbol,Int}
-    models::OrderedDict{Symbol,AbstractModel{T}}           # Model name mapped to model object
+    models::OrderedDict{Symbol,AbstractDSGEModel{T}}           # Model name mapped to model object
     datas::OrderedDict{Symbol,Matrix{T}}                   # Model name " "
     forecast_horizon::Int                                  # Number of periods for forecast
     periods::Int                                           # Number of periods for data time series
@@ -82,7 +82,7 @@ end
 description(m::PoolModel) = "Julia implementation of dynamic prediction pools defined in 'Dynamic prediction pools: An investigation of financial frictions and forecasting performance' by Marco Del Negro, Raiden B. Hasegawa, and Frank Schorfheide: PoolModel, $(m.subspec)"
 
 # function PoolModel(data::Matrix{T}, h::Int, cond_pred_dens::Dict{Symbol,Vector{T}},
-#                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
+#                    models::Vector{<:AbstractDSGEModel{T}}, subspec::String="ss0";
 #                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
 #                    testing = false, verbose::Symbol = :low,
 #                    static::Bool = false) where T<:AbstractFloat
@@ -92,7 +92,7 @@ description(m::PoolModel) = "Julia implementation of dynamic prediction pools de
 #                    testing = testing, verbose = verbose, static = static)
 # end
 # function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, pred_dens::Dict{Symbol,Vector{T}},
-#                    models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
+#                    models::Vector{<:AbstractDSGEModel{T}}, subspec::String="ss0";
 #                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
 #                    testing = false, verbose::Symbol = :low,
 #                    static::Bool = false) where T<:AbstractFloat
@@ -110,28 +110,28 @@ description(m::PoolModel) = "Julia implementation of dynamic prediction pools de
 #     return PoolModel(data_vec, h, models, subspec; custom_settings = custom_settings,
 #                    testing = testing, verbose = verbose, static = static)
 # end
-# function PoolModel(data::Matrix{T}, h::Int, subspec::String="ss0", models::AbstractModel{T}...;
+# function PoolModel(data::Matrix{T}, h::Int, subspec::String="ss0", models::AbstractDSGEModel{T}...;
 #                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
 #                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
 #     return PoolModel(subspec, [data for i = 1:length(models)], h, [model for model in models];
 #                    custom_settings = custom_settings, testing = testing, verbose = verbose)
 # end
 # function PoolModel(datas::Vector{Matrix{T}}, h::Int, subspec::String="ss0",
-#                    models::AbstractModel{T}...;
+#                    models::AbstractDSGEModel{T}...;
 #                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
 #                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
 #     return PoolModel(subspec, datas, h, [model for model in models];
 #                    custom_settings = custom_settings, testing = testing, verbose = verbose)
 # end
 # function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, subspec::String="ss0",
-#                    models::AbstractModel{T}...;
+#                    models::AbstractDSGEModel{T}...;
 #                    custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
 #                    testing::Bool = false, verbose::Bool = :low) where T<:AbstractFloat
 #     return PoolModel(subspec, datas, h, [model for model in models];
 #                    custom_settings = custom_settings, testing = testing, verbose = verbose)
 # end
 function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, cond_pred_dens::Dict{Symbol,Vector{T}},
-                   models::Vector{<:AbstractModel{T}}, subspec::String="ss0";
+                   models::Vector{<:AbstractDSGEModel{T}}, subspec::String="ss0";
                    custom_settings::Dict{Symbol,Setting} = Dict{Symbol,Setting}(),
                    testing = false, verbose::Symbol = :low,
                    static::Bool = false) where T<:AbstractFloat
@@ -152,7 +152,7 @@ function PoolModel(datas::Dict{Symbol,Matrix{T}}, h::Int, cond_pred_dens::Dict{S
         OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
 
         # Models-related data
-        OrderedDict{Symbol,AbstractModel{Float64}}(), OrderedDict{Symbol,Matrix{Float64}}(),
+        OrderedDict{Symbol,AbstractDSGEModel{Float64}}(), OrderedDict{Symbol,Matrix{Float64}}(),
         0, 0, OrderedDict{Symbol, Vector{Float64}}(),
 
         # nonlinear hidden state model info
@@ -362,7 +362,7 @@ end
 #     return m
 # end
 
-function init_models!(m::PoolModel, models::Vector{<:AbstractModel{T}} = Vector{<:AbstractModel{T}}()) where T<:AbstractFloat
+function init_models!(m::PoolModel, models::Vector{<:AbstractDSGEModel{T}} = Vector{<:AbstractDSGEModel{T}}()) where T<:AbstractFloat
     for model in models
         name = replace(String(Symbol(typeof(model))), "{Float64}" => "")
         m.models[Symbol(name)] = model
@@ -585,7 +585,7 @@ function get_F_λ(m::PoolModel)
 end
 
 
-function update_models!(m::PoolModel, models::AbstractModel{T}...;
+function update_models!(m::PoolModel, models::AbstractDSGEModel{T}...;
                         populate::Bool = true) where T<:AbstractFloat
     if length(models) > 1
         update_models!(m, [model for model in models]; populate = populate)
@@ -593,7 +593,7 @@ function update_models!(m::PoolModel, models::AbstractModel{T}...;
         update_models!(m, [models]; populate = populate)
     end
 end
-function update_models!(m::PoolModel, models::Vector{<:AbstractModel{T}};
+function update_models!(m::PoolModel, models::Vector{<:AbstractDSGEModel{T}};
                         populate::Bool = true) where T<:AbstractFloat
     names = Vector{Symbol}(undef,length(models))
     for (i,model) in enumerate(models)
@@ -604,7 +604,7 @@ function update_models!(m::PoolModel, models::Vector{<:AbstractModel{T}};
                    populate = populate)
     return nothing
 end
-function update_models!(m::PoolModel, models::Dict{Symbol,AbstractModel{T}};
+function update_models!(m::PoolModel, models::Dict{Symbol,AbstractDSGEModel{T}};
                         populate::Bool = true) where T<:AbstractFloat
     for kv in models
         if haskey(models,kv[1])
@@ -688,10 +688,10 @@ function update_F_λ!(m::PoolModel, d::Distribution)
     return nothing
 end
 
-# function append_models!(m::PoolModel, models::AbstractModel{T}...)
+# function append_models!(m::PoolModel, models::AbstractDSGEModel{T}...)
 #     append_models!(m, models)
 # end
-# function append_models!(m::PoolModel, models::Vector{AbstractModel{T}})
+# function append_models!(m::PoolModel, models::Vector{AbstractDSGEModel{T}})
 #     for model in models
 #         if !haskey(Symbol(typeof(model)))
 #             m.model[Symbol(typeof(model))] = model
@@ -701,8 +701,8 @@ end
 #     end
 #     return nothing
 # end
-# function append_models!(m::PoolModel, models::Vector{AbstractModel{T}},
-#                         datas::Dict{Symbol,Matrix{T}}) where T<:AbstractModel{T}
+# function append_models!(m::PoolModel, models::Vector{AbstractDSGEModel{T}},
+#                         datas::Dict{Symbol,Matrix{T}}) where T<:AbstractDSGEModel{T}
 #     append_models!(m, models)
 #     for kv in datas
 #         m.datas[kv[1]] = kv[2]
