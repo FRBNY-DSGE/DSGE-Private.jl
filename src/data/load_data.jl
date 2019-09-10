@@ -1,8 +1,6 @@
 """
 ```
 load_data(m::AbstractDSGEModel; try_disk::Bool = true, verbose::Symbol = :low)
-
-load_data(m::PoolModel)
 ```
 
 Create a DataFrame with all data series for this model, fully transformed.
@@ -23,11 +21,6 @@ Then, the series in levels are transformed as specified in `m.observable_mapping
 
 If `m.testing` is false, then the resulting DataFrame is saved to disk as `data_<yymmdd>.csv`.
 The data are then returned to the caller.
-
-If the model object is a PoolModel, then the input_series field of an Observables type
-follows a different syntax. The first symbol of the Vector in that
-field is the name of the csv file in the dataroot, and the second symbol is the name
-of the variable to be loaded as a data series. A column named date must exist.
 """
 function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bool = true, verbose::Symbol=:low)
     recreate_data = false
