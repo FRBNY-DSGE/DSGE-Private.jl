@@ -153,7 +153,7 @@ Given the current model parameters, compute the state-space system
 corresponding to model `m`. Returns a `System` object.
 """
 function compute_system(m::AbstractDSGEModel{T}; apply_altpolicy = false,
-                        verbose::Symbol = :high) where T<:AbstractFloat
+                        verbose::Symbol = :high) where T<:Real
     # Solve model
     TTT, RRR, CCC = solve(m; apply_altpolicy = apply_altpolicy, verbose = verbose)
     transition_equation = Transition(TTT, RRR, CCC)
@@ -189,7 +189,7 @@ F_u: likelihood function measurement error distribution
 F_λ: initial distribution of λ for state transition function
 """
 function compute_system(m::PoolModel{T};
-                        verbose::Symbol = :high) where T<:AbstractFloat
+                        verbose::Symbol = :high) where T<:Real
     Φ, F_ϵ, F_λ = transition(m)
     Ψ, F_u = measurement(m)
     return Φ, Ψ, F_ϵ, F_u, F_λ

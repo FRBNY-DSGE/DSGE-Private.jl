@@ -49,17 +49,18 @@ We constrain Julia to use the complex version of the `schurfact` routine regardl
 types of `Γ0` and `Γ1`, to match the behavior of Matlab.  Matlab always uses the complex version
 of the Schur decomposition, even if the inputs are real numbers.
 """
-function gensys(Γ0::Array{Float64, 2}, Γ1::Array{Float64, 2}, c::Array{Float64, 1}, Ψ::Array{Float64, 2}, Π::Array{Float64, 2}, div::Float64 = 0.0; verbose::Symbol = :high)
+function gensys(Γ0::Array{T, 2}, Γ1::Array{T, 2}, c::Array{T, 1}, Ψ::Array{T, 2}, Π::Array{T, 2}, div::Float64 = 0.0; verbose::Symbol = :high) where T<:Real
     F = try
-        schur!(complex(Γ0), complex(Γ1))
+        # schur!(complex(Γ0), complex(Γ1))
+        schur!(Γ0, Γ1)
     catch ex
         if isa(ex, LinearAlgebra.LAPACKException)
             Base.@info "LAPACK exception thrown while computing Schur decomposition of Γ0 and Γ1."
             eu = [-3, -3]
 
-            G1 = Array{Float64, 2}(undef,0,0)
-            C = Array{Float64, 1}(undef,0)
-            impact = Array{Float64, 2}(undef,0,0)
+            G1 = Array{T, 2}(undef,0,0)
+            C = Array{T, 1}(undef,0)
+            impact = Array{T, 2}(undef,0,0)
             #fmat = Array{Complex{Float64}, 2}(undef,0,0)
             #fwt = Array{Complex{Float64}, 2}(undef,0,0)
             #ywt = Vector{Complex{Float64}}(undef,0)
@@ -78,12 +79,12 @@ function gensys(Γ0::Array{Float64, 2}, Γ1::Array{Float64, 2}, c::Array{Float64
     end
 end
 
-function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Array{Float64, 2}, Π::Array{Float64, 2}; verbose::Symbol = :low)
+function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{T, 1}, Ψ::Array{T, 2}, Π::Array{T, 2}; verbose::Symbol = :low) where T<:Real
     gensys(F, c, Ψ, Π, new_div(F), verbose = verbose)
 end
 
 # Method that does the real work. Work directly on the decomposition F
-function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Array{Float64, 2}, Π::Array{Float64, 2}, div::Float64; verbose::Symbol = :low)
+function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{T, 1}, Ψ::Array{T, 2}, Π::Array{T, 2}, div::Float64; verbose::Symbol = :low) where T<:Real
     eu      = [0, 0]
     ϵ       = 1e-6  # small number to check convergence
     nunstab = 0
@@ -108,9 +109,9 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         @warn "Coincident zeros. Indeterminacy and/or nonexistence."
         eu=[-2, -2]
 
-        G1     = Array{Float64, 2}(undef,0, 0)
-        C      = Array{Float64, 1}(undef,0)
-        impact = Array{Float64, 2}(undef,0,0)
+        G1     = Array{T, 2}(undef,0, 0)
+        C      = Array{T, 1}(undef,0)
+        impact = Array{T, 2}(undef,0,0)
         #fmat   = Array{Complex{Float64}, 2}(undef,0,0)
         #fwt    = Array{Complex{Float64}, 2}(undef,0,0)
         #ywt    = Vector{Complex{Float64}}(undef,0)
