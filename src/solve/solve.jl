@@ -31,7 +31,9 @@ function solve(m::AbstractDSGEModel; apply_altpolicy = false, verbose::Symbol = 
         Γ0, Γ1, C, Ψ, Π  = eqcond(m)
 
         # Solve model
-        TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6,
+        TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Float64.(Γ0), Float64.(Γ1),
+                                                        Float64.(C), Float64.(Ψ),
+                                                        Float64.(Π), 1+1e-6,
                                                         verbose = verbose)
 
         # Check for LAPACK exception, existence and uniqueness

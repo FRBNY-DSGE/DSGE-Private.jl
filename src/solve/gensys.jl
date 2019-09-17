@@ -49,10 +49,9 @@ We constrain Julia to use the complex version of the `schurfact` routine regardl
 types of `Γ0` and `Γ1`, to match the behavior of Matlab.  Matlab always uses the complex version
 of the Schur decomposition, even if the inputs are real numbers.
 """
-function gensys(Γ0::Array{T, 2}, Γ1::Array{T, 2}, c::Array{T, 1}, Ψ::Array{T, 2}, Π::Array{T, 2}, div::Float64 = 0.0; verbose::Symbol = :high) where T<:Real
+function gensys(Γ0::Array{T, 2}, Γ1::Array{T, 2}, c::Array{T, 1}, Ψ::Array{T, 2}, Π::Array{T, 2}, div::Float64 = 0.0; verbose::Symbol = :high) where T<:AbstractFloat
     F = try
-        # schur!(complex(Γ0), complex(Γ1))
-        schur!(Γ0, Γ1)
+        schur!(complex(Γ0), complex(Γ1))
     catch ex
         if isa(ex, LinearAlgebra.LAPACKException)
             Base.@info "LAPACK exception thrown while computing Schur decomposition of Γ0 and Γ1."
