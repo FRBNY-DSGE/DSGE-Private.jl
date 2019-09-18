@@ -144,7 +144,7 @@ module DSGE
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
-        Model990, Model1002, Model1010, SmetsWouters, SmetsWoutersOrig, AnSchorfheide, eqcond, measurement,
+        Model990, Model1002, Model1010, SmetsWouters, SmetsWoutersOrig, AnSchorfheide, AnSchorfheideTest, eqcond, measurement,
         pseudo_measurement,
         shock_groupings
 
@@ -302,6 +302,15 @@ module DSGE
     include("models/an_schorfheide/pseudo_observables.jl")
     include("models/an_schorfheide/pseudo_measurement.jl")
     include("models/an_schorfheide/augment_states.jl")
+
+    include("models/an_schorfheide_test/an_schorfheide_test.jl")
+    include("models/an_schorfheide_test/subspecs.jl")
+    include("models/an_schorfheide_test/eqcond.jl")
+    include("models/an_schorfheide_test/observables.jl")
+    include("models/an_schorfheide_test/measurement.jl")
+    include("models/an_schorfheide_test/pseudo_observables.jl")
+    include("models/an_schorfheide_test/pseudo_measurement.jl")
+    include("models/an_schorfheide_test/augment_states.jl")
 
 
 end
