@@ -40,7 +40,11 @@ function posterior(m::AbstractDSGEModel{T}, data::AbstractArray;
                    sampler::Bool = false, ϕ_smc::Float64 = 1.,
                    catch_errors::Bool = false) where {T<:AbstractFloat}
     catch_errors = catch_errors | sampler
-    like = likelihood(m, data; sampler=sampler, catch_errors=catch_errors)
+    if get_setting(m, :sampling_method) == :HMC
+        like = likelihood(m, data, system)
+    else
+        like = likelihood(m, data; sampler=sampler, catch_errors=catch_errors)
+    end
     post = ϕ_smc*like + prior(m)
     return post
 end
@@ -93,6 +97,8 @@ end
 ```
 likelihood(m::AbstractDSGEModel, data::Matrix{T};
            sampler::Bool = false, catch_errors::Bool = false) where {T<:AbstractFloat}
+likelihood(m::AbstractDSGEModel, data::Matrix{T}, system::System{T};
+           sampler::Bool = false, catch_errors::Bool = false) where {T<:AbstractFloat}
 ```
 
 Evaluate the DSGE likelihood function. Can handle two-part estimation where the observed
@@ -101,10 +107,15 @@ a stretch of time in which interest rates reach the zero lower bound. If there i
 zero-lower-bound period, then we filter over the 2 periods separately. Otherwise, we
 filter over the main sample all at once.
 
+For implementing HMC, we apply multiple dispatch so that likelihood depends on
+the reduced from matrices comprising the state space system as well as the model parameters
+and data.
+
 ### Arguments
 
 - `m`: The model object
 - `data`: matrix of data for observables
+- `system`: System object holding transition and measurement matrices
 
 ### Optional Arguments
 - `sampler`: Whether metropolis_hastings or smc is the caller. If `sampler=true`, the
@@ -183,6 +194,76 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
                                    system[:QQ], system[:ZZ], system[:DD], system[:EE];
                                    allout = true, Nt0 = n_presample_periods(m),
                                    tol = tol)[1] + ψ_p * penalty
+        end
+    catch err
+        if catch_errors && isa(err, DomainError)
+            @warn "Log of incremental likelihood is negative; returning -Inf"
+            return -Inf
+        else
+            rethrow(err)
+        end
+    end
+end
+
+function likelihood(m::AbstractDSGEModel, data::AbstractMatrix,
+                    system::System;
+                    sampler::Bool = false,
+                    catch_errors::Bool = false,
+                    use_chand_recursion::Bool = false,
+                    tol::Float64 = 0.0,
+                    verbose::Symbol = :high) where {T<:AbstractFloat}
+    catch_errors = catch_errors | sampler
+    use_penalty  = try get_setting(m, :use_likelihood_penalty) catch; false end
+    auto_reject  = try get_setting(m, :auto_reject) catch; false end
+
+    if auto_reject
+        m <= Setting(:auto_reject, false)
+        return -Inf
+    end
+
+    # During Metropolis-Hastings, return -∞ if any parameters are not within their bounds
+    if sampler
+        for θ in m.parameters
+            (left, right) = θ.valuebounds
+            if !θ.fixed && !(left <= θ.value <= right)
+                return -Inf
+            end
+        end
+    end
+
+    # Likelihood penalties
+    ψ_l, ψ_p, penalty = 1.0, 1.0, 0.0
+    if use_penalty
+        ψ_l         = get_setting(m, :ψ_likelihood)
+        ψ_p         = get_setting(m, :ψ_penalty)
+        target_vars = get_setting(m, :target_vars)
+        target_σt   = get_setting(m, :target_σt)
+        targets     = get_setting(m, :targets)
+
+        for (var, target, σt) in zip(target_vars, targets, target_σt)
+            try
+                penalty +=  -0.5 * (log(target) - log(m[var].value))^2 / σt^2
+            catch err
+                println(err)
+                return -Inf
+            end
+        end
+        if ψ_l == 0.0
+            return ψ_p * penalty
+        end
+    end
+
+    # Return total log-likelihood, excluding the presample
+    try
+        if use_chand_recursion
+            return ψ_l * chand_recursion(data, system[:TTT], system[:RRR], system[:CCC],
+                                   system[:QQ], system[:ZZ], system[:DD], system[:EE];
+                                   allout = true, Nt0 = n_presample_periods(m),
+                                   tol = tol)[1] + ψ_p * penalty
+        else
+            return ψ_l * sum(filter_likelihood(m, data, system;
+                                               include_presample = false, tol = tol)) +
+                                                   ψ_p * penalty
         end
     catch err
         if catch_errors && isa(err, DomainError)
