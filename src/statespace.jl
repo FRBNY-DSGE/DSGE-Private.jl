@@ -26,6 +26,9 @@ function Base.getindex(eq::Transition, d::Symbol)
         throw(KeyError(d))
     end
 end
+function isempty(transition::Transition)
+    return isempty(transition.TTT) && isempty(transition.RRR) && isempty(transition.CCC)
+end
 
 """
 `Measurement{T<:AbstractFloat}`
@@ -53,7 +56,6 @@ mutable struct Measurement{T<:AbstractFloat}
     QQ::Matrix{T}
     EE::Matrix{T}
 end
-
 function Base.getindex(M::Measurement, d::Symbol)
     if d in (:ZZ, :DD, :QQ, :EE)
         return getfield(M, d)
@@ -61,12 +63,14 @@ function Base.getindex(M::Measurement, d::Symbol)
         throw(KeyError(d))
     end
 end
-
 function measurement(m::AbstractDSGEModel, trans::Transition; shocks::Bool=true)
     TTT = trans[:TTT]
     RRR = trans[:RRR]
     CCC = trans[:CCC]
     measurement(m, TTT, RRR, CCC; shocks=shocks)
+end
+function isempty(meas::Measurement)
+    return isempty(meas.ZZ) && isempty(meas.DD) && isempty(meas.QQ) && isempty(meas.EE)
 end
 
 """
@@ -97,6 +101,9 @@ function Base.getindex(M::PseudoMeasurement, d::Symbol)
     else
         throw(KeyError(d))
     end
+end
+function isempty(meas::PseudoMeasurement)
+    return isempty(meas.ZZ_pseudo) && isempty(meas.DD_pseudo)
 end
 
 """
@@ -142,6 +149,11 @@ function Base.copy(system::System)
     meas  = Measurement(system[:ZZ], system[:DD], system[:QQ], system[:EE])
     pseudo_meas = PseudoMeasurement(system[:ZZ_pseudo], system[:DD_pseudo])
     return System(trans, meas, pseudo_meas)
+end
+
+function isempty(sys::System)
+    return isempty(sys.transition) && isempty(sys.measurement) &&
+           isempty(sys.pseudo_measurement)
 end
 
 """
