@@ -178,6 +178,8 @@ function default_settings!(m::AbstractDSGEModel)
         "Which resampling method to use in SMC")
     settings[:mixture_proportion] = Setting(:mixture_proportion, 1.,
         "The mixture proportion for the mutation step's proposal distribution")
+    settings[:mutation_method] = Setting(:mutation_method, :MH,
+        "The method used during mutation; available options are :MH and :HMC")
 
     # Endogenous ϕ Schedule
     settings[:use_fixed_schedule] = Setting(:use_fixed_schedule, true,

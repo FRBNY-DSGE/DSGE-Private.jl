@@ -40,7 +40,7 @@ function posterior(m::AbstractDSGEModel{T}, data::AbstractArray;
                    sampler::Bool = false, ϕ_smc::Float64 = 1.,
                    catch_errors::Bool = false) where {T<:AbstractFloat}
     catch_errors = catch_errors | sampler
-    if get_setting(m, :sampling_method) == :HMC
+    if get_setting(m, :mutation_method) == :HMC
         like = likelihood(m, data, system)
     else
         like = likelihood(m, data; sampler=sampler, catch_errors=catch_errors)
