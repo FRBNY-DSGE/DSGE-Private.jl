@@ -130,6 +130,23 @@ function System(transition::Transition{T}, measurement::Measurement{T}) where T<
     return System(transition, measurement, pseudo_measurement)
 end
 
+"""
+```
+System(x::T) where T<:Type{AbstractFloat}
+```
+Empty constructor for System object. To initialize System with type T, call `System(T())`.
+ie. System(0.0), or System(Float32(0.0)).
+
+Note: isempty(System(0.0)) == true.
+"""
+function System(x::T) where T <: AbstractFloat
+    trans = Transition(Matrix{T}(undef,0,0), Matrix{T}(undef,0,0), Vector{T}(undef,0))
+    meas = Measurement(Matrix{T}(undef,0,0), Vector{T}(undef,0), Matrix{T}(undef,0,0),
+                        Matrix{T}(undef,0,0))
+    p_meas = PseudoMeasurement(Matrix{T}(undef,0,0), Vector{T}(undef,0))
+    return System(trans, meas, p_meas)
+end
+
 function Base.getindex(system::System, d::Symbol)
     if d in (:transition, :measurement, :pseudo_measurement)
         return getfield(system, d)
