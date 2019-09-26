@@ -160,7 +160,7 @@ end
 
 """
 ```
-measurement_matrices_jacobian(m, θ, T, Γ0, Γ1, Γ2, Γ3)
+measurement_matrices_jacobian(m, θ, T, R, ∂T∂θ, ∂R∂θ)
 ```
 computes the Jacobian of the matrix Z and vector D in the measurement equation
 
