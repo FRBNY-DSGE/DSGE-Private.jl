@@ -112,6 +112,7 @@ module DSGE
         prepare_meansbands_table_irf,
         write_meansbands_tables_all, construct_fcast_and_hist_dfs,
         df_to_table, load_posterior_moments, sample_λ, compute_Eλ,
+        create_q4q4_mb,
 
         # decomp/
         decompose_forecast, decomposition_means,
@@ -223,6 +224,7 @@ module DSGE
     include("analysis/io.jl")
     include("analysis/util.jl")
     include("analysis/df_to_table.jl")
+    include("analysis/create_q4q4_mb.jl")
 
     include("decomp/drivers.jl")
     include("decomp/io.jl")
