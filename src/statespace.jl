@@ -1,5 +1,5 @@
 """
-`Transition{T<:AbstractFloat}`
+`Transition{T<:Real}`
 
 The transition equation of the state-space model takes the form
 
@@ -7,16 +7,16 @@ The transition equation of the state-space model takes the form
 
 The `Transition` type stores the coefficient `Matrix{T}`s (`TTT`, `RRR`) and constant `Vector{T} CCC`.
 """
-mutable struct Transition{T<:AbstractFloat}
+mutable struct Transition{T<:Real}
     TTT::Matrix{T}
     RRR::Matrix{T}
     CCC::Vector{T}
 end
-function Transition(TTT::Matrix{T}, RRR::Matrix{T}) where T<:AbstractFloat
+function Transition(TTT::Matrix{T}, RRR::Matrix{T}) where T<:Real
     CCC = zeros(eltype(TTT), size(TTT, 1))
     Transition{T}(TTT, RRR, CCC)
 end
-function Transition(TTT::Matrix{T}, RRR::Matrix{T}, CCC::Matrix{T}) where T<:AbstractFloat
+function Transition(TTT::Matrix{T}, RRR::Matrix{T}, CCC::Matrix{T}) where T<:Real
     Transition{T}(TTT, RRR, collect(CCC))
 end
 function Base.getindex(eq::Transition, d::Symbol)
@@ -31,7 +31,7 @@ function isempty(transition::Transition)
 end
 
 """
-`Measurement{T<:AbstractFloat}`
+`Measurement{T<:Real}`
 
 The measurement equation of the state-space model takes the form
 
@@ -50,7 +50,7 @@ observables `y_t`, and `Ne` is the number of shocks `ϵ_t`:
 - `QQ`: the `Ne` x `Ne` covariance matrix for the shocks `ϵ_t`
 - `EE`: the `Ny` x `Ny` covariance matrix for the measurement error `η_t`
 """
-mutable struct Measurement{T<:AbstractFloat}
+mutable struct Measurement{T<:Real}
     ZZ::Matrix{T}
     DD::Vector{T}
     QQ::Matrix{T}
@@ -75,7 +75,7 @@ end
 
 """
 ```
-PseudoMeasurement{T<:AbstractFloat}
+PseudoMeasurement{T<:Real}
 ```
 
 The pseudo-measurement equation of the state-space model takes the form
@@ -90,7 +90,7 @@ pseudo-observables `x_t`:
 - `ZZ_pseudo`: the `Nx` x `Ns` pseudo-measurement matrix
 - `DD_pseudo`: the `Nx` x 1 constant vector
 """
-mutable struct PseudoMeasurement{T<:AbstractFloat}
+mutable struct PseudoMeasurement{T<:Real}
     ZZ_pseudo::Matrix{T}
     DD_pseudo::Vector{T}
 end
@@ -107,19 +107,19 @@ function isempty(meas::PseudoMeasurement)
 end
 
 """
-`System{T<:AbstractFloat}`
+`System{T<:Real}`
 
 A mutable struct containing the transition and measurement equations for a
 state-space model. The matrices may be directly indexed: `sys[:TTT]`
 returns `sys.transition.TTT`, etc.
 """
-mutable struct System{T<:AbstractFloat}
+mutable struct System{T<:Real}
     transition::Transition{T}
     measurement::Measurement{T}
     pseudo_measurement::PseudoMeasurement{T}
 end
 
-function System(transition::Transition{T}, measurement::Measurement{T}) where T<:AbstractFloat
+function System(transition::Transition{T}, measurement::Measurement{T}) where T<:Real
     # Initialize empty pseudo-measurement equation
     _n_states = size(transition.TTT, 1)
     _n_pseudo = 0
@@ -226,7 +226,7 @@ end
 
 """
 ```
-compute_system_function(system::System{S}) where S<:AbstractFloat
+compute_system_function(system::System{S}) where S<:Real
 ```
 
 ### Inputs
@@ -240,7 +240,7 @@ compute_system_function(system::System{S}) where S<:AbstractFloat
 - `F_ϵ::Distributions.MvNormal`: shock distribution
 - `F_u::Distributions.MvNormal`: measurement error distribution
 """
-function compute_system_function(system::System{S}) where S<:AbstractFloat
+function compute_system_function(system::System{S}) where S<:Real
     # Unpack system
     TTT    = system[:TTT]
     RRR    = system[:RRR]
@@ -263,7 +263,7 @@ function compute_system_function(system::System{S}) where S<:AbstractFloat
     return Φ, Ψ, F_ϵ, F_u
 end
 
-function zero_system_constants(system::System{S}) where S<:AbstractFloat
+function zero_system_constants(system::System{S}) where S<:Real
     system = copy(system)
 
     system.transition.CCC = zeros(size(system[:CCC]))

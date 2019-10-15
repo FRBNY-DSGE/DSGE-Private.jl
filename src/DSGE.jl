@@ -3,7 +3,7 @@ isdefined(Base, :__precompile__) && __precompile__(false)
 module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
-    using Distributed, Distributions, FileIO, FredData, HDF5, JLD2, LinearAlgebra
+    using Distributed, Distributions, FileIO, ForwardDiff, FredData, HDF5, JLD2, LinearAlgebra
     using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
@@ -88,6 +88,8 @@ module DSGE
         compute_moments, find_density_bands, mutation, resample, smc,
         mvnormal_mixture_draw, nearest_spd, marginal_data_density,
         initial_draw!, ParticleCloud, Particle, estimate_bma,
+        reduced_form_jacobian, transition_matrices_jacobian,
+        measurement_matrices_jacobian, structural_matrices_jacobian,
 
         # backwards_compatibility.jl
         smc2, old_to_new_cloud,# TO REMOVE
@@ -144,8 +146,8 @@ module DSGE
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
-        Model990, Model1002, Model1010, SmetsWouters, SmetsWoutersOrig, AnSchorfheide, 
-	PoolModel, eqcond, measurement,
+        Model990, Model1002, Model1010, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
+    	PoolModel, eqcond, measurement,
         pseudo_measurement,
         shock_groupings, transition
 
@@ -202,7 +204,7 @@ module DSGE
     include("estimate/smc/mutation.jl")
     include("estimate/smc/resample.jl")
     include("estimate/smc/smc.jl")
-
+    include("estimate/reduced_form_jacobian.jl")
     include("estimate/smc.jl")
     include("estimate/backwards_compatibility.jl")
 
