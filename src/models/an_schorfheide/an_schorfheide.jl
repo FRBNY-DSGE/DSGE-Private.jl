@@ -311,6 +311,9 @@ function model_settings!(m::AnSchorfheide)
                  "Whether to use population forecasts as data")
     m <= Setting(:forecast_zlb_value, 0.13,
         "Value of the zero lower bound in forecast periods, if we choose to enforce it")
+
+    # Klein method
+    m <= Setting(:n_endogenous_states_klein, 6)
 end
 
 function shock_groupings(m::AnSchorfheide)

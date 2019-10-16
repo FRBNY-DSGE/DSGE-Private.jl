@@ -22,13 +22,14 @@ Driver to compute the model solution and augment transition matrices.
     S_t = TTT*S_{t-1} + RRR*ϵ_t + CCC
     ```
 """
-function solve(m::AbstractDSGEModel; apply_altpolicy = false, verbose::Symbol = :high)
+function solve(m::AbstractDSGEModel; apply_altpolicy = false, verbose::Symbol = :high,
+               standard_normal_exog_shocks::Bool = false)
 
     altpolicy_solve = alternative_policy(m).solve
 
     if altpolicy_solve == solve || !apply_altpolicy
         # Get equilibrium condition matrices
-        Γ0, Γ1, C, Ψ, Π  = eqcond(m)
+        Γ0, Γ1, C, Ψ, Π  = eqcond(m, standard_normal_exog_shocks = standard_normal_exog_shocks)
 
         # Solve model
         TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Float64.(Γ0), Float64.(Γ1),

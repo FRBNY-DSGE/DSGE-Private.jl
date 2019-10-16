@@ -13,7 +13,7 @@ x_t = ZZ_pseudo*s_t + DD_pseudo
 function pseudo_measurement(m::AnSchorfheide{T},
                             TTT::Matrix{T},
                             RRR::Matrix{T},
-                            CCC::Vector{T}) where {T<:AbstractFloat}
+                            CCC::Vector{T}) where {T<:Real}
     endo   = m.endogenous_states
     pseudo = m.pseudo_observables
 
@@ -21,8 +21,8 @@ function pseudo_measurement(m::AnSchorfheide{T},
     _n_pseudo = n_pseudo_observables(m)
 
     # Initialize pseudo ZZ and DD matrices
-    ZZ_pseudo = zeros(_n_pseudo, _n_states)
-    DD_pseudo = zeros(_n_pseudo)
+    ZZ_pseudo = zeros(Real, _n_pseudo, _n_states)
+    DD_pseudo = zeros(Real, _n_pseudo)
 
     ##########################################################
     ## PSEUDO-OBSERVABLE EQUATIONS

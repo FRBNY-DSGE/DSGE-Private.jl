@@ -18,10 +18,10 @@ Var(u_t) = EE
 Cov(ϵ_t, u_t) = 0
 ```
 """
-function measurement(m::AnSchorfheide{T},
+function measurement(m::AnSchorfheide,
                      TTT::Matrix{T},
                      RRR::Matrix{T},
-                     CCC::Vector{T}) where {T<:AbstractFloat}
+                     CCC::Vector{T}) where {T<:Real}
     endo     = m.endogenous_states
     endo_new = m.endogenous_states_augmented
     exo      = m.exogenous_shocks
@@ -31,10 +31,10 @@ function measurement(m::AnSchorfheide{T},
     _n_states = n_states_augmented(m)
     _n_shocks_exogenous = n_shocks_exogenous(m)
 
-    ZZ = zeros(_n_observables, _n_states)
-    DD = zeros(_n_observables)
-    EE = zeros(_n_observables, _n_observables)
-    QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
+    ZZ = zeros(Real, _n_observables, _n_states)
+    DD = zeros(Real, _n_observables)
+    EE = zeros(Real, _n_observables, _n_observables)
+    QQ = zeros(Real, _n_shocks_exogenous, _n_shocks_exogenous)
 
     ## Output growth
     ZZ[obs[:obs_gdp], endo[:y_t]]  = 1.0

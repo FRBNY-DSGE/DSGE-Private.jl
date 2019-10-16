@@ -50,6 +50,7 @@ function reduced_form_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
                                Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S};
                                output_type = Float64,
                                check_valid_measurement_eqn::Bool = true) where {S<:Real}
+
     # Apply implicit function theorem to compute Jacobians of
     # reduced form matrices
     ∂T∂θ, ∂R∂θ = transition_matrices_jacobian(m, θ, T, Γ0, Γ1, Γ2, Γ3)
@@ -96,12 +97,12 @@ function structural_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector)
 
     # derivs is a matrix whose rows are gradients of a single entry
     # of a structural matrix w.r.t. the vector θ,
-    # so to retrieve ∂Γ0∂θ, we want the first n_states(m)^2 rows
-    Γ0_dim = n_states(m)^2
+    # so to retrieve ∂Γ0∂θ, we want the first n_endogenous_states_klein^2 rows
+    n_endo = get_setting(m, :n_endogenous_states_klein)
+    Γ0_dim = n_endo^2
     Γ1_dim = Γ0_dim # copies b/c primitive
     Γ2_dim = Γ0_dim
-    Γ3_dim = n_states(m) * n_shocks_exogenous(m)
-    nstates = n_states(m)
+    Γ3_dim = n_endo * n_shocks_exogenous(m)
     ∂Γ0∂θ = derivs[1:Γ0_dim,:]
     ∂Γ1∂θ = derivs[(Γ0_dim+1):(Γ1_dim+Γ0_dim),:]
     ∂Γ2∂θ = derivs[(Γ1_dim+Γ0_dim+1):(Γ2_dim+Γ1_dim+Γ0_dim),:]
@@ -213,7 +214,8 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector
         Tvar = var[Nθ+1:Nθ+NT]
         Rvar = var[Nθ+NT+1:end]
         ModelConstructors.update!(m.parameters, θvar; change_value_type = true)
-        measure_mat = measurement(m, reshape(Tvar, size(T)...), reshape(Rvar, size(R)...))
+        measure_mat = measurement(m, reshape(Tvar, size(T)...), reshape(Rvar, size(R)...),
+                                  zeros(eltype(Tvar), size(T,1)))
         Zvar = measure_mat.ZZ
         Dvar = measure_mat.DD
         return vcat(vec(Zvar), vec(Dvar))
@@ -223,7 +225,7 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector
 
     # Extract individual jacobians of Z w.r.t. θ, T, and R
     nobs = n_observables(m)
-    nstates = n_states(m)
+    nstates = get_setting(m, :n_endogenous_states_klein)
     Z_dim = nobs * nstates
     D_dim = nstates
     ∂Z∂θ = derivs[1:Z_dim,1:Nθ]
@@ -234,23 +236,23 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector
     ∂D∂R = derivs[1+Z_dim:end,(Nθ+NT+1):end]
 
     # Determine if entries of ZZ ever depends on more than one of θ, T, or R
-    if check_valid_measurement_eqn
-        ∂Z∂θ_nonzero = sum(∂Z∂θ, dims = 2) .> 0 # Nonzero row sum -> Z depends on at least one θ
-        ∂Z∂T_nonzero = sum(∂Z∂T, dims = 2) .> 0
-        ∂Z∂R_nonzero = sum(∂Z∂R, dims = 2) .> 0
-        ∂D∂θ_nonzero = sum(∂D∂θ, dims = 2) .> 0
-        ∂D∂T_nonzero = sum(∂D∂T, dims = 2) .> 0
-        ∂D∂R_nonzero = sum(∂D∂R, dims = 2) .> 0
-        Z_dep_θ_T = sum(abs(∂Z∂θ_nonzero .* ∂Z∂T_nonzero) .> 0) # product is nonzero
-        Z_dep_T_R = sum(abs(∂Z∂T_nonzero .* ∂Z∂R_nonzero) .> 0) # if depends on at least
-        Z_dep_θ_R = sum(abs(∂Z∂θ_nonzero .* ∂Z∂R_nonzero) .> 0) # two of θ, T, and R
-        D_dep_θ_T = sum(abs(∂D∂θ_nonzero .* ∂D∂T_nonzero) .> 0) # product is nonzero
-        D_dep_T_R = sum(abs(∂D∂T_nonzero .* ∂D∂R_nonzero) .> 0) # if depends on at least
-        D_dep_θ_R = sum(abs(∂D∂θ_nonzero .* ∂D∂R_nonzero) .> 0) # two of θ, T, and R
-        if Z_dep_θ_T + Z_dep_T_R + Z_dep_θ_R + D_dep_θ_T + D_dep_T_R + D_dep_θ_R > 0
-            error("Measurement equation invalid for applying the implicit function theorem to compute the Jacobian of reduced form matrices with respect to parameters.")
-        end
-    end
+    # if check_valid_measurement_eqn
+    #     ∂Z∂θ_nonzero = sum(∂Z∂θ, dims = 2) .> 0 # Nonzero row sum -> Z depends on at least one θ
+    #     ∂Z∂T_nonzero = sum(∂Z∂T, dims = 2) .> 0
+    #     ∂Z∂R_nonzero = sum(∂Z∂R, dims = 2) .> 0
+    #     ∂D∂θ_nonzero = sum(∂D∂θ, dims = 2) .> 0
+    #     ∂D∂T_nonzero = sum(∂D∂T, dims = 2) .> 0
+    #     ∂D∂R_nonzero = sum(∂D∂R, dims = 2) .> 0
+    #     Z_dep_θ_T = sum(abs(∂Z∂θ_nonzero .* ∂Z∂T_nonzero) .> 0) # product is nonzero
+    #     Z_dep_T_R = sum(abs(∂Z∂T_nonzero .* ∂Z∂R_nonzero) .> 0) # if depends on at least
+    #     Z_dep_θ_R = sum(abs(∂Z∂θ_nonzero .* ∂Z∂R_nonzero) .> 0) # two of θ, T, and R
+    #     D_dep_θ_T = sum(abs(∂D∂θ_nonzero .* ∂D∂T_nonzero) .> 0) # product is nonzero
+    #     D_dep_T_R = sum(abs(∂D∂T_nonzero .* ∂D∂R_nonzero) .> 0) # if depends on at least
+    #     D_dep_θ_R = sum(abs(∂D∂θ_nonzero .* ∂D∂R_nonzero) .> 0) # two of θ, T, and R
+    #     if Z_dep_θ_T + Z_dep_T_R + Z_dep_θ_R + D_dep_θ_T + D_dep_T_R + D_dep_θ_R > 0
+    #         error("Measurement equation invalid for applying the implicit function theorem to compute the Jacobian of reduced form matrices with respect to parameters.")
+    #     end
+    # end
 
     ModelConstructors.update!(m.parameters, θold; change_value_type = true)
 
