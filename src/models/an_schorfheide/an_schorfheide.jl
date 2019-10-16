@@ -314,6 +314,7 @@ function model_settings!(m::AnSchorfheide)
 
     # Klein method
     m <= Setting(:n_endogenous_states_klein, 6)
+    m <= Setting(:standard_normal_exog_shocks, true)
 end
 
 function shock_groupings(m::AnSchorfheide)

@@ -181,7 +181,7 @@ compute_system(m; apply_altpolicy = false)
 Given the current model parameters, compute the state-space system
 corresponding to model `m`. Returns a `System` object.
 """
-function compute_system(m::AbstractDSGEModel{T}; apply_altpolicy = false,
+function compute_system(m::AbstractDSGEModel; apply_altpolicy = false,
                         verbose::Symbol = :high) where T<:Real
     # Solve model
     TTT, RRR, CCC = solve(m; apply_altpolicy = apply_altpolicy, verbose = verbose)
@@ -190,7 +190,7 @@ function compute_system(m::AbstractDSGEModel{T}; apply_altpolicy = false,
     # Solve measurement equation
     measurement_equation = measurement(m, TTT, RRR, CCC)
 
-    type_tuple = (typeof(m), Matrix{T}, Matrix{T}, Vector{T})
+    type_tuple = (typeof(m), Matrix{<:Real}, Matrix{<:Real}, Vector{<:Real})
     if hasmethod(pseudo_measurement, type_tuple)
         # Solve pseudo-measurement equation
         pseudo_measurement_equation = pseudo_measurement(m, TTT, RRR, CCC)

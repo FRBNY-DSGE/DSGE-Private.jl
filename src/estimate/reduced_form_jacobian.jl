@@ -1,7 +1,6 @@
 """
 ```
-function reduced_form_jacobian(m, θ, T, R, Γ0, Γ1, Γ2, Γ3;
-                               check_valid_measurement_eqn = true)
+function reduced_form_jacobian(m, θ, T, R, Γ0, Γ1, Γ2, Γ3)
 ```
 computes the Jacobian of the reduced form state space matrices T, R, Z, and D with respect
 to the parameters θ for the state space system
@@ -28,12 +27,6 @@ the structural model as
 - `Γ2::AbstractMatrix`: structural matrix applying to backward-looking variables
 - `Γ3::AbstractMatrix`: structural matrix applying to time t shocks
 
-### Keyword Arguments
-- `check_valid_measurement_eqn::Bool`: Throws an error if the measurement equation does not
-    satisfy the required assumptions for this method. An entry of the matrix Z and vector D cannot
-    depend on more than one of the parameters θ, transition matrix T, or shock loading R
-    because we do not have a mapping
-
 ### Outputs
 - The Jacobians ∂T∂θ, ∂R∂θ, ∂Z∂θ, and ∂D∂θ
 
@@ -47,17 +40,14 @@ Remaining things to do:
 function reduced_form_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
                                T::AbstractMatrix{S}, R::AbstractMatrix{S},
                                Γ0::AbstractMatrix{S}, Γ1::AbstractMatrix{S},
-                               Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S};
-                               output_type = Float64,
-                               check_valid_measurement_eqn::Bool = true) where {S<:Real}
+                               Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real}
 
     # Apply implicit function theorem to compute Jacobians of
     # reduced form matrices
     ∂T∂θ, ∂R∂θ = transition_matrices_jacobian(m, θ, T, Γ0, Γ1, Γ2, Γ3)
     # ∂T∂θ = Matrix{S}(map(x -> x.value, ∂T∂θ))
     # ∂R∂θ = Matrix{S}(map(x -> x.value, ∂R∂θ))
-    ∂Z∂θ, ∂D∂θ = measurement_matrices_jacobian(m, θ, T, R, ∂T∂θ, ∂R∂θ;
-                                               check_valid_measurement_eqn = check_valid_measurement_eqn)
+    ∂Z∂θ, ∂D∂θ = measurement_matrices_jacobian(m, θ, T, R, ∂T∂θ, ∂R∂θ)
     # ∂T∂θ = Matrix{output_type}(∂T∂θ)
     # ∂R∂θ = Matrix{output_type}(∂R∂θ)
     # ∂Z∂θ = map(y -> y.value, Matrix{S}(map(x -> x.value, ∂Z∂θ)))
@@ -143,13 +133,12 @@ function transition_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
                                       T::AbstractMatrix{S}, Γ0::AbstractMatrix{S},
                                       Γ1::AbstractMatrix{S},
                                       Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real}
-                                  # zero_entries::BitArray = BitArray{undef,0,0}) where {S<:Real}
     θold = deepcopy(map(x -> x.value, θ))
 
     # Compute derivatives of structural model matrices
     ∂Γ0∂θ, ∂Γ1∂θ, ∂Γ2∂θ, ∂Γ3∂θ = structural_matrices_jacobian(m, θ)
 
-    # Compute ∂F / ∂TA' and ∂F / ∂θ' to get ∂T∂θ
+    # Compute ∂F / ∂T' and ∂F / ∂θ' to get ∂T∂θ
     iden = Matrix{S}(I, size(T,1), size(T,1))
     T_transpose = T';
     kron_T_iden = kron(T_transpose, iden) # used for multiple computations
@@ -171,6 +160,7 @@ function transition_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
 
     ModelConstructors.update!(m.parameters, θold; change_value_type = true)
 
+    # Convert to type S to make sure partial derivatives are the same type as T and R
     return Matrix{S}(∂T∂θ), Matrix{S}(∂R∂θ)
 end
 
@@ -198,9 +188,9 @@ when evaluated at θ.
 
 """
 function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
-                                   T::AbstractMatrix{S}, R::AbstractMatrix{S},
-                                   ∂T∂θ::AbstractMatrix{S}, ∂R∂θ::AbstractMatrix{S};
-                                   check_valid_measurement_eqn::Bool = true) where {S<:Real}
+                                       T::AbstractMatrix{S}, R::AbstractMatrix{S},
+                                       ∂T∂θ::AbstractMatrix{S},
+                                       ∂R∂θ::AbstractMatrix{S}) where {S<:Real}
     θold = deepcopy(map(x -> x.value, θ))
 
     # We assume T, R are evaluated at θ
@@ -260,5 +250,6 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector
     ∂Z∂θ += ∂Z∂T * ∂T∂θ + ∂Z∂R * ∂R∂θ
     ∂D∂θ += ∂D∂T * ∂T∂θ + ∂D∂R * ∂R∂θ
 
-    return ∂Z∂θ, ∂D∂θ
+    # Make sure partials are same type as T and R
+    return Matrix{S}(∂Z∂θ), Matrix{S}(∂D∂θ)
 end

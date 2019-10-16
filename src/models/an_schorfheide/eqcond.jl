@@ -15,8 +15,7 @@ specified in their proper positions.
 * `Ψ`  (`n_states` x `n_shocks_exogenous`) holds coefficients of iid shocks.
 * `Π`  (`n_states` x `n_states_expectational`) holds coefficients of expectational states.
 """
-function eqcond(m::AnSchorfheide; method::Symbol = :gensys,
-                standard_normal_exog_shocks::Bool = false)
+function eqcond(m::AnSchorfheide; method::Symbol = :gensys)
 
     if method == :gensys
         endo = m.endogenous_states
@@ -56,7 +55,7 @@ function eqcond(m::AnSchorfheide; method::Symbol = :gensys,
         Γ0[eq[:eq_mp], endo[:R_t]] = 1
         Γ0[eq[:eq_mp], endo[:g_t]] = (1-m[:ρ_R])*m[:ψ_2]
         Γ1[eq[:eq_mp], endo[:R_t]] = m[:ρ_R]
-        if standard_normal_exog_shocks
+        if get_setting(m, :standard_normal_exog_shocks)
             Ψ[eq[:eq_mp], exo[:rm_sh]] = m[:σ_R]
         else
             Ψ[eq[:eq_mp], exo[:rm_sh]] = 1
@@ -71,7 +70,7 @@ function eqcond(m::AnSchorfheide; method::Symbol = :gensys,
 
         Γ0[eq[:eq_g], endo[:g_t]] = 1
         Γ1[eq[:eq_g], endo[:g_t]] = m[:ρ_g]
-        if standard_normal_exog_shocks
+        if get_setting(m, :standard_normal_exog_shocks)
             Ψ[eq[:eq_g], exo[:g_sh]] = m[:σ_g]
         else
             Ψ[eq[:eq_g], exo[:g_sh]] = 1
@@ -81,7 +80,7 @@ function eqcond(m::AnSchorfheide; method::Symbol = :gensys,
 
         Γ0[eq[:eq_z], endo[:z_t]] = 1
         Γ1[eq[:eq_z], endo[:z_t]] = m[:ρ_z]
-        if standard_normal_exog_shocks
+        if get_setting(m, :standard_normal_exog_shocks)
             Ψ[eq[:eq_z], exo[:z_sh]] = m[:σ_z]
         else
             Ψ[eq[:eq_z], exo[:z_sh]] = 1

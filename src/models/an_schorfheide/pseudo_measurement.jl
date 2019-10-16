@@ -10,7 +10,7 @@ Assign pseudo-measurement equation (a linear combination of states):
 x_t = ZZ_pseudo*s_t + DD_pseudo
 ```
 """
-function pseudo_measurement(m::AnSchorfheide{T},
+function pseudo_measurement(m::AnSchorfheide,
                             TTT::Matrix{T},
                             RRR::Matrix{T},
                             CCC::Vector{T}) where {T<:Real}
@@ -18,11 +18,20 @@ function pseudo_measurement(m::AnSchorfheide{T},
     pseudo = m.pseudo_observables
 
     _n_states = n_states_augmented(m)
+    if _n_states != size(TTT,1)
+        try
+            _n_states = get_setting(m, :n_endogenous_states_klein)
+            _n_states == size(TTT, 1)
+        catch
+            error("Size of state space implied by TTT $(size(TTT,1)) does not match the model's information.")
+        end
+    end
+
     _n_pseudo = n_pseudo_observables(m)
 
     # Initialize pseudo ZZ and DD matrices
-    ZZ_pseudo = zeros(Real, _n_pseudo, _n_states)
-    DD_pseudo = zeros(Real, _n_pseudo)
+    ZZ_pseudo = zeros(eltype(T), _n_pseudo, _n_states)
+    DD_pseudo = zeros(eltype(T), _n_pseudo)
 
     ##########################################################
     ## PSEUDO-OBSERVABLE EQUATIONS
