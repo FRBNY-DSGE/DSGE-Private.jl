@@ -338,6 +338,23 @@ function update!(m::AbstractDSGEModel, values::ParameterVector{T}) where T
     steadystate!(m)
 end
 
+"""
+```
+get_fixed_parameter_indices!(m::AbstractDSGEModel)
+```
+
+Returns a Boolean vector indicating which indices of the `parameters` field
+of the model object `m` have fixed parameters.
+
+"""
+function get_fixed_parameter_indices(m::AbstractDSGEModel)
+    if haskey(m.settings, :fixed_parameter_indices)
+        return get_setting(m, :fixed_parameter_indices)
+    else
+        return map(x -> x.fixed, m.parameters)
+    end
+end
+
 
 """
 ```

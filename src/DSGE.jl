@@ -56,7 +56,7 @@ module DSGE
         load_parameters_from_file, specify_mode!, specify_hessian,
         logpath, workpath, rawpath, tablespath, figurespath, inpath,
         transform_to_model_space!, transform_to_real_line!,
-        ShockGroup, alternative_policy,
+        ShockGroup, alternative_policy, get_fixed_parameter_indices,
 
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, compute_system,

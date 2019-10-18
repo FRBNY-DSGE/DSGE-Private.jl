@@ -19,7 +19,7 @@ the structural model as
 
 ### Arguments:
 - `m::AbstractDSGEModel`: model object
-- `θ::ParameterVector`: vector of model parameters
+- `θ::AbstractVector`  or `ParameterVector`: vector of model parameters
 - `T::AbstractMatrix`: transition matrix from time t-1 to t
 - `R::AbstractMatrix`: shock loading on exogenous shocks
 - `Γ0::AbstractMatrix`: structural matrix applying to time t states
@@ -34,25 +34,30 @@ Remaining things to do:
 * Speed up auto-differentiation by allowing the user to tell the function
   whether or not the measurement matrices ever depend on T or R (to avoid excess differentiation)
 * Add in differentiation for cases when you have nonzero CCC and nonzero EE
-* Handle case of not differentiating w.r.t. fixed parameters to reduce state space size
-* Extend method to allow Z and D to depend on θ, T, and R
+
+Notes on type choices
+* We currently require T, R, and Klein metrices to be subtypes of Real, and the same subtypes,
+  so that when we call measurement with inputs m, T, R, and C, the Measurement object
+  will be created, and it is auto-differentiable
 """
-function reduced_form_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
+function reduced_form_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
                                T::AbstractMatrix{S}, R::AbstractMatrix{S},
                                Γ0::AbstractMatrix{S}, Γ1::AbstractMatrix{S},
-                               Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real}
+                               Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real, U<:Real}
 
     # Apply implicit function theorem to compute Jacobians of
     # reduced form matrices
     ∂T∂θ, ∂R∂θ = transition_matrices_jacobian(m, θ, T, Γ0, Γ1, Γ2, Γ3)
-    # ∂T∂θ = Matrix{S}(map(x -> x.value, ∂T∂θ))
-    # ∂R∂θ = Matrix{S}(map(x -> x.value, ∂R∂θ))
     ∂Z∂θ, ∂D∂θ = measurement_matrices_jacobian(m, θ, T, R, ∂T∂θ, ∂R∂θ)
-    # ∂T∂θ = Matrix{output_type}(∂T∂θ)
-    # ∂R∂θ = Matrix{output_type}(∂R∂θ)
-    # ∂Z∂θ = map(y -> y.value, Matrix{S}(map(x -> x.value, ∂Z∂θ)))
-    # ∂D∂θ = map(y -> y.value, Matrix{S}(map(x -> x.value, ∂D∂θ)))
+
     return ∂T∂θ, ∂R∂θ, ∂Z∂θ, ∂D∂θ
+end
+
+function reduced_form_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
+                               T::AbstractMatrix{S}, R::AbstractMatrix{S},
+                               Γ0::AbstractMatrix{S}, Γ1::AbstractMatrix{S},
+                               Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real}
+    reduced_form_jacobian(m, map(x -> x.value, θ), T, R, Γ0, Γ1, Γ2, Γ3)
 end
 
 """
@@ -68,22 +73,35 @@ when evaluated at θ.
 
 ### Arguments
 - `m::AbstractDSGEModel`: model object
-- `θ::ParameterVector`: vector of model parameters
+- `θ::AbstractVector`  or `ParameterVector`: vector of model parameters
 
 ### Outputs
 - The Jacobians ∂Γ0∂θ, ∂Γ1∂θ, ∂Γ2∂θ, and ∂Γ3∂θ
 
 """
-function structural_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector) where {S<:Real}
+function structural_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{S}) where {S<:Real}
 
-    θold = deepcopy(map(x -> x.value, θ))
+    θold = copy(θ) # To ensure m's parameters are the same after this function ends
 
+    # Check for fixed parameters
+    if length(θ) < length(m.parameters)
+        unfixed_inds = .!(get_fixed_parameter_indices(m))
+        update_wrapper! = x -> ModelConstructors.update!(m.parameters,
+                                                      x, unfixed_inds;
+                                                      change_value_type = true)
+    else
+        update_wrapper! = x -> ModelConstructors.update!(m.parameters,
+                                                      x; change_value_type = true)
+    end
+
+    # Write structural matrices as function of unfixed parameters.
     @inline function diff_struct_obj_fnct(var)
-        ModelConstructors.update!(m.parameters, var; change_value_type = true)
+        update_wrapper!(var)
         Γ0, Γ1, Γ2, Γ3 = eqcond(m; method = :klein)
         return vcat(vec(Γ0), vec(Γ1), vec(Γ2), vec(Γ3))
     end
-    derivs = ForwardDiff.jacobian(diff_struct_obj_fnct, map(α -> α.value, θ))
+
+    derivs = ForwardDiff.jacobian(diff_struct_obj_fnct, θ)
 
     # derivs is a matrix whose rows are gradients of a single entry
     # of a structural matrix w.r.t. the vector θ,
@@ -98,9 +116,12 @@ function structural_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector)
     ∂Γ2∂θ = derivs[(Γ1_dim+Γ0_dim+1):(Γ2_dim+Γ1_dim+Γ0_dim),:]
     ∂Γ3∂θ = derivs[(Γ2_dim+Γ1_dim+Γ0_dim+1):end,:]
 
-    ModelConstructors.update!(m.parameters, θold; change_value_type = true)
+    update_wrapper!(θold)
 
     return ∂Γ0∂θ, ∂Γ1∂θ, ∂Γ2∂θ, ∂Γ3∂θ
+end
+function structural_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector) where {S<:Real}
+    structural_matrices_jacobian(m, map(x -> x.value, θ))
 end
 
 """
@@ -117,7 +138,7 @@ when evaluated at θ using the implicit function theorem.
 
 ### Arguments
 - `m::AbstractDSGEModel`: model object
-- `θ::ParameterVector`: vector of model parameters
+- `θ::AbstractVector`  or `ParameterVector`: vector of model parameters
 - `T::AbstractMatrix`: transition matrix from time t-1 to t
 - `R::AbstractMatrix`: shock loading on exogenous shocks
 - `Γ0::AbstractMatrix`: structural matrix applying to time t states
@@ -129,11 +150,11 @@ when evaluated at θ using the implicit function theorem.
 - The Jacobians ∂T∂θ and ∂R∂θ
 
 """
-function transition_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
+function transition_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
                                       T::AbstractMatrix{S}, Γ0::AbstractMatrix{S},
-                                      Γ1::AbstractMatrix{S},
-                                      Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real}
-    θold = deepcopy(map(x -> x.value, θ))
+                                      Γ1::AbstractMatrix{S}, Γ2::AbstractMatrix{S},
+                                      Γ3::AbstractMatrix{S}) where {S<:Real, U<:Real}
+    θold = copy(θ)
 
     # Compute derivatives of structural model matrices
     ∂Γ0∂θ, ∂Γ1∂θ, ∂Γ2∂θ, ∂Γ3∂θ = structural_matrices_jacobian(m, θ)
@@ -147,10 +168,6 @@ function transition_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
         kron(T_transpose^2, iden) * ∂Γ1∂θ - ∂Γ2∂θ
     ∂T∂θ = -inv(∂F∂T) * ∂F∂θ
 
-    # if !isempty(zero_entries)
-    #     ∂A∂θ[zero_entries] .= zero(S)
-    # end
-
     # Compute ∂R∂θ
     inv_Γ0_min_Γ1T = inv(Γ0 - Γ1 * T)
     n_exo_sh = n_shocks_exogenous(m)
@@ -158,10 +175,21 @@ function transition_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
              (∂Γ0∂θ - kron_T_iden * ∂Γ1∂θ - kron(iden,Γ1) * ∂T∂θ) +
              kron(Matrix{S}(I, n_exo_sh , n_exo_sh), inv_Γ0_min_Γ1T) * ∂Γ3∂θ
 
-    ModelConstructors.update!(m.parameters, θold; change_value_type = true)
+    if length(θ) < length(m.parameters)
+        unfixed_inds = .!(get_fixed_parameter_indices(m))
+        ModelConstructors.update!(m.parameters, θold, unfixed_inds; change_value_type = true)
+    else
+        ModelConstructors.update!(m.parameters, θold; change_value_type = true)
+    end
 
     # Convert to type S to make sure partial derivatives are the same type as T and R
     return Matrix{S}(∂T∂θ), Matrix{S}(∂R∂θ)
+end
+function transition_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
+                                      T::AbstractMatrix{S}, Γ0::AbstractMatrix{S},
+                                      Γ1::AbstractMatrix{S},
+                                      Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real}
+    transition_matrices_jacobian(m, map(x -> x.value, θ), T, Γ0, Γ1, Γ2, Γ3)
 end
 
 """
@@ -177,7 +205,7 @@ when evaluated at θ.
 
 ### Arguments
 - `m::AbstractDSGEModel`: model object
-- `θ::ParameterVector`: vector of model parameters
+- `θ::AbstractVector`  or `ParameterVector`: vector of model parameters
 - `T::AbstractMatrix`: transition matrix from time t-1 to t
 - `R::AbstractMatrix`: shock loading on exogenous shocks
 - `∂T∂θ::AbstractMatrix`: Jacobian of T
@@ -187,23 +215,35 @@ when evaluated at θ.
 - The Jacobians ∂Z∂θ and ∂D∂θ
 
 """
-function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
+function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
                                        T::AbstractMatrix{S}, R::AbstractMatrix{S},
                                        ∂T∂θ::AbstractMatrix{S},
-                                       ∂R∂θ::AbstractMatrix{S}) where {S<:Real}
-    θold = deepcopy(map(x -> x.value, θ))
+                                       ∂R∂θ::AbstractMatrix{S}) where {S<:Real, U<:Real}
+    θold = copy(θ)
 
     # We assume T, R are evaluated at θ
     Nθ = length(θ)
     NT = length(T)
     NR = length(R)
 
-    # Differentiate Z, D as functions of theta, T, and R
+    # Check if there are fixed parameters and accordingly
+    # define appropriate function to differentiate
+    # Z and D as functions of theta, T, and R
+    if length(θ) < length(m.parameters)
+        unfixed_inds = .!(get_fixed_parameter_indices(m))
+        update_wrapper! = x -> ModelConstructors.update!(m.parameters,
+                                                      x, unfixed_inds;
+                                                      change_value_type = true)
+    else
+        update_wrapper! = x -> ModelConstructors.update!(m.parameters, x,
+                                                      change_value_type = true)
+    end
+
     @inline function diff_meas_obj_fnct(var)
         θvar = var[1:Nθ]
         Tvar = var[Nθ+1:Nθ+NT]
         Rvar = var[Nθ+NT+1:end]
-        ModelConstructors.update!(m.parameters, θvar; change_value_type = true)
+        update_wrapper!(θvar)
         measure_mat = measurement(m, reshape(Tvar, size(T)...), reshape(Rvar, size(R)...),
                                   zeros(eltype(Tvar), size(T,1)))
         Zvar = measure_mat.ZZ
@@ -211,7 +251,7 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector
         return vcat(vec(Zvar), vec(Dvar))
     end
 
-    derivs = ForwardDiff.jacobian(diff_meas_obj_fnct, vcat(map(α -> α.value, θ), vec(T), vec(R)))
+    derivs = ForwardDiff.jacobian(diff_meas_obj_fnct, vcat(θ, vec(T), vec(R)))
 
     # Extract individual jacobians of Z w.r.t. θ, T, and R
     nobs = n_observables(m)
@@ -225,26 +265,8 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector
     ∂D∂T = derivs[1+Z_dim:end,(Nθ+1):(Nθ+NT)]
     ∂D∂R = derivs[1+Z_dim:end,(Nθ+NT+1):end]
 
-    # Determine if entries of ZZ ever depends on more than one of θ, T, or R
-    # if check_valid_measurement_eqn
-    #     ∂Z∂θ_nonzero = sum(∂Z∂θ, dims = 2) .> 0 # Nonzero row sum -> Z depends on at least one θ
-    #     ∂Z∂T_nonzero = sum(∂Z∂T, dims = 2) .> 0
-    #     ∂Z∂R_nonzero = sum(∂Z∂R, dims = 2) .> 0
-    #     ∂D∂θ_nonzero = sum(∂D∂θ, dims = 2) .> 0
-    #     ∂D∂T_nonzero = sum(∂D∂T, dims = 2) .> 0
-    #     ∂D∂R_nonzero = sum(∂D∂R, dims = 2) .> 0
-    #     Z_dep_θ_T = sum(abs(∂Z∂θ_nonzero .* ∂Z∂T_nonzero) .> 0) # product is nonzero
-    #     Z_dep_T_R = sum(abs(∂Z∂T_nonzero .* ∂Z∂R_nonzero) .> 0) # if depends on at least
-    #     Z_dep_θ_R = sum(abs(∂Z∂θ_nonzero .* ∂Z∂R_nonzero) .> 0) # two of θ, T, and R
-    #     D_dep_θ_T = sum(abs(∂D∂θ_nonzero .* ∂D∂T_nonzero) .> 0) # product is nonzero
-    #     D_dep_T_R = sum(abs(∂D∂T_nonzero .* ∂D∂R_nonzero) .> 0) # if depends on at least
-    #     D_dep_θ_R = sum(abs(∂D∂θ_nonzero .* ∂D∂R_nonzero) .> 0) # two of θ, T, and R
-    #     if Z_dep_θ_T + Z_dep_T_R + Z_dep_θ_R + D_dep_θ_T + D_dep_T_R + D_dep_θ_R > 0
-    #         error("Measurement equation invalid for applying the implicit function theorem to compute the Jacobian of reduced form matrices with respect to parameters.")
-    #     end
-    # end
-
-    ModelConstructors.update!(m.parameters, θold; change_value_type = true)
+    # Set parameters of m back to the old ones
+    update_wrapper!(θold)
 
     # Compute derivatives via chain rule
     ∂Z∂θ += ∂Z∂T * ∂T∂θ + ∂Z∂R * ∂R∂θ
@@ -252,4 +274,10 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector
 
     # Make sure partials are same type as T and R
     return Matrix{S}(∂Z∂θ), Matrix{S}(∂D∂θ)
+end
+function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
+                                       T::AbstractMatrix{S}, R::AbstractMatrix{S},
+                                       ∂T∂θ::AbstractMatrix{S},
+                                       ∂R∂θ::AbstractMatrix{S}) where {S<:Real}
+    measurement_matrices_jacobian(m, map(x -> x.value, θ), T, R, ∂T∂θ, ∂R∂θ)
 end
