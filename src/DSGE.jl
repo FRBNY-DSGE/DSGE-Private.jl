@@ -133,7 +133,7 @@ module DSGE
         count_scenario_draws,
 
         # packet/
-        usual_settings!, usual_forecast, write_forecast_centric_packet,
+        write_forecast_centric_packet,
         write_standard_packet, plot_standard_packet,
 
         # plot/
