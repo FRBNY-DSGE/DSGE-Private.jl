@@ -41,9 +41,10 @@ Notes on type choices
   will be created, and it is auto-differentiable
 """
 function reduced_form_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
-                               T::AbstractMatrix{S}, R::AbstractMatrix{S},
-                               Γ0::AbstractMatrix{S}, Γ1::AbstractMatrix{S},
-                               Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real, U<:Real}
+                               T::AbstractMatrix{X}, R::AbstractMatrix{X},
+                               Γ0::AbstractMatrix{Y}, Γ1::AbstractMatrix{Y},
+                               Γ2::AbstractMatrix{Y},
+                               Γ3::AbstractMatrix{Y}) where {U<:Real, X<:Real, Y<:Real}
 
     # Apply implicit function theorem to compute Jacobians of
     # reduced form matrices
@@ -54,9 +55,9 @@ function reduced_form_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
 end
 
 function reduced_form_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
-                               T::AbstractMatrix{S}, R::AbstractMatrix{S},
-                               Γ0::AbstractMatrix{S}, Γ1::AbstractMatrix{S},
-                               Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real}
+                               T::AbstractMatrix{X}, R::AbstractMatrix{X},
+                               Γ0::AbstractMatrix{Y}, Γ1::AbstractMatrix{Y},
+                               Γ2::AbstractMatrix{Y}, Γ3::AbstractMatrix{Y}) where {X<:Real, Y<:Real}
     reduced_form_jacobian(m, map(x -> x.value, θ), T, R, Γ0, Γ1, Γ2, Γ3)
 end
 
@@ -111,16 +112,17 @@ function structural_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{S
     Γ1_dim = Γ0_dim # copies b/c primitive
     Γ2_dim = Γ0_dim
     Γ3_dim = n_endo * n_shocks_exogenous(m)
-    ∂Γ0∂θ = derivs[1:Γ0_dim,:]
-    ∂Γ1∂θ = derivs[(Γ0_dim+1):(Γ1_dim+Γ0_dim),:]
-    ∂Γ2∂θ = derivs[(Γ1_dim+Γ0_dim+1):(Γ2_dim+Γ1_dim+Γ0_dim),:]
-    ∂Γ3∂θ = derivs[(Γ2_dim+Γ1_dim+Γ0_dim+1):end,:]
+    model_type = findparam(m)
+    ∂Γ0∂θ = Matrix{model_type}(derivs[1:Γ0_dim,:])
+    ∂Γ1∂θ = Matrix{model_type}(derivs[(Γ0_dim+1):(Γ1_dim+Γ0_dim),:])
+    ∂Γ2∂θ = Matrix{model_type}(derivs[(Γ1_dim+Γ0_dim+1):(Γ2_dim+Γ1_dim+Γ0_dim),:])
+    ∂Γ3∂θ = Matrix{model_type}(derivs[(Γ2_dim+Γ1_dim+Γ0_dim+1):end,:])
 
     update_wrapper!(θold)
 
     return ∂Γ0∂θ, ∂Γ1∂θ, ∂Γ2∂θ, ∂Γ3∂θ
 end
-function structural_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector) where {S<:Real}
+function structural_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector)
     structural_matrices_jacobian(m, map(x -> x.value, θ))
 end
 
@@ -151,16 +153,16 @@ when evaluated at θ using the implicit function theorem.
 
 """
 function transition_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
-                                      T::AbstractMatrix{S}, Γ0::AbstractMatrix{S},
-                                      Γ1::AbstractMatrix{S}, Γ2::AbstractMatrix{S},
-                                      Γ3::AbstractMatrix{S}) where {S<:Real, U<:Real}
+                                      T::AbstractMatrix{X}, Γ0::AbstractMatrix{Y},
+                                      Γ1::AbstractMatrix{Y}, Γ2::AbstractMatrix{Y},
+                                      Γ3::AbstractMatrix{Y}) where {U<:Real, X<:Real, Y<:Real}
     θold = copy(θ)
 
     # Compute derivatives of structural model matrices
     ∂Γ0∂θ, ∂Γ1∂θ, ∂Γ2∂θ, ∂Γ3∂θ = structural_matrices_jacobian(m, θ)
 
     # Compute ∂F / ∂T' and ∂F / ∂θ' to get ∂T∂θ
-    iden = Matrix{S}(I, size(T,1), size(T,1))
+    iden = Matrix(I, size(T,1), size(T,1))
     T_transpose = T';
     kron_T_iden = kron(T_transpose, iden) # used for multiple computations
     ∂F∂T = kron(iden, Γ0) - kron(T_transpose, Γ1) - kron(iden, Γ1 * T)
@@ -173,7 +175,7 @@ function transition_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U
     n_exo_sh = n_shocks_exogenous(m)
     ∂R∂θ = -kron((inv_Γ0_min_Γ1T * Γ3)', inv_Γ0_min_Γ1T) *
              (∂Γ0∂θ - kron_T_iden * ∂Γ1∂θ - kron(iden,Γ1) * ∂T∂θ) +
-             kron(Matrix{S}(I, n_exo_sh , n_exo_sh), inv_Γ0_min_Γ1T) * ∂Γ3∂θ
+             kron(Matrix(I, n_exo_sh , n_exo_sh), inv_Γ0_min_Γ1T) * ∂Γ3∂θ
 
     if length(θ) < length(m.parameters)
         unfixed_inds = .!(get_fixed_parameter_indices(m))
@@ -183,12 +185,13 @@ function transition_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U
     end
 
     # Convert to type S to make sure partial derivatives are the same type as T and R
-    return Matrix{S}(∂T∂θ), Matrix{S}(∂R∂θ)
+    return ∂T∂θ, ∂R∂θ
 end
 function transition_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
-                                      T::AbstractMatrix{S}, Γ0::AbstractMatrix{S},
-                                      Γ1::AbstractMatrix{S},
-                                      Γ2::AbstractMatrix{S}, Γ3::AbstractMatrix{S}) where {S<:Real}
+                                      T::AbstractMatrix{X}, Γ0::AbstractMatrix{Y},
+                                      Γ1::AbstractMatrix{Y},
+                                      Γ2::AbstractMatrix{Y},
+                                      Γ3::AbstractMatrix{Y}) where {X<:Real, Y<:Real}
     transition_matrices_jacobian(m, map(x -> x.value, θ), T, Γ0, Γ1, Γ2, Γ3)
 end
 
@@ -216,9 +219,9 @@ when evaluated at θ.
 
 """
 function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
-                                       T::AbstractMatrix{S}, R::AbstractMatrix{S},
-                                       ∂T∂θ::AbstractMatrix{S},
-                                       ∂R∂θ::AbstractMatrix{S}) where {S<:Real, U<:Real}
+                                       T::AbstractMatrix{X}, R::AbstractMatrix{X},
+                                       ∂T∂θ::AbstractMatrix{Y},
+                                       ∂R∂θ::AbstractMatrix{Y}) where {U<:Real, X<:Real, Y<:Real}
     θold = copy(θ)
 
     # We assume T, R are evaluated at θ
@@ -251,7 +254,7 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{
         return vcat(vec(Zvar), vec(Dvar))
     end
 
-    derivs = ForwardDiff.jacobian(diff_meas_obj_fnct, vcat(θ, vec(T), vec(R)))
+    derivs = ForwardDiff.jacobian(diff_meas_obj_fnct, Vector{Real}(vcat(θ, vec(T), vec(R))))
 
     # Extract individual jacobians of Z w.r.t. θ, T, and R
     nobs = n_observables(m)
@@ -273,11 +276,11 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{
     ∂D∂θ += ∂D∂T * ∂T∂θ + ∂D∂R * ∂R∂θ
 
     # Make sure partials are same type as T and R
-    return Matrix{S}(∂Z∂θ), Matrix{S}(∂D∂θ)
+    return ∂Z∂θ, ∂D∂θ
 end
 function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
-                                       T::AbstractMatrix{S}, R::AbstractMatrix{S},
-                                       ∂T∂θ::AbstractMatrix{S},
-                                       ∂R∂θ::AbstractMatrix{S}) where {S<:Real}
+                                       T::AbstractMatrix{X}, R::AbstractMatrix{X},
+                                       ∂T∂θ::AbstractMatrix{Y},
+                                       ∂R∂θ::AbstractMatrix{Y}) where {X<:Real, Y<:Real}
     measurement_matrices_jacobian(m, map(x -> x.value, θ), T, R, ∂T∂θ, ∂R∂θ)
 end
