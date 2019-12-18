@@ -24,7 +24,7 @@ distribution of the parameters.
 
 ### Arguments
 
-- `propdist`: The proposal distribution that Metropolis-Hastings begins sampling from.
+- `proposal_dist`: The proposal distribution that Metropolis-Hastings begins sampling from.
 - `m`: The model object
 - `data`: Data matrix for observables
 - `cc0`: Jump size for initializing Metropolis-Hastings.
@@ -53,7 +53,7 @@ distribution of the parameters.
 - `rng::MersenneTwister = MersenneTwister(0)`: Chosen seed (overridden if testing = true)
 - `testing::Bool = false`: Conditional for use when testing (determines fixed seeding)
 """
-function metropolis_hastings(propdist::Distribution,
+function metropolis_hastings(proposal_dist::Distribution,
                              loglikelihood::Function,
                              parameters::ParameterVector{S},
                              data::Matrix{T},
@@ -76,6 +76,8 @@ function metropolis_hastings(propdist::Distribution,
         Random.seed!(rng, 654)
     end
 
+    propdist = init_deg_mvnormal(proposal_dist.μ, proposal_dist.σ)
+
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
     para_old = rand(propdist, rng; cc = cc0)
@@ -96,9 +98,7 @@ function metropolis_hastings(propdist::Distribution,
     free_para_inds = findall([!θ.fixed for θ in parameters])
     n_free_para    = length(free_para_inds)
     n_params       = length(parameters)
-    #param_blocks   = SMC.generate_param_blocks(n_params, n_param_blocks)
-    blocks_free    = SMC.generate_free_blocks(n_free_para, n_param_blocks)
-    blocks_all     = SMC.generate_all_blocks(blocks_free, free_para_inds)
+    blocks_all     = SMC.generate_param_blocks(n_free_para, n_param_blocks)
 
     # Report number of blocks that will be used
     println(verbose, :low, "Blocks: $n_blocks")
@@ -136,7 +136,8 @@ function metropolis_hastings(propdist::Distribution,
                 d_subset    = DegenerateMvNormal(propdist.μ[block_a],
                                        (propdist.σ[block_a, block_a] +
                                        propdist.σ[block_a, block_a]') / 2.,
-                                       propdist.σ_inv[block_a, block_a],
+                                       inv((propdist.σ[block_a, block_a] +
+                                       propdist.σ[block_a, block_a]') / 2.),
                                        propdist.λ_vals[block_a])
 
                 para_draw   = rand(d_subset, rng; cc = cc)
@@ -280,10 +281,6 @@ function metropolis_hastings(propdist::Distribution,
 
     # To check: Defaulting to using Chandrasekhar recursions if no missing data
     use_chand_recursion = !any(isnan.(data))
-
-    JLD2.jldopen("/data/dsge_data_dir/dsgejl/reca/mh_adaptive_propdist.jld2", "w") do file
-        file["propdist"] = propdist
-    end
 
     function loglikelihood(p::ParameterVector, data::Matrix{Float64})::Float64
         update!(m, p)

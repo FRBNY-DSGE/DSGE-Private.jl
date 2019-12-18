@@ -2,9 +2,7 @@
 [![Build Status](https://travis-ci.org/FRBNY-DSGE/DSGE.jl.svg)](https://travis-ci.org/FRBNY-DSGE/DSGE.jl)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://frbny-dsge.github.io/DSGE.jl/latest)
 
-The *DSGE.jl* package implements the New York Fed DSGE model and provides
-general code to estimate many user-specified DSGE models. The package is
-introduced in the Liberty Street Economics blog post
+The `DSGE.jl` package implements the New York Fed dynamic stochastic general equilibrium (DSGE) model and provides general code to estimate many user-specified DSGE models. The package is introduced in the Liberty Street Economics blog post
 [The FRBNY DSGE Model Meets Julia](http://libertystreeteconomics.newyorkfed.org/2015/12/the-frbny-dsge-model-meets-julia.html).
 (We previously referred to our model as the "FRBNY DSGE Model".)
 
@@ -12,32 +10,28 @@ This Julia-language implementation mirrors the MATLAB code included in the
 Liberty Street Economics blog post
 [The FRBNY DSGE Model Forecast](http://libertystreeteconomics.newyorkfed.org/2015/05/the-frbny-dsge-model-forecast-april-2015.html).
 
-For the latest documentation on the *code*, click on the docs|latest button
-above. Documentation for the most recent *model version* is available
-[here](https://github.com/FRBNY-DSGE/DSGE.jl/blob/master/docs/DSGE_Model_Documentation_1002.pdf).
+Documentation for the most recent *model version* is available [here](https://github.com/FRBNY-DSGE/DSGE.jl/blob/master/docs/DSGE_Model_Documentation_1002.pdf). For the latest documentation on *code*, click on the `docs|latest` button above.
 
-The New York Fed DSGE team is currently extending the code to solve and estimate
-heterogeneous agent models.
-An implementation of Sequential Monte Carlo (SMC) sampling can be found in the registered package [SMC](https://github.com/FRBNY-DSGE/SMC.jl).
-Further extensions of the DSGE model code may be released in the future at the discretion
-of the New York Fed.
+The New York Fed DSGE team is currently extending the code to solve and estimate heterogeneous agent models. Filtering and smoothing algorithms are available in the registered package [StateSpaceRoutines.jl](https://github.com/FRBNY-DSGE/StateSpaceRoutines.jl).
+An implementation of Sequential Monte Carlo (SMC) sampling, used for the estimation of DSGE models, can be found in the registered package [SMC.jl](https://github.com/FRBNY-DSGE/SMC.jl). The foundational `AbstractModel` type, from which the `AbstractDSGEModel` type derives, is defined in the registered package [ModelConstructors.jl](https://github.com/FRBNY-DSGE/ModelConstructors.jl).
+
+Further extensions of the DSGE model code may be released at the discretion of the New York Fed.
 
 ## Installation
 
-`DSGE.jl` is a registered Julia package. To install it, open your Julia REPL, type `]` (enter package manager), and run
+`DSGE.jl` is a registered Julia package in the [`General`](https://github.com/JuliaRegistries/General) registry. To install it, open your Julia REPL, type `]` to enter the package manager, and run
 
 ```julia
 pkg> add DSGE
 ```
+
 ## Versioning
 
-`DSGE.jl` is currently compatible with 0.7. Official compatibility with 1.0 is imminent.
+`DSGE.jl` is currently compatible with Julia `v1.0` and `v1.1`.
 
-To use `DSGE.jl` with Julia version 0.6, please check out tag
-0.4.1. To do this, click on the drop-down menu that reads `branch:
-master` on the left-hand side of the page. Select `tags`, then
-`v0.4.1`.  If you've already cloned the repo, you can simply run
-`git checkout v0.4.1`.
+To use `DSGE.jl` with Julia `v0.7`, please check out tag `0.8.1`. To do this, click on the drop-down menu that reads `branch:master` on the left-hand side of the page. Select `tags`, then `v0.8.1`.  If you've already cloned the repo, you can simply run `git checkout v0.8.1`.
+
+To use `DSGE.jl` with Julia `v0.6`, please check out tag `0.4.1`.
 
 Disclaimer
 ------

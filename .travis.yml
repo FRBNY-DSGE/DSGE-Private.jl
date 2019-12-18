@@ -5,10 +5,11 @@ os:
     # by downloading all of xcode which Travis CI then kills because it takes too long.
     # Refer to Matt Bauman's comment on JuliaIO/HDF5.jl issue 483, and
     # Andreas Noack's issue 27751 on Homebrew/homebrew-core.
-    - osx
+    #- osx
     - linux
 julia:
-    - 0.7.0
+    - 1.0
+    - 1.1
 notifications:
     email: false
 addons:
@@ -17,7 +18,7 @@ addons:
     - hdf5-tools
     - libnlopt0
 script:
-    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+#     - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
     - julia --color=yes -e 'using Pkg; Pkg.build(); Pkg.test(coverage=true)'
 branches:
   only:
@@ -31,7 +32,7 @@ after_success:
 jobs:
   include:
     - stage: "Documentation"
-      julia: 0.7
+      julia: 1.1
       os: linux
       script:
         - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));

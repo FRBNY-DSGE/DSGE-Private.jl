@@ -15,7 +15,7 @@ function write_standard_packet(m::AbstractModel, input_type::Symbol, cond_type::
                                forecast_string::String = "",
                                outdir::String = joinpath(saveroot(m), "Packets", spec(m), subspec(m)),
                                purpose::String = "")
-    @assert issubset(sections, [:estimation, :forecast, :irf]) "Section specified in `section` kwarg is not supported. Must be a subset of [:estimation, :forecast]."
+    @assert issubset(sections, [:estimation, :forecast, :irf]) "Section specified in `section` kwarg is not supported. Must be a subset of [:estimation, :forecast, :irf]."
 
     # Title and authors
     title = "Estimation and Forecasting Results. \\\\ " * description(m)
@@ -484,12 +484,11 @@ function print_variable_means(m::AbstractModel, cond_type::Symbol, output_var::S
 
     # Index out Q4 values for current forecast
     all_dates   = mb_curr.metadata[:date_inds]
-    table_dates = map(date -> all_dates[date], fcast_dates)
-    cur_val     = round.(mb_curr.means[:, [:date, varname]][table_dates, 2], digits = 1)
 
     # The following works because all_dates is an ordered dictionary so can just treat keys as a array and take their indices.
     # The commented out part stopped working because Julia7 doesn't like indexing with a Date key
     table_dates = findall(x -> x in fcast_dates, collect(keys(all_dates))) #map(date -> all_dates[date], fcast_dates)
+    cur_val     = round.(mb_curr.means[:, [:date, varname]][table_dates, 2], digits = 1)
 
     row1_string = vardesc[1]*repeat(" ", 34-length(vardesc[1])) * "& "
     for i in 1:n_fcast_dates

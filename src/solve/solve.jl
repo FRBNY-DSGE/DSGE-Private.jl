@@ -26,32 +26,38 @@ function solve(m::AbstractDSGEModel; apply_altpolicy = false, verbose::Symbol = 
 
     altpolicy_solve = alternative_policy(m).solve
 
-    if altpolicy_solve == solve || !apply_altpolicy
-        # Get equilibrium condition matrices
-        Γ0, Γ1, C, Ψ, Π  = eqcond(m)
+    if get_setting(m, :solution_method) == :gensys
+        if altpolicy_solve == solve || !apply_altpolicy
 
-        # Solve model
-        TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Float64.(Γ0), Float64.(Γ1),
-                                                        Float64.(C), Float64.(Ψ),
-                                                        Float64.(Π), 1+1e-6,
-                                                        verbose = verbose)
+            # Get equilibrium condition matrices
+            Γ0, Γ1, C, Ψ, Π  = eqcond(m)
 
-        # Check for LAPACK exception, existence and uniqueness
-        if eu[1] != 1 || eu[2] != 1
-            throw(GensysError())
+            # Solve model
+            TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = verbose)
+
+            # Check for LAPACK exception, existence and uniqueness
+            if eu[1] != 1 || eu[2] != 1
+                throw(GensysError())
+            end
+
+            TTT_gensys = real(TTT_gensys)
+            RRR_gensys = real(RRR_gensys)
+            CCC_gensys = real(CCC_gensys)
+
+            # Augment states
+            TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
+        else
+            # Change the policy rule
+            TTT, RRR, CCC = altpolicy_solve(m)
         end
+    elseif get_setting(m, :solution_method) == :klein
+        TTT_jump, TTT_state = klein(m)
 
-        TTT_gensys = real(TTT_gensys)
-        RRR_gensys = real(RRR_gensys)
-        CCC_gensys = real(CCC_gensys)
-
-        # Augment states
-        TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
-
-    else
-        # Change the policy rule
-        TTT, RRR, CCC = altpolicy_solve(m)
+        # Transition
+        TTT, RRR = klein_transition_matrices(m, TTT_state, TTT_jump)
+        CCC = zeros(n_model_states(m))
     end
+
     return TTT, RRR, CCC
 end
 
@@ -97,3 +103,25 @@ mutable struct GensysError <: Exception
 end
 GensysError() = GensysError("Error in Gensys")
 Base.showerror(io::IO, ex::GensysError) = print(io, ex.msg)
+
+
+"""
+```
+KleinError <: Exception
+```
+A `KleinError` is thrown when:
+1. A LAPACK error was thrown while computing the pseudo-inverse of U22*U22'
+
+If a `KleinError`is thrown during Metropolis-Hastings, it is caught by
+`posterior`.  `posterior` then returns a value of `-Inf`, which
+Metropolis-Hastings always rejects.
+
+### Fields
+
+* `msg::String`: Info message. Default = \"Error in Klein\"
+"""
+mutable struct KleinError <: Exception
+    msg::String
+end
+KleinError() = KleinError("Error in Klein")
+Base.showerror(io::IO, ex::KleinError) = print(io, ex.msg)

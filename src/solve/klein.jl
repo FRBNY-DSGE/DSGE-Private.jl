@@ -104,7 +104,11 @@ end
 # Need an additional transition_equation function to properly stack the
 # individual state and jump transition matrices/shock mapping matrices to
 # a single state space for all of the model_states
+<<<<<<< HEAD
 function klein_transition_matrices(m::AbstractDSGEModel,
+=======
+function klein_transition_matrices(m::AbstractModel,
+>>>>>>> dev
                                    TTT_state::Matrix{Float64}, TTT_jump::Matrix{Float64})
     TTT = zeros(n_model_states(m), n_model_states(m))
 
