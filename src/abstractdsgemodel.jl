@@ -399,7 +399,6 @@ function update!(m::AbstractDSGEModel, values::ParameterVector{T}) where T
     steadystate!(m)
 end
 
-<<<<<<< HEAD
 """
 ```
 get_fixed_parameter_indices!(m::AbstractDSGEModel)
