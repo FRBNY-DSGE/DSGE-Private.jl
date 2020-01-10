@@ -414,6 +414,16 @@ end
     return 0.0
 end
 
+@inline function mollifier_hetdsgegovdebt(z, ehi, elo)
+    In = 0.443993816237631
+    if z<ehi && z>elo
+        temp = -1.0 + 2.0 * (z - elo) / (ehi - elo)
+        return (2.0 / (ehi - elo)) * exp(-1.0 / (1.0 - temp^2)) / In
+    end
+    return 0.0
+end
+
+
 @inline function dmollifier_hetdsgegovdebt(x::S, ehi::S, elo::S) where {S<:AbstractFloat}
     In = 0.443993816237631
     if x<ehi && x>elo
