@@ -6,14 +6,14 @@ the original model object with new parameter objects. This function is
 called from within the model constructor.
 """
 function init_subspec!(m::AnSchorfheide)
-    if subspec(m) == "ss0"
+    if subspec(m)     == "ss0"
         return
     elseif subspec(m) == "ss2"
         return ss2!(m)
     elseif subspec(m) == "ss3"
         return ss3!(m)
     elseif subspec(m) == "ss4"
-        return ss3!(m)
+        return ss4!(m)
     else
         error("Invalid subspec. Options are: ss0, ss2, ss3, ss4.")
     end
@@ -22,7 +22,7 @@ end
 
 # Used for just plain exponential transformation (with b=0 rather than b=1e5). Experimental
 function ss2!(m::AnSchorfheide)
- m <= parameter(:τ, 1.9937, (0., Inf), (0., 0.), ModelConstructors.Exponential(), GammaAlt(2., 0.5), fixed=false,
+    m <= parameter(:τ, 1.9937, (0., Inf), (0., 0.), ModelConstructors.Exponential(), GammaAlt(2., 0.5), fixed=false,
                    description="τ: The inverse of the intemporal elasticity of substitution.",
                    tex_label="\\tau")
 
@@ -153,6 +153,7 @@ end
 
 # Uses b = 1e5 for exponential transformation
 function ss4!(m::AnSchorfheide)
+    #m.parameters = Array{AbstractParameter{Float64},1}()
     b = 1e9
     m <= parameter_ad(:τ, 1.9937, (0., Inf), (0., b), ModelConstructors.Exponential(), GammaAlt(2., 0.5), fixed=false,
                    description="τ: The inverse of the intemporal elasticity of substitution.",
@@ -215,4 +216,5 @@ function ss4!(m::AnSchorfheide)
     m <= parameter_ad(:e_R, 0.20*2.237937, fixed=true,
                    description="e_R: Measurement error on the interest rate.",
                    tex_label="e_R")
+    init_model_indices!(m)
 end
