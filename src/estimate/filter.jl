@@ -244,7 +244,6 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
                       ZZs, DDs, EEs, s_0, P_0; Nt0 = Nt0, tol = tol)
 end
 
-
 function filter_likelihood(m::AbstractDSGEModel, df::DataFrame, system::System{S},
                            s_0::Vector{S} = Vector{S}(undef, 0),
                            P_0::Matrix{S} = Matrix{S}(undef, 0, 0);

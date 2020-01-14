@@ -163,13 +163,10 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     end
 
     # Compute state-space system
+    regime_switching = if haskey(get_settings(m), :regime_switching) ?
+        get_setting(m, :regime_switcing) : false
     system = try
-        regime_switching = haskey(m.settings, :regime_switching) ?
-            get_setting(m, :regime_switching) : false
-        n_regimes = haskey(m.settings, :n_regimes) && regime_switching ?
-            get_setting(m, :n_regimes) : 1
-        compute_system(m; verbose = verbose,
-                       regime_switching = regime_switching, n_regimes = n_regimes)
+        compute_system(m, verbose = verbose, regime_switching = regime_switching)
     catch err
         if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
             return -Inf
