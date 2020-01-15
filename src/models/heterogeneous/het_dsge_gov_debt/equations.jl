@@ -1,93 +1,110 @@
 function jacobian(m::HetDSGEGovDebt, x::Vector{Float64})
-
+    @show "Correct jacobian!"
     # Load in parameters, steady-state parameters, and grids
-    α     = m[:α].value
-    δ     = m[:δ].value
-    γ     = m[:γ].scaledvalue
-    η     = m[:η].value
-    ρ_B    = m[:ρ_b].value
-    ρ_G    = m[:ρ_g].value
-    ρ_z    = m[:ρ_z].value
-    ρ_μ    = m[:ρ_μ].value
-    ρ_lamw = m[:ρ_λ_w].value
-    ρ_lamf = m[:ρ_λ_f].value
-    ρ_mon  = m[:ρ_rm].value
-    spp   = m[:spp].value
-    ϕh    = m[:ϕh].value
-    ρ_R    = m[:ρR].value
-    ψπ    = m[:ψπ].value
-    ψy    = m[:ψy].value
-    κ_p  = m[:κ_p].value
-    κ_w  = m[:κ_w].value
+    α      = m[:α].value::Float64
+    δ      = m[:δ].value::Float64
+    γ      = m[:γ].scaledvalue::Float64
+    η      = m[:η].value::Float64
+    ρ_B    = m[:ρ_b].value::Float64
+    ρ_G    = m[:ρ_g].value::Float64
+    ρ_z    = m[:ρ_z].value::Float64
+    ρ_μ    = m[:ρ_μ].value::Float64
+    ρ_lamw = m[:ρ_λ_w].value::Float64
+    ρ_lamf = m[:ρ_λ_f].value::Float64
+    ρ_mon  = m[:ρ_rm].value::Float64
+    spp    = m[:spp].value::Float64
+    ϕh     = m[:ϕh].value::Float64
+    ρ_R    = m[:ρR].value::Float64
+    ψπ     = m[:ψπ].value::Float64
+    ψy     = m[:ψy].value::Float64
+    κ_p    = m[:κ_p].value::Float64
+    κ_w    = m[:κ_w].value::Float64
 
-    Tg = m[:Tg].value
-    δb = m[:δb].value
-    bg = m[:bg].value
+    Tg     = m[:Tg].value::Float64
+    δb     = m[:δb].value::Float64
+    bg     = m[:bg].value::Float64
 
-    π_star = m[:π_star].value
-    β = m[:βstar].value
+    π_star = m[:π_star].value::Float64
+    β      = m[:βstar].value::Float64
 
     # Temp
     Φ_w = 1.
-    ϕ = 1.
-    τw = 1.
+    ϕ   = 1.
+    τw  = 1.
     π_star_w = 1.
     Φ_p = 1.
-    τF = 1.
+    τF  = 1.
     iii = 1.
 
-    xgrid = m.grids[:xgrid].points
-    xwts  = m.grids[:xgrid].weights
-    sgrid = m.grids[:sgrid].points
-    swts  = m.grids[:sgrid].weights
-    fgrid = m.grids[:fgrid]
-    xswts = kron(swts,xwts)
+    xgrid = m.grids[:xgrid].points::Vector{Float64}
+    xwts  = m.grids[:xgrid].weights::Vector{Float64}
+    sgrid = m.grids[:sgrid].points::Vector{Float64}
+    swts  = m.grids[:sgrid].weights::Vector{Float64}
+    fgrid = m.grids[:fgrid]::Matrix{Float64}
+    xswts = kron(swts, xwts)::Vector{Float64}
 
-    zlo = m[:zlo].value
-    zhi = m[:zhi].value
+    zlo = m[:zlo].value::Float64
+    zhi = m[:zhi].value::Float64
 
-    nx = DSGE.get_setting(m, :nx)
-    ns = DSGE.get_setting(m, :ns)
-    nxns = nx*ns
+    nx   = DSGE.get_setting(m, :nx)::Int64
+    ns   = DSGE.get_setting(m, :ns)::Int64
+    nxns = nx*ns::Int64
 
-    @inline qfunction(x) = DSGE.mollifier_hetdsgegovdebt(x, zhi, zlo)
-
-    @inline function sfunc(x::S) where S<:Real
-        return (spp/2)*x^2
+    @inline function mollifier(z, ehi, elo)
+        if z < ehi && z > elo
+            return (2.0 / (ehi - elo)) *
+                exp(-1.0 / (1.0 - (-1.0 + 2.0 * (z - elo) / (ehi - elo))^2)) / 0.443993816237631
+        end
+        return 0.0
     end
-    @inline function sfunc_prime(x::S) where S<:Real
-        return spp*x
+
+    @inline q_fn(x) = mollifier(x, zhi, zlo)
+
+    @inline function s_fn(x::S) where S<:Real
+        return (spp / 2.0) * x ^ 2.0
+    end
+    @inline function s_fn_prime(x::S) where S<:Real
+        return spp * x
     end
 
-    @inline function euler_equation_hetdsgegovdebt_eq(#nx::Int, ns::Int,
-                                                      # qfunction::Function,
-                                                      # xgrid::Vector{Float64}, sgrid::Vector{Float64},
+    @inline function euler_equation(# nx::Int, ns::Int,
+                                                      # q_fn::Function,
+                                                      # xgrid::Vector{Float64},
+                                                      # sgrid::Vector{Float64},
                                                       # fgrid::Matrix{Float64},
                                                       # xswts::Vector{Float64},
-                                                      R_t::S, z′_t::S, β::Float64,
-                                                      η::Float64, l_t::Vector{S}, l′_t::Vector{S},
-                                                      t′_t::S, ω′_t::S, L′_t::S, cfunc::Vector{S}, cfunc′::Vector{S}) where S<:Real
+                                                      ret_ell::Vector{Number},
+                                                      R_t::S, z′_t::S, #β::Float64,
+                                                      #η::Float64,
+                                                      #l_t::Vector{S}, l′_t::Vector{S},
+                                                      t′_t::S, ω′_t::S, L′_t::S, cfunc::Vector{S},
+                                                      cfunc′::Vector{S}) where S<:Real
         nxns = nx*ns
-
-        ret_ell = Vector{Number}(undef, nxns)
-
+        ezt = exp(-z′_t)
+        Rezt = (1+R_t) * ezt
+        ωLt = ω′_t * L′_t
         # Loop over s
-        for iss=1:ns
+        @inbounds @simd for iss=1:ns
             # Loop over i
-            for ia=1:nx
+            @inbounds @simd for ia=1:nx
                 # Index for outcome
-                i  = nx*(iss-1)+ia
+                i  = nx * (iss-1) + ia
                 ell_euler = 0.
                 # Sum over s'
-                for isp=1:ns
+                @inbounds @simd for isp=1:ns
                     # Sum over j
-                    for iap=1:nx
+                    ωLt_s_isp = ωLt * sgrid[isp]
+
+                    @inbounds @simd for iap=1:nx
                         # Index for input
                         ip = nx*(isp-1)+iap
+
                         # ee = (aⱼ - (1+Rₜ)*e⁻ᶻ'(aⱼ - cₜ(aⱼ, s)) - T')/(w's'H')
-                        ee = (xgrid[iap] - (1+R_t)*exp(-z′_t)*(xgrid[iap] - cfunc[ip]) - t′_t)/(ω′_t*L′_t*sgrid[isp])
+                        ee = (xgrid[iap] - Rezt * (xgrid[iap] - cfunc[ip]) - t′_t) / ωLt_s_isp
+
                         # ι*∑∑(e⁻ᶻ'/c'(aⱼ,s'))*g(ee)*p(s'|s)/(w'*s'*H')
-                        ell_euler += xswts[ip]*(exp(-z′_t)/cfunc'[ip]) * qfunction(ee)*(fgrid[iss,isp])/(ω′_t*L′_t*sgrid[isp])
+                        ell_euler += xswts[ip]*(ezt / cfunc'[ip]) * q_fn(ee) *
+                            (fgrid[iss,isp]) / ωLt_s_isp
                     end
                 end
                 ret_ell[i] = ell_euler
@@ -96,33 +113,43 @@ function jacobian(m::HetDSGEGovDebt, x::Vector{Float64})
         return ret_ell
     end
 
-    @inline function kolmogorov_fwd_hetdsgegovdebt_eq(#nx::Int, ns::Int,
-                                                      #  qfunction::Function,
-                                                      #  xgrid::Vector{Float64}, sgrid::Vector{Float64},
-                                                      #  fgrid::Matrix{Float64},
-                                                      #  xswts::Vector{Float64},
-                                                      R_t::S, z′_t::S,
-                                                      η::Float64, kf_t::Vector{S}, l_t::Vector{S}, t′_t::S, w′_t::S, H′_t::Real, cfunc::Vector{S}) where S<:Real
+    @inline function kolmogorov_fwd_eq(# nx::Int, ns::Int,
+                                       # q_fn::Function,
+                                       # xgrid::Vector{Float64},
+                                       # sgrid::Vector{Float64},
+                                       # fgrid::Matrix{Float64},
+                                       # xswts::Vector{Float64},
+                                       ret_kol::Vector{Real},
+                                       R_t::S, z′_t::S,
+                                       #η::Float64,
+                                       kf_t::Vector{S},
+                                       #l_t::Vector{S},
+                                       t′_t::S, w′_t::S,
+                                       H′_t::Real, cfunc::Vector{S}) where S<:Real
         nxns = nx*ns
-        ret_kol = Vector{Real}(undef, nxns)
-
+        Rezt = (1+R_t)*(exp(-z′_t))
+        wHt  = w′_t * H′_t
         # Loop over j
-        for isp=1:ns
+        @inbounds @simd for isp=1:ns
+            wHt_s_isp = wHt * sgrid[isp]
             # Loop over s'
-            for iap=1:nx
+            @inbounds @simd for iap=1:nx
                 m_kolmogorov = 0.
                 # Index for outcome
                 ip  = nx*(isp-1)+iap
+                xgrid_iap = xgrid[iap]
+
                 # Sum over i
-                for ia=1:nx
+                @inbounds @simd for ia=1:nx
                     # Sum over s
-                    for iss=1:ns
+                    @inbounds @simd for iss=1:ns
                         # Index for input
                         i = nx*(iss-1)+ia
                         # (aⱼ - (1+rₜ)e⁻ᶻ'(aᵢ - cₜ(aᵢ, s) - T')/ w's'H'
-                        ee = (xgrid[iap] - (1+R_t)*(exp(-z′_t))*(xgrid[ia] - cfunc[ip]) - t′_t)/(w′_t*H′_t*sgrid[isp])
+                        ee = (xgrid_iap - Rezt * (xgrid[ia] - cfunc[ip]) - t′_t) / wHt_s_isp
                         # mₜ(aᵢ, s) * g(ee) * p(s'|s)/w's'H' # f[iss, isp] = p(isp|iss)
-                        m_kolmogorov += xswts[i]*kf_t[i]* qfunction(ee)*(fgrid[iss,isp])/(w′_t*H′_t*sgrid[isp])
+                        m_kolmogorov += xswts[i] * kf_t[i] * q_fn(ee) * (fgrid[iss, isp]) /
+                            wHt_s_isp
                     end
                 end
                 # Set index j (outcome)
@@ -132,69 +159,160 @@ function jacobian(m::HetDSGEGovDebt, x::Vector{Float64})
         return ret_kol
     end
 
+    xgrη = repeat(xgrid, ns) .+ η
+
     function F(x::Vector{S}) where {S<:Real}
-        endo = DSGE.augment_model_states(m.endogenous_states_original, DSGE.n_model_states_original(m))
-        for (key,value) in endo
-            @eval if length($(x[value])) == 1
-                @eval (($(key)) = ($(x[value][1])))
-            else
-                @eval (($(key)) = ($(x[value])))
-            end
-        end
 
-        cfunc′ = min.(1 ./ l′_t, repeat(xgrid, ns).+η)
-        cfunc = min.(1 ./ l_t, repeat(xgrid, ns).+η)
+        endo = DSGE.augment_model_states(m.endogenous_states_original,
+                                         DSGE.n_model_states_original(m))
 
-        ell_euler_eq = euler_equation_hetdsgegovdebt_eq(#nx, ns, #qfunction_hetdsgegovdebt,
-                                                        #     xgrid, sgrid, fgrid, xswts,
-                                                             R′_t, z′_t, β, η, l_t, l′_t,
-                                                             t′_t, w′_t, L′_t, cfunc, cfunc′)
+        kf′_t = x[1:600]
+
+        k′_t   = x[601:601][1]
+        i′_t1  = x[602:602][1]
+        y′_t1  = x[603:603][1]
+        w′_t1  = x[604:604][1]
+        I′_t1  = x[605:605][1]
+        bg′_t  = x[606:606][1]
+        b′_t   = x[607:607][1]
+        g′_t   = x[608:608][1]
+        z′_t   = x[609:609][1]
+        μ′_t   = x[610:610][1]
+        λ_w′_t = x[611:611][1]
+        λ_f′_t = x[612:612][1]
+        rm′_t  = x[613:613][1]
+
+        l′_t   = x[614:1213]
+
+        C′_t   = x[1214:1214][1]
+        R′_t   = x[1215:1215][1]
+        i′_t   = x[1216:1216][1]
+        t′_t   = x[1217:1217][1]
+        w′_t   = x[1218:1218][1]
+        L′_t   = x[1219:1219][1]
+        π′_t   = x[1220:1220][1]
+        π_w′_t = x[1221:1221][1]
+        margutil′_t = x[1222:1222][1]
+        y′_t   = x[1223:1223][1]
+        I′_t   = x[1224:1224][1]
+        mc′_t  = x[1225:1225][1]
+        Q′_t   = x[1226:1226][1]
+        capreturn′_t = x[1227:1227][1]
+        tg′_t  = x[1228:1228][1]
+
+        kf_t  = x[1229:1828]
+
+        k_t   = x[1829:1829][1]
+        i_t1  = x[1830:1830][1]
+        y_t1  = x[1831:1831][1]
+        w_t1  = x[1832:1832][1]
+        I_t1  = x[1833:1833][1]
+        bg_t  = x[1834:1834][1]
+        b_t   = x[1835:1835][1]
+        g_t   = x[1836:1836][1]
+        z_t   = x[1837:1837][1]
+        μ_t   = x[1838:1838][1]
+        λ_w_t = x[1839:1839][1]
+        λ_f_t = x[1840:1840][1]
+        rm_t  = x[1841:1841][1]
+
+        l_t   = x[1842:2441]
+
+        C_t   = x[2442:2442][1]
+        R_t   = x[2443:2443][1]
+        i_t   = x[2444:2444][1]
+        t_t   = x[2445:2445][1]
+        w_t   = x[2446:2446][1]
+        L_t   = x[2447:2447][1]
+        π_t   = x[2448:2448][1]
+        π_w_t = x[2449:2449][1]
+        margutil_t = x[2450:2450][1]
+        y_t   = x[2451:2451][1]
+        I_t   = x[2452:2452][1]
+        mc_t  = x[2453:2453][1]
+        Q_t   = x[2454:2454][1]
+        capreturn_t = x[2455:2455][1]
+        tg_t  = x[2456:2456][1]
+
+        cfunc′ = min.(1 ./ l′_t, xgrη)
+        cfunc  = min.(1 ./ l_t,  xgrη)
+
+        ezt = exp(-z_t)
+
+        #@show "Euler Eq."
+        ell_euler_eq = Vector{Number}(undef, nxns)
+
+        ell_euler_eq = euler_equation(ell_euler_eq, R′_t, z′_t, t′_t, w′_t, L′_t, cfunc, cfunc′)
+
+        #@show "KF"
+        kf_eq = Vector{Real}(undef, nxns)
         # KF Equation
-        kf_eq = kolmogorov_fwd_hetdsgegovdebt_eq(#nx, ns, #qfunction_hetdsgegovdebt,
-                                                  #    xgrid, sgrid, fgrid, xswts,
-                                                      R′_t, z′_t, η, kf_t, l_t,
-                                                      t′_t, w′_t, L′_t, cfunc)
+        kf_eq = kolmogorov_fwd_eq(kf_eq, R′_t, z′_t, kf_t, t′_t, w′_t, L′_t, cfunc)
 
-        eq_euler = l_t - β*b′_t*(1+R_t)*ell_euler_eq
-        eq_kolmogorov_fwd = kf′_t - kf_eq
-        eq_agg_consumption = C_t - (xswts .* kf_t)'cfunc
-        eq_lambda = margutil_t - (xswts .* kf_t)'*(1 ./ cfunc)
-        eq_transfers = capreturn_t*k_t*exp(-z_t) - I_t + (1-mc_t)*y_t - tg_t - t_t
-        # note this beta is listed as βtil which differs from ̱β but i think it drops out when take derivative so doesnt matter
-        eq_investment = margutil_t*Q_t*μ_t*(1-sfunc(I_t/I_t1*exp(-z_t)))+β*margutil′_t*exp(-z′_t)*Q′_t*μ′_t*sfunc_prime(I′_t/I_t*exp(z′_t))*(I′_t/I_t*exp(z′_t))^2 - margutil_t*(1+Q_t*μ_t*sfunc_prime(I_t/I_t1*exp(z_t))*I_t/I_t1*exp(z_t))
-        eq_tobin_q = β*margutil′_t*exp(-z′_t)/margutil_t*(capreturn′_t + Q′_t*(1-δ))
-        eq_capital_accumulation = (1-δ)*k_t*exp(-z_t) + μ_t*(1-sfunc(I_t/I_t1 * exp(z_t)))*I_t - k′_t
-        eq_wage_phillips =  1/(λ_w_t*Φ_w) * ((1+λ_w_t)*ϕ*L_t^ϕh - (1-τw)*margutil_t*w_t) + β*b′_t*(π_w′_t/π_star_w - 1)*(π_w′_t/π_star_w)*(L′_t/L_t) - (π_w_t/π_star_w - 1)*(π_w_t/π_star_w)  #figure out how to d\eal with kappa_w and kappa_p coefficients
-        eq_price_phillips = -1/(λ_w_t*Φ_p)*((1+τF) - (1+λ_f_t)*mc_t) + (1/(1 + R_t))*(π′_t/π_t -1)*(π′_t/π_star)*y′_t*exp(z′_t)*y_t - (π_t/π_star -1)*(π_t/π_star)# see above
+        eq_euler           = l_t - β*b′_t*(1+R_t)*ell_euler_eq
+        eq_kolmogorov_fwd  = kf′_t - kf_eq
+
+        eq_agg_consumption = C_t - (xswts .* kf_t)' * cfunc
+        eq_lambda          = margutil_t - (xswts .* kf_t)'*(1 ./ cfunc)
+        eq_transfers       = capreturn_t * k_t * ezt - I_t + (1-mc_t) * y_t - tg_t - t_t
+
+        # Note: this beta is listed as βtil which differs from ̱β but Ethan thinks it
+        # drops out when take derivative so doesnt matter
+        eq_investment = margutil_t * Q_t * μ_t * (1- s_fn(I_t / I_t1 * ezt)) +
+            β*margutil′_t * exp(-z′_t) * Q′_t * μ′_t * s_fn_prime(I′_t/I_t*exp(z′_t)) *
+            (I′_t/I_t*exp(z′_t))^2 - margutil_t * (1 + Q_t * μ_t*s_fn_prime(I_t/I_t1*exp(z_t)) *
+                                                 I_t/I_t1*exp(z_t))
+
+        eq_tobin_q = β * margutil′_t * exp(-z′_t) / margutil_t * (capreturn′_t + Q′_t * (1-δ))
+
+        eq_capital_accumulation = (1-δ) * k_t * ezt +
+            μ_t * (1 - s_fn(I_t/I_t1 * exp(z_t))) * I_t - k′_t
+
+        # TODO: Figure out how to d\eal with kappa_w and kappa_p coefficients
+        eq_wage_phillips =  1/(λ_w_t*Φ_w) * ((1+λ_w_t)*ϕ*L_t^ϕh - (1-τw)*margutil_t * w_t) +
+            β*b′_t*(π_w′_t/π_star_w - 1)*(π_w′_t/π_star_w)*(L′_t/L_t) -
+            (π_w_t/π_star_w - 1)*(π_w_t/π_star_w)
+
+        eq_price_phillips = -1/(λ_w_t*Φ_p)*((1+τF) - (1+λ_f_t)*mc_t) +
+            (1/(1 + R_t))*(π′_t/π_t -1)*(π′_t/π_star)*y′_t*exp(z′_t)*y_t -
+            (π_t/π_star -1)*(π_t/π_star) # see above
+
         eq_marginal_cost = ((1-α)^(1-α)*α^α)^(-1)*w_t^(1-α)*capreturn_t^α - mc_t
-        eq_gdp = exp(-α*z_t)*k_t^α*L_t^(1-α) - y_t
-        eq_optimal_kl = α/(1-α)*L_t/k_t*exp(-z_t) - capreturn_t/w_t
-        eq_taylor = ((1+i_t)/(1+iii))^ρ_R*((π/π_star)^ψπ * (y_t/y_t1*exp(-γ))^ψy)^(1-ρ_R)*exp(rm′_t) - (1+i_t)/(1+iii)
-        eq_fisher = (1 + i_t)/π′_t - 1 - R_t
-        eq_nominal_wage_inflation = π_t*exp(z_t)*w_t/w_t1
-        eq_fiscal_rule = δb*(bg_t*exp(-z_t) + (1-1/g_t)*y_t - bg/(1+R_t)) + (1-δ)*Tg - tg_t
-        eq_g_budget_constraint = bg_t*exp(-z_t) + g_t - tg_t - bg′_t/(1+R_t)
-        eq_resource_constraint = y_t/g_t - C_t - I_t
-        eq_LI = i′_t1 - i_t
-        eq_LY = y′_t1 - y_t
-        eq_LW = w′_t1 - w_t
-        eq_LX = I′_t1 - I_t
-        eq_b = b′_t - ρ_B*b_t #plus shock for this and all below but doesnt matter because taking derivative
-        eq_g = g′_t - ρ_G*g_t
-        eq_z = z′_t - ρ_z*z_t
-        eq_μ = μ′_t - ρ_μ*μ_t
-        eq_λ_w = λ_w′_t - ρ_lamw*λ_w_t
-        eq_λ_f = λ_f′_t - ρ_lamf*λ_f_t
-        eq_rm = rm′_t - ρ_mon*rm_t
+        eq_gdp           = exp(-α*z_t)*k_t^α*L_t^(1-α) - y_t
+        eq_optimal_kl    = α/(1-α)*L_t/k_t*ezt - capreturn_t/w_t
+        eq_taylor        = ((1+i_t) / (1+iii)) ^ ρ_R *
+            ((π / π_star) ^ ψπ * (y_t / y_t1 * exp(-γ)) ^ ψy) ^ (1-ρ_R) *
+            exp(rm′_t) - (1+i_t) / (1+iii)
 
-        return [eq_euler; eq_kolmogorov_fwd; eq_agg_consumption; eq_lambda; eq_transfers;
+        eq_fisher = (1 + i_t) / π′_t - 1 - R_t
+        eq_nominal_wage_inflation = π_t * exp(z_t) * w_t / w_t1
+        eq_fiscal_rule = δb * (bg_t * ezt + (1 - 1/g_t) * y_t - bg / (1+R_t)) + (1-δ)*Tg - tg_t
+
+        eq_g_budget_constraint = bg_t * ezt + g_t - tg_t - bg′_t / (1+R_t)
+        eq_resource_constraint = y_t/g_t - C_t - I_t
+
+        eq_LI  = i′_t1 - i_t
+        eq_LY  = y′_t1 - y_t
+        eq_LW  = w′_t1 - w_t
+        eq_LX  = I′_t1 - I_t
+        # Add shock for this & below; doesn't matter b/c take derivative
+        eq_b   = b′_t - ρ_B * b_t
+        eq_g   = g′_t - ρ_G * g_t
+        eq_z   = z′_t - ρ_z * z_t
+        eq_μ   = μ′_t - ρ_μ * μ_t
+        eq_λ_w = λ_w′_t - ρ_lamw * λ_w_t
+        eq_λ_f = λ_f′_t - ρ_lamf * λ_f_t
+        eq_rm  = rm′_t  - ρ_mon * rm_t
+
+        return [eq_euler;
+                eq_kolmogorov_fwd;
+                eq_agg_consumption; eq_lambda; eq_transfers;
                 eq_investment; eq_tobin_q; eq_capital_accumulation; eq_wage_phillips;
                 eq_price_phillips; eq_marginal_cost; eq_gdp; eq_optimal_kl; eq_taylor; eq_fisher;
                 eq_nominal_wage_inflation; eq_fiscal_rule; eq_g_budget_constraint;
                 eq_resource_constraint;
                 eq_LI; eq_LY; eq_LW; eq_LX;
                 eq_b; eq_g; eq_z; eq_μ; eq_λ_w; eq_λ_f; eq_rm]
-
     end
 
     JJ = ForwardDiff.jacobian(F, x)
@@ -228,25 +346,23 @@ end=#
 
 function normalize(m::HetDSGEGovDebt, JJ::Matrix{Float64})
 
-    Qx, Qy, Qleft, Qright  = compose_normalization_matrices(m)
+    Qx, Qy, Qleft, Qright = compose_normalization_matrices(m)
 
     m <= Setting(:n_predetermined_variables, size(Qx, 1))
     m <= Setting(:Qx, Qx)
     m <= Setting(:Qy, Qy)
-    #Qleft = get_setting(m, :Qleft) #m[:Qleft].value
-    #Qright = get_setting(m, :Qright) #m[:Qright].value
 
-	Jac1 = Qleft*JJ*Qright
+	Jac1 = Qleft * JJ * Qright
 
     return Jac1
 end
 
 # use proxy distribuitions method - now `averaging' so that Qx'*Qx should not `add mass'
 function avg_prox(n::Int, binsize::Int = 3, minn_noag::Int = 0)
-    minn_noag_use = min(minn_noag,n)
+    minn_noag_use = min(minn_noag, n)
     n_gps = Int(floor((n-minn_noag_use)/binsize)) # number of groups
     n_noag = n - binsize*n_gps
-    Prox = cat(eye(n_noag), kron(eye(n_gps),ones(1,binsize)./sqrt(binsize)), dims = [1 2])
+    Prox = cat(eye(n_noag), kron(eye(n_gps), ones(1, binsize) ./ sqrt(binsize)), dims = [1 2])
     n_new = n_noag + n_gps
     return (Prox, n_new, n_noag, n_gps)
 end
@@ -259,8 +375,9 @@ function make_S(n::Int, n_noag::Int = 0, binsize::Int = 1)
     Ptemp = Ptemp[:,2:end]
     P2 = Ptemp
     P = [P1 P2]
-    (QQQ,Rjunk)=qr(P)
-    S         = QQQ[:,2:end]'
+    (QQQ, Rjunk) = qr(P)
+
+    S = QQQ[:,2:end]'
     return S
 end
 
@@ -289,7 +406,7 @@ function compose_normalization_matrices(m::HetDSGEGovDebt)
                      length(m.endogenous_states_augmented))
 
         Reduc = eye(n)
-        Reduc=Reduc[[1:nx1;nx+1:n],:]
+        Reduc = Reduc[[1:nx1;nx+1:n],:]
 
         minn_noag = 0
         binsize = get_setting(m, :binsize) # this is the maximum binsize which seemed to leave the IRFs unchanged, you can experiment with this
