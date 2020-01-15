@@ -388,7 +388,7 @@ function kolmogorov_fwd_hetdsgegovdebt(nx::Int, ns::Int,
     return dF2_dWH, dF2_dRZ, dF2_dTT, dF2_dELL, bigΨ, dF2_dM
 end
 
-function normalize(m::HetDSGEGovDebt, JJ::Matrix{Float64})
+function normalize(m::HetDSGEGovDebt, JJ::Union{Matrix{Float64}, SparseMatrixCSC{Float64, Int64}})
 
     Qx, Qy, Qleft, Qright  = compose_normalization_matrices(m)
 
