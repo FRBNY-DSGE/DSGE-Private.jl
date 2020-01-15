@@ -239,14 +239,12 @@ function jacobian(m::HetDSGEGovDebt, x::Vector{Float64})
 
         ezt = exp(-z_t)
 
-        #@show "Euler Eq."
+        # Euler Equation
         ell_euler_eq = Vector{Number}(undef, nxns)
-
         ell_euler_eq = euler_equation(ell_euler_eq, R′_t, z′_t, t′_t, w′_t, L′_t, cfunc, cfunc′)
 
-        #@show "KF"
-        kf_eq = Vector{Real}(undef, nxns)
         # KF Equation
+        kf_eq = Vector{Real}(undef, nxns)
         kf_eq = kolmogorov_fwd_eq(kf_eq, R′_t, z′_t, kf_t, t′_t, w′_t, L′_t, cfunc)
 
         eq_euler           = l_t - β*b′_t*(1+R_t)*ell_euler_eq
@@ -295,7 +293,8 @@ function jacobian(m::HetDSGEGovDebt, x::Vector{Float64})
         eq_LY  = y′_t1 - y_t
         eq_LW  = w′_t1 - w_t
         eq_LX  = I′_t1 - I_t
-        # Add shock for this & below; doesn't matter b/c take derivative
+
+        # Adding shock for this & below, but doesn't matter b/c take derivative
         eq_b   = b′_t - ρ_B * b_t
         eq_g   = g′_t - ρ_G * g_t
         eq_z   = z′_t - ρ_z * z_t
