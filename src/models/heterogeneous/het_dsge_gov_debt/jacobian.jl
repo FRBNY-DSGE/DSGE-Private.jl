@@ -1,5 +1,7 @@
 function jacobian(m::HetDSGEGovDebt)
+    @show "Actual jacobian.jl"
     reset_grids!(m)
+
     #truncate_distribution!(m)
 
     # Load in endogenous state and eq cond indices
@@ -96,56 +98,56 @@ function jacobian(m::HetDSGEGovDebt)
 
     # Euler equation
     JJ[eq[:eq_euler],endo[:l′_t]] = dF1_dELLP
-    JJ[eq[:eq_euler],endo[:z′_t]]   = -dF1_dRZ
-    JJ[eq[:eq_euler],endo[:w′_t]]   = dF1_dWHP
-    JJ[eq[:eq_euler],endo[:L′_t]]  = dF1_dWHP
-    JJ[eq[:eq_euler],endo[:t′_t]]  = dF1_dTTP
-    JJ[eq[:eq_euler],endo[:b_t]]    = ell
+    JJ[eq[:eq_euler],endo[:z′_t]] = -dF1_dRZ
+    JJ[eq[:eq_euler],endo[:w′_t]] = dF1_dWHP
+    JJ[eq[:eq_euler],endo[:L′_t]] = dF1_dWHP
+    JJ[eq[:eq_euler],endo[:t′_t]] = dF1_dTTP
+    JJ[eq[:eq_euler],endo[:b_t]]  = ell
     JJ[eq[:eq_euler],endo[:l_t]]  = dF1_dELL
-    JJ[eq[:eq_euler],endo[:R_t]]   = dF1_dRZ
+    JJ[eq[:eq_euler],endo[:R_t]]  = dF1_dRZ
 
     # KF eqn
-    JJ[eq[:eq_kolmogorov_fwd],endo[:kf′_t]]   = -Matrix{Float64}(I, nxns, nxns)
-    JJ[eq[:eq_kolmogorov_fwd],endo[:kf_t]]   = dF2_dM
-    JJ[eq[:eq_kolmogorov_fwd],endo[:l_t]] = dF2_dELL
-    JJ[eq[:eq_kolmogorov_fwd],endo[:R_t]] = dF2_dRZ
-    JJ[eq[:eq_kolmogorov_fwd],endo[:z_t]]    = -dF2_dM*dF2_dRZ
-    JJ[eq[:eq_kolmogorov_fwd],endo[:w_t]]    = dF2_dM*dF2_dWH
+    JJ[eq[:eq_kolmogorov_fwd],endo[:kf′_t]] = -Matrix{Float64}(I, nxns, nxns)
+    JJ[eq[:eq_kolmogorov_fwd],endo[:kf_t]]  = dF2_dM
+    JJ[eq[:eq_kolmogorov_fwd],endo[:l_t]]   = dF2_dELL
+    JJ[eq[:eq_kolmogorov_fwd],endo[:R_t]]   = dF2_dRZ
+    JJ[eq[:eq_kolmogorov_fwd],endo[:z_t]]   = -dF2_dM*dF2_dRZ
+    JJ[eq[:eq_kolmogorov_fwd],endo[:w_t]]   = dF2_dM*dF2_dWH
     JJ[eq[:eq_kolmogorov_fwd],endo[:L_t]]   = dF2_dM*dF2_dWH
     JJ[eq[:eq_kolmogorov_fwd],endo[:t_t]]   = dF2_dM*dF2_dTT
 
     # aggregate consumption
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:C_t])]   = -aggc
-    JJ[first(eq[:eq_agg_consumption]), endo[:l_t]] = -(μ .*unc.*xswts.*c)'
-    JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]] = (xswts.*c)' # note, now we linearize
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])]   = -(xswts.*c)'*dF2_dRZ
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:w_t])]   = (xswts.*c)'*dF2_dWH
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:L_t])]   = (xswts.*c)'*dF2_dWH
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:t_t])]   = (xswts.*c)'*dF2_dTT
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:C_t])] = -aggc
+    JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(μ . *unc .* xswts .* c)'
+    JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]]      = (xswts.*c)' # note, now we linearize
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])] = -(xswts.*c)'*dF2_dRZ
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:w_t])] = (xswts.*c)'*dF2_dWH
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:L_t])] = (xswts.*c)'*dF2_dWH
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:t_t])] = (xswts.*c)'*dF2_dTT
 
     # lambda = average marginal utility
     JJ[first(eq[:eq_lambda]),first(endo[:margutil_t])] = lam
-    JJ[first(eq[:eq_lambda]),endo[:kf_t]]   = -(xswts./c)' # note, now we linearize
-    JJ[first(eq[:eq_lambda]),first(endo[:z_t])]   = (xswts./c)'*dF2_dRZ
-    JJ[first(eq[:eq_lambda]),first(endo[:w_t])]   = -(xswts./c)'*dF2_dWH
-    JJ[first(eq[:eq_lambda]),first(endo[:L_t])]   = -(xswts./c)'*dF2_dWH
-    JJ[first(eq[:eq_lambda]),first(endo[:t_t])]   = -(xswts./c)'*dF2_dTT
-    JJ[first(eq[:eq_lambda]),endo[:l_t]] = -(xswts.*unc.*μ./c)'
+    JJ[first(eq[:eq_lambda]),endo[:kf_t]]              = -(xswts./c)' # note, now we linearize
+    JJ[first(eq[:eq_lambda]),first(endo[:z_t])]        = (xswts./c)'*dF2_dRZ
+    JJ[first(eq[:eq_lambda]),first(endo[:w_t])]        = -(xswts./c)'*dF2_dWH
+    JJ[first(eq[:eq_lambda]),first(endo[:L_t])]        = -(xswts./c)'*dF2_dWH
+    JJ[first(eq[:eq_lambda]),first(endo[:t_t])]        = -(xswts./c)'*dF2_dTT
+    JJ[first(eq[:eq_lambda]),endo[:l_t]]               = -(xswts.*unc.*μ./c)'
 
     # transfer
-    JJ[first(eq[:eq_transfers]),first(endo[:t_t])]  = T
-    JJ[first(eq[:eq_transfers]),first(endo[:capreturn_t])]  = -Rk*kstar
-    JJ[first(eq[:eq_transfers]),first(endo[:k_t])]  = -Rk*kstar
-    JJ[first(eq[:eq_transfers]),first(endo[:z_t])]  = Rk*kstar
-    JJ[first(eq[:eq_transfers]),first(endo[:I_t])]   = xstar
-    JJ[first(eq[:eq_transfers]),first(endo[:mc_t])]  = ystar
-    #JJ[first(eq[:eq_transfers]),first(endo[:y_t])]   = (1-1/g)*ystar
-    #JJ[first(eq[:eq_transfers]),first(endo[:g_t])]   = (ystar/g)
-    JJ[first(eq[:eq_transfers]),first(endo[:tg_t])]   = Tg
+    JJ[first(eq[:eq_transfers]),first(endo[:t_t])]         = T
+    JJ[first(eq[:eq_transfers]),first(endo[:capreturn_t])] = -Rk*kstar
+    JJ[first(eq[:eq_transfers]),first(endo[:k_t])]         = -Rk*kstar
+    JJ[first(eq[:eq_transfers]),first(endo[:z_t])]         = Rk*kstar
+    JJ[first(eq[:eq_transfers]),first(endo[:I_t])]         = xstar
+    JJ[first(eq[:eq_transfers]),first(endo[:mc_t])]        = ystar
+    #JJ[first(eq[:eq_transfers]),first(endo[:y_t])]        = (1-1/g)*ystar
+    #JJ[first(eq[:eq_transfers]),first(endo[:g_t])]        = (ystar/g)
+    JJ[first(eq[:eq_transfers]),first(endo[:tg_t])]        = Tg
 
     # investment
     JJ[first(eq[:eq_investment]),first(endo[:Q_t])]  = 1.
-    JJ[first(eq[:eq_investment]),first(endo[:μ_t])] = 1.
+    JJ[first(eq[:eq_investment]),first(endo[:μ_t])]  = 1.
     JJ[first(eq[:eq_investment]),first(endo[:I′_t])] = spp*(exp(3*γ))/R
     JJ[first(eq[:eq_investment]),first(endo[:z′_t])] = spp*(exp(3*γ))/R
     JJ[first(eq[:eq_investment]),first(endo[:I_t])]  = -spp*(exp(3*γ))/R - spp*exp(2*γ)
@@ -153,59 +155,59 @@ function jacobian(m::HetDSGEGovDebt)
     JJ[first(eq[:eq_investment]),first(endo[:z_t])]  = -spp*exp(2*γ)
 
     # tobin's q
-    JJ[first(eq[:eq_tobin_q]),first(endo[:margutil_t])]  = 1.
-    JJ[first(eq[:eq_tobin_q]),first(endo[:margutil′_t])] = -1.
-    JJ[first(eq[:eq_tobin_q]),first(endo[:Q_t])]    = 1.
-    JJ[first(eq[:eq_tobin_q]),first(endo[:z′_t])]   = 1.
+    JJ[first(eq[:eq_tobin_q]),first(endo[:margutil_t])]    = 1.
+    JJ[first(eq[:eq_tobin_q]),first(endo[:margutil′_t])]   = -1.
+    JJ[first(eq[:eq_tobin_q]),first(endo[:Q_t])]           = 1.
+    JJ[first(eq[:eq_tobin_q]),first(endo[:z′_t])]          = 1.
     JJ[first(eq[:eq_tobin_q]),first(endo[:capreturn′_t])]  = -Rk/R
-    JJ[first(eq[:eq_tobin_q]),first(endo[:Q′_t])]   = -(1-δ)/R
+    JJ[first(eq[:eq_tobin_q]),first(endo[:Q′_t])]          = -(1-δ)/R
 
     # capital accumulation
     JJ[first(eq[:eq_capital_accumulation]),first(endo[:k′_t])] = 1.
     JJ[first(eq[:eq_capital_accumulation]),first(endo[:k_t])]  = -(1-δ)
-    JJ[first(eq[:eq_capital_accumulation]),first(endo[:z_t])]   = (1-δ)
+    JJ[first(eq[:eq_capital_accumulation]),first(endo[:z_t])]  = (1-δ)
     JJ[first(eq[:eq_capital_accumulation]),first(endo[:μ_t])]  = -xstar/kstar
-    JJ[first(eq[:eq_capital_accumulation]),first(endo[:I_t])]   = -xstar/kstar
+    JJ[first(eq[:eq_capital_accumulation]),first(endo[:I_t])]  = -xstar/kstar
 
     # wage phillips curve
-    JJ[first(eq[:eq_wage_phillips]),first(endo[:π_w_t])]  = -1.
-    JJ[first(eq[:eq_wage_phillips]),first(endo[:λ_w_t])] = 1. #(ϕ*H^ϕh)/Φw
-    JJ[first(eq[:eq_wage_phillips]),first(endo[:L_t])]   = κ_w*ϕh #(ϕ*(H^ϕh)*(1+lamw)/lamw*Φw)*ϕh
-    JJ[first(eq[:eq_wage_phillips]),first(endo[:margutil_t])]  = -κ_w #-(ϕ*(H^ϕh)*(1+lamw)/lamw*Φw)
-    JJ[first(eq[:eq_wage_phillips]),first(endo[:w_t])]    = -κ_w #-(ϕ*(H^ϕh)*(1+lamw)/lamw*Φw)
-    JJ[first(eq[:eq_wage_phillips]),first(endo[:π_w′_t])]  = β
+    JJ[first(eq[:eq_wage_phillips]),first(endo[:π_w_t])]      = -1.
+    JJ[first(eq[:eq_wage_phillips]),first(endo[:λ_w_t])]      = 1. #(ϕ*H^ϕh)/Φw
+    JJ[first(eq[:eq_wage_phillips]),first(endo[:L_t])]        = κ_w*ϕh #(ϕ*(H^ϕh)*(1+lamw)/lamw*Φw)*ϕh
+    JJ[first(eq[:eq_wage_phillips]),first(endo[:margutil_t])] = -κ_w #-(ϕ*(H^ϕh)*(1+lamw)/lamw*Φw)
+    JJ[first(eq[:eq_wage_phillips]),first(endo[:w_t])]        = -κ_w #-(ϕ*(H^ϕh)*(1+lamw)/lamw*Φw)
+    JJ[first(eq[:eq_wage_phillips]),first(endo[:π_w′_t])]     = β
 
     # price phillips curve
     JJ[first(eq[:eq_price_phillips]),first(endo[:π_t])]   = -1.
-    JJ[first(eq[:eq_price_phillips]),first(endo[:mc_t])]   = κ_p #(1+lamf)/(lamf*Φp)
+    JJ[first(eq[:eq_price_phillips]),first(endo[:mc_t])]  = κ_p #(1+lamf)/(lamf*Φp)
     JJ[first(eq[:eq_price_phillips]),first(endo[:λ_f_t])] = 1. #1/Φp
     JJ[first(eq[:eq_price_phillips]),first(endo[:π′_t])]  = 1/R
 
     # marginal cost
-    JJ[first(eq[:eq_marginal_cost]),first(endo[:mc_t])] = 1.
-    JJ[first(eq[:eq_marginal_cost]),first(endo[:w_t])]  = -(1-α)
+    JJ[first(eq[:eq_marginal_cost]),first(endo[:mc_t])]        = 1.
+    JJ[first(eq[:eq_marginal_cost]),first(endo[:w_t])]         = -(1-α)
     JJ[first(eq[:eq_marginal_cost]),first(endo[:capreturn_t])] = -α
 
     # gdp
-    JJ[first(eq[:eq_gdp]),first(endo[:y_t])]  = 1.
-    JJ[first(eq[:eq_gdp]),first(endo[:z_t])]  = α
+    JJ[first(eq[:eq_gdp]),first(endo[:y_t])] = 1.
+    JJ[first(eq[:eq_gdp]),first(endo[:z_t])] = α
     JJ[first(eq[:eq_gdp]),first(endo[:k_t])] = -α
     JJ[first(eq[:eq_gdp]),first(endo[:L_t])] = -(1-α)
 
     # optimal k/l ratio
     JJ[first(eq[:eq_optimal_kl]),first(endo[:capreturn_t])] = 1.
-    JJ[first(eq[:eq_optimal_kl]),first(endo[:w_t])]  = -1.
-    JJ[first(eq[:eq_optimal_kl]),first(endo[:L_t])] = -1.
-    JJ[first(eq[:eq_optimal_kl]),first(endo[:k_t])] = 1.
-    JJ[first(eq[:eq_optimal_kl]),first(endo[:z_t])]  = -1.
+    JJ[first(eq[:eq_optimal_kl]),first(endo[:w_t])]         = -1.
+    JJ[first(eq[:eq_optimal_kl]),first(endo[:L_t])]         = -1.
+    JJ[first(eq[:eq_optimal_kl]),first(endo[:k_t])]         = 1.
+    JJ[first(eq[:eq_optimal_kl]),first(endo[:z_t])]         = -1.
 
     # taylor rule
-    JJ[first(eq[:eq_taylor]),first(endo[:i_t])]   = -1.
-    JJ[first(eq[:eq_taylor]),first(endo[:i_t1])]  = ρ_R
-    JJ[first(eq[:eq_taylor]),first(endo[:π_t])]   = (1-ρ_R)*ψπ
-    JJ[first(eq[:eq_taylor]),first(endo[:y_t])]    = (1-ρ_R)*ψy
-    JJ[first(eq[:eq_taylor]),first(endo[:y_t1])]  = -(1-ρ_R)*ψy
-    JJ[first(eq[:eq_taylor]),first(endo[:z_t])]    = (1-ρ_R)*ψy
+    JJ[first(eq[:eq_taylor]),first(endo[:i_t])]  = -1.
+    JJ[first(eq[:eq_taylor]),first(endo[:i_t1])] = ρ_R
+    JJ[first(eq[:eq_taylor]),first(endo[:π_t])]  = (1-ρ_R)*ψπ
+    JJ[first(eq[:eq_taylor]),first(endo[:y_t])]  = (1-ρ_R)*ψy
+    JJ[first(eq[:eq_taylor]),first(endo[:y_t1])] = -(1-ρ_R)*ψy
+    JJ[first(eq[:eq_taylor]),first(endo[:z_t])]  = (1-ρ_R)*ψy
     JJ[first(eq[:eq_taylor]),first(endo[:rm_t])] = 1.
 
     # fisher eqn
@@ -215,18 +217,18 @@ function jacobian(m::HetDSGEGovDebt)
 
     # wage inflation
     JJ[first(eq[:eq_nominal_wage_inflation]),first(endo[:π_w_t])] = 1.
-    JJ[first(eq[:eq_nominal_wage_inflation]),first(endo[:π_t])]  = -1.
+    JJ[first(eq[:eq_nominal_wage_inflation]),first(endo[:π_t])]   = -1.
     JJ[first(eq[:eq_nominal_wage_inflation]),first(endo[:z_t])]   = -1.
     JJ[first(eq[:eq_nominal_wage_inflation]),first(endo[:w_t])]   = -1.
     JJ[first(eq[:eq_nominal_wage_inflation]),first(endo[:w_t1])]  = 1.
 
     # fiscal rule
-    JJ[first(eq[:eq_fiscal_rule]),first(endo[:tg_t])]  = -Tg
-    JJ[first(eq[:eq_fiscal_rule]),first(endo[:R_t])]   = δb*bg/R
-    JJ[first(eq[:eq_fiscal_rule]),first(endo[:bg_t])]  = δb*bg*exp(-γ)
-    JJ[first(eq[:eq_fiscal_rule]),first(endo[:z_t])]   = -δb*bg*exp(-γ)
-    JJ[first(eq[:eq_fiscal_rule]),first(endo[:y_t])]   = δb*(1-(1/g))*ystar
-    JJ[first(eq[:eq_fiscal_rule]),first(endo[:g_t])]   = δb*ystar/g
+    JJ[first(eq[:eq_fiscal_rule]),first(endo[:tg_t])] = -Tg
+    JJ[first(eq[:eq_fiscal_rule]),first(endo[:R_t])]  = δb*bg/R
+    JJ[first(eq[:eq_fiscal_rule]),first(endo[:bg_t])] = δb*bg*exp(-γ)
+    JJ[first(eq[:eq_fiscal_rule]),first(endo[:z_t])]  = -δb*bg*exp(-γ)
+    JJ[first(eq[:eq_fiscal_rule]),first(endo[:y_t])]  = δb*(1-(1/g))*ystar
+    JJ[first(eq[:eq_fiscal_rule]),first(endo[:g_t])]  = δb*ystar/g
 
     # govt budget constraint
     JJ[first(eq[:eq_g_budget_constraint]),first(endo[:bg′_t])] = -(bg/R)
