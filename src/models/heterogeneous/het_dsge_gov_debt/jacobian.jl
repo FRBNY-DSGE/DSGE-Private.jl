@@ -118,7 +118,7 @@ function jacobian(m::HetDSGEGovDebt)
 
     # aggregate consumption
     JJ[first(eq[:eq_agg_consumption]),first(endo[:C_t])] = -aggc
-    JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(μ . *unc .* xswts .* c)'
+    JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(μ .* unc .* xswts .* c)'
     JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]]      = (xswts.*c)' # note, now we linearize
     JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])] = -(xswts.*c)'*dF2_dRZ
     JJ[first(eq[:eq_agg_consumption]),first(endo[:w_t])] = (xswts.*c)'*dF2_dWH
@@ -293,6 +293,9 @@ function jacobian(m::HetDSGEGovDebt)
     JJ[first(eq[:eq_consumption]),first(endo[:w_t])]   = -(xswts.*c)'*dF2_dWH
     JJ[first(eq[:eq_consumption]),first(endo[:L_t])]   = -(xswts.*c)'*dF2_dWH
     JJ[first(eq[:eq_consumption]),first(endo[:t_t])]   = -(xswts.*c)'*dF2_dTT=#
+    JLD2.jldopen("/data/dsge_data_dir/dsgejl/reca/autodiff_hank/og_JJ.jld2", true, true, true, IOStream) do file
+        file["JJ"] = JJ
+    end
 
     if !m.testing && get_setting(m, :normalize_distr_variables)
         JJ  = normalize(m, JJ)
