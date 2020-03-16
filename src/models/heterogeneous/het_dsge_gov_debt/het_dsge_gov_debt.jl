@@ -326,7 +326,7 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    tex_label = "p(s_H \\mid s_L)")
 
     m <= parameter(:BoverY, 0.26, fixed = true, description = "B / Y", tex_label = "B / Y")
-
+    #=
     m <= parameter(:zlo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
@@ -335,6 +335,18 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
     m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
+    =#
+    m <= parameter(:z_σ, 0.0323232, (1e-8, 5.0), (1e-8, 5.0), ModelConstructors.Exponential(),
+                   RootInverseGamma(2.0, 0.1), fixed = true,
+                   description = "Std. dev. on q_function (in the place of mollifying income)",
+                   tex_label = "\\z_{\\sigma}")
+
+    m <= parameter(:z_μ, fzero(x->truncmean(Truncated(LogNormal(x, m[:z_σ].value),
+                                                      get_setting(m, :z_dist_lo),
+                                                      get_setting(m, :z_dist_hi))), 1.0),
+                   fixed = true,
+                   description = "Mean on q_function (in the place of molligying income)",
+                   tex_label = "\\z_{\\mu}")
 
     m <= parameter(:mpc, 0.23395,  fixed = true, tex_label = "MPC")
     m <= parameter(:pc0, 0.071893, fixed = true, description = "Number of people at 0 income",
@@ -610,6 +622,10 @@ function model_settings!(m::HetDSGEGovDebt)
 
     # Mollifier setting parameters
     m <= Setting(:In, 0.443993816237631, "Normalizing constant for the mollifier")
+
+    # Relatedly, income (z) related parameters
+    m <= Setting(:z_dist_lo, 0.0, "Lower bound of lognormal distribution from which z is drawn")
+    m <= Setting(:z_dist_hi, 5.0, "Upper bound of lognormal distribution from which z is drawn")
 
     # s: Skill Distribution/ "Units of effective labor" Grid Setup
     m <= Setting(:ns, 2, "Skill distribution grid points")

@@ -325,7 +325,8 @@ end
 end
 
 function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
-                               T::S, γ::S, zhi::S, zlo::S, xgrid::Vector{S},
+                               T::S, γ::S, z_σ::S, z_μ::S, z_dist_lo::S, z_dist_hi::S,
+                               xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
                                f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
                                maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
@@ -335,9 +336,14 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     Wout = Vector{Float64}(undef, length(Win))
     counter = 1
     reject = false
-    qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, zhi, zlo)
 
-    while dist>tol && counter<maxit
+    # Pseudocode of change: E(z) = 1, where log z ~ N(m,s^2) truncated
+    # Old: qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, zhi, zlo)
+    qfunction(z::Float64) = pdf(Truncated(LogNormal(z_μ, z_σ),
+                                          z_dist_lo, z_dist_hi), z)
+
+
+    while dist > tol && counter < maxit
         # compute c(w) given guess for Win = β*R*E[u'(c_{t+1})]
         for iss in 1:ns
             for ia in 1:nx
