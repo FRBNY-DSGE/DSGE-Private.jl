@@ -44,7 +44,7 @@ function steadystate!(m::HetDSGEGovDebt;
                                                           us, zs, ni)
             end
             # Whether one calibrates or not, zhi needs to be updated here
-            m[:zhi] = 2.0 - m[:zlo].value
+           # m[:zhi] = 2.0 - m[:zlo].value
 
             # Construct Markov transition matrix for skill
             f, sgrid, swts, sscale = persistent_skill_process(m[:sH_over_sL].value, m[:pLH].value,
@@ -90,6 +90,8 @@ function find_steadystate!(m::HetDSGEGovDebt;
 
     zlo = m[:zlo].value
     zhi = m[:zhi].value
+    z_σ = m[:z_σ].value
+    z_μ = m[:z_μ].value
 
     # Load parameters
     R  = 1 + m[:r].scaledvalue
@@ -134,13 +136,15 @@ function find_steadystate!(m::HetDSGEGovDebt;
         βhi_temp = m[:βstar].value + βband
 
         c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, βlo_temp, R, ω, H, η, T, γ,
+                                                       z_σ, z_μ,
                                                        zhi, zlo, xgrid, sgrid, xswts, Win_guess,
                                                        f, damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
         excess_lo, μ = compute_excess(xswts, KF, bp, bg)
 
         if excess_lo < 0 && abs(excess_lo) > tol
             βlo = βlo_temp
-            c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, βhi_temp, R, ω, H, η, T, γ, zhi,
+            c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, βhi_temp, R, ω, H, η, T, γ,
+                                                           z_σ, z_μ, zhi,
                                                            zlo, xgrid, sgrid, xswts, Win_guess, f,
                                                            damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
             excess_hi, μ = compute_excess(xswts, KF, bp, bg)
@@ -155,7 +159,8 @@ function find_steadystate!(m::HetDSGEGovDebt;
 
     while abs(excess) > tol && counter < maxit # clearing markets
         β = (βlo + βhi) / 2.0
-        c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, β, R, ω, H, η, T, γ, zhi, zlo,
+        c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, β, R, ω, H, η, T, γ, z_σ, z_μ,
+                                                       zhi, zlo,
                                                        xgrid, sgrid, xswts, Win_guess, f,
                                                        damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
         excess, μ = compute_excess(xswts, KF, bp, bg)
@@ -307,7 +312,6 @@ end
                                 bg::S; print_warning::Bool = false,
                                 tol::S = 2e-1) where {S<:Float64}
     LPMKF = xswts[1] * KF
-
     # Find eigenvalue closest to 1
     (D,V) = (eigen(LPMKF)...,)
     max_D = argmax(abs.(D))
@@ -325,7 +329,7 @@ end
 end
 
 function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
-                               T::S, γ::S, z_σ::S, z_μ::S, z_dist_lo::S, z_dist_hi::S,
+                               T::S, γ::S, z_σ::S, z_μ::S, z_dist_hi::S, z_dist_lo::S,
                                xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
                                f::Matrix{S}, dist::S = 1., tol::S = 1e-4;

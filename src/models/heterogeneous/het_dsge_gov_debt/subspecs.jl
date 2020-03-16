@@ -100,14 +100,14 @@ function fix_all_except_sigmas!(m::HetDSGEGovDebt)
 
     m <= parameter(:BoverY, 0.26, fixed = true, description = "B / Y", tex_label = "B / Y")
 
-    m <= parameter(:zlo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+#=    m <= parameter(:zlo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
 
     m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
-                   tex_label = "\\bar{z}")
+                   tex_label = "\\bar{z}")=#
 
     m <= parameter(:mpc, 0.23395,  fixed = true, tex_label = "MPC")
     m <= parameter(:pc0, 0.071893, fixed = true, description = "Number of people at 0 income",
@@ -259,9 +259,9 @@ function fix_all_but_shocks!(m::HetDSGEGovDebt)
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
 
-    m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
+  #=  m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
-                   tex_label = "\\bar{z}")
+                   tex_label = "\\bar{z}")=#
 
     m <= parameter(:mpc, 0.23395,  fixed = true, tex_label = "MPC")
     m <= parameter(:pc0, 0.071893, fixed = true, description = "Number of people at 0 income",

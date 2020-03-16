@@ -62,13 +62,18 @@ function jacobian(m::HetDSGEGovDebt)
 
     zlo::Float64 = m[:zlo].value
     zhi::Float64 = m[:zhi].value
+    z_μ::Float64 = m[:z_μ].value
+    z_σ::Float64 = m[:z_σ].value
 
     nx::Int = get_setting(m, :nx)
     ns::Int = get_setting(m, :ns)
     nxns = nx*ns
 
     qp(z) = dmollifier_hetdsgegovdebt(z, zhi, zlo)
-    qfunction_hetdsgegovdebt(x) = mollifier_hetdsgegovdebt(x, zhi, zlo) #/sumz
+    # Old: qfunction_hetdsgegovdebt(x) = mollifier_hetdsgegovdebt(x, zhi, zlo) #/sumz
+    qfunction_hetdsgegovdebt(z::Float64) = pdf(Truncated(LogNormal(z_μ, z_σ),
+                                          zlo, zhi), z)
+
 
     unc = 1 ./ ell .<= repeat(xgrid,ns) .+ η
 
