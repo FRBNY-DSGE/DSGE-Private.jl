@@ -4,7 +4,8 @@ function steadystate!(m::HetDSGEGovDebt;
                       excess::S = 5000.,
                       tol::S = 1e-4,
                       maxit::Int64 = 20,
-                      βband::S = 1e-2) where {S<:AbstractFloat}
+                      βband::S = 1e-2,
+                      use_old::Bool = false) where {S<:AbstractFloat}
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
     # estimate the non steady state parameters, there's no need to recompute
     # zlo/zhi, etc.
@@ -27,7 +28,8 @@ function steadystate!(m::HetDSGEGovDebt;
         # This is a test setting; TODO: Remove because now we can just fix the randomness
         if get_setting(m, :steady_state_only)
             find_steadystate!(m; βlo = βlo, βhi = βhi, excess = excess, tol = tol, maxit = maxit,
-                              βband = βband)
+                              βband = βband,
+                              use_old = use_old)
             return
         else
             # Do you want to calibrate for matching the income moments?
@@ -67,7 +69,7 @@ function steadystate!(m::HetDSGEGovDebt;
             # Once have updated grids, can call steady state and compute other two moments
             find_steadystate!(m; βlo = βlo, βhi = βhi,
                               excess = excess, tol = tol, maxit = maxit,
-                              βband = βband)
+                              βband = βband, use_old = use_old)
             m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, xgrid, xswts, nx, ns)
             m[:pc0] = frac_zero(m[:μstar].value, m[:cstar].value, xgrid, xswts, ns)
         end
@@ -80,7 +82,8 @@ function find_steadystate!(m::HetDSGEGovDebt;
                            excess::S = 5000.,
                            tol::S = 1e-4,
                            maxit::Int64 = 20,
-                           βband::S = 1e-2) where {S<:AbstractFloat}
+                           βband::S = 1e-2,
+                           use_old::Bool = false) where {S<:AbstractFloat}
     # Load settings
     nx = get_setting(m, :nx)
     ns = get_setting(m, :ns)
@@ -138,7 +141,7 @@ function find_steadystate!(m::HetDSGEGovDebt;
         c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, βlo_temp, R, ω, H, η, T, γ,
                                                        z_σ, z_μ,
                                                        zhi, zlo, xgrid, sgrid, xswts, Win_guess,
-                                                       f, damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
+                                                       f, damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit), use_old = use_old)
         excess_lo, μ = compute_excess(xswts, KF, bp, bg)
 
         if excess_lo < 0 && abs(excess_lo) > tol
@@ -146,7 +149,7 @@ function find_steadystate!(m::HetDSGEGovDebt;
             c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, βhi_temp, R, ω, H, η, T, γ,
                                                            z_σ, z_μ, zhi,
                                                            zlo, xgrid, sgrid, xswts, Win_guess, f,
-                                                           damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
+                                                           damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit), use_old = use_old)
             excess_hi, μ = compute_excess(xswts, KF, bp, bg)
 
             if excess_hi > 0
@@ -162,7 +165,7 @@ function find_steadystate!(m::HetDSGEGovDebt;
         c, bp, Win, KF, reject = policy_hetdsgegovdebt(nx, ns, β, R, ω, H, η, T, γ, z_σ, z_μ,
                                                        zhi, zlo,
                                                        xgrid, sgrid, xswts, Win_guess, f,
-                                                       damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit))
+                                                       damp = get_setting(m, :policy_damp), maxit = get_setting(m, :policy_maxit), use_old = use_old)
         excess, μ = compute_excess(xswts, KF, bp, bg)
         # bisection
         if excess > 0
@@ -333,7 +336,8 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
                                xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
                                f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
-                               maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
+                               maxit::Int64 = 500, damp::S = 0.5,
+                               use_old::Bool = false) where {S<:AbstractFloat}
     n    = nx*ns
     c    = zeros(n)                  # consumption
     bp   = Vector{Float64}(undef, n) # savings
@@ -343,8 +347,12 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
 
     # Pseudocode of change: E(z) = 1, where log z ~ N(m,s^2) truncated
     # Old: qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, zhi, zlo)
-    qfunction(z::Float64) = pdf(Truncated(LogNormal(z_μ, z_σ),
-                                          z_dist_lo, z_dist_hi), z)
+    qfunction(x::Float64) = if use_old
+        mollifier_hetdsgegovdebt(x, z_dist_hi, z_dist_lo)
+    else
+        pdf(Truncated(LogNormal(z_μ, z_σ),
+                      z_dist_lo, z_dist_hi), x)
+    end
 
 
     while dist > tol && counter < maxit
