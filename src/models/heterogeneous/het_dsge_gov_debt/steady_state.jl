@@ -38,7 +38,7 @@ function steadystate!(m::HetDSGEGovDebt;
                 target = get_setting(m, :calibration_targets)
                 lower  = get_setting(m, :calibration_targets_lb)
                 upper  = get_setting(m, :calibration_targets_ub)
-                m[:sH_over_sL], m[:zlo], _, _ = best_fit(m[:pLH].value, m[:pHL].value,
+                m[:sH_over_sL], _, _, _ = best_fit(m[:pLH].value, m[:pHL].value,
                                                          target, lower, upper, us, zs)
             else
                 m[:varlinc], m[:vardlinc] = skill_moments(m[:sH_over_sL].value, m[:zlo].value,
@@ -283,12 +283,13 @@ function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Ve
                   us::Matrix{S}, zs::Matrix{S}, max_iter::Int = 20,
                   initial_guess::Vector{S} = [6.3, 0.03]) where {S<:AbstractFloat}
 
-    skill_moments_f(x) = loss(collect(skill_moments(x[1], x[2], pLH, pHL, us, zs)), target)
+    skill_moments_f(x) = loss(collect(skill_moments(x, 0.03, pLH, pHL, us, zs)), target)
+    zlo_argmin = 0.03
 
-    res = optimize(skill_moments_f, lower, upper, initial_guess, Fminbox(NelderMead()),
-                   Optim.Options(f_calls_limit = max_iter))
+    res = optimize(skill_moments_f, lower[1], upper[1]) #Optim.Options(f_calls_limit = max_iter)) #, #=, [initial_guess[1]], Newton(),=# #Fminbox(NelderMead()),
+                  # Optim.Options(f_calls_limit = max_iter))
 
-    sH_over_sL_argmin, zlo_argmin = Optim.minimizer(res)
+    sH_over_sL_argmin  = Optim.minimizer(res)
     min_varlinc, min_vardlinc = skill_moments(sH_over_sL_argmin, zlo_argmin, pLH,
                                               pHL, us, zs)
     return sH_over_sL_argmin, zlo_argmin, min_varlinc, min_vardlinc
@@ -348,6 +349,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     # Pseudocode of change: E(z) = 1, where log z ~ N(m,s^2) truncated
     # Old: qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, zhi, zlo)
     qfunction(x::Float64) = if use_old
+        @show z_dist_lo, z_dist_hi
         mollifier_hetdsgegovdebt(x, z_dist_hi, z_dist_lo)
     else
         pdf(Truncated(LogNormal(z_μ, z_σ),
