@@ -15,7 +15,7 @@ specified in their proper positions.
 * `Ψ`  (`n_states` x `n_shocks_exogenous`) holds coefficients of iid shocks.
 * `Π`  (`n_states` x `n_states_expectational`) holds coefficients of expectational states.
 """
-function eqcond(m::AnSchorfheide; method::Symbol = :gensys)
+function eqcond(m::AnSchorfheide; method::Symbol = :gensys, matrix_type = Float64)
 
     if method == :gensys
         endo = m.endogenous_states
@@ -108,10 +108,10 @@ function eqcond(m::AnSchorfheide; method::Symbol = :gensys)
         n_endo = get_setting(m, :n_endogenous_states_klein)
         n_exo  = n_shocks_exogenous(m)
 
-        Γ0 = zeros(Real, n_endo, n_endo)
-        Γ1 = zeros(Real, n_endo, n_endo)
-        Γ2 = zeros(Real, n_endo, n_endo)
-        Γ3 = zeros(Real, n_endo, n_exo)
+        Γ0 = zeros(matrix_type, n_endo, n_endo)
+        Γ1 = zeros(matrix_type, n_endo, n_endo)
+        Γ2 = zeros(matrix_type, n_endo, n_endo)
+        Γ3 = zeros(matrix_type, n_endo, n_exo)
 
         ### 1. Consumption Euler Equation
 

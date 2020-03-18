@@ -64,6 +64,7 @@ module DSGE
         logpath, workpath, rawpath, tablespath, figurespath, inpath,
         transform_to_model_space!, transform_to_real_line!,
         ShockGroup, alternative_policy, get_fixed_parameter_indices,
+        get_unfixed_parameter_indices,
 
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, compute_system,
@@ -155,6 +156,7 @@ module DSGE
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
+        BivariateAR,
 
         PoolModel, eqcond, measurement, pseudo_measurement,
         shock_groupings, transition,
@@ -345,6 +347,13 @@ module DSGE
     include("models/representative/an_schorfheide/pseudo_observables.jl")
     include("models/representative/an_schorfheide/pseudo_measurement.jl")
     include("models/representative/an_schorfheide/augment_states.jl")
+
+    include("models/representative/bivariate_ar/bivariate_ar.jl")
+    include("models/representative/bivariate_ar/subspecs.jl")
+    include("models/representative/bivariate_ar/eqcond.jl")
+    include("models/representative/bivariate_ar/measurement.jl")
+    include("models/representative/bivariate_ar/observables.jl")
+    include("models/representative/bivariate_ar/augment_states.jl")
 
     # PoolModel
     include("models/poolmodel/subspecs.jl")

@@ -1,6 +1,7 @@
 """
 ```
-function reduced_form_jacobian(m, θ, T, R, Γ0, Γ1, Γ2, Γ3)
+function reduced_form_jacobian(m, θ, T, R, Γ0, Γ1, Γ2, Γ3;
+    jacobians = :all)
 ```
 computes the Jacobian of the reduced form state space matrices T, R, Z, and D with respect
 to the parameters θ for the state space system
@@ -27,6 +28,15 @@ the structural model as
 - `Γ2::AbstractMatrix`: structural matrix applying to backward-looking variables
 - `Γ3::AbstractMatrix`: structural matrix applying to time t shocks
 
+### Keywords
+- `measurement_jacobians::Vector{Symbol}`: specifies which Jacobians of the
+    measurement matrices to return. We always return the Jacobians of the
+    state transition matrices. Note that even if
+    the requested jacobians are not ordered in the same way as the
+    the default, we will still return them in the same order as the default.
+    For example, `jacobians = [:DD, :ZZ]` returns `∂T∂θ, ∂R∂θ, ∂Z∂θ, ∂D∂θ`.
+    Also, note that `Z` => `ZZ` and `D` => `DD`.
+
 ### Outputs
 - The Jacobians ∂T∂θ, ∂R∂θ, ∂Z∂θ, and ∂D∂θ
 
@@ -43,15 +53,28 @@ Notes on type choices
 function reduced_form_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
                                T::AbstractMatrix{X}, R::AbstractMatrix{X},
                                Γ0::AbstractMatrix{Y}, Γ1::AbstractMatrix{Y},
-                               Γ2::AbstractMatrix{Y},
-                               Γ3::AbstractMatrix{Y}) where {U<:Real, X<:Real, Y<:Real}
+                               Γ2::AbstractMatrix{Y}, Γ3::AbstractMatrix{Y};
+                               measurement_jacobians::Vector{Symbol} =
+                               [:ZZ, :DD]) where {U<:Real, X<:Real, Y<:Real}
+
+    # Figure out what to compute and return
+    do_ZZ  = :ZZ in jacobians
+    do_DD  = :DD in jacobians
 
     # Apply implicit function theorem to compute Jacobians of
     # reduced form matrices
-    ∂T∂θ, ∂R∂θ = transition_matrices_jacobian(m, θ, T, Γ0, Γ1, Γ2, Γ3)
-    ∂Z∂θ, ∂D∂θ = measurement_matrices_jacobian(m, θ, T, R, ∂T∂θ, ∂R∂θ)
+    ∂T∂θ, ∂R∂θ = transition_matrices_jacobian(m, θ, T, Γ0, Γ1, Γ2, Γ3) # this must always be computed
+    out = measurement_matrices_jacobian(m, θ, T, R, ∂T∂θ, ∂R∂θ;
+                                        compute_Z = do_ZZ, # these may be optional
+                                        compute_D = do_DD)
 
-    return ∂T∂θ, ∂R∂θ, ∂Z∂θ, ∂D∂θ
+    if do_ZZ && do_DD
+        return ∂T∂θ, ∂R∂θ, ∂Z∂θ, ∂D∂θ
+    elseif do_ZZ
+        return ∂T∂θ, ∂R∂θ, ∂Z∂θ
+    elseif do_DD
+        return ∂T∂θ, ∂R∂θ, ∂D∂θ
+    end
 end
 
 function reduced_form_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
@@ -98,7 +121,8 @@ function structural_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{S
     # Write structural matrices as function of unfixed parameters.
     @inline function diff_struct_obj_fnct(var)
         update_wrapper!(var)
-        Γ0, Γ1, Γ2, Γ3 = eqcond(m; method = :klein)
+        Γ0, Γ1, Γ2, Γ3 = eqcond(m; method = :klein,
+                                matrix_type = Real)
         return vcat(vec(Γ0), vec(Γ1), vec(Γ2), vec(Γ3))
     end
 
@@ -122,6 +146,7 @@ function structural_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{S
 
     return ∂Γ0∂θ, ∂Γ1∂θ, ∂Γ2∂θ, ∂Γ3∂θ
 end
+
 function structural_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector)
     structural_matrices_jacobian(m, map(x -> x.value, θ))
 end
@@ -214,6 +239,10 @@ when evaluated at θ.
 - `∂T∂θ::AbstractMatrix`: Jacobian of T
 - `∂T∂R::AbstractMatrix`: Jacobian of R
 
+### Keywords
+- `compute_Z::Bool`: true if we want to compute the Jacobian of Z
+- `compute_D::Bool`: true if we want to compute the Jacobian of D
+
 ### Outputs
 - The Jacobians ∂Z∂θ and ∂D∂θ
 
@@ -221,7 +250,9 @@ when evaluated at θ.
 function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U},
                                        T::AbstractMatrix{X}, R::AbstractMatrix{X},
                                        ∂T∂θ::AbstractMatrix{Y},
-                                       ∂R∂θ::AbstractMatrix{Y}) where {U<:Real, X<:Real, Y<:Real}
+                                       ∂R∂θ::AbstractMatrix{Y};
+                                       compute_Z::Bool = true,
+                                       compute_D::Bool = true) where {U<:Real, X<:Real, Y<:Real}
     θold = copy(θ)
 
     # We assume T, R are evaluated at θ
@@ -242,42 +273,75 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{
                                                       change_value_type = true)
     end
 
-    @inline function diff_meas_obj_fnct(var)
-        θvar = var[1:Nθ]
-        Tvar = var[Nθ+1:Nθ+NT]
-        Rvar = var[Nθ+NT+1:end]
-        update_wrapper!(θvar)
-        measure_mat = measurement(m, reshape(Tvar, size(T)...), reshape(Rvar, size(R)...),
-                                  zeros(eltype(Tvar), size(T,1)))
-        Zvar = measure_mat.ZZ
-        Dvar = measure_mat.DD
-        return vcat(vec(Zvar), vec(Dvar))
+    diff_meas_obj_fnct = if compute_Z && compute_D
+        function _diff_meas_obj_fnct1(var)
+            θvar = var[1:Nθ]
+            Tvar = var[Nθ+1:Nθ+NT]
+            Rvar = var[Nθ+NT+1:end]
+            update_wrapper!(θvar)
+            measure_mat = measurement(m, reshape(Tvar, size(T)...), reshape(Rvar, size(R)...),
+                                      zeros(eltype(Tvar), size(T,1)))
+            return vcat(vec(measure_mat.ZZ), vec(measure_mat.DD))
+        end
+    elseif compute_Z
+        function _diff_meas_obj_fnct2(var)
+            θvar = var[1:Nθ]
+            Tvar = var[Nθ+1:Nθ+NT]
+            Rvar = var[Nθ+NT+1:end]
+            update_wrapper!(θvar)
+            measure_mat = measurement(m, reshape(Tvar, size(T)...), reshape(Rvar, size(R)...),
+                                      zeros(eltype(Tvar), size(T,1)))
+            return vec(measure_mat.ZZ)
+        end
+    elseif compute_D
+        function _diff_meas_obj_fnct1(var)
+            θvar = var[1:Nθ]
+            Tvar = var[Nθ+1:Nθ+NT]
+            Rvar = var[Nθ+NT+1:end]
+            update_wrapper!(θvar)
+            measure_mat = measurement(m, reshape(Tvar, size(T)...), reshape(Rvar, size(R)...),
+                                      zeros(eltype(Tvar), size(T,1)))
+            return vec(measure_mat.DD)
+        end
+    else
+        error("Both `compute_Z` and `compute_D` cannot be false.")
     end
+    derivs = ForwardDiff.jacobian(diff_meas_obj_fnct, Vector{Float64}(vcat(θ, vec(T), vec(R))))
 
-    derivs = ForwardDiff.jacobian(diff_meas_obj_fnct, Vector{Real}(vcat(θ, vec(T), vec(R))))
-
-    # Extract individual jacobians of Z w.r.t. θ, T, and R
+    # Extract individual jacobians of Z, D w.r.t. θ, T, and R.
+    # Compute derivatives via chain rule afterward.
     nobs = n_observables(m)
     nstates = get_setting(m, :n_endogenous_states_klein)
     Z_dim = nobs * nstates
     D_dim = nstates
-    ∂Z∂θ = derivs[1:Z_dim,1:Nθ]
-    ∂Z∂T = derivs[1:Z_dim,(Nθ+1):(Nθ+NT)]
-    ∂Z∂R = derivs[1:Z_dim,(Nθ+NT+1):end]
-    ∂D∂θ = derivs[1+Z_dim:end,1:Nθ]
-    ∂D∂T = derivs[1+Z_dim:end,(Nθ+1):(Nθ+NT)]
-    ∂D∂R = derivs[1+Z_dim:end,(Nθ+NT+1):end]
+    if compute_Z
+        ∂Z∂θ = derivs[1:Z_dim,1:Nθ]
+        ∂Z∂T = derivs[1:Z_dim,(Nθ+1):(Nθ+NT)]
+        ∂Z∂R = derivs[1:Z_dim,(Nθ+NT+1):end]
+        ∂Z∂θ += ∂Z∂T * ∂T∂θ + ∂Z∂R * ∂R∂θ
+    end
+
+    if compute_D
+        inds = compute_Z ? (1 + Z_dim:Z_dim + D_dim) : (1:D_dim) # need to determine the correct indices
+        ∂D∂θ = derivs[inds, 1:Nθ]
+        ∂D∂T = derivs[inds, (Nθ+1):(Nθ+NT)]
+        ∂D∂R = derivs[inds, (Nθ+NT+1):end]
+        ∂D∂θ += ∂D∂T * ∂T∂θ + ∂D∂R * ∂R∂θ
+    end
 
     # Set parameters of m back to the old ones
     update_wrapper!(θold)
 
-    # Compute derivatives via chain rule
-    ∂Z∂θ += ∂Z∂T * ∂T∂θ + ∂Z∂R * ∂R∂θ
-    ∂D∂θ += ∂D∂T * ∂T∂θ + ∂D∂R * ∂R∂θ
-
     # Make sure partials are same type as T and R
-    return ∂Z∂θ, ∂D∂θ
+    if compute_Z && compute_D
+        return ∂Z∂θ, ∂D∂θ
+    elseif compute_Z
+        return ∂Z∂θ
+    else
+        return ∂D∂θ
+    end
 end
+
 function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::ParameterVector,
                                        T::AbstractMatrix{X}, R::AbstractMatrix{X},
                                        ∂T∂θ::AbstractMatrix{Y},

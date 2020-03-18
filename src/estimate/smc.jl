@@ -70,15 +70,15 @@ function smc2(m::AbstractDSGEModel, data::Matrix{Float64};
 
     use_chand_recursion = get_setting(m, :use_chand_recursion)
 
-    if get_setting(m, :mutation_method) == :HMC
-        function my_likelihood(parameters::ParameterVector, data::Matrix{Float64})::Float64
+    my_likelihood = if get_setting(m, :mutation_method) == :HMC
+        function _my_likelihood_hmc(parameters::ParameterVector, data::Matrix{Float64})::Float64
             update!(m, parameters)
             system = compute_system(m)
             likelihood(m, data, system; sampler = false, catch_errors = true,
                        use_chand_recursion = use_chand_recursion, verbose = verbose)
         end
     else
-        function my_likelihood(parameters::ParameterVector, data::Matrix{Float64})::Float64
+        function _my_likelihood_mh(parameters::ParameterVector, data::Matrix{Float64})::Float64
             update!(m, parameters)
             likelihood(m, data; sampler = false, catch_errors = true,
                        use_chand_recursion = use_chand_recursion, verbose = verbose)

@@ -416,6 +416,23 @@ function get_fixed_parameter_indices(m::AbstractDSGEModel)
     end
 end
 
+"""
+```
+get_unfixed_parameter_indices!(m::AbstractDSGEModel)
+```
+
+Returns a Boolean vector indicating which indices of the `parameters` field
+of the model object `m` have unfixed parameters.
+
+"""
+function get_unfixed_parameter_indices(m::AbstractDSGEModel)
+    if haskey(m.settings, :unfixed_parameter_indices)
+        return get_setting(m, :unfixed_parameter_indices)
+    else
+        return map(x -> !x.fixed, m.parameters)
+    end
+end
+
 
 """
 ```

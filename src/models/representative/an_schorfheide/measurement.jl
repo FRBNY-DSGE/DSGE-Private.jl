@@ -18,10 +18,10 @@ Var(u_t) = EE
 Cov(ϵ_t, u_t) = 0
 ```
 """
-function measurement(m::AnSchorfheide,
+function measurement(m::AnSchorfheide{S},
                      TTT::Matrix{T},
                      RRR::Matrix{T},
-                     CCC::Vector{T}) where {T<:Real}
+                     CCC::Vector{T}) where {T <: Real, S <: Real}
     endo     = m.endogenous_states
     endo_new = m.endogenous_states_augmented
     exo      = m.exogenous_shocks
@@ -39,7 +39,7 @@ function measurement(m::AnSchorfheide,
     end
     _n_shocks_exogenous = n_shocks_exogenous(m)
 
-    zero_type = eltype(TTT)
+    zero_type = eltype(TTT) <: ForwardDiff.Dual ? Real : eltype(TTT)
     ZZ = zeros(zero_type, _n_observables, _n_states)
     DD = zeros(zero_type, _n_observables)
     EE = zeros(zero_type, _n_observables, _n_observables)
