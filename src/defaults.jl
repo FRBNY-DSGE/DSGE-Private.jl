@@ -105,6 +105,8 @@ function default_settings!(m::AbstractDSGEModel)
         "Max number of free params for which to calculate Hessian")
     settings[:use_chand_recursion] = Setting(:use_chand_recursion, false,
         "Use Chandrasekhar Recursions instead of standard Kalman filter")
+    settings[:autodiff_include_functional_eqs] = Setting(:autodiff_include_functional_eqs,
+        false, "Determines whether to autodifferentiate functional equations in Jacobian.")
 
     # Metropolis-Hastings
     settings[:n_mh_simulations] = Setting(:n_mh_simulations, 5000,
