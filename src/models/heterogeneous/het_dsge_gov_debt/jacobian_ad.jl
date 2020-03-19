@@ -437,9 +437,10 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
         eq_marginal_cost = ((1-α)^(1-α)*α^α)^(-1)*w_t^(1-α)*capreturn_t^α - mc_t
         eq_gdp           = exp(-α*z_t)*k_t^α*L_t^(1-α) - y_t
         eq_optimal_kl    = α/(1-α)*L_t/k_t*ezt - capreturn_t/w_t
-        eq_taylor        = ((1+i_t) / (1+iii)) ^ ρ_R *
-            ((π / π_star) ^ ψπ * (y_t / y_t1 * exp(-γ)) ^ ψy) ^ (1-ρ_R) *
-            exp(rm′_t) - (1+i_t) / (1+iii)
+        # TYPO in paper: e^z_t vs. e^-γ
+        eq_taylor        = ((1+i_t1) / (1+iii)) ^ ρ_R *
+            ((π / π_star) ^ ψπ * (y_t / y_t1 * ezt) ^ ψy) ^ (1-ρ_R) *
+            exp(rm_t) - (1+i_t) / (1+iii)
 
         # This is not equal because we're not log-linearizing the equations
         eq_fisher = (1+R_t) - (1 + i_t) / π′_t
