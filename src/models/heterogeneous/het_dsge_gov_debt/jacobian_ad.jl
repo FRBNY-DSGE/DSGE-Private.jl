@@ -439,7 +439,7 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
         eq_optimal_kl    = α/(1-α)*L_t/k_t*ezt - capreturn_t/w_t
         # TYPO in paper: e^z_t vs. e^-γ
         eq_taylor        = ((1+i_t1) / (1+iii)) ^ ρ_R *
-            ((π / π_star) ^ ψπ * (y_t / y_t1 * ezt) ^ ψy) ^ (1-ρ_R) *
+            ((π_t / π_star) ^ ψπ * (y_t / y_t1 * exp(z_t)) ^ ψy) ^ (1-ρ_R) *
             exp(rm_t) - (1+i_t) / (1+iii)
 
         # This is not equal because we're not log-linearizing the equations
@@ -479,7 +479,8 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
     JJ = if include_functional_eqs
         ForwardDiff.jacobian(F, x)
     else
-        vcat(jacobian(m; functional_eqs_only = true), ForwardDiff.jacobian(F_light, x))
+        vcat(jacobian(m; functional_eqs_only = true),
+             ForwardDiff.jacobian(F_light, x))
     end
     if !m.testing && get_setting(m, :normalize_distr_variables)
         JJ  = normalize(m, JJ)
