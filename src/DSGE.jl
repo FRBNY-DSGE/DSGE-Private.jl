@@ -5,6 +5,7 @@ module DSGE
     using Dates, Test, BenchmarkTools
     using Distributed, Distributions, FileIO, FredData, HDF5, JLD2, LinearAlgebra
     using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
+    using ForwardDiff
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
     using DataStructures: SortedDict, insert!, ForwardOrdering
@@ -422,6 +423,7 @@ module DSGE
     include("models/heterogeneous/het_dsge_gov_debt/steady_state.jl")
     include("models/heterogeneous/het_dsge_gov_debt/subspecs.jl")
     include("models/heterogeneous/het_dsge_gov_debt/jacobian.jl")
+    include("models/heterogeneous/het_dsge_gov_debt/jacobian_ad.jl")
     include("models/heterogeneous/het_dsge_gov_debt/shock_loading.jl")
     include("models/heterogeneous/het_dsge_gov_debt/observables.jl")
     include("models/heterogeneous/het_dsge_gov_debt/measurement.jl")
