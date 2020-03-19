@@ -52,6 +52,8 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
     ns   = DSGE.get_setting(m, :ns)::Int64
     nxns = nx*ns::Int64
 
+    xgrη = repeat(xgrid, ns) .+ η
+
     @inline function mollifier(z, ehi, elo)
         if z < ehi && z > elo
             return (2.0 / (ehi - elo)) *
@@ -167,7 +169,6 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
         return ret_kol
     end
 
-    xgrη = repeat(xgrid, ns) .+ η
     function F(x::Vector{S}) where {S<:Real}
 
         endo = DSGE.augment_model_states(m.endogenous_states_original,
@@ -443,7 +444,7 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
         # This is not equal because we're not log-linearizing the equations
         eq_fisher = (1+R_t) - (1 + i_t) / π′_t
 
-        eq_nominal_wage_inflation = π_t * exp(z_t) * w_t / w_t1
+        eq_nominal_wage_inflation = π_w_t - π_t * exp(z_t) * w_t / w_t1
 
         eq_fiscal_rule = δb * (bg_t * ezt + (1 - 1/g_t) * y_t - bg / (1+R_t)) + (1-δ)*Tg - tg_t
 
@@ -478,6 +479,9 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
         ForwardDiff.jacobian(F, x)
     else
         vcat(jacobian(m; functional_eqs_only = true), ForwardDiff.jacobian(F_light, x))
+    end
+    if !m.testing && get_setting(m, :normalize_distr_variables)
+        JJ  = normalize(m, JJ)
     end
     return JJ
 
