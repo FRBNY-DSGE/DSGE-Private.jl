@@ -1,5 +1,7 @@
-function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64};
-                     include_functional_eqs::Boolean = false)
+function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
+
+    include_functional_eqs = get_setting(m, :autodiff_include_function_eqs)
+
     α      = m[:α].value::Float64
     δ      = m[:δ].value::Float64
     γ      = m[:γ].scaledvalue::Float64
