@@ -1,4 +1,4 @@
-function jacobian(m::HetDSGEGovDebt; functional_eqs_only::Boolean = false)
+function jacobian(m::HetDSGEGovDebt; functional_eqs_only::Bool = false)
     reset_grids!(m)
     #truncate_distribution!(m)
 

@@ -1,6 +1,6 @@
 function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
 
-    include_functional_eqs = get_setting(m, :autodiff_include_function_eqs)
+    include_functional_eqs = get_setting(m, :autodiff_include_functional_eqs)
 
     α      = m[:α].value::Float64
     δ      = m[:δ].value::Float64
@@ -477,7 +477,7 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
     JJ = if include_functional_eqs
         ForwardDiff.jacobian(F, x)
     else
-        vcat(functional_derivatives(x), ForwardDiff.jacobian(F_light, x))
+        vcat(jacobian(m; functional_eqs_only = true), ForwardDiff.jacobian(F_light, x))
     end
     return JJ
 
