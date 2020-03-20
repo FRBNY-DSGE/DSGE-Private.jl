@@ -108,8 +108,6 @@ function klein(m::AbstractModel)
             rethrow(ex)
         end
     end
-    @show size(gx_coef)
-
 
     # Solve for h_x (in a more numerically stable way)
 	S11invT11 = S11\T11;
