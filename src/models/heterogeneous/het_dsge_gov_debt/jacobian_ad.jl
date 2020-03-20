@@ -409,16 +409,18 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
 
         eq_agg_consumption = (xswts .* kf_t)' * cfunc - C_t
         eq_lambda          = margutil_t - (xswts .* kf_t)'*(1 ./ cfunc)
-        eq_transfers       = capreturn_t * k_t * ezt - I_t + (1-mc_t) * y_t - tg_t - t_t
+        eq_transfers       = t_t - capreturn_t * k_t * ezt + I_t -
+            (1-mc_t) * y_t + tg_t
 
         # Note: this beta is listed as βtil which differs from ̱β but Ethan thinks it
         # drops out when take derivative so doesnt matter
         eq_investment = margutil_t * Q_t * μ_t * (1- s_fn(I_t / I_t1 * ezt)) +
-            β*margutil′_t * exp(-z′_t) * Q′_t * μ′_t * s_fn_prime(I′_t/I_t*exp(z′_t)) *
+            β*margutil′_t * exp(-z′_t) * Q′_t * μ′_t *
+            s_fn_prime(I′_t/I_t*exp(z′_t)) *
             (I′_t/I_t*exp(z′_t))^2 - margutil_t *
             (1 + Q_t * μ_t*s_fn_prime(I_t/I_t1*exp(z_t)) * I_t/I_t1*exp(z_t))
 
-        eq_tobin_q = β * margutil′_t * exp(-z′_t) / margutil_t *
+        eq_tobin_q = Q_t - β * margutil′_t * exp(-z′_t) / margutil_t *
             (capreturn′_t + Q′_t * (1-δ))
 
         eq_capital_accumulation = k′_t - (1-δ) * k_t * ezt -
@@ -469,7 +471,8 @@ function jacobian_ad(m::HetDSGEGovDebt, x::Vector{Float64})
         eq_λ_f = λ_f′_t - ρ_lamf * λ_f_t
         eq_rm  = rm′_t  - ρ_mon * rm_t
         return [eq_agg_consumption; eq_lambda; eq_transfers;
-                eq_investment; eq_tobin_q; eq_capital_accumulation; eq_wage_phillips;
+                eq_investment; eq_tobin_q; eq_capital_accumulation;
+                eq_wage_phillips;
                 eq_price_phillips; eq_marginal_cost; eq_gdp; eq_optimal_kl;
                 eq_taylor; eq_fisher;
                 eq_nominal_wage_inflation; eq_fiscal_rule; eq_g_budget_constraint;
