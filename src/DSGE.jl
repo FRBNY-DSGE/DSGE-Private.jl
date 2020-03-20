@@ -3,8 +3,8 @@ isdefined(Base, :__precompile__) && __precompile__(false)
 module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
-    using Distributed, Distributions, FileIO, ForwardDiff, FredData, HDF5, JLD2, LinearAlgebra
-    using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
+    using Distributed, Distributions, DynamicHMC, FileIO, ForwardDiff, FredData, HDF5, JLD2, LinearAlgebra, LogDensityProblems
+    using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SparseDiffTools, SparsityDetection, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
     using DataStructures: SortedDict, insert!, ForwardOrdering
@@ -17,6 +17,7 @@ module DSGE
     import Base.isempty, Base.<, Base.min, Base.max
     import LinearAlgebra: rank
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
+    import SparsityDetection: sparsity_pattern
     import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks, solve_discrete_lyapunov
     import ModelConstructors
     import ModelConstructors: posterior!, posterior, <=, n_states,
@@ -26,7 +27,7 @@ module DSGE
                               n_parameters_free, SteadyStateParameterGrid
     import SMC: get_vals
     import Calculus, Missings, Nullables
-    import StateSpaceRoutines: KalmanFilter
+    import StateSpaceRoutines: KalmanFilter, kalman_likelihood
     import SparseArrays: sparse, spdiagm, spzeros
 
     export
@@ -98,6 +99,7 @@ module DSGE
         initial_draw!, ParticleCloud, Particle, estimate_bma,
         reduced_form_jacobian, transition_matrices_jacobian,
         measurement_matrices_jacobian, structural_matrices_jacobian,
+        @create_hmc_problem, @get_type_name, @instantiate_hmc_problem,
 
         # backwards_compatibility.jl
         smc2, old_to_new_cloud,# TO REMOVE
@@ -154,7 +156,7 @@ module DSGE
 
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
-        init_pseudo_observable_mappings!,
+        init_pseudo_observable_mappings!, sparsity_pattern,
         Model990, Model1002, Model1010, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
         BivariateAR,
 
@@ -241,9 +243,13 @@ module DSGE
     include("estimate/smc/mutation.jl")
     include("estimate/smc/resample.jl")
     include("estimate/smc/smc.jl")
-    include("estimate/reduced_form_jacobian.jl")
     include("estimate/smc.jl")
     include("estimate/backwards_compatibility.jl")
+
+    # HMC
+    include("estimate/reduced_form_jacobian.jl")
+    include("estimate/hmc/posterior_functions.jl")
+    include("estimate/hmc/hmc.jl")
 
     # CT HANK code
     include("estimate/filter_hank.jl")
@@ -347,6 +353,7 @@ module DSGE
     include("models/representative/an_schorfheide/pseudo_observables.jl")
     include("models/representative/an_schorfheide/pseudo_measurement.jl")
     include("models/representative/an_schorfheide/augment_states.jl")
+    include("models/representative/an_schorfheide/sparsity_pattern.jl")
 
     include("models/representative/bivariate_ar/bivariate_ar.jl")
     include("models/representative/bivariate_ar/subspecs.jl")

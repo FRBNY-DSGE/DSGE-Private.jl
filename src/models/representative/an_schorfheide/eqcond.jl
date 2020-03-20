@@ -15,7 +15,8 @@ specified in their proper positions.
 * `Ψ`  (`n_states` x `n_shocks_exogenous`) holds coefficients of iid shocks.
 * `Π`  (`n_states` x `n_states_expectational`) holds coefficients of expectational states.
 """
-function eqcond(m::AnSchorfheide; method::Symbol = :gensys, matrix_type = Float64)
+function eqcond(m::AnSchorfheide; method::Symbol = :gensys, matrix_type = Float64,
+                use_sparse::Bool = false)
 
     if method == :gensys
         endo = m.endogenous_states
@@ -23,11 +24,19 @@ function eqcond(m::AnSchorfheide; method::Symbol = :gensys, matrix_type = Float6
         ex   = m.expected_shocks
         eq   = m.equilibrium_conditions
 
-        Γ0 = zeros(n_states(m), n_states(m))
-        Γ1 = zeros(n_states(m), n_states(m))
-        C  = zeros(n_states(m))
-        Ψ  = zeros(n_states(m), n_shocks_exogenous(m))
-        Π  = zeros(n_states(m), n_shocks_expectational(m))
+        if use_sparse
+            Γ0 = zeros(n_states(m), n_states(m))
+            Γ1 = zeros(n_states(m), n_states(m))
+            C  = zeros(n_states(m))
+            Ψ  = zeros(n_states(m), n_shocks_exogenous(m))
+            Π  = zeros(n_states(m), n_shocks_expectational(m))
+        else
+            Γ0 = zeros(n_states(m), n_states(m))
+            Γ1 = zeros(n_states(m), n_states(m))
+            C  = zeros(n_states(m))
+            Ψ  = zeros(n_states(m), n_shocks_exogenous(m))
+            Π  = zeros(n_states(m), n_shocks_expectational(m))
+        end
 
         ### ENDOGENOUS STATES ###
 
@@ -108,10 +117,17 @@ function eqcond(m::AnSchorfheide; method::Symbol = :gensys, matrix_type = Float6
         n_endo = get_setting(m, :n_endogenous_states_klein)
         n_exo  = n_shocks_exogenous(m)
 
-        Γ0 = zeros(matrix_type, n_endo, n_endo)
-        Γ1 = zeros(matrix_type, n_endo, n_endo)
-        Γ2 = zeros(matrix_type, n_endo, n_endo)
-        Γ3 = zeros(matrix_type, n_endo, n_exo)
+        if use_sparse
+            Γ0 = spzeros(matrix_type, n_endo, n_endo)
+            Γ1 = spzeros(matrix_type, n_endo, n_endo)
+            Γ2 = spzeros(matrix_type, n_endo, n_endo)
+            Γ3 = spzeros(matrix_type, n_endo, n_exo)
+        else
+            Γ0 = zeros(matrix_type, n_endo, n_endo)
+            Γ1 = zeros(matrix_type, n_endo, n_endo)
+            Γ2 = zeros(matrix_type, n_endo, n_endo)
+            Γ3 = zeros(matrix_type, n_endo, n_exo)
+        end
 
         ### 1. Consumption Euler Equation
 
