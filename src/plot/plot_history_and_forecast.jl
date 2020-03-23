@@ -70,13 +70,13 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
         error("Only one of untrans or fourquarter can be true")
     elseif untrans
         hist_prod  = :histut
-        fcast_prod = :forecastut
+        fcast_prod = :bddforecastut
     elseif fourquarter
         hist_prod  = :hist4q
-        fcast_prod = :forecast4q
+        fcast_prod = :bddforecast4q
     else
         hist_prod  = :hist
-        fcast_prod = :forecast
+        fcast_prod = :bddforecast
     end
 
     # Read in MeansBands
