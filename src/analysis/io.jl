@@ -158,6 +158,7 @@ function read_mb(m::AbstractDSGEModel, input_type::Symbol, cond_type::Symbol,
                                             directory = directory)
 
     if bdd_and_unbdd
+        @show get_product(output_var)
         @assert get_product(output_var) in [:forecast, :forecast4q]
         bdd_output_var = Symbol(:bdd, output_var)
         bdd_file = get_meansbands_output_file(m, input_type, cond_type, bdd_output_var;
