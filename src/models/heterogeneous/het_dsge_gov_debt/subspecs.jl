@@ -46,8 +46,11 @@ function init_subspec!(m::HetDSGEGovDebt)
     # Only estimate shocks
     elseif subspec(m) == "ss12"
         return ss12!(m)
+    # Do not calibrate for s_H / s_L; let z_σ be free
+    elseif subspec(m) == "ss13"
+        return ss13!(m)
     else
-        error("This subspec should be a 0")
+        error("The subspec $(subspec(m)) does not exist.")
     end
 end
 
@@ -818,5 +821,61 @@ function ss12!(m::HetDSGEGovDebt)
                    tex_label = "\\underbar{z}")
     m <= parameter(:sH_over_sL, 8.99999, (3.0, 9.0), (3.0, 9.0), Untransformed(),
                    Uniform(3.0, 9.0), fixed = true,
+                   description = "Ratio of high to low earners", tex_label = "s_H / s_L")
+end
+
+"""
+```
+ss13!(m::HetDSGEGovDebt)
+```
+
+Initializes model for run when we don't calibrate for varlinc and vardlinc.
+"""
+function ss13!(m::HetDSGEGovDebt)
+    m <= Setting(:calibrate_income_targets, false, "Calibrate for varlinc and vardlinc")
+
+    # Set targets
+    m <= Setting(:targets, [0.16, 0.10, 0.7, 0.23], "Targets for [MPC, pc0, varlinc, vardlinc]")
+    m <= Setting(:target_vars, [:mpc, :pc0, :varlinc, :vardlinc],
+                 "Symbols of variables we're targeting")
+    m <= Setting(:target_σt, [0.2, 0.1, 0.05, 0.05],
+                 "Target \\sigma_t for MPC, pc0, varlinc, and vardlinc")
+
+    # Give model new parameters
+    m <= parameter(:varlinc, 0.0, fixed = true, tex_label = "varlinc",
+                   description = "var(log(annual income))")
+    m <= parameter(:vardlinc, 0.0, fixed = true, tex_label = "vardlinc",
+                   description = "var(log(deviations in annual income))")
+
+    # Since not calibrating, we let zlo and s_H / s_L be free parameters
+    #m <= parameter(:zlo, 1.035e-8, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+    #               Uniform(1e-18, 0.8-eps()), fixed = false,
+    #               description = "Lower bound on second income shock to mollify actual income",
+    #               tex_label = "\\underbar{z}")
+
+    m <= parameter(:zlo, 0.06, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+                   Uniform(1e-18, 0.8-eps()), fixed = true,
+                   description = "Lower bound on second income shock to mollify actual income",
+                   tex_label = "\\underbar{z}")
+
+    m <= parameter(:zhi, 4.0, fixed = true,
+                   description = "Upper bound on second income shock to mollify actual income",
+                   tex_label = "\\bar{z}")
+
+    m <= parameter(:z_σ, 0.7, (1e-8, 5.0), (1e-8, 5.0), ModelConstructors.Exponential(),
+                   RootInverseGamma(0.5, 0.2), fixed = false,
+                   description = "Std. dev. on q_function (in the place of mollifying income)",
+                   tex_label = "\\z_{\\sigma}")
+
+    m <= parameter(:z_μ, fzero(x->truncmean(Truncated(LogNormal(x, m[:z_σ].value),
+                                                      m[:zlo].value, m[:zhi].value)) - 1.0,
+                               #get_setting(m, :z_dist_lo), get_setting(m, :z_dist_hi))),
+                               0.0),
+                   fixed = true,
+                   description = "Mean on q_function (in the place of molliying income)",
+                   tex_label = "\\z_{\\mu}")
+
+    m <= parameter(:sH_over_sL, 8.99999, (3.0, 9.0), (3.0, 9.0), Untransformed(),
+                   Uniform(3.0, 9.0), fixed = false,
                    description = "Ratio of high to low earners", tex_label = "s_H / s_L")
 end
