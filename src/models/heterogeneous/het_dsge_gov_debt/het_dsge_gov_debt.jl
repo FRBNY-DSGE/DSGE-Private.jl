@@ -346,7 +346,7 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                                                       #get_setting(m, :z_dist_hi))),
                                0.0),
                    fixed = true,
-                   description = "Mean on q_function (in the place of molligying income)",
+                   description = "Mean on q_function (in the place of mollifying income)",
                    tex_label = "\\z_{\\mu}")
 
     m <= parameter(:mpc, 0.23395,  fixed = true, tex_label = "MPC")
