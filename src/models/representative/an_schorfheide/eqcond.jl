@@ -25,17 +25,17 @@ function eqcond(m::AnSchorfheide; method::Symbol = :gensys, matrix_type = Float6
         eq   = m.equilibrium_conditions
 
         if use_sparse
-            Γ0 = zeros(n_states(m), n_states(m))
-            Γ1 = zeros(n_states(m), n_states(m))
-            C  = zeros(n_states(m))
-            Ψ  = zeros(n_states(m), n_shocks_exogenous(m))
-            Π  = zeros(n_states(m), n_shocks_expectational(m))
+            Γ0 = spzeros(matrix_type, n_states(m), n_states(m))
+            Γ1 = spzeros(matrix_type, n_states(m), n_states(m))
+            C  = spzeros(matrix_type, n_states(m))
+            Ψ  = spzeros(matrix_type, n_states(m), n_shocks_exogenous(m))
+            Π  = spzeros(matrix_type, n_states(m), n_shocks_expectational(m))
         else
-            Γ0 = zeros(n_states(m), n_states(m))
-            Γ1 = zeros(n_states(m), n_states(m))
-            C  = zeros(n_states(m))
-            Ψ  = zeros(n_states(m), n_shocks_exogenous(m))
-            Π  = zeros(n_states(m), n_shocks_expectational(m))
+            Γ0 = zeros(matrix_type, n_states(m), n_states(m))
+            Γ1 = zeros(matrix_type, n_states(m), n_states(m))
+            C  = zeros(matrix_type, n_states(m))
+            Ψ  = zeros(matrix_type, n_states(m), n_shocks_exogenous(m))
+            Π  = zeros(matrix_type, n_states(m), n_shocks_expectational(m))
         end
 
         ### ENDOGENOUS STATES ###
