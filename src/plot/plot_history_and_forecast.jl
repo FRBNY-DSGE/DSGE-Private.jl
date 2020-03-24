@@ -58,6 +58,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
                                    input_type::Symbol, cond_type::Symbol;
                                    forecast_string::String = "",
                                    bdd_and_unbdd::Bool = false,
+                                   zero_shocks::Bool = false,
                                    untrans::Bool = false,
                                    fourquarter::Bool = false,
                                    plotroot::String = figurespath(m, "forecast"),
@@ -82,8 +83,8 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
     # Read in MeansBands
     hist  = read_mb(m, input_type, cond_type, Symbol(hist_prod, class), forecast_string = forecast_string)
     fcast = read_mb(m, input_type, cond_type, Symbol(fcast_prod, class), forecast_string = forecast_string,
-                    bdd_and_unbdd = bdd_and_unbdd)
-    @show bdd_and_unbdd
+                    bdd_and_unbdd = bdd_and_unbdd,
+                    zero_shocks = zero_shocks)
 
     # Get titles if not provided
     if isempty(titles)

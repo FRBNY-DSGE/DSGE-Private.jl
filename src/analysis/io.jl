@@ -152,13 +152,20 @@ end
 function read_mb(m::AbstractDSGEModel, input_type::Symbol, cond_type::Symbol,
                  output_var::Symbol; forecast_string::String = "",
                  bdd_and_unbdd::Bool = false,
+                 zero_shocks::Bool = false,
                  directory::String = workpath(m, "forecast"))
-    unbdd_file = get_meansbands_output_file(m, input_type, cond_type, output_var;
-                                            forecast_string = forecast_string,
-                                            directory = directory)
 
-    if bdd_and_unbdd
-        @show get_product(output_var)
+    if zero_shocks
+        unbdd_file = get_meansbands_output_file(m, input_type, cond_type, output_var;
+                                                forecast_string = forecast_string*"_noshocks",
+                                                directory = directory)
+    else
+        unbdd_file = get_meansbands_output_file(m, input_type, cond_type, output_var;
+                                                forecast_string = forecast_string,
+                                                directory = directory)
+    end
+
+    if bdd_and_unbdd || zero_shocks
         @assert get_product(output_var) in [:forecast, :forecast4q]
         bdd_output_var = Symbol(:bdd, output_var)
         bdd_file = get_meansbands_output_file(m, input_type, cond_type, bdd_output_var;
@@ -221,7 +228,11 @@ function read_bdd_and_unbdd_mb(bdd_fn::String, unbdd_fn::String)
             @assert bdd_mb.metadata[fld].vals == unbdd_mb.metadata[fld].vals
             @assert bdd_mb.metadata[fld].keys == unbdd_mb.metadata[fld].keys
         else
-            @assert bdd_mb.metadata[fld] == unbdd_mb.metadata[fld] "$fld field does not match: $((bdd_mb.metadata[fld], unbdd_mb.metadata[fld]))"
+            if occursin("noshocks", string(unbdd_mb.metadata[fld]))
+                nothing
+            else
+                @assert bdd_mb.metadata[fld] == unbdd_mb.metadata[fld] "$fld field does not match: $((bdd_mb.metadata[fld], unbdd_mb.metadata[fld]))"
+            end
         end
     end
     @assert (bdd_mb.metadata[:product], unbdd_mb.metadata[:product]) in [(:bddforecast, :forecast), (:bddforecast4q, :forecast4q)] "Invalid product fields: $((bdd_mb.metadata[:product], unbdd_mb.metadata[:product]))"
