@@ -25,6 +25,7 @@ function jacobian(m::HetDSGEGovDebt)
     ρ_lamw::Float64 = m[:ρ_λ_w].value
     ρ_lamf::Float64 = m[:ρ_λ_f].value
     ρ_mon::Float64  = m[:ρ_rm].value
+    ρ_π_star::Float64  = m[:ρ_π_star].value
     spp::Float64   = m[:spp].value
     ϕh::Float64    = m[:ϕh].value
     ρ_R::Float64    = m[:ρR].value
@@ -203,6 +204,7 @@ function jacobian(m::HetDSGEGovDebt)
     JJ[first(eq[:eq_taylor]),first(endo[:i_t])]   = -1.
     JJ[first(eq[:eq_taylor]),first(endo[:i_t1])]  = ρ_R
     JJ[first(eq[:eq_taylor]),first(endo[:π_t])]   = (1-ρ_R)*ψπ
+    JJ[first(eq[:eq_taylor]),first(endo[:π_star_t])]   = -(1-ρ_R)*ψπ
     JJ[first(eq[:eq_taylor]),first(endo[:y_t])]    = (1-ρ_R)*ψy
     JJ[first(eq[:eq_taylor]),first(endo[:y_t1])]  = -(1-ρ_R)*ψy
     JJ[first(eq[:eq_taylor]),first(endo[:z_t])]    = (1-ρ_R)*ψy
@@ -282,6 +284,11 @@ function jacobian(m::HetDSGEGovDebt)
     # monetary policy shock
     JJ[first(eq[:eq_rm]),first(endo[:rm′_t])] = 1.
     JJ[first(eq[:eq_rm]),first(endo[:rm_t])]  = -ρ_mon
+
+    # long-term inflation expectations
+    JJ[first(eq[:eq_π_star]),first(endo[:π_star′_t])] = 1.
+    JJ[first(eq[:eq_π_star]),first(endo[:π_star_t])]  = -ρ_mon
+
 
     #consumption
     #=JJ[first(eq[:eq_consumption]), endo[:l_t]] = (μ .*unc.*xswts.*c)'
