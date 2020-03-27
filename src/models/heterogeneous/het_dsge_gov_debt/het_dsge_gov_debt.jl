@@ -416,11 +416,10 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_rm: AR(1) coefficient in the monetary policy shock process.",
                    tex_label = "\\rho_{r^m}")
- m <= parameter(:ρ_π_star, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
-                   BetaAlt(0.5, 0.2), fixed = false,
-                   description = "ρ_rm: AR(1) coefficient in the monetary policy shock process.",
-                   tex_label = "\\rho_{r^m}")
 
+    m <= parameter(:ρ_π_star, 0.9900, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=true,
+                   description="ρ_π_star: AR(1) coefficient in the time-varying inflation target process.",
+                   tex_label="\\rho_{\\pi_*}")
 
     m <= parameter(:σ_g, 0.15, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,

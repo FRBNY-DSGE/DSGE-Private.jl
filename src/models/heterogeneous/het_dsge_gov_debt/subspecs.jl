@@ -46,6 +46,9 @@ function init_subspec!(m::HetDSGEGovDebt)
     # Only estimate shocks
     elseif subspec(m) == "ss12"
         return ss12!(m)
+    elseif subspec(m) == "ss13"
+        ss11!(m)
+        return ss13!(m)
     else
         error("This subspec should be a 0")
     end
@@ -819,4 +822,18 @@ function ss12!(m::HetDSGEGovDebt)
     m <= parameter(:sH_over_sL, 8.99999, (3.0, 9.0), (3.0, 9.0), Untransformed(),
                    Uniform(3.0, 9.0), fixed = true,
                    description = "Ratio of high to low earners", tex_label = "s_H / s_L")
+end
+
+"""
+```
+ss13!(m::HetDSGEGovDebt)
+```
+ss11 except hold σ_π_star fixed
+"""
+function ss13!(m::HetDSGEGovDebt)
+
+    m <= parameter(:σ_π_star, 0.03, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+                   fixed = true,
+                   description = "σ_r_m: standard dev. of the monetary policy shock.",
+                   tex_label = "\\sigma_{r^m}")
 end
