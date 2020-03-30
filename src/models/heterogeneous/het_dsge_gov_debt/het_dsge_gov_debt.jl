@@ -557,7 +557,7 @@ function init_grids!(m::HetDSGEGovDebt)
 
     xgrid, xwts, xlo, xhi, xscale = cash_grid(sgrid, m[:ωstar].value, m[:H].value,
                                               m[:r].scaledvalue, m[:η].value, m[:γ].scaledvalue,
-                                              m[:Tstar].value, m[:zlo].value, nx)
+                                              m[:Tstar].value, m[:zlo].value, nx, get_setting(m, :xhi_add))
 
     grids[:xgrid] = Grid(uniform_quadrature(xscale), xlo, xhi, nx, scale = xscale)
 
@@ -642,6 +642,7 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:binsize, 4) # Setting binsize=1 gives us what we had before doing the binning reduction
     m <= Setting(:poor_man_reduc, true) #note that we're actually doing more than the "poor man reduction" now however this turns ont both poorman truncation and binning reduction
 
+    m <= Setting(:xhi_add, 24.0)
     # Set targets
     m <= Setting(:calibration_targets, [0.7, 0.23],
                  "Targets for: [var(log(annual income)), var(one year changes in " *

@@ -57,7 +57,7 @@ function steadystate!(m::HetDSGEGovDebt;
             xgrid, xwts, xlo, xhi, xscale = cash_grid(sgrid, m[:ωstar].value, m[:H].value,
                                                       m[:r].scaledvalue, m[:η].value,
                                                       m[:γ].scaledvalue,
-                                                      m[:Tstar].value, m[:zlo].value, nx)
+                                                      m[:Tstar].value, m[:zlo].value, nx, get_setting(m,:xhi_add))
 
             m.grids[:xgrid] = Grid(uniform_quadrature(xscale), xlo, xhi, nx, scale = xscale)
             m <= Setting(:xlo, xlo)
