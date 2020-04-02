@@ -332,11 +332,11 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
 
-    m <= parameter(:zhi, 3.0, fixed = true,
+    m <= parameter(:zhi, 4.0, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 
-    m <= parameter(:z_σ, 0.7, (1e-8, 5.0), (1e-8, 5.0), ModelConstructors.Exponential(),
+    m <= parameter(:z_σ, 0.6, (1e-8, 5.0), (1e-8, 5.0), ModelConstructors.Exponential(),
                    RootInverseGamma(0.7, 0.01), fixed = false,
                    description = "Std. dev. on q_function (in the place of mollifying income)",
                    tex_label = "\\z_{\\sigma}")
