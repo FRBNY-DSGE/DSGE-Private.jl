@@ -202,6 +202,14 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
     regime_inds = regime_indices(m, data, start_date)
     #zlb_regime_inds = zlb_regime_indices(m, data, start_date)
 
+    if regime_inds[1][end] > T
+        regime_inds = [1:T]
+        TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = [TTTs[1]], [RRRs[1]], [CCCs[1]], [QQs[1]], [ZZs[1]], [DDs[1]], [EEs[1]]
+    elseif regime_inds[2][end] > T
+        regime_inds = [regime_inds[1], regime_inds[2]]
+        TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = [TTTs[1:2]], [RRRs[1:2]], [CCCs[1:2]], [QQs[1:2]], [ZZs[1:2]], [DDs[1:2]], [EEs[1:2]]
+    end
+
     # Get system matrices for each regime
     TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = zlb_plus_regime_matrices(m, system, start_date)
 
