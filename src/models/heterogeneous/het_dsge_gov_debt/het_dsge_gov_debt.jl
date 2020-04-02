@@ -337,7 +337,7 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    tex_label = "\\bar{z}")
 
     m <= parameter(:z_σ, 0.6, (1e-8, 5.0), (1e-8, 5.0), ModelConstructors.Exponential(),
-                   RootInverseGamma(0.7, 0.01), fixed = false,
+                   RootInverseGamma(0.6, 0.2), fixed = false,
                    description = "Std. dev. on q_function (in the place of mollifying income)",
                    tex_label = "\\z_{\\sigma}")
 
