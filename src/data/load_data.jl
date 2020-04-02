@@ -390,8 +390,12 @@ function isvalid_data(m::AbstractDSGEModel, df::DataFrame; cond_type::Symbol = :
         end
     else
         for col in setdiff(names(df), [:date])
-            if all(ismissing.(df[!,col])) || all(isnan.(df[!,col]))
+            if all(ismissing.(df[!,col])) || ismissing(all(isnan.(df[!,col])))
                 @warn "df[$col] is all missing."
+            else
+                if all(isnan.(df[!,col]))
+                    @warn "df[$col] is all missing."
+                end
             end
         end
     end
