@@ -112,12 +112,14 @@ end
 
 
 function regime_indices(m::AbstractDSGEModel{S}, data::AbstractArray,
-                            start_date::Dates.Date=date_presample_start(m)) where S<:AbstractFloat
+                        start_date::Dates.Date=date_presample_start(m)) where S<:AbstractFloat
 
     T = size(data, 2)
 
     n_regime1_periods = subtract_quarters(get_setting(m, :date_regime2_start), start_date)
-
+    # THIS HANDLES ONLY 2 CASES OF REGIME-SWITCHING
+    # It can happen only once (aside from ZLB)
+    # and it can either occur before or after the ZLB (but not both b/c it can happen once only)
     if !(n_anticipated_shocks(m) > 0 && !isempty(data))
         regime_inds = [1:n_regime1_periods, (n_regime1_periods+1):T]
     elseif n_anticipated_shocks(m) > 0 && !isempty(data)
@@ -125,9 +127,14 @@ function regime_indices(m::AbstractDSGEModel{S}, data::AbstractArray,
             error("Start date $start_date must be >= date_presample_start(m)")
         elseif 0 < subtract_quarters(date_zlb_start(m), start_date) < T
             n_nozlb_periods = subtract_quarters(date_zlb_start(m), start_date)
-            regime_inds = [1:n_regime1_periods,
-                           (n_regime1_periods+1):n_nozlb_periods,
-                           (n_nozlb_periods+1):T]
+            if n_regime1_periods > n_nozlb_periods
+                regime_inds = [1:n_nozlb_periods, n_nozlb_periods+1:n_regime1_periods,
+                               n_regime1_periods+1:T]
+            else
+                regime_inds = [1:n_regime1_periods,
+                               (n_regime1_periods+1):n_nozlb_periods,
+                               (n_nozlb_periods+1):T]
+            end
         else
             # if zlb_starts after end of sample, then the whole thing is n_nozlb_periods
             regime_inds = [1:n_regime1_periods,
@@ -185,8 +192,8 @@ function zlb_regime_matrices(m::AbstractDSGEModel{S}, system::System{S},
 end
 
 function zlb_plus_regime_matrices(m::AbstractDSGEModel{S}, system::RegimeSwitchingSystem{S},
-                             start_date::Dates.Date=date_presample_start(m)) where S<:AbstractFloat
-
+                                  start_date::Dates.Date=date_presample_start(m)) where S<:AbstractFloat
+    ### THIS IS WORK IN PROGRES, DOES NOT COVER ALL CASES FOR REGIME SWITCHING, ALSO ONLY FOR SWITCHING JUST ONCE.
     if n_anticipated_shocks(m) > 0
         if start_date < date_presample_start(m)
             error("Start date $start_date must be >= date_presample_start(m)")
@@ -197,13 +204,25 @@ function zlb_plus_regime_matrices(m::AbstractDSGEModel{S}, system::RegimeSwitchi
             n_regimes = 3
 
             shock_inds = inds_shocks_no_ant(m)
-            QQ_ZLB = system[2][:QQ]
             QQ_preZLB_R1 = zeros(size(system[1][:QQ]))
             QQ_preZLB_R1[shock_inds, shock_inds] = system[1][:QQ][shock_inds, shock_inds]
-            QQ_preZLB_R2 = zeros(size(system[2][:QQ]))
-            QQ_preZLB_R2[shock_inds, shock_inds] = system[2][:QQ][shock_inds, shock_inds]
-            QQs = Matrix{S}[QQ_preZLB_R1, QQ_preZLB_R2, QQ_ZLB]
 
+            # Figure out the appropriate regime switching mechanism
+            n_regime1_periods = subtract_quarters(get_setting(m, :date_regime2_start), start_date)
+            n_nozlb_periods = subtract_quarters(date_zlb_start(m), start_date)
+            if n_regime1_periods > n_nozlb_periods
+                QQ_ZLB = system[1][:QQ] # regime switch after ZLB
+                QQ_ZLB_R2 = system[2][:QQ]
+                QQs = Matrix{S}[QQ_preZLB_R1, QQ_ZLB, QQ_ZLB_R2]
+            elseif n_regime1_periods == n_nozlb_periods
+                QQ_ZLB = system[2][:QQ] # regime switch coincides ZLB
+                QQs = Matrix{S}[QQ_preZLB_R1, QQ_ZLB]
+            else
+                QQ_ZLB = system[2][:QQ] # regime switch before ZLB
+                QQ_preZLB_R2 = zeros(size(system[2][:QQ]))
+                QQ_preZLB_R2[shock_inds, shock_inds] = system[2][:QQ][shock_inds, shock_inds]
+                QQs = Matrix{S}[QQ_preZLB_R1, QQ_preZLB_R2, QQ_ZLB]
+            end
         elseif date_zlb_start(m) < start_date
             n_regimes = 1
             QQs = Matrix{S}[system[:QQ]]

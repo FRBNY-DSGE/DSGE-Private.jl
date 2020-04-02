@@ -164,6 +164,10 @@ function init_model_indices!(m::Model1002)
         push!(endogenous_states_augmented, :cum_z_t)
         m <= Setting(:integrated_series, [:cum_z_t])
     end
+    if subspec(m) == "ss52"
+        push!(endogenous_states, :ϵ_λ_w_t)
+        push!(equilibrium_conditions, :eq_ϵ_λ_w)
+    end
 
     # Observables
     observables = keys(m.observable_mappings)
@@ -809,7 +813,7 @@ function init_parameters!(m::Model1002)
     m <= parameter(:σ_gdi, 0.1, (1e-8, 5.),(1e-8, 5.),ModelConstructors.Exponential(),RootInverseGamma(2, 0.10), fixed=false,
                    tex_label="\\sigma_{gdi}")
 
-    if subspec(m) in ["ss27", "ss28", "ss29", "ss41", "ss42", "ss43", "ss44"]
+    if subspec(m) in ["ss27", "ss28", "ss29", "ss41", "ss42", "ss43", "ss44", "ss51", "ss52"]
         m <= parameter(:σ_g_r2, 2.5230, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description="σ_g: The standard deviation of the government spending process.",
                        tex_label="\\sigma_{g}")

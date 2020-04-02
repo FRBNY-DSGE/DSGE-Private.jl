@@ -132,7 +132,7 @@ function measurement(m::Model1002{T},
         ZZ[obs[:obs_tfp], endo_new[:u_t1]]  = -(m[:α]/( (1-m[:α])*(1-m[:Iendoα]) + 1*m[:Iendoα]) )
     end
 
-    if subspec(m) in ["ss27", "ss28", "ss29", "ss41", "ss42", "ss43", "ss44"] && regime == 2
+    if subspec(m) in ["ss27", "ss28", "ss29", "ss41", "ss42", "ss43", "ss44", "ss51", "ss52"] && regime == 2
         QQ[exo[:g_sh], exo[:g_sh]]            = m[:σ_g_r2]^2
         QQ[exo[:b_sh], exo[:b_sh]]            = m[:σ_b_r2]^2
         QQ[exo[:μ_sh], exo[:μ_sh]]            = m[:σ_μ_r2]^2
@@ -190,6 +190,11 @@ function measurement(m::Model1002{T},
     # Adjustment to DD because measurement equation assumes CCC is the zero vector
     if any(CCC .!= 0)
         DD += ZZ[no_integ_inds,no_integ_inds]*((UniformScaling(1) - TTT)\CCC)
+    end
+
+    if subspec(m) == "ss52"
+        # Add in wage markup shocks as an additional observable
+        ZZ[obs[:obs_wagemarkupshock], endo[:ϵ_λ_w_t]] = 1.
     end
 
     return Measurement(ZZ, DD, QQ, EE)

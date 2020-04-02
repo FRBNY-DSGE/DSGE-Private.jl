@@ -589,6 +589,19 @@ function eqcond_regimes(m::Model1002)
         Γ0[regime][eq[:eq_ERktil], endo[:Rktil_t]]  = 1.
         Γ1[regime][eq[:eq_ERktil], endo[:ERtil_k_t]] = 1.
         Π[regime][eq[:eq_ERktil], ex[:ERktil_sh]]    = 1.
+
+        ### Wage mark up shock
+        if subspec(m) in ["ss52"]
+            Γ0[regime][eq[:eq_ϵ_λ_w], endo[:ϵ_λ_w_t]] = 1.
+            Γ1[regime][eq[:eq_ϵ_λ_w], endo[:ϵ_λ_w_t]] = m[:η_λ_w]
+            if regime == 2
+                Γ0[regime][eq[:eq_ϵ_λ_w], endo[:λ_w_t]] = 1. / m[:σ_λ_w_r2]
+                Γ1[regime][eq[:eq_ϵ_λ_w], endo[:λ_w_t]] = -m[:ρ_λ_w] / m[:σ_λ_w_r2]
+            else
+                Γ0[regime][eq[:eq_ϵ_λ_w], endo[:λ_w_t]] = 1. / m[:σ_λ_w]
+                Γ1[regime][eq[:eq_ϵ_λ_w], endo[:λ_w_t]] = -m[:ρ_λ_w] / m[:σ_λ_w]
+            end
+        end
     end
     return (Γ0[1], Γ1[1], C[1], Ψ[1], Π[1]), (Γ0[2], Γ1[2], C[2], Ψ[2], Π[2])
 end
