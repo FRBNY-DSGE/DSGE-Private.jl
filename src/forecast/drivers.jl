@@ -350,6 +350,7 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                       cond_obs_shocks::Dict{Symbol,Float64} = Dict{Symbol,Float64}(),
                       smooth_conditional::Symbol = :hist_cond,
                       cond_deviation_shocks::Vector{Symbol} = collect(keys(m.exogenous_shocks)),
+                      regime_switching::Bool = false, n_regimes::Int = 1,
                       bdd_fcast::Bool = true)
 
     ### Common Setup
@@ -406,7 +407,9 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                                                     shock_var_value = shock_var_value,
                                                     smooth_conditional = smooth_conditional,
                                                     cond_deviation_shocks =
-                                                    cond_deviation_shocks)
+                                                    cond_deviation_shocks,
+                                                    regime_switching = regime_switching,
+                                                    n_regimes = n_regimes)
             else
                 forecast_output, cond_forecast_output =
                     forecast_one_draw(m, input_type, cond_type, output_vars,
@@ -644,7 +647,9 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                            param_key::Symbol = :nothing,
                            param_value::Float64 = 0.0,
                            param_key2::Symbol = :nothing,
-                           param_value2::Float64 = 0.0)
+                           param_value2::Float64 = 0.0,
+                           regime_switching::Bool = false,
+                           n_regimes::Int = 1)
 
     ### Setup
 
@@ -660,7 +665,8 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
     # Compute state space
     update!(m, params)
-    system = compute_system(m)
+    system = compute_system(m; regime_switching = regime_switching,
+                            n_regimes = n_regimes)
 
     # Initialize output dictionary
     forecast_output = Dict{Symbol, Array{Float64}}()
@@ -717,6 +723,9 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
         # Standardize shocks if desired
         if :histstdshocks in output_vars
+            if regime_switching
+                error("Standardizing shocks has not been implemented for regime switching.")
+            end
             forecast_output[:histstdshocks] = standardize_shocks(forecast_output[:histshocks], system[:QQ])
         end
 
@@ -768,11 +777,11 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
     if !isempty(forecasts_to_compute)
         # Get initial forecast state vector s_T
-        s_T = if run_smoother
+        s_T = if run_smoother # ONLY THIS BRANCH WORKS FOR REGIME SWITCHING
             # The last smoothed state is either s_{T|T} (if !uncertainty) or
             # drawn from N(s_{T|T}, P_{T|T}) (if uncertainty)
             histstates[:, end]
-        else
+        else # THIS BRANCH HAS NOT BEEN EXTENDED YET FOR REGIME SWITCHING
             kal = Kalman(Vector{Float64}(undef,0), Matrix{Float64}(undef, 0, 0), Array{Float64}(undef, 0, 0, 0), Matrix{Float64}(undef, 0, 0), Array{Float64}(undef, 0, 0, 0), Vector{Float64}(undef, 0), Array{Float64}(undef, 0, 0, 0), Vector{Float64}(undef, 0), Array{Float64}(undef, 0, 0, 0))
             try
                 kal = filter(m, df, system; cond_type = cond_type)
@@ -797,12 +806,12 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
         if param_key!=:nothing
             m[param_key] = param_value
             steadystate!(m)
-            system = compute_system(m)
+            system = compute_system(m; regime_switching = regime_switching, n_regimes = n_regimes)
         end
         if param_key2!=:nothing
             m[param_key2] = param_value2
             steadystate!(m)
-            system = compute_system(m)
+            system = compute_system(m; regime_switching = regime_switching, n_regimes = n_regimes)
         end
 
 
@@ -813,6 +822,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
         # 2A. Unbounded forecasts
         if !isempty(intersect(output_vars, unbddforecast_vars))
+            fcast_sys = regime_switching ? system[n_regimes] : system # system to be used for forecast
 
             forecaststates, forecastobs, forecastpseudo, forecastshocks =
                 if smooth_conditional != :hist_cond && cond_type in [:semi, :full]
@@ -822,7 +832,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                     # forecasts. This is because hist_cond computes at least
                     # the first forecast period
                 else
-                    forecast(m, system, s_T;
+                    forecast(m, fcast_sys, s_T;
                              cond_type = cond_type, enforce_zlb = false, draw_shocks = uncertainty)
                 end
 
@@ -832,7 +842,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                 forecast_output[:forecaststates] = transplant_forecast(histstates, forecaststates, T)
                 forecast_output[:forecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:forecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, fcast_sys, T)
             else
                 forecast_output[:forecaststates] = forecaststates
                 forecast_output[:forecastshocks] = forecastshocks
@@ -842,6 +852,9 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
             # Standardize shocks if desired
             if :forecaststdshocks in output_vars
+                if regime_switching
+                    error("Standardizing shocks while regime switching has not been implemented.")
+                end
                 forecast_output[:forecaststdshocks] = standardize_shocks(forecast_output[:forecastshocks], system[:QQ])
             end
         end
@@ -854,7 +867,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                     forecast(m, system, s_T; shocks = forecast_deviation_shocks,
                              enforce_zlb = true, cond_type = :none, draw_shocks = uncertainty)
                 else
-                    forecast(m, system, s_T;
+                    forecast(m, fcast_sys, s_T;
                              cond_type = cond_type, enforce_zlb = true, draw_shocks = uncertainty)
                 end
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
@@ -862,7 +875,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                 forecast_output[:bddforecaststates] = transplant_forecast(histstates, forecaststates, T)
                 forecast_output[:bddforecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:bddforecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
-                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, system, T)
+                forecast_output[:bddforecastobs]    = transplant_forecast_observables(histstates, forecastobs, fcast_sys, T)
             else
                 forecast_output[:bddforecaststates] = forecaststates
                 forecast_output[:bddforecastshocks] = forecastshocks
@@ -872,6 +885,9 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
             # Standardize shocks if desired
             if :bddforecaststdshocks in output_vars
+                if regime_switching
+                    error("Standardizing shocks while regime switching has not been implemented.")
+                end
                 forecast_output[:bddforecaststdshocks] = standardize_shocks(forecast_output[:bddforecastshocks], system[:QQ])
             end
         end
