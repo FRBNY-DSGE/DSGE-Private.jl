@@ -206,6 +206,10 @@ function pseudo_measurement(m::Model1002{T},
         end
     end
 
+    if subspec(m) == "ss52"
+        ZZ_pseudo[pseudo[:λ_w_t], endo[:λ_w_t]] = 1.
+    end
+
     return PseudoMeasurement(ZZ_pseudo, DD_pseudo)
 end
 
@@ -410,6 +414,10 @@ function pseudo_measurement(m::Model1002{T},
             for i in to_add_addl
                 ZZ_pseudos[reg][pseudo[i], endo_addl[i]] = 1.
             end
+        end
+
+        if subspec(m) == "ss52"
+            ZZ_pseudos[reg][pseudo[:λ_w_t], endo[:λ_w_t]] = 1.
         end
     end
     return [PseudoMeasurement(ZZ_pseudos[1], DD_pseudos[1]), PseudoMeasurement(ZZ_pseudos[2], DD_pseudos[2])]
