@@ -24,6 +24,12 @@ function init_pseudo_observable_mappings!(m::Model1002)
         push!(pseudo_names, :λ_w_t)
     end
 
+    if haskey(m.settings, :add_ztil)
+        if get_setting(m, :add_ztil)
+            push!(pseudo_names, :ztil)
+        end
+    end
+
     if haskey(m.settings, :add_laborshare_measurement)
         if get_setting(m, :add_laborshare_measurement)
             push!(pseudo_names, :laborshare_t)
@@ -169,6 +175,13 @@ function init_pseudo_observable_mappings!(m::Model1002)
         if get_setting(m, :add_laborshare_measurement)
             pseudo[:laborshare_t].name     = "Log Labor Share"
             pseudo[:laborshare_t].longname = "Log Labor Share"
+        end
+    end
+
+    if haskey(m.settings, :add_ztil)
+        if get_setting(m, :add_ztil)
+            pseudo[:ztil].name     = "ztil"
+            pseudo[:ztil].longname = "ztil"
         end
     end
 
