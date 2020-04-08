@@ -862,8 +862,8 @@ function ss13!(m::HetDSGEGovDebt)
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 
-    m <= parameter(:z_σ, 0.7, (1e-8, 5.0), (1e-8, 5.0), ModelConstructors.Exponential(),
-                   RootInverseGamma(0.5, 0.2), fixed = false,
+    m <= parameter(:z_σ, 0.6, (1e-8, 5.0), (1e-8, 5.0), ModelConstructors.Exponential(),
+                   RootInverseGamma(2, 0.6), fixed = false,
                    description = "Std. dev. on q_function (in the place of mollifying income)",
                    tex_label = "\\z_{\\sigma}")
 

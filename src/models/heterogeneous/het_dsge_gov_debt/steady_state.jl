@@ -353,7 +353,8 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
         mollifier_hetdsgegovdebt(x, z_dist_hi, z_dist_lo)
     else
       #=  @show pdf(Truncated(LogNormal(z_μ, z_σ),
-                      z_dist_lo, z_dist_hi), x)=#
+        z_dist_lo, z_dist_hi), x)=#
+    #    @show z_μ, z_σ, z_dist_lo, z_dist_hi
         pdf(Truncated(LogNormal(z_μ, z_σ),
                       z_dist_lo, z_dist_hi), x)
     end
