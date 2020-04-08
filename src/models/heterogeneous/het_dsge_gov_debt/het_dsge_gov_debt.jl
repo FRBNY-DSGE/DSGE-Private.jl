@@ -95,6 +95,7 @@ mutable struct HetDSGEGovDebt{T} <: AbstractHetModel{T}
     equilibrium_conditions::OrderedDict{Symbol,UnitRange}
     endogenous_states_augmented::OrderedDict{Symbol, Int}
     observables::OrderedDict{Symbol,Int}
+    pseudo_observables::OrderedDict{Symbol,Int}
 
     spec::String                                     # Model specification number (eg "m990")
     subspec::String                                  # Model subspecification (eg "ss0")
@@ -103,6 +104,7 @@ mutable struct HetDSGEGovDebt{T} <: AbstractHetModel{T}
     rng::MersenneTwister                             # Random number generator
     testing::Bool                                    # Whether we are in testing mode or not
     observable_mappings::OrderedDict{Symbol, Observable}
+    pseudo_observable_mappings::OrderedDict{Symbol, PseudoObservable}
 end
 
 description(m::HetDSGEGovDebt) = "HetDSGEGovDebt, $(m.subspec)"
@@ -141,6 +143,10 @@ function init_model_indices!(m::HetDSGEGovDebt, states::Vector{Symbol}, jumps::V
     # Observables
     observables = keys(m.observable_mappings)
 
+    # Pseudo-observables
+    pseudo_observables = keys(m.pseudo_observable_mappings)
+
+
     ########################################################################################
     # Setting indices of endogenous_states and equilibrium conditions manually for now
 
@@ -163,6 +169,7 @@ function init_model_indices!(m::HetDSGEGovDebt, states::Vector{Symbol}, jumps::V
     m.observables[:obs_investment]  = 7
 #    m.observables[:obs_longinflation]  = 8
     #for (i,k) in enumerate(observables);      m.observables[k]      = i end
+    for (i,k) in enumerate(pseudo_observables);          m.pseudo_observables[k]          = i end
 end
 
 function HetDSGEGovDebt(subspec::String="ss0";
@@ -192,7 +199,7 @@ function HetDSGEGovDebt(subspec::String="ss0";
             OrderedDict{Symbol,UnitRange}(), OrderedDict{Symbol,UnitRange}(),
             OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
             OrderedDict{Symbol,UnitRange}(), # OrderedOrderedDict{Symbol,UnitRange}(),
-            OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
+            OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(), OrderedDict{Symbol, Int}(),
 
             spec,
             subspec,
@@ -200,14 +207,16 @@ function HetDSGEGovDebt(subspec::String="ss0";
             test_settings,
             rng,
             testing,
-            OrderedDict{Symbol,Observable}())
+            OrderedDict{Symbol,Observable}(),
+            OrderedDict{Symbol,PseudoObservable}())
 
     default_settings!(m)
 
     m <= Setting(:ref_dir, ref_dir, "Absolute filepath to reference directory")
 
-    # # Set observable transformations
+    # # Set observable and pseudo-observable transformations
     init_observable_mappings!(m)
+    init_pseudo_observable_mappings!(m)
 
     # Set settings
     model_settings!(m)

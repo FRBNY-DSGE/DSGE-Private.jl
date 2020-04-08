@@ -426,6 +426,8 @@ module DSGE
     include("models/heterogeneous/het_dsge_gov_debt/observables.jl")
     include("models/heterogeneous/het_dsge_gov_debt/measurement.jl")
     include("models/heterogeneous/het_dsge_gov_debt/augment_states.jl")
+    include("models/heterogeneous/het_dsge_gov_debt/pseudo_measurement.jl")
+    include("models/heterogeneous/het_dsge_gov_debt/pseudo_observables.jl")
 
     include("models/representative/rep_dsge_gov_debt/rep_dsge_gov_debt.jl")
     include("models/representative/rep_dsge_gov_debt/subspecs.jl")
