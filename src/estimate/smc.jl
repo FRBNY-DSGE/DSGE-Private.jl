@@ -75,8 +75,10 @@ function smc2(m::AbstractDSGEModel, data::Matrix{Float64};
 
     function my_likelihood(parameters::ParameterVector, data::Matrix{Float64})::Float64
         update!(m, parameters)
-        likelihood(m, data; sampler = false, catch_errors = true,
+        lik = likelihood(m, data; sampler = false, catch_errors = true,
                    use_chand_recursion = use_chand_recursion, verbose = verbose)
+        @show lik
+        return lik
     end
 
     tempered_update = !isempty(old_data)
