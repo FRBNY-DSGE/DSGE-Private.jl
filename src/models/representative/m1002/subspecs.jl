@@ -377,7 +377,7 @@ function ss3!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
   # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks_padding(m)
+    for i = 1:n_mon_anticipated_shocks_padding(m)
         if i < 13
             m <= parameter(Symbol("σ_r_m$i"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                            description="σ_r_m$i: Standard deviation of the $i-period-ahead anticipated policy shock.",
@@ -1022,7 +1022,7 @@ function ss27!(m::Model1002)
                        tex_label="\\sigma_{gdi}")
 
  # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -1103,7 +1103,7 @@ function ss29!(m::Model1002)
                        tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -1225,7 +1225,7 @@ function ss28!(m::Model1002)
                        tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -1347,7 +1347,7 @@ function ss41!(m::Model1002)
                        tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -1437,7 +1437,7 @@ function ss42!(m::Model1002)
                        tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -1527,7 +1527,7 @@ function ss43!(m::Model1002)
                        tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -1641,7 +1641,7 @@ function ss44!(m::Model1002)
                        tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -1872,7 +1872,7 @@ function ss51!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (0., 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -1953,7 +1953,7 @@ function ss52!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (0., 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -2034,7 +2034,7 @@ function ss53!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (0., 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -2115,7 +2115,7 @@ function ss54!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (0., 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -2196,7 +2196,7 @@ function ss55!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (0., 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -2277,7 +2277,7 @@ function ss56!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (0., 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -2359,7 +2359,7 @@ function ss57!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (0., 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
@@ -2440,7 +2440,7 @@ function ss58!(m::Model1002)
                    tex_label="\\sigma_{gdi}")
 
     # standard deviations of the anticipated policy shocks
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         m <= parameter(Symbol("σ_r_m$(i)_r2"), .2, (0., 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
                        description="σ_r_m$(i)_r2: Standard deviation of the $i-period-ahead anticipated policy shock.",
                        tex_label=@sprintf("\\sigma_{ant%d}",i))
