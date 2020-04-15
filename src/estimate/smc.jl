@@ -78,8 +78,10 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     my_likelihood = if isa(m, AbstractDSGEModel)
         function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
             update!(m, parameters)
-            likelihood(m, data; sampler = false, catch_errors = true,
+            lik = likelihood(m, data; sampler = false, catch_errors = true,
                        use_chand_recursion = use_chand_recursion, verbose = verbose)
+            @show lik
+            return lik
         end
     else isa(m, AbstractVARModel)
         function _my_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
