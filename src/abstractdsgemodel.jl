@@ -379,12 +379,6 @@ Update `m.parameters` with `values`, recomputing the steady-state parameter valu
 """
 function update!(m::AbstractDSGEModel, values::Vector{T}) where T<:AbstractFloat
     ModelConstructors.update!(m.parameters, values)
-    m <= parameter(:z_μ, fzero(x->truncmean(Truncated(LogNormal(x, m[:z_σ].value),
-                                                      m[:zlo].value, m[:zhi].value)) - 1.0,
-                               0.0),
-                   fixed = true,
-                   description = "Mean on q_function (in the place of molliying income)",
-                   tex_label = "\\z_{\\mu}")
     steadystate!(m)
 end
 
@@ -399,6 +393,13 @@ Update `m.parameters` with `values`, recomputing the steady-state parameter valu
 """
 function update!(m::AbstractDSGEModel, values::ParameterVector{T}) where T
     ModelConstructors.update!(m.parameters, [θ.value for θ in values])
+    m <= parameter(:z_μ, fzero(x->truncmean(Truncated(LogNormal(x, m[:z_σ].value),
+                                                      m[:zlo].value, m[:zhi].value)) - 1.0,
+                               0.0),
+                   fixed = true,
+                   description = "Mean on q_function (in the place of molliying income)",
+                   tex_label = "\\z_{\\mu}")
+    @show m[:z_μ].value
     steadystate!(m)
 end
 
