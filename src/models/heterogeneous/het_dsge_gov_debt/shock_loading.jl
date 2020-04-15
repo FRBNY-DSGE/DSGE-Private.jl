@@ -12,6 +12,7 @@ function shock_loading(m::HetDSGEGovDebt, TTT_jump::Matrix{Float64})
     _RRR[endo[:λ_w′_t], exo[:λ_w_sh]] .= 1.
     _RRR[endo[:λ_f′_t], exo[:λ_f_sh]] .= 1.
     _RRR[endo[:rm′_t], exo[:rm_sh]] .= 1.
+    _RRR[endo[:π_star′_t], exo[:π_star_sh]] .= 1.
 
     # Loading on states and jumps
     RRR[1:n_backward_looking_states(m), :] = _RRR
