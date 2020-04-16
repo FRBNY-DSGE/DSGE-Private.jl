@@ -144,8 +144,8 @@ function init_observable_mappings!(m::HetDSGEGovDebt)
     ############################################################################
     # 8. Long term inflation expectations
     ############################################################################
-#=
-    longinflation_fwd_transform = function (levels)
+
+longinflation_fwd_transform = function (levels)
         # FROM: SPF: 10-Year average yr/yr CPI inflation expectations (annual percent)
         # TO:   FROM, less 0.5
         # Note: We subtract 0.5 because 0.5% inflation corresponds to
@@ -161,7 +161,7 @@ function init_observable_mappings!(m::HetDSGEGovDebt)
                                                  longinflation_fwd_transform, longinflation_rev_transform,
                                                  "Long term inflation expectations",
                                                  "10-year average yr/yr CPI inflation expectations")
-=#
+
 
     ############################################################################
     # 8 - (8 + n_anticipated_shocks)

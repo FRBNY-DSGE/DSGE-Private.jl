@@ -161,7 +161,7 @@ function init_model_indices!(m::HetDSGEGovDebt, states::Vector{Symbol}, jumps::V
     m.observables[:obs_nominalrate] = 5
     m.observables[:obs_consumption] = 6
     m.observables[:obs_investment]  = 7
-#    m.observables[:obs_longinflation]  = 8
+    m.observables[:obs_longinflation]  = 8
     #for (i,k) in enumerate(observables);      m.observables[k]      = i end
 end
 
@@ -454,8 +454,8 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    description = "σ_r_m: standard dev. of the monetary policy shock.",
                    tex_label = "\\sigma_{r^m}")
 
-    m <= parameter(:π_star, 0.7000, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
-                   GammaAlt(0.62, 0.1), fixed=false, scaling = x -> 1 + x/100,
+    m <= parameter(:π_star, 0.5000, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
+                   GammaAlt(0.62, 0.1), fixed = false, scaling = x -> 1 + x/100,
                    description="π_star: steady-state rate of inflation.",
                    tex_label="\\pi_*")
 

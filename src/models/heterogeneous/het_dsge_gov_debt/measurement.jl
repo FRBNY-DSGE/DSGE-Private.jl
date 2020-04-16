@@ -76,11 +76,13 @@ function measurement(m::HetDSGEGovDebt{T},
     DD[obs[:obs_investment]]                      = 100*(exp(m[:γ])-1) #100*(exp(m[:zstar])-1)
 
     ## 10 yrs infl exp
-   #= @show size(ZZ, 2)
-    TTT10                          = (1/40)*((Matrix{Float64}(I, size(TTT, 1), size(TTT,1))
+    #=TTT10                          = (1/40)*((Matrix{Float64}(I, size(TTT, 1), size(TTT,1))
                                               - TTT)\(TTT - TTT^41))
-    ZZ[obs[:obs_longinflation], :] = -TTT10[endo[:π′_t], :]
-    DD[obs[:obs_longinflation]]    = 100*(m[:π_star]-1)=#
+
+    @show sum(TTT10)=#
+    ZZ[obs[:obs_longinflation], first(endo[:π_star′_t])] = 1.0
+    #ZZ[obs[:obs_longinflation], :] = -TTT10[endo[:π′_t], :]
+    DD[obs[:obs_longinflation]]    = 100*(m[:π_star]-1)
 
     #Measurement error
     EE[obs[:obs_gdp],1]         = m[:e_y]^2
@@ -90,7 +92,7 @@ function measurement(m::HetDSGEGovDebt{T},
     EE[obs[:obs_nominalrate],5] = m[:e_R]^2
     EE[obs[:obs_consumption],6] = m[:e_c]^2
     EE[obs[:obs_investment],7]  = m[:e_i]^2
-   # EE[obs[:obs_longinflation],7]  = m[:e_π_long]^2
+    EE[obs[:obs_longinflation],7]  = m[:e_π_long]^2
 
     #Variance of innovations
     QQ[exo[:g_sh], exo[:g_sh]]           = m[:σ_g]^2
