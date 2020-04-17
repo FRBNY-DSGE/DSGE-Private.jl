@@ -82,6 +82,9 @@ function pseudo_measurement(m::Model1002{T},
     ## Flexible Wages
     ZZ_pseudo[pseudo[:FlexibleWages],endo[:w_f_t]] = 1.
 
+    ## b Wages
+    ZZ_pseudo[pseudo[:b_t],endo[:b_t]] = 1.
+
     ## Hours
     ZZ_pseudo[pseudo[:Hours],endo[:L_t]] = 1.
 
@@ -145,6 +148,9 @@ function pseudo_measurement(m::Model1002{T},
 
     ## c_f_t
     ZZ_pseudo[pseudo[:c_f_t], endo[:c_f_t]] = 1.
+
+    ## c_t
+    ZZ_pseudo[pseudo[:c_t], endo[:c_t]] = 1.
 
     ## qk_f_t
     ZZ_pseudo[pseudo[:qk_f_t], endo[:qk_f_t]] = 1.
@@ -400,6 +406,18 @@ function pseudo_measurement(m::Model1002{T},
         ZZ_pseudos[reg][pseudo[:R_t], endo[:R_t]] = 1.
         DD_pseudos[reg][pseudo[:R_t]] = 100.0*(m[:rstar]-1.0)
 
+        ## c_f_t
+        ZZ_pseudos[reg][pseudo[:c_f_t], endo[:c_f_t]] = 1.
+
+        ## c_t
+        ZZ_pseudos[reg][pseudo[:c_t], endo[:c_t]] = 1.
+
+        ## w_f_t
+        ZZ_pseudos[reg][pseudo[:w_f_t], endo[:w_f_t]] = 1.
+
+        ## b_t
+        ZZ_pseudos[reg][pseudo[:b_t], endo[:b_t]] = 1.
+
 
         ## labor share
         if haskey(m.settings, :add_laborshare_measurement)
@@ -420,6 +438,17 @@ function pseudo_measurement(m::Model1002{T},
                 ZZ_pseudos[reg][pseudo[:LaborProductivityGrowthNoME], endo[:L_t]]       = -1
                 ZZ_pseudos[reg][pseudo[:LaborProductivityGrowthNoME], endo_addl[:L_t1]] = 1.
                 DD_pseudos[reg][pseudo[:LaborProductivityGrowthNoME]]                   = 100*(exp(m[:z_star]) - 1)
+            end
+        end
+
+        if haskey(m.settings, :add_ztil)
+            if get_setting(m, :add_ztil)
+                ZZ_pseudos[reg][pseudo[:ztil], endo[:ztil_t]] = 1.
+            end
+        end
+        if haskey(m.settings, :add_zp)
+            if get_setting(m, :add_zp)
+                ZZ_pseudos[reg][pseudo[:zp], endo[:zp_t]] = 1.
             end
         end
 

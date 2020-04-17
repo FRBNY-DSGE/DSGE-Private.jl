@@ -404,25 +404,39 @@ function eqcond_regimes(m::Model1002)
 
         # Ez_t
         Γ0[regime][eq[:eq_Ez], endo[:Ez_t]]   = 1.
-        Γ0[regime][eq[:eq_Ez], endo[:ztil_t]] = -(m[:ρ_ztil]-1)/(1-m[:α])
+        Γ0[regime][eq[:eq_Ez], endo[:ztil_t]]   = -(m[:ρ_ztil]-1)/(1-m[:α])
         Γ0[regime][eq[:eq_Ez], endo[:zp_t]]   = -m[:ρ_z_p]
 
         ### EXOGENOUS SHOCKS ###
 
         # Neutral technology
         Γ0[regime][eq[:eq_z], endo[:z_t]]    = 1.
-        Γ1[regime][eq[:eq_z], endo[:ztil_t]] = (m[:ρ_ztil] - 1)/(1 - m[:α])
+        Γ0[regime][eq[:eq_z], endo[:ztil_t]]  = -1 / (1 - m[:α])
+        Γ1[regime][eq[:eq_z], endo[:ztil_t]]  = -1 / (1 - m[:α])
         Γ0[regime][eq[:eq_z], endo[:zp_t]]   = -1.
-Ψ[regime][eq[:eq_z], exo[:ztil_sh]]     = 1/(1 - m[:α])
 
         Γ0[regime][eq[:eq_ztil], endo[:ztil_t]] = 1.
         Γ1[regime][eq[:eq_ztil], endo[:ztil_t]] = m[:ρ_ztil]
-Ψ[regime][eq[:eq_ztil], exo[:ztil_sh]]     = 1.
+        Ψ[regime][eq[:eq_ztil], exo[:ztil_sh]]     = 1.
+
+        if subspec(m) == "ss60"
+            # Ez_t
+            Γ0[regime][eq[:eq_Ez], endo[:ziid_t]]   = -(m[:ρ_ziid]-1)/(1-m[:α])
+
+            # Neutral technology
+            Γ0[regime][eq[:eq_z], endo[:ziid_t]]  = -1 / (1 - m[:α])
+            Γ1[regime][eq[:eq_z], endo[:ziid_t]]  = -1 / (1 - m[:α])
+
+            # AR(1) for ziid
+            Γ0[regime][eq[:eq_ziid], endo[:ziid_t]] = 1.
+            Γ1[regime][eq[:eq_ziid], endo[:ziid_t]] = m[:ρ_ziid]
+            Ψ[regime][eq[:eq_ziid], exo[:ziid_sh]]     = 1.
+        end
 
         # Long-run changes to productivity
         Γ0[regime][eq[:eq_zp], endo[:zp_t]] = 1.
         Γ1[regime][eq[:eq_zp], endo[:zp_t]] = m[:ρ_z_p]
-Ψ[regime][eq[:eq_zp], exo[:zp_sh]]  = 1.
+        Ψ[regime][eq[:eq_zp], exo[:zp_sh]]  = 1.
 
         # Government spending
         Γ0[regime][eq[:eq_g], endo[:g_t]] = 1.
@@ -434,6 +448,32 @@ function eqcond_regimes(m::Model1002)
         Γ0[regime][eq[:eq_b], endo[:b_t]] = 1.
         Γ1[regime][eq[:eq_b], endo[:b_t]] = m[:ρ_b]
         Ψ[regime][eq[:eq_b], exo[:b_sh]]  = 1.
+
+        if subspec(m) == "ss60"
+            # iid shock
+            Γ0[regime][eq[:eq_biid], endo[:biid_t]] = 1.
+            Γ1[regime][eq[:eq_biid], endo[:biid_t]] = m[:ρ_biid]
+            Ψ[regime][eq[:eq_biid], exo[:biid_sh]]  = 1.
+
+            Γ0[regime][eq[:eq_biidc], endo[:biidc_t]] = 1.
+            Γ1[regime][eq[:eq_biidc], endo[:biidc_t]] = m[:ρ_biidc] # c b/c will only affect consumption
+            Ψ[regime][eq[:eq_biidc], exo[:biidc_sh]]  = 1.
+
+            Γ0[regime][eq[:eq_euler], endo[:biidc_t]]   = -1.
+            Γ0[regime][eq[:eq_euler_f], endo[:biidc_t]] = -1.
+
+            # Transient AR(1) shock to b_t
+            Γ1[regime][eq[:eq_b], endo[:b_t]] = 0. # zero these out
+            Ψ[regime][eq[:eq_b], exo[:b_sh]]  = 0.
+
+            Γ0[regime][eq[:eq_btil], endo[:btil_t]] = 1.
+            Γ1[regime][eq[:eq_btil], endo[:btil_t]] = m[:ρ_b]
+            Ψ[regime][eq[:eq_btil], exo[:b_sh]]  = 1.
+
+            # Add to b_t
+            Γ0[regime][eq[:eq_b], endo[:biid_t]] = -1.
+            Γ0[regime][eq[:eq_b], endo[:btil_t]] = -1.
+        end
 
         # Investment-specific technology
         Γ0[regime][eq[:eq_μ], endo[:μ_t]] = 1.
@@ -450,13 +490,34 @@ function eqcond_regimes(m::Model1002)
         Ψ[regime][eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
 
         # Wage mark-up shock
-        Γ0[regime][eq[:eq_λ_w], endo[:λ_w_t]]  = 1.
-        Γ1[regime][eq[:eq_λ_w], endo[:λ_w_t]]  = m[:ρ_λ_w]
-        Γ1[regime][eq[:eq_λ_w], endo[:λ_w_t1]] = -m[:η_λ_w]
-        Ψ[regime][eq[:eq_λ_w], exo[:λ_w_sh]]   = 1.
+        if subspec(m) == "ss60"
+            # Recreate process
+            Γ0[regime][eq[:eq_λ_wtil], endo[:λ_wtil_t]]  = 1.
+            Γ1[regime][eq[:eq_λ_wtil], endo[:λ_wtil_t]]  = m[:ρ_λ_w]
+            Γ1[regime][eq[:eq_λ_wtil], endo[:λ_wtil_t1]] = -m[:η_λ_w]
+            Ψ[regime][eq[:eq_λ_wtil], exo[:λ_w_sh]]   = 1.
 
-        Γ0[regime][eq[:eq_λ_w1], endo[:λ_w_t1]] = 1.
-        Ψ[regime][eq[:eq_λ_w1], exo[:λ_w_sh]]   = 1.
+            Γ0[regime][eq[:eq_λ_wtil1], endo[:λ_wtil_t1]] = 1.
+            Ψ[regime][eq[:eq_λ_wtil1], exo[:λ_w_sh]]   = 1.
+
+            # iid shock
+            Γ0[regime][eq[:eq_λ_wiid], endo[:λ_wiid_t]] = 1.
+            Γ1[regime][eq[:eq_λ_wiid], endo[:λ_wiid_t]] = m[:ρ_λ_wiid]
+            Ψ[regime][eq[:eq_λ_wiid], exo[:λ_wiid_sh]]  = 1.
+
+            # Add to λ_w
+            Γ0[regime][eq[:eq_λ_w], endo[:λ_wtil_t]] = -1.
+            Γ0[regime][eq[:eq_λ_w], endo[:λ_wiid_t]] = -1.
+            Γ0[regime][eq[:eq_λ_w], endo[:λ_w_t]]    = 1.
+        else
+            Γ0[regime][eq[:eq_λ_w], endo[:λ_w_t]]  = 1.
+            Γ1[regime][eq[:eq_λ_w], endo[:λ_w_t]]  = m[:ρ_λ_w]
+            Γ1[regime][eq[:eq_λ_w], endo[:λ_w_t1]] = -m[:η_λ_w]
+            Ψ[regime][eq[:eq_λ_w], exo[:λ_w_sh]]   = 1.
+
+            Γ0[regime][eq[:eq_λ_w1], endo[:λ_w_t1]] = 1.
+            Ψ[regime][eq[:eq_λ_w1], exo[:λ_w_sh]]   = 1.
+        end
 
         # Monetary policy shock
         Γ0[regime][eq[:eq_rm], endo[:rm_t]] = 1.
@@ -469,6 +530,25 @@ function eqcond_regimes(m::Model1002)
         Γ0[regime][eq[:eq_σ_ω], endo[:σ_ω_t]] = 1.
         Γ1[regime][eq[:eq_σ_ω], endo[:σ_ω_t]] = m[:ρ_σ_w]
         Ψ[regime][eq[:eq_σ_ω], exo[:σ_ω_sh]]  = 1.
+
+        if subspec(m) == "ss60"
+            # iid shock
+            Γ0[regime][eq[:eq_σ_ωiid], endo[:σ_ωiid_t]] = 1.
+            Γ1[regime][eq[:eq_σ_ωiid], endo[:σ_ωiid_t]] = m[:ρ_σ_ωiid]
+            Ψ[regime][eq[:eq_σ_ωiid], exo[:σ_ωiid_sh]]  = 1.
+
+            # Transient AR(1) shock to σ_ω_t
+            Γ1[regime][eq[:eq_σ_ω], endo[:σ_ω_t]] = 0. # zero these out
+            Ψ[regime][eq[:eq_σ_ω], exo[:σ_ω_sh]]  = 0.
+
+            Γ0[regime][eq[:eq_σ_ωtil], endo[:σ_ωtil_t]] = 1.
+            Γ1[regime][eq[:eq_σ_ωtil], endo[:σ_ωtil_t]] = m[:ρ_σ_w]
+            Ψ[regime][eq[:eq_σ_ωtil], exo[:σ_ω_sh]]  = 1.
+
+            # Add to σ_ω_t
+            Γ0[regime][eq[:eq_σ_ω], endo[:σ_ωiid_t]] = -1.
+            Γ0[regime][eq[:eq_σ_ω], endo[:σ_ωtil_t]] = -1.
+        end
 
         # Exogenous bankruptcy costs
         Γ0[regime][eq[:eq_μ_e], endo[:μ_e_t]] = 1.
@@ -507,27 +587,34 @@ function eqcond_regimes(m::Model1002)
             end
         end
 
-        if n_z_anticipated_shocks(m) > 0
-
+        for (key, val) in get_setting(m, :antshocks)
+            an_eq_mapping = get_setting(m, :ant_eq_mapping)
+            if val > 0
             # This section adds the anticipated shocks. There is one state for all the
-            # anticipated shocks that will hit in a given period (i.e. rm_tl2 holds those that
-            # will hit in two periods), and the equations are set up so that rm_tl2 last period
-            # will feed into rm_tl1 this period (and so on for other numbers), and last period's
-            # rm_tl1 will feed into the rm_t process (and affect the Taylor Rule this period).
+                # anticipated shocks that will hit in a given period (i.e. rm_tl2 holds those that
+                # will hit in two periods), and the equations are set up so that rm_tl2 last period
+                # will feed into rm_tl1 this period (and so on for other numbers), and last period's
+                # rm_tl1 will feed into the rm_t process (and affect the Taylor Rule this period).
 
-            Γ1[regime][eq[:eq_z], endo[:z_tl1]]   = 1.
-            Γ0[regime][eq[:eq_zl1], endo[:z_tl1]] = 1.
-            Ψ[regime][eq[:eq_zl1], exo[:z_shl1]]  = 1.
+                Γ1[regime][eq[:eq_ztil], endo[:z_tl1]]   = 1.
+                Γ0[regime][eq[:eq_zl1], endo[:z_tl1]] = 1.
+                Ψ[regime][eq[:eq_zl1], exo[:z_shl1]]  = 1.
 
-            if n_z_anticipated_shocks(m) > 1
-                for i = 2:n_z_anticipated_shocks(m)
+                # Ez_t
+                Γ0[regime][eq[:eq_Ez], endo[:z_tl1]]  = -1 / (1 - m[:α]) # note z_tl1 is a sum of all shocks that will hit next period.
+                                                                         # so this is the only required line
+
+                # Same thing as above for z_p is required, and more generally for any Ez equations w/anticipated shocks
+                # Γ0[regime][eq[:eq_Ez], endo[:zp_tl1]]   = -1
+                if val > 1
+                for i = 2:val
                     Γ1[regime][eq[Symbol("eq_zl$(i-1)")], endo[Symbol("z_tl$i")]] = 1.
                     Γ0[regime][eq[Symbol("eq_zl$i")], endo[Symbol("z_tl$i")]]     = 1.
                     Ψ[regime][eq[Symbol("eq_zl$i")], exo[Symbol("z_shl$i")]]      = 1.
                 end
+                end
             end
         end
-
 
         ### EXPECTATION ERRORS ###
 
