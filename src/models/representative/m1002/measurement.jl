@@ -21,7 +21,7 @@ Cov(ϵ_t, u_t) = 0
 function measurement(m::Model1002{T},
                      TTT::Matrix{T},
                      RRR::Matrix{T},
-                     CCC::Vector{T}; regime::Int = 1) where {T<:AbstractFloat}
+                     CCC::Vector{T}; reg::Int = 1) where {T<:AbstractFloat}
 
     endo     = m.endogenous_states
     endo_new = m.endogenous_states_augmented
@@ -36,6 +36,14 @@ function measurement(m::Model1002{T},
     DD = zeros(_n_observables)
     EE = zeros(_n_observables, _n_observables)
     QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
+
+    for para in m.parameters
+        if !isempty(para.regimes)
+            ModelConstructors.toggle_regime!(para, reg)
+            @show para.value
+        end
+        #@eval (($(para.key)) = ModelConstructors.regime_val($(para), $(reg)))
+    end
 
     no_integ_inds = inds_states_no_integ_series(m)
     if get_setting(m, :add_laborproductivity_measurement)
