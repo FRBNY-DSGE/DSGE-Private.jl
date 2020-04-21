@@ -484,7 +484,7 @@ function forecast_one(m::AbstractDSGEModel{Float64},
         end
 
         # Block info
-        block_inds, block_inds_thin = forecast_block_inds(m, input_type; subset_inds = subset_inds)
+        block_inds, block_inds_thin = forecast_block_inds(m, input_type; subset_inds = subset_inds, params = params)
         nblocks = length(block_inds)
         start_block = forecast_start_block(m)
 
@@ -499,10 +499,10 @@ function forecast_one(m::AbstractDSGEModel{Float64},
 
             # Get to work!
             if isempty(params)
-                params = load_draws(m, input_type, block_inds[block]; verbose = verbose)
+                params_for_map = load_draws(m, input_type, block_inds[block]; verbose = verbose)
             elseif input_type == :mode_draw_shocks
                 ndraws = length(block_inds[block])
-                params = repeat(params, ndraws)
+                params_for_map = repeat([params], ndraws)
             end
 
             mapfcn = use_parallel_workers(m) ? pmap : map
@@ -521,7 +521,7 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                                                             cond_deviation_shocks,
                                                             regime_switching = regime_switching,
                                                             n_regimes = n_regimes),
-                                          params)
+                                          params_for_map)
             else
                 forecast_outputs = mapfcn(param ->
                                           forecast_one_draw(m, input_type, cond_type,
@@ -536,7 +536,7 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                                                             smooth_conditional = smooth_conditional,
                                                             cond_deviation_shocks =
                                                             cond_deviation_shocks),
-                                          params)
+                                          params_for_map)
 
                 # Unwrap tuple into Vector{Dict{Symbol, Array{Float64}}}
                 # and write conditional forecast output
