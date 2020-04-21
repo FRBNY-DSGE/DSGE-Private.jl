@@ -287,6 +287,11 @@ function measurement(m::Model1002{T},
         DD += ZZ[no_integ_inds,no_integ_inds]*((UniformScaling(1) - TTT)\CCC)
     end
 
+    for para in m.parameters
+        if !isempty(para.regimes)
+            ModelConstructors.toggle_regime!(para, 1)
+        end
+    end
 
     return Measurement(ZZ, DD, QQ, EE)
 end
