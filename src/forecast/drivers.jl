@@ -351,7 +351,7 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                       smooth_conditional::Symbol = :hist_cond,
                       cond_deviation_shocks::Vector{Symbol} = collect(keys(m.exogenous_shocks)),
                       regime_switching::Bool = false, n_regimes::Int = 1,
-                      bdd_fcast::Bool = true)
+                      bdd_fcast::Bool = true, params::Array{Float64} = Vector{Float64}(undef, 0))
 
     ### Common Setup
 
@@ -398,7 +398,9 @@ function forecast_one(m::AbstractDSGEModel{Float64},
     if input_type in [:mode, :mean, :init]
 
         elapsed_time = @elapsed let
-            params = load_draws(m, input_type; verbose = verbose)
+            if isempty(params)
+                params = load_draws(m, input_type; verbose = verbose)
+            end
             if isempty(cond_obs_shocks)
                 forecast_output = forecast_one_draw(m, input_type, cond_type, output_vars,
                                                     params, df, verbose = verbose,
@@ -484,7 +486,13 @@ function forecast_one(m::AbstractDSGEModel{Float64},
             begin_time = time_ns()
 
             # Get to work!
-            params = load_draws(m, input_type, block_inds[block]; verbose = verbose)
+            if isempty(params)
+                params = load_draws(m, input_type, block_inds[block]; verbose = verbose)
+            elseif input_type == :mode_draw_shocks
+                ndraws = length(block_inds[block])
+                params = repeat(params, ndraws)
+            end
+
             mapfcn = use_parallel_workers(m) ? pmap : map
             if isempty(cond_obs_shocks)
                 forecast_outputs = mapfcn(param ->
@@ -498,7 +506,9 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                                                             shock_var_value = shock_var_value,
                                                             smooth_conditional = smooth_conditional,
                                                             cond_deviation_shocks =
-                                                            cond_deviation_shocks),
+                                                            cond_deviation_shocks,
+                                                            regime_switching = regime_switching,
+                                                            n_regimes = n_regimes),
                                           params)
             else
                 forecast_outputs = mapfcn(param ->
