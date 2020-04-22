@@ -1,4 +1,4 @@
-g"""
+"""
 ```
 plot_history_and_forecast(m, var, class, input_type, cond_type;
     title = "", plot_handle = plot(), kwargs...)
