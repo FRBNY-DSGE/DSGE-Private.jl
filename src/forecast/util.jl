@@ -39,7 +39,7 @@ function n_forecast_draws(m::AbstractDSGEModel, input_type::Symbol)
         end
         return draws
     elseif input_type == :prior || input_type == :mode_draw_shocks
-        return 5000
+        return 1000
     else
         throw(ArgumentError("Invalid input_type: $(input_type)"))
     end
