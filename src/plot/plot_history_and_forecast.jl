@@ -1,4 +1,4 @@
-"""
+g"""
 ```
 plot_history_and_forecast(m, var, class, input_type, cond_type;
     title = "", plot_handle = plot(), kwargs...)
@@ -66,6 +66,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
                                    plot_handles::Vector{Plots.Plot} = Plots.Plot[plot() for i = 1:length(vars)],
                                    verbose::Symbol = :low,
                                    kwargs...)
+    @show cond_type
     # Determine output_vars
     if untrans && fourquarter
         error("Only one of untrans or fourquarter can be true")

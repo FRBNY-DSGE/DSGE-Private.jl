@@ -350,10 +350,10 @@ function init_observable_mappings!(m::Model1002)
                                        "Real GDI Growth Per Capita")
 
     ############################################################################
-    # Columns 14 - 14 + n_anticipated_shocks
+    # Columns 14 - 14 + n_mon_anticipated_shocks
     ############################################################################
 
-    for i = 1:n_anticipated_shocks(m)
+    for i = 1:n_mon_anticipated_shocks(m)
         # FROM: OIS expectations of $i-period-ahead interest rates at a quarterly rate
         # TO:   Same
 

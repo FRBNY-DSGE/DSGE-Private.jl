@@ -120,6 +120,11 @@ function get_meansbands_output_file(directory::String,
                                     filestring_base::Vector{String},
                                     input_type::Symbol, cond_type::Symbol, output_var::Symbol;
                                     forecast_string::String = "", fileformat = :jld2)
+    @show cond_type
+@show     get_forecast_filename(directory, filestring_base,
+                          input_type, cond_type, Symbol("mb", output_var);
+                          forecast_string = forecast_string,
+                          fileformat = fileformat)
 
     get_forecast_filename(directory, filestring_base,
                           input_type, cond_type, Symbol("mb", output_var);
