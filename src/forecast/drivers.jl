@@ -351,7 +351,9 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                       smooth_conditional::Symbol = :hist_cond,
                       cond_deviation_shocks::Vector{Symbol} = collect(keys(m.exogenous_shocks)),
                       regime_switching::Bool = false, n_regimes::Int = 1,
-                      bdd_fcast::Bool = true, params::Array{Float64} = Vector{Float64}(undef, 0))
+                      bdd_fcast::Bool = true,
+                      params::Array{Float64} = Vector{Float64}(undef, 0),
+                      params2::Array{Float64} = Vector{Float64}(undef, 0))
 
     ### Common Setup
 
@@ -510,7 +512,8 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                                                             cond_deviation_shocks =
                                                             cond_deviation_shocks,
                                                             regime_switching = regime_switching,
-                                                            n_regimes = n_regimes),
+                                                            n_regimes = n_regimes,
+                                                            params2 = params2),
                                           params_for_map)
             else
                 forecast_outputs = mapfcn(param ->
@@ -661,7 +664,8 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                            param_key2::Symbol = :nothing,
                            param_value2::Float64 = 0.0,
                            regime_switching::Bool = false,
-                           n_regimes::Int = 1)
+                           n_regimes::Int = 1,
+                           params2::Vector{Float64} = Vector{Float64}(undef, 0))
 
     ### Setup
 
@@ -674,6 +678,13 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
     # Are we only running IRFs?
     output_prods = map(get_product, output_vars)
     irfs_only = all(x -> x == :irf, output_prods)
+
+    # If params2, compute alternate state space
+    if !isempty(params2)
+        update!(m, params2)
+        system2 = compute_system(m; regime_switching = regime_switching,
+                                n_regimes = n_regimes)
+    end
 
     # Compute state space
     update!(m, params)
@@ -786,6 +797,12 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
     forecast_vars = vcat(unbddforecast_vars, bddforecast_vars)
     forecasts_to_compute = intersect(output_vars, forecast_vars)
 
+    if !isempty(params2)
+        system_forecast = system2
+    else
+        system_forecast = system
+    end
+
     if !isempty(forecasts_to_compute)
         # Get initial forecast state vector s_T
         s_T = if run_smoother # ONLY THIS BRANCH WORKS FOR REGIME SWITCHING
@@ -834,8 +851,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
         # 2A. Unbounded forecasts
         if !isempty(intersect(output_vars, unbddforecast_vars))
-            fcast_sys = regime_switching ? system[n_regimes] : system # system to be used for forecast
-
+            fcast_sys = regime_switching ? system_forecast[n_regimes] : system_forecast # system to be used for forecast
             forecaststates, forecastobs, forecastpseudo, forecastshocks =
                 if smooth_conditional != :hist_cond && cond_type in [:semi, :full]
                     forecast(m, system, s_T; shocks = forecast_deviation_shocks,
