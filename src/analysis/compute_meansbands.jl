@@ -460,7 +460,7 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
 end
 
 function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
-                            input_type::Symbol,
+                            input_type1::Symbol, input_type2::Symbol,
                             cond_type1::Symbol, cond_type2::Symbol,
                             output_vars::Vector{Symbol};
                             forecast_string1::String = "",
@@ -479,7 +479,7 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
     elapsed_time = @elapsed let
         # Determine full set of output_vars necessary for plotting desired result
         output_vars = add_requisite_output_vars(output_vars)
-        if input_type == :prior
+        if input_type1 == :prior
             output_vars = setdiff(output_vars, [:bddforecastobs])
         end
         # Load population data and main dataset (required for some transformations)
@@ -500,7 +500,8 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
             end
 
             # Compute means and bands
-            mb = compute_meansbands(m1, m2, input_type, cond_type1, cond_type2, output_var, df;
+            mb = compute_meansbands(m1, m2, input_type1, input_type2,
+                                    cond_type1, cond_type2, output_var, df;
                                     forecast_string1 = forecast_string1,
                                     forecast_string2 = forecast_string2,
                                     population_data = population_data,
@@ -520,7 +521,7 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
 end
 
 function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
-                            input_type::Symbol,
+                            input_type1::Symbol, input_type2::Symbol,
                             cond_type1::Symbol, cond_type2::Symbol,
                             output_var::Symbol, df::DataFrame;
                             forecast_string1::String = "",
@@ -535,7 +536,7 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
     product = get_product(output_var)
 
     # Read in forecast metadata
-    metadata = get_mb_metadata(m1, input_type, cond_type1, output_var; forecast_string = forecast_string1)
+    metadata = get_mb_metadata(m1, input_type1, cond_type1, output_var; forecast_string = forecast_string1)
 
     date_list      = product == :irf ? Date[] : collect(keys(metadata[:date_inds]))
     variable_names = collect(keys(metadata[:indices]))
@@ -548,7 +549,8 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
         # pmap produces an error for trendobs sometimes, so just doing this iteratively
         mb_vec = Vector{Any}(undef,length(variable_names))
         for i in 1:length(mb_vec)
-            mb_vec[i] = compute_meansbands(m1, m2, input_type, cond_type1, cond_type2, output_var,
+            mb_vec[i] = compute_meansbands(m1, m2, input_type1, input_type2,
+                                           cond_type1, cond_type2, output_var,
                                            variable_names[i], df; pop_growth = pop_growth,
                                            forecast_string1 = forecast_string1,
                                            forecast_string2 = forecast_string2,
@@ -600,7 +602,7 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
     mb = MeansBands(metadata, means, bands)
 
     # Write to file
-    filepath = get_meansbands_output_file(m1, input_type, cond_type1, output_var,
+    filepath = get_meansbands_output_file(m1, input_type1, cond_type1, output_var,
                                           forecast_string = forecast_string1*forecast_string2)
     dirpath = dirname(filepath)
     isdir(dirpath) || mkpath(dirpath)
@@ -614,7 +616,8 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
     return mb
 end
 
-function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel, input_type::Symbol,
+function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
+                            input_type1::Symbol, input_type2::Symbol,
                             cond_type1::Symbol, cond_type2::Symbol,
                             output_var::Symbol, var_name::Symbol, df::DataFrame;
                             forecast_string1::String = "",
@@ -626,7 +629,7 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel, input_
                             compute_shockdec_bands::Bool = false)
 
     # Return only one set of bands if we read in only one draw
-    if input_type in [:init, :mode, :mean]
+    if input_type1 in [:init, :mode, :mean]
         density_bands = [.5]
     end
 
@@ -635,10 +638,10 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel, input_
     product = get_product(output_var)
 
     # Read in forecast draws
-    fcast_series1, transform1 = read_forecast_output(m1, input_type, cond_type1,
+    fcast_series1, transform1 = read_forecast_output(m1, input_type1, cond_type1,
                                                    output_var, var_name, shock_name,
                                                    forecast_string = forecast_string1)
-    fcast_series2, transform2 = read_forecast_output(m2, input_type, cond_type2,
+    fcast_series2, transform2 = read_forecast_output(m2, input_type2, cond_type2,
                                                    output_var, var_name, shock_name,
                                                    forecast_string = forecast_string2)
 
@@ -655,7 +658,19 @@ function compute_meansbands(m1::AbstractDSGEModel, m2::AbstractDSGEModel, input_
                                               y0_index = y0_index, yt_index = yt_index,
                                               data = data,
                                               pop_growth = pop_growth)
-    transformed_series = 0.5*transformed_series1 + 0.5*transformed_series2
+    @show size(transformed_series1)
+    @show size(transformed_series2)
+    if size(transformed_series1, 1) < size(transformed_series2, 1)
+        mult = Int(size(transformed_series2, 1) / size(transformed_series1, 1))
+        transformed_series1 = repeat(transformed_series1, mult, 1)
+    else
+        mult = Int(size(transformed_series1, 1) / size(transformed_series2, 1))
+        transformed_series2 = repeat(transformed_series2, mult, 1)
+    end
+    @show size(transformed_series1)
+    @show size(transformed_series2)
+
+    transformed_series = 0.1*transformed_series1 + 0.9*transformed_series2
 
 
     # Compute means and bands
