@@ -16,8 +16,10 @@ function Base.show(io::IO, m::AbstractDSGEModel)
 end
 
 # Number of anticipated policy shocks
+n_anticipated_shocks(m::AbstractDSGEModel) = get_setting(m, :n_mon_anticipated_shocks)
 n_mon_anticipated_shocks(m::AbstractDSGEModel) = get_setting(m, :n_mon_anticipated_shocks)
 n_mon_anticipated_shocks_padding(m::AbstractDSGEModel) = get_setting(m, :n_mon_anticipated_shocks_padding)
+n_anticipated_shocks_padding(m::AbstractDSGEModel) = get_setting(m, :n_mon_anticipated_shocks_padding)
 n_z_anticipated_shocks(m::AbstractDSGEModel) = get_setting(m, :n_z_anticipated_shocks)
 n_z_anticipated_shocks_padding(m::AbstractDSGEModel) = get_setting(m, :n_z_anticipated_shocks_padding)
 
