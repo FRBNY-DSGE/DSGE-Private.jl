@@ -80,18 +80,12 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
     # THESE TWO LINES ARE TEMPORARY, THEY ARE TO BE DELETED FROM SMC2
     # AS WELL AS THEIR RESPECTIVE KEYWORD ARGS
-    m <= Setting(:regime_switching, regime_switching)
-    m <= Setting(:n_regimes, n_regimes)
+  #  m <= Setting(:regime_switching, regime_switching)
+  #  m <= Setting(:n_regimes, n_regimes)
 
     my_likelihood = if isa(m, AbstractDSGEModel)
-        function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64};
-                                     aug::Bool)::Float64
-            if aug
-                update!(m, parameters[1:n_parameters(m)],
-                        draw_aug = parameters[n_parameters(m)+1:end])
-            else
-                update!(m, parameters)
-            end
+        function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
+            update!(m, parameters, aug = aug)
             likelihood(m, data; sampler = false, catch_errors = true,
                        use_chand_recursion = use_chand_recursion, verbose = verbose)
         end
@@ -151,8 +145,6 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     # Calls SMC package's generic SMC
     println("Calling SMC.jl's SMC estimation routine...")
 
-    @show "smc2"
-    @show aug
     SMC.smc(my_likelihood, get_parameters(m), data;
             verbose = verbose,
             testing = m.testing,
