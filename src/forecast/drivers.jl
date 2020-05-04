@@ -120,7 +120,8 @@ Load and return parameter draws from Metropolis-Hastings or SMC.
   parameter draws for this block.
 """
 function load_draws(m::AbstractDSGEModel, input_type::Symbol; subset_inds::AbstractRange{Int64} = 1:0,
-                    verbose::Symbol = :low, filestring_addl::Vector{String} = Vector{String}(undef, 0), use_highest_posterior_value::Bool = false,
+                    verbose::Symbol = :low, filestring_addl::Vector{String} = Vector{String}(undef, 0),
+                    use_highest_posterior_value::Bool = false,
                     input_file_name::String = "")
 
     if isempty(input_file_name)
@@ -138,11 +139,11 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol; subset_inds::Abstr
                 if :mode in collect(keys(forecast_input_file_overrides(m)))
                     params = convert(Vector{Float64}, h5read(input_file_name, "params"))
                     # If not, load it from the cloud
-                elseif occursin("smc_paramsmode", input_file_name) && !use_highest_posterior_value
-                    params = convert(Vector{Float64}, h5read(input_file_name, "params"))
+                elseif occursin("paramsmode", input_file_name) && !use_highest_posterior_value
+                    params = load(replace(get_forecast_input_file(m, :mode), ".h5" => ".jld2"), "mode") #convert(Vector{Float64}, h5read(input_file_name, "params"))
                 else
                     input_file_name = replace(replace(input_file_name,
-                                                      "smc_paramsmode" => "smc_cloud"),
+                                                      "paramsmode" => "smc_cloud"),
                                               ".h5" => ".jld2")
                     println(verbose, :low, "Switching estimation file of draws to $input_file_name")
                     cloud = load(input_file_name, "cloud")
