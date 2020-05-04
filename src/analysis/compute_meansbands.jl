@@ -218,7 +218,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                                                    do_cond_obs_shocks = do_cond_obs_shocks)
 
     # Reverse transform
-    y0_index = get_y0_index(m, product)
+    y0_index = get_y0_index(m, product) # this should be index_forecast_start(m) - 4, so 4 quarters before forecast
     data = class == :obs && product != :irf ? Float64.(collect(Missings.replace(Vector{Union{Missing, Float64}}(df[!,var_name]), NaN))) : fill(NaN, size(df, 1))
     # data = class == :obs && product != :irf ? Float64.(collect(Missings.replace(df[:,var_name], NaN))) : fill(NaN, size(df, 1))
     transformed_series = mb_reverse_transform(fcast_series, transform, product, class,
@@ -251,14 +251,13 @@ function mb_reverse_transform(fcast_series::AbstractArray, transform::Function,
 
         y0s = if use_data && transform4q in [loggrowthtopct_4q_percapita, loggrowthtopct_4q]
             # Sum growth rates y_{t-3}, y_{t-2}, y_{t-1}, and y_t
-            data[y0_index+1:end]
+            data[y0_index+1:y0_index + 3]
         elseif use_data && transform4q in [logleveltopct_4q_percapita, logleveltopct_4q]
             # Divide log levels y_t by y_{t-4}
-            data[y0_index:end]
+            data[y0_index:y0_index + 3]
         else
             Float64[]
         end
-
         reverse_transform(fcast_series, transform4q;
                           fourquarter = true, y0s = y0s,
                           pop_growth = pop_growth)
