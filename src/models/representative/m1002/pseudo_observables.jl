@@ -7,7 +7,7 @@ function init_pseudo_observable_mappings!(m::Model1002)
                     :ExpectedNominalNaturalRate, :NominalRateGap, :LaborProductivityGrowth,
                     :u_t, :NominalWageGrowth,
                     :i_f_t, :R_t, :c_f_t, :qk_f_t, :k_f_t, :kbar_f_t, :u_f_t, :rk_f_t, :w_f_t, :L_f_t, :rktil_f_t, :n_f_t, :c_t,
-                    :b_t]
+                    :b_t, :r_f_t]
 
     if subspec(m) == "ss12"
         to_add = [:g_t, :b_t, :μ_t, :λ_f_t, :λ_w_t, :rm_t, :σ_ω_t, :μ_e_t,
@@ -46,6 +46,12 @@ function init_pseudo_observable_mappings!(m::Model1002)
     if haskey(m.settings, :add_laborproductivity_measurement)
         if get_setting(m, :add_laborproductivity_measurement)
             push!(pseudo_names, :laborproductivity)
+        end
+    end
+
+    if haskey(m.settings, :add_nominalgdp_level)
+        if get_setting(m, :add_nominalgdp_level)
+            push!(pseudo_names, :NominalGDPLevel)
         end
     end
 
@@ -154,6 +160,9 @@ function init_pseudo_observable_mappings!(m::Model1002)
     pseudo[:c_f_t].name     = "c_f_t"
     pseudo[:c_f_t].longname = "c_f_t"
 
+    pseudo[:r_f_t].name     = "r_f_t"
+    pseudo[:r_f_t].longname = "r_f_t"
+
     pseudo[:qk_f_t].name     = "qk_f_t"
     pseudo[:qk_f_t].longname = "qk_f_t"
 
@@ -221,6 +230,13 @@ function init_pseudo_observable_mappings!(m::Model1002)
         if get_setting(m, :add_laborshare_measurement)
             pseudo[:laborshare_t].name     = "Log Labor Share"
             pseudo[:laborshare_t].longname = "Log Labor Share"
+        end
+    end
+
+    if haskey(m.settings, :add_nominalgdp_level)
+        if get_setting(m, :add_nominalgdp_level)
+            pseudo[:NominalGDPLevel].name     = "Nominal GDP Level"
+            pseudo[:NominalGDPLevel].longname = "Nominal GDP Level"
         end
     end
 

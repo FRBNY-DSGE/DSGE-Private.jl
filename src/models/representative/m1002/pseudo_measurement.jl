@@ -39,6 +39,13 @@ function pseudo_measurement(m::Model1002{T},
         TTT = @view TTT[no_integ_inds, no_integ_inds]
     end
 
+    if get_setting(m, :add_nominalgdp_level)
+        ZZ_pseudo[pseudo[:NominalGDPLevel], endo_addl[:cum_y_t]]     = 1.
+        ZZ_pseudo[pseudo[:NominalGDPLevel], endo_addl[:cum_z_t]]     = 1.
+        ZZ_pseudo[pseudo[:NominalGDPLevel], endo_addl[:cum_e_gdp_t]] = 1.
+        ZZ_pseudo[pseudo[:NominalGDPLevel], endo_addl[:cum_π_t]]     = 1.
+    end
+
     # Compute TTT^10, used for Expected10YearRateGap, Expected10YearRate, and Expected10YearNaturalRate
     TTT10 = (1/40)*((UniformScaling(1.) - TTT)\(TTT - TTT^41))
 
@@ -157,6 +164,9 @@ function pseudo_measurement(m::Model1002{T},
 
     ## k_f_t
     ZZ_pseudo[pseudo[:k_f_t], endo[:k_f_t]] = 1.
+
+    ## r_f_t
+    ZZ_pseudo[pseudo[:r_f_t], endo[:r_f_t]] = 1.
 
     ## kbar_f_t
     ZZ_pseudo[pseudo[:kbar_f_t], endo[:kbar_f_t]] = 1.
@@ -415,6 +425,9 @@ function pseudo_measurement(m::Model1002{T},
 
     ## c_t
     ZZ_pseudos[reg][pseudo[:c_t], endo[:c_t]] = 1.
+
+    ## r_f_t
+    ZZ_pseudos[reg][pseudo[:r_f_t], endo[:r_f_t]] = 1.
 
     ## qk_f_t
     ZZ_pseudos[reg][pseudo[:qk_f_t], endo[:qk_f_t]] = 1.
