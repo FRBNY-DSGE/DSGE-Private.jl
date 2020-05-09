@@ -622,7 +622,7 @@ function init_parameters!(m::Model1002)
                        description="ρ_φ: AR(1) coefficient in the labor supply preference process.",
                        tex_label="\\rho_{\\varphi}")
         m <= parameter(:σ_φ, 0., (0., 1e3), (1e-8, 0.), ModelConstructors.Exponential(),
-                       RootInverseGamma(2 * (400.0)^2 ./ 4000., sqrt(4000. + (400.0)^2)), fixed=false,
+                       RootInverseGamma(2 * (400.0)^2 ./ 1., sqrt(1. + (400.0)^2)), fixed=false,
                        description="σ_φ: The standard deviation of the process describing the labor supply preference.",
                        tex_label="\\sigma_{\\varphi}") # If σ_φ ∼ RootInverseGamma(ν, τ), then σ_φ² ∼ InverseGamma(ν/2, ντ²/2)
     end
