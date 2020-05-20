@@ -326,6 +326,15 @@ function init_pseudo_observable_mappings!(m::Model1002)
     #     pseudo[:varphiiid].longname = "varphiiid"
     # end
 
+    if subspec(m) == "ss60"
+        pseudo[:ziid].name     = "ziid"
+        pseudo[:ziid].longname = "ziid"
+        pseudo[:biidc].name     = "biidc"
+        pseudo[:biidc].longname = "biidc"
+        pseudo[:varphiiid].name     = "varphiiid"
+        pseudo[:varphiiid].longname = "varphiiid"
+    end
+
     if haskey(m.settings, :add_laborproductivity_measurement)
         if get_setting(m, :add_laborproductivity_measurement)
             pseudo[:laborproductivity].name     = "Log Labor Productivity"

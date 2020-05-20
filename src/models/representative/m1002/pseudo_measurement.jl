@@ -319,11 +319,11 @@ function pseudo_measurement(m::Model1002{T},
         ZZ_pseudo[pseudo[:λ_w_t], endo[:λ_w_t]] = 1.
     end
 
-    # if subspec(m) == "ss60"
-    #     ZZ_pseudo[pseudo[:ziid], endo[:ziid_t]] = 1.
-    #     ZZ_pseudo[pseudo[:biidc], endo[:biidc_t]] = 1.
-    #     ZZ_pseudo[pseudo[:varphiiid], endo[:φ_t]] = 1.
-    # end
+    if subspec(m) == "ss60"
+        ZZ_pseudo[pseudo[:ziid], endo[:ziid_t]] = 1.
+        ZZ_pseudo[pseudo[:biidc], endo[:biidc_t]] = 1.
+        ZZ_pseudo[pseudo[:varphiiid], endo[:φ_t]] = 1.
+    end
 
     if haskey(m.settings, :add_ztil)
         if get_setting(m, :add_ztil)
@@ -671,11 +671,19 @@ function pseudo_measurement(m::Model1002{T},
             ZZ_pseudos[reg][pseudo[:λ_w_t], endo[:λ_w_t]] = 1.
         end
 
+<<<<<<< HEAD
         # if subspec(m) == "ss60"
         #     ZZ_pseudos[reg][pseudo[:ziid], endo[:ziid_t]] = 1.
         #     ZZ_pseudos[reg][pseudo[:biidc], endo[:biidc_t]] = 1.
         #     ZZ_pseudos[reg][pseudo[:varphiiid], endo[:φ_t]] = 1.
         # end
+=======
+        if subspec(m) == "ss60"
+            ZZ_pseudos[reg][pseudo[:ziid], endo[:ziid_t]] = 1.
+            ZZ_pseudos[reg][pseudo[:biidc], endo[:biidc_t]] = 1.
+            ZZ_pseudos[reg][pseudo[:varphiiid], endo[:φ_t]] = 1.
+        end
+>>>>>>> 9f89561... Change proportional anticipate shocks to be robust to multiple regimes.
     end
     return [PseudoMeasurement(ZZ_pseudos[i], DD_pseudos[i]) for i in 1:n_reg]
 end
