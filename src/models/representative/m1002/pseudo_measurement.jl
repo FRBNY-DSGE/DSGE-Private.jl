@@ -329,6 +329,12 @@ function pseudo_measurement(m::Model1002{T},
             ZZ_pseudo[pseudo[:zp], endo[:zp_t]] = 1.
         end
     end
+ if haskey(m.settings, :add_pgap)
+        if get_setting(m, :add_pgap)
+            ZZ_pseudo[pseudo[:pgap], endo[:pgap_t]] = 1.
+#            ZZ_pseudo[pseudo[:check], endo[:check]] = 1.
+        end
+    end
 
     return PseudoMeasurement(ZZ_pseudo, DD_pseudo)
 end
@@ -619,6 +625,12 @@ function pseudo_measurement(m::Model1002{T},
                 DD_pseudos[reg][pseudo[:Epi_t]]                    = 100. * (m[:π_star] - 1.)
             end
         end
+if haskey(m.settings, :add_pgap)
+        if get_setting(m, :add_pgap)
+            ZZ_pseudos[reg][pseudo[:pgap], endo[:pgap_t]] = 1.
+        end
+    end
+
 
         ## Fundameantal inflation related pseudo-obs
         if subspec(m) in ["ss13", "ss14", "ss15", "ss16", "ss17", "ss18", "ss19", "ss20"] #,

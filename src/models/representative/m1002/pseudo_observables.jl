@@ -36,6 +36,13 @@ function init_pseudo_observable_mappings!(m::Model1002)
             push!(pseudo_names, :zp)
         end
     end
+    if haskey(m.settings, :add_pgap)
+        if get_setting(m, :add_pgap)
+            push!(pseudo_names, :pgap)
+#            push!(pseudo_names, :check)
+        end
+    end
+
 
     if haskey(m.settings, :add_laborshare_measurement)
         if get_setting(m, :add_laborshare_measurement)
@@ -312,6 +319,15 @@ function init_pseudo_observable_mappings!(m::Model1002)
             pseudo[:zp].longname = "zp"
         end
     end
+    if haskey(m.settings, :add_pgap)
+        if get_setting(m, :add_pgap)
+            pseudo[:pgap].name     = "zp"
+            pseudo[:pgap].longname = "zp"
+#            pseudo[:check].name     = "zp"
+#            pseudo[:check].longname = "zp"
+        end
+    end
+
 
     if haskey(m.settings, :add_laborproductivity_measurement)
         if get_setting(m, :add_laborproductivity_measurement)

@@ -878,6 +878,12 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                              cond_type = cond_type, enforce_zlb = false, draw_shocks = uncertainty)
                 end
             @show forecastobs[6, :]
+            if haskey(m.endogenous_states, :pgap_t)
+                @show forecaststates[68, :]
+            end
+          #  if haskey(m.endogenous_states, :check)
+          #      @show forecaststates[m.endogenous_states[:check], :]
+          #  end
             # For conditional data when the smoother is run on history and conditional data,
             # transplant the obs/state/pseudo vectors from hist to forecast
             if smooth_conditional == :hist_cond && cond_type in [:full, :semi]
@@ -885,7 +891,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                 forecast_output[:forecastshocks] = transplant_forecast(histshocks, forecastshocks, T)
                 forecast_output[:forecastpseudo] = transplant_forecast(histpseudo, forecastpseudo, T)
                 # NOTE: ZZ REGIME SWITCHING NOT SUPPORTED, SO JUST TAKE THE FIRST ZZ IN TEH SYSTEM
-                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, fcast_sys[1], T)
+                forecast_output[:forecastobs]    = transplant_forecast_observables(histstates, forecastobs, isa(fcast_sys, RegimeSwitchingSystem) ? fcast_sys[1] : fcast_sys, T)
             else
                 forecast_output[:forecaststates] = forecaststates
                 forecast_output[:forecastshocks] = forecastshocks
