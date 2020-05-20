@@ -26,6 +26,10 @@ function init_pseudo_observable_mappings!(m::Model1002)
         push!(pseudo_names, :λ_w_t)
     end
 
+    if subspec(m) == "ss60"
+        push!(pseudo_names, :ziid, :varphiiid, :biidc)
+    end
+
     if haskey(m.settings, :add_ztil)
         if get_setting(m, :add_ztil)
             push!(pseudo_names, :ztil)
@@ -323,6 +327,15 @@ function init_pseudo_observable_mappings!(m::Model1002)
             pseudo[:pgap].name     = "zp"
             pseudo[:pgap].longname = "zp"
         end
+    end
+
+    if subspec(m) == "ss60"
+        pseudo[:ziid].name     = "ziid"
+        pseudo[:ziid].longname = "ziid"
+        pseudo[:biidc].name     = "biidc"
+        pseudo[:biidc].longname = "biidc"
+        pseudo[:varphiiid].name     = "varphiiid"
+        pseudo[:varphiiid].longname = "varphiiid"
     end
 
     if haskey(m.settings, :add_laborproductivity_measurement)
