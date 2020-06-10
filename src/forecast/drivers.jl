@@ -748,7 +748,6 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
             forecast_output[:histshocks] = histshocks
             forecast_output[:histpseudo] = histpseudo
         end
- #       @show forecast_output[:histstates][end, :]
 
         # Standardize shocks if desired
         if :histstdshocks in output_vars
@@ -874,9 +873,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
             if haskey(m.endogenous_states, :pgap_t)
                 @show forecaststates[68, :]
             end
-          #  if haskey(m.endogenous_states, :check)
-          #      @show forecaststates[m.endogenous_states[:check], :]
-          #  end
+
             # For conditional data when the smoother is run on history and conditional data,
             # transplant the obs/state/pseudo vectors from hist to forecast
             if smooth_conditional == :hist_cond && cond_type in [:full, :semi]
