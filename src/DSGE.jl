@@ -134,6 +134,9 @@ module DSGE
 
         # altpolicy/
         AltPolicy, taylor93, taylor99, alt_inflation,
+        ait, ait_replace_eq_entries, ait_solve, ait_eqcond,
+        ngdp, ngdp_replace_eq_entries, ngdp_solve, ngdp_eqcond,
+        zero_rate,  zer_rate_replace_eq_entries, zero_rate_solve, zero_rate_eqcond,
 
         # scenarios/
         AbstractScenario, SingleScenario, Scenario, SwitchingScenario, ScenarioAggregate,
@@ -279,6 +282,9 @@ module DSGE
     include("altpolicy/taylor93.jl")
     include("altpolicy/taylor99.jl")
     include("altpolicy/alt_inflation.jl")
+    include("altpolicy/ait.jl")
+    include("altpolicy/ngdp_target.jl")
+    include("altpolicy/zero_rate.jl")
 
     include("scenarios/scenario.jl")
     include("scenarios/io.jl")
