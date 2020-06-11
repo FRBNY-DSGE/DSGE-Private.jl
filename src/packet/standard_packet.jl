@@ -115,7 +115,7 @@ function write_spec_section(fid::IOStream, m::AbstractDSGEModel; purpose::String
     @printf fid "  \\item Number of shocks: %d\n" n_shocks_exogenous(m)
     @printf fid "  \\item Number of observables: %d\n" n_observables(m)
     @printf fid "  \\item Number of parameters: %d\n" n_parameters(m)
-    @printf fid "  \\item Number of anticipated shocks: %d\n" n_anticipated_shocks(m)
+    @printf fid "  \\item Number of anticipated shocks: %d\n" n_mon_anticipated_shocks(m)
     @printf fid "\\end{itemize}\n"
     @printf fid "\n"
 
@@ -564,10 +564,10 @@ function write_irf_plots(fid::IOStream, m::AbstractDSGEModel, input_type::Symbol
     filestr = DSGE.filestring(base, addl)
 
     # Find shocks to remove from list of shocks to compute IRFs
-    ant_sh  = [Symbol("rm_shl" * string(i)) for i = 1:n_anticipated_shocks(m)]
+    ant_sh  = [Symbol("rm_shl" * string(i)) for i = 1:n_mon_anticipated_shocks(m)]
     zero_shocks = Vector{Symbol}(undef,0)
     for k in setdiff(keys(m.exogenous_shocks),
-                     [Symbol("rm_shl" * string(i)) for i = 1:n_anticipated_shocks(m)])
+                     [Symbol("rm_shl" * string(i)) for i = 1:n_mon_anticipated_shocks(m)])
         if k == :rm_sh && m[:σ_r_m].value == 0. && m[:σ_r_m].fixed
             zero_shocks = vcat(zero_shocks, :rm_sh)
         elseif k == :zp_sh && m[:σ_z_p].value == 0. && m[:σ_z_p].fixed
@@ -585,7 +585,7 @@ function write_irf_plots(fid::IOStream, m::AbstractDSGEModel, input_type::Symbol
     product = get_product(output_var)
     if class == :obs
         section_title = "Observables"
-        ant_obs = [Symbol("obs_nominalrate" * string(i)) for i = 1:n_anticipated_shocks(m)]
+        ant_obs = [Symbol("obs_nominalrate" * string(i)) for i = 1:n_mon_anticipated_shocks(m)]
         rowvars = setdiff(keys(m.observables), ant_obs)
     elseif class == :pseudo
         section_title = "Pseudo-Observables"
@@ -652,11 +652,11 @@ function plot_irf_section(m::AbstractDSGEModel, input_type::Symbol, cond_type::S
 
 
     # Find shocks to remove from list of shocks to compute IRFs
-    ant_obs = [Symbol("obs_nominalrate" * string(i)) for i = 1:n_anticipated_shocks(m)]
-    ant_sh  = [Symbol("rm_shl" * string(i)) for i = 1:n_anticipated_shocks(m)]
+    ant_obs = [Symbol("obs_nominalrate" * string(i)) for i = 1:n_mon_anticipated_shocks(m)]
+    ant_sh  = [Symbol("rm_shl" * string(i)) for i = 1:n_mon_anticipated_shocks(m)]
     zero_shocks = Vector{Symbol}(undef,0)
     for k in setdiff(keys(m.exogenous_shocks),
-                     [Symbol("rm_shl" * string(i)) for i = 1:n_anticipated_shocks(m)])
+                     [Symbol("rm_shl" * string(i)) for i = 1:n_mon_anticipated_shocks(m)])
         if k == :rm_sh && m[:σ_r_m].value == 0. && m[:σ_r_m].fixed
             zero_shocks = vcat(zero_shocks, :rm_sh)
         elseif k == :zp_sh && m[:σ_z_p].value == 0. && m[:σ_z_p].fixed
@@ -736,11 +736,11 @@ function plot_irf_section(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
 
 
     # Find shocks to remove from list of shocks to compute IRFs
-    ant_obs = [Symbol("obs_nominalrate" * string(i)) for i = 1:n_anticipated_shocks(m)]
-    ant_sh  = [Symbol("rm_shl" * string(i)) for i = 1:n_anticipated_shocks(m)]
+    ant_obs = [Symbol("obs_nominalrate" * string(i)) for i = 1:n_mon_anticipated_shocks(m)]
+    ant_sh  = [Symbol("rm_shl" * string(i)) for i = 1:n_mon_anticipated_shocks(m)]
     zero_shocks = Vector{Symbol}(undef,0)
     for k in setdiff(keys(m.exogenous_shocks),
-                     [Symbol("rm_shl" * string(i)) for i = 1:n_anticipated_shocks(m)])
+                     [Symbol("rm_shl" * string(i)) for i = 1:n_mon_anticipated_shocks(m)])
         if haskey(m.keys, :σ_r_m)
             if k == :rm_sh && m[:σ_r_m].value == 0. && m[:σ_r_m].fixed
                 zero_shocks = vcat(zero_shocks, :rm_sh)
