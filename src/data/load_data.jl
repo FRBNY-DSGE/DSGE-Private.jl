@@ -61,20 +61,16 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
             levels, cond_levels = reconcile_column_names(levels, cond_levels)
             levels = vcat(levels, cond_levels)
         end
-        # JLD2.jldopen("/home/rcewyc01/.julia/dev/DSGE/test/transform_data_inputs_$(string(cond_type)).jld2", true, true, true, IOStream) do file
-        #     write(file, string(cond_type), levels)
-        # end
+
         df = transform_data(m, levels; cond_type=cond_type, verbose=verbose)
 
         if :obs_nominalrate1 in cond_semi_names(m) || :obs_nominalrate1 in cond_full_names(m)
             ois_data = CSV.read(inpath(m, "raw", "ois_$(data_vintage(m)).csv"), copycols = true)
             dates = DSGE.get_quarter_ends(iterate_quarters(date_mainsample_end(m), 1), date_conditional_end(m))
             n_cond = length(dates)
-           # date_space = findall(x->x==true, df[!, :date] .> date_mainsample_end(m))
+
             ois_data_want = ois_data[date_mainsample_end(m) .< ois_data[!, :date] .<= date_conditional_end(m), [:ant1, :ant2, :ant3, :ant4, :ant5, :ant6]]
-#            @show ois_data_want
-#            @show names(df)
-#            @show df[date_mainsample_end(m) .< df[!, :date] .<= date_conditional_end(m), [:obs_nominalrate1, :obs_nominalrate2, :obs_nominalrate3, :obs_nominalrate4, :obs_nominalrate5, :obs_nominalrate6]]
+
             df[date_mainsample_end(m) .< df[!, :date] .<= date_conditional_end(m), [:obs_nominalrate1, :obs_nominalrate2, :obs_nominalrate3, :obs_nominalrate4, :obs_nominalrate5, :obs_nominalrate6]] .= Matrix{Float64}(ois_data_want)
         end
 
