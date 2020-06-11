@@ -44,8 +44,11 @@ function measurement(m::Model1002{T},
     end
 
     no_integ_inds = inds_states_no_integ_series(m)
+    if haskey(m.endogenous_states, :pgap_t) #m.settings, :replace_eqcond) ? get_setting(m, :replace_eqcond) : false
+        no_integ_inds = setdiff(no_integ_inds, [m.endogenous_states[:pgap_t]])
+    end
     if (get_setting(m, :add_laborproductivity_measurement) || get_setting(m, :add_nominalgdp_level) ||
-        get_setting(m, :add_cumulative))
+        get_setting(m, :add_cumulative)) || (haskey(m.endogenous_states, :pgap_t)) #m.settings, :replace_eqcond) ? get_setting(m, :replace_eqcond) : false)
         # Remove integrated states (e.g. states w/unit roots)
         TTT = @view TTT[no_integ_inds, no_integ_inds]
         CCC = @view CCC[no_integ_inds]
@@ -111,7 +114,7 @@ function measurement(m::Model1002{T},
     DD[obs[:obs_investment]]                  = 100*(exp(m[:z_star])-1)
 
     ## Spreads
-    ZZ[obs[:obs_spread], endo[:ERtil_k_t]] = 1.0
+    ZZ[obs[:obs_spread], endo[:ERktil_t]] = 1.0
     ZZ[obs[:obs_spread], endo[:R_t]]       = -1.0
     DD[obs[:obs_spread]]                   = 100*log(m[:spr])
 
@@ -242,9 +245,9 @@ function measurement(m::Model1002{T},
 
 
     # Adjustment to DD because measurement equation assumes CCC is the zero vector
-    if any(CCC .!= 0)
-        DD += ZZ[no_integ_inds,no_integ_inds]*((UniformScaling(1) - TTT)\CCC)
-    end
+  #=  if any(CCC .!= 0)
+        DD += ZZ[:, no_integ_inds]*((UniformScaling(1) - TTT)\CCC)
+    end =#
 
     for para in m.parameters
         if !isempty(para.regimes)

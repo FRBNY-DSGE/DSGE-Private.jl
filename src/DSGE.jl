@@ -65,7 +65,7 @@ module DSGE
         load_parameters_from_file, specify_mode!, specify_hessian!,
         logpath, workpath, rawpath, tablespath, figurespath, inpath,
         transform_to_model_space!, transform_to_real_line!,
-        ShockGroup, alternative_policy,
+        ShockGroup, alternative_policy, setup_regime_switching_inds,
 
         # abstractvarmodel.jl
         AbstractVARModel,
@@ -134,6 +134,9 @@ module DSGE
 
         # altpolicy/
         AltPolicy, taylor93, taylor99, alt_inflation,
+        ait, ait_replace_eq_entries, ait_solve, ait_eqcond,
+        ngdp, ngdp_replace_eq_entries, ngdp_solve, ngdp_eqcond,
+        zero_rate,  zer_rate_replace_eq_entries, zero_rate_solve, zero_rate_eqcond,
 
         # scenarios/
         AbstractScenario, SingleScenario, Scenario, SwitchingScenario, ScenarioAggregate,
@@ -216,6 +219,7 @@ module DSGE
 
 
     include("solve/gensys.jl")
+    include("solve/gensys2.jl")
     include("solve/solve.jl")
     include("solve/klein.jl")
 
@@ -278,6 +282,9 @@ module DSGE
     include("altpolicy/taylor93.jl")
     include("altpolicy/taylor99.jl")
     include("altpolicy/alt_inflation.jl")
+    include("altpolicy/ait.jl")
+    include("altpolicy/ngdp_target.jl")
+    include("altpolicy/zero_rate.jl")
 
     include("scenarios/scenario.jl")
     include("scenarios/io.jl")

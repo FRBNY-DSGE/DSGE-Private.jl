@@ -15,11 +15,11 @@ specified in their proper positions.
 * `Ψ`  (`n_states` x `n_shocks_exogenous`) holds coefficients of iid shocks.
 * `Π`  (`n_states` x `n_states_expectational`) holds coefficients of expectational states.
 """
-function eqcond(m::Model1002)
-    return eqcond(m, 1)
+function eqcond(m::Model1002; new_policy::Bool = false)
+    return eqcond(m, 1, new_policy = new_policy)
 end
 
-function eqcond(m::Model1002, reg::Int)
+function eqcond(m::Model1002, reg::Int; new_policy = false)
     endo = m.endogenous_states
     exo  = m.exogenous_shocks
     ex   = m.expected_shocks
@@ -106,7 +106,7 @@ function eqcond(m::Model1002, reg::Int)
 
     # Spreads
     # Sticky prices and wages
-    Γ0[eq[:eq_spread], endo[:ERtil_k_t]] = 1.
+    Γ0[eq[:eq_spread], endo[:ERktil_t]] = 1.
     Γ0[eq[:eq_spread], endo[:R_t]]       = -1.
     Γ0[eq[:eq_spread], endo[:b_t]]       = (m[:σ_c]*(1 + m[:h]*exp(-m[:z_star])))/(1 - m[:h]*exp(-m[:z_star]))
     Γ0[eq[:eq_spread], endo[:qk_t]]      = -m[:ζ_spb]
@@ -143,7 +143,7 @@ function eqcond(m::Model1002, reg::Int)
     # Flexible prices and wages
     Γ0[eq[:eq_nevol_f], endo[:n_f_t]]      = 1.
     Γ0[eq[:eq_nevol_f], endo[:z_t]]      = m[:γ_star]*m[:vstar]/m[:nstar]
-    Γ0[eq[:eq_nevol_f], endo[:rktil_f_t]] = -m[:ζ_nRk]
+    Γ0[eq[:eq_nevol_f], endo[:Rktil_f_t]] = -m[:ζ_nRk]
     Γ1[eq[:eq_nevol_f], endo[:σ_ω_t]]    = -m[:ζ_nσ_ω]/m[:ζ_spσ_ω]
     Γ1[eq[:eq_nevol_f], endo[:μ_e_t]]    = -m[:ζ_nμ_e]/m[:ζ_spμ_e]
     Γ1[eq[:eq_nevol_f], endo[:qk_f_t]]     = m[:ζ_nqk]
@@ -153,7 +153,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ1[eq[:eq_nevol_f], endo[:b_t]]      = m[:ζ_nR]*((m[:σ_c]*(1.0+m[:h]*exp(-m[:z_star])))/(1.0-m[:h]*exp(-m[:z_star])))
 
     # Flexible prices and wages - ASSUME NO FINANCIAL FRICTIONS
-    Γ0[eq[:eq_capval_f], endo[:rktil_f_t]] = 1.
+    Γ0[eq[:eq_capval_f], endo[:Rktil_f_t]] = 1.
     Γ0[eq[:eq_capval_f], endo[:rk_f_t]]     = -m[:r_k_star]/(m[:r_k_star]+1-m[:δ])
     Γ0[eq[:eq_capval_f], endo[:qk_f_t]]     = -(1-m[:δ])/(m[:r_k_star]+1-m[:δ])
     Γ1[eq[:eq_capval_f], endo[:qk_f_t]]     = -1.
@@ -322,7 +322,6 @@ function eqcond(m::Model1002, reg::Int)
     # Flexible prices and wages not necessary
 
     ### 13. Monetary Policy Rule
-
     # Sticky prices and wages
     Γ0[eq[:eq_mp], endo[:R_t]]      = 1.
     Γ1[eq[:eq_mp], endo[:R_t]]      = m[:ρ]
@@ -684,9 +683,9 @@ function eqcond(m::Model1002, reg::Int)
     Π[eq[:eq_Erk], ex[:Erk_sh]]   = 1.
 
     # Flexible prices and wages
-    Γ0[eq[:eq_Erktil_f], endo[:rktil_f_t]]  = 1.
-    Γ1[eq[:eq_Erktil_f], endo[:ERktil_f_t]] = 1.
-    Π[eq[:eq_Erktil_f], ex[:Erktil_f_sh]]   = 1.
+    Γ0[eq[:eq_ERktil_f], endo[:Rktil_f_t]]  = 1.
+    Γ1[eq[:eq_ERktil_f], endo[:ERktil_f_t]] = 1.
+    Π[eq[:eq_ERktil_f], ex[:ERktil_f_sh]]   = 1.
 
     ### E(w)
 
@@ -699,10 +698,43 @@ function eqcond(m::Model1002, reg::Int)
 
     # Sticky prices and wages
     Γ0[eq[:eq_ERktil], endo[:Rktil_t]]  = 1.
-    Γ1[eq[:eq_ERktil], endo[:ERtil_k_t]] = 1.
+    Γ1[eq[:eq_ERktil], endo[:ERktil_t]] = 1.
     Π[eq[:eq_ERktil], ex[:ERktil_sh]]    = 1.
 
-    for para in m.parameters
+   if haskey(m.settings, :add_pgap) ? get_setting(m, :add_pgap) : false
+       Γ0[eq[:eq_pgap], endo[:pgap_t]]  =  1.
+       if haskey(m.settings, :replace_eqcond_func_dict)
+           if reg >= minimum(keys(get_setting(m, :replace_eqcond_func_dict))) &&
+               reg <= maximum(keys(get_setting(m, :replace_eqcond_func_dict))) &&
+               haskey(m.settings, :pgap_type)
+               if get_setting(m, :pgap_type) == :ngdp
+                   Γ0[eq[:eq_pgap], endo[:pgap_t]]  =  1.
+                   Γ0[eq[:eq_pgap], endo[:π_t]]     = -1.
+                   Γ1[eq[:eq_pgap], endo[:pgap_t]]  =  1.
+
+                   Γ0[eq[:eq_pgap], endo[:y_t]]     = -1.
+                   Γ0[eq[:eq_pgap], endo[:z_t]]     = -1.
+                   Γ1[eq[:eq_pgap], endo[:y_t]]     =  -1.
+               elseif get_setting(m, :pgap_type) == :ait
+                   Thalf = 10
+                   ρ_ait = exp(log(0.5)/Thalf)
+                   Γ0[eq[:eq_pgap], endo[:pgap_t]]  =  1.
+                   Γ0[eq[:eq_pgap], endo[:π_t]]     = -1.
+                   Γ1[eq[:eq_pgap], endo[:pgap_t]]  = ρ_ait
+               end
+           end
+       end
+   end
+
+   if haskey(m.settings, :replace_eqcond) ? get_setting(m, :replace_eqcond) : false
+       if haskey(m.settings, :replace_eqcond_func_dict) #&& new_policy
+           if haskey(get_setting(m, :replace_eqcond_func_dict), reg) && reg != get_setting(m, :n_regimes)
+           Γ0, Γ1, C, Ψ, Π = get_setting(m, :replace_eqcond_func_dict)[reg](m, Γ0, Γ1, C, Ψ, Π)
+           end
+       end
+   end
+
+   for para in m.parameters
         if !isempty(para.regimes)
             ModelConstructors.toggle_regime!(para, 1)
         end

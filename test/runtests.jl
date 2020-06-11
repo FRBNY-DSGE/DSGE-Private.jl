@@ -5,7 +5,7 @@ import ModelConstructors: @test_matrix_approx_eq, @test_matrix_approx_eq_eps
 HETDSGEGOVDEBT = "../src/models/heterogeneous/het_dsge_gov_debt/reference"
 
 my_tests = [
-            "abstractdsgemodel",
+           "abstractdsgemodel",
             "abstractvarmodel",
             "defaults",
             "parameters",
@@ -23,7 +23,7 @@ my_tests = [
             "models/var/dsgevar/util",
             "models/var/util",
 
-            "models/heterogeneous/het_dsge_gov_debt/het_dsge_gov_debt_reduce_ell",
+            # "models/heterogeneous/het_dsge_gov_debt/het_dsge_gov_debt_reduce_ell",
             #"models/heterogeneous/het_dsge_gov_debt/het_dsge_gov_debt",
             #"models/representative/rep_dsge_gov_debt/rep_dsge_gov_debt",
             # "models/heterogeneous/het_dsge_simple_taylor/het_dsge_simple_taylor",
@@ -39,15 +39,15 @@ my_tests = [
             #"models/heterogeneous/one_asset_hank/one_asset_hank",
             #"models/heterogeneous/one_asset_hank/interns",
 
-            # "data/fred_data",
-            # "data/load_data",
-            # "data/load_data_poolmodel",
-            # "data/misc",
-            # "data/reverse_transform",
-            # "data/simulate_data",
-            # "data/transformations",
-            # "data/transform_data",
-            # "data/util",
+            "data/fred_data",
+            "data/load_data",
+            "data/load_data_poolmodel",
+            "data/misc",
+            "data/reverse_transform",
+            "data/simulate_data",
+            "data/transformations",
+            "data/transform_data",
+            "data/util",
             "statespace",
             "solve/gensys",
             "solve/solve",
@@ -85,7 +85,7 @@ my_tests = [
             "forecast/forecast_one",
             "forecast/util",
             "forecast/var/impulse_responses",
-            "forecast/var/dsgevar/impulse_responses",
+            # "forecast/var/dsgevar/impulse_responses",
             "analysis/compute_meansbands",
             "analysis/df_to_table",
             "analysis/io",
@@ -100,7 +100,7 @@ my_tests = [
             "scenarios/switching",
             "scenarios/drivers",
             "decomp/decompose_forecast",
-            "plot/plot",
+            # "plot/plot",
   	        "plot/util"
             #"packet/packet"
             ]

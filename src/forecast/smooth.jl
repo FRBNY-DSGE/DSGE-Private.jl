@@ -124,6 +124,14 @@ function smooth(m::AbstractDSGEModel, df::DataFrame, system::RegimeSwitchingSyst
     start_date = max(date_presample_start(m), df[1, :date])
     regime_inds, i_zlb_start, splice_zlb_regime = zlb_plus_regime_indices(m, data, start_date)
 
+    if haskey(m.settings, :gensys2) ? get_setting(m, :gensys2) : false
+        m <= Setting(:gensys2, false)
+        m <= Setting(:replace_eqcond, false)
+        system = compute_system(m)
+        m <= Setting(:gensys2, true)
+        m <= Setting(:replace_eqcond, true)
+    end
+
     # Get system matrices for each regime. Use n_regimes to omit unneeded regimes
     TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = zlb_plus_regime_matrices(m, system, length(regime_inds),
                                                                     start_date;

@@ -27,6 +27,7 @@ function pseudo_measurement(m::Model1002{T},
     DD_pseudo = zeros(_n_pseudo)
 
     no_integ_inds = inds_states_no_integ_series(m)
+
     if get_setting(m, :add_laborproductivity_measurement)
         # Construct pseudo-obs from integrated states first
         ZZ_pseudo[pseudo[:laborproductivity], endo[:y_t]] = 1.
@@ -335,6 +336,11 @@ function pseudo_measurement(m::Model1002{T},
             ZZ_pseudo[pseudo[:zp], endo[:zp_t]] = 1.
         end
     end
+ if haskey(m.settings, :add_pgap)
+        if get_setting(m, :add_pgap)
+            ZZ_pseudo[pseudo[:pgap], endo[:pgap_t]] = 1.
+        end
+    end
 
     return PseudoMeasurement(ZZ_pseudo, DD_pseudo)
 end
@@ -363,6 +369,10 @@ function pseudo_measurement(m::Model1002{T},
         DD_pseudos[reg] = zeros(_n_pseudo)
 
         no_integ_inds = inds_states_no_integ_series(m)
+        if haskey(m.endogenous_states, :pgap_t) #(m.settings, :replace_eqcond) ? get_setting(m, :replace_eqcond) : false
+            no_integ_inds = setdiff(no_integ_inds, [m.endogenous_states[:pgap_t]])
+        end
+
         if get_setting(m, :add_laborproductivity_measurement)
             # Construct pseudo-obs from integrated states first
             ZZ_pseudos[reg][pseudo[:laborproductivity], endo[:y_t]] = 1.
@@ -432,7 +442,7 @@ function pseudo_measurement(m::Model1002{T},
             DD_pseudos[reg][pseudo[:FlexibleConsumptionGrowth]]                     = 100. * (exp(m[:z_star]) - 1.)
         end
 
-        if haskey(get_settings(m), :integrated_series)
+        if haskey(get_settings(m), :integrated_series) || haskey(m.endogenous_states, :pgap_t) # (haskey(m.settings, :replace_eqcond) ? get_setting(m, :replace_eqcond) : false)
             if !isempty(get_setting(m, :integrated_series))
                 TTT = @view TTTs[reg][no_integ_inds, no_integ_inds]
             else
@@ -625,6 +635,11 @@ function pseudo_measurement(m::Model1002{T},
                 DD_pseudos[reg][pseudo[:Epi_t]]                    = 100. * (m[:π_star] - 1.)
             end
         end
+        if haskey(m.settings, :add_pgap)
+            if get_setting(m, :add_pgap)
+                ZZ_pseudos[reg][pseudo[:pgap], endo[:pgap_t]] = 1.
+            end
+        end
 
         ## Fundameantal inflation related pseudo-obs
         if subspec(m) in ["ss13", "ss14", "ss15", "ss16", "ss17", "ss18", "ss19", "ss20"] #,
@@ -677,5 +692,6 @@ function pseudo_measurement(m::Model1002{T},
         #     ZZ_pseudos[reg][pseudo[:varphiiid], endo[:φ_t]] = 1.
         # end
     end
+
     return [PseudoMeasurement(ZZ_pseudos[i], DD_pseudos[i]) for i in 1:n_reg]
 end

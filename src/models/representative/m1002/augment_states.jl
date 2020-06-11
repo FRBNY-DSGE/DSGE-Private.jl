@@ -54,6 +54,7 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
 
     # Initialize augmented matrices
     n_states_add = length(endo_new)
+
     TTT_aug = zeros(n_endo + n_states_add, n_endo + n_states_add)
     TTT_aug[1:n_endo, 1:n_endo] = TTT
     RRR_aug = [RRR; zeros(n_states_add, n_exo)]
@@ -102,6 +103,56 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
         TTT_aug[endo_new[:cum_e_gdp_t],  endo_new[:e_gdp_t]]     = 1.0
         TTT_aug[endo_new[:cum_e_gdp_t],  endo_new[:e_gdp_t1]]    = -m[:me_level]
         TTT_aug[endo_new[:cum_e_gdp_t],  endo_new[:cum_e_gdp_t]] = 1.0
+    end
+
+    if get_setting(m, :add_cumulative)
+        # Output Gap
+        TTT_aug[endo_new[:cum_y_t],  endo[:y_t]]         = 1.0
+        TTT_aug[endo_new[:cum_y_t],  endo_new[:y_t1]]    = -1.0
+        TTT_aug[endo_new[:cum_y_t],  endo_new[:cum_y_t]] = 1.0
+
+        TTT_aug[endo_new[:cum_y_f_t],  endo[:y_f_t]]         = 1.0
+        TTT_aug[endo_new[:cum_y_f_t],  endo_new[:y_f_t1]]    = -1.0
+        TTT_aug[endo_new[:cum_y_f_t],  endo_new[:cum_y_f_t]] = 1.0
+        TTT_aug[endo_new[:y_f_t1],     endo[:y_f_t]]         = 1.0
+
+        # Remaining accumulations for GDP, Flexible GDP, Technology
+        TTT_aug[endo_new[:cum_z_t],  endo[:z_t]]         = 1.0
+        TTT_aug[endo_new[:cum_z_t],  endo_new[:cum_z_t]] = 1.0
+        CCC_aug[endo_new[:cum_z_t]]                      = 100. * (exp(m[:z_star]) - 1.)
+
+        TTT_aug[endo_new[:cum_e_gdp_t],  endo_new[:e_gdp_t]]     = 1.0
+        TTT_aug[endo_new[:cum_e_gdp_t],  endo_new[:e_gdp_t1]]    = -m[:me_level]
+        TTT_aug[endo_new[:cum_e_gdp_t],  endo_new[:cum_e_gdp_t]] = 1.0
+
+        # Consumption
+        TTT_aug[endo_new[:cum_c_t],  endo[:c_t]]         = 1.0
+        TTT_aug[endo_new[:cum_c_t],  endo_new[:c_t1]]    = -1.0
+        TTT_aug[endo_new[:cum_c_t],  endo_new[:cum_c_t]] = 1.0
+
+        # Flexible Consumption
+        TTT_aug[endo_new[:cum_c_f_t],  endo[:c_f_t]]         = 1.0
+        TTT_aug[endo_new[:cum_c_f_t],  endo_new[:c_f_t1]]    = -1.0
+        TTT_aug[endo_new[:cum_c_f_t],  endo_new[:cum_c_f_t]] = 1.0
+        TTT_aug[endo_new[:c_f_t1],     endo[:c_f_t]]         = 1.0
+
+        # Investment
+        TTT_aug[endo_new[:cum_i_t],  endo[:i_t]]         = 1.0
+        TTT_aug[endo_new[:cum_i_t],  endo_new[:i_t1]]    = -1.0
+        TTT_aug[endo_new[:cum_i_t],  endo_new[:cum_i_t]] = 1.0
+
+        # Flexible Investment
+        TTT_aug[endo_new[:cum_i_f_t],  endo[:i_f_t]]         = 1.0
+        TTT_aug[endo_new[:cum_i_f_t],  endo_new[:i_f_t1]]    = -1.0
+        TTT_aug[endo_new[:cum_i_f_t],  endo_new[:cum_i_f_t]] = 1.0
+        TTT_aug[endo_new[:i_f_t1],     endo[:i_f_t]]         = 1.0
+    end
+
+    if get_setting(m, :add_flexible_price_growth)
+        # Track additional lags
+        TTT_aug[endo_new[:y_f_t1],     endo[:y_f_t]]         = 1.0
+        TTT_aug[endo_new[:c_f_t1],     endo[:c_f_t]]         = 1.0
+        TTT_aug[endo_new[:i_f_t1],     endo[:i_f_t]]         = 1.0
     end
 
     if get_setting(m, :add_cumulative)
