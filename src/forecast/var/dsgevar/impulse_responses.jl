@@ -619,7 +619,7 @@ of the impact response matrix corresponding to the state space system, i.e.
 function impulse_responses(TTT::Matrix{S}, RRR::Matrix{S}, ZZ::Matrix{S},
                            DD::Vector{S}, MM::Matrix{S}, QQ::Matrix{S},
                            k::Int, β::Matrix{S}, Σ::Matrix{S},
-                           X̂::Vector{S}, horizon::Int; method::Symbol = :cholesky,
+                           X̂::Vector{S}, horizon::Int; method::Symbol = :rotation,
                            accumulate::Bool = false,
                            cum_inds::Union{Int,UnitRange{Int},Vector{Int}} = 0,
                            flip_shocks::Bool = false, draw_shocks::Bool = false,
