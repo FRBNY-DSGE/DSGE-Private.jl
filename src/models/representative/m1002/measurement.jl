@@ -193,28 +193,27 @@ function measurement(m::Model1002{T},
         end
     end
 
-    for (k, v) in get_setting(m, :antshocks)
-        if k == :z # z is a sum of a transient and persistent component, so we model this differently
-            for i = 1:v
-                ZZ[obs[Symbol("obs_z$i")], no_integ_inds] = ZZ[obs[:obs_z], no_integ_inds]' * (TTT^i)
-                if subspec(m) == "ss11"
-                    QQ[exo[Symbol("z_shl$i")], exo[Symbol("z_shl$i")]] = m[:σ_ztil]^2 / v
-                else
-                    QQ[exo[Symbol("z_shl$i")], exo[Symbol("z_shl$i")]] = m[Symbol("σ_z$i")]^2
-                end
-            end
-        else
-            for i = 1:v
-                ZZ[obs[Symbol("obs_", k, "$i")], no_integ_inds] = ZZ[obs[Symbol(:obs_, k)], no_integ_inds]' * (TTT^i)
-                if subspec(m) == "ss11"
-                    QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol(:σ_, k)]^2 / v
-                else
-                    QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k, "$i")]^2
-                end
-            end
-        end
-    end
-
+    # for (k, v) in get_setting(m, :antshocks)
+    #     if k == :z # z is a sum of a transient and persistent component, so we model this differently
+    #         for i = 1:v
+    #             ZZ[obs[Symbol("obs_z$i")], no_integ_inds] = ZZ[obs[:obs_z], no_integ_inds]' * (TTT^i)
+    #             if subspec(m) == "ss11"
+    #                 QQ[exo[Symbol("z_shl$i")], exo[Symbol("z_shl$i")]] = m[:σ_ztil]^2 / v
+    #             else
+    #                 QQ[exo[Symbol("z_shl$i")], exo[Symbol("z_shl$i")]] = m[Symbol("σ_z$i")]^2
+    #             end
+    #         end
+    #     else
+    #         for i = 1:v
+    #             ZZ[obs[Symbol("obs_", k, "$i")], no_integ_inds] = ZZ[obs[Symbol(:obs_, k)], no_integ_inds]' * (TTT^i)
+    #             if subspec(m) == "ss11"
+    #                 QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol(:σ_, k)]^2 / v
+    #             else
+    #                 QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k, "$i")]^2
+    #             end
+    #         end
+    #     end
+    # end
 
     # Adjustment to DD because measurement equation assumes CCC is the zero vector
     if any(CCC .!= 0)
