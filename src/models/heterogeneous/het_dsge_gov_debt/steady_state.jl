@@ -324,7 +324,235 @@ end
     return excess, μ
 end
 
+function transform_ab(a::Float64, b::Float64, grid::Vector{Float64})
+        xs = ((b-a)/2) .* grid .+ (a+b)/2
+        return xs
+    end
+
+
 function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
+                               T::S, γ::S, zhi::S, zlo::S, xgrid::Vector{S},
+                               sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
+                               f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
+                               maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
+    n    = nx*ns
+    Ic = 25
+ #   ell    = zeros(n)                  # ell
+    bp   = Vector{Float64}(undef, n) # savings
+ #   Wout = Vector{Float64}(undef, length(Win))
+    counter = 1
+    reject = false
+    qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, zhi, zlo) # g in the paper
+    ne = 5
+    egrid_gk= gauss(ne)
+    egrid = transform_ab(zlo, zhi, egrid_gk[1])
+    ewts = egrid_gk[2]
+
+    # Constrainted consumption
+    c0 = Matrix{Float64}(undef, ns, ne)
+    for is in 1:ns
+        for ie in 1:ne
+            # min of this (below) and e=1)
+            e = minimum([egrid[ie], 1.0])
+            c0[is, ie] = ω*sgrid[is]*e*H + T
+        end
+    end
+
+    # Initial consumption guess
+    # Mapping b to c
+    c_pol = (R-1)*repeat(xgrid, 1, ns, ne) .+ ω*H*repeat(sgrid', nx, 1, ne) #ones(ns, ne, nx)
+    # NEED TO DEEPCOPY HERE OTHERWISE BREAKS
+    c_poli = deepcopy(c_pol)
+    dist = 1
+
+    bgrid = exp(γ)*xgrid
+
+    l = Array{Float64}(undef, nx, ns, ne)
+    c = Array{Float64}(undef, nx, ns, ne)
+    a = Array{Float64}(undef, nx, ns, ne)
+ #   b = Array{Float64}(undef, nx, ns) #, ne)
+
+    while dist>tol && counter<maxit
+        for is in 1:ns
+            for ie in 1:ne
+                # Keep only non-constrainet
+                non_c_inds = vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c_pol[:, is, ie])) .> 0.0
+                bp = bgrid[non_c_inds, :]
+                # Sums
+                sum_term = zeros(length(bp)) #nx)
+                ## Outer sum over s'
+                for isp in 1:ns
+                    ## Inner integral over e'
+                    for iep in 1:ne
+                        g_of_e = qfunction(egrid[iep]) #save after deciding grid instead of recomputing
+                        #          p(s'|s)   *iota(e') * g(e')   * c(a, s')^{-1}
+                        sum_term = sum_term + f[is, isp]*ewts[iep]*g_of_e ./ c_pol[non_c_inds, isp, iep]
+                    end
+                end
+                # ell(a, s) = β*R*exp(-γ)*Σ\Int
+                l = β*R*exp(-γ)*sum_term
+                # compute consumption today c(b', s) = 1/l(a, s)
+                c = 1 ./ l
+                b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie]))
+                c_c = collect(range(c0[is, ie], c[1], length = Ic))
+                b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
+                b = vcat(b_c[1:Ic-1], b)
+                c = vcat(c_c[1:Ic-1], c)
+                c_poli[:, is, ie] = LinearInterpolation(b, c, extrapolation_bc = Line())(bgrid)
+                # Compute a implied by the bgrid
+                a[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid #b[:, is, ie]
+            end
+        end
+
+        # W is ell_star
+        dist = maximum(abs.(c_pol - c_poli))
+        @show dist
+        # NEED TO DEEPCOPY HERE OTHERWISE BREAKS
+        c_pol = deepcopy(c_poli)
+        counter += 1
+
+        if counter == maxit
+            @warn "Euler iteration did not converge"
+           #= reject = true
+            return vec(c), bp, Wout, zeros(n,n), reject =#
+        end
+    end
+
+    # Interpolate the (a, s, e) grid back to the (a, s) grid
+    c_othergrid = Matrix{Float64}(undef, nx, ns)
+    for is in ns
+        c_othergrid[:, is]  = LinearInterpolation(sort(vec(a[:, is, :])), sort(vec(c_pol[:, is, :])),
+                                                  extrapolation_bc = Line())(xgrid)
+    end
+    bp = R*(exp(-γ))*(repeat(xgrid, ns) - vec(c_othergrid))
+
+    # Finding the ergodic distribution
+    # Assign weights to adjacent grid points proportionally to distance [~, ib_pol] = histc(b_pol, b_grid);
+    #=  wei = (b_pol - b_grid(ib_pol)) ./ (b_grid(ib_pol+1) -
+    b_grid(ib_pol));
+    % Iterate asset transition matrix starting from uniform distribution
+    dif = 1;
+    pd  = ones(S,I) / (S*I);
+    while dif > tol_dist
+    pdi = zeros(S, I);
+    for s = 1:S
+    for i = 1:I
+    for si = 1:S
+    pdi(si, ib_pol(s, i))
+    = (1 - wei(s, i)) * Pr(s, si) *
+    pd(s, i) + pdi(si, ib_pol(s, i));
+    pdi(si, ib_pol(s, i) + 1) = wei(s, i)
+    pd(s, i) + pdi(si, ib_pol(s, i) + 1); end
+    end end
+    % check convergence
+    dif = max(max(abs(pdi - pd)));
+    % make sure that distribution integrates to 1
+    pd = pdi / sum(sum(pdi));
+    end=#
+
+    tr = kolmogorov_fwd_hetdsgegovdebt(nx, ns, ω, H, T, R, γ, qfunction, xgrid, sgrid, bp, f)
+    Wout = 1 ./ c
+    return vec(c_othergrid), bp, Wout, tr, reject
+end
+
+
+function policy_hetdsgegovdebt_122(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
+                               T::S, γ::S, zhi::S, zlo::S, xgrid::Vector{S},
+                               sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
+                               f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
+                               maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
+    n    = nx*ns
+ #   ell    = zeros(n)                  # ell
+    bp   = Vector{Float64}(undef, n) # savings
+ #   Wout = Vector{Float64}(undef, length(Win))
+    counter = 1
+    reject = false
+    qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, zhi, zlo) # g in the paper
+    ne = 3
+    egrid_gk= gauss(ne)
+    egrid = transform_ab(zlo, zhi, egrid_gk[1])
+    ewts = egrid_gk[2]
+
+    # Constrainted consumption
+    c0 = Matrix{Float64}(undef, ns, ne)
+    for is in 1:ns
+        for ie in 1:ne
+            c0[is, ie] = ω*sgrid[is]*egrid[ie]*H + T
+        end
+    end
+
+    # Initial consumption guess
+    # Mapping b to c
+    c_pol = (R-1)*repeat(xgrid, 1, ns) #, ne) #ones(ns, ne, nx)
+    #FIX: constrained people consume income (use c0)
+    c_poli = c_pol
+    dist = 1
+
+    l = Array{Float64}(undef, nx, ns) #, ne)
+    c = Array{Float64}(undef, nx, ns) #, ne)
+ #   b = Array{Float64}(undef, nx, ns) #, ne)
+
+    while dist>tol && counter<maxit
+        for is in 1:ns
+            #= for ie in 1:ne
+            for ia in 1:nx =#
+                    # Unconstrained
+                    # compute expected marginal utility today as a function of assets tomorrow b' and productivyt today
+                  #  if c_pol(is, ia) < xgrid[ia
+            # Sums
+            sum_term = zeros(nx)
+            ## Outer sum over s'
+            for isp in 1:ns
+                # a' = ω*s'*H        + T  + R*exp(-γ)*(a - c(a, s))
+                ap = ω*sgrid[isp]*H .+ T .+ R*exp(-γ)*(xgrid - c_pol[:, is])
+                # Keep only non-constrained
+               # non_c_inds = xgrid > c_pol[:, is]
+                #ap = [non_c_inds, :]
+
+                ## Inner integral over e'
+                for iep in 1:ne
+                    # a = a' + ω*s'*(e'-1)*H
+                    a = ap .+ ω*sgrid[isp]*(egrid[iep]-1)*H
+                    # Want c(a, s'). So, compute consumption for closest points to 'a' on agrid (interpolate back to grid)
+                    cp = LinearInterpolation(xgrid #=[non_c_inds]=#, c_pol[:, isp], extrapolation_bc = Line())(a) #this is wrong, should be a, c_pol, x_grid
+                    # Constrained
+                    #consumption today grid: convex combination c0(0, s) and c(
+                    #c_c = range(c0[is, ie], c_pol[1, is], length = 100)
+                    #a_c =
+                    #cp = [c_c[1:100-1]; c_pol]
+                    g_of_e = qfunction(egrid[iep])
+                    #          p(s'|s)   *iota(e') * g(e')   * c(a, s')^{-1}
+                    sum_term = f[is, isp]*ewts[iep]*g_of_e ./ cp
+                end
+            end
+            # ell(a, s) = β*R*exp(-γ)*Σ\Int
+            l[:, is] = β*R*exp(-γ)*sum_term
+            # compute consumption today c(b', s) = 1/l(a, s)
+            c_poli[:, is] = 1/l[:, is]
+            #c_poli[:, is] =    LinearInterpolation(ap, cp_pol)(xgrid)
+        end
+
+        # W is ell_star
+        dist = maximum(abs.(c_pol - c_poli))
+        c_pol = c_poli
+        #Win  = damp*Wout + (1.0-damp) * Win
+        counter += 1
+
+        bp = R*(exp(-γ))*(repeat(xgrid, ns) - vec(c_pol))
+
+        if counter == maxit
+            #@warn "Euler iteration did not converge"
+            reject = true
+            return vec(c), bp, Wout, zeros(n,n), reject
+        end
+    end
+    tr = kolmogorov_fwd_hetdsgegovdebt(nx, ns, ω, H, T, R, γ, qfunction, xgrid, sgrid, bp, f)
+    Wout = 1 ./ c
+    return vec(c), bp, Wout, tr, reject
+end
+
+
+function policy_hetdsgegovdebt_old(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
                                T::S, γ::S, zhi::S, zlo::S, xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
                                f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
@@ -335,20 +563,22 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     Wout = Vector{Float64}(undef, length(Win))
     counter = 1
     reject = false
-    qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, zhi, zlo)
+    qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, zhi, zlo) # g in the paper
 
     while dist>tol && counter<maxit
-        # compute c(w) given guess for Win = β*R*E[u'(c_{t+1})]
+        # compute c(w) given guess for Win = β*R*E[u'(c_{t+1})], Win is guess for marginal utility tomorrow
         for iss in 1:ns
             for ia in 1:nx
-                c[nx*(iss-1)+ia] = min(1/Win[nx*(iss-1)+ia],xgrid[ia]+η)
+                c[nx*(iss-1)+ia] = min(1/Win[nx*(iss-1)+ia],xgrid[ia]+η) # c = min{1/ell_t(a, s), a) (page 7 paper).
+                # consumption today is smaller of [inverse of marginal utility (unconstrained), cash on hand (constrained)]
             end
         end
 
-        bp = R*(exp(-γ))*(repeat(xgrid, ns) - c)  # compute bp(w) given guess for Win
+        bp = R*(exp(-γ))*(repeat(xgrid, ns) - c)  # compute bp(w) given guess for Win, bp = (1+r_t)*exp(-z_{t+1})(a-c_t(a, s)) (thisi s inside the g function in defintion of elolo on page 7 of paper
         Wout = parameterized_expectations_hetdsgegovdebt(nx, ns, β, R, ω, H, T, γ,
                                                          qfunction, xgrid,
                                                          sgrid, xswts, c, bp, f)
+        # W is ell_star
         dist = maximum(abs.(Wout - Win))
         Win  = damp*Wout + (1.0-damp) * Win
         counter += 1
@@ -369,16 +599,20 @@ end
                                                            c::Vector{S}, bp::Vector{S},
                                                            f::Matrix{S}) where {S<:AbstractFloat}
     l_out = zeros(nx*ns)
+    # Expectation at t (over s and a)
     for iss=1:ns
         for ia=1:nx
             sumn = 0.0
+            # Sum over s'
             for isp=1:ns
+                # Integral over a'
                 for iap=1:nx
                     sumn += (xswts[nx*(isp-1)+iap]/c[nx*(isp-1)+iap]) *
-                        qfunc((xgrid[iap] - bp[nx*(iss-1)+ia] - T) /
-                              (ω*H*sgrid[isp])) * f[iss,isp] ./ sgrid[isp]
+                        #g(a'             - (1+r)exp(-gamma)(a-c) -T / w_{t+1}*H_{t+1}*s' p(s' | s)   / s' (the w and H are done below)
+                        qfunc((xgrid[iap] - bp[nx*(iss-1)+ia] - T) / (ω*H*sgrid[isp])) * f[iss,isp] ./ sgrid[isp]
                 end
             end
+            # Stuff that pops ouit of integral/sum
             l_out[nx*(iss-1)+ia] = (β*R*(exp(-γ))/ω*H)*sumn
         end
     end
