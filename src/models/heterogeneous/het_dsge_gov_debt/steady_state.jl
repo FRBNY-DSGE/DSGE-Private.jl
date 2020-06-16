@@ -418,9 +418,9 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
         end
     end
 
-    # Interpolate the (a, s, e) grid back to the (a, s) grid
+    # Interpolate the (a, s, e) grid back to the (a, s) grid. Can do sort(vec(.)) because all of the grids are ordered in teh same ordwer (so a[1, is, ia] is ordered same as c_pol[1, is, ia])
     c_othergrid = Matrix{Float64}(undef, nx, ns)
-    for is in ns
+    for is in 1:ns
         c_othergrid[:, is]  = LinearInterpolation(sort(vec(a[:, is, :])), sort(vec(c_pol[:, is, :])),
                                                   extrapolation_bc = Line())(xgrid)
     end
