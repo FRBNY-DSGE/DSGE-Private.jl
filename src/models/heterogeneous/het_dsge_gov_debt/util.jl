@@ -28,6 +28,67 @@ end
 
 """
 ```
+function interp_one(xpts::T, ypts::T, x::T) where {T<:Vector{Float64}}
+```
+Mimics behavior of interp1 in MATLAB. Takes set {(x_i, y_i)}, linearly interpolates between each (x_i, y_i) and (x_{i+1}, y_{i+1}), and then returns vector y for interpolated points in x.
+"""
+function interp_one(xpts::T, ypts::T, x::T) where {T<:Vector{Float64}}
+    @assert length(xpts) == length(ypts)
+    intf = extrapolate(interpolate((xpts,), ypts, Gridded(Linear())), Line())
+    y = [intf(v) for v in x]
+    return y
+end
+
+"""
+```
+function histc(points, grid)
+```
+Mimics behavior of histc function in MATLAB.
+"""
+function histc(points, grid)
+    I, J = size(points)
+    N    = length(grid)
+
+    ib_pol = zeros(Int64, I, J)
+    for i=1:I, j=1:J
+        p = points[i,j]
+        global min, max = 1, N
+        global found = false
+
+        if p > grid[max]
+            found = true
+            ib_pol[i,j] = max
+        end
+
+        while !found
+            ind = Int(floor((min + max) / 2))
+            if p >= grid[ind]
+                if p < grid[ind+1]
+                    found = true
+                    ib_pol[i,j] = ind
+                elseif p == grid[ind+1]
+                    found = true
+                    ib_pol[i,j] = ind+1
+                else
+                    global min = ind
+                    if min == max - 1
+                        found = true
+                        ib_pol[i,j] = ind
+                    end
+                end
+            else
+                global max = ind
+            end
+        end
+    end
+    wei = (points - grid[ib_pol]) ./
+        (points[ib_pol.+1] - grid[ib_pol])
+
+    return ib_pol, wei
+end
+
+"""
+```
 generate_us_and_zs(ni, nz)
 ```
 
