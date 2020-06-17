@@ -367,7 +367,10 @@ end
                                                            qfunc::Function, xgrid::Vector{S},
                                                            sgrid::Vector{S}, xswts::Vector{S},
                                                            c::Vector{S}, bp::Vector{S},
-                                                           f::Matrix{S}) where {S<:AbstractFloat}
+                                                           f::Matrix{S}; interp::Bool=false,
+                                                           interp_size::Int=2*nx) where {S<:AbstractFloat}
+    interp_c =
+
     l_out = zeros(nx*ns)
     for iss=1:ns
         for ia=1:nx
@@ -436,10 +439,8 @@ function calibrate_pLH_pHL(m::HetDSGEGovDebt)
         steadystate!(m)
         if get_setting(m, :auto_reject)
             m <= Setting(:auto_reject, false)
-            @show pLHpHL, Inf
             return Inf
         end
-        @show pLHpHL, m[:mpc].value, m[:pc0].value
         println(0.5*((log(m[:mpc])-log(target_mpc))^2/σt_mpc +
                     (log(m[:pc0].value)-log(target_pc0))^2/σt_pc0^2))
         return 0.5*((log(m[:mpc])-log(target_mpc))^2/σt_mpc +
