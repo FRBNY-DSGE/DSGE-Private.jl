@@ -398,7 +398,12 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
                 b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
                 b = vcat(b_c[1:Ic-1], b)
                 c = vcat(c_c[1:Ic-1], c)
-                c_poli[:, is, ie] = LinearInterpolation(b, c, extrapolation_bc = Line())(bgrid) #just use 2 nearest points?
+                # OLD: (One line, OLS)
+                #c_poli[:, is, ie] = LinearInterpolation(b, c, extrapolation_bc = Line())(bgrid) #just use 2 nearest points?
+
+                # NEW: Nearest points, linear
+                c_poli[:, is, ie] = interp_one(b, c, b_grid)
+
                 # Compute a implied by the bgrid
                 a[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid #b[:, is, ie]
             end
@@ -422,8 +427,9 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     c_othergrid = Matrix{Float64}(undef, nx, ns)
     for is in 1:ns
         # Maybe sort the people according to the a's
-        c_othergrid[:, is]  = LinearInterpolation(sort(vec(a[:, is, :])), sort(vec(c_pol[:, is, :])),
-                                                  extrapolation_bc = Line())(xgrid)
+        #= c_othergrid[:, is]  = LinearInterpolation(sort(vec(a[:, is, :])), sort(vec(c_pol[:, is, :])),
+                                                  extrapolation_bc = Line())(xgrid) =#
+        c_othergrid[:, is] = interp_one(sort(vec(a[:, is, :])), sort(vec(c_pol[:, is, :])), xgrid)
     end
     bp = R*(exp(-γ))*(repeat(xgrid, ns) - vec(c_othergrid))
 
@@ -515,7 +521,9 @@ function policy_hetdsgegovdebt_122(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, �
                     # a = a' + ω*s'*(e'-1)*H
                     a = ap .+ ω*sgrid[isp]*(egrid[iep]-1)*H
                     # Want c(a, s'). So, compute consumption for closest points to 'a' on agrid (interpolate back to grid)
-                    cp = LinearInterpolation(xgrid #=[non_c_inds]=#, c_pol[:, isp], extrapolation_bc = Line())(a) #this is wrong, should be a, c_pol, x_grid
+                    #cp = LinearInterpolation(xgrid #=[non_c_inds]=#, c_pol[:, isp], extrapolation_bc = Line())(a)
+                    #this is wrong, should be a, c_pol, x_grid
+                    cp = interp_one(xgrid, c_pol[:, isp], a)
                     # Constrained
                     #consumption today grid: convex combination c0(0, s) and c(
                     #c_c = range(c0[is, ie], c_pol[1, is], length = 100)
