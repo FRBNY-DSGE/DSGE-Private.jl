@@ -338,7 +338,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     n    = nx*ns
     Ic = 25
  #   ell    = zeros(n)                  # ell
-    bp   = Vector{Float64}(undef, n) # savings
+    #bp   = Vector{Float64}(undef, n) # savings
  #   Wout = Vector{Float64}(undef, length(Win))
     counter = 1
     reject = false
@@ -353,19 +353,19 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     for is in 1:ns
         for ie in 1:ne
             # min of this (below) and e=1)
-            e = minimum([egrid[ie], 1.0])
+            e = minimum([egrid[ie], 1.0]) # if just say e=egrid[ie], will the code still work?
             c0[is, ie] = ω*sgrid[is]*e*H + T
         end
     end
 
     # Initial consumption guess
     # Mapping b to c
-    c_pol = (R-1)*repeat(xgrid, 1, ns, ne) .+ ω*H*repeat(sgrid', nx, 1, ne) #ones(ns, ne, nx)
+    c_pol = (R-1)*repeat(xgrid, 1, ns, ne) .+ ω*H*repeat(sgrid', nx, 1, ne) #*egrid? (need to rotate propertly)
     # NEED TO DEEPCOPY HERE OTHERWISE BREAKS
     c_poli = deepcopy(c_pol)
     dist = 1
 
-    bgrid = exp(γ)*xgrid
+    bgrid = exp(γ)*xgrid # Fix based on opposite of 403
 
     l = Array{Float64}(undef, nx, ns, ne)
     c = Array{Float64}(undef, nx, ns, ne)
@@ -398,7 +398,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
                 b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
                 b = vcat(b_c[1:Ic-1], b)
                 c = vcat(c_c[1:Ic-1], c)
-                c_poli[:, is, ie] = LinearInterpolation(b, c, extrapolation_bc = Line())(bgrid)
+                c_poli[:, is, ie] = LinearInterpolation(b, c, extrapolation_bc = Line())(bgrid) #just use 2 nearest points?
                 # Compute a implied by the bgrid
                 a[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid #b[:, is, ie]
             end
@@ -421,6 +421,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     # Interpolate the (a, s, e) grid back to the (a, s) grid. Can do sort(vec(.)) because all of the grids are ordered in teh same ordwer (so a[1, is, ia] is ordered same as c_pol[1, is, ia])
     c_othergrid = Matrix{Float64}(undef, nx, ns)
     for is in 1:ns
+        # Maybe sort the people according to the a's
         c_othergrid[:, is]  = LinearInterpolation(sort(vec(a[:, is, :])), sort(vec(c_pol[:, is, :])),
                                                   extrapolation_bc = Line())(xgrid)
     end
