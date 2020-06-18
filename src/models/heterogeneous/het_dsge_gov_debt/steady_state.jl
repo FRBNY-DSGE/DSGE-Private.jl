@@ -466,22 +466,26 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
         a_flat[:, is] = sort(vec(a[:, is, :]))
     end =#
 
-    ib_pol, wei = histc_2d(ap, a)
-    ib_pol[ib_pol .== 1500] .= 1499
+    ib_pol, wei = histc(ap, xgrid)
+
+    # I commented the below out bc it's not generic
+    # instead adjusted inside histc_2d
+    #ib_pol[ib_pol .== 1500] .= 1499
 
     #  wei = (b_pol - b_grid(ib_pol)) ./ (b_grid(ib_pol+1) - b_grid(ib_pol));
     # Iterate asset transition matrix starting from uniform distribution
     dif = 1
     pd  = fill(1.0/(ns*nx), nx, ns)
-    while dif > tol_dist
+@show pd
+    while dif > tol
         pdi = zeros(nx, ns)
-        for s = 1:ns
-            for i = 1:nx
-                for si = 1:ns
-                    for iep = 1:ne
-                        pdi[ib_pol[i, si, s, iep], si] = wei[i,s]       *fgrid[s, si]*pd[i, s] .+ pdi[ib_pol[i,si], si]
+        for i = 1:nx
+            for s = 1:ns
+                for iep = 1:ne
+                    for si = 1:ns
+                        pdi[ib_pol[i,s,iep,si], si] = wei[i,s,iep,si]*f[s,si] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si], si]
 
-                        pdi[ib_pol[i, si] + 1, si] = (1-wei[i,s])*fgrid[s, si]*pd[i, s] .+ pdi[ib_pol[i,si] + 1, si]
+                        pdi[ib_pol[i,s,iep,si] + 1, si] = (1-wei[i,s,iep,si])*f[s,si] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si] + 1, si]
                     end
                 end
             end
@@ -490,7 +494,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
         dif = maximum(abs.(pdi - pd))
         @show dif
         # make sure that distribution integrates to 1
-        pd = pdi / sum(pdi)
+        pd = deepcopy(pdi / sum(pdi))
     end
 
     tr = kolmogorov_fwd_hetdsgegovdebt(nx, ns, ω, H, T, R, γ, qfunction, xgrid, sgrid, bp, f)
