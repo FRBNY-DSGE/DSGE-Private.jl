@@ -327,7 +327,7 @@ end
 function transform_ab(a::Float64, b::Float64, grid::Vector{Float64})
         xs = ((b-a)/2) .* grid .+ (a+b)/2
         return xs
-    end
+end
 
 
 function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
@@ -337,9 +337,9 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
                                maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
     n    = nx*ns
     Ic = 25
- #   ell    = zeros(n)                  # ell
+    #   ell    = zeros(n)                  # ell
     #bp   = Vector{Float64}(undef, n) # savings
- #   Wout = Vector{Float64}(undef, length(Win))
+    #   Wout = Vector{Float64}(undef, length(Win))
     counter = 1
     reject = false
     qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, zhi, zlo) # g in the paper
@@ -376,12 +376,12 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     l = Array{Float64}(undef, nx, ns, ne)
     c = Array{Float64}(undef, nx, ns, ne)
     a = Array{Float64}(undef, nx, ns, ne)
- #   b = Array{Float64}(undef, nx, ns) #, ne)
+    #   b = Array{Float64}(undef, nx, ns) #, ne)
 
     while dist>tol && counter<maxit
         for is in 1:ns
             for ie in 1:ne
-                @show is, ie
+                #@show is, ie
                 # Keep only non-constrainet
                 non_c_inds = vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c_pol[:, is, ie])) .> 0.0
                 bp = bgrid[non_c_inds, :]
@@ -405,24 +405,22 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
                 b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
                 b = vcat(b_c[1:Ic-1], b)
                 c = vcat(c_c[1:Ic-1], c)
-                # OLD: (One line, OLS)
-                #c_poli[:, is, ie] = LinearInterpolation(b, c, extrapolation_bc = Line())(bgrid) #just use 2 nearest points?
 
-                # NEW: Nearest points, linear
+                # Nearest points, linear interpolation
                 c_poli[:, is, ie] = interp_one(b, c, bgrid)
             end
         end
 
         # W is ell_star
-        global dist = maximum(abs.(c_pol - c_poli))
-        @show dist
-        # NEED TO DEEPCOPY HERE OTHERWISE BREAKS
-        global c_pol = deepcopy(c_poli)
-        global counter += 1
+        dist = maximum(abs.(c_pol - c_poli))
+
+        # Must deep copy, or else counter malfunctions
+        c_pol = deepcopy(c_poli)
+        counter += 1
 
         if counter == maxit
             @warn "Euler iteration did not converge"
-           #= reject = true
+            #= reject = true
             return vec(c), bp, Wout, zeros(n,n), reject =#
         end
     end
@@ -432,7 +430,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
             # Compute a implied by the bgrid
             a[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid #b[:, is, ie]
             # Compute a' given by c_pol
-         #   ap[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ R*exp(-γ)*(a[:, is, ie] - c_pol[:, is, ie]) #a' IS COMPUTED USING C_OTHERGRID
+            #   ap[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ R*exp(-γ)*(a[:, is, ie] - c_pol[:, is, ie]) #a' IS COMPUTED USING C_OTHERGRID
         end
     end
 
@@ -441,12 +439,12 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     for is in 1:ns
         # Maybe sort the people according to the a's
         #= c_othergrid[:, is]  = LinearInterpolation(sort(vec(a[:, is, :])), sort(vec(c_pol[:, is, :])),
-                                                  extrapolation_bc = Line())(xgrid) =#
+        extrapolation_bc = Line())(xgrid) =#
         # Sort the a's and use those for everything
         sorted_inds = sortperm(vec(a[:, is, :]))
-        c_othergrid[:, is] = interp_one(vec(a)[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], xgrid)
+        c_othergrid[:, is] = interp_one(vec(a[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], xgrid)
     end
-##fFINISH FIXING
+    ##FINISH FIXING
     ap = Array{Float64}(undef, nx, ns, ne, ns)
     for is in 1:ns
         for isp in 1:ns
@@ -455,7 +453,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
             end
         end
     end
-#sort(vec(ap))
+    #sort(vec(ap))
 
     bp = R*(exp(-γ))*(repeat(xgrid, ns) - vec(c_othergrid))
 
@@ -474,29 +472,32 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     #  wei = (b_pol - b_grid(ib_pol)) ./ (b_grid(ib_pol+1) - b_grid(ib_pol));
     # Iterate asset transition matrix starting from uniform distribution
     dif = 1
-    pd  = ones(nx,ns) / (ns*nx)
+    pd  = fill(1.0/(ns*nx), nx, ns)
     while dif > tol_dist
-        pdi = zeros(nx, ns);
+        pdi = zeros(nx, ns)
         for s = 1:ns
             for i = 1:nx
                 for si = 1:ns
                     for iep = 1:ne
-                    pdi[ib_pol[i, si, s, iep], si] = wei[i,s]       *fgrid[s, si]*pd[i, s] .+ pdi[ib_pol[i,si], si]
-                    pdi[ib_pol[i, si] + 1, si] = (1-wei[i,s])*fgrid[s, si]*pd[i, s] .+ pdi[ib_pol[i,si] + 1, si]
+                        pdi[ib_pol[i, si, s, iep], si] = wei[i,s]       *fgrid[s, si]*pd[i, s] .+ pdi[ib_pol[i,si], si]
+
+                        pdi[ib_pol[i, si] + 1, si] = (1-wei[i,s])*fgrid[s, si]*pd[i, s] .+ pdi[ib_pol[i,si] + 1, si]
+                    end
                 end
             end
         end
         # check convergence
-        global dif = maximum(abs.(pdi - pd))
+        dif = maximum(abs.(pdi - pd))
         @show dif
         # make sure that distribution integrates to 1
-        global pd = pdi / sum(pdi)
+        pd = pdi / sum(pdi)
     end
 
     tr = kolmogorov_fwd_hetdsgegovdebt(nx, ns, ω, H, T, R, γ, qfunction, xgrid, sgrid, bp, f)
     Wout = 1 ./ c
     return vec(c_othergrid), bp, Wout, tr, reject
 end
+
 
 
 function policy_hetdsgegovdebt_122(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
