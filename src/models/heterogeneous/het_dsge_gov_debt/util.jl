@@ -46,6 +46,92 @@ function histc(points, grid)
 Mimics behavior of histc function in MATLAB.
 """
 function histc(points, grid)
+    I, J, K = size(points)
+    N    = length(grid[:, :, 1])
+
+    ib_pol = zeros(Int64, I, J, K)
+    for i=1:I, j=1:J, k=1:K
+        @show i, j, k
+        p = points[i,j,k]
+        global min, max = 1, N
+        global found = false
+
+        if p > grid[max]
+            found = true
+            ib_pol[i,j,k] = max
+        end
+
+        while !found
+            ind = Int(floor((min + max) / 2))
+            if p >= grid[ind]
+                if p < grid[ind+1]
+                    found = true
+                    ib_pol[i,j,k] = ind
+                elseif p == grid[ind+1]
+                    found = true
+                    ib_pol[i,j,k] = ind+1
+                else
+                    global min = ind
+                    if min == max - 1
+                        found = true
+                        ib_pol[i,j,k] = ind
+                    end
+                end
+            else
+                global max = ind
+            end
+        end
+    end
+    wei = (points - grid[ib_pol]) ./
+        (points[ib_pol.+1] - grid[ib_pol])
+
+    return ib_pol, wei
+end
+
+
+function histc_2d(points, grid)
+    I, J = size(points)
+    N    = size(grid, 1)
+
+    ib_pol = zeros(Int64, I, J)
+    for i=1:I, j=1:J
+        p = points[i,j]
+        global min, max = 1, N
+        global found = false
+
+        if p > grid[max]
+            found = true
+            ib_pol[i,j] = max
+        end
+
+        while !found
+            ind = Int(floor((min + max) / 2))
+            if p >= grid[ind]
+                if p < grid[ind+1]
+                    found = true
+                    ib_pol[i,j] = ind
+                elseif p == grid[ind+1]
+                    found = true
+                    ib_pol[i,j] = ind+1
+                else
+                    global min = ind
+                    if min == max - 1
+                        found = true
+                        ib_pol[i,j] = ind
+                    end
+                end
+            else
+                global max = ind
+            end
+        end
+    end
+    wei = (points - grid[ib_pol]) ./
+        (points[ib_pol.+1] - grid[ib_pol])
+
+    return ib_pol, wei
+end
+
+function histc_2d_reca(points, grid)
     I, J = size(points)
     N    = length(grid)
 
