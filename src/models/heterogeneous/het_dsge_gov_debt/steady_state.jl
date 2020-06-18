@@ -476,16 +476,15 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     # Iterate asset transition matrix starting from uniform distribution
     dif = 1
     pd  = fill(1.0/(ns*nx), nx, ns)
-@show pd
     while dif > tol
         pdi = zeros(nx, ns)
         for i = 1:nx
             for s = 1:ns
                 for iep = 1:ne
                     for si = 1:ns
-                        pdi[ib_pol[i,s,iep,si], si] = wei[i,s,iep,si]*f[s,si] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si], si]
+                        pdi[ib_pol[i,s,iep,si], si] = (1-wei[i,s,iep,si])*f[s,si] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si], si]
 
-                        pdi[ib_pol[i,s,iep,si] + 1, si] = (1-wei[i,s,iep,si])*f[s,si] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si] + 1, si]
+                        pdi[ib_pol[i,s,iep,si] + 1, si] = wei[i,s,iep,si]*f[s,si] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si] + 1, si]
                     end
                 end
             end
