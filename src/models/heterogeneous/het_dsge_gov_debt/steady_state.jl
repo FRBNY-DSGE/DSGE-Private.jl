@@ -347,6 +347,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
     egrid_gk= gauss(ne)
     egrid = transform_ab(zlo, zhi, egrid_gk[1])
     ewts = egrid_gk[2]
+    ewts = ewts / dot(qfunction.(egrid), ewts)
 
     # Constrainted consumption
     c0 = Matrix{Float64}(undef, ns, ne)
@@ -360,33 +361,41 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
 
     # Initial consumption guess
     # Mapping b to c
-    zzz = Array{Float64}(undef, nx, ns, ne)
+  #=  zzz = Array{Float64}(undef, nx, ns, ne)
     for ia in 1:nx
         for is in 1:ns
             zzz[ia, is, :] = egrid
         end
-    end
-    c_pol = (R-1)*repeat(xgrid, 1, ns, ne) .+ ω*H*repeat(sgrid', nx, 1, ne) #.* zzz #*egrid? (need to rotate propertly)
+    end =#
+    c_pol = (R-1)*repeat(xgrid, 1, ns, ne) .+ ω*H*repeat(sgrid', nx, 1, ne) #.+ T  #*egrid? (need to rotate propertly)
     # NEED TO DEEPCOPY HERE OTHERWISE BREAKS
     c_poli = deepcopy(c_pol)
     dist = 1
 
-    bgrid = exp(γ)*xgrid # Fix based on opposite of 403
+  #  bgrid = exp(γ)*xgrid
+    #use GL grid, bmin = 0, bmax=10
+    bmin = 0.0
+    bmax = maximum(exp(γ)*xgrid)
+    bgrid = bmin .+ ((1:nx)/nx).^2 * (bmax - bmin)
 
     l = Array{Float64}(undef, nx, ns, ne)
     c = Array{Float64}(undef, nx, ns, ne)
     a = Array{Float64}(undef, nx, ns, ne)
     #   b = Array{Float64}(undef, nx, ns) #, ne)
 
+    f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
+
     while dist>tol && counter<maxit
         for is in 1:ns
             for ie in 1:ne
+                @show is, ie
                 #@show is, ie
                 # Keep only non-constrainet
                 non_c_inds = vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c_pol[:, is, ie])) .> 0.0
                 bp = bgrid[non_c_inds, :]
                 # Sums
                 sum_term = zeros(length(bp)) #nx)
+                aaa = 0.0
                 ## Outer sum over s'
                 for isp in 1:ns
                     ## Inner integral over e'
@@ -394,29 +403,36 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
                         g_of_e = qfunction(egrid[iep]) #save after deciding grid instead of recomputing
                         #          p(s'|s)   *iota(e') * g(e')   * c(a, s')^{-1}
                         sum_term = sum_term + f[is, isp]*ewts[iep]*g_of_e ./ c_pol[non_c_inds, isp, iep]
+                        aaa += f[is, isp]*ewts[iep]*g_of_e
                     end
                 end
+                @test isapprox(aaa, 1.0, atol = 0.1)
                 # ell(a, s) = β*R*exp(-γ)*Σ\Int
                 l = β*R*exp(-γ)*sum_term
                 # compute consumption today c(b', s) = 1/l(a, s)
                 c = 1 ./ l
                 b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie]))
-                c_c = collect(range(c0[is, ie], c[1], length = Ic))
-                b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
-                b = vcat(b_c[1:Ic-1], b)
-                c = vcat(c_c[1:Ic-1], c)
-
+                #=start_ind = findfirst(x -> x > c0[is, ie], c)
+                c = c[start_ind:end]
+                b = b[start_ind:end] =#
+                if b[1] > 0.
+                    @test c0[is, ie] < c[1]
+                    c_c = collect(range(c0[is, ie], c[1], length = Ic))
+                    b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
+                    b = vcat(b_c[1:Ic-1], b)
+                    c = vcat(c_c[1:Ic-1], c)
+                end
                 # Nearest points, linear interpolation
                 c_poli[:, is, ie] = interp_one(b, c, bgrid)
             end
         end
 
         # W is ell_star
-        dist = maximum(abs.(c_pol - c_poli))
+        global dist = maximum(abs.(c_pol - c_poli))
 
         # Must deep copy, or else counter malfunctions
-        c_pol = deepcopy(c_poli)
-        counter += 1
+        global c_pol = deepcopy(c_poli)
+        global counter += 1
 
         if counter == maxit
             @warn "Euler iteration did not converge"
@@ -466,7 +482,32 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
         a_flat[:, is] = sort(vec(a[:, is, :]))
     end =#
 
-    ib_pol, wei = histc(ap, xgrid)
+    agrid = DSGE.uniform_quadrature(minimum(ap), maximum(ap) + .1, nx, scale = maximum(ap)+ .1 - minimum(a))
+
+    ib_pol, wei = histc(ap, agrid[1])
+
+    # Check ib_pol and weights worked
+    for ia in 1:nx
+        for is in 1:ns
+            for ie in 1:ne
+                for isp in 1:ns
+                    # Make sure ap lies between the two nearest grid points on either side
+                    @test agrid[1][(ib_pol[ia, is, ie, isp])] <= ap[ia, is, ie, isp] <=
+                        agrid[1][(ib_pol[ia, is, ie, isp] + 1)]
+                    # If closer to left grid point, weight should be greater than 1-weight
+                    if abs(agrid[1][(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
+                        abs(ap[ia, is, ie, isp] - agrid[1][(ib_pol[ia, is, ie, isp] + 1)])
+                        @test wei[ia, is, ie, isp] > (1-wei[ia, is, ie, isp])
+                    # If closer to right grid point, weight should be less than 1-weight
+                    elseif abs(agrid[1][(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
+                        abs(ap[ia, is, ie, isp] - agrid[1][(ib_pol[ia, is, ie, isp] + 1)])
+                        @test wei[ia, is, ie, isp] < (1-wei[ia, is, ie, isp])
+                    end
+                end
+            end
+        end
+    end
+
 
     # I commented the below out bc it's not generic
     # instead adjusted inside histc_2d
@@ -480,20 +521,27 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S
         pdi = zeros(nx, ns)
         for i = 1:nx
             for s = 1:ns
+                sum = 0.0
                 for iep = 1:ne
                     for si = 1:ns
-                        pdi[ib_pol[i,s,iep,si], si] = (1-wei[i,s,iep,si])*f[s,si] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si], si]
-
-                        pdi[ib_pol[i,s,iep,si] + 1, si] = wei[i,s,iep,si]*f[s,si] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si] + 1, si]
+                        pdi[ib_pol[i,s,iep,si], si] =     wei[i,s,iep,si]       * f[s,si] * qfunction(egrid[iep]) * ewts[iep] *
+                            pd[i,s] .+ pdi[ib_pol[i,s,iep,si], si]
+                        pdi[ib_pol[i,s,iep,si] + 1, si] = (1-wei[i,s,iep,si]) * f[s,si] * qfunction(egrid[iep]) * ewts[iep] *
+                            pd[i,s] .+ pdi[ib_pol[i,s,iep,si] + 1, si]
+                        sum += wei[i,s,iep,si]       * f[s,si] * qfunction(egrid[iep]) * ewts[iep] +
+                               (1-wei[i,s,iep,si]) * f[s,si] * qfunction(egrid[iep]) * ewts[iep]
                     end
                 end
+                @test isapprox(sum, 1.0, atol = 0.01)
             end
         end
         # check convergence
-        dif = maximum(abs.(pdi - pd))
+        global dif = maximum(abs.(pdi - pd))
         @show dif
+        @show pd[1, 1], pdi[1, 1] #findall(abs.(pdi - pd) .== maximum(abs.(pdi - pd)))
         # make sure that distribution integrates to 1
-        pd = deepcopy(pdi / sum(pdi))
+        global pd = deepcopy(pdi / sum(pdi))
+        @show pd[1, 1]
     end
 
     tr = kolmogorov_fwd_hetdsgegovdebt(nx, ns, ω, H, T, R, γ, qfunction, xgrid, sgrid, bp, f)

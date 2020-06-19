@@ -55,8 +55,9 @@ function histc(points, grid)
         global found = false
 
         if p > grid[max_ind]
-            found = true
-            ib_pol[i] = max_ind
+            @error "Point not in grid"
+            #found = true
+            #ib_pol[i] = max_ind
         end
 
         while !found
@@ -80,10 +81,9 @@ function histc(points, grid)
             end
         end
     end
-    ib_pol[ib_pol .== length(grid)] .= length(grid)-1
-
-    wei = (points - grid[ib_pol]) ./
-        (grid[ib_pol.+1] - grid[ib_pol])
+ #   ib_pol[ib_pol .== length(grid)] .= length(grid)-1
+    wei = 1 .- ((points - grid[ib_pol]) ./
+        (grid[ib_pol.+1] - grid[ib_pol]))
 
     return ib_pol, wei
 end
