@@ -374,20 +374,27 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
         end
     end
 
-    # NEED TO DEEPCOPY HERE OTHERWISE BREAKS
     c_poli = deepcopy(c_pol)
     dist = 1
 
     bmin = 0.0
     bmax = maximum(exp(γ)*xgrid)
     bgrid = bmin .+ ((1:nx)/nx).^2 * (bmax - bmin)
+    # a grid implied by bgrid is: map b into a using equation at top of page 4
+    agrid = Array{Float64}(undef, nx, ns, ne)
+    for is in 1:ns
+        for ie in 1:ne
+            agrid[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid
+        end
+    end
+
 
     f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
 
     while dist>tol && counter<maxit
         for is in 1:ns
             for ie in 1:ne
-                # Keep only non-constrainet
+                # Keep only non-constrained
                 non_c_inds = vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .-
                                          T .+ c_pol[:, is, ie])) .> 0.0
                 bp = bgrid[non_c_inds, :]
@@ -420,15 +427,13 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
                     b = vcat(b_c[1:nx_c-1], b)
                     c = vcat(c_c[1:nx_c-1], c)
                 end
-                # Nearest points, linear interpolation (if everybody is constrained
+                # Nearest points, linear interpolation
                 c_poli[:, is, ie] = interp_one(b, c, bgrid)
             end
         end
 
-        # W is ell_star
         dist = maximum(abs.(c_pol - c_poli))
 
-        # Must deep copy, or else counter malfunctions
         c_pol = deepcopy(c_poli)
         counter += 1
 
@@ -440,23 +445,17 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
         end
     end
 
-    # Map b into a using equation at top of page 4
-    a = Array{Float64}(undef, nx, ns, ne)
-    for is in 1:ns
-        for ie in 1:ne
-            a[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid
-        end
-    end
 
-    # Interpolate the (a, s, e) grid back to the (a, s) griad.
+    # Interpolate the (a, s, e) grid back to the (a, s) grid.
     C_Final = Matrix{Float64}(undef, nx, ns)
     for is in 1:ns
         # Sort the a's and use those for everything
-        sorted_inds = sortperm(vec(a[:, is, :]))
-        C_Final[:, is] = interp_one(vec(a[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], xgrid)
+        sorted_inds = sortperm(vec(agrid[:, is, :]))
+        # agrid is the grid of a implied by bgrid, whereas xgrid is the grid of a that's paseed in
+        C_Final[:, is] = interp_one(vec(agrid[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], xgrid)
     end
 
-    # Compute a' implied by interpolated C_Final
+    # Compute a' implied by interpolated C_Final (back on the usual grid of a)
     ap = Array{Float64}(undef, nx, ns, ne, ns)
     for is in 1:ns
         for isp in 1:ns
@@ -465,17 +464,15 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
             end
         end
     end
-
-    agrid = DSGE.uniform_quadrature(minimum(ap), maximum(ap) + .1, nx, scale = maximum(ap)+ .1 - minimum(ap))[1]
-    b_implied_grid = Matrix{Float64}(undef, nx, ns)
+    ap_grid = DSGE.uniform_quadrature(minimum(ap), maximum(ap) + .1, nx, scale = maximum(ap)+ .1 - minimum(ap))[1]
+    b_grid_implied = Matrix{Float64}(undef, nx, ns)
     for is in 1:ns
-        # agrid[1] is the grid part of agrid (as opposed to agrid[2] which is weights)
-        b_implied_grid[:, is] = exp(γ)*(agrid .- ω*sgrid[is]*H .- T)
+        b_grid_implied[:, is] = exp(γ)*(ap_grid .- ω*sgrid[is]*H .- T)
     end
 
     # Finding the ergodic distribution
     # Assign weights to adjacent grid points paproportionally to distance
-    ib_pol, wei = histc(ap, agrid)
+    ib_pol, wei = histc(ap, ap_grid)
 
     # Check ib_pol and weights worked
     for ia in 1:nx
@@ -483,15 +480,15 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
             for ie in 1:ne
                 for isp in 1:ns
                     # Make sure ap lies between the two nearest grid points on either side
-                    @test agrid[(ib_pol[ia, is, ie, isp])] <= ap[ia, is, ie, isp] <=
-                        agrid[(ib_pol[ia, is, ie, isp] + 1)]
+                    @test ap_grid[(ib_pol[ia, is, ie, isp])] <= ap[ia, is, ie, isp] <=
+                        ap_grid[(ib_pol[ia, is, ie, isp] + 1)]
                     # If closer to left grid point, weight should be greater than 1-weight
-                    if abs(agrid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
-                        abs(ap[ia, is, ie, isp] - agrid[(ib_pol[ia, is, ie, isp] + 1)])
+                    if abs(ap_grid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
+                        abs(ap[ia, is, ie, isp] - ap_grid[(ib_pol[ia, is, ie, isp] + 1)])
                         @test wei[ia, is, ie, isp] > (1-wei[ia, is, ie, isp])
                     # If closer to right grid point, weight should be less than 1-weight
-                    elseif abs(agrid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
-                        abs(ap[ia, is, ie, isp] - agrid[(ib_pol[ia, is, ie, isp] + 1)])
+                    elseif abs(ap_grid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
+                        abs(ap[ia, is, ie, isp] - ap_grid[(ib_pol[ia, is, ie, isp] + 1)])
                         @test wei[ia, is, ie, isp] < (1-wei[ia, is, ie, isp])
                     end
                 end
@@ -530,7 +527,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
     end
 
     ell = 1 ./ C_Final
-    return vec(C_Final), c_pol, b_implied_grid, ell, pd, reject
+    return vec(C_Final), c_pol, b_grid_implied, ell, pd, reject
 end
 
 function policy_hetdsgegovdebt_old(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
