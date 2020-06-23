@@ -622,6 +622,9 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:nx2_jump,  300, "Cash on hand distribution grid points (hi)")
     m <= Setting(:nx,        300, "Cash on hand distribution grid points")
 
+    # e: ideosyncratic income shock grid setup
+    m <= Setting(:ne, 5, "e shock grid points")
+
     m <= Setting(:binsize, 4) # Setting binsize=1 gives us what we had before doing the binning reduction
     m <= Setting(:poor_man_reduc, true) #note that we're actually doing more than the "poor man reduction" now however this turns ont both poorman truncation and binning reduction
 
