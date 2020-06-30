@@ -61,7 +61,7 @@ function histc(points, grid)
             ib_pol[i] = max_ind - 1
         end
         if p < grid[min_ind]
-            points2 = grid[min_ind]
+            points_copy[i] = grid[min_ind]
             ib_pol[i] = min_ind
             found = true
         end

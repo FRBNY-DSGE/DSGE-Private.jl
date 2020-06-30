@@ -262,8 +262,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         end
 
         dist = maximum(abs.(c_pol - c_poli))
-
-      #  c_pol = damp*c_poli + (1-damp)* c_pol #deepcopy(c_poli)
+        c_pol = deepcopy(c_poli) #  c_pol = damp*c_poli + (1-damp)* c_pol
      #=   if β < .501
             p = plot(vcat(vec(c_pol[:, 1, :]), vec(c_pol[:, 2, :]))) #reshape(c_pol, size(c_pol, 1), size(c_pol, 2)*size(c_pol, 3)))
             savefig(p, "cpol.png")
@@ -278,6 +277,16 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     end
     @test all(agrid_big - c_pol .>= -1e16)
 
+    if β < .501
+        p = plot()
+        for is = 1:ns
+            for ie = 1:ne
+                plot!(p, bgrid, ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid - c_pol[:, is, ie], label = "is = $(is), ie = $(ie)")
+            end
+        end
+        savefig(p, "bgrid_vs_cpol.png")
+    end
+
     # Interpolate the (a, s, e) grid back to the (a, s) grid.
     C_Final = Matrix{Float64}(undef, na, ns)
     for is in 1:ns
@@ -291,7 +300,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 #        @show agrid[C_Final[:, is] .> agrid]
        # C_Final[C_final[:, i
     end
-  #=  if β < .75
+   if β < .501
         sorted_inds = sortperm(vec(agrid_big[:, 1, :]))
         p_l = plot(vec(agrid_big[:, 1, :])[sorted_inds], vec(c_pol[:, 1, :])[sorted_inds], label = "cpol", legend = :bottomright)
         sorted_inds = sortperm(vec(agrid_big[:, 2, :]))
@@ -301,8 +310,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         plot!(p_h, agrid, vec(C_Final[:, 2]), label = "C Final")
         savefig(p_l, "lowskill.png")
         savefig(p_h, "highskill.png")
-        aaa
-    end=#
+    end
 
 
     # Compute a' implied by interpolated C_Final (back on the usual grid of a)
@@ -329,20 +337,22 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 #    @show agrid
     ib_pol, wei = histc(ap, agrid)
 
-  #if β < .75
-   for is in 1:2
-       for isp = 1:2
-           p = plot(agrid, ap[:, isp, :, is], left_margin = 10mm, legend = :bottomright)
-           plot!(agrid, agrid[ib_pol[:, isp, :, is]], left_margin = 10mm, linestyle = :dash)
-           savefig(p, "ap_is=$(is)_isp=$(isp).png")
-       end
-   end
-   #end
-   p2 = plot(agrid, agrid - C_Final[:, 1])
-   plot!(p2, agrid, agrid - C_Final[:, 2])
-   savefig(p2, "agrid_minus_CFinal.png")
+  if β < .501
+      for is in 1:2
+          for isp = 1:2
+              p = plot(agrid, ap[:, isp, :, is], left_margin = 10mm, legend = :bottomright)
+              plot!(agrid, agrid[ib_pol[:, isp, :, is]], left_margin = 10mm, linestyle = :dash)
+              savefig(p, "ap_is=$(is)_isp=$(isp).png")
+          end
+      end
+      #end
+      p2 = plot(agrid, agrid - C_Final[:, 1], label = "low skill")
+      plot!(p2, agrid, agrid - C_Final[:, 2], label = "high skill")
+      savefig(p2, "agrid_minus_CFinal.png")
+      aaa
+  end
 
-aaa
+#aaa
     # Check ib_pol and weights worked
     for ia in 1:na
         for is in 1:ns
