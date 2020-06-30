@@ -11,6 +11,7 @@ module DSGE
     using DataStructures: SortedDict, insert!, ForwardOrdering
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample, Weights
+    using Plots.PlotMeasures
     using StatsFuns: chisqinvcdf
     using Statistics: std
 

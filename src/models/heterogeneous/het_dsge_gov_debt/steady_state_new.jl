@@ -18,13 +18,6 @@ function steadystate!(m::HetDSGEGovDebt;
 
         m[:sH_over_sL], m[:zlo], m[:zhi] = compute_income_process_parameters(m)
 
-        # Construct Markov transition matrix for skill
-        pLH = m[:pLH].value
-        pHL = m[:pHL].value
-        f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
-
-        sH_over_sL = m[:sH_over_sL].value
-
         # Parameters
         ω = m[:ωstar].value
         H = m[:H].value
@@ -34,6 +27,12 @@ function steadystate!(m::HetDSGEGovDebt;
         η  = m[:η].value
         bg = m[:bg].value
 
+        # Construct Markov transition matrix for skill
+        pLH = m[:pLH].value
+        pHL = m[:pHL].value
+        f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
+        sH_over_sL = m[:sH_over_sL].value
+
         # Construct sgrid
         ss_skill_distr = [pHL/(pLH+pHL); pLH/(pLH+pHL)]
         slo    = 1.0 / (ss_skill_distr'*[1;sH_over_sL])
@@ -42,17 +41,7 @@ function steadystate!(m::HetDSGEGovDebt;
         swts   = (sscale/ns)*ones(ns) # Quadrature weights
         m.grids[:sgrid] = Grid(sgrid, swts, sscale)
 
-        # Construct agrid
-        smin = minimum(sgrid)*m[:zlo].value                                   # lowest possible skill
-        alo = ω*smin*H - R*η*exp(-γ) + T + sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
-        ahi = max(alo*2, alo + 25.0)         # upper bound on cash on hand
-        ascale = (ahi-alo)                  # size of w grids
-        agrid = collect(range(alo,stop = ahi, length = na)) # Evenly spaced grid
-        awts  = (ascale/na)*ones(na)          # Quadrature weights, sum up to 12
-
-        m <= Setting(:alo, alo)
-        m <= Setting(:ahi, ahi)
-        m <= Setting(:ascale, ascale)
+        @test isapprox(mean(f^300*sgrid), 1.0, atol = 1e-3)
 
         # Construct egrid
         qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, m[:zhi].value, m[:zlo].value)
@@ -62,6 +51,20 @@ function steadystate!(m::HetDSGEGovDebt;
         ewts = ewts / dot(qfunction.(egrid), ewts)
         g_of_e = map(x -> DSGE.mollifier_hetdsgegovdebt(x, m[:zhi].value, m[:zlo].value), egrid)
         egrid = egrid ./ dot(g_of_e .* egrid, ewts)
+
+        # Construct agrid
+        smin = minimum(sgrid) #*m[:zlo].value                                   # lowest possible skill
+        alo = ω*smin*H - R*η*exp(-γ) + T #+ sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
+        ahi = max(alo*2, alo + 25.0)         # upper bound on cash on hand
+        @show ahi
+
+        ascale = (ahi-alo)                  # size of w grids
+        agrid = collect(range(alo,stop = ahi, length = na)) # Evenly spaced grid
+        awts  = (ascale/na)*ones(na)          # Quadrature weights, sum up to 12
+
+        m <= Setting(:alo, alo)
+        m <= Setting(:ahi, ahi)
+        m <= Setting(:ascale, ascale)
 
         # Once have updated grids, can call steady state and compute other two moments
         find_steadystate!(m, na, ns, ne,
@@ -196,7 +199,9 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     dist = 1
 
     bmin = 0.0
-    bmax = exp(γ)*(maximum(agrid))- ω*maximum(sgrid)*maximum(egrid)*H
+    bmax = exp(γ)*(maximum(agrid)- ω*maximum(sgrid)*maximum(egrid)*H)
+    @show bmax
+    @show ω*maximum(sgrid)*maximum(egrid)*H + T + exp(-γ)*bmax
     bgrid = bmin .+ ((1:na)/na).^2 * (bmax - bmin)
     # a grid implied by bgrid is: map b into a using equation at top of page 4
     agrid_big = Array{Float64}(undef, na, ns, ne)
@@ -210,8 +215,8 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         for is in 1:ns
             for ie in 1:ne
                 # Keep only non-constrained
-                non_c_inds = vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .-
-                                         T .+ c_pol[:, is, ie])) .> 0.0
+                non_c_inds = bgrid .> 0.0 #=vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .-
+                                         T .+ c_pol[:, is, ie])) .> 0.0 =#
                 bp = bgrid[non_c_inds, :]
 
                 # Sums
@@ -234,14 +239,23 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                 # Compute consumption today: c(b', s) = 1/l(a, s)
                 c = 1 ./ l
                 b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie]))
-
+                # For b <0 need to reset c such that b is at least 0
+                c[b .< 0.] = -(bp[b .< 0] ./ R) .+ ω*sgrid[is]*egrid[ie]*H .+ T
+                b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie]))
+                @test sum(b .< 0 )==0
                 if b[1] > 0. && c[1] > c_constrained[is, ie]
                     @test c_constrained[is, ie] < c[1]
                     c_c = collect(range(c_constrained[is, ie], c[1], length = na_c))
                     b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
+                    @test all(b_c .>= 0.0)
                     b = vcat(b_c[1:na_c-1], b)
                     c = vcat(c_c[1:na_c-1], c)
                 end
+#=                if β < .75
+                    p = plot(b, c)
+                    savefig(p, "c_is=$(is)_ie=$(ie).png")
+                end=#
+
                 # Nearest points, linear interpolation
                 c_poli[:, is, ie] = interp_one(b, c, bgrid)
             end
@@ -249,15 +263,20 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
         dist = maximum(abs.(c_pol - c_poli))
 
-        c_pol = deepcopy(c_poli)
+      #  c_pol = damp*c_poli + (1-damp)* c_pol #deepcopy(c_poli)
+     #=   if β < .501
+            p = plot(vcat(vec(c_pol[:, 1, :]), vec(c_pol[:, 2, :]))) #reshape(c_pol, size(c_pol, 1), size(c_pol, 2)*size(c_pol, 3)))
+            savefig(p, "cpol.png")
+        end =#
+
         counter += 1
-        @show counter
+     #   @show counter
         if counter == maxit
             @warn "Euler iteration did not converge"
             reject = true
         end
     end
-
+    @test all(agrid_big - c_pol .>= -1e16)
 
     # Interpolate the (a, s, e) grid back to the (a, s) grid.
     C_Final = Matrix{Float64}(undef, na, ns)
@@ -265,8 +284,26 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         # Sort the a's and use those for everything
         sorted_inds = sortperm(vec(agrid_big[:, is, :]))
         # agrid_big is the grid of a implied by bgrid, whereas xgrid is the grid of a that's paseed in
+        @show maximum(agrid_big), maximum(agrid)
         C_Final[:, is] = interp_one(vec(agrid_big[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
+        @test all(agrid .- C_Final[:, is] .>= -1e16)
+#        @show C_Final[C_Final[:, is] .> agrid, is]
+#        @show agrid[C_Final[:, is] .> agrid]
+       # C_Final[C_final[:, i
     end
+  #=  if β < .75
+        sorted_inds = sortperm(vec(agrid_big[:, 1, :]))
+        p_l = plot(vec(agrid_big[:, 1, :])[sorted_inds], vec(c_pol[:, 1, :])[sorted_inds], label = "cpol", legend = :bottomright)
+        sorted_inds = sortperm(vec(agrid_big[:, 2, :]))
+        p_h  = plot(vec(agrid_big[:, 2, :])[sorted_inds], vec(c_pol[:, 2, :])[sorted_inds], label = "cpol", legend = :bottomright)
+       # savefig(p, "cpol_agrid.png")
+        plot!(p_l, agrid, vec(C_Final[:, 1]), label = "C Final")
+        plot!(p_h, agrid, vec(C_Final[:, 2]), label = "C Final")
+        savefig(p_l, "lowskill.png")
+        savefig(p_h, "highskill.png")
+        aaa
+    end=#
+
 
     # Compute a' implied by interpolated C_Final (back on the usual grid of a)
     ap = Array{Float64}(undef, na, ns, ne, ns)
@@ -278,31 +315,55 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         end
     end
 
+
+
+
     b_grid_implied = Matrix{Float64}(undef, na, ns)
     for is in 1:ns
-        b_grid_implied[:, is] = exp(γ)*(agrid .- ω*sgrid[is]*H .- T)
+        b_grid_implied[:, is] = exp(γ)*agrid .- ω*sgrid[is]*H .- T
     end
 
     # Finding the ergodic distribution
     # Assign weights to adjacent grid points paproportionally to distance
+#    @show ap
+#    @show agrid
     ib_pol, wei = histc(ap, agrid)
 
+  #if β < .75
+   for is in 1:2
+       for isp = 1:2
+           p = plot(agrid, ap[:, isp, :, is], left_margin = 10mm, legend = :bottomright)
+           plot!(agrid, agrid[ib_pol[:, isp, :, is]], left_margin = 10mm, linestyle = :dash)
+           savefig(p, "ap_is=$(is)_isp=$(isp).png")
+       end
+   end
+   #end
+   p2 = plot(agrid, agrid - C_Final[:, 1])
+   plot!(p2, agrid, agrid - C_Final[:, 2])
+   savefig(p2, "agrid_minus_CFinal.png")
+
+aaa
     # Check ib_pol and weights worked
     for ia in 1:na
         for is in 1:ns
             for ie in 1:ne
                 for isp in 1:ns
                     # Make sure ap lies between the two nearest grid points on either side
-                    @test agrid[(ib_pol[ia, is, ie, isp])] <= ap[ia, is, ie, isp] <=
-                        agrid[(ib_pol[ia, is, ie, isp] + 1)]
-                    # If closer to left grid point, weight should be greater than 1-weight
-                    if abs(agrid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
-                        abs(ap[ia, is, ie, isp] - agrid[(ib_pol[ia, is, ie, isp] + 1)])
-                        @test wei[ia, is, ie, isp] > (1-wei[ia, is, ie, isp])
-                    # If closer to right grid point, weight should be less than 1-weight
-                    elseif abs(agrid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
-                        abs(ap[ia, is, ie, isp] - agrid[(ib_pol[ia, is, ie, isp] + 1)])
-                        @test wei[ia, is, ie, isp] < (1-wei[ia, is, ie, isp])
+                    if ap[ia, is, ie, isp] < minimum(agrid)
+                        @test ib_pol[ia, is, ie, isp] == 1
+                        @test wei[ia, is, ie, isp] == 1.0
+                    else
+                        @test agrid[(ib_pol[ia, is, ie, isp])] <= ap[ia, is, ie, isp] <=
+                            agrid[(ib_pol[ia, is, ie, isp] + 1)]
+                        # If closer to left grid point, weight should be greater than 1-weight
+                        if abs(agrid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
+                            abs(ap[ia, is, ie, isp] - agrid[(ib_pol[ia, is, ie, isp] + 1)])
+                            @test wei[ia, is, ie, isp] > (1-wei[ia, is, ie, isp])
+                            # If closer to right grid point, weight should be less than 1-weight
+                        elseif abs(agrid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
+                            abs(ap[ia, is, ie, isp] - agrid[(ib_pol[ia, is, ie, isp] + 1)])
+                            @test wei[ia, is, ie, isp] < (1-wei[ia, is, ie, isp])
+                        end
                     end
                 end
             end
@@ -371,6 +432,8 @@ end
     @show sum(KF)
     @show sum(xswts)
     @show minimum(bp), mean(bp), maximum(bp) =#
+    @show bp[KF .> 0.01], KF[KF .> 0.01]
+    @show sum(KF .* bp) - bg
     return sum(KF .* bp) - bg  #return sum(sum(KF, dims = 2) .* bp) - bg, vec(KF) #dot(vec(KF), bp) - bg
 end
 

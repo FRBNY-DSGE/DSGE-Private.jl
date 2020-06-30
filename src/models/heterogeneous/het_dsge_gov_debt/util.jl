@@ -48,16 +48,22 @@ Mimics behavior of histc function in MATLAB.
 function histc(points, grid)
     N      = size(grid, 1)
     ib_pol = zeros(Int64, size(points))
-
+    points_copy = deepcopy(points)
     for i in eachindex(points)
         p = points[i]
         global min_ind, max_ind = 1, N
         global found = false
 
         if p > grid[max_ind]
+            @show p, grid[min_ind], grid[max_ind]
             @error "Point not in grid"
-            #found = true
-            #ib_pol[i] = max_ind
+            found = true
+            ib_pol[i] = max_ind - 1
+        end
+        if p < grid[min_ind]
+            points2 = grid[min_ind]
+            ib_pol[i] = min_ind
+            found = true
         end
 
         while !found
@@ -82,7 +88,7 @@ function histc(points, grid)
         end
     end
  #   ib_pol[ib_pol .== length(grid)] .= length(grid)-1
-    wei = 1 .- ((points - grid[ib_pol]) ./
+    wei = 1 .- ((points_copy - grid[ib_pol]) ./
         (grid[ib_pol.+1] - grid[ib_pol]))
 
     return ib_pol, wei
