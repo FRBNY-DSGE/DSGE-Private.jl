@@ -183,6 +183,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                                g_of_e::Vector{Float64},
                                dist::S = 1., tol::S = 1e-10;
                                maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
+    colors = [:red, :blue, :green, :yellow, :purple]
     counter = 1
     reject = false
 
@@ -215,9 +216,9 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         for is in 1:ns
             for ie in 1:ne
                 # Keep only non-constrained
-                non_c_inds = bgrid .> 0.0 #=vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .-
-                                         T .+ c_pol[:, is, ie])) .> 0.0 =#
-                bp = bgrid[non_c_inds, :]
+               # non_c_inds = bgrid .> 0.0 #=vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .-
+#                                         T .+ c_pol[:, is, ie])) .> 0.0 =#
+                bp = bgrid #bgrid[non_c_inds, :]
 
                 # Sums
                 sum_term = zeros(length(bp))
@@ -227,7 +228,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                     ## Inner integral over e'
                     for iep in 1:ne
                         #                     p(s'|s)*iota(e')*g(e')      * c(a, s')^{-1}
-                        sum_term = sum_term + f[is, isp]*ewts[iep]*g_of_e[iep] ./ c_pol[non_c_inds, isp, iep]
+                        sum_term = sum_term + f[is, isp]*ewts[iep]*g_of_e[iep] ./ c_pol[:, isp, iep] #c_pol[non_c_inds, isp, iep]
                         verify_one += f[is, isp]*ewts[iep]*g_of_e[iep]
                     end
                 end
@@ -243,7 +244,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                 c[b .< 0.] = -(bp[b .< 0] ./ R) .+ ω*sgrid[is]*egrid[ie]*H .+ T
                 b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie]))
                 @test sum(b .< 0 )==0
-                if b[1] > 0. && c[1] > c_constrained[is, ie]
+                if b[1] > 0. # && c[1] > c_constrained[is, ie]
                     @test c_constrained[is, ie] < c[1]
                     c_c = collect(range(c_constrained[is, ie], c[1], length = na_c))
                     b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
@@ -251,10 +252,10 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                     b = vcat(b_c[1:na_c-1], b)
                     c = vcat(c_c[1:na_c-1], c)
                 end
-#=                if β < .75
+            #=    if β < .75
                     p = plot(b, c)
                     savefig(p, "c_is=$(is)_ie=$(ie).png")
-                end=#
+                end =#
 
                 # Nearest points, linear interpolation
                 c_poli[:, is, ie] = interp_one(b, c, bgrid)
@@ -277,14 +278,32 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     end
     @test all(agrid_big - c_pol .>= -1e16)
 
-    if β < .501
+    if β < 0.0
         p = plot()
         for is = 1:ns
             for ie = 1:ne
                 plot!(p, bgrid, ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid - c_pol[:, is, ie], label = "is = $(is), ie = $(ie)")
             end
         end
+        savefig(p, "bgrid_vs_expression.png")
+        p = plot()
+        for is = 1:ns
+            for ie = 1:ne
+                lab = (is == 1 ? "Low skill" : "High skill") * "ie = $(ie)"
+                plot!(p, bgrid, c_pol[:, is, ie], label = lab, linestyle = is==1 ? :solid : :dash, color = colors[ie])
+            end
+        end
         savefig(p, "bgrid_vs_cpol.png")
+
+        p = plot()
+        for is = 1:ns
+            for ie = 1:ne
+                lab = (is == 1 ? "Low skill" : "High skill") * "ie = $(ie)"
+                plot!(p, agrid_big[:, is, ie], c_pol[:, is, ie], label = lab, linestyle = is==1 ? :solid : :dash, color = colors[ie])
+            end
+        end
+        savefig(p, "agrid_big_vs_cpol.png")
+
     end
 
     # Interpolate the (a, s, e) grid back to the (a, s) grid.
@@ -296,11 +315,8 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         @show maximum(agrid_big), maximum(agrid)
         C_Final[:, is] = interp_one(vec(agrid_big[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
         @test all(agrid .- C_Final[:, is] .>= -1e16)
-#        @show C_Final[C_Final[:, is] .> agrid, is]
-#        @show agrid[C_Final[:, is] .> agrid]
-       # C_Final[C_final[:, i
     end
-   if β < .501
+  #=  if β < .75
         sorted_inds = sortperm(vec(agrid_big[:, 1, :]))
         p_l = plot(vec(agrid_big[:, 1, :])[sorted_inds], vec(c_pol[:, 1, :])[sorted_inds], label = "cpol", legend = :bottomright)
         sorted_inds = sortperm(vec(agrid_big[:, 2, :]))
@@ -310,7 +326,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         plot!(p_h, agrid, vec(C_Final[:, 2]), label = "C Final")
         savefig(p_l, "lowskill.png")
         savefig(p_h, "highskill.png")
-    end
+    end =#
 
 
     # Compute a' implied by interpolated C_Final (back on the usual grid of a)
@@ -337,11 +353,16 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 #    @show agrid
     ib_pol, wei = histc(ap, agrid)
 
-  if β < .501
+  if β < 0.0
       for is in 1:2
           for isp = 1:2
-              p = plot(agrid, ap[:, isp, :, is], left_margin = 10mm, legend = :bottomright)
-              plot!(agrid, agrid[ib_pol[:, isp, :, is]], left_margin = 10mm, linestyle = :dash)
+              p = plot()
+              for ie = 1:ne
+                  lab = "a' " * " ie = $(ie)"
+                  plot!(p, agrid, ap[:, isp, ie, is], left_margin = 10mm, label = lab, legend = :bottomright, color = colors[ie])
+                  lab = "agrid[ib_pol] " * " ie = $(ie)"
+                  plot!(agrid, agrid[ib_pol[:, isp, ie, is]], left_margin = 10mm, label = lab, linestyle = :dash, color = colors[ie])
+              end
               savefig(p, "ap_is=$(is)_isp=$(isp).png")
           end
       end
@@ -412,6 +433,14 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         pd = deepcopy(pdi) #pd = deepcopy(pdi / sum(pdi))
         counter += 1
     end
+
+    if β < 0.75
+        p = plot(agrid, pd[:, 1], label = "low skill")
+        plot!(p, agrid, pd[:, 2], label = "high skill")
+        savefig(p, "agrid_vs_D.png")
+        aaa
+    end
+
 
     ell = 1 ./ C_Final
     return vec(C_Final), c_pol, b_grid_implied, ell, pd, reject #C_Final is c(a,s) while c_pol is our c(a, s, e) guess
