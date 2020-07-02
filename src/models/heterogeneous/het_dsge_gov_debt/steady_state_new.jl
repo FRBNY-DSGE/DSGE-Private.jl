@@ -17,9 +17,9 @@ function steadystate!(m::HetDSGEGovDebt;
         ne = get_setting(m, :ne)
 
         m[:sH_over_sL], m[:zlo], m[:zhi] = compute_income_process_parameters(m)
-
+        m[:sH_over_sL] = 2.0
         # Parameters
-        ω = m[:ωstar].value
+        ω = 1.0 #m[:ωstar].value
         H = m[:H].value
         T = m[:Tstar].value
         γ = m[:γ].value
@@ -32,7 +32,7 @@ function steadystate!(m::HetDSGEGovDebt;
         pHL = m[:pHL].value
         f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
         sH_over_sL = m[:sH_over_sL].value
-
+        sH_over_sL = 2.0
         # Construct sgrid
         ss_skill_distr = [pHL/(pLH+pHL); pLH/(pLH+pHL)]
         slo    = 1.0 / (ss_skill_distr'*[1;sH_over_sL])
@@ -183,6 +183,8 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                                g_of_e::Vector{Float64},
                                dist::S = 1., tol::S = 1e-10;
                                maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
+
+    β = 0.99
     colors = [:red, :blue, :green, :yellow, :purple]
     counter = 1
     reject = false
@@ -278,7 +280,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     end
     @test all(agrid_big - c_pol .>= -1e16)
 
-    if β < 0.0
+    if β < 1.0
         p = plot()
         for is = 1:ns
             for ie = 1:ne
@@ -334,7 +336,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     for is in 1:ns
         for isp in 1:ns
             for iep in 1:ne
-                ap[:, isp, iep, is] = ω*sgrid[isp]*egrid[iep]*H .+ R*exp(-γ)*(agrid - C_Final[:, is])
+                ap[:, is, iep, isp] = ω*sgrid[isp]*egrid[iep]*H .+ R*exp(-γ)*(agrid - C_Final[:, is])
             end
         end
     end
@@ -353,7 +355,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 #    @show agrid
     ib_pol, wei = histc(ap, agrid)
 
-  if β < 0.0
+  if β < 1.0
       for is in 1:2
           for isp = 1:2
               p = plot()
@@ -370,7 +372,6 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
       p2 = plot(agrid, agrid - C_Final[:, 1], label = "low skill")
       plot!(p2, agrid, agrid - C_Final[:, 2], label = "high skill")
       savefig(p2, "agrid_minus_CFinal.png")
-      aaa
   end
 
 #aaa
@@ -431,10 +432,15 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         # Make sure that distribution integrates to 1
         @test isapprox(sum(pdi), 1.0, atol = 1e-6)
         pd = deepcopy(pdi) #pd = deepcopy(pdi / sum(pdi))
+
+      #=  p = plot(agrid, pd[:, 1], label = "low skill")
+        plot!(p, agrid, pd[:, 2], label = "high skill")
+        savefig(p, "agrid_vs_D_first.png")
+        aaa =#
         counter += 1
     end
 
-    if β < 0.75
+    if β < 1.0
         p = plot(agrid, pd[:, 1], label = "low skill")
         plot!(p, agrid, pd[:, 2], label = "high skill")
         savefig(p, "agrid_vs_D.png")
