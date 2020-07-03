@@ -1,0 +1,196 @@
+"""
+```
+eqcond(m::SmallLinear)
+```
+
+Expresses the equilibrium conditions in canonical form using Γ0, Γ1, C, Ψ, and Π matrices.
+Using the mappings of states/equations to integers defined in small_linear.jl, coefficients are
+specified in their proper positions.
+
+### Outputs
+
+* `Γ0` (`n_states` x `n_states`) holds coefficients of current time states.
+* `Γ1` (`n_states` x `n_states`) holds coefficients of lagged states.
+* `C`  (`n_states` x `1`) is a vector of constants
+* `Ψ`  (`n_states` x `n_shocks_exogenous`) holds coefficients of iid shocks.
+* `Π`  (`n_states` x `n_states_expectational`) holds coefficients of expectational states.
+"""
+function eqcond(m::SmallLinear)
+    endo = m.endogenous_states
+    exo  = m.exogenous_shocks
+    ex   = m.expected_shocks
+    eq   = m.equilibrium_conditions
+
+    Γ0 = zeros(n_states(m), n_states(m))
+    Γ1 = zeros(n_states(m), n_states(m))
+    C  = zeros(n_states(m))
+    Ψ  = zeros(n_states(m), n_shocks_exogenous(m))
+    Π  = zeros(n_states(m), n_shocks_expectational(m))
+
+    ### ENDOGENOUS STATES ###
+
+    ### 1. Home c_t (77)
+
+    Γ0[eq[:eq_c_t], endo[:c_t]]  = 1
+    Γ0[eq[:eq_c_t], endo[:r_n_t]]  = m[:σ]
+    Γ0[eq[:eq_c_t], endo[:Eπ_ct1]]  = -m[:σ]
+    Γ0[eq[:eq_c_t], endo[:Ec_t1]]  = -1
+
+    ### 2. Home w_t (78)
+
+    Γ0[eq[:eq_w_t], endo[:w_t]]  = 1
+    Γ0[eq[:eq_w_t], endo[:l_t]]  = -m[:𝛘]
+    Γ0[eq[:eq_w_t], endo[:c_t]]  = -1/m[:σ]
+
+    ### 3. Home c_dt (79)
+
+    Γ0[eq[:eq_c_dt], endo[:c_dt]]  = 1
+    Γ0[eq[:eq_c_dt], endo[:𝜏_t]]  = -m[:η]*m[:ω] 
+    Γ0[eq[:eq_c_dt], endo[:c_t]]  = -1
+
+    ### 4. Home m_ct (80)
+
+    Γ0[eq[:eq_m_ct], endo[:m_ct]]  = 1
+    Γ0[eq[:eq_m_ct], endo[:𝜏_t]]  = m[:η]*(1-m[:ω])
+    Γ0[eq[:eq_m_ct], endo[:c_t]]  = -1
+
+    ### 5. Home y_t_1 (81)
+
+    Γ0[eq[:eq_y_t_1], endo[:y_t]]  = 1
+    Γ0[eq[:eq_y_t_1], endo[:l_t]]  = -(1-m[:α])
+
+    ### 6. Home mc_t (82)
+
+    Γ0[eq[:eq_mc_t], endo[:mc_t]]  = 1
+    Γ0[eq[:eq_mc_t], endo[:w_t]]  = -1
+    Γ0[eq[:eq_mc_t], endo[:l_t]]  = -m[:α]
+
+    ### 7. Home π_t (83)
+
+    Γ0[eq[:eq_π_t], endo[:π_t]]  = 1
+    Γ0[eq[:eq_π_t], endo[:mc_t]]  = -(1-m[:β]*m[:ζ_p])*(1-m[:ζ_p])/m[:ζ_p]
+    Γ0[eq[:eq_π_t], endo[:𝜏_t]]  = -m[:ω]*(1-m[:β]*m[:ζ_p])*(1-m[:ζ_p])/m[:ζ_p]
+    Γ0[eq[:eq_π_t], endo[:Eπ_t1]]  = -m[:β]
+
+    ### 8. Home π_ct (84)
+
+    Γ0[eq[:eq_π_ct], endo[:π_ct]]  = 1
+    Γ0[eq[:eq_π_ct], endo[:π_t]]  = -1
+    Γ0[eq[:eq_π_ct], endo[:𝜏_t]]  = -m[:ω]
+    Γ1[eq[:eq_π_ct], endo[:𝜏_t]]  = -m[:ω]
+
+    ### 9. Home y_t_2 (85)
+
+    Γ0[eq[:eq_y_t_2], endo[:y_t]]  = 1
+    Γ0[eq[:eq_y_t_2], endo[:c_dt]]  = -(1-m[:ω])
+    Γ0[eq[:eq_y_t_2], endo[:m_ct_f]]  = -m[:ω]
+
+    ### 10. Home r_n_t (86)
+
+    Γ0[eq[:eq_r_n_t], endo[:r_n_t]]  = 1
+    Γ0[eq[:eq_r_n_t], endo[:π_t]]  = -(1-m[:γ_r])*m[:γ_π] 
+    Γ1[eq[:eq_r_n_t], endo[:r_n_t]]  = m[:γ_r]
+    Ψ[eq[:eq_r_n_t], exo[:r_sh]] = 1
+
+    ### 11. Common c_t (87)
+
+    Γ0[eq[:eq_c_t_s], endo[:c_t]]  = 1
+    Γ0[eq[:eq_c_t_s], endo[:c_star_t]]  = -1
+    Γ0[eq[:eq_c_t_s], endo[:𝜏_t]]  = -m[:σ]*(1-2*m[:ω])
+
+    ### 12. Foreign c_t (88)
+
+    Γ0[eq[:eq_c_t_f], endo[:c_t_f]]  = 1
+    Γ0[eq[:eq_c_t_f], endo[:r_n_t_f]]  = m[:σ]
+    Γ0[eq[:eq_c_t_f], endo[:Eπ_ct1_f]]  = -m[:σ]
+    Γ0[eq[:eq_c_t_f], endo[:Ec_t1_f]]  = -1
+
+    ### 13. Foreign w_t (89)
+
+    Γ0[eq[:eq_w_t_f], endo[:w_t_f]]  = 1
+    Γ0[eq[:eq_w_t_f], endo[:l_t_f]]  = -m[:𝛘]
+    Γ0[eq[:eq_w_t_f], endo[:c_t_f]]  = -1/m[:σ]
+
+    ### 14. Foreign c_dt (90)
+
+    Γ0[eq[:eq_c_dt_f], endo[:c_dt_f]]  = 1
+    Γ0[eq[:eq_c_dt_f], endo[:𝜏_t]]  = m[:η]*m[:ω]
+    Γ0[eq[:eq_c_dt_f], endo[:c_t_f]]  = -1
+
+    ### 15. Foreign m_ct (91)
+
+    Γ0[eq[:eq_m_ct_f], endo[:m_ct_f]]  = 1
+    Γ0[eq[:eq_m_ct_f], endo[:𝜏_t]]  = -m[:η]*(1-m[:ω])
+    Γ0[eq[:eq_m_ct_f], endo[:c_t_f]]  = -1
+
+    ### 16. Foreign y_t_1 (92)
+
+    Γ0[eq[:eq_y_t_1_f], endo[:y_t_f]]  = 1
+    Γ0[eq[:eq_y_t_1_f], endo[:l_t_f]]  = -(1-m[:α])
+
+    ### 17. Foreign mc_t (93)
+
+    Γ0[eq[:eq_mc_t_f], endo[:mc_t_f]]  = 1
+    Γ0[eq[:eq_mc_t_f], endo[:w_t_f]]  = -1
+    Γ0[eq[:eq_mc_t_f], endo[:l_t_f]]  = -m[:α]
+
+    ### 18. Foreign π_t (94)
+
+    Γ0[eq[:eq_π_t_f], endo[:π_t_f]]  = 1
+    Γ0[eq[:eq_π_t_f], endo[:mc_t_f]]  = -(1-m[:β]*m[:ζ_p])*(1-m[:ζ_p])/m[:ζ_p]
+    Γ0[eq[:eq_π_t_f], endo[:𝜏_t]]  = m[:ω]*(1-m[:β]*m[:ζ_p])*(1-m[:ζ_p])/m[:ζ_p]
+    Γ0[eq[:eq_π_t_f], endo[:Eπ_t1_f]]  = -m[:β]
+
+    ### 19. Foreign π_ct (95)
+
+    Γ0[eq[:eq_π_ct_f], endo[:π_ct_f]]  = 1
+    Γ0[eq[:eq_π_ct_f], endo[:π_t_f]]  = -1
+    Γ0[eq[:eq_π_ct_f], endo[:𝜏_t]]  = m[:ω]
+    Γ1[eq[:eq_π_ct_f], endo[:𝜏_t]]  = m[:ω]
+
+    ### 20. Foreign y_t_2 (96)
+
+    Γ0[eq[:eq_y_t_2_f], endo[:y_t_f]]  = 1
+    Γ0[eq[:eq_y_t_2_f], endo[:c_dt_f]]  = -(1-m[:ω])
+    Γ0[eq[:eq_y_t_2_f], endo[:m_ct]]  = -m[:ω]
+
+    ### 21. Foreign r_n_t (97)
+
+    Γ0[eq[:eq_r_n_t_f], endo[:r_n_t_f]]  = 1
+    Γ0[eq[:eq_r_n_t_f], endo[:π_t_f]]  = -(1-m[:γ_r])*m[:γ_π]
+    Γ1[eq[:eq_r_n_t_f], endo[:r_n_t_f]]  = m[:γ_r]
+    Ψ[eq[:eq_r_n_t_f], exo[:r_f_sh]] = 1
+
+    
+    #=
+    ### 4. Output lag
+    Γ0[eq[:eq_y_t1], endo[:y_t1]] = 1
+    Γ1[eq[:eq_y_t1], endo[:y_t]] = 1
+
+    ### 5. Government spending
+
+    Γ0[eq[:eq_g], endo[:g_t]] = 1
+    Γ1[eq[:eq_g], endo[:g_t]] = m[:ρ_g]
+    Ψ[eq[:eq_g], exo[:g_sh]] = 1
+
+    ### 6. Technology
+
+    Γ0[eq[:eq_z], endo[:z_t]] = 1
+    Γ1[eq[:eq_z], endo[:z_t]] = m[:ρ_z]
+    Ψ[eq[:eq_z], exo[:z_sh]] = 1
+
+    ### 7. Expected output
+
+    Γ0[eq[:eq_Ey], endo[:y_t]] = 1
+    Γ1[eq[:eq_Ey], endo[:Ey_t1]] = 1
+    Π[eq[:eq_Ey], ex[:Ey_sh]] = 1
+
+    ### 8. Expected inflation
+
+    Γ0[eq[:eq_Eπ], endo[:π_t]] = 1
+    Γ1[eq[:eq_Eπ], endo[:Eπ_t1]] = 1
+    Π[eq[:eq_Eπ], ex[:Eπ_sh]] = 1
+    =#
+
+    return Γ0, Γ1, C, Ψ, Π
+end
