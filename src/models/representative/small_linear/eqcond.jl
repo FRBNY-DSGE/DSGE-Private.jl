@@ -68,8 +68,8 @@ function eqcond(m::SmallLinear)
     ### 7. Home π_t (83)
 
     Γ0[eq[:eq_π_t], endo[:π_t]]  = 1
-    Γ0[eq[:eq_π_t], endo[:mc_t]]  = -(1-m[:β]*m[:ζ_p])*(1-m[:ζ_p])/m[:ζ_p]
-    Γ0[eq[:eq_π_t], endo[:𝜏_t]]  = -m[:ω]*(1-m[:β]*m[:ζ_p])*(1-m[:ζ_p])/m[:ζ_p]
+    Γ0[eq[:eq_π_t], endo[:mc_t]]  = -(1-m[:β]*m[:ξ_p])*(1-m[:ξ_p])/m[:ξ_p]
+    Γ0[eq[:eq_π_t], endo[:𝜏_t]]  = -m[:ω]*(1-m[:β]*m[:ξ_p])*(1-m[:ξ_p])/m[:ξ_p]
     Γ0[eq[:eq_π_t], endo[:Eπ_t1]]  = -m[:β]
 
     ### 8. Home π_ct (84)
@@ -95,7 +95,7 @@ function eqcond(m::SmallLinear)
     ### 11. Common c_t (87)
 
     Γ0[eq[:eq_c_t_s], endo[:c_t]]  = 1
-    Γ0[eq[:eq_c_t_s], endo[:c_star_t]]  = -1
+    Γ0[eq[:eq_c_t_s], endo[:c_t_f]]  = -1
     Γ0[eq[:eq_c_t_s], endo[:𝜏_t]]  = -m[:σ]*(1-2*m[:ω])
 
     ### 12. Foreign c_t (88)
@@ -137,8 +137,8 @@ function eqcond(m::SmallLinear)
     ### 18. Foreign π_t (94)
 
     Γ0[eq[:eq_π_t_f], endo[:π_t_f]]  = 1
-    Γ0[eq[:eq_π_t_f], endo[:mc_t_f]]  = -(1-m[:β]*m[:ζ_p])*(1-m[:ζ_p])/m[:ζ_p]
-    Γ0[eq[:eq_π_t_f], endo[:𝜏_t]]  = m[:ω]*(1-m[:β]*m[:ζ_p])*(1-m[:ζ_p])/m[:ζ_p]
+    Γ0[eq[:eq_π_t_f], endo[:mc_t_f]]  = -(1-m[:β]*m[:ξ_p])*(1-m[:ξ_p])/m[:ξ_p]
+    Γ0[eq[:eq_π_t_f], endo[:𝜏_t]]  = m[:ω]*(1-m[:β]*m[:ξ_p])*(1-m[:ξ_p])/m[:ξ_p]
     Γ0[eq[:eq_π_t_f], endo[:Eπ_t1_f]]  = -m[:β]
 
     ### 19. Foreign π_ct (95)
@@ -160,37 +160,6 @@ function eqcond(m::SmallLinear)
     Γ0[eq[:eq_r_n_t_f], endo[:π_t_f]]  = -(1-m[:γ_r])*m[:γ_π]
     Γ1[eq[:eq_r_n_t_f], endo[:r_n_t_f]]  = m[:γ_r]
     Ψ[eq[:eq_r_n_t_f], exo[:r_f_sh]] = 1
-
-    
-    #=
-    ### 4. Output lag
-    Γ0[eq[:eq_y_t1], endo[:y_t1]] = 1
-    Γ1[eq[:eq_y_t1], endo[:y_t]] = 1
-
-    ### 5. Government spending
-
-    Γ0[eq[:eq_g], endo[:g_t]] = 1
-    Γ1[eq[:eq_g], endo[:g_t]] = m[:ρ_g]
-    Ψ[eq[:eq_g], exo[:g_sh]] = 1
-
-    ### 6. Technology
-
-    Γ0[eq[:eq_z], endo[:z_t]] = 1
-    Γ1[eq[:eq_z], endo[:z_t]] = m[:ρ_z]
-    Ψ[eq[:eq_z], exo[:z_sh]] = 1
-
-    ### 7. Expected output
-
-    Γ0[eq[:eq_Ey], endo[:y_t]] = 1
-    Γ1[eq[:eq_Ey], endo[:Ey_t1]] = 1
-    Π[eq[:eq_Ey], ex[:Ey_sh]] = 1
-
-    ### 8. Expected inflation
-
-    Γ0[eq[:eq_Eπ], endo[:π_t]] = 1
-    Γ1[eq[:eq_Eπ], endo[:Eπ_t1]] = 1
-    Π[eq[:eq_Eπ], ex[:Eπ_sh]] = 1
-    =#
 
     return Γ0, Γ1, C, Ψ, Π
 end

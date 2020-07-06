@@ -50,7 +50,7 @@ equilibrium conditions.
 
 #### Model Specifications and Settings
 
-* `spec::String`: The model specification identifier, \"an_schorfheide\", cached
+* `spec::String`: The model specification identifier, \"small_linear\", cached
   here for filepath computation.
 
 * `subspec::String`: The model subspecification number, indicating that some
@@ -106,7 +106,7 @@ mutable struct SmallLinear{T} <: AbstractRepModel{T}
     pseudo_observable_mappings::OrderedDict{Symbol, PseudoObservable}
 end
 
-description(m::SmallLinear) = "Julia implementation of model defined in 'Bayesian Estimation of DSGE Models' by Sungbae An and Frank Schorfheide: SmallLinear, $(m.subspec)"
+description(m::SmallLinear) = "Julia implementation of linear model using AnSchorfheide model as template: SmallLinear, $(m.subspec)"
 
 """
 `init_model_indices!(m::SmallLinear)`
@@ -120,11 +120,11 @@ Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 function init_model_indices!(m::SmallLinear)
     # Endogenous states
     endogenous_states = collect([
-        :c_t, :r_n_t, :Eπ_ct1, :Ec_t1, :w_t, :l_t, :c_dt, :𝜏_t, :m_ct, y_t, mc_t, :π_t, :Eπ_t1, :π_ct, :c_star_t, :c_t_f, :r_n_t_f, :Eπ_ct1_f, :Ec_t1_f, :w_t_f, :l_t_f, :c_dt_f, :m_ct_f, y_t_f, mc_t_f, :π_t_f, :Eπ_t1_f, :π_ct_f])
+        :c_t, :r_n_t, :Eπ_ct1, :Ec_t1, :w_t, :l_t, :c_dt, :𝜏_t, :m_ct, :y_t, :mc_t, :π_t, :Eπ_t1, :π_ct, :c_t_f, :r_n_t_f, :Eπ_ct1_f, :Ec_t1_f, :w_t_f, :l_t_f, :c_dt_f, :m_ct_f, :y_t_f, :mc_t_f, :π_t_f, :Eπ_t1_f, :π_ct_f])
 
     # Exogenous shocks
     exogenous_shocks = collect([
-	:r_sh, r_f_sh])
+	:r_sh, :r_f_sh])
 
     # Expectations shocks
     # expected_shocks = collect([
@@ -207,7 +207,7 @@ end
 """
 ```
 init_parameters!(m::SmallLinear)
-```
+`
 
 Initializes the model's parameters, as well as empty values for the steady-state
 parameters (in preparation for `steadystate!(m)` being called to initialize
@@ -215,69 +215,34 @@ those).
 """
 function init_parameters!(m::SmallLinear)
     # Initialize parameters
-    m <= parameter(:τ, 1.9937, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(2., 0.5), fixed=false,
-                   description="τ: The inverse of the intemporal elasticity of substitution.",
-                   tex_label="\\tau")
+    m <= parameter(:σ, 1, fixed=true,
+                   description="σ: PLACEHOLDER.",
+                   tex_label="\\sigma")
 
-    m <= parameter(:κ, 0.7306, (1e-20, 1-1e-7), (1e-20, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
-                   description="κ: Composite parameter in New Keynesian Phillips Curve.",
-                   tex_label="\\kappa")
+    m <= parameter(:𝛘, 1, fixed=true,
+                   description="𝛘: PLACEHOLDER.",
+                   tex_label="\\chi")
 
-    m <= parameter(:ψ_1, 1.1434, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(1.5, 0.25), fixed=false,
-                   description="ψ_1: The weight on inflation in the monetary policy rule.",
-                   tex_label="\\psi_1")
-    m <= parameter(:ψ_2, 0.4536, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(0.5, 0.25), fixed=false,
-                   description="ψ_2: The weight on the output gap in the monetary policy rule.",
-                   tex_label="\\psi_2")
+    m <= parameter(:η, 1, fixed=true,
+                   description="η: PLACEHOLDER.",
+                   tex_label="\\eta")
 
-    m <= parameter(:rA, 0.0313, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(0.5, 0.5), fixed=false,
-                   description="rA: β (discount factor) = 1/(1+ rA/400).",
-                   tex_label="rA")
+    m <= parameter(:ω, 1, fixed=true,
+                   description="ω: PLACEHOLDER.",
+                   tex_label="\\omega")
 
-    m <= parameter(:π_star, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false,
-                   description="π_star: Target inflation rate.",
-                   tex_label="\\pi*")
+    m <= parameter(:α, 1, fixed=true,
+                   description="α: PLACEHOLDER.",
+                   tex_label="\\alpha")
 
-    m <= parameter(:γ_Q, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false,
+    m <= parameter(:β, 1, fixed=true,
+                   description="β: PLACEHOLDER.",
+                   tex_label="\\beta")
 
-                   description="γ_Q: Steady state growth rate of technology.",
-                   tex_label="\\gamma_Q")
+    m <= parameter(:ξ_p, 1, fixed=true,
+                   description="ξ_p: PLACEHOLDER.",
+                   tex_label="\\xi_p")
 
-    m <= parameter(:ρ_R, 0.3847, (1e-20, 1-1e-7), (1e-20, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
-                   description="ρ_R: AR(1) coefficient on interest rate.",
-                   tex_label="\\rho_R")
-
-    m <= parameter(:ρ_g, 0.3777, (1e-20, 1-1e-7), (1e-20, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
-                   description="ρ_g: AR(1) coefficient on g_t = 1/(1 - ζ_t), where ζ_t is government spending as a fraction of output.",
-                   tex_label="\\rho_g")
-
-    m <= parameter(:ρ_z, 0.9579, (1e-20, 1-1e-7), (1e-20, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
-                   description="ρ_z: AR(1) coefficient on shocks to the technology growth rate.",
-                   tex_label="\\rho_z")
-
-    m <= parameter(:σ_R, 0.4900, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
-                   description="σ_R: Standard deviation of shocks to the nominal interest rate.",
-                   tex_label="\\sigma_R")
-
-    m <= parameter(:σ_g, 1.4594, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, 1.), fixed=false,
-                   description="σ_g: Standard deviation of shocks to the government spending process.",
-                   tex_label="\\sigma_g")
-
-    m <= parameter(:σ_z, 0.9247, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, 0.5), fixed=false,
-                   description="σ_z: Standard deviation of shocks to the technology growth rate process.",
-                   tex_label="\\sigma_z")
-
-    m <= parameter(:e_y, 0.20*0.579923, fixed=true,
-                   description="e_y: Measurement error on GDP growth.",
-                   tex_label="e_y")
-
-    m <= parameter(:e_π, 0.20*1.470832, fixed=true,
-                   description="e_π: Measurement error on inflation.",
-                   tex_label="e_\\pi")
-
-    m <= parameter(:e_R, 0.20*2.237937, fixed=true,
-                   description="e_R: Measurement error on the interest rate.",
-                   tex_label="e_R")
 end
 
 """
