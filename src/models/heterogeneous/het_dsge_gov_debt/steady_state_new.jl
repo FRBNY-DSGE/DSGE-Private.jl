@@ -17,12 +17,11 @@ function steadystate!(m::HetDSGEGovDebt;
         ne = get_setting(m, :ne)
 
         m[:sH_over_sL], m[:zlo], m[:zhi] = compute_income_process_parameters(m)
-        m[:sH_over_sL] = 2.0
         # Parameters
-        ω = 1.0 #m[:ωstar].value
+        ω = m[:ωstar].value
         H = m[:H].value
         T = m[:Tstar].value
-        γ = m[:γ].value
+        γ = m[:γ].scaledvalue
         R  = 1 + m[:r].scaledvalue
         η  = m[:η].value
         bg = m[:bg].value
@@ -32,7 +31,6 @@ function steadystate!(m::HetDSGEGovDebt;
         pHL = m[:pHL].value
         f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
         sH_over_sL = m[:sH_over_sL].value
-        sH_over_sL = 2.0
         # Construct sgrid
         ss_skill_distr = [pHL/(pLH+pHL); pLH/(pLH+pHL)]
         slo    = 1.0 / (ss_skill_distr'*[1;sH_over_sL])
@@ -41,7 +39,7 @@ function steadystate!(m::HetDSGEGovDebt;
         swts   = (sscale/ns)*ones(ns) # Quadrature weights
         m.grids[:sgrid] = Grid(sgrid, swts, sscale)
 
-        @test isapprox(mean(f^300*sgrid), 1.0, atol = 1e-3)
+        @test isapprox(mean(f^1000*sgrid), 1.0, atol = 1e-3)
 
         # Construct egrid
         qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, m[:zhi].value, m[:zlo].value)
@@ -55,8 +53,7 @@ function steadystate!(m::HetDSGEGovDebt;
         # Construct agrid
         smin = minimum(sgrid) #*m[:zlo].value                                   # lowest possible skill
         alo = ω*smin*H - R*η*exp(-γ) + T #+ sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
-        ahi = max(alo*2, alo + 25.0)         # upper bound on cash on hand
-        @show ahi
+        ahi = max(alo*2, alo + 20.0)         # upper bound on cash on hand
 
         ascale = (ahi-alo)                  # size of w grids
         agrid = collect(range(alo,stop = ahi, length = na)) # Evenly spaced grid
@@ -76,8 +73,15 @@ function steadystate!(m::HetDSGEGovDebt;
                           excess = excess, tol = tol, maxit = maxit,
                           βband = βband)
 
+        @test sum(m[:μstar].value) ≈ 1.0
+        p = plot(agrid, m[:μstar].value[1:300], label = "low skill")
+        plot!(p, agrid, m[:μstar].value[301:600], label = "high skill")
+        savefig(p, "agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).png")
+
         m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
         m[:pc0] = frac_zero(m[:μstar].value, m[:cstar].value, agrid, kron(swts, awts), ns)
+
+
     end
 end
 
@@ -123,7 +127,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                        f, egrid, ewts, g_of_e, damp = get_setting(m, :policy_damp),
                                                        maxit = get_setting(m, :policy_maxit))
 
-        excess_lo = compute_excess(kron(sgrid, agrid), KF, bp, bg)
+        excess_lo = compute_excess(KF, bp, bg)
 
         if excess_lo < 0 && abs(excess_lo) > tol
             βlo = βlo_temp
@@ -132,7 +136,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                            f, egrid, ewts, g_of_e,
                                                            damp = get_setting(m, :policy_damp),
                                                            maxit = get_setting(m, :policy_maxit))
-            excess_hi = compute_excess(kron(sgrid, agrid), xswts, KF, bp, bg)
+            excess_hi = compute_excess(KF, bp, bg)
 
             if excess_hi > 0
                 βhi = βhi_temp
@@ -145,13 +149,13 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     # Go till If you don't have a β, guess 1
     while abs(excess) > tol && counter < maxit # clearing markets
         β = (βlo + βhi) / 2.0
-        @show counter, β
+#        @show counter, β
         c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:zhi].value, m[:zlo].value,
                                                        agrid, sgrid, c_pol_in, KF_in,
                                                        f, egrid, ewts, g_of_e,
                                                        damp = get_setting(m, :policy_damp),
                                                        maxit = get_setting(m, :policy_maxit))
-        excess = compute_excess(kron(sgrid, agrid), KF, bp, bg)
+        excess = compute_excess(KF, bp, bg)
 
         # bisection
         if excess > 0
@@ -163,6 +167,10 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
             break
         end
+    end
+    if counter == maxit
+        @warn "doesn't converge"
+        reject = true
     end
 
     # If policy function does not converge, we signal to likelihood that should reject
@@ -184,7 +192,6 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                                dist::S = 1., tol::S = 1e-10;
                                maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
 
-    β = 0.99
     colors = [:red, :blue, :green, :yellow, :purple]
     counter = 1
     reject = false
@@ -203,8 +210,6 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
     bmin = 0.0
     bmax = exp(γ)*(maximum(agrid)- ω*maximum(sgrid)*maximum(egrid)*H)
-    @show bmax
-    @show ω*maximum(sgrid)*maximum(egrid)*H + T + exp(-γ)*bmax
     bgrid = bmin .+ ((1:na)/na).^2 * (bmax - bmin)
     # a grid implied by bgrid is: map b into a using equation at top of page 4
     agrid_big = Array{Float64}(undef, na, ns, ne)
@@ -238,15 +243,14 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
                 # Compute ell(a, s) = β*R*exp(-γ)*Σ\Int
                 l = β*R*exp(-γ)*sum_term
-
                 # Compute consumption today: c(b', s) = 1/l(a, s)
                 c = 1 ./ l
                 b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie]))
                 # For b <0 need to reset c such that b is at least 0
-                c[b .< 0.] = -(bp[b .< 0] ./ R) .+ ω*sgrid[is]*egrid[ie]*H .+ T
-                b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie]))
-                @test sum(b .< 0 )==0
-                if b[1] > 0. # && c[1] > c_constrained[is, ie]
+              #=  c[b .< 0.] = -(bp[b .< 0] ./ R) .+ ω*sgrid[is]*egrid[ie]*H .+ T
+                b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie])) =#
+#                @test sum(b .< 0 )==0
+                 if b[1] > 0. #&& c[1] > c_constrained[is, ie]
                     @test c_constrained[is, ie] < c[1]
                     c_c = collect(range(c_constrained[is, ie], c[1], length = na_c))
                     b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
@@ -254,12 +258,15 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                     b = vcat(b_c[1:na_c-1], b)
                     c = vcat(c_c[1:na_c-1], c)
                 end
+
             #=    if β < .75
                     p = plot(b, c)
                     savefig(p, "c_is=$(is)_ie=$(ie).png")
                 end =#
 
                 # Nearest points, linear interpolation
+#                @show b
+
                 c_poli[:, is, ie] = interp_one(b, c, bgrid)
             end
         end
@@ -280,7 +287,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     end
     @test all(agrid_big - c_pol .>= -1e16)
 
-    if β < 1.0
+    if β < 0.0
         p = plot()
         for is = 1:ns
             for ie = 1:ne
@@ -314,7 +321,6 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         # Sort the a's and use those for everything
         sorted_inds = sortperm(vec(agrid_big[:, is, :]))
         # agrid_big is the grid of a implied by bgrid, whereas xgrid is the grid of a that's paseed in
-        @show maximum(agrid_big), maximum(agrid)
         C_Final[:, is] = interp_one(vec(agrid_big[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
         @test all(agrid .- C_Final[:, is] .>= -1e16)
     end
@@ -348,6 +354,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     for is in 1:ns
         b_grid_implied[:, is] = exp(γ)*agrid .- ω*sgrid[is]*H .- T
     end
+@show minimum(b_grid_implied)
 
     # Finding the ergodic distribution
     # Assign weights to adjacent grid points paproportionally to distance
@@ -355,7 +362,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 #    @show agrid
     ib_pol, wei = histc(ap, agrid)
 
-  if β < 1.0
+  if β < 0.0
       for is in 1:2
           for isp = 1:2
               p = plot()
@@ -376,7 +383,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
 #aaa
     # Check ib_pol and weights worked
-    for ia in 1:na
+   #= for ia in 1:na
         for is in 1:ns
             for ie in 1:ne
                 for isp in 1:ns
@@ -384,6 +391,10 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                     if ap[ia, is, ie, isp] < minimum(agrid)
                         @test ib_pol[ia, is, ie, isp] == 1
                         @test wei[ia, is, ie, isp] == 1.0
+                    elseif ap[ia, is, ie, isp] > maximum(agrid)
+                        @test ib_pol[ia, is, ie, isp] == length(agrid) - 1
+                        @test wei[ia, is, ie, isp] == 1.0
+
                     else
                         @test agrid[(ib_pol[ia, is, ie, isp])] <= ap[ia, is, ie, isp] <=
                             agrid[(ib_pol[ia, is, ie, isp] + 1)]
@@ -400,7 +411,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                 end
             end
         end
-    end
+    end =#
 
     # Iterate asset transition matrix starting from uniform distribution
     dif = 1
@@ -435,16 +446,23 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
       #=  p = plot(agrid, pd[:, 1], label = "low skill")
         plot!(p, agrid, pd[:, 2], label = "high skill")
-        savefig(p, "agrid_vs_D_first.png")
-        aaa =#
+        savefig(p, "agrid_vs_D_first.png") =#
+
         counter += 1
     end
 
-    if β < 1.0
+    if β < 0.0
         p = plot(agrid, pd[:, 1], label = "low skill")
-        plot!(p, agrid, pd[:, 2], label = "high skill")
+        plot!(p, agrid, pd[:, 2]*20, label = "high skill (x20)")
         savefig(p, "agrid_vs_D.png")
-        aaa
+      #  aaa
+    end
+
+    if β < 0.0
+        p = plot(bgrid, pd[:, 1], label = "low skill")
+        plot!(p, bgrid, pd[:, 2]*20, label = "high skill (x20)")
+        savefig(p, "bgrid_vs_D.png")
+      #  aaa
     end
 
 
@@ -453,7 +471,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 end
 
 
-@inline function compute_excess(xswts::Vector{S}, KF::Matrix{S}, bp::Matrix{S},
+@inline function compute_excess(KF::Matrix{S}, bp::Matrix{S},
                                 bg::S, print_warning::Bool = false,
                                 tol::S = 2e-1) where {S<:Float64}
   #=  LPMKF = xswts[1] * KF
@@ -477,8 +495,7 @@ end
     @show sum(KF)
     @show sum(xswts)
     @show minimum(bp), mean(bp), maximum(bp) =#
-    @show bp[KF .> 0.01], KF[KF .> 0.01]
-    @show sum(KF .* bp) - bg
+#    @show sum(KF .* bp) - bg
     return sum(KF .* bp) - bg  #return sum(sum(KF, dims = 2) .* bp) - bg, vec(KF) #dot(vec(KF), bp) - bg
 end
 

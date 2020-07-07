@@ -55,14 +55,14 @@ function histc(points, grid)
         global found = false
 
         if p > grid[max_ind]
-            @show p, grid[min_ind], grid[max_ind]
-            @error "Point not in grid"
+           # @warn "Point not in grid"
             found = true
             ib_pol[i] = max_ind - 1
+            points_copy[i] = grid[ib_pol[i]]
         end
         if p < grid[min_ind]
-            points_copy[i] = grid[min_ind]
             ib_pol[i] = min_ind
+            points_copy[i] = grid[ib_pol[i]]
             found = true
         end
 
