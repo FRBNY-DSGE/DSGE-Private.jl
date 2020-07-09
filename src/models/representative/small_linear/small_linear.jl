@@ -216,32 +216,58 @@ those).
 function init_parameters!(m::SmallLinear)
     # Initialize parameters
     m <= parameter(:σ, 1, fixed=true,
-                   description="σ: PLACEHOLDER.",
+                   description="σ: Inverse elasticity of substitution.",
                    tex_label="\\sigma")
 
-    m <= parameter(:𝛘, 1, fixed=true,
-                   description="𝛘: PLACEHOLDER.",
+    m <= parameter(:𝛘, 3.79, fixed=true,
+                   description="𝛘: Inverse labor supply elasticity.",
                    tex_label="\\chi")
 
-    m <= parameter(:η, 1, fixed=true,
-                   description="η: PLACEHOLDER.",
+    m <= parameter(:η, 1.5, fixed=true,
+                   description="η: Trade price elasticity.",
                    tex_label="\\eta")
 
-    m <= parameter(:ω, 1, fixed=true,
-                   description="ω: PLACEHOLDER.",
+    m <= parameter(:ω, 0.2, fixed=true,
+                   description="ω: Trade openness.",
                    tex_label="\\omega")
 
-    m <= parameter(:α, 1, fixed=true,
-                   description="α: PLACEHOLDER.",
+    m <= parameter(:α, 0.33, fixed=true,
+                   description="α: Output elasticity of capital.",
                    tex_label="\\alpha")
 
-    m <= parameter(:β, 1, fixed=true,
-                   description="β: PLACEHOLDER.",
+    m <= parameter(:β, 0.9975, fixed=true,
+                   description="β: Home consumer's discount rate.",
                    tex_label="\\beta")
 
-    m <= parameter(:ξ_p, 1, fixed=true,
-                   description="ξ_p: PLACEHOLDER.",
+    m <= parameter(:ξ_p, 0.84, fixed=true,
+                   description="ξ_p: Price stickiness.",
                    tex_label="\\xi_p")
+
+    m <= parameter(:γ_r, 0.82, fixed=true,
+                   description="γ_r: Taylor rule inertia coefficient.",
+                   tex_label="\\gamma_r")
+
+    m <= parameter(:γ_π, 1.5, fixed=true,
+                   description="γ_π: Response in Taylor rule to inflation.",
+                   tex_label="\\gamma_\\pi")
+
+    m <= parameter(:θ_p, 0.2, fixed=true,
+                   description="θ_p: Net price markup.",
+                   tex_label="\\theta_p")
+
+    # Exogenous process
+    m <= parameter(:ρ_m, 0.14, fixed=true,
+                   description="ρ_m: Monetary shock persistence AR(1) coefficient.",
+                   tex_label="\\rho_m")
+
+    m <= parameter(:σ_π, 0.01, fixed=true,
+                   description="σ_π: Monetary shock standard deviation.",
+                   tex_label="\\sigma_\\pi")
+
+    # Steady states
+    m <= SteadyStateParameter(:l_ss, NaN, description="Home steady state labor supply", tex_label="l_ss")
+    m <= SteadyStateParameter(:l_ss_f, NaN, description="Foreign steady state labor supply", tex_label="l_ss^*")
+
 
 end
 
