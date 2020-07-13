@@ -120,19 +120,18 @@ Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 function init_model_indices!(m::SmallLinear)
     # Endogenous states
     endogenous_states = collect([
-        :c_t, :r_n_t, :Eπ_ct1, :Ec_t1, :w_t, :l_t, :c_dt, :𝜏_t, :m_ct, :y_t, :mc_t, :π_t, :Eπ_t1, :π_ct, :c_t_f, :r_n_t_f, :Eπ_ct1_f, :Ec_t1_f, :w_t_f, :l_t_f, :c_dt_f, :m_ct_f, :y_t_f, :mc_t_f, :π_t_f, :Eπ_t1_f, :π_ct_f])
+        :c_t, :r_n_t, :Eπ_ct1, :Ec_t1, :w_t, :l_t, :c_dt, :𝜏_t, :m_ct, :y_t, :mc_t, :π_t, :Eπ_t1, :π_ct, :e_rt, :c_t_f, :r_n_t_f, :Eπ_ct1_f, :Ec_t1_f, :w_t_f, :l_t_f, :c_dt_f, :m_ct_f, :y_t_f, :mc_t_f, :π_t_f, :Eπ_t1_f, :π_ct_f, :e_f_rt])
 
     # Exogenous shocks
     exogenous_shocks = collect([
 	:r_sh, :r_f_sh])
 
     # Expectations shocks
-    # expected_shocks = collect([
-        :Ey_sh, :Eπ_sh])
+    expected_shocks = collect([])
 
     # Equilibrium conditions
     equilibrium_conditions = collect([
-        :eq_c_t, :eq_w_t, :eq_c_dt, :eq_m_ct, :eq_y_t_1, :eq_mc_t, :eq_π_t, :eq_π_ct, :eq_y_t_2, :eq_r_n_t, :eq_c_t_s, :eq_c_t_f, :eq_w_t_f, :eq_c_dt_f, :eq_m_ct_f, :eq_y_t_1_f, :eq_mc_t_f, :eq_π_t_f, :eq_π_ct_f, :eq_y_t_2_f, :eq_r_n_t_f])
+        :eq_c_t, :eq_w_t, :eq_c_dt, :eq_m_ct, :eq_y_t_1, :eq_mc_t, :eq_π_t, :eq_π_ct, :eq_y_t_2, :eq_r_n_t, :eq_e_rt, :eq_c_t_s, :eq_c_t_f, :eq_w_t_f, :eq_c_dt_f, :eq_m_ct_f, :eq_y_t_1_f, :eq_mc_t_f, :eq_π_t_f, :eq_π_ct_f, :eq_y_t_2_f, :eq_r_n_t_f, :eq_e_f_rt])
 
     # Additional states added after solving model
     # Lagged states and observables measurement error
@@ -185,7 +184,7 @@ function SmallLinear(subspec::String="ss0";
 
     # Set settings
     model_settings!(m)
-    default_test_settings!(m)
+    DSGE.default_test_settings!(m)
     for custom_setting in values(custom_settings)
         m <= custom_setting
     end
@@ -215,7 +214,7 @@ those).
 """
 function init_parameters!(m::SmallLinear)
     # Initialize parameters
-    m <= parameter(:σ, 1, fixed=true,
+    m <= parameter(:σ, 1.0, fixed=true,
                    description="σ: Inverse elasticity of substitution.",
                    tex_label="\\sigma")
 
@@ -260,13 +259,23 @@ function init_parameters!(m::SmallLinear)
                    description="ρ_m: Monetary shock persistence AR(1) coefficient.",
                    tex_label="\\rho_m")
 
-    m <= parameter(:σ_π, 0.01, fixed=true,
-                   description="σ_π: Monetary shock standard deviation.",
-                   tex_label="\\sigma_\\pi")
+    m <= parameter(:σ_m, 0.01, fixed=true,
+                   description="σ_m: Monetary shock standard deviation.",
+                   tex_label="\\sigma_m")
 
     # Steady states
     m <= SteadyStateParameter(:l_ss, NaN, description="Home steady state labor supply", tex_label="l_ss")
+    m <= SteadyStateParameter(:m_c, NaN, tex_label="m_c")
+    m <= SteadyStateParameter(:c_d, NaN, tex_label="c_d")
+    m <= SteadyStateParameter(:mc, NaN, tex_label="mc")
+    m <= SteadyStateParameter(:w, NaN, tex_label="w")
+    m <= SteadyStateParameter(:r_n, NaN, tex_label="r^n")
     m <= SteadyStateParameter(:l_ss_f, NaN, description="Foreign steady state labor supply", tex_label="l_ss^*")
+    m <= SteadyStateParameter(:m_c_f, NaN, tex_label="m_c^*")
+    m <= SteadyStateParameter(:c_d_f, NaN, tex_label="c_d^*")
+    m <= SteadyStateParameter(:mc_f, NaN, tex_label="mc^*")
+    m <= SteadyStateParameter(:w_f, NaN, tex_label="w^*")
+    m <= SteadyStateParameter(:r_n_f, NaN, tex_label="r^{n*}")
 
 
 end
@@ -280,11 +289,25 @@ Calculates the model's steady-state values. `steadystate!(m)` must be called whe
 the parameters of `m` are updated.
 """
 function steadystate!(m::SmallLinear)
+
+    m[:l_ss] = 0
+    m[:m_c] = log(m[:ω])
+    m[:c_d] = log(1-m[:ω])
+    m[:mc] = -log(1+m[:θ_p])
+    m[:w] = m[:mc]
+    m[:r_n] = -log(m[:β])
+    m[:l_ss_f] = 0
+    m[:m_c_f] = log(m[:ω])
+    m[:c_d_f] = log(1-m[:ω])
+    m[:mc_f] = -log(1+m[:θ_p])
+    m[:w_f] = m[:mc_f]
+    m[:r_n_f] = -log(m[:β])
+
     return m
 end
 
 function model_settings!(m::SmallLinear)
-    default_settings!(m)
+    DSGE.default_settings!(m)
 
     # Data
     m <= Setting(:data_id, 0, "Dataset identifier")
@@ -305,6 +328,7 @@ function model_settings!(m::SmallLinear)
 end
 
 function shock_groupings(m::SmallLinear)
+    #=
     gov = ShockGroup("g", [:g_sh], RGB(0.70, 0.13, 0.13)) # firebrick
     tfp = ShockGroup("z", [:z_sh], RGB(1.0, 0.55, 0.0)) # darkorange
     pol = ShockGroup("pol", vcat([:rm_sh], [Symbol("rm_shl$i") for i = 1:n_anticipated_shocks(m)]),
@@ -312,4 +336,10 @@ function shock_groupings(m::SmallLinear)
     det = ShockGroup("dt", [:dettrend], :gray40)
 
     return [gov, tfp, pol, det]
+    =#
+
+    mon_d = ShockGroup("mon_d", [:r_sh], RGB(0.70, 0.13, 0.13)) # firebrick
+    mon_f = ShockGroup("mon_f", [:r_f_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+    return [mon_d, mon_f]
+
 end
