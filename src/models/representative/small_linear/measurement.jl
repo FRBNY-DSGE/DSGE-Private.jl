@@ -36,6 +36,10 @@ function measurement(m::SmallLinear{T},
     EE = zeros(_n_states, _n_states)
     QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
 
+    # Variance of innovations
+    QQ[exo[:r_sh],exo[:r_sh]]   = (m[:σ_m])^2
+    QQ[exo[:r_f_sh],exo[:r_f_sh]]   = (m[:σ_m])^2
+
     rows, cols = size(ZZ)
     for r in 1:rows
         for c in 1:cols
@@ -45,6 +49,7 @@ function measurement(m::SmallLinear{T},
         end
     end
 
+    #=
     for i in 1:length(DD)
         DD[i] = 1
     end
@@ -57,15 +62,7 @@ function measurement(m::SmallLinear{T},
             end
         end
     end
-
-    rows, cols = size(QQ)
-    for r in 1:rows
-        for c in 1:cols
-            if r == c
-                QQ[r,c] = 1
-            end
-        end
-    end
+    =#
 
     #=
     ZZ = zeros(_n_observables, _n_states)
@@ -91,11 +88,6 @@ function measurement(m::SmallLinear{T},
     EE[obs[:obs_gdp], endo[:y_t]]         = m[:e_y]^2
     EE[obs[:obs_cpi], endo[:π_t]]         = m[:e_π]^2
     EE[obs[:obs_nominalrate], endo[:R_t]] = m[:e_R]^2
-
-    # Variance of innovations
-    QQ[exo[:z_sh],exo[:z_sh]]   = (m[:σ_z])^2
-    QQ[exo[:g_sh],exo[:g_sh]]   = (m[:σ_g])^2
-    QQ[exo[:rm_sh],exo[:rm_sh]] = (m[:σ_R])^2
     =#
 
     return Measurement(ZZ, DD, QQ, EE)
