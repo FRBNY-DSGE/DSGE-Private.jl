@@ -27,7 +27,8 @@ function pseudo_measurement(m::SmallLinear{T},
     ##########################################################
     ## PSEUDO-OBSERVABLE EQUATIONS
     ##########################################################
-
+    
+    #=
     ## Output
     ZZ_pseudo[pseudo[:y_t],endo[:y_t]] = 1.
 
@@ -46,6 +47,7 @@ function pseudo_measurement(m::SmallLinear{T},
     ZZ_pseudo[pseudo[:RealFFR], endo[:R_t]] = 1.
     ZZ_pseudo[pseudo[:RealFFR], endo[:π_t]] = -4.
     DD_pseudo[pseudo[:RealFFR]] = m[:π_star] + m[:rA] + 4.0*m[:γ_Q] - 4.0*(100. * (m[:π_star] - 1.))
+    =#
 
     return PseudoMeasurement(ZZ_pseudo, DD_pseudo)
 end

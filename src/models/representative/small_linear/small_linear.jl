@@ -127,11 +127,11 @@ function init_model_indices!(m::SmallLinear)
 	:r_sh, :r_f_sh])
 
     # Expectations shocks
-    expected_shocks = collect([])
+    expected_shocks = collect([:Eπ_ct_sh, :Ec_sh, :Eπ_t_sh, :Eπ_ct_f_sh, :Ec_f_sh, :Eπ_t_f_sh])
 
     # Equilibrium conditions
     equilibrium_conditions = collect([
-        :eq_c_t, :eq_w_t, :eq_c_dt, :eq_m_ct, :eq_y_t_1, :eq_mc_t, :eq_π_t, :eq_π_ct, :eq_y_t_2, :eq_r_n_t, :eq_e_rt, :eq_c_t_s, :eq_c_t_f, :eq_w_t_f, :eq_c_dt_f, :eq_m_ct_f, :eq_y_t_1_f, :eq_mc_t_f, :eq_π_t_f, :eq_π_ct_f, :eq_y_t_2_f, :eq_r_n_t_f, :eq_e_f_rt])
+        :eq_c_t, :eq_w_t, :eq_c_dt, :eq_m_ct, :eq_y_t_1, :eq_mc_t, :eq_π_t, :eq_π_ct, :eq_y_t_2, :eq_r_n_t, :eq_e_rt, :eq_Eπ_ct, :eq_Ec, :eq_Eπ_t, :eq_c_t_s, :eq_c_t_f, :eq_w_t_f, :eq_c_dt_f, :eq_m_ct_f, :eq_y_t_1_f, :eq_mc_t_f, :eq_π_t_f, :eq_π_ct_f, :eq_y_t_2_f, :eq_r_n_t_f, :eq_e_f_rt, :eq_Eπ_ct_f, :eq_Ec_f, :eq_Eπ_t_f])
 
     # Additional states added after solving model
     # Lagged states and observables measurement error

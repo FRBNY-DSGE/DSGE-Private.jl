@@ -98,81 +98,110 @@ function eqcond(m::SmallLinear)
     Γ1[eq[:eq_e_rt], endo[:e_rt]]  = m[:ρ_m]
     Ψ[eq[:eq_e_rt], exo[:r_sh]] = 1
 
-    ### 12. Common c_t (87)
+    ### 12. Expected Shock Eπ_ct
+    Γ0[eq[:eq_Eπ_ct], endo[:π_ct]]  = 1
+    Γ1[eq[:eq_Eπ_ct], endo[:Eπ_ct1]]  = 1
+    Π[eq[:eq_Eπ_ct], ex[:Eπ_ct_sh]] = 1
+
+    ### 13. Expected Shock Ec_t
+    Γ0[eq[:eq_Ec], endo[:c_t]]  = 1
+    Γ1[eq[:eq_Ec], endo[:Ec_t1]]  = 1
+    Π[eq[:eq_Ec], ex[:Ec_sh]] = 1
+
+    ### 14. Expected Shock Eπ_t
+    Γ0[eq[:eq_Eπ_t], endo[:π_t]]  = 1
+    Γ1[eq[:eq_Eπ_t], endo[:Eπ_t1]]  = 1
+    Π[eq[:eq_Eπ_t], ex[:Eπ_t_sh]] = 1
+
+    ### 15. Common c_t (87)
 
     Γ0[eq[:eq_c_t_s], endo[:c_t]]  = 1
     Γ0[eq[:eq_c_t_s], endo[:c_t_f]]  = -1
     Γ0[eq[:eq_c_t_s], endo[:𝜏_t]]  = -m[:σ]*(1-2*m[:ω])
 
-    ### 13. Foreign c_t (88)
+    ### 16. Foreign c_t (88)
 
     Γ0[eq[:eq_c_t_f], endo[:c_t_f]]  = 1
     Γ0[eq[:eq_c_t_f], endo[:r_n_t_f]]  = m[:σ]
     Γ0[eq[:eq_c_t_f], endo[:Eπ_ct1_f]]  = -m[:σ]
     Γ0[eq[:eq_c_t_f], endo[:Ec_t1_f]]  = -1
 
-    ### 14. Foreign w_t (89)
+    ### 17. Foreign w_t (89)
 
     Γ0[eq[:eq_w_t_f], endo[:w_t_f]]  = 1
     Γ0[eq[:eq_w_t_f], endo[:l_t_f]]  = -m[:𝛘]
     Γ0[eq[:eq_w_t_f], endo[:c_t_f]]  = -1/m[:σ]
 
-    ### 15. Foreign c_dt (90)
+    ### 18. Foreign c_dt (90)
 
     Γ0[eq[:eq_c_dt_f], endo[:c_dt_f]]  = 1
     Γ0[eq[:eq_c_dt_f], endo[:𝜏_t]]  = m[:η]*m[:ω]
     Γ0[eq[:eq_c_dt_f], endo[:c_t_f]]  = -1
 
-    ### 16. Foreign m_ct (91)
+    ### 19. Foreign m_ct (91)
 
     Γ0[eq[:eq_m_ct_f], endo[:m_ct_f]]  = 1
     Γ0[eq[:eq_m_ct_f], endo[:𝜏_t]]  = -m[:η]*(1-m[:ω])
     Γ0[eq[:eq_m_ct_f], endo[:c_t_f]]  = -1
 
-    ### 17. Foreign y_t_1 (92)
+    ### 20. Foreign y_t_1 (92)
 
     Γ0[eq[:eq_y_t_1_f], endo[:y_t_f]]  = 1
     Γ0[eq[:eq_y_t_1_f], endo[:l_t_f]]  = -(1-m[:α])
 
-    ### 18. Foreign mc_t (93)
+    ### 21. Foreign mc_t (93)
 
     Γ0[eq[:eq_mc_t_f], endo[:mc_t_f]]  = 1
     Γ0[eq[:eq_mc_t_f], endo[:w_t_f]]  = -1
     Γ0[eq[:eq_mc_t_f], endo[:l_t_f]]  = -m[:α]
 
-    ### 19. Foreign π_t (94)
+    ### 22. Foreign π_t (94)
 
     Γ0[eq[:eq_π_t_f], endo[:π_t_f]]  = 1
     Γ0[eq[:eq_π_t_f], endo[:mc_t_f]]  = -(1-m[:β]*m[:ξ_p])*(1-m[:ξ_p])/m[:ξ_p]
     Γ0[eq[:eq_π_t_f], endo[:𝜏_t]]  = m[:ω]*(1-m[:β]*m[:ξ_p])*(1-m[:ξ_p])/m[:ξ_p]
     Γ0[eq[:eq_π_t_f], endo[:Eπ_t1_f]]  = -m[:β]
 
-    ### 20. Foreign π_ct (95)
+    ### 23. Foreign π_ct (95)
 
     Γ0[eq[:eq_π_ct_f], endo[:π_ct_f]]  = 1
     Γ0[eq[:eq_π_ct_f], endo[:π_t_f]]  = -1
     Γ0[eq[:eq_π_ct_f], endo[:𝜏_t]]  = m[:ω]
     Γ1[eq[:eq_π_ct_f], endo[:𝜏_t]]  = m[:ω]
 
-    ### 21. Foreign y_t_2 (96)
+    ### 24. Foreign y_t_2 (96)
 
     Γ0[eq[:eq_y_t_2_f], endo[:y_t_f]]  = 1
     Γ0[eq[:eq_y_t_2_f], endo[:c_dt_f]]  = -(1-m[:ω])
     Γ0[eq[:eq_y_t_2_f], endo[:m_ct]]  = -m[:ω]
 
-    ### 22. Foreign r_n_t (97)
+    ### 25. Foreign r_n_t (97)
 
     Γ0[eq[:eq_r_n_t_f], endo[:r_n_t_f]]  = 1
     Γ0[eq[:eq_r_n_t_f], endo[:π_t_f]]  = -(1-m[:γ_r])*m[:γ_π]
     Γ0[eq[:eq_r_n_t_f], endo[:e_f_rt]] = -1
     Γ1[eq[:eq_r_n_t_f], endo[:r_n_t_f]]  = m[:γ_r]
 
-
-    ### 23. Foreign Monetary Shock
+    ### 26. Foreign Monetary Shock
 
     Γ0[eq[:eq_e_f_rt], endo[:e_f_rt]] = 1
     Γ1[eq[:eq_e_f_rt], endo[:e_f_rt]] = m[:ρ_m]
     Ψ[eq[:eq_e_f_rt], exo[:r_f_sh]] = 1
+
+    ### 27. Foreign Expected Shock Eπ_ct
+    Γ0[eq[:eq_Eπ_ct_f], endo[:π_ct_f]]  = 1
+    Γ1[eq[:eq_Eπ_ct_f], endo[:Eπ_ct1_f]]  = 1
+    Π[eq[:eq_Eπ_ct_f], ex[:Eπ_ct_f_sh]] = 1
+
+    ### 28. Foreign Expected Shock Ec_t
+    Γ0[eq[:eq_Ec_f], endo[:c_t_f]]  = 1
+    Γ1[eq[:eq_Ec_f], endo[:Ec_t1_f]]  = 1
+    Π[eq[:eq_Ec_f], ex[:Ec_f_sh]] = 1
+
+    ### 29. Foreign Expected Shock Eπ_t
+    Γ0[eq[:eq_Eπ_t_f], endo[:π_t_f]]  = 1
+    Γ1[eq[:eq_Eπ_t_f], endo[:Eπ_t1_f]]  = 1
+    Π[eq[:eq_Eπ_t_f], ex[:Eπ_t_f_sh]] = 1
 
     return Γ0, Γ1, C, Ψ, Π
 end

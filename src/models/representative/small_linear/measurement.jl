@@ -31,6 +31,43 @@ function measurement(m::SmallLinear{T},
     _n_states = n_states_augmented(m)
     _n_shocks_exogenous = n_shocks_exogenous(m)
 
+    ZZ = zeros(_n_states, _n_states)
+    DD = zeros(_n_states)
+    EE = zeros(_n_states, _n_states)
+    QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
+
+    rows, cols = size(ZZ)
+    for r in 1:rows
+        for c in 1:cols
+            if r == c
+                ZZ[r,c] = 1
+            end
+        end
+    end
+
+    for i in 1:length(DD)
+        DD[i] = 1
+    end
+
+    rows, cols = size(EE)
+    for r in 1:rows
+        for c in 1:cols
+            if r == c
+                EE[r,c] = 1
+            end
+        end
+    end
+
+    rows, cols = size(QQ)
+    for r in 1:rows
+        for c in 1:cols
+            if r == c
+                QQ[r,c] = 1
+            end
+        end
+    end
+
+    #=
     ZZ = zeros(_n_observables, _n_states)
     DD = zeros(_n_observables)
     EE = zeros(_n_observables, _n_observables)
@@ -59,6 +96,7 @@ function measurement(m::SmallLinear{T},
     QQ[exo[:z_sh],exo[:z_sh]]   = (m[:σ_z])^2
     QQ[exo[:g_sh],exo[:g_sh]]   = (m[:σ_g])^2
     QQ[exo[:rm_sh],exo[:rm_sh]] = (m[:σ_R])^2
+    =#
 
     return Measurement(ZZ, DD, QQ, EE)
 end
