@@ -2,7 +2,7 @@
 addprocs_frbny(10)     # There must be exactly 10 workers for these tests to pass.
 writing_output = false # Set to 'true' when re-writing output files.
 
-@everywhere using DSGE, DSGEModels
+#@everywhere using DSGE, DSGEModels
 @everywhere using DelimitedFiles, HDF5, JLD, JLD2, Random
 import Test: @test, @testset
 

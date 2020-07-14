@@ -1,4 +1,4 @@
-julia 0.7
+julia
 BenchmarkTools
 Calculus
 CSV 0.4.3
@@ -6,8 +6,8 @@ DataFrames
 OrderedCollections
 DataStructures
 Dates
+DelimitedFiles
 Distributions
-DSGEModels
 FastGaussQuadrature
 FileIO
 FredData

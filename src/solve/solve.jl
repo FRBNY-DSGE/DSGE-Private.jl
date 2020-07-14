@@ -239,9 +239,9 @@ function simulate_linear(ns::Int, nendogvars::Int, nexogvars::Int, nmsv::Int, ne
     xrandn=reshape(xrandnFortran,nexogvars,total_periods)
 
     # Set up for first period
-    endogvar[1:nmsv,1]= steady_states[1:nmsv]
-    msvhigh = log(2.0) + endogvar[1:nmsv, 1]
-    msvlow = log(0.01) + endogvar[1:nmsv, 1]
+    endogvar[1:nmsv,1] = steady_states[1:nmsv]
+    msvhigh = log(2.0) .+ endogvar[1:nmsv, 1]
+    msvlow = log(0.01) .+ endogvar[1:nmsv, 1]
 
     #Zero out shocks not included in nonlinear model
     if (nexogshocks < nexogvars)

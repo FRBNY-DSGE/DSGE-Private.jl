@@ -235,7 +235,7 @@ compute_system_function{S<:AbstractFloat}(system::System{S})
 - `F_ϵ::Distributions.MvNormal`: shock distribution
 - `F_u::Distributions.MvNormal`: measurement error distribution
 """
-function compute_system_function{S<:AbstractFloat}(system::System{S})
+function compute_system_function(system::System{S}) where S<:AbstractFloat
     # Unpack system
     TTT    = system[:TTT]
     RRR    = system[:RRR]

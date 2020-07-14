@@ -175,7 +175,7 @@ function gen_exoggrid_indices(nshockgrid::Array{Int,1},nexogvars::Int,ns::Int)
             # Each block is assigned a distinct value from the possible values of the current shock, so that the end result is that each column represents a distinct combination of shock values and taken together all columns represent all possible distinct combinations
             for k in 1:nshockgrid[i]
                 for l in blocksize*(k-1)+1:blocksize*k
-                    exoggridindex[i,nshockgrid[i]*blocksize*(j-1)+l] .= k
+                    exoggridindex[i,nshockgrid[i]*blocksize*(j-1)+l] = k
                 end
             end
         end
