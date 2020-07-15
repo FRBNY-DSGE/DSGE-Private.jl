@@ -198,7 +198,7 @@ function compute_system(m::GHLS;
     # Covariance Matrix for F_u (measurement error distribution)
     #See page 13 of Gust et. al (2017) for explananation of values
     m_e = 0.25
-    EE = m_e * diagm([m[:e_y].value, m[:e_π].value, m[:e_R].value, m[:e_c].value, m[:e_i].value])
+    EE = m_e * Diagonal([m[:e_y].value, m[:e_π].value, m[:e_R].value, m[:e_c].value, m[:e_i].value])
 
     # Define transition and measurement functions
     function Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64})

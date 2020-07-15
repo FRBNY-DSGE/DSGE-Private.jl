@@ -95,14 +95,14 @@ function mvnormal_mixture_draw(θ_old::Vector{T}, d_prop::Distribution;
 
     # Create mixture distribution conditional on the previous parameter value, θ_old
     d_old      = MvNormal(θ_old, c^2 * d_prop.Σ)
-    d_diag_old = MvNormal(θ_old, diagm(0 => diag(c^2 * d_prop.Σ))) # FORTRAN: multiplies by 3
+    d_diag_old = MvNormal(θ_old, Diagonal(diag(c^2 * d_prop.Σ))) # FORTRAN: multiplies by 3
     d_mix_old  = MixtureModel(MvNormal[d_old, d_diag_old, d_bar], [α, (1 - α)/2, (1 - α)/2])
 
     θ_new = rand(d_mix_old)
 
     # Create mixture distribution conditional on the new parameter value, θ_new
     d_new      = MvNormal(θ_new, c^2 * d_prop.Σ)
-    d_diag_new = MvNormal(θ_new, diagm(0 => diag(c^2 * d_prop.Σ)))
+    d_diag_new = MvNormal(θ_new, Diagonal(diag(c^2 * d_prop.Σ)))
     d_mix_new  = MixtureModel(MvNormal[d_new, d_diag_new, d_bar], [α, (1 - α)/2, (1 - α)/2])
 
     # The density of θ_new | θ_old and the density of θ_old | θ_new
