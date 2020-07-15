@@ -96,7 +96,7 @@ function eqcond(m::SmallLinear)
 
     Γ0[eq[:eq_e_rt], endo[:e_rt]]  = 1
     Γ1[eq[:eq_e_rt], endo[:e_rt]]  = m[:ρ_m]
-    Ψ[eq[:eq_e_rt], exo[:r_sh]] = 1
+    Ψ[eq[:eq_e_rt], exo[:r_sh]] = m[:σ_m]
 
     ### 12. Expected Shock Eπ_ct
     Γ0[eq[:eq_Eπ_ct], endo[:π_ct]]  = 1
@@ -186,7 +186,7 @@ function eqcond(m::SmallLinear)
 
     Γ0[eq[:eq_e_f_rt], endo[:e_f_rt]] = 1
     Γ1[eq[:eq_e_f_rt], endo[:e_f_rt]] = m[:ρ_m]
-    Ψ[eq[:eq_e_f_rt], exo[:r_f_sh]] = 1
+    Ψ[eq[:eq_e_f_rt], exo[:r_f_sh]] = m[:σ_m]
 
     ### 27. Foreign Expected Shock Eπ_ct
     Γ0[eq[:eq_Eπ_ct_f], endo[:π_ct_f]]  = 1
