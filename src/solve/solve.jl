@@ -459,7 +459,7 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
 
         # Calculate g(f) to get new guess for f and then calculate new approximation
         # Note that we can do this separately for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
-        for j in 1:approx.ns
+        @time for j in 1:approx.ns
             err = 0.0
             for k in 1:approx.ngridpoints
                 updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)

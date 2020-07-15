@@ -193,7 +193,7 @@ Solves the model and creates the transition and measurement functions for the no
 function compute_system(m::GHLS;
                         verbose::Symbol = :high)
     # Solve model
-    α_star = solve(m)
+    @time α_star = solve(m)
 
     # Covariance Matrix for F_u (measurement error distribution)
     #See page 13 of Gust et. al (2017) for explananation of values
