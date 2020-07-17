@@ -59,9 +59,13 @@ function initial_draw!(m::AbstractModel, data::Matrix{Float64}, c::ParticleCloud
             success = false
             while !success
                 try
+                    @show "update"
                     update!(m, draws[:, i])
+                    @show "loglh"
+                    @show data
                     loglh[i] = likelihood(m, data, catch_errors = true,
                                           use_chand_recursion = use_chand_recursion, verbose = verbose)
+                    @show "prior"
                     logpost[i] = prior(m)
                     if (loglh[i] == -Inf) | (loglh[i]===NaN)
                         logpost[i] = -Inf
