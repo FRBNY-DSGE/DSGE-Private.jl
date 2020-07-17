@@ -315,7 +315,7 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
     currentshockvalues = Array{Float64}(undef,approx.nexogvars)
     polyapp = Array{Float64}(undef,2*approx.nfunc)
     endogvarm1 = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
-    exp_var = Array{Float64}{undef, 12, approx.nquad}
+    exp_var = Array{Float64}(undef, 12, approx.nquad)
     innovations = Array{Float64}(undef,approx.nexogvars)
 
     # Gets shock values for given position on shock grid
@@ -347,7 +347,7 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
     end
 
     # Calculates conditional expectations
-    @simd @inbounds for ss in 1:approx.nquad
+    @inbounds @simd for ss in 1:approx.nquad
         innovations[1:approx.nexogshocks] = approx.ghnodes[:,ss]
 
         decr!(endogvarp,approx,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, zlbswitch)
@@ -382,7 +382,7 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
         exp_var[:,ss] += approx.ghweights[ss]*ev
     end
 
-    exp_var = sum(exp_var,2)
+    exp_var = sum(exp_var,dims=2)
 
     liqshk = exp(endogvar[endogenous_states[:b_t]])
     invshk = exp(endogvar[endogenous_states[:μ_t]])
