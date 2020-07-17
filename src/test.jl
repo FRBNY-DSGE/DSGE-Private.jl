@@ -1,7 +1,7 @@
 using DSGE, DelimitedFiles
 
 m = GHLS()
-m <= Setting(:sampling_method, :SMC)
+m <= Setting(:sampling_method, :MH)
 m <= Setting(:use_parallel_workers, false)
 m <= Setting(:n_particles, 100)
 m <= Setting(:date_presample_start, quartertodate("1983-Q1"))

@@ -70,6 +70,10 @@ function estimate(m::AbstractModel, data::AbstractArray;
         method = get_setting(m, :sampling_method)
     end
 
+    if typeof(m) == GHLS{Float64}
+        data = log.(data ./ 100.0 .+ 1.0)
+    end
+
     ########################################################################################
     ### Step 1: Find posterior/likelihood mode (if reoptimizing, run optimization routine)
     ########################################################################################
