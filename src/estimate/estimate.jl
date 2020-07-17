@@ -38,7 +38,6 @@ function estimate(m::AbstractModel, df::DataFrame;
     if typeof(m) == GHLS{Float64}
 #       df = df[1:findall(x->x==quartertodate("2014-Q1"),df.date)[1],:]
         data = df_to_matrix(m, df)
-        data = log.(data ./ 100.0 .+ 1.0)
     else
         data = df_to_matrix(m, df)
     end
