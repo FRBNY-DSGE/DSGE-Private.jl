@@ -31,9 +31,9 @@ function measurement(m::SmallLinear{T},
     _n_states = n_states_augmented(m)
     _n_shocks_exogenous = n_shocks_exogenous(m)
 
-    ZZ = zeros(_n_states, _n_states)
-    DD = zeros(_n_states)
-    EE = zeros(_n_states, _n_states)
+    ZZ = zeros(_n_observables, _n_states)
+    DD = zeros(_n_observables)
+    EE = zeros(_n_observables, _n_observables)
     QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
 
     # Variance of innovations
@@ -43,36 +43,7 @@ function measurement(m::SmallLinear{T},
     QQ[exo[:z_f_sh],exo[:z_f_sh]]   = (m[:σ_z])^2
     QQ[exo[:uip_sh],exo[:uip_sh]]   = (m[:σ_uip])^2
 
-    rows, cols = size(ZZ)
-    for r in 1:rows
-        for c in 1:cols
-            if r == c
-                ZZ[r,c] = 1
-            end
-        end
-    end
-
     #=
-    for i in 1:length(DD)
-        DD[i] = 1
-    end
-
-    rows, cols = size(EE)
-    for r in 1:rows
-        for c in 1:cols
-            if r == c
-                EE[r,c] = 1
-            end
-        end
-    end
-    =#
-
-    #=
-    ZZ = zeros(_n_observables, _n_states)
-    DD = zeros(_n_observables)
-    EE = zeros(_n_observables, _n_observables)
-    QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
-
     ## Output growth
     ZZ[obs[:obs_gdp], endo[:y_t]]  = 1.0
     ZZ[obs[:obs_gdp], endo[:y_t1]] = -1.0
