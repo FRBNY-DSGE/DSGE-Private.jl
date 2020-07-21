@@ -326,6 +326,7 @@ function model_settings!(m::SmallLinear)
     DSGE.default_settings!(m)
 
     # Data
+    m <= Setting(:population_mnemonic_f, Nullable(:LFEMTTTTEZQ647S__FRED), "Mnemonic of FRED data series for computing foreign per-capita values (a Nullable{Symbol})")
     m <= Setting(:data_id, 0, "Dataset identifier")
     m <= Setting(:cond_full_names, [:obs_gdp, :obs_nominalrate],
         "Observables used in conditional forecasts")
