@@ -38,6 +38,10 @@ function estimate(m::AbstractModel, df::DataFrame;
     if typeof(m) == GHLS{Float64}
 #       df = df[1:findall(x->x==quartertodate("2014-Q1"),df.date)[1],:]
         data = df_to_matrix(m, df)
+<<<<<<< HEAD
+=======
+        #data = log.(data ./ 100.0 .+ 1.0)
+>>>>>>> Added print statements
     else
         data = df_to_matrix(m, df)
     end
@@ -53,6 +57,13 @@ function estimate(m::AbstractModel;
                   sampling::Bool = true)
     # Load data
     df = load_data(m; verbose = verbose)
+
+    #m[:e_y].value = var(df[!,:obs_gdp])
+    #m[:e_π].value = var(df[!,:obs_gdpdeflator])
+    #m[:e_R].value = var(df[!,:obs_nominalrate])
+    #m[:e_c].value = var(df[!,:obs_consumption])
+    #m[:e_i].value = var(df[!,:obs_investment])
+
     estimate(m, df; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling)
 end
@@ -69,9 +80,9 @@ function estimate(m::AbstractModel, data::AbstractArray;
         method = get_setting(m, :sampling_method)
     end
 
-    if typeof(m) == GHLS{Float64}
-        data = log.(data ./ 100.0 .+ 1.0)
-    end
+    #if typeof(m) == GHLS{Float64}
+    #    data = log.(data ./ 100.0 .+ 1.0)
+    #end
 
     ########################################################################################
     ### Step 1: Find posterior/likelihood mode (if reoptimizing, run optimization routine)

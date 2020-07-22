@@ -75,8 +75,11 @@ function solve(m::GHLS, parallel::Bool=false)
     m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = gen_shockgrid(m.approx.nshockgrid, m.approx.nexogshocks, m.approx.ns, m.approx.nexogvars,m.parameters,m.keys)
 
     # Get equilibrium conditions of linearized solution and run gensys to put in state-space form
+    @show "eqcond runs"
     Γ0, Γ1, C, Ψ, Π = eqcond(m)
+    @show "eqcond finished"
     TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = :high)
+    @show "gensys finished"
 
     # Check for LAPACK exception, existence and uniqueness
     if eu[1] != 1 || eu[2] != 1
@@ -96,6 +99,7 @@ function solve(m::GHLS, parallel::Bool=false)
     QQQ[7, 7] = m[:σ_elastw]^2.0
     QQQ[8, 8] = 0.
 
+    @show QQQ
     RRR = RRR*sqrt.(QQQ)
 
     # For the linear simulation we only need the portion of the state-space matrices corresponding to variables in the non-linear version of the model
@@ -520,8 +524,8 @@ function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array
     # Initialize
     α_star = copy(α_initial)
     α_new = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 2*approx.ns)
-    α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
-    updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
+    #α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
+    #updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
     convergence = false
     avg_error = 0.0
 
@@ -588,12 +592,13 @@ function parallel_help(rkss::Float64, approx::Approximation, params::Array{Abstr
 
     # Initialize variables
     parallel_info = zeros(approx.nfunc*approx.ngridpoints,3)
-    updated_approx_functions = zeros(2*approx.nfunc, approx.ngridpoints)
+    updated_approx_polynomials = Array{Float64}(undef,2*approx.nfunc, approx.ngridpoints)
     err = 0.0
+    α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
 
     # Calculate g(f) to get new guess for f at given exogenous state and then calculate new approximation
     @inbounds @simd for k in 1:approx.ngridpoints
-        updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, m[:zero_lower_bound])
+        updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
         err += err2
     end
 

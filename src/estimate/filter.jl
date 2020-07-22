@@ -177,16 +177,21 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
 
     # Steady states are in logged form but when passed to decr are treated as if were not logged already so need to take exponential
     s0 = exp.([i.value for i in m.steady_state[1:m.approx.nendogvars]])
+    #s0 = [i.value for i in m.steady_state[1:m.approx.nendogvars]]
     append!(s0, zeros(m.approx.nexogvars))
     lagged_variable_indices = [m.endogenous_states[:y_t], m.endogenous_states[:c_t], m.endogenous_states[:i_t]]
     append!(s0, s0[lagged_variable_indices]) # for necessary lags
+    println("tpf begins")
     s_init = initialize_state_draws(s0, F_ϵ, Φ, m.settings[:n_particles].value)
     println("tpf runs")
-    @show data[:,1:10]
+    #@show data[:,1:10]
 
     # Run Tempered Particle filter, returns log-likelihoods
+    recession_t = (2008 - Dates.year(get_setting(m, :date_mainsample_start)))*4 + 5 -
+        div(Dates.month(get_setting(m, :date_mainsample_start)), 3)
     loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,
-                             s_init; n_presample_periods = Nt0, n_particles = m.settings[:n_particles].value)
+                             s_init; n_presample_periods = Nt0, n_particles = m.settings[:n_particles].value,
+                                                    recession_t = recession_t)
     println("tpf done")
     return loglh
 end

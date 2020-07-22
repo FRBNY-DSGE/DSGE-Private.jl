@@ -24,6 +24,7 @@ function initial_draw!(m::AbstractModel, data::Matrix{Float64}, c::ParticleCloud
                 try
                     update!(m, draw)
                     println("likelihood")
+                    #@show [i.value for i in m.endogenous_states]
                     draw_loglh = likelihood(m, data, catch_errors = true,
                                             use_chand_recursion=use_chand_recursion,
                                             verbose = verbose)
@@ -57,15 +58,16 @@ function initial_draw!(m::AbstractModel, data::Matrix{Float64}, c::ParticleCloud
         draws = rand(m.parameters, n_parts)
         for i in 1:n_parts
             success = false
+            @show i
             while !success
                 try
                     @show "update"
                     update!(m, draws[:, i])
-                    @show "loglh"
-                    @show data
+                    @show "likelihood begins"
+                    ##@show data
                     loglh[i] = likelihood(m, data, catch_errors = true,
                                           use_chand_recursion = use_chand_recursion, verbose = verbose)
-                    @show "prior"
+                    @show "likelihood ends; prior begins"
                     logpost[i] = prior(m)
                     if (loglh[i] == -Inf) | (loglh[i]===NaN)
                         logpost[i] = -Inf

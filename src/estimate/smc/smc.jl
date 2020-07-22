@@ -137,8 +137,10 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
         cloud = ParticleCloud(m, n_parts)
 
         # Modifies the cloud object in place to update draws, loglh, & logpost
+        @show "initial_draw started"
         initial_draw!(m, data, cloud, parallel = parallel,
                       use_chand_recursion = use_chand_recursion, verbose = verbose)
+        @show "initial_draw finished"
 
         initialize_cloud_settings!(m, cloud; tempered_update = tempered_update)
     end
@@ -149,6 +151,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
     else
         proposed_fixed_schedule  = ((collect(1:n_Φ) .- 1) / (n_Φ-1)) .^ λ
     end
+    @show "fixed_schedule finished"
 
     # Instantiate incremental and normalized weight matrices for logMDD calculation
     w_matrix = zeros(n_parts, 1)
@@ -167,6 +170,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
                          use_fixed_schedule = use_fixed_schedule)
     end
 
+    @show "Weight matrix done"
     #################################################################################
     ### Recursion
     #################################################################################
@@ -174,6 +178,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
         println("\n\n SMC recursion starts \n\n")
     end
 
+    @show "Start of tempering loop"
     while ϕ_n < 1.
 
         start_time = time_ns()
@@ -198,6 +203,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
         ### Step 1: Correction
         #############################################################################
         # Calculate incremental weights (if no old data, get_old_loglh(cloud) = 0)
+        @show "begin correction"
         incremental_weights = exp.((ϕ_n1 - ϕ_n) * get_old_loglh(cloud) +
                                    (ϕ_n - ϕ_n1) * get_loglh(cloud))
 
@@ -217,6 +223,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
         ### Step 2: Selection
         ##############################################################################
 
+        @show "begin selection"
         # Calculate the degeneracy/effective sample size metric
         push!(cloud.ESS, 1/sum(normalized_weights.^2))
 
@@ -237,7 +244,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
         ##############################################################################
         ### Step 3: Mutation
         ##############################################################################
-
+        @show "begin mutation"
         # Calculate adaptive c-step for use as scaling coefficient in mutation MH step
         c = c*(0.95 + 0.10*exp(16 .*(cloud.accept - target)) /
                (1. + exp(16 .*(cloud.accept - target))))
@@ -294,7 +301,7 @@ function smc(m::AbstractModel, data::Matrix{Float64}; verbose::Symbol = :low,
     ##################################################################################
     ### Saving data
     ##################################################################################
-
+    @show "saving data"
     if !m.testing || run_test
         simfile = h5open(rawpath(m, "estimate", "smcsave.h5"), "w")
         #simfile = h5open(rawpath(m, "estimate", "smcsave.h5", ["adpt="*string(tempering_target)]),"w")

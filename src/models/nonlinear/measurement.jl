@@ -33,7 +33,7 @@ function measurement(m::GHLS)
 log(s_t[endo[:c_t]] * m[:gz] / s_t[endo_addl[:c_t1]]) + s_t[endo[:ztil_t]],
 log(s_t[endo[:i_t]] * m[:gz] / s_t[endo_addl[:i_t1]]) + s_t[endo[:ztil_t]],
 log(s_t[endo[:π_t]]),
-log(s_t[endo[:R_t]])]
+log(s_t[endo[:R_t]])] #.+ rand(MvNormal(EE),1)
 
     return Ψ
 end

@@ -198,15 +198,20 @@ function compute_system(m::GHLS;
     # Covariance Matrix for F_u (measurement error distribution)
     #See page 13 of Gust et. al (2017) for explananation of values
     m_e = 0.25
-    EE = m_e * Diagonal([m[:e_y].value, m[:e_π].value, m[:e_R].value, m[:e_c].value, m[:e_i].value])
+    EE = m_e * Diagonal([m[:e_y].value^2, m[:e_π].value^2, m[:e_R].value^2, m[:e_c].value^2, m[:e_i].value^2])
 
     # Define transition and measurement functions
     function Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64})
+        #@show "Phi runs"
+        #@show s_t1
+        #s_t1 = exp.(s_t1)
         endogvar = Array{Float64}(undef, m.approx.nendogvars+m.approx.nexogvars)
         decr!(endogvar, m.approx, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states, get_setting(m, :zero_lower_bound))
 
         # The current period state includes the lags of GDP, consumption, and investment
         append!(endogvar,[s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]])
+        #@show endogvar
+        #@show "Phi finished"
         return endogvar
     end
 

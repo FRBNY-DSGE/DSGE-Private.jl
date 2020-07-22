@@ -12,12 +12,12 @@ function init_observable_mappings!(m::GHLS)
 
         levels[:temp] = percapita(m, :GDP, levels)
         gdp = 1000 * nominal_to_real(:temp, levels)
-        log(1.0 + oneqtrpctchange(gdp) / 100.0)
+        log.(1.0 .+ oneqtrpctchange(gdp) / 100.0)
 
     end
 
     gdp_rev_transform = function(x)
-        loggrowthtopct_annualized_percapita((exp(x)-1.0)*100.0)
+        loggrowthtopct_annualized_percapita((exp.(x).-1.0)*100.0)
     end
 
     observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
@@ -71,12 +71,12 @@ function init_observable_mappings!(m::GHLS)
         # TO:   Approximate quarter-to-quarter percent change of gdp deflator,
         #       i.e.  quarterly gdp deflator inflation
 
-        log(1.0 + oneqtrpctchange(levels[:GDPDEF]) / 100.0)
+        log.(1.0 .+ oneqtrpctchange(levels[:GDPDEF]) / 100.0)
     end
 
 
     gdpdeflator_rev_transform = function(x)
-        loggrowthtopct_annualized((exp(x) - 1.0) * 100.0)
+        loggrowthtopct_annualized((exp.(x) .- 1.0) * 100.0)
     end
 
     observables[:obs_gdpdeflator] = Observable(:obs_gdpdeflator, [:GDPDEF__FRED],
@@ -93,11 +93,11 @@ function init_observable_mappings!(m::GHLS)
         #       quarterly frequency at an annual rate)
         # TO:   Nominal effective fed funds rate, at a quarterly rate
 
-        log(1.0 + annualtoquarter(levels[:DFF]) / 100.0)
+        log.(1.0 .+ annualtoquarter(levels[:DFF]) / 100.0)
     end
 
     nominalrate_rev_transform = function(x)
-        quartertoannualexp((exp(x)-1.0) * 100.0)
+        quartertoannualexp((exp.(x).-1.0) * 100.0)
     end
 
     observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:DFF__FRED],
@@ -116,11 +116,11 @@ function init_observable_mappings!(m::GHLS)
 
         levels[:temp] = percapita(m, :PCE, levels)
         cons = 1000 * nominal_to_real(:temp, levels)
-        log(1.0 + neqtrpctchange(cons) / 100.0)
+        log.(1.0 .+ oneqtrpctchange(cons) / 100.0)
     end
 
     consumption_rev_transform = function(x)
-        loggrowthtopct_annualized_percapita((exp(x)-1.0)*100.0)
+        loggrowthtopct_annualized_percapita((exp.(x).-1.0)*100.0)
     end
 
     observables[:obs_consumption] = Observable(:obs_consumption, [:PCE__FRED, population_mnemonic],
@@ -139,11 +139,11 @@ function init_observable_mappings!(m::GHLS)
 
         levels[:temp] = percapita(m, :FPI, levels)
         inv = 10000 * nominal_to_real(:temp, levels)
-        log(1.0 + oneqtrpctchange(inv) / 100.0)
+        log.(1.0 .+ oneqtrpctchange(inv) / 100.0)
     end
 
     investment_rev_transform  = function(x)
-        loggrowthtopct_annualized_percapita((exp(x)-1.0)*100.0)
+        loggrowthtopct_annualized_percapita((exp.(x).-1.0)*100.0)
     end
 
     observables[:obs_investment] = Observable(:obs_investment, [:FPI__FRED, population_mnemonic],

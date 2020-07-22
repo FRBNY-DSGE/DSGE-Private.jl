@@ -363,11 +363,11 @@ function init_parameters!(m::GHLS)
 
 
     #Measurement errors
-    m <= parameter(:e_y, 0.00323357^2, fixed = true, description = "e_y: Measurement error on GDP", tex_label = "e_y")
-    m <= parameter(:e_π, 0.00122426^2, fixed = true, description = "e_π: Measurement error on GDP deflator", tex_label = "e_π")
-    m <= parameter(:e_R, 0.00358562^2, fixed = true, description = "e_R: Measurement error on nominal rate of interest", tex_label = "e_R")
-    m <= parameter(:e_c, 0.00256811^2, fixed = true, description = "e_c: Measurement error on consumption", tex_label = "e_c")
-    m <= parameter(:e_i, 0.01218603^2, fixed = true, description = "e_i: Measurement error on investment", tex_label = "e_i")
+    m <= parameter(:e_y, 0.00323357, fixed = true, description = "e_y: Measurement error on GDP", tex_label = "e_y")
+    m <= parameter(:e_π, 0.00122426, fixed = true, description = "e_π: Measurement error on GDP deflator", tex_label = "e_π")
+    m <= parameter(:e_R, 0.00358562, fixed = true, description = "e_R: Measurement error on nominal rate of interest", tex_label = "e_R")
+    m <= parameter(:e_c, 0.00256811, fixed = true, description = "e_c: Measurement error on consumption", tex_label = "e_c")
+    m <= parameter(:e_i, 0.01218603, fixed = true, description = "e_i: Measurement error on investment", tex_label = "e_i")
 
 
     # Steady states
