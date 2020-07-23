@@ -191,7 +191,9 @@ function filter_likelihood(m::GHLS, data::Matrix{S}, Φ::Function, Ψ::Function,
         div(Dates.month(get_setting(m, :date_mainsample_start)), 3)
     loglh, cloglh, times = tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u,
                              s_init; n_presample_periods = Nt0, n_particles = m.settings[:n_particles].value,
-                                                    recession_t = recession_t)
+                                                    recession_t = recession_t,
+                                                    fixed_sched = [1.])
+                                                    #fixed_sched = [.1,.2,.35,.52,.7,.9,1.])
     println("tpf done")
     return loglh
 end

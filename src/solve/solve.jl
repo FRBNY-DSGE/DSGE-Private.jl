@@ -69,7 +69,7 @@ solve(m::GHLS; parallel = false)
 # Description:
 Computes the model solution and corresponding coefficients matrix α⋆ (see a in Equation 2.21 in Technical Appendix of GHLS (2017))
 """
-function solve(m::GHLS, parallel::Bool=false)
+function solve(m::GHLS, parallel::Bool=true)
 
     # Create the shock grid for use in interpolation
     m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = gen_shockgrid(m.approx.nshockgrid, m.approx.nexogshocks, m.approx.ns, m.approx.nexogvars,m.parameters,m.keys)

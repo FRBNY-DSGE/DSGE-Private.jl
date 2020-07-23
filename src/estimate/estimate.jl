@@ -120,6 +120,8 @@ function estimate(m::AbstractModel, data::AbstractArray;
             max_attempts = get_setting(m, :optimization_attempts)
             attempts = 1
 
+            println("MH while not converged loop")
+            @show total_iterations
             while !converged
                 begin_time = time_ns()
                 out, H = optimize!(m, data;
