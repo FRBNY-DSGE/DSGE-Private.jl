@@ -12,7 +12,7 @@ function init_observable_mappings!(m::SmallLinear)
         # TO: Quarter-to-quarter percent change of real GDP per capita
 
         levels[!,:temp] = percapita(m, :GDP, levels)
-        gdp = 1000 * nominal_to_real(:temp, levels)
+        gdp =  nominal_to_real(:temp, levels)
         oneqtrpctchange(gdp)
     end
 
@@ -57,24 +57,6 @@ function init_observable_mappings!(m::SmallLinear)
                                                nominalrate_fwd_transform, nominalrate_rev_transform,
                                                "Nominal FFR",
                                                "Nominal Effective Fed Funds Rate")
-
-    ############################################################################
-    ## 4. Real Exchange Rate Domestic with Foreign
-    ############################################################################
-
-    realxrate_fwd_transform = function (levels)
-        # FROM: Real exchange rate index (100)
-        # TO: Real exchange rate normalized to 1
-
-        levels[!,:RBUSBIS] / 100
-    end
-
-    realxrate_rev_transform = identity
-
-    observables[:obs_realxrate] = Observable(:obs_realxrate, [:RBUSBIS__FRED],
-                                               realxrate_fwd_transform, realxrate_rev_transform,
-                                               "Real Exchange Rate",
-                                               "Real Exchange Rate US / Euro Area")
 
     ############################################################################
     ## 1. Real GDP Growth Foreign
