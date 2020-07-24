@@ -283,11 +283,11 @@ function init_parameters!(m::SmallLinear)
 
     m <= parameter(:ρ_uip, 0.66, fixed=true,
                    description="ρ_uip: UIP shock persistence AR(1) coefficient.",
-                   tex_label="\\rho_uip")
+                   tex_label="\\rho_{uip}")
 
     m <= parameter(:σ_uip, 0.01, fixed=true,
                    description="σ_uip: UIP shock standard deviation.",
-                   tex_label="\\sigma_uip")
+                   tex_label="\\sigma_{uip}")
 
     m <= parameter(:e_y, 0.20*0.579923, fixed=true,
                    description="e_y: Measurement error on domestic GDP growth.",
