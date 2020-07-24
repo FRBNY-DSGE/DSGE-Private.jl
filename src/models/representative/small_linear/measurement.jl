@@ -37,8 +37,8 @@ function measurement(m::SmallLinear{T},
     QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
 
     # Variance of innovations
-    QQ[exo[:r_sh],exo[:r_sh]]   = (m[:σ_m])^2
-    QQ[exo[:r_f_sh],exo[:r_f_sh]]   = (m[:σ_m])^2
+    QQ[exo[:rm_sh],exo[:rm_sh]]   = (m[:σ_m])^2
+    QQ[exo[:rm_f_sh],exo[:rm_f_sh]]   = (m[:σ_m])^2
     QQ[exo[:z_sh],exo[:z_sh]]   = (m[:σ_z])^2
     QQ[exo[:z_f_sh],exo[:z_f_sh]]   = (m[:σ_z])^2
     QQ[exo[:uip_sh],exo[:uip_sh]]   = (m[:σ_uip])^2

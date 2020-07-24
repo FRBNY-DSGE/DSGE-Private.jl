@@ -97,7 +97,7 @@ function eqcond(m::SmallLinear)
 
     Γ0[eq[:eq_e_rt], endo[:e_rt]]  = 1
     Γ1[eq[:eq_e_rt], endo[:e_rt]]  = m[:ρ_m]
-    Ψ[eq[:eq_e_rt], exo[:r_sh]] = m[:σ_m]
+    Ψ[eq[:eq_e_rt], exo[:rm_sh]] = m[:σ_m]
 
     ### 12. Home TFP Shock
     Γ0[eq[:eq_z_t], endo[:z_t]]  = 1
@@ -207,7 +207,7 @@ function eqcond(m::SmallLinear)
 
     Γ0[eq[:eq_e_f_rt], endo[:e_f_rt]] = 1
     Γ1[eq[:eq_e_f_rt], endo[:e_f_rt]] = m[:ρ_m]
-    Ψ[eq[:eq_e_f_rt], exo[:r_f_sh]] = m[:σ_m]
+    Ψ[eq[:eq_e_f_rt], exo[:rm_f_sh]] = m[:σ_m]
 
     ### 12. Foreign TFP Shock
     Γ0[eq[:eq_z_t_f], endo[:z_t_f]]  = 1

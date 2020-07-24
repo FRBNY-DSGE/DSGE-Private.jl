@@ -8,7 +8,7 @@ system = compute_system(m)
 
 # ENTER horizon, shocks used, shock values
 horizon = 20
-shock_names = [:r_sh, :r_f_sh]
+shock_names = [:rm_sh, :rm_f_sh]
 shock_values = [100.0, 100.0]
 
 # Generate responses for states
@@ -34,14 +34,14 @@ for i in 1:length(shock_names)
     end
 end
 
-# CHOOSE plots to write out (Change :r_sh and :c_t to specify shock and state variable)
-plot(plots_by_shock[shock_names[m.exogenous_shocks[:r_sh]]][states[m.endogenous_states[:c_t]]],
-    plots_by_shock[shock_names[m.exogenous_shocks[:r_sh]]][states[m.endogenous_states[:y_t]]], 
-    plots_by_shock[shock_names[m.exogenous_shocks[:r_sh]]][states[m.endogenous_states[:r_n_t]]], 
-    plots_by_shock[shock_names[m.exogenous_shocks[:r_sh]]][states[m.endogenous_states[:e_rt]]], 
-    plots_by_shock[shock_names[m.exogenous_shocks[:r_sh]]][states[m.endogenous_states[:c_t_f]]], 
-    plots_by_shock[shock_names[m.exogenous_shocks[:r_sh]]][states[m.endogenous_states[:y_t_f]]], 
-    plots_by_shock[shock_names[m.exogenous_shocks[:r_sh]]][states[m.endogenous_states[:r_n_t_f]]], 
+# CHOOSE plots to write out (Change :rm_sh and :c_t to specify shock and state variable)
+plot(plots_by_shock[shock_names[m.exogenous_shocks[:rm_sh]]][states[m.endogenous_states[:c_t]]],
+    plots_by_shock[shock_names[m.exogenous_shocks[:rm_sh]]][states[m.endogenous_states[:y_t]]], 
+    plots_by_shock[shock_names[m.exogenous_shocks[:rm_sh]]][states[m.endogenous_states[:r_n_t]]], 
+    plots_by_shock[shock_names[m.exogenous_shocks[:rm_sh]]][states[m.endogenous_states[:e_rt]]], 
+    plots_by_shock[shock_names[m.exogenous_shocks[:rm_sh]]][states[m.endogenous_states[:c_t_f]]], 
+    plots_by_shock[shock_names[m.exogenous_shocks[:rm_sh]]][states[m.endogenous_states[:y_t_f]]], 
+    plots_by_shock[shock_names[m.exogenous_shocks[:rm_sh]]][states[m.endogenous_states[:r_n_t_f]]], 
     legend = false)
 savefig("DSGE_plots.pdf")
 

@@ -124,7 +124,7 @@ function init_model_indices!(m::SmallLinear)
 
     # Exogenous shocks
     exogenous_shocks = collect([
-	:r_sh, :r_f_sh, :z_sh, :z_f_sh, :uip_sh])
+	:rm_sh, :rm_f_sh, :z_sh, :z_f_sh, :uip_sh])
 
     # Expectations shocks
     expected_shocks = collect([:Eπ_ct_sh, :Ec_sh, :Eπ_t_sh, :Eπ_ct_f_sh, :Ec_f_sh, :Eπ_t_f_sh])
@@ -389,8 +389,8 @@ function shock_groupings(m::SmallLinear)
     return [gov, tfp, pol, det]
     =#
 
-    domestic = ShockGroup("domestic", [:r_sh, :z_sh], RGB(0.70, 0.13, 0.13)) # firebrick
-    foreign = ShockGroup("foriegn", [:r_f_sh, :z_f_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+    domestic = ShockGroup("domestic", [:rm_sh, :z_sh], RGB(0.70, 0.13, 0.13)) # firebrick
+    foreign = ShockGroup("foriegn", [:rm_f_sh, :z_f_sh], RGB(1.0, 0.55, 0.0)) # darkorange
     other = ShockGroup("other", [:uip_sh], RGB(1.0, 0.84, 0.0)) # gold
     return [domestic, foreign, other]
 
