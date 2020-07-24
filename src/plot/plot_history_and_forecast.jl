@@ -8,7 +8,7 @@ plot_history_and_forecast(m, vars, class, input_type, cond_type;
 
     plotroot = figurespath(m, \"forecast\"), titles = [],
     plot_handles = fill(plot(), length(vars)), verbose = :low,
-    kwargs...)
+    kwargs...) 
 ```
 
 Plot history and forecast for `var` or `vars`. If these correspond to a
@@ -24,7 +24,6 @@ full-distribution forecast, you can specify the `bands_style` and `bands_pcts`.
 - `cond_type::Symbol`
 
 ### Keyword Arguments
-
 - `forecast_string::String`
 - `bdd_and_unbdd::Bool`: if true, then unbounded means and bounded bands are plotted
 - `untrans::Bool`: whether to plot untransformed (model units) history and forecast
@@ -34,6 +33,7 @@ full-distribution forecast, you can specify the `bands_style` and `bands_pcts`.
 - `plot_handle::Plot` or `plot_handles::Vector{Plot}`: existing plot(s) on which
   to overlay new forecast plot(s)
 - `verbose::Symbol`
+- `plot_as_csv::Bool`: if true, plot data is saved to csvs
 
 See `?histforecast` for additional keyword arguments, all of which can be passed
 into `plot_history_and_forecast`.
@@ -45,11 +45,13 @@ into `plot_history_and_forecast`.
 function plot_history_and_forecast(m::AbstractDSGEModel, var::Symbol, class::Symbol,
                                    input_type::Symbol, cond_type::Symbol;
                                    title::String = "", plot_handle::Plots.Plot = plot(),
+				   save_as_csv::Bool = false,
                                    kwargs...)
 
     plots = plot_history_and_forecast(m, [var], class, input_type, cond_type;
                                       titles = isempty(title) ? String[] : [title],
                                       plot_handles = Plots.Plot[plot_handle],
+				      save_as_csv = save_as_csv,
                                       kwargs...)
     return plots[var]
 end
@@ -65,6 +67,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
                                    titles::Vector{String} = String[],
                                    plot_handles::Vector{Plots.Plot} = Plots.Plot[plot() for i = 1:length(vars)],
                                    verbose::Symbol = :low,
+				   save_as_csv::Bool = false,
                                    kwargs...)
 
     # Determine output_vars
@@ -98,10 +101,21 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
     for (var, title, plot_handle) in zip(vars, titles, plot_handles)
         # Call recipe
         plots[var] = plot(plot_handle)
-        histforecast!(var, hist, fcast;
+        df_plot_data = DataFrame()
+
+	histforecast!(var, hist, fcast;
+		      df_plot_data = df_plot_data, save_as_csv = save_as_csv,
                       ylabel = series_ylabel(m, var, class, untrans = untrans,
                                              fourquarter = fourquarter),
                       title = title, kwargs...)
+        if save_as_csv
+	    if !isdir("blog_plot_data")
+	        mkdir("blog_plot_data")
+            end
+            CSV.write(string("blog_plot_data/", get_setting(m, :data_vintage), 
+	                        "_", replace(title, " " => "_"), var, ".csv"), df_plot_data)
+        end
+
         # Save plot
         if !isempty(plotroot)
             output_file = get_forecast_filename(plotroot, filestring_base(m), input_type, cond_type,
@@ -160,6 +174,8 @@ are supported as keyword arguments.
 histforecast
 
 @recipe function f(hf::HistForecast;
+		   df_plot_data = DataFrame(),
+		   save_as_csv = false,
                    start_date = hf.args[2].means[1, :date],
                    end_date = hf.args[3].means[end, :date],
                    names = Dict{Symbol, String}(),
@@ -172,6 +188,10 @@ histforecast
                    label_bands = false,
                    transparent_bands = true,
                    tick_size = 2)
+    
+
+   
+
     # Error checking
     if length(hf.args) != 3 || typeof(hf.args[1]) != Symbol ||
         typeof(hf.args[2]) != MeansBands || typeof(hf.args[3]) != MeansBands
@@ -201,12 +221,27 @@ histforecast
     sort!(bands_pcts, rev = true) # s.t. non-transparent bands will be plotted correctly
     inds = findall(start_date .<= combined.bands[var][:date] .<= end_date)
 
+
+
+    # Input dates into csv dataframe
+    if save_as_csv
+        df_plot_data.dates = combined.bands[var][inds, :date]
+    end
+
     for (i, pct) in enumerate(bands_pcts)
         seriestype := :line
 
         x = combined.bands[var][inds, :date]
         lb = combined.bands[var][inds, Symbol(pct, " LB")]
         ub = combined.bands[var][inds, Symbol(pct, " UB")]
+
+	# save bands to csv
+	if save_as_csv
+	    df_plot_data.lb = lb
+	    rename!(df_plot_data, :lb => Symbol("$(pct)_lb"))
+	    df_plot_data.ub = ub
+	    rename!(df_plot_data, :ub => Symbol("$(pct)_ub"))
+        end
 
         bands_color = haskey(colors, :bands) ? colors[:bands] : :blue
         bands_alpha = haskey(alphas, :bands) ? alphas[:bands] : 0.1
@@ -252,6 +287,15 @@ histforecast
         end
     end
 
+    # Set up dataframes to save means to CSV
+    if save_as_csv
+        df_mean_hist = DataFrame()
+    	df_mean_forecast = DataFrame()
+	df_means = DataFrame()
+    end
+
+
+ 
     # Mean history
     @series begin
         seriestype :=  :line
@@ -263,8 +307,14 @@ histforecast
 
         inds = intersect(findall(start_date .<= dates .<= end_date),
                          findall(hist.means[1, :date] .<= dates .<= hist.means[end, :date]))
-        combined.means[inds, :date], combined.means[inds, var]
+        if save_as_csv
+	   df_mean_hist.dates = combined.means[inds, :date]
+	   df_mean_hist.mean_history = combined.means[inds, var]
+        end
+
+	combined.means[inds, :date], combined.means[inds, var]
     end
+
 
     # Mean forecast
     @series begin
@@ -277,6 +327,22 @@ histforecast
 
         inds = intersect(findall(start_date .<= dates .<= end_date),
                          findall(hist.means[end, :date] .<= dates .<= forecast.means[end, :date]))
+        if save_as_csv
+	   df_mean_forecast.dates = combined.means[inds, :date]
+	   df_mean_forecast.mean_forecast = combined.means[inds, var]
+	   df_means = join(df_mean_hist, df_mean_forecast, on = :dates, kind = :outer) 
+
+
+    	        if size(df_means) != (0, 0)
+        	     df_plot_data.mean_history = df_means.mean_history
+      		     df_plot_data.mean_forecast = df_means.mean_forecast
+    		end  
+        end	
+
+
+	
         combined.means[inds, :date], combined.means[inds, var]
     end
+    
+
 end
