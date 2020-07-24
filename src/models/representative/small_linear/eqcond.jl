@@ -119,6 +119,10 @@ function eqcond(m::SmallLinear)
     Γ1[eq[:eq_Eπ_t], endo[:Eπ_t1]]  = 1
     Π[eq[:eq_Eπ_t], ex[:Eπ_t_sh]] = 1
 
+    ### 16. Home Output Lag
+    Γ0[eq[:eq_y_t1], endo[:y_t1]]  = 1
+    Γ1[eq[:eq_y_t1], endo[:y_t]]  = 1
+
     #####
 
     ### 1. Common c_t (87)
@@ -224,6 +228,10 @@ function eqcond(m::SmallLinear)
     Γ0[eq[:eq_Eπ_t_f], endo[:π_t_f]]  = 1
     Γ1[eq[:eq_Eπ_t_f], endo[:Eπ_t1_f]]  = 1
     Π[eq[:eq_Eπ_t_f], ex[:Eπ_t_f_sh]] = 1
+
+    ### 16. Foreign Output Lag
+    Γ0[eq[:eq_y_t1_f], endo[:y_t1_f]]  = 1
+    Γ1[eq[:eq_y_t1_f], endo[:y_t_f]]  = 1
 
     return Γ0, Γ1, C, Ψ, Π
 end

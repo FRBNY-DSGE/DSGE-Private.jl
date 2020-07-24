@@ -120,7 +120,7 @@ Initializes indices for all of `m`'s states, shocks, and equilibrium conditions.
 function init_model_indices!(m::SmallLinear)
     # Endogenous states
     endogenous_states = collect([
-        :c_t, :r_n_t, :Eπ_ct1, :Ec_t1, :w_t, :l_t, :c_dt, :𝜏_t, :m_ct, :y_t, :mc_t, :π_t, :Eπ_t1, :π_ct, :e_rt, :z_t, :uip_t, :c_t_f, :r_n_t_f, :Eπ_ct1_f, :Ec_t1_f, :w_t_f, :l_t_f, :c_dt_f, :m_ct_f, :y_t_f, :mc_t_f, :π_t_f, :Eπ_t1_f, :π_ct_f, :e_f_rt, :z_t_f])
+        :c_t, :r_n_t, :Eπ_ct1, :Ec_t1, :w_t, :l_t, :c_dt, :𝜏_t, :m_ct, :y_t, :mc_t, :π_t, :Eπ_t1, :π_ct, :e_rt, :z_t, :y_t1, :uip_t, :c_t_f, :r_n_t_f, :Eπ_ct1_f, :Ec_t1_f, :w_t_f, :l_t_f, :c_dt_f, :m_ct_f, :y_t_f, :mc_t_f, :π_t_f, :Eπ_t1_f, :π_ct_f, :e_f_rt, :z_t_f, :y_t1_f])
 
     # Exogenous shocks
     exogenous_shocks = collect([
@@ -131,7 +131,7 @@ function init_model_indices!(m::SmallLinear)
 
     # Equilibrium conditions
     equilibrium_conditions = collect([
-        :eq_c_t, :eq_w_t, :eq_c_dt, :eq_m_ct, :eq_y_t_1, :eq_mc_t, :eq_π_t, :eq_π_ct, :eq_y_t_2, :eq_r_n_t, :eq_e_rt, :eq_z_t, :eq_Eπ_ct, :eq_Ec, :eq_Eπ_t, :eq_c_t_s, :eq_uip_t, :eq_c_t_f, :eq_w_t_f, :eq_c_dt_f, :eq_m_ct_f, :eq_y_t_1_f, :eq_mc_t_f, :eq_π_t_f, :eq_π_ct_f, :eq_y_t_2_f, :eq_r_n_t_f, :eq_e_f_rt, :eq_z_t_f, :eq_Eπ_ct_f, :eq_Ec_f, :eq_Eπ_t_f])
+        :eq_c_t, :eq_w_t, :eq_c_dt, :eq_m_ct, :eq_y_t_1, :eq_mc_t, :eq_π_t, :eq_π_ct, :eq_y_t_2, :eq_r_n_t, :eq_e_rt, :eq_z_t, :eq_Eπ_ct, :eq_Ec, :eq_Eπ_t, :eq_y_t1, :eq_c_t_s, :eq_uip_t, :eq_c_t_f, :eq_w_t_f, :eq_c_dt_f, :eq_m_ct_f, :eq_y_t_1_f, :eq_mc_t_f, :eq_π_t_f, :eq_π_ct_f, :eq_y_t_2_f, :eq_r_n_t_f, :eq_e_f_rt, :eq_z_t_f, :eq_Eπ_ct_f, :eq_Ec_f, :eq_Eπ_t_f, :eq_y_t1_f])
 
     # Additional states added after solving model
     # Lagged states and observables measurement error
@@ -214,6 +214,16 @@ those).
 """
 function init_parameters!(m::SmallLinear)
     # Initialize parameters
+    m <= parameter(:γ_Q, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q: Domestic steady state growth rate of technology.", tex_label="\\gamma_Q")
+
+    m <= parameter(:γ_Q_f, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q_f: Foreign steady state growth rate of technology.", tex_label="\\gamma_Q^f")
+
+    m <= parameter(:π_star, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star: Domestic target inflation rate.", tex_label="\\pi*")
+
+    m <= parameter(:π_star_f, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star_f: Foreign target inflation rate.", tex_label="\\pi*^f")
+
+    m <= parameter(:rA, 1.0025, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(0.5, 0.5), fixed=false, description="rA: β (discount factor) = 1/(1+ rA/400).", tex_label="rA")
+
     m <= parameter(:σ, 1.0, fixed=true,
                    description="σ: Inverse elasticity of substitution.",
                    tex_label="\\sigma")
@@ -278,6 +288,30 @@ function init_parameters!(m::SmallLinear)
     m <= parameter(:σ_uip, 0.01, fixed=true,
                    description="σ_uip: UIP shock standard deviation.",
                    tex_label="\\sigma_uip")
+
+    m <= parameter(:e_y, 0.20*0.579923, fixed=true,
+                   description="e_y: Measurement error on domestic GDP growth.",
+                   tex_label="e_y")
+
+    m <= parameter(:e_y_f, 0.20*0.579923, fixed=true,
+                   description="e_y_f: Measurement error on foreign GDP growth.",
+                   tex_label="e_y^f")
+
+    m <= parameter(:e_π, 0.20*1.470832, fixed=true,
+                   description="e_π: Measurement error on domestic inflation.",
+                   tex_label="e_\\pi")
+
+    m <= parameter(:e_π_f, 0.20*1.470832, fixed=true,
+                   description="e_π_f: Measurement error on foreign inflation.",
+                   tex_label="e_\\pi^f")
+
+    m <= parameter(:e_r_n, 0.20*2.237937, fixed=true,
+                   description="e_r_n: Measurement error on the domestic interest rate.",
+                   tex_label="e_r^n")
+
+    m <= parameter(:e_r_n_f, 0.20*2.237937, fixed=true,
+                   description="e_r_n_f: Measurement error on the foreign interest rate.",
+                   tex_label="e_r^{n,f}")
 
     # Steady states
     m <= SteadyStateParameter(:l_ss, NaN, description="Home steady state labor supply", tex_label="l_ss")
@@ -355,8 +389,9 @@ function shock_groupings(m::SmallLinear)
     return [gov, tfp, pol, det]
     =#
 
-    mon_d = ShockGroup("mon_d", [:r_sh], RGB(0.70, 0.13, 0.13)) # firebrick
-    mon_f = ShockGroup("mon_f", [:r_f_sh], RGB(1.0, 0.55, 0.0)) # darkorange
-    return [mon_d, mon_f]
+    domestic = ShockGroup("domestic", [:r_sh, :z_sh], RGB(0.70, 0.13, 0.13)) # firebrick
+    foreign = ShockGroup("foriegn", [:r_f_sh, :z_f_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+    other = ShockGroup("other", [:uip_sh], RGB(1.0, 0.84, 0.0)) # gold
+    return [domestic, foreign, other]
 
 end
