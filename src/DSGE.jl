@@ -156,7 +156,7 @@ module DSGE
         # models/
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
-        Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
+        Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide, SmallLinear,
         PoolModel, eqcond, measurement, pseudo_measurement,
         shock_groupings, transition, DSGEVAR, DSGEVECM,
 
@@ -367,6 +367,16 @@ module DSGE
     include("models/representative/an_schorfheide/pseudo_observables.jl")
     include("models/representative/an_schorfheide/pseudo_measurement.jl")
     include("models/representative/an_schorfheide/augment_states.jl")
+
+    include("models/representative/small_linear/small_linear.jl")
+    include("models/representative/small_linear/subspecs.jl")
+    include("models/representative/small_linear/eqcond.jl")
+    include("models/representative/small_linear/observables.jl")
+    include("models/representative/small_linear/measurement.jl")
+    include("models/representative/small_linear/pseudo_observables.jl")
+    include("models/representative/small_linear/pseudo_measurement.jl")
+    include("models/representative/small_linear/augment_states.jl")
+    include("models/representative/small_linear/observables_errors.jl")
 
     # PoolModel
     include("models/poolmodel/subspecs.jl")

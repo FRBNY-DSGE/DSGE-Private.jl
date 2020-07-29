@@ -289,29 +289,8 @@ function init_parameters!(m::SmallLinear)
                    description="σ_uip: UIP shock standard deviation.",
                    tex_label="\\sigma_{uip}")
 
-    m <= parameter(:e_y, 0.20*0.579923, fixed=true,
-                   description="e_y: Measurement error on domestic GDP growth.",
-                   tex_label="e_y")
-
-    m <= parameter(:e_y_f, 0.20*0.579923, fixed=true,
-                   description="e_y_f: Measurement error on foreign GDP growth.",
-                   tex_label="e_y^f")
-
-    m <= parameter(:e_π, 0.20*1.470832, fixed=true,
-                   description="e_π: Measurement error on domestic inflation.",
-                   tex_label="e_\\pi")
-
-    m <= parameter(:e_π_f, 0.20*1.470832, fixed=true,
-                   description="e_π_f: Measurement error on foreign inflation.",
-                   tex_label="e_\\pi^f")
-
-    m <= parameter(:e_r_n, 0.20*2.237937, fixed=true,
-                   description="e_r_n: Measurement error on the domestic interest rate.",
-                   tex_label="e_r^n")
-
-    m <= parameter(:e_r_n_f, 0.20*2.237937, fixed=true,
-                   description="e_r_n_f: Measurement error on the foreign interest rate.",
-                   tex_label="e_r^{n,f}")
+    # Measurement errors
+    init_observable_errors!(m)
 
     # Steady states
     m <= SteadyStateParameter(:l_ss, NaN, description="Home steady state labor supply", tex_label="l_ss")
