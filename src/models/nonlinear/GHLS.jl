@@ -220,27 +220,43 @@ those).
 function init_parameters!(m::GHLS)
 
    #Fixed parameters
-   m <= parameter(:δ, 0.025, fixed=true,
+   # m <= parameter(:δ, 0.025, fixed=true,
+   #                 description="δ: The capital depreciation rate.",
+   #                 tex_label="\\delta")
+
+   m <= parameter(:δ, 0.025, (0.,0.15), (0.,0.15), Untransformed(), Normal(0.025, 0.0005), fixed=false,
                    description="δ: The capital depreciation rate.",
                    tex_label="\\delta")
 
-   m <= parameter(:shrgy, 0.2, fixed=true,
+   # m <= parameter(:shrgy, 0.2, fixed=true,
+   #                 description="shrgy: Government spending as share of output.",
+   #                 tex_label="\\shrgy")
+
+   m <= parameter(:shrgy, 0.2, (0.,0.99), (0.,0.99), Untransformed(), Normal(0.2,0.005), fixed=false,
                    description="shrgy: Government spending as share of output.",
                    tex_label="\\shrgy")
 
-   m <= parameter(:ϵ_p, 0.2, fixed=true, scaling=x -> 1/x + 1,
-                   description="ϵ_p: Steady state net price markup.",
+   # m <= parameter(:ϵ_p, 0.2, fixed=true, scaling=x -> 1/x + 1,
+   #                 description="ϵ_p: Steady state net price markup.",
+   #                 tex_label="\\epsilon_p")
+
+   m <= parameter(:ϵ_p, 0.2, (1e-5, 1.5), (1e-5, 1.5), Exponential(), Normal(.15, .05), fixed=false, scaling = x -> 1/x + 1,
+                   description="ϵ_p: Steady state net price markup",
                    tex_label="\\epsilon_p")
 
-   m <= parameter(:ϵ_w, 0.2, fixed=true, scaling=x -> 1/x + 1,
-                   description="ϵ_w: Steady state net wage markup.",
+   # m <= parameter(:ϵ_w, 0.143, fixed=true, scaling=x -> 1/x + 1,
+   #                 description="ϵ_w: Steady state net wage markup.",
+   #                 tex_label="\\epsilon_w")
+
+   m <= parameter(:ϵ_w, 0.14, (1e-5, 1.5), (1e-5, 1.5), Exponential(), Normal(.15, .05), fixed=false, scaling = x -> 1/x + 1,
+                   description="ϵ_w: Steady state net wage markup",
                    tex_label="\\epsilon_w")
 
    m <= parameter(:ψ_L, 1., fixed=true,
                    description="ψ_L: The disutility of labor.",
                    tex_label="\\psi_L")
 
-   m <= parameter(:ρ_η, 0.85, fixed=true,
+   m <= parameter(:ρ_η, 0.9, fixed=true,
                    description="ρ_η: Persistence of liquidity shock.",
                    tex_label="\\rho_{\\eta}")
 
@@ -248,116 +264,116 @@ function init_parameters!(m::GHLS)
                    description="ρ_int: Persistence of interest rate shock.",
                    tex_label="\\rho_int")
 
-   m <= parameter(:ρ_elast, 0., fixed=true,
+   m <= parameter(:ρ_elast, 0.98, fixed=true,
                    description="ρ_elast: Persistence of price elasticity shock.",
                    tex_label="\\rho_elast")
 
-   m <= parameter(:ρ_elastw, 0., fixed=true,
+   m <= parameter(:ρ_elastw, 0.98, fixed=true,
                    description="ρ_elastw: Persistence of wage elasticity shock.",
                    tex_label="\\rho_elastw")
 
-   m <= parameter(:σ_elast, 1e-5, fixed=true,
+   m <= parameter(:σ_elast, 0.01, fixed=true,
                    description="σ_elast: Standard deviation of price elasticity shock.",
                    tex_label="\\sigma_elast")
 
-   m <= parameter(:σ_elastw, 1e-5, fixed=true,
+   m <= parameter(:σ_elastw, 0.01, fixed=true,
                    description="σ_elastw: Standard deviation of wage elasticity shock.",
                    tex_label="\\sigma_elastw")
 
     #Steady state parameters
-    m <= parameter(:α, 0.24, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), Normal(0.30, 0.05), fixed=false,
+    m <= parameter(:α, 0.167, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), Normal(0.30, 0.05), fixed=false,
                    description="α: Capital elasticity in the intermediate goods sector's Cobb-Douglas production function.",
                    tex_label="\\alpha")
 
-    m <= parameter(:β, 0.7420, (1e-5, 10.), (1e-5, 10.), Exponential(), GammaAlt(0.25, 0.1), fixed=false, scaling = x -> 1/(1 + x/100),
+    m <= parameter(:β, 0.15, (1e-5, 10.), (1e-5, 10.), Exponential(), GammaAlt(0.25, 0.1), fixed=false, scaling = x -> 1/(1 + x/100),
                    description="β: Discount rate.",
                    tex_label="\\beta")
 
-    m <= parameter(:π_bar, 0.7000, (1e-5, 10.), (1e-5, 10.), Exponential(), Normal(.62, .1), fixed=false, scaling = x -> 1 + x/100,
+    m <= parameter(:π_bar, 0.600, (1e-5, 10.), (1e-5, 10.), Exponential(), Normal(.5, .1), fixed=false, scaling = x -> 1 + x/100,
                    description="π_bar: The targeted rate of inflation.",
                    tex_label="\\pi_bar")
 
-    m <= parameter(:gz, 0.3982, (-5.0, 5.0), (-5., 5.), Untransformed(), Normal(0.5, 0.03), fixed=false, scaling = x -> exp(x/100),
+    m <= parameter(:gz, 1.005, (0.0, 5.0), (0., 5.), Untransformed(), Normal(1.005, 0.001), fixed=false,
                    description="gz: The deterministic growth rate of technology.",
                    tex_label="gz")
 
     # Monetary Policy Rule Parameters
-    m <= parameter(:γ_π, 1.7985, (1e-5, 10.), (1e-5, 10.00), Exponential(), Normal(1.7, 0.3), fixed=false,
+    m <= parameter(:γ_π, 1.9, (1e-5, 10.), (1e-5, 10.00), Exponential(), Normal(1.7, 1.0), fixed=false,
                    description="γ_π: Weight on inflation gap in monetary policy rule.",
                    tex_label="\\gamma_{\\pi}")
 
-    m <= parameter(:γ_x, 0.0893, (1e-5, 5.), (1e-5, 5.), Exponential(), Normal(0.4, 0.3), fixed=false,
+    m <= parameter(:γ_x, 0.164, (1e-5, 5.), (1e-5, 5.), Exponential(), Normal(0.125, 1.), fixed=false,
                    description="γ_x: Weight on output gap in monetary policy rule.",
                    tex_label="\\gamma_x") #Different from Smets Wouters output gap
 
-    m <= parameter(:γ_g, 0.2239, (1e-5, 5.), (1e-5, 5.), Exponential(), Normal(0.4, 0.3), fixed=false,
+    m <= parameter(:γ_g, 0.73, (1e-5, 5.), (1e-5, 5.), Exponential(), Normal(0.125, 1.), fixed=false,
                    description="γ_g: Weight on output growth in the monetary policy rule.",
                    tex_label="\\γ_g") #Is this correct?
 
-    m <= parameter(:ρ_R, 0.3000, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
+    m <= parameter(:ρ_R, 0.6945, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.5, 0.1), fixed=false,
                    description="ρ_R: Coefficient on past interest rate in the monetary policy shock process.",
                    tex_label="\\rho_{R}")
 
     #Endogenous Propogation Parameters
-    m <= parameter(:γ, 0.7205, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.1), fixed=false,
+    m <= parameter(:γ, 0.5232, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.5, 0.2236), fixed=false,
                    description="γ: Consumption habit persistence.",
                    tex_label="γ")
 
-    m <= parameter(:σ_a, 5., (1e-5, 100.), (1e-5, 100.), Exponential(), GammaAlt(5., 1.), fixed=false,
+    m <= parameter(:σ_a, 5.65, (1e-5, 100.), (1e-5, 100.), Exponential(), GammaAlt(5., 1.), fixed=false,
                    description="σ_a: Capital utilization costs.",
                    tex_label="\\sigma_a")
 
-    m <= parameter(:σ_L, 1.7985, (1e-5, 10.), (1e-5, 10.00), Exponential(), GammaAlt(2., 0.75), fixed=false,
+    m <= parameter(:σ_L, 2.047, (1e-5, 1000.), (1e-5, 1000.00), Exponential(), GammaAlt(2., 0.75), fixed=false,
                    description="σ_L: Affects  Frisch elasticity of labor supply.",
                    tex_label="\\sigma_L")
 
-    m <= parameter(:ϕ_w, 3000.00, (-5e5, 5e5), (-5e5, 5e5), Untransformed(), Normal(3000.00, 5000.00), fixed=false,
+    m <= parameter(:ϕ_w, 4029.7, (0., 50000.), (0., 50000.), Untransformed(), Normal(3000.00, 5000.00), fixed=false,
                    description="ϕ_w: Wage adjustment cost.",
                    tex_label="\\phi_w")
 
-    m <= parameter(:ϕ_p, 100.00, (-5e3, 5e3), (-5e3, 5e3), Untransformed(), Normal(100.00, 25.00), fixed=false,
+    m <= parameter(:ϕ_p, 113.363, (0., 5000.), (0., 5000.), Untransformed(), Normal(100.00, 25.00), fixed=false,
                    description="ϕ_p: Price adjustment cost.",
                    tex_label="\\phi_p")
 
-    m <= parameter(:ϕ_I, 4., (1e-5, 100.), (1e-5, 100.), Exponential(), GammaAlt(4., 1.), fixed=false,
+    m <= parameter(:ϕ_I, 3.48, (1e-5, 10.), (1e-5, 10.), Exponential(), GammaAlt(4., 1.), fixed=false,
                    description="ϕ_I: Investment adjustment cost.",
                    tex_label="\\phi_I")
 
-    m <= parameter(:ap, 0.8258, (1e-5, .999), (1e-5, .999), SquareRoot(), BetaAlt(.5, .15), fixed=false, scaling = x -> 1 - x,
+    m <= parameter(:ap, 0.735, (1e-5, .999), (1e-5, .999), SquareRoot(), BetaAlt(.5, .2236), fixed=false, scaling = x -> 1 - x,
                    description="ap: Determines extent to which price indexation is tied to inflation target versus lagged inflation rate.",
                    tex_label="ap")
 
-    m <= parameter(:aw, 0.8258, (1e-5, .999), (1e-5, .999), SquareRoot(), BetaAlt(.5, .15), fixed=false, scaling = x -> 1 - x,
+    m <= parameter(:aw, 0.31, (1e-5, .999), (1e-5, .999), SquareRoot(), BetaAlt(.5, .2236), fixed=false, scaling = x -> 1 - x,
                    description="aw: Determines extent to which wage indexation is tied to inflation target versus lagged inflation rate.",
                    tex_label="aw")
 
     # Exogenous Process Parameters - Autocorrelations
-    m <= parameter(:ρ_g, 0.9930, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
+    m <= parameter(:ρ_g, 0.95, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ρ_g: AR(1) coefficient in the government spending process.",
                    tex_label="\\rho_g")
 
-    m <= parameter(:ρ_μ, 0.5724, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
+    m <= parameter(:ρ_μ, 0.77, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ρ_μ: AR(1) coefficient in marginal efficiency of investment process.",
                    tex_label="\\rho_{\\mu}")
 
     #Exogenous Process Parameters - Standard Deviation
-    m <= parameter(:σ_g, 0.6090, (1e-8, 5.), (1e-8, 5.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
+    m <= parameter(:σ_g, 0.177, (1e-8, 1.), (1e-8, 1.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
                    description="σ_g: The standard deviation of the government spending process.",
                    tex_label="\\sigma_{g}")
 
-    m <= parameter(:σ_η, 0.1818, (1e-8, 5.), (1e-8, 5.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
+    m <= parameter(:σ_η, 0.138, (1e-8, 1.), (1e-8, 1.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
                    description="σ_η: The standard deviation of the return on the risk-free bond process.",
                    tex_label="\\sigma_{\\eta}")
 
-    m <= parameter(:σ_μ, 0.4601, (1e-8, 5.), (1e-8, 5.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
+    m <= parameter(:σ_μ, 0.494, (1e-8, 5.), (1e-8, 5.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
                    description="σ_μ: The standard deviation of the exogenous marginal efficiency of investment shock process.",
                    tex_label="\\sigma_{\\mu}")
 
-    m <= parameter(:σ_Z, 0.4618, (1e-8, 5.), (1e-8, 5.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
+    m <= parameter(:σ_Z, 0.421, (1e-8, 1.), (1e-8, 1.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
                    description="σ_Z: The standard deviation of the disturbance to technological growth.",
                    tex_label="\\sigma_{Z}")
 
-    m <= parameter(:σ_R, 0.2397, (1e-8, 5.), (1e-8, 5.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
+    m <= parameter(:σ_R, 0.18, (1e-8, 1.), (1e-8, 1.), Exponential(), InverseGamma(2., 0.33), fixed=false, scaling = x -> x/100,
                description="σ_R: The standard deviation of the monetary policy shock.",
                tex_label="\\sigma_{R}")
 

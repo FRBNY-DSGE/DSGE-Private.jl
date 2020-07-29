@@ -38,10 +38,7 @@ function estimate(m::AbstractModel, df::DataFrame;
     if typeof(m) == GHLS{Float64}
 #       df = df[1:findall(x->x==quartertodate("2014-Q1"),df.date)[1],:]
         data = df_to_matrix(m, df)
-<<<<<<< HEAD
-=======
         #data = log.(data ./ 100.0 .+ 1.0)
->>>>>>> Added print statements
     else
         data = df_to_matrix(m, df)
     end
@@ -56,7 +53,7 @@ function estimate(m::AbstractModel;
                   mle::Bool = false,
                   sampling::Bool = true)
     # Load data
-    df = load_data(m; verbose = verbose)
+    df = load_data(m; try_disk = false, verbose = verbose)
 
     #m[:e_y].value = var(df[!,:obs_gdp])
     #m[:e_π].value = var(df[!,:obs_gdpdeflator])
@@ -160,7 +157,7 @@ function estimate(m::AbstractModel, data::AbstractArray;
             return nothing
         end
 
-
+        @save "model_MH.jld2" m
 
         ## Calculate the Hessian at the posterior mode
         hessian = if calculate_hessian(m)

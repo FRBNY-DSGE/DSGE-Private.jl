@@ -319,8 +319,8 @@ function csminwel(fcn::Function,
     end
 
     return MultivariateOptimizationResults(Csminwel(), x0, x, convert(Float64, f_x),
-        iteration, iteration==iterations, x_converged, xtol, x_resid, f_converged, ftol, f_resid,
-        gr_converged, grtol, gr_resid, false, tr, f_calls, g_calls, 0), H  # also return H
+        iteration, iteration==iterations, x_converged, xtol, xtol, x_resid, x_resid, f_converged, ftol, ftol, f_resid, f_resid,
+        gr_converged, grtol, gr_resid, false, tr, f_calls, g_calls, 0, false, NaN, NaN), H  # also return H
 end
 
 

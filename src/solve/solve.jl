@@ -75,11 +75,11 @@ function solve(m::GHLS, parallel::Bool=true)
     m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = gen_shockgrid(m.approx.nshockgrid, m.approx.nexogshocks, m.approx.ns, m.approx.nexogvars,m.parameters,m.keys)
 
     # Get equilibrium conditions of linearized solution and run gensys to put in state-space form
-    @show "eqcond runs"
+    #@show "eqcond runs"
     Γ0, Γ1, C, Ψ, Π = eqcond(m)
-    @show "eqcond finished"
+    #@show "eqcond finished"
     TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = :high)
-    @show "gensys finished"
+    #@show "gensys finished"
 
     # Check for LAPACK exception, existence and uniqueness
     if eu[1] != 1 || eu[2] != 1
@@ -99,7 +99,7 @@ function solve(m::GHLS, parallel::Bool=true)
     QQQ[7, 7] = m[:σ_elastw]^2.0
     QQQ[8, 8] = 0.
 
-    @show QQQ
+    #@show QQQ
     RRR = RRR*sqrt.(QQQ)
 
     # For the linear simulation we only need the portion of the state-space matrices corresponding to variables in the non-linear version of the model

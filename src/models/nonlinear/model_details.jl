@@ -95,8 +95,8 @@ function intermediatedec!(endogvar::Vector{Float64},nendogvars::Int,nexog::Int,l
         endogvar[endogenous_states[:u_t]] = exp(polyvar[7]) #util
     end
 
-    @show bp
-    @show bww
+    #@show bp
+    #@show bww
 
     endogvar[endogenous_states[:Vp_t]] = (sqrt(1.0+4.0*bp)+1.0)/2.0 #vp - see (2.5) in GHLS (2017) Technical Appendix (TA). vp = \frac{π(X_{t-1},τ_t)}{\tilde{π}_{t-1}/2} where (X_{t-1},τ_t) is the minimum state vector. (see (2.1) and (2.2) in TA)
     endogvar[endogenous_states[:Vw_t]] = (sqrt(1.0+4.0*bww)+1.0)/2.0 #vw = π_w(X_{t-1},τ_t)/\tilde{π}_{w,t} (see (2.6) in TA)
@@ -109,9 +109,9 @@ function intermediatedec!(endogvar::Vector{Float64},nendogvars::Int,nexog::Int,l
     endogvar[endogenous_states[:π_w]] = endogvar[endogenous_states[:Vw_t]]*dwtildem1*gzwage #dw = π_w (X_{t-1},τ_t) from (2.6) of TA
     endogvar[endogenous_states[:muc_t]] = endogvar[endogenous_states[:λc]] + (params[keys[:γ]]/params[keys[:gz]])*params[keys[:β]]*endogvar[endogenous_states[:bc_t]] #muc (marginal utility of consumption), see last term in (2.8) of TA or (1.27) of TA
     endogvar[endogenous_states[:c_t]] = params[keys[:γ]]*endogvarm1[endogenous_states[:c_t]]/(params[keys[:gz]]*techshk)+1.0/endogvar[endogenous_states[:muc_t]] #cc = c (X_{t-1},τ_t) (see (2.8) in TA)
-    cquad_vi::Float64 = endogvar[endogenous_states[:bi_t]]/(endogvar[endogenous_states[:qk_t]]*invshk)-(1.0-endogvar[endogenous_states[:qk_t]]*invshk)/(params[keys[:ϕ_I]].value*endogvar[endogenous_states[:qk_t]]*invshk)# This is is term in the square root minus 1 divided by 4 of (2.9) of TA
+    cquad_vi::Float64 = endogvar[endogenous_states[:bi_t]]/(endogvar[endogenous_states[:qk_t]]*invshk)-(1.0-endogvar[endogenous_states[:qk_t]]*invshk)/(params[keys[:ϕ_I]]*endogvar[endogenous_states[:qk_t]]*invshk)# This is is term in the square root minus 1 divided by 4 of (2.9) of TA
 
-    @show cquad_vi
+    #@show endogvar[endogenous_states[:bi_t]], endogvar[endogenous_states[:qk_t]]
 
     endogvar[endogenous_states[:Vi_t]] = 0.5*(1.0+sqrt(1.0+4.0*cquad_vi)) #vi = i(X_{t-1},τ_t)/i_{t-1} from (2.9) in TA
 
@@ -353,8 +353,7 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
     end
 
     # Calculates conditional expectations
-    ## @inbounds @simd
-    for ss in 1:approx.nquad
+    @inbounds @simd for ss in 1:approx.nquad
         innovations[1:approx.nexogshocks] = approx.ghnodes[:,ss]
 
         decr!(endogvarp,approx,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, zlbswitch)
@@ -386,10 +385,11 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
         end
 
         # Approximate expectation by taking weighted sum over integration nodes
-        exp_var[:] += approx.ghweights[ss]*ev
+        exp_var .+= approx.ghweights[ss]*ev
+        #exp_var[:,ss] = approx.ghweights[ss]*ev
     end
 
-    #exp_var = sum(exp_var,dims=2)
+    #exp_var = vec(sum(exp_var,dims=2))
 
     liqshk = exp(endogvar[endogenous_states[:b_t]])
     invshk = exp(endogvar[endogenous_states[:μ_t]])
