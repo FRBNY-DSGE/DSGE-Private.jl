@@ -1,3 +1,4 @@
+using NLsolve
 """
 ```
 solve(m::AbstractModel; apply_altpolicy = false)
@@ -456,14 +457,38 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
     tolfun = 1.0e-04
     step  = 7.0e-01
 
+
+
+      function residuals!(F, α_star)
+        avg_error = 0.0
+        for j in 1:approx.ns
+            err = 0.0
+            for k in 1:approx.ngridpoints
+                updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
+                err += err2
+            end
+            mul!(α_temp, approx.bbtinv', updated_approx_functions')
+            F[:, j] = vec(α_temp[:, 1:approx.nfunc])
+            F[: , j + approx.ns] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
+
+
+        end
+        println((F - α_star)[1,1:5])
+        return F - α_star
+    end
+
+    NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04)
+
+
     # Get fixed point using iterative convergence method
     # Loop until convergence (avg_error < tolfun) or niter reached
-    for i in 1:niter
+#=    for i in 1:niter
         avg_error = 0.0
 
         # Calculate g(f) to get new guess for f and then calculate new approximation
         # Note that we can do this separately for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
         @time for j in 1:approx.ns
+
             err = 0.0
             for k in 1:approx.ngridpoints
                 updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
@@ -497,7 +522,7 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
 
         # Updated α are convex combination of old and new (dampening step to help fixed point algorithm converge)
         α_star = (1.0 - step)*α_star + step*α_new
-    end
+    end =#
 
     return α_star, convergence
 end
@@ -534,6 +559,18 @@ function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array
     tolfun = 1.0e-04
     step  = 7.0e-01
 
+#=    function residuals( α_mat)
+        α_here = @sync @distributed (hcat) for j in 1:approx.ns
+            parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states, α_mat, j, zlbswitch)
+        end
+
+        α_new[:,1:approx.ns] = α_here[:,1:3:end]
+        α_new[:,approx.ns+1:end] = α_here[:,2:3:end]
+
+        return α_mat - α_new
+    end
+
+    NLsolve.fixedpoint(residuals, α_initial; ftol=1.0e-04) =#
     # Get fixed point using iterative convergence method
     # Loop until convergence (avg_error < tolfun) or niter reached
     for i in 1:niter
@@ -592,6 +629,7 @@ function parallel_help(rkss::Float64, approx::Approximation, params::Array{Abstr
 
     # Initialize variables
     parallel_info = zeros(approx.nfunc*approx.ngridpoints,3)
+
     updated_approx_polynomials = Array{Float64}(undef,2*approx.nfunc, approx.ngridpoints)
     err = 0.0
     α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
