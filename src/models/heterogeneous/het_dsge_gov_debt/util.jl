@@ -45,7 +45,7 @@ function histc(points, grid)
 ```
 Mimics behavior of histc function in MATLAB.
 """
-function histc(points, grid)
+function histc(points, grid) # TODO: see if I can avoid declaring these variables global, e.g. found probably doesn't need to be
     N      = size(grid, 1)
     ib_pol = zeros(Int64, size(points))
     points_copy = deepcopy(points)

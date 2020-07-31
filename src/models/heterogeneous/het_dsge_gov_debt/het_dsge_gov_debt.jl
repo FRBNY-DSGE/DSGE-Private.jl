@@ -240,7 +240,12 @@ function HetDSGEGovDebt(subspec::String="ss0";
     init_grids!(m)
 
     # Solve for the steady state
-    #steadystate!(m)
+    if get_setting(m, :new_steady_state)
+        new_steadystate!(m)
+    else
+        steadystate!(m)
+    end
+
 
     # So that the indices of m.endogenous_states reflect the normalization
     normalize_model_state_indices!(m)
@@ -693,8 +698,8 @@ function setup_indices!(m::HetDSGEGovDebt)
     ns = get_setting(m, :ns)
     endo = m.endogenous_states
     eqconds = m.equilibrium_conditions
-    nans_state = (get_setting(m, :na1_state) + get_setting(m, :na2_state)) #*ns
-    nans_jump = (get_setting(m, :na1_jump) + get_setting(m, :na2_jump)) #*ns
+    nans_state = (get_setting(m, :na1_state) + get_setting(m, :na2_state)) #*ns, number of states in the na × ns grid
+    nans_jump = (get_setting(m, :na1_jump) + get_setting(m, :na2_jump)) #*ns     number of jump variables in the na × ns grid
 
     # Endogenous function-valued states
     endo[:kf′_t]  = 1:nans_state    #  combination of lagged ell and m functions, predicts m
@@ -718,71 +723,73 @@ function setup_indices!(m::HetDSGEGovDebt)
 
     # Function-valued jumps
     endo[:l′_t]   = nans_state+14:nans_state+nans_jump+13 # ell function
+    nans_state_jump_14 = nans_state + nans_jump + 14
 
     # Scalar-valued jumps
-    endo[:C′_t]         = nans_state+nans_jump+14:nans_state+nans_jump+14 # real interest rate
-    endo[:R′_t]         = nans_state+nans_jump+15:nans_state+nans_jump+15 # real interest rate
-    endo[:i′_t]         = nans_state+nans_jump+16:nans_state+nans_jump+16 # nominal interest rate
-    endo[:t′_t]         = nans_state+nans_jump+17:nans_state+nans_jump+17 # transfers + dividends
-    endo[:w′_t]         = nans_state+nans_jump+18:nans_state+nans_jump+18 # real wage
-    endo[:L′_t]         = nans_state+nans_jump+19:nans_state+nans_jump+19 # hours worked
-    endo[:π′_t]         = nans_state+nans_jump+20:nans_state+nans_jump+20 # inflation
-    endo[:π_w′_t]       = nans_state+nans_jump+21:nans_state+nans_jump+21 # nominal wage inflation
-    endo[:margutil′_t]  = nans_state+nans_jump+22:nans_state+nans_jump+22 # avg marginal utility
-    endo[:y′_t]         = nans_state+nans_jump+23:nans_state+nans_jump+23 # gdp
-    endo[:I′_t]         = nans_state+nans_jump+24:nans_state+nans_jump+24 # investment
-    endo[:mc′_t]        = nans_state+nans_jump+25:nans_state+nans_jump+25 # marginal cost - this is ζ in HetDSGEGovDebtₖd.pdf
-    endo[:Q′_t]         = nans_state+nans_jump+26:nans_state+nans_jump+26 # Tobin's qfunction
-    endo[:capreturn′_t] = nans_state+nans_jump+27:nans_state+nans_jump+27 # return on capital
-    endo[:tg′_t]        = nans_state+nans_jump+28:nans_state+nans_jump+28
+    endo[:C′_t]         = nans_state_jump_14:nans_state_jump_14       # real interest rate
+    endo[:R′_t]         = nans_state_jump_14+1:nans_state_jump_14+1   # real interest rate
+    endo[:i′_t]         = nans_state_jump_14+2:nans_state_jump_14+2   # nominal interest rate
+    endo[:t′_t]         = nans_state_jump_14+3:nans_state_jump_14+3   # transfers + dividends
+    endo[:w′_t]         = nans_state_jump_14+4:nans_state_jump_14+4   # real wage
+    endo[:L′_t]         = nans_state_jump_14+5:nans_state_jump_14+5   # hours worked
+    endo[:π′_t]         = nans_state_jump_14+6:nans_state_jump_14+6   # inflation
+    endo[:π_w′_t]       = nans_state_jump_14+7:nans_state_jump_14+7   # nominal wage inflation
+    endo[:margutil′_t]  = nans_state_jump_14+8:nans_state_jump_14+8   # avg marginal utility
+    endo[:y′_t]         = nans_state_jump_14+9:nans_state_jump_14+9   # gdp
+    endo[:I′_t]         = nans_state_jump_14+10:nans_state_jump_14+10 # investment
+    endo[:mc′_t]        = nans_state_jump_14+11:nans_state_jump_14+11 # marginal cost - this is ζ in HetDSGEGovDebtₖd.pdf
+    endo[:Q′_t]         = nans_state_jump_14+12:nans_state_jump_14+12 # Tobin's qfunction
+    endo[:capreturn′_t] = nans_state_jump_14+13:nans_state_jump_14+13 # return on capital
+    endo[:tg′_t]        = nans_state_jump_14+14:nans_state_jump_14+14
 
     # Function blocks which output a function
     eqconds[:eq_euler]                  = 1:nans_state
     eqconds[:eq_kolmogorov_fwd]         = nans_state+1:2*nans_state
 
     # Function blocks which map functions to scalars
-    eqconds[:eq_agg_consumption]        = 2*nans_state+1:2*nans_state+1
-    eqconds[:eq_lambda]                 = 2*nans_state+2:2*nans_state+2
+    nans_state_mul_2 = 2 * nans_state
+    eqconds[:eq_agg_consumption]        = nans_state_mul_2+1:nans_state_mul_2+1
+    eqconds[:eq_lambda]                 = nans_state_mul_2+2:nans_state_mul_2+2
 
     # Scalar blocks involving endogenous variables
-    eqconds[:eq_transfers]              = 2*nans_state+3:2*nans_state+3   # transfers
-    eqconds[:eq_investment]             = 2*nans_state+4:2*nans_state+4   # investment
-    eqconds[:eq_tobin_q]                = 2*nans_state+5:2*nans_state+5   # tobin's q
-    eqconds[:eq_capital_accumulation]   = 2*nans_state+6:2*nans_state+6   # capital accumulation
-    eqconds[:eq_wage_phillips]          = 2*nans_state+7:2*nans_state+7   # wage phillips curve
-    eqconds[:eq_price_phillips]         = 2*nans_state+8:2*nans_state+8   # price phillips curve
-    eqconds[:eq_marginal_cost]          = 2*nans_state+9:2*nans_state+9   # marginal cost
-    eqconds[:eq_gdp]                    = 2*nans_state+10:2*nans_state+10 # gdp
-    eqconds[:eq_optimal_kl]             = 2*nans_state+11:2*nans_state+11 # optimal K/L ratio
-    eqconds[:eq_taylor]                 = 2*nans_state+12:2*nans_state+12 # taylor rule
-    eqconds[:eq_fisher]                 = 2*nans_state+13:2*nans_state+13 # fisher eqn
-    eqconds[:eq_nominal_wage_inflation] = 2*nans_state+14:2*nans_state+14 # nominal wage inflation
-    eqconds[:eq_fiscal_rule]            = 2*nans_state+15:2*nans_state+15
-    eqconds[:eq_g_budget_constraint]    = 2*nans_state+16:2*nans_state+16
-    eqconds[:eq_resource_constraint]    = 2*nans_state+17:2*nans_state+17
+    eqconds[:eq_transfers]              = nans_state_mul_2+3:nans_state_mul_2+3   # transfers
+    eqconds[:eq_investment]             = nans_state_mul_2+4:nans_state_mul_2+4   # investment
+    eqconds[:eq_tobin_q]                = nans_state_mul_2+5:nans_state_mul_2+5   # tobin's q
+    eqconds[:eq_capital_accumulation]   = nans_state_mul_2+6:nans_state_mul_2+6   # capital accumulation
+    eqconds[:eq_wage_phillips]          = nans_state_mul_2+7:nans_state_mul_2+7   # wage phillips curve
+    eqconds[:eq_price_phillips]         = nans_state_mul_2+8:nans_state_mul_2+8   # price phillips curve
+    eqconds[:eq_marginal_cost]          = nans_state_mul_2+9:nans_state_mul_2+9   # marginal cost
+    eqconds[:eq_gdp]                    = nans_state_mul_2+10:nans_state_mul_2+10 # gdp
+    eqconds[:eq_optimal_kl]             = nans_state_mul_2+11:nans_state_mul_2+11 # optimal K/L ratio
+    eqconds[:eq_taylor]                 = nans_state_mul_2+12:nans_state_mul_2+12 # taylor rule
+    eqconds[:eq_fisher]                 = nans_state_mul_2+13:nans_state_mul_2+13 # fisher eqn
+    eqconds[:eq_nominal_wage_inflation] = nans_state_mul_2+14:nans_state_mul_2+14 # nominal wage inflation
+    eqconds[:eq_fiscal_rule]            = nans_state_mul_2+15:nans_state_mul_2+15
+    eqconds[:eq_g_budget_constraint]    = nans_state_mul_2+16:nans_state_mul_2+16
+    eqconds[:eq_resource_constraint]    = nans_state_mul_2+17:nans_state_mul_2+17
 
     # Lagged Variables
-    eqconds[:LR] = 2*nans_state+17:2*nans_state+17 # LR
-    eqconds[:LI] = 2*nans_state+18:2*nans_state+18 # LI
-    eqconds[:LY] = 2*nans_state+19:2*nans_state+19 # LY
-    eqconds[:LW] = 2*nans_state+20:2*nans_state+20 # LW
-    eqconds[:LX] = 2*nans_state+21:2*nans_state+21 # LX
+    eqconds[:LR] = nans_state_mul_2+17:nans_state_mul_2+17 # LR
+    eqconds[:LI] = nans_state_mul_2+18:nans_state_mul_2+18 # LI
+    eqconds[:LY] = nans_state_mul_2+19:nans_state_mul_2+19 # LY
+    eqconds[:LW] = nans_state_mul_2+20:nans_state_mul_2+20 # LW
+    eqconds[:LX] = nans_state_mul_2+21:nans_state_mul_2+21 # LX
 
     # Shocks
-    eqconds[:eq_b]   = 2*nans_state+22:2*nans_state+22 # discount factor B
-    eqconds[:eq_g]   = 2*nans_state+23:2*nans_state+23 # govt spending G
-    eqconds[:eq_z]   = 2*nans_state+24:2*nans_state+24 # tfp growth Z
-    eqconds[:eq_μ]   = 2*nans_state+25:2*nans_state+25 # investment MU
-    eqconds[:eq_λ_w] = 2*nans_state+26:2*nans_state+26 # wage mkup LAMW
-    eqconds[:eq_λ_f] = 2*nans_state+27:2*nans_state+27 # price mkup LAMF
-    eqconds[:eq_rm]  = 2*nans_state+28:2*nans_state+28 # monetary policy MON
+    eqconds[:eq_b]   = nans_state_mul_2+22:nans_state_mul_2+22 # discount factor B
+    eqconds[:eq_g]   = nans_state_mul_2+23:nans_state_mul_2+23 # govt spending G
+    eqconds[:eq_z]   = nans_state_mul_2+24:nans_state_mul_2+24 # tfp growth Z
+    eqconds[:eq_μ]   = nans_state_mul_2+25:nans_state_mul_2+25 # investment MU
+    eqconds[:eq_λ_w] = nans_state_mul_2+26:nans_state_mul_2+26 # wage mkup LAMW
+    eqconds[:eq_λ_f] = nans_state_mul_2+27:nans_state_mul_2+27 # price mkup LAMF
+    eqconds[:eq_rm]  = nans_state_mul_2+28:nans_state_mul_2+28 # monetary policy MON
 
     # Total grid x*s
-    m <= Setting(:n_state, (get_setting(m, :na1_state) +get_setting(m, :na2_state)),
+    m <= Setting(:n_state, (get_setting(m, :na1_state) + get_setting(m, :na2_state)),
                  "Total grid size, multiplying across grid dimensions.")
-    m <= Setting(:n_jump, (get_setting(m, :na1_jump) +get_setting(m, :na2_jump)),
+    m <= Setting(:n_jump, (get_setting(m, :na1_jump) + get_setting(m, :na2_jump)),
              "Total grid size, multiplying across grid dimensions.")
-    m <= Setting(:nvars,     2*get_setting(m, :n_state) + 28, "num variables")
+    m <= Setting(:nvars,     2 * get_setting(m, :n_state) + 28, "num variables")
     m <= Setting(:nscalars,  28, "num eqs which output scalars")
     m <= Setting(:nyscalars, 15, "num scalar jumps")
     m <= Setting(:nascalars, get_setting(m, :nscalars) - get_setting(m, :nyscalars),

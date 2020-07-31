@@ -4,7 +4,7 @@ function steadystate!(m::HetDSGEGovDebt;
                       excess::S = 5000.,
                       tol::S = 1e-4,
                       maxit::Int64 = 20,
-                      βband::S = 1e-2) where {S<:AbstractFloat}
+                      βband::S = 1e-2) where {S<:Real}
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
     # estimate the non steady state parameters, there's no need to recompute
     # elo/ehi, etc.
@@ -80,7 +80,7 @@ function find_steadystate!(m::HetDSGEGovDebt;
                            excess::S = 5000.,
                            tol::S = 1e-4,
                            maxit::Int64 = 100, #20,
-                           βband::S = 1e-2) where {S<:AbstractFloat}
+                           βband::S = 1e-2) where {S<:Real}
     # Load settings
     nx = get_setting(m, :nx)
     ns = get_setting(m, :ns)
@@ -128,13 +128,14 @@ function find_steadystate!(m::HetDSGEGovDebt;
     KF_in    = fill(1.0/(ns*nx), nx, ns) # Uniform distribution
 
     # e shock, qfunction stuff
-    qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, ehi, elo) # g in the paper
-    egrid_gk = gauss(ne)
+    qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, ehi, elo) # g in the paper
+    # egrid_gk = gauss(ne) # Changed to use FastGaussQuadrature instead
+    egrid_gk = gausslegendre(ne)
     egrid    = transform_ab(elo, ehi, egrid_gk[1])
     # ι: iota
     ewts = egrid_gk[2]
     ewts = ewts / dot(qfunction.(egrid), ewts)
-    g_of_e = qfunction.(egrid) #save after deciding grid instead of recomputing
+    g_of_e = qfunction.(egrid) # save after deciding grid instead of recomputing
     egrid = egrid ./ dot(g_of_e .* egrid, ewts)
 
     if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
@@ -149,18 +150,19 @@ function find_steadystate!(m::HetDSGEGovDebt;
         βhi_temp = m[:βstar].value + βband
 
         c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(nx, ns, ne, βlo_temp, R, ω, H, η, T, γ,
-                                                       ehi, elo, xgrid, sgrid, xswts, c_pol_in, KF_in,
-                                                       pLH, pHL, f, egrid, ewts, g_of_e, damp = get_setting(m, :policy_damp),
-                                                       maxit = get_setting(m, :policy_maxit))
+                                                                 ehi, elo, xgrid, sgrid, xswts, c_pol_in, KF_in,
+                                                                 pLH, pHL, f, egrid, ewts, g_of_e,
+                                                                 damp = get_setting(m, :policy_damp),
+                                                                 maxit = get_setting(m, :policy_maxit))
         excess_lo, μ = compute_excess(xswts, KF, bp, bg)
 
         if excess_lo < 0 && abs(excess_lo) > tol
             βlo = βlo_temp
             c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(nx, ns, ne, βhi_temp, R, ω, H, η, T, γ, ehi,
-                                                           elo, xgrid, sgrid, xswts, c_pol_in, KF_in,
-                                                           pLH, pHL, f, egrid, ewts, g_of_e,
-                                                           damp = get_setting(m, :policy_damp),
-                                                           maxit = get_setting(m, :policy_maxit))
+                                                                     elo, xgrid, sgrid, xswts, c_pol_in, KF_in,
+                                                                     pLH, pHL, f, egrid, ewts, g_of_e,
+                                                                     damp = get_setting(m, :policy_damp),
+                                                                     maxit = get_setting(m, :policy_maxit))
             excess_hi, μ = compute_excess(xswts, KF, bp, bg)
 
             if excess_hi > 0
@@ -173,13 +175,14 @@ function find_steadystate!(m::HetDSGEGovDebt;
 
     while abs(excess) > tol && counter < maxit # clearing markets
         @show counter, β
-        β = (βlo + βhi) / 2.0
+        β = (βlo + βhi) / 2.0 # Note that b/c while loop is inside a function, scoping permits β to be changed
         c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(nx, ns, ne, β, R, ω, H, η, T, γ, ehi, elo,
-                                                       xgrid, sgrid, xswts, c_pol_in, KF_in,
-                                                       pLH, pHL, f, egrid, ewts, g_of_e,
-                                                       damp = get_setting(m, :policy_damp),
-                                                       maxit = get_setting(m, :policy_maxit))
+                                                                 xgrid, sgrid, xswts, c_pol_in, KF_in,
+                                                                 pLH, pHL, f, egrid, ewts, g_of_e,
+                                                                 damp = get_setting(m, :policy_damp),
+                                                                 maxit = get_setting(m, :policy_maxit))
         excess, μ = compute_excess(xswts, KF, bp, bg)
+
         # bisection
         if excess > 0
             βhi = β
@@ -223,7 +226,7 @@ end
 
 # Draw a sample of nodes from the skill distribution
 function ssample(us::Matrix{S}, P::Matrix{S}, πss::AbstractArray,
-                 ni::Int) where {S<:AbstractFloat}
+                 ni::Int) where {S<:Real}
 	shist = ones(Int,ni,8)
 	for i=1:ni
 		if us[i,1] > πss[1]
@@ -240,7 +243,7 @@ end
 
 function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, P::Matrix{S},
                        πss::AbstractArray, sgrid::AbstractArray,
-                       ni::Int) where {S<:AbstractFloat}
+                       ni::Int) where {S<:Real}
   	s_inds = ssample(us,P,πss,ni)
 	linc1 = zeros(ni)
 	linc2 = zeros(ni)
@@ -264,7 +267,7 @@ function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, P::Matrix{S},
 end
 
 function skill_moments(sH_over_sL::Real, elo::Real, pLH::S, pHL::S, us::Matrix{S},
-                       es::Matrix{S}, ni::Int = 10000) where {S<:AbstractFloat}
+                       es::Matrix{S}, ni::Int = 10000) where {S<:Real}
 	πL    = pHL / (pLH + pHL)
 	πss   = [πL; 1.0-πL]
 	P     = [[1.0-pLH pLH]; [pHL 1.0-pHL]]
@@ -277,25 +280,25 @@ end
 
 """
 ```
-function loss(x::Vector{S}, target::Vector{S}) where {S<:AbstractFloat}
+function loss(x::Vector{S}, target::Vector{S}) where {S<:Real}
 ```
 
 Computes for given vector and target vector, the sum of absolute loss.
 """
-loss(x::Vector{S}, target::Vector{S}) where {S<:AbstractFloat} = sum(abs.(x-target))
+loss(x::Vector{S}, target::Vector{S}) where {S<:Real} = sum(abs.(x-target))
 
 """
 ```
 function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
                   us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
-                  initial_guess::Vector{S} = [6.3, 0.03]) where {S<:AbstractFloat}
+                  initial_guess::Vector{S} = [6.3, 0.03]) where {S<:Real}
 ```
 
 Uses Nelder-Mead (gradient descent algorithm) to optimize for income moments.
 """
 function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
                   us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
-                  initial_guess::Vector{S} = [6.3, 0.03]) where {S<:AbstractFloat}
+                  initial_guess::Vector{S} = [6.3, 0.03]) where {S<:Real}
 
     skill_moments_f(x) = loss(collect(skill_moments(x[1], x[2], pLH, pHL, us, es)), target)
 
@@ -309,7 +312,7 @@ function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Ve
 end
 
 function esample(ue::Matrix{S}, egrid::AbstractArray, ecdf::AbstractArray,
-                 ni::Int, ne::Int) where {S<:AbstractFloat}
+                 ni::Int, ne::Int) where {S<:Real}
     eave = 0.5*egrid[1:ne-1]+0.5*egrid[2:ne]
 	es = zeros(ni,8)
 	for i=1:ni
@@ -358,7 +361,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
                                sgrid::Vector{S}, xswts::Vector{S}, c_pol::Array{S}, KF_in::Array{S},
                                pLH::S, pHL::S, f::Matrix{S}, egrid::Vector{Float64}, ewts::Vector{Float64}, g_of_e::Vector{Float64},
                                dist::S = 1., tol::S = 1e-10;
-                               maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
+                               maxit::Int64 = 500, damp::S = 0.5) where {S<:Real}
     n  = nx*ns
     nx_c = 25
 
@@ -370,7 +373,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
     for is in 1:ns
         for ie in 1:ne
             # min of this (below) and e=1)
-            e = egrid[ie] #minimum([egrid[ie], 1.0])
+            e = egrid[ie] # minimum([egrid[ie], 1.0])
             c_constrained[is, ie] = ω*sgrid[is]*e*H + T
         end
     end
@@ -380,7 +383,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
 
     bmin = 0.0
     bmax = maximum(exp(γ)*xgrid)
-    bgrid = bmin .+ ((1:nx)/nx).^2 * (bmax - bmin)
+    bgrid = bmin .+ ((1:nx)/nx).^2 * (bmax - bmin) # Inefficient, should construct bgrid in advance
     # a grid implied by bgrid is: map b into a using equation at top of page 4
     agrid = Array{Float64}(undef, nx, ns, ne)
     for is in 1:ns
@@ -393,7 +396,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
     f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
 
     while dist>tol && counter<maxit
-        for is in 1:ns
+        for is in 1:ns # TODO: switch to use reflect column major order, doesn't seem like it'd be a problem to do so
             for ie in 1:ne
                 # Keep only non-constrained
                 non_c_inds = vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .-
@@ -401,33 +404,45 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
                 bp = bgrid[non_c_inds, :]
 
                 # Sums
-                sum_term = zeros(length(bp))
+                sum_term = zeros(length(bp)) # Have to create here b/c depend on bp
                 verify_one = 0.0
+
                 ## Outer sum over s'
+#=
                 for isp in 1:ns
                     ## Inner integral over e'
                     for iep in 1:ne
-                        #                     p(s'|s)*iota(e')*g(e')      * c(a, s')^{-1}
-                        sum_term = sum_term + f[is, isp]*ewts[iep]*g_of_e[iep] ./ c_pol[non_c_inds, isp, iep]
-                        verify_one += f[is, isp]*ewts[iep]*g_of_e[iep]
+                        #              p(s'|s)    *  iota(e') * g(e')         * c(a, s')⁻¹
+                        sum_term  .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[non_c_inds, isp, iep]
+                        verify_one += f[is, isp]  * ewts[iep] * g_of_e[iep]
                     end
                 end
-                @test isapprox(verify_one, 1.0, atol = 1e-5)
+=#
+                # But faster to do in reverse (note that it's just a double sum)
+                for iep in 1:ne
+                    for isp in 1:ns
+                        sum_term  .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[non_c_inds, isp, iep]
+                        verify_one += f[is, isp]  * ewts[iep] * g_of_e[iep]
+                    end
+                end
 
-                # Compute ell(a, s) = β*R*exp(-γ)*Σ\Int
-                l = β*R*exp(-γ)*sum_term
+                @test isapprox(verify_one, 1.0, atol = 1e-5) # TODO: ADD REMOVE CHECK OPTION
+
+                # Compute ell(a, s) = β * R * exp(-γ) * (Σₛ∫ₑ)
+                # l = β * R * exp(-γ) * sum_term        # Calculate below directly to save allocations
 
                 # Compute consumption today: c(b', s) = 1/l(a, s)
-                c = 1 ./ l
-                b = vec(exp(γ)*((bp ./ R) .- ω*sgrid[is]*egrid[ie]*H .- T .+ c)) #_pol[:, is, ie]))
+                c = 1. / (β * R * exp(-γ) * sum_term)
+                b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c)) #_pol[:, is, ie]))
 
                 if b[1] > 0. && c[1] > c_constrained[is, ie]
-                    @test c_constrained[is, ie] < c[1]
+                    @test c_constrained[is, ie] < c[1] # TODO: ADD REMOVE CHECK OPTION
                     c_c = collect(range(c_constrained[is, ie], c[1], length = nx_c))
-                    b_c = exp(γ)*(-ω*sgrid[is]*egrid[ie]*H - T .+ c_c)
-                    b = vcat(b_c[1:nx_c-1], b)
-                    c = vcat(c_c[1:nx_c-1], c)
+                    b_c = exp(γ) .* ((-ω * sgrid[is] * egrid[ie] * H - T) .+ c_c)
+                    b = vcat(b_c[1:nx_c - 1], b)
+                    c = vcat(c_c[1:nx_c - 1], c)
                 end
+
                 # Nearest points, linear interpolation
                 c_poli[:, is, ie] = interp_one(b, c, bgrid)
             end
@@ -446,12 +461,12 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
         end
     end
 
-
     # Interpolate the (a, s, e) grid back to the (a, s) grid.
-    C_Final = Matrix{Float64}(undef, nx, ns)
+    C_Final = Matrix{Float64}(undef, nx, ns) # even faster to allocate this ahead of time
     for is in 1:ns
         # Sort the a's and use those for everything
         sorted_inds = sortperm(vec(agrid[:, is, :]))
+
         # agrid is the grid of a implied by bgrid, whereas xgrid is the grid of a that's paseed in
         C_Final[:, is] = interp_one(vec(agrid[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], xgrid)
     end
@@ -459,25 +474,25 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
     # Compute a' implied by interpolated C_Final (back on the usual grid of a)
     ap = Array{Float64}(undef, nx, ns, ne, ns)
     for is in 1:ns
-        for isp in 1:ns
+        for isp in 1:ns # TODO: switch isp and iep loops
             for iep in 1:ne
-                ap[:, isp, iep, is] = ω*sgrid[isp]*egrid[iep]*H .+ R*exp(-γ)*(xgrid - C_Final[:, is])
+                ap[:, isp, iep, is] = (ω * sgrid[isp] * egrid[iep] * H) .+ (R * exp(-γ)) .* (xgrid - C_Final[:, is])
             end
         end
     end
-    ap_grid = DSGE.uniform_quadrature(minimum(ap), maximum(ap) + .1, nx, scale = maximum(ap)+ .1 - minimum(ap))[1]
+    ap_grid = uniform_quadrature(minimum(ap), maximum(ap) + .1, nx, scale = maximum(ap) + .1 - minimum(ap))[1] # TODO: REPLACE WITH JUST DIRECTLY CREATING THE GRID, AVOID EXTRA ALLOCATIONS
     b_grid_implied = Matrix{Float64}(undef, nx, ns)
     for is in 1:ns
-        b_grid_implied[:, is] = exp(γ)*(ap_grid .- ω*sgrid[is]*H .- T)
+        b_grid_implied[:, is] = exp(γ) .* (ap_grid .- ω * sgrid[is] * H .- T)
     end
 
     # Finding the ergodic distribution
-    # Assign weights to adjacent grid points paproportionally to distance
-    ib_pol, wei = histc(ap, ap_grid)
+    # Assign weights to adjacent grid points proportionally to distance
+    ib_pol, wei = histc(ap, ap_grid) # TODO: REPLACE WITH fit(Histogram) if faster, but first fix use of global in histc
 
     # Check ib_pol and weights worked
-    for ia in 1:nx
-        for is in 1:ns
+    for ia in 1:nx # TODO: ASSORT INTO COLUMN MAJOR ORDER, this is row-major
+        for is in 1:ns # TODO: ADD OPTION TO NOT CHECK
             for ie in 1:ne
                 for isp in 1:ns
                     # Make sure ap lies between the two nearest grid points on either side
@@ -497,7 +512,7 @@ function policy_hetdsgegovdebt(nx::Int, ns::Int, ne::Int, β::S, R::S, ω::S, H:
         end
     end
 
-    # Iterate asset transition matrix starting from uniform distribution
+    # Iterate asset transition matrix starting from uniform distribution to solve Kolmogorov forward equation
     dif = 1
     pd  = deepcopy(KF_in)
     while dif > tol
@@ -535,7 +550,7 @@ function policy_hetdsgegovdebt_old(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, �
                                T::S, γ::S, ehi::S, elo::S, xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
                                f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
-                               maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
+                               maxit::Int64 = 500, damp::S = 0.5) where {S<:Real}
     n    = nx*ns
     c    = zeros(n)                  # consumption
     bp   = Vector{Float64}(undef, n) # savings
@@ -576,7 +591,7 @@ end
                                                            qfunc::Function, xgrid::Vector{S},
                                                            sgrid::Vector{S}, xswts::Vector{S},
                                                            c::Vector{S}, bp::Vector{S},
-                                                           f::Matrix{S}) where {S<:AbstractFloat}
+                                                           f::Matrix{S}) where {S<:Real}
     l_out = zeros(nx*ns)
     # Expectation at t (over s and a)
     for iss=1:ns
@@ -601,7 +616,7 @@ end
 @inline function kolmogorov_fwd_hetdsgegovdebt(nx::Int, ns::Int, ω::S, H::S, T::S, R::S,
                                                γ::S, qfunc::Function, xgrid::Vector{S},
                                                sgrid::Vector{S}, bp::Vector{S},
-                                               f::Matrix{S}) where {S<:AbstractFloat}
+                                               f::Matrix{S}) where {S<:Real}
     tr = zeros(nx*ns,nx*ns)
     for iss=1:ns
         for ia=1:nx
@@ -618,7 +633,7 @@ end
     return tr
 end
 
-@inline function mollifier_hetdsgegovdebt(e::S, ehi::S, elo::S) where {S<:AbstractFloat}
+@inline function mollifier_hetdsgegovdebt(e::S, ehi::S, elo::S) where {S<:Real}
     In = 0.443993816237631
     if e<ehi && e>elo
         temp = -1.0 + 2.0 * (e - elo) / (ehi - elo)
@@ -627,7 +642,7 @@ end
     return 0.0
 end
 
-@inline function dmollifier_hetdsgegovdebt(x::S, ehi::S, elo::S) where {S<:AbstractFloat}
+@inline function dmollifier_hetdsgegovdebt(x::S, ehi::S, elo::S) where {S<:Real}
     In = 0.443993816237631
     if x<ehi && x>elo
         temp = (-1.0 + 2.0*(x-elo)/(ehi-elo))
