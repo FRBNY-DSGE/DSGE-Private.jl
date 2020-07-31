@@ -54,7 +54,7 @@ function unprime(state::Symbol)
 end
 
 ######################################################################################
-# For normalizing the states
+# For normalizing the states, e.g. distribution of idiosyncratic states
 function normalize_model_state_indices!(m::AbstractModel)
     normalized_model_states = m.normalized_model_states
 
@@ -89,6 +89,7 @@ function shift(inds::UnitRange, increment::Int64; first_range::Bool = false)
 end
 
 # normalize the distributional states located in indices specified by normalized_state_inds
+# In particular, for each state that is normalized, we also need to adjust the indices of all the other states
 function normalize(m::AbstractModel,
                    endo::AbstractDict{Symbol, UnitRange},
                    model_state_keys::Vector{Symbol},
@@ -108,12 +109,14 @@ function normalize(m::AbstractModel,
             jump_normalization_factor
         end
         # Subtract 1 from both the beginning and end of the UnitRange...
-        for state in model_state_keys
-            inds = endo[state]
+        for state_key in model_state_keys
+            inds = endo[state_key]
             # except for first UnitRange in a given normalization
-            first_range = (state==get_setting(m, :states)[1])
-            endo[state] = shift(inds, -normalization_factor, first_range = first_range)
+            first_range = (state_key == get_setting(m, :states)[1])
+            endo[state_key] = shift(inds, -normalization_factor, first_range = first_range)
         end
+        # End result: all indices are adjusted for the normalization factor applied to `state`
+
         #=for j in i:n_model_state_vars
             inds = endo[model_state_keys[j]]
             # Except for the first UnitRange in a given normalization
