@@ -12,8 +12,8 @@ end
 
 function cash_grid(sgrid::AbstractArray, ω::AbstractFloat, H::AbstractFloat,
                    r::AbstractFloat, η::AbstractFloat, γ::AbstractFloat,
-                   T::AbstractFloat, zlo::AbstractFloat, na::Int)
-    smin = minimum(sgrid)*zlo                                   # lowest possible skill
+                   T::AbstractFloat, elo::AbstractFloat, na::Int)
+    smin = minimum(sgrid)*elo                                   # lowest possible skill
     xlo_ss = ω*smin*H - (1+r)*η*exp(-γ) + T + sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
 
     xlo = xlo_ss                        # lower bound on cash on hand - could be < xlo_ss
@@ -96,29 +96,33 @@ end
 
 """
 ```
-generate_us_and_zs(ni, nz)
+generate_us_and_es(ni, ne)
 ```
 
 There is no need to recall this function, unless one wants to undo the seeding
 in all past saved output.
+
+The us are draws from U[0, 1] used to construct nodes for the skill distribution.
+
+The es are the grid nodes for the exogenous i.i.d productivity shock.
 """
-function generate_us_and_zs(ni, nz)
+function generate_us_and_es(ni, ne)
     us = rand(ni, 8)
-    uz = rand(ni, 8)
+    ue = rand(ni, 8)
 
-    zgrid  = collect(range(0., stop = 2., length = nz))
-    zprob  = [2*mollifier_hetdsgegovdebt(zgrid[i], 2., 0.) / nz for i=1:nz]
-    zprob /= sum(zprob)
+    egrid  = collect(range(0., stop = 2., length = ne))
+    eprob  = [2*mollifier_hetdsgegovdebt(egrid[i], 2., 0.) / ne for i=1:ne]
+    eprob /= sum(eprob)
 
-    zcdf = cumsum(zprob)
-    zave = 0.5 * zgrid[1:nz-1] + 0.5 * zgrid[2:nz]
-    zs   = zsample(uz, zgrid, zcdf, ni, nz)
+    ecdf = cumsum(eprob)
+    eave = 0.5 * egrid[1:ne-1] + 0.5 * egrid[2:ne]
+    es   = esample(ue, egrid, ecdf, ni, ne)
 
-    return us, zs
+    return us, es
     #=
-    JLD2.jldopen("$HETDSGEGOVDEBT/reference/us_zs.jld2", true, true, true, IOStream) do file
+    JLD2.jldopen("$HETDSGEGOVDEBT/reference/us_es.jld2", true, true, true, IOStream) do file
         file["us"] = us
-        file["zs"] = zs
+        file["es"] = es
     end
     =#
 end

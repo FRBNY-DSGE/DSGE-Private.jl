@@ -294,16 +294,16 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                        description = "γ: The log of the steady-state growth rate of technology",
                        tex_label="100\\gamma")
     else
-        m <= parameter(:γ, 0.5, (-5.0, 5.0), (-5., 5.), Untransformed(),
-                       Normal(0.4, 0.1), fixed = false, scaling = x -> x/100,
+        m <= parameter(:γ, 0.5, (-5.0, 5.0), (-5., 5.), Untransformed(), # estimated as percentage point, but when doing any
+                       Normal(0.4, 0.1), fixed = false, scaling = x -> x/100, # math with it, we scale it to .005
                        description = "γ: The log of the steady-state growth rate of technology",
                        tex_label="100\\gamma")
     end
 
     m <= parameter(:r, 0.5, (1e-5, 10.0), (1e-5, 10.0), ModelConstructors.Exponential(),
-                   GammaAlt(0.5, 0.5), fixed = false, scaling = x -> x/100,
-                   description= "r: Quarterly steady-state real interest rate.",
-                   tex_label= "100*r^{HetDSGE}")
+                   GammaAlt(0.5, 0.5), fixed = false, scaling = x -> x/100, # estimated as percentage point, but when doing any
+                   description= "r: Quarterly steady-state real interest rate.", # math with it, we scale it to 0.005.
+                   tex_label= "100*r^{HetDSGE}") # To get to gross terms, scaling = x -> 1 + x / 100
 
     m <= parameter(:g, 1/(1-0.01), fixed = true,
                    description = "g_star: 1 - (c_star + i_star)/y_star",
@@ -327,14 +327,14 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
 
     m <= parameter(:BoverY, 0.26, fixed = true, description = "B / Y", tex_label = "B / Y")
 
-    m <= parameter(:zlo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+    m <= parameter(:elo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
-                   tex_label = "\\underbar{z}")
+                   tex_label = "\\underbar{e}")
 
-    m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
+    m <= parameter(:ehi, 2-m[:elo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
-                   tex_label = "\\bar{z}")
+                   tex_label = "\\bar{e}")
 
     m <= parameter(:mpc, 0.23395,  fixed = true, tex_label = "MPC")
     m <= parameter(:pc0, 0.071893, fixed = true, description = "Number of people at 0 income",
@@ -446,9 +446,9 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    tex_label = "\\sigma_{r^m}")
 
     m <= parameter(:π_star, 0.7000, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
-                   GammaAlt(0.62, 0.1), fixed=false, scaling = x -> 1 + x/100,
-                   description="π_star: steady-state rate of inflation.",
-                   tex_label="\\pi_*")
+                   GammaAlt(0.62, 0.1), fixed=false, scaling = x -> 1 + x/100, # estimated as percentage point, but when doing any
+                   description="π_star: steady-state rate of inflation.", # math with it, we convert to gross inflation,
+                   tex_label="\\pi_*") # i.e. P_t = gross_π * P_{t - 1}
 
 
     m <= parameter(:Lmean, -45.9364, (-1000., 1000.), (-1e3, 1e3), Untransformed(),
@@ -544,7 +544,7 @@ function init_grids!(m::HetDSGEGovDebt)
 
     xgrid, xwts, xlo, xhi, xscale = cash_grid(sgrid, m[:ωstar].value, m[:H].value,
                                               m[:r].scaledvalue, m[:η].value, m[:γ].scaledvalue,
-                                              m[:Tstar].value, m[:zlo].value, na)
+                                              m[:Tstar].value, m[:elo].value, na)
 
     grids[:xgrid] = Grid(uniform_quadrature(xscale), xlo, xhi, na, scale = xscale)
 
@@ -633,8 +633,8 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:calibration_targets, [0.7, 0.23],
                  "Targets for: [var(log(annual income)), var(one year changes in " *
                  "log(annual income))]")
-    m <= Setting(:calibration_targets_lb, [3.0, 1e-18], "Lower bounds on [sH/sL, zlo]")
-    m <= Setting(:calibration_targets_ub, [9.0, 0.8-eps()], "Upper bounds on [sH/sL, zlo]")
+    m <= Setting(:calibration_targets_lb, [3.0, 1e-18], "Lower bounds on [sH/sL, elo]")
+    m <= Setting(:calibration_targets_ub, [9.0, 0.8-eps()], "Upper bounds on [sH/sL, elo]")
 
     # Important settings for likelihood penalty
     m <= Setting(:use_likelihood_penalty, true)
@@ -654,10 +654,11 @@ function model_settings!(m::HetDSGEGovDebt)
 
     # Steady state constants
     m <= Setting(:ni, 10000)
-    m <= Setting(:nz, 1000)
+    m <= Setting(:ne, 1000)
     m <= Setting(:fix_random_matrices, true, "Determines if use fixed matrices")
-    m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_zs.jld2","us"))
-    m <= Setting(:zs, load(get_setting(m, :ref_dir) * "/us_zs.jld2","zs"))
+    m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_es.jld2","us"))
+    # m <= Setting(:zs, load(get_setting(m, :ref_dir) * "/us_zs.jld2","zs")) # Renamed to `e` shock
+    m <= Setting(:es, load(get_setting(m, :ref_dir) * "/us_es.jld2","es"))
 
     # Misc
     m <= Setting(:trunc_distr, false)
