@@ -1,13 +1,13 @@
-function steadystate!(m::HetDSGEGovDebt;
-                      βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
-                      βhi::S = exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
-                      excess::S = 5000.,
-                      tol::S = 1e-4,
-                      maxit::Int64 = 20,
-                      βband::S = 1e-2) where {S<:AbstractFloat}
+function new_steadystate!(m::HetDSGEGovDebt;
+                          βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
+                          βhi::S = exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
+                          excess::S = 5000.,
+                          tol::S = 1e-4,
+                          maxit::Int64 = 20,
+                          βband::S = 1e-2) where {S<:AbstractFloat}
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
     # estimate the non steady state parameters, there's no need to recompute
-    # zlo/zhi, etc.
+    # elo/ehi, etc.
     if !isnan(m[:βstar].value) && get_setting(m, :estimate_only_non_steady_state_parameters)
         return
     else
@@ -16,7 +16,7 @@ function steadystate!(m::HetDSGEGovDebt;
         ns = get_setting(m, :ns)
         ne = get_setting(m, :ne)
 
-        m[:sH_over_sL], m[:zlo], m[:zhi] = compute_income_process_parameters(m)
+        m[:sH_over_sL], m[:elo], m[:ehi] = compute_income_process_parameters(m)
         # Parameters
         ω = m[:ωstar].value
         H = m[:H].value
@@ -42,16 +42,16 @@ function steadystate!(m::HetDSGEGovDebt;
         @test isapprox(mean(f^1000*sgrid), 1.0, atol = 1e-3)
 
         # Construct egrid
-        qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, m[:zhi].value, m[:zlo].value)
+        qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
         egrid_gk = gauss(ne)
-        egrid    = transform_ab(m[:zlo].value, m[:zhi].value, egrid_gk[1])
+        egrid    = transform_ab(m[:elo].value, m[:ehi].value, egrid_gk[1])
         ewts = egrid_gk[2]
         ewts = ewts / dot(qfunction.(egrid), ewts)
-        g_of_e = map(x -> DSGE.mollifier_hetdsgegovdebt(x, m[:zhi].value, m[:zlo].value), egrid)
+        g_of_e = map(x -> DSGE.mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value), egrid)
         egrid = egrid ./ dot(g_of_e .* egrid, ewts)
 
         # Construct agrid
-        smin = minimum(sgrid) #*m[:zlo].value                                   # lowest possible skill
+        smin = minimum(sgrid) #*m[:elo].value                                   # lowest possible skill
         alo = ω*smin*H - R*η*exp(-γ) + T #+ sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
         ahi = max(alo*2, alo + 20.0)         # upper bound on cash on hand
 
@@ -123,7 +123,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         βhi_temp = m[:βstar].value + βband
 
         c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
-                                                       m[:zhi].value, m[:zlo].value, agrid, sgrid, c_pol_in, KF_in,
+                                                       m[:ehi].value, m[:elo].value, agrid, sgrid, c_pol_in, KF_in,
                                                        f, egrid, ewts, g_of_e, damp = get_setting(m, :policy_damp),
                                                        maxit = get_setting(m, :policy_maxit))
 
@@ -131,8 +131,8 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
 
         if excess_lo < 0 && abs(excess_lo) > tol
             βlo = βlo_temp
-            c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, βhi_temp, R, ω, H, η, T, γ, m[:zhi].value,
-                                                           m[:zlo].value, agrid, sgrid, c_pol_in, KF_in,
+            c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, βhi_temp, R, ω, H, η, T, γ, m[:ehi].value,
+                                                           m[:elo].value, agrid, sgrid, c_pol_in, KF_in,
                                                            f, egrid, ewts, g_of_e,
                                                            damp = get_setting(m, :policy_damp),
                                                            maxit = get_setting(m, :policy_maxit))
@@ -150,7 +150,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     while abs(excess) > tol && counter < maxit # clearing markets
         β = (βlo + βhi) / 2.0
 #        @show counter, β
-        c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:zhi].value, m[:zlo].value,
+        c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value,
                                                        agrid, sgrid, c_pol_in, KF_in,
                                                        f, egrid, ewts, g_of_e,
                                                        damp = get_setting(m, :policy_damp),
@@ -185,7 +185,7 @@ end
 
 
 function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S, ω::S, H::S, η::S,
-                               T::S, γ::S, zhi::S, zlo::S, agrid::Vector{S},
+                               T::S, γ::S, ehi::S, elo::S, agrid::Vector{S},
                                sgrid::Vector{S}, c_pol::Array{S}, KF_in::Array{S},
                                f::Matrix{S}, egrid::Vector{Float64}, ewts::Vector{Float64},
                                g_of_e::Vector{Float64},
@@ -347,9 +347,6 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         end
     end
 
-
-
-
     b_grid_implied = Matrix{Float64}(undef, na, ns)
     for is in 1:ns
         b_grid_implied[:, is] = exp(γ)*agrid .- ω*sgrid[is]*H .- T
@@ -506,7 +503,7 @@ end
 
 
 function policy_hetdsgegovdebt_old(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
-                               T::S, γ::S, zhi::S, zlo::S, xgrid::Vector{S},
+                               T::S, γ::S, ehi::S, elo::S, xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
                                f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
                                maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
@@ -516,7 +513,7 @@ function policy_hetdsgegovdebt_old(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, �
     Wout = Vector{Float64}(undef, length(Win))
     counter = 1
     reject = false
-    qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, zhi, zlo) # g in the paper
+    qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, ehi, elo) # g in the paper
 
     while dist>tol && counter<maxit
         # compute c(w) given guess for Win = β*R*E[u'(c_{t+1})], Win is guess for marginal utility tomorrow
@@ -527,7 +524,7 @@ function policy_hetdsgegovdebt_old(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, �
             end
         end
 
-        bp = R*(exp(-γ))*(repeat(xgrid, ns) - c)  # compute bp(w) given guess for Win, bp = (1+r_t)*exp(-z_{t+1})(a-c_t(a, s)) (thisi s inside the g function in defintion of elolo on page 7 of paper
+        bp = R*(exp(-γ))*(repeat(xgrid, ns) - c)  # compute bp(w) given guess for Win, bp = (1+r_t)*exp(-e_{t+1})(a-c_t(a, s)) (thisi s inside the g function in defintion of elolo on page 7 of paper
         Wout = parameterized_expectations_hetdsgegovdebt(nx, ns, β, R, ω, H, T, γ,
                                                          qfunction, xgrid,
                                                          sgrid, xswts, c, bp, f)
@@ -592,10 +589,10 @@ end
     return tr
 end
 
-@inline function mollifier_hetdsgegovdebt(z::S, ehi::S, elo::S) where {S<:AbstractFloat}
+@inline function mollifier_hetdsgegovdebt(e::S, ehi::S, elo::S) where {S<:AbstractFloat}
     In = 0.443993816237631
-    if z<ehi && z>elo
-        temp = -1.0 + 2.0 * (z - elo) / (ehi - elo)
+    if e<ehi && e>elo
+        temp = -1.0 + 2.0 * (e - elo) / (ehi - elo)
         return (2.0 / (ehi - elo)) * exp(-1.0 / (1.0 - temp^2)) / In
     end
     return 0.0
@@ -676,7 +673,7 @@ function ssample(us::Matrix{S}, P::Matrix{S}, πss::AbstractArray,
 	return shist
 end
 
-function ln_annual_inc(zhist::Matrix{S}, us::Matrix{S}, zlo::S, P::Matrix{S},
+function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, P::Matrix{S},
                        πss::AbstractArray, sgrid::AbstractArray,
                        ni::Int) where {S<:AbstractFloat}
   	s_inds = ssample(us,P,πss,ni)
@@ -685,15 +682,15 @@ function ln_annual_inc(zhist::Matrix{S}, us::Matrix{S}, zlo::S, P::Matrix{S},
 	for i=1:ni
 		inc1 = 0.
 		for t=1:4
-			zshock = 1. + (1. - zlo)*(zhist[i,t]-1.)
+			eshock = 1. + (1. - elo)*(ehist[i,t]-1.)
 			sshock = (sgrid[1] + (sgrid[2] - sgrid[1])*(s_inds[i,t] - 1.))
-			inc1 += zshock*sshock
+			inc1 += eshock*sshock
 		end
 		inc2 = 0.
 		for t=5:8
-			zshock = 1. + (1. - zlo)*(zhist[i,t]-1.)
+			eshock = 1. + (1. - elo)*(ehist[i,t]-1.)
 			sshock = (sgrid[1] + (sgrid[2] - sgrid[1])*(s_inds[i,t] - 1.))
-			inc2 += zshock*sshock
+			inc2 += eshock*sshock
 		end
 		linc1[i] += log(inc1)
      	linc2[i] += log(inc2)
@@ -701,15 +698,15 @@ function ln_annual_inc(zhist::Matrix{S}, us::Matrix{S}, zlo::S, P::Matrix{S},
 	return linc1, linc2
 end
 
-function skill_moments(sH_over_sL::Real, zlo::Real, pLH::S, pHL::S, us::Matrix{S},
-                       zs::Matrix{S}, ni::Int = 10000) where {S<:AbstractFloat}
+function skill_moments(sH_over_sL::Real, elo::Real, pLH::S, pHL::S, us::Matrix{S},
+                       es::Matrix{S}, ni::Int = 10000) where {S<:AbstractFloat}
 	πL    = pHL / (pLH + pHL)
 	πss   = [πL; 1.0-πL]
 	P     = [[1.0-pLH pLH]; [pHL 1.0-pHL]]
 	slo   = 1.0 / (πL + (1-πL) * sH_over_sL)
 	shi   = sH_over_sL * slo
 	sgrid = [slo; shi]
-	linc1, linc2 = ln_annual_inc(zs, us, zlo, P, πss, sgrid, ni)
+	linc1, linc2 = ln_annual_inc(es, us, elo, P, πss, sgrid, ni)
 	return var(linc1), var(linc2 - linc1)
 end
 
@@ -725,58 +722,58 @@ loss(x::Vector{S}, target::Vector{S}) where {S<:AbstractFloat} = sum(abs.(x-targ
 """
 ```
 function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
-                  us::Matrix{S}, zs::Matrix{S}, max_iter::Int = 20,
+                  us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
                   initial_guess::Vector{S} = [6.3, 0.03]) where {S<:AbstractFloat}
 ```
 
 Uses Nelder-Mead (gradient descent algorithm) to optimize for income moments.
 """
 function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
-                  us::Matrix{S}, zs::Matrix{S}, max_iter::Int = 20,
+                  us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
                   initial_guess::Vector{S} = [6.3, 0.03]) where {S<:AbstractFloat}
 
-    skill_moments_f(x) = loss(collect(skill_moments(x[1], x[2], pLH, pHL, us, zs)), target)
+    skill_moments_f(x) = loss(collect(skill_moments(x[1], x[2], pLH, pHL, us, es)), target)
 
     res = optimize(skill_moments_f, lower, upper, initial_guess, Fminbox(NelderMead()),
                    Optim.Options(f_calls_limit = max_iter))
 
-    sH_over_sL_argmin, zlo_argmin = Optim.minimizer(res)
-    min_varlinc, min_vardlinc = skill_moments(sH_over_sL_argmin, zlo_argmin, pLH,
-                                              pHL, us, zs)
-    return sH_over_sL_argmin, zlo_argmin, min_varlinc, min_vardlinc
+    sH_over_sL_argmin, elo_argmin = Optim.minimizer(res)
+    min_varlinc, min_vardlinc = skill_moments(sH_over_sL_argmin, elo_argmin, pLH,
+                                              pHL, us, es)
+    return sH_over_sL_argmin, elo_argmin, min_varlinc, min_vardlinc
 end
 
 function compute_income_process_parameters(m::AbstractDSGEModel)
     # Determines whether random or not
-    us, zs = if get_setting(m, :fix_random_matrices)
-        get_setting(m, :us), get_setting(m, :zs)
+    us, es = if get_setting(m, :fix_random_matrices)
+        get_setting(m, :us), get_setting(m, :es)
     else
-        generate_us_and_zs(ni, nz)
+        generate_us_and_es(ni, ne)
     end
 
     target = get_setting(m, :calibration_targets)
     lower  = get_setting(m, :calibration_targets_lb)
     upper  = get_setting(m, :calibration_targets_ub)
 
-    sH_over_sL, zlo, _, _ = best_fit(m[:pLH].value, m[:pHL].value,
-                                     target, lower, upper, us, zs)
-    zhi = 2.0 - m[:zlo].value
-    return sH_over_sL, zlo, zhi
+    sH_over_sL, elo, _, _ = best_fit(m[:pLH].value, m[:pHL].value,
+                                     target, lower, upper, us, es)
+    ehi = 2.0 - m[:elo].value
+    return sH_over_sL, elo, ehi
 end
 
 
-function zsample(uz::Matrix{S}, zgrid::AbstractArray, zcdf::AbstractArray,
-                 ni::Int, nz::Int) where {S<:AbstractFloat}
-    zave = 0.5*zgrid[1:nz-1]+0.5*zgrid[2:nz]
-	zs = zeros(ni,8)
+function esample(ue::Matrix{S}, egrid::AbstractArray, ecdf::AbstractArray,
+                 ni::Int, ne::Int) where {S<:AbstractFloat}
+    eave = 0.5*egrid[1:ne-1]+0.5*egrid[2:ne]
+	es = zeros(ni,8)
 	for i=1:ni
 		for t=1:8
-			for iz=1:nz-1
-				if zcdf[iz] < uz[i,t] <= zcdf[iz+1]
-					zs[i,t] = zave[iz]
+			for ie=1:ne-1
+				if ecdf[ie] < ue[i,t] <= ecdf[ie+1]
+					es[i,t] = eave[ie]
 				end
 			end
 		end
 	end
-	return zs
+	return es
 end
