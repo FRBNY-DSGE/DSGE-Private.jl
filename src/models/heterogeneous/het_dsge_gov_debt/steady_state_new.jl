@@ -42,22 +42,28 @@ function new_steadystate!(m::HetDSGEGovDebt;
         @test isapprox(mean(f^1000*sgrid), 1.0, atol = 1e-3)
 
         # Construct egrid
-        qfunction(x::Float64) = DSGE.mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
-        egrid_gk = gauss(ne)
-        egrid    = transform_ab(m[:elo].value, m[:ehi].value, egrid_gk[1])
-        ewts = egrid_gk[2]
-        ewts = ewts / dot(qfunction.(egrid), ewts)
-        g_of_e = map(x -> DSGE.mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value), egrid)
-        egrid = egrid ./ dot(g_of_e .* egrid, ewts)
+        qfunction(x::Float64) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
+        # egrid_gk = gauss(ne) # Use FastGaussQuadrature, faster to do so
+        egrid, ewts = gausslegendre(ne)
+        egrid[:]    = transform_ab(m[:elo].value, m[:ehi].value, egrid)
+
+        # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ * eᵢ = 1
+        g_of_e      = map(x -> mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value), egrid) # g(eᵢ)
+        # ewts      ./= dot(qfunction.(egrid), ewts)
+        ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1 # NECESSARY???
+        # egrid = egrid ./ dot(g_of_e .* egrid, ewts)
+        egrid     ./= dot(g_of_e .* egrid, ewts)
+        # ẽᵢ = eᵢ / (∑ᵢ (gᵢ * eᵢ * w̃ᵢ)), hence
+        # ∑ᵢ ̃eᵢ * gᵢ * w̃ᵢ = (∑ᵢ eᵢ * gᵢ * w̃ᵢ) / (∑ᵢ (gᵢ * eᵢ * w̃ᵢ)) = 1, but we could just change the weights
 
         # Construct agrid
-        smin = minimum(sgrid) #*m[:elo].value                                   # lowest possible skill
-        alo = ω*smin*H - R*η*exp(-γ) + T #+ sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
-        ahi = max(alo*2, alo + 20.0)         # upper bound on cash on hand
+        smin = minimum(sgrid) # * m[:elo].value                                   # lowest possible skill
+        alo  = ω * smin * H - R * η * exp(-γ) + T # + sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
+        ahi  = max(alo * 2., alo + 20.0)         # upper bound on cash on hand
 
-        ascale = (ahi-alo)                  # size of w grids
-        agrid = collect(range(alo,stop = ahi, length = na)) # Evenly spaced grid
-        awts  = (ascale/na)*ones(na)          # Quadrature weights, sum up to 12
+        ascale = (ahi - alo)                  # size of w grids
+        agrid  = collect(range(alo, stop = ahi, length = na)) # Evenly spaced grid
+        awts   = fill(ascale / na, na)          # Quadrature weights, sum up to 12
 
         m <= Setting(:alo, alo)
         m <= Setting(:ahi, ahi)
@@ -73,6 +79,7 @@ function new_steadystate!(m::HetDSGEGovDebt;
                           excess = excess, tol = tol, maxit = maxit,
                           βband = βband)
 
+        # TODO: Remove these lines
         @test sum(m[:μstar].value) ≈ 1.0
         p = plot(agrid, m[:μstar].value[1:300], label = "low skill")
         plot!(p, agrid, m[:μstar].value[301:600], label = "high skill")
@@ -209,20 +216,20 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     dist = 1
 
     bmin = 0.0
-    bmax = exp(γ)*(maximum(agrid)- ω*maximum(sgrid)*maximum(egrid)*H)
-    bgrid = bmin .+ ((1:na)/na).^2 * (bmax - bmin)
+    bmax = exp(γ) * (maximum(agrid)- ω * maximum(sgrid) * maximum(egrid) * H) # NOTE egrid is not in [elo, ehi] b/c transformed
+    bgrid = bmin .+ ((1:na) / na).^2 * (bmax - bmin)                          # but makes quadrature work (normalize to 1)
     # a grid implied by bgrid is: map b into a using equation at top of page 4
     agrid_big = Array{Float64}(undef, na, ns, ne)
     for is in 1:ns
         for ie in 1:ne
-            agrid_big[:, is, ie] = ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid
+            agrid_big[:, is, ie] = (ω * sgrid[is] * egrid[ie] * H + T) .+ exp(-γ) .* bgrid
         end
     end
 
     while dist>tol && counter<maxit
         for is in 1:ns
             for ie in 1:ne
-                # Keep only non-constrained
+               # Keep only non-constrained
                # non_c_inds = bgrid .> 0.0 #=vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .-
 #                                         T .+ c_pol[:, is, ie])) .> 0.0 =#
                 bp = bgrid #bgrid[non_c_inds, :]
