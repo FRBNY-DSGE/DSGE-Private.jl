@@ -527,7 +527,7 @@ function policy_hetdsgegovdebt_old(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, �
             end
         end
 
-        bp = R*(exp(-γ))*(repeat(xgrid, ns) - c)  # compute bp(w) given guess for Win, bp = (1+r_t)*exp(-z_{t+1})(a-c_t(a, s)) (thisi s inside the g function in defintion of elolo on page 7 of paper
+        bp = R*(exp(-γ))*(repeat(xgrid, ns) - c)  # compute bp(w) given guess for Win, bp = (1+r_t)*exp(-e_{t+1})(a-c_t(a, s)) (thisi s inside the g function in defintion of elolo on page 7 of paper
         Wout = parameterized_expectations_hetdsgegovdebt(nx, ns, β, R, ω, H, T, γ,
                                                          qfunction, xgrid,
                                                          sgrid, xswts, c, bp, f)
@@ -592,10 +592,10 @@ end
     return tr
 end
 
-@inline function mollifier_hetdsgegovdebt(z::S, ehi::S, elo::S) where {S<:AbstractFloat}
+@inline function mollifier_hetdsgegovdebt(e::S, ehi::S, elo::S) where {S<:AbstractFloat}
     In = 0.443993816237631
-    if z<ehi && z>elo
-        temp = -1.0 + 2.0 * (z - elo) / (ehi - elo)
+    if e<ehi && e>elo
+        temp = -1.0 + 2.0 * (e - elo) / (ehi - elo)
         return (2.0 / (ehi - elo)) * exp(-1.0 / (1.0 - temp^2)) / In
     end
     return 0.0
@@ -685,15 +685,15 @@ function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, P::Matrix{S},
 	for i=1:ni
 		inc1 = 0.
 		for t=1:4
-			zshock = 1. + (1. - elo)*(ehist[i,t]-1.)
+			eshock = 1. + (1. - elo)*(ehist[i,t]-1.)
 			sshock = (sgrid[1] + (sgrid[2] - sgrid[1])*(s_inds[i,t] - 1.))
-			inc1 += zshock*sshock
+			inc1 += eshock*sshock
 		end
 		inc2 = 0.
 		for t=5:8
-			zshock = 1. + (1. - elo)*(ehist[i,t]-1.)
+			eshock = 1. + (1. - elo)*(ehist[i,t]-1.)
 			sshock = (sgrid[1] + (sgrid[2] - sgrid[1])*(s_inds[i,t] - 1.))
-			inc2 += zshock*sshock
+			inc2 += eshock*sshock
 		end
 		linc1[i] += log(inc1)
      	linc2[i] += log(inc2)
@@ -702,14 +702,14 @@ function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, P::Matrix{S},
 end
 
 function skill_moments(sH_over_sL::Real, elo::Real, pLH::S, pHL::S, us::Matrix{S},
-                       zs::Matrix{S}, ni::Int = 10000) where {S<:AbstractFloat}
+                       es::Matrix{S}, ni::Int = 10000) where {S<:AbstractFloat}
 	πL    = pHL / (pLH + pHL)
 	πss   = [πL; 1.0-πL]
 	P     = [[1.0-pLH pLH]; [pHL 1.0-pHL]]
 	slo   = 1.0 / (πL + (1-πL) * sH_over_sL)
 	shi   = sH_over_sL * slo
 	sgrid = [slo; shi]
-	linc1, linc2 = ln_annual_inc(zs, us, elo, P, πss, sgrid, ni)
+	linc1, linc2 = ln_annual_inc(es, us, elo, P, πss, sgrid, ni)
 	return var(linc1), var(linc2 - linc1)
 end
 
@@ -725,33 +725,33 @@ loss(x::Vector{S}, target::Vector{S}) where {S<:AbstractFloat} = sum(abs.(x-targ
 """
 ```
 function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
-                  us::Matrix{S}, zs::Matrix{S}, max_iter::Int = 20,
+                  us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
                   initial_guess::Vector{S} = [6.3, 0.03]) where {S<:AbstractFloat}
 ```
 
 Uses Nelder-Mead (gradient descent algorithm) to optimize for income moments.
 """
 function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
-                  us::Matrix{S}, zs::Matrix{S}, max_iter::Int = 20,
+                  us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
                   initial_guess::Vector{S} = [6.3, 0.03]) where {S<:AbstractFloat}
 
-    skill_moments_f(x) = loss(collect(skill_moments(x[1], x[2], pLH, pHL, us, zs)), target)
+    skill_moments_f(x) = loss(collect(skill_moments(x[1], x[2], pLH, pHL, us, es)), target)
 
     res = optimize(skill_moments_f, lower, upper, initial_guess, Fminbox(NelderMead()),
                    Optim.Options(f_calls_limit = max_iter))
 
     sH_over_sL_argmin, elo_argmin = Optim.minimizer(res)
     min_varlinc, min_vardlinc = skill_moments(sH_over_sL_argmin, elo_argmin, pLH,
-                                              pHL, us, zs)
+                                              pHL, us, es)
     return sH_over_sL_argmin, elo_argmin, min_varlinc, min_vardlinc
 end
 
 function compute_income_process_parameters(m::AbstractDSGEModel)
     # Determines whether random or not
-    us, zs = if get_setting(m, :fix_random_matrices)
-        get_setting(m, :us), get_setting(m, :zs)
+    us, es = if get_setting(m, :fix_random_matrices)
+        get_setting(m, :us), get_setting(m, :es)
     else
-        generate_us_and_zs(ni, nz)
+        generate_us_and_es(ni, ne)
     end
 
     target = get_setting(m, :calibration_targets)
@@ -759,24 +759,24 @@ function compute_income_process_parameters(m::AbstractDSGEModel)
     upper  = get_setting(m, :calibration_targets_ub)
 
     sH_over_sL, elo, _, _ = best_fit(m[:pLH].value, m[:pHL].value,
-                                     target, lower, upper, us, zs)
+                                     target, lower, upper, us, es)
     ehi = 2.0 - m[:elo].value
     return sH_over_sL, elo, ehi
 end
 
 
-function zsample(uz::Matrix{S}, zgrid::AbstractArray, zcdf::AbstractArray,
-                 ni::Int, nz::Int) where {S<:AbstractFloat}
-    zave = 0.5*zgrid[1:nz-1]+0.5*zgrid[2:nz]
-	zs = zeros(ni,8)
+function esample(ue::Matrix{S}, egrid::AbstractArray, ecdf::AbstractArray,
+                 ni::Int, ne::Int) where {S<:AbstractFloat}
+    eave = 0.5*egrid[1:ne-1]+0.5*egrid[2:ne]
+	es = eeros(ni,8)
 	for i=1:ni
 		for t=1:8
-			for iz=1:nz-1
-				if zcdf[iz] < uz[i,t] <= zcdf[iz+1]
-					zs[i,t] = zave[iz]
+			for ie=1:ne-1
+				if ecdf[ie] < ue[i,t] <= ecdf[ie+1]
+					es[i,t] = eave[ie]
 				end
 			end
 		end
 	end
-	return zs
+	return es
 end

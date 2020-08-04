@@ -330,11 +330,11 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
     m <= parameter(:elo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
-                   tex_label = "\\underbar{z}")
+                   tex_label = "\\underbar{e}")
 
     m <= parameter(:ehi, 2-m[:elo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
-                   tex_label = "\\bar{z}")
+                   tex_label = "\\bar{e}")
 
     m <= parameter(:mpc, 0.23395,  fixed = true, tex_label = "MPC")
     m <= parameter(:pc0, 0.071893, fixed = true, description = "Number of people at 0 income",
@@ -654,10 +654,10 @@ function model_settings!(m::HetDSGEGovDebt)
 
     # Steady state constants
     m <= Setting(:ni, 10000)
-    m <= Setting(:nz, 1000)
+    # m <= Setting(:nz, 1000)
     m <= Setting(:fix_random_matrices, true, "Determines if use fixed matrices")
-    m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_zs.jld2","us"))
-    m <= Setting(:zs, load(get_setting(m, :ref_dir) * "/us_zs.jld2","zs"))
+    m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_es.jld2","us"))
+    m <= Setting(:es, load(get_setting(m, :ref_dir) * "/us_es.jld2","es"))
 
     # Misc
     m <= Setting(:trunc_distr, false)
