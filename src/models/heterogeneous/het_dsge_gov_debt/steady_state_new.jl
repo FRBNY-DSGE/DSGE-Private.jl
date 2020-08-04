@@ -1,10 +1,10 @@
-function new_steadystate!(m::HetDSGEGovDebt;
-                          βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
-                          βhi::S = exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
-                          excess::S = 5000.,
-                          tol::S = 1e-4,
-                          maxit::Int64 = 20,
-                          βband::S = 1e-2) where {S<:AbstractFloat}
+function steadystate!(m::HetDSGEGovDebt;
+                      βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
+                      βhi::S = exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
+                      excess::S = 5000.,
+                      tol::S = 1e-4,
+                      maxit::Int64 = 20,
+                      βband::S = 1e-2) where {S<:AbstractFloat}
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
     # estimate the non steady state parameters, there's no need to recompute
     # elo/ehi, etc.

@@ -659,11 +659,11 @@ function model_settings!(m::HetDSGEGovDebt)
 
     # Steady state constants
     m <= Setting(:ni, 10000)
-    m <= Setting(:ne, 1000)
+    # m <= Setting(:nz, 1000)
     m <= Setting(:fix_random_matrices, true, "Determines if use fixed matrices")
     m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_es.jld2","us"))
-    # m <= Setting(:zs, load(get_setting(m, :ref_dir) * "/us_zs.jld2","zs")) # Renamed to `e` shock
     m <= Setting(:es, load(get_setting(m, :ref_dir) * "/us_es.jld2","es"))
+    # m <= Setting(:zs, load(get_setting(m, :ref_dir) * "/us_zs.jld2","zs")) # Renamed to `e` shock
 
     # Misc
     m <= Setting(:trunc_distr, false)
