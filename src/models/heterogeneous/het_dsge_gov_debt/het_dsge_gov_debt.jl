@@ -240,11 +240,11 @@ function HetDSGEGovDebt(subspec::String="ss0";
     init_grids!(m)
 
     # Solve for the steady state
-    if get_setting(m, :new_steady_state)
+    #=if get_setting(m, :new_steady_state)
         new_steadystate!(m)
     else
         steadystate!(m)
-    end
+    end=#
 
 
     # So that the indices of m.endogenous_states reflect the normalization
