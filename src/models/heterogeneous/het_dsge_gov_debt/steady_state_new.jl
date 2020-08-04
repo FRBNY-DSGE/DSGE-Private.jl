@@ -47,12 +47,12 @@ function new_steadystate!(m::HetDSGEGovDebt;
         egrid, ewts = gausslegendre(ne)
         egrid[:]    = transform_ab(m[:elo].value, m[:ehi].value, egrid)
 
-        # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ * eᵢ = 1
+        # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ = 1
         g_of_e      = map(x -> mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value), egrid) # g(eᵢ)
         # ewts      ./= dot(qfunction.(egrid), ewts)
-        ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1 # NECESSARY???
+        ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1
         # egrid = egrid ./ dot(g_of_e .* egrid, ewts)
-        egrid     ./= dot(g_of_e .* egrid, ewts)
+        egrid     ./= dot(g_of_e .* egrid, ewts) # Normalize egrid to ensure that the mean ∫ e g(e) de = 1
         # ẽᵢ = eᵢ / (∑ᵢ (gᵢ * eᵢ * w̃ᵢ)), hence
         # ∑ᵢ ̃eᵢ * gᵢ * w̃ᵢ = (∑ᵢ eᵢ * gᵢ * w̃ᵢ) / (∑ᵢ (gᵢ * eᵢ * w̃ᵢ)) = 1, but we could just change the weights
 
