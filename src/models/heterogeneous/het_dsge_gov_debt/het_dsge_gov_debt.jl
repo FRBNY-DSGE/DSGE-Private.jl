@@ -327,12 +327,12 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
 
     m <= parameter(:BoverY, 0.26, fixed = true, description = "B / Y", tex_label = "B / Y")
 
-    m <= parameter(:zlo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+    m <= parameter(:elo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
 
-    m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
+    m <= parameter(:ehi, 2-m[:elo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 
@@ -544,7 +544,7 @@ function init_grids!(m::HetDSGEGovDebt)
 
     xgrid, xwts, xlo, xhi, xscale = cash_grid(sgrid, m[:ωstar].value, m[:H].value,
                                               m[:r].scaledvalue, m[:η].value, m[:γ].scaledvalue,
-                                              m[:Tstar].value, m[:zlo].value, na)
+                                              m[:Tstar].value, m[:elo].value, na)
 
     grids[:xgrid] = Grid(uniform_quadrature(xscale), xlo, xhi, na, scale = xscale)
 
@@ -633,8 +633,8 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:calibration_targets, [0.7, 0.23],
                  "Targets for: [var(log(annual income)), var(one year changes in " *
                  "log(annual income))]")
-    m <= Setting(:calibration_targets_lb, [3.0, 1e-18], "Lower bounds on [sH/sL, zlo]")
-    m <= Setting(:calibration_targets_ub, [9.0, 0.8-eps()], "Upper bounds on [sH/sL, zlo]")
+    m <= Setting(:calibration_targets_lb, [3.0, 1e-18], "Lower bounds on [sH/sL, elo]")
+    m <= Setting(:calibration_targets_ub, [9.0, 0.8-eps()], "Upper bounds on [sH/sL, elo]")
 
     # Important settings for likelihood penalty
     m <= Setting(:use_likelihood_penalty, true)
