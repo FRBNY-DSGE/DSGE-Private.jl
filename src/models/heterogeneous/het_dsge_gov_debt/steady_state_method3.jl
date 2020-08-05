@@ -88,12 +88,20 @@ function method3_steadystate!(m::HetDSGEGovDebt;
             @show sum(m[:μstar].value)
         end
         if doplots
-            p = plot(agrid, m[:μstar].value[1:300], label = "low skill")
-            plot!(p, agrid, m[:μstar].value[301:600], label = "high skill")
+            p = plot(fit(Histogram, agrid, weights(m[:μstar].value[1:300]), nbins = 300), label = "low skill", color = :blue)
+            plot!(fit(Histogram, agrid, weights(m[:μstar].value[301:600]), nbins = 300), label = "high skill", color = :red)
             if use_quadrature
                 savefig(p, "method3_quadrature_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
             else
                 savefig(p, "method3_sortinterp_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+            end
+
+            p = plot(agrid, m[:cstar].value[1:300], label = "low skill")
+            plot!(p, agrid, m[:cstar].value[301:600], label = "high skill")
+            if use_quadrature
+                savefig(p, "method3_quadrature_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+            else
+                savefig(p, "method3_sortinterp_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
             end
         end
 
@@ -190,38 +198,6 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         counter += 1
         if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
             break
-        end
-    end
-
-    # Try doing a small perturbation around the converged β if the error is not too large
-    if abs(excess) < lowtol && counter == maxit
-        counter = 1
-        βlo = β - βband
-        βhi = β + βband
-        while abs(excess) > tol && counter < maxit # clearing markets
-            β = (βlo + βhi) / 2.0
-
-            c_pol_in, bp, KF, reject = method3_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:ehi].value,
-                                                                     m[:elo].value,
-                                                                     agrid, sgrid, c_pol_in, KF_in,
-                                                                     f, egrid, ewts, g_of_e,
-                                                                     damp = get_setting(m, :policy_damp),
-                                                                     maxit = get_setting(m, :policy_maxit))
-            excess = compute_excess(KF, bp, bg)
-            if verbose == :high
-                @show counter, β, excess
-            end
-
-            # bisection
-            if excess > 0
-                βhi = β
-            elseif excess < 0
-                βlo = β
-            end
-            counter += 1
-            if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
-                break
-            end
         end
     end
 
@@ -431,7 +407,68 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     return c_pol, bgrid, pd, reject
 end
 
-# KF is D(a, s, e), bp is the bprime grid, and bg is the government's supply of onds
+function fixedpoint_c_policy(c_poli, ns, ne, na_c, sum_term, f, ewts, g_of_e, bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T)
+    for is in 1:ns
+        for ie in 1:ne
+            # Sums
+            verify_one = 0.0
+            for iep in 1:ne     # Inner integral over e' (done first b/c Julia is column major)
+                for isp in 1:ns # Outer sum over s'
+                    #               p(s'|s)    * iota(e')  *      g(e')    * c(a, s')^{-1}
+                    # Note that f[is, isp] is prob going froms sgrid[is] to sgrid[isp], so we do want to
+                    # iterate over the second element rather than the first, despite the p(s'|s) notation
+                    sum_term   .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[:, isp, iep]
+                    verify_one  +=  f[is, isp] * ewts[iep] * g_of_e[iep]
+                end
+            end
+            @test isapprox(verify_one, 1.0, atol = 1e-5)
+
+            # Compute ell(a, s) = β * R * exp(-γ) * (Σₛ∫ₑ)
+            # l = β * R * exp(-γ) * sum_term
+            # Compute consumption today: c(b', s) = 1/l(a, s) and then
+            # assets today: b = exp(γ) * (b' / R - w * s * e * H - T + c)
+            c = 1 ./ ((β * R * exp(-γ)) .* sum_term)
+            b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
+            sum_term .= 0. # Reset the values to zero (done with it for this loop)
+
+            # Handle constrained consumption today: for b < 0, need to reset c such that b is exactly 0. See line 254
+            c[b .< 0.] = -(bp[b .< 0] ./ R) .+  ω * sgrid[is] * egrid[ie] * H .+ T
+            b         .= vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
+
+            # If b[1] is positive, then people aren't using a c(0, s, e) policy but also must have some spare b
+            # that they additionally consume. This code block assumes "relative" monotonicity of c
+            if b[1] > 0.
+                @assert c_constrained[is, ie] < c[1] # Check consuming more than implied by constrained rule if b[1] > 0
+                c_c = collect(range(c_constrained[is, ie], c[1], length = na_c)) # constrained rule is an equal spacing
+                b_c = exp(γ) * (-ω * sgrid[is] * egrid[ie] * H - T .+ c_c)       # between no-assets rule and c[1]
+                if -1e-14 < b_c[1] < 0.
+                    b_c[1] = 0. # Force the first point to be zero (in case of floating point errors)
+                end
+                @assert all(b_c .>= -1e-14)    # Make sure implied b is non-negative
+                cutoff = findlast(b_c .< b[1])
+                b = vcat(b_c[1:cutoff], b) # Add additional points for constrained people
+                c = vcat(c_c[1:cutoff], c) # so that, for the new b, the condition b[1] ≈ 0 holds
+            end
+
+            # Nearest points, linear interpolation
+            c_poli[:, is, ie] = try
+                interp_one(b, c, bgrid)
+            catch e
+                if !issorted(b)
+                    bsorted_inds = sortperm(b)
+                    interp_one(b[bsorted_inds], c[bsorted_inds], bgrid)
+                else
+                    rethrow(e)
+                end
+            end
+        end
+    end
+
+    # dist  = maximum(abs.(c_pol - c_poli)) # Inf norm
+    return c_poli
+end
+
+# KF is D(a, s, e), bp is the bprime grid, and bg is the government's supply of bonds
 @inline function compute_excess(KF::AbstractArray{S, 3}, bp::AbstractVector{S}, bg::S) where {S <: Real}
     # Return ∑ᵢ ∑ₛ ∑ₑ D(bᵢ, s, e) bᵢ - β
     return sum(sum(KF, dims = (2, 3)) .* bp) - bg # Summing over (s, e) first speed things up, fewer multiplication operations
@@ -469,8 +506,13 @@ function integrate_out_e(agrid::AbstractVector{S}, agrid_big::AbstractArray{S, 3
             sorted_inds = sortperm(vec_agrid_big_is)
 
             # agrid_big is the grid of a implied by bgrid and exogenous states (s, e),
-            # whereas agrid is the grid of a that's paseed in.
-            # Linear interpolation
+            # whereas agrid is the grid of a that's passed in.
+            # Linear interpolation with the sorted agrid. This approach works b/c mapping b into a is
+            # really the mapping (b, s, e) -> (a(b, s, e), s, e). Thus, the value of a implicitly already
+            # accounts for e. Intuitively, having a higher e or more b is the same when mapped into
+            # cash-on-hand a. Sorting by a therefore maintains the desired monotonicity of the consumption
+            # policy with cash-on-hand, so a linear interpolation over the sorted indices is an effective way to
+            # "integrate out" the egrid.
             C_Final[:, is] = interp_one(vec_agrid_big_is[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
             @test all(agrid .- C_Final[:, is] .>= -1e16)
         end
@@ -695,184 +737,3 @@ function esample(ue::Matrix{S}, egrid::AbstractArray, ecdf::AbstractArray,
 	end
 	return es
 end
-
-
-####### OLD CODE for policy iteration
-
-
-#=
-    if β < 0.0
-        p = plot()
-        for is = 1:ns
-            for ie = 1:ne
-                plot!(p, bgrid, ω*sgrid[is]*egrid[ie]*H .+ T .+ exp(-γ)*bgrid - c_pol[:, is, ie], label = "is = $(is), ie = $(ie)")
-            end
-        end
-        savefig(p, "bgrid_vs_expression.png")
-        p = plot()
-        for is = 1:ns
-            for ie = 1:ne
-                lab = (is == 1 ? "Low skill" : "High skill") * "ie = $(ie)"
-                plot!(p, bgrid, c_pol[:, is, ie], label = lab, linestyle = is==1 ? :solid : :dash, color = colors[ie])
-            end
-        end
-        savefig(p, "bgrid_vs_cpol.png")
-
-        p = plot()
-        for is = 1:ns
-            for ie = 1:ne
-                lab = (is == 1 ? "Low skill" : "High skill") * "ie = $(ie)"
-                plot!(p, agrid_big[:, is, ie], c_pol[:, is, ie], label = lab, linestyle = is==1 ? :solid : :dash, color = colors[ie])
-            end
-        end
-        savefig(p, "agrid_big_vs_cpol.png")
-
-    end
-=#
-    # Interpolate the (a, s, e) grid back to the (a, s) grid.
-#=    C_Final = Matrix{Float64}(undef, na, ns)
-    for is in 1:ns
-        # Sort the a's and use those for everything
-        sorted_inds = sortperm(vec(agrid_big[:, is, :]))
-        # agrid_big is the grid of a implied by bgrid, whereas xgrid is the grid of a that's paseed in
-        C_Final[:, is] = interp_one(vec(agrid_big[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
-        @test all(agrid .- C_Final[:, is] .>= -1e16)
-    end
-=#
-  #=  if β < .75
-        sorted_inds = sortperm(vec(agrid_big[:, 1, :]))
-        p_l = plot(vec(agrid_big[:, 1, :])[sorted_inds], vec(c_pol[:, 1, :])[sorted_inds], label = "cpol", legend = :bottomright)
-        sorted_inds = sortperm(vec(agrid_big[:, 2, :]))
-        p_h  = plot(vec(agrid_big[:, 2, :])[sorted_inds], vec(c_pol[:, 2, :])[sorted_inds], label = "cpol", legend = :bottomright)
-       # savefig(p, "cpol_agrid.png")
-        plot!(p_l, agrid, vec(C_Final[:, 1]), label = "C Final")
-        plot!(p_h, agrid, vec(C_Final[:, 2]), label = "C Final")
-        savefig(p_l, "lowskill.png")
-        savefig(p_h, "highskill.png")
-    end =#
-
-
-    # Compute a' implied by interpolated C_Final (back on the usual grid of a)
-#=    ap = Array{Float64}(undef, na, ns, ne, ns)
-    for is in 1:ns
-        for isp in 1:ns
-            for iep in 1:ne
-                ap[:, is, iep, isp] = ω*sgrid[isp]*egrid[iep]*H .+ R*exp(-γ)*(agrid - C_Final[:, is])
-            end
-        end
-    end
-
-    b_grid_implied = Matrix{Float64}(undef, na, ns)
-    for is in 1:ns
-        b_grid_implied[:, is] = exp(γ)*agrid .- ω*sgrid[is]*H .- T
-    end
-@show minimum(b_grid_implied)
-
-    # Finding the ergodic distribution
-    # Assign weights to adjacent grid points paproportionally to distance
-#    @show ap
-#    @show agrid
-    ib_pol, wei = histc(ap, agrid)
-=#
-#=
-  if β < 0.0
-      for is in 1:2
-          for isp = 1:2
-              p = plot()
-              for ie = 1:ne
-                  lab = "a' " * " ie = $(ie)"
-                  plot!(p, agrid, ap[:, isp, ie, is], left_margin = 10mm, label = lab, legend = :bottomright, color = colors[ie])
-                  lab = "agrid[ib_pol] " * " ie = $(ie)"
-                  plot!(agrid, agrid[ib_pol[:, isp, ie, is]], left_margin = 10mm, label = lab, linestyle = :dash, color = colors[ie])
-              end
-              savefig(p, "ap_is=$(is)_isp=$(isp).png")
-          end
-      end
-      #end
-      p2 = plot(agrid, agrid - C_Final[:, 1], label = "low skill")
-      plot!(p2, agrid, agrid - C_Final[:, 2], label = "high skill")
-      savefig(p2, "agrid_minus_CFinal.png")
-  end
-=#
-
-    # Check ib_pol and weights worked
-   #= for ia in 1:na
-        for is in 1:ns
-            for ie in 1:ne
-                for isp in 1:ns
-                    # Make sure ap lies between the two nearest grid points on either side
-                    if ap[ia, is, ie, isp] < minimum(agrid)
-                        @test ib_pol[ia, is, ie, isp] == 1
-                        @test wei[ia, is, ie, isp] == 1.0
-                    elseif ap[ia, is, ie, isp] > maximum(agrid)
-                        @test ib_pol[ia, is, ie, isp] == length(agrid) - 1
-                        @test wei[ia, is, ie, isp] == 1.0
-
-                    else
-                        @test agrid[(ib_pol[ia, is, ie, isp])] <= ap[ia, is, ie, isp] <=
-                            agrid[(ib_pol[ia, is, ie, isp] + 1)]
-                        # If closer to left grid point, weight should be greater than 1-weight
-                        if abs(agrid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
-                            abs(ap[ia, is, ie, isp] - agrid[(ib_pol[ia, is, ie, isp] + 1)])
-                            @test wei[ia, is, ie, isp] > (1-wei[ia, is, ie, isp])
-                            # If closer to right grid point, weight should be less than 1-weight
-                        elseif abs(agrid[(ib_pol[ia, is, ie, isp])] - ap[ia, is, ie, isp]) <
-                            abs(ap[ia, is, ie, isp] - agrid[(ib_pol[ia, is, ie, isp] + 1)])
-                            @test wei[ia, is, ie, isp] < (1-wei[ia, is, ie, isp])
-                        end
-                    end
-                end
-            end
-        end
-    end =#
-
-#=    # Iterate asset transition matrix starting from KF_in
-    dif = 1
-    pd  = deepcopy(KF_in)
-    while dif > tol
-        pdi = zeros(S, na, ns)
-        for i = 1:na
-            for s = 1:ns
-                sum = 0.0
-                for iep = 1:ne
-                    for si = 1:ns
-                        pdi[ib_pol[i,s,iep,si], si] = wei[i,s,iep,si] * f[s,si] * g_of_e[iep] *
-                            ewts[iep] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si], si]
-
-                        pdi[ib_pol[i,s,iep,si] + 1, si] = (1-wei[i,s,iep,si]) * f[s,si] * g_of_e[iep] *
-                            ewts[iep] * pd[i,s] .+ pdi[ib_pol[i,s,iep,si] + 1, si]
-
-                        sum += wei[i,s,iep,si]  * f[s,si] * g_of_e[iep] * ewts[iep] +
-                               (1-wei[i,s,iep,si]) * f[s,si] * g_of_e[iep] * ewts[iep]
-                    end
-                end
-                @test isapprox(sum, 1.0, atol = 1e-5)
-            end
-        end
-
-        # check convergence
-        dif = maximum(abs.(pdi - pd))
-
-        # Make sure that distribution integrates to 1
-        @test isapprox(sum(pdi), 1.0, atol = 1e-6)
-        pd = deepcopy(pdi) #pd = deepcopy(pdi / sum(pdi))
-
-      #=  p = plot(agrid, pd[:, 1], label = "low skill")
-        plot!(p, agrid, pd[:, 2], label = "high skill")
-        savefig(p, "agrid_vs_D_first.png") =#
-
-        counter += 1
-    end=#
-#=
-    if β < 0.0
-        p = plot(agrid, pd[:, 1], label = "low skill")
-        plot!(p, agrid, pd[:, 2]*20, label = "high skill (x20)")
-        savefig(p, "agrid_vs_D.png")
-    end
-
-    if β < 0.0
-        p = plot(bgrid, pd[:, 1], label = "low skill")
-        plot!(p, bgrid, pd[:, 2]*20, label = "high skill (x20)")
-        savefig(p, "bgrid_vs_D.png")
-    end
-=#
