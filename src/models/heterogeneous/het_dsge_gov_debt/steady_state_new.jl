@@ -59,7 +59,7 @@ function steadystate!(m::HetDSGEGovDebt;
         # Construct agrid
         smin = minimum(sgrid) # * m[:elo].value                                   # lowest possible skill
         alo  = ω * smin * H - R * η * exp(-γ) + T # + sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
-        ahi  = max(alo * 2., alo + 20.0)         # upper bound on cash on hand
+        ahi  = max(alo * 2., alo + 20.0)                 # upper bound on cash on hand
 
         ascale = (ahi - alo)                  # size of w grids
         agrid  = collect(range(alo, stop = ahi, length = na)) # Evenly spaced grid
@@ -87,9 +87,9 @@ function steadystate!(m::HetDSGEGovDebt;
 
         m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
         m[:pc0] = frac_zero(m[:μstar].value, m[:cstar].value, agrid, kron(swts, awts), ns)
-
-
     end
+
+    nothing
 end
 
 function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
@@ -163,7 +163,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                        damp = get_setting(m, :policy_damp),
                                                        maxit = get_setting(m, :policy_maxit))
         excess = compute_excess(KF, bp, bg)
-
+        @show β, counter, excess
         # bisection
         if excess > 0
             βhi = β
@@ -358,7 +358,6 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     for is in 1:ns
         b_grid_implied[:, is] = exp(γ)*agrid .- ω*sgrid[is]*H .- T
     end
-@show minimum(b_grid_implied)
 
     # Finding the ergodic distribution
     # Assign weights to adjacent grid points paproportionally to distance
