@@ -214,15 +214,20 @@ those).
 """
 function init_parameters!(m::SmallLinear)
     # Initialize parameters
-    m <= parameter(:γ_Q, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q: Domestic steady state growth rate of technology.", tex_label="\\gamma_Q")
+    # m <= parameter(:γ_Q, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q: Domestic steady state growth rate of technology.", tex_label="\\gamma_Q")
+    m <= parameter(:γ_Q, 1.5, fixed=true, description="γ_Q: Domestic steady state growth rate of technology.", tex_label="\\gamma_Q")
 
-    m <= parameter(:γ_Q_f, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q_f: Foreign steady state growth rate of technology.", tex_label="\\gamma_Q^f")
+    # m <= parameter(:γ_Q_f, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q_f: Foreign steady state growth rate of technology.", tex_label="\\gamma_Q^f")
+    m <= parameter(:γ_Q_f, 1.5, fixed=true, description="γ_Q_f: Foreign steady state growth rate of technology.", tex_label="\\gamma_Q^f")
 
-    m <= parameter(:π_star, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star: Domestic target inflation rate.", tex_label="\\pi*")
+    # m <= parameter(:π_star, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star: Domestic target inflation rate.", tex_label="\\pi*")
+    m <= parameter(:π_star, 8.1508, fixed=true, description="π_star: Domestic target inflation rate.", tex_label="\\pi*")
 
-    m <= parameter(:π_star_f, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star_f: Foreign target inflation rate.", tex_label="\\pi*^f")
+    # m <= parameter(:π_star_f, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star_f: Foreign target inflation rate.", tex_label="\\pi*^f")
+    m <= parameter(:π_star_f, 8.1508, fixed=true, description="π_star_f: Foreign target inflation rate.", tex_label="\\pi*^f")
 
-    m <= parameter(:rA, 1.0025, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(0.5, 0.5), fixed=false, description="rA: β (discount factor) = 1/(1+ rA/400).", tex_label="rA")
+    # m <= parameter(:rA, 1.0025, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(0.5, 0.5), fixed=false, description="rA: β (discount factor) = 1/(1+ rA/400).", tex_label="rA")
+     m <= parameter(:rA, 1.0025, fixed=true, description="rA: β (discount factor) = 1/(1+ rA/400).", tex_label="rA")
 
     m <= parameter(:σ, 1.0, fixed=true,
                    description="σ: Inverse elasticity of substitution.",
