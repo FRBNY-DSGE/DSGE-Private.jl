@@ -5,12 +5,12 @@ module DSGE
     using QuadGK, Interpolations, FastGaussQuadrature
     using Dates, Test, BenchmarkTools
     using Distributed, Distributions, FileIO, FredData, HDF5, JLD2, LinearAlgebra
-    using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
+    using Missings, NLsolve, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
     using DataStructures: SortedDict, insert!, ForwardOrdering
-    using Roots: fzero, ConvergenceFailed
-    using StatsBase: sample, Weights
+    using Roots: Bisection, find_zero, Order1, Order2, Order5, A42, AlefeldPotraShi, FalsePosition, Brent, fzero, ConvergenceFailed
+    using StatsBase: sample, Weights, Histogram
     using Plots.PlotMeasures
     using StatsFuns: chisqinvcdf
     using Statistics: std
