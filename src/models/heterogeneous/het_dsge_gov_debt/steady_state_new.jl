@@ -4,7 +4,8 @@ function steadystate!(m::HetDSGEGovDebt;
                       excess::S = 5000.,
                       tol::S = 1e-4,
                       maxit::Int64 = 20,
-                      βband::S = 1e-2) where {S<:AbstractFloat}
+                      βband::S = 1e-2,
+                      doplots::Bool = true, verbose::Symbol = :high) where {S<:AbstractFloat}
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
     # estimate the non steady state parameters, there's no need to recompute
     # elo/ehi, etc.
@@ -76,14 +77,16 @@ function steadystate!(m::HetDSGEGovDebt;
                           agrid, sgrid,
                           R, H, η, γ, ω, T, bg;
                           βlo = βlo, βhi = βhi,
-                          excess = excess, tol = tol, maxit = maxit,
+                          excess = excess, tol = tol, maxit = maxit, verbose = verbose,
                           βband = βband)
 
         # TODO: Remove these lines
         @test sum(m[:μstar].value) ≈ 1.0
-        p = plot(agrid, m[:μstar].value[1:300], label = "low skill")
-        plot!(p, agrid, m[:μstar].value[301:600], label = "high skill")
-        savefig(p, "agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).png")
+        if doplots
+            p = plot(agrid, m[:μstar].value[1:300], label = "low skill")
+            plot!(p, agrid, m[:μstar].value[301:600], label = "high skill")
+            savefig(p, "agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+        end
 
         m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
         m[:pc0] = frac_zero(m[:μstar].value, m[:cstar].value, agrid, kron(swts, awts), ns)
@@ -102,7 +105,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                            excess::S = 5000.,
                            tol::S = 1e-4,
                            maxit::Int64 = 20,
-                           βband::S = 1e-2) where {S<:AbstractFloat}
+                           βband::S = 1e-2, verbose::Symbol = :high) where {S<:AbstractFloat}
 
     na_c = get_setting(m, :na_c)
 
@@ -156,14 +159,16 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     # Go till If you don't have a β, guess 1
     while abs(excess) > tol && counter < maxit # clearing markets
         β = (βlo + βhi) / 2.0
-#        @show counter, β
+
         c, c_pol_in, bp, ell, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value,
                                                        agrid, sgrid, c_pol_in, KF_in,
                                                        f, egrid, ewts, g_of_e,
                                                        damp = get_setting(m, :policy_damp),
                                                        maxit = get_setting(m, :policy_maxit))
         excess = compute_excess(KF, bp, bg)
-        @show β, counter, excess
+        if verbose == :high
+            @show β, counter, excess
+        end
         # bisection
         if excess > 0
             βhi = β

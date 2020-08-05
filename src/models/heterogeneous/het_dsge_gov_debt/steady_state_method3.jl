@@ -4,8 +4,10 @@ function method3_steadystate!(m::HetDSGEGovDebt;
                               excess::S = 5000.,
                               tol::S = 1e-4,
                               maxit::Int64 = 20,
+                              lowtol::S = 1e-3,
                               βband::S = 1e-2,
-                              use_quadrature::Bool = false) where {S <: Real}
+                              use_quadrature::Bool = false,
+                              doplots::Bool = true, verbose::Symbol = :high) where {S <: Real}
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
     # estimate the non steady state parameters, there's no need to recompute
     # elo/ehi, etc.
@@ -54,7 +56,7 @@ function method3_steadystate!(m::HetDSGEGovDebt;
         ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1
         # egrid = egrid ./ dot(g_of_e .* egrid, ewts)
         egrid     ./= dot(g_of_e .* egrid, ewts) # Normalize egrid so that mean ∫ e g(e) de = 1, should be a small adjustment
-        @show egrid
+
         # ẽᵢ = eᵢ / (∑ᵢ (gᵢ * eᵢ * w̃ᵢ)), hence
         # ∑ᵢ ̃eᵢ * gᵢ * w̃ᵢ = (∑ᵢ eᵢ * gᵢ * w̃ᵢ) / (∑ᵢ (gᵢ * eᵢ * w̃ᵢ)) = 1, but we could just change the weights
 
@@ -78,17 +80,21 @@ function method3_steadystate!(m::HetDSGEGovDebt;
                                   agrid, sgrid,
                                   R, H, η, γ, ω, T, bg;
                                   βlo = βlo, βhi = βhi,
-                                  excess = excess, tol = tol, maxit = maxit,
-                                  βband = βband, use_quadrature = use_quadrature)
+                                  excess = excess, tol = tol, maxit = maxit, lowtol = lowtol,
+                                  βband = βband, use_quadrature = use_quadrature, verbose = verbose)
 
         # TODO: Remove these lines
-        @show sum(m[:μstar].value)
-        p = plot(agrid, m[:μstar].value[1:300], label = "low skill")
-        plot!(p, agrid, m[:μstar].value[301:600], label = "high skill")
-        if use_quadrature
-            savefig(p, "method3_quadrature_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
-        else
-            savefig(p, "method3_sortinterp_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+        if verbose == :high
+            @show sum(m[:μstar].value)
+        end
+        if doplots
+            p = plot(agrid, m[:μstar].value[1:300], label = "low skill")
+            plot!(p, agrid, m[:μstar].value[301:600], label = "high skill")
+            if use_quadrature
+                savefig(p, "method3_quadrature_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+            else
+                savefig(p, "method3_sortinterp_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+            end
         end
 
         m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
@@ -99,17 +105,18 @@ function method3_steadystate!(m::HetDSGEGovDebt;
 end
 
 function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
-                           egrid::Vector{Float64}, ewts::Vector{Float64}, g_of_e::Vector{Float64},
-                           f::Matrix{Float64},
-                           agrid::Vector{Float64}, sgrid::Vector{Float64},
-                           R::Float64, H::Float64, η::Float64, γ::Float64, ω::Float64, T::Float64, bg::Float64;
-                           βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
-                           βhi::S = exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
-                           excess::S = 5000.,
-                           tol::S = 1e-4,
-                           maxit::Int64 = 20,
-                           βband::S = 1e-2,
-                           use_quadrature::Bool = false) where {S <: Real}
+                                   egrid::Vector{Float64}, ewts::Vector{Float64}, g_of_e::Vector{Float64},
+                                   f::Matrix{Float64},
+                                   agrid::Vector{Float64}, sgrid::Vector{Float64},
+                                   R::Float64, H::Float64, η::Float64, γ::Float64, ω::Float64, T::Float64, bg::Float64;
+                                   βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
+                                   βhi::S = exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
+                                   excess::S = 5000.,
+                                   tol::S = 1e-4,
+                                   maxit::Int64 = 20,
+                                   lowtol::S = 1e-3,
+                                   βband::S = 1e-2,
+                                   use_quadrature::Bool = false, verbose::Symbol = :high) where {S <: Real}
 
     na_c = get_setting(m, :na_c)
 
@@ -170,7 +177,10 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                          damp = get_setting(m, :policy_damp),
                                                          maxit = get_setting(m, :policy_maxit))
         excess = compute_excess(KF, bp, bg)
-        @show counter, β, excess
+        if verbose == :high
+            @show counter, β, excess
+        end
+
         # bisection
         if excess > 0
             βhi = β
@@ -180,6 +190,38 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         counter += 1
         if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
             break
+        end
+    end
+
+    # Try doing a small perturbation around the converged β if the error is not too large
+    if abs(excess) < lowtol && counter == maxit
+        counter = 1
+        βlo = β - βband
+        βhi = β + βband
+        while abs(excess) > tol && counter < maxit # clearing markets
+            β = (βlo + βhi) / 2.0
+
+            c_pol_in, bp, KF, reject = method3_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:ehi].value,
+                                                                     m[:elo].value,
+                                                                     agrid, sgrid, c_pol_in, KF_in,
+                                                                     f, egrid, ewts, g_of_e,
+                                                                     damp = get_setting(m, :policy_damp),
+                                                                     maxit = get_setting(m, :policy_maxit))
+            excess = compute_excess(KF, bp, bg)
+            if verbose == :high
+                @show counter, β, excess
+            end
+
+            # bisection
+            if excess > 0
+                βhi = β
+            elseif excess < 0
+                βlo = β
+            end
+            counter += 1
+            if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
+                break
+            end
         end
     end
 
@@ -228,18 +270,16 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     # Constrainted consumption
     c_constrained = Matrix{Float64}(undef, ns, ne)
     for ie in 1:ne
-        # for is in 1:ns
-            # e = egrid[ie] #minimum([egrid[ie], 1.0])
-        e = min(egrid[ie], 1.)
-        c_constrained[:, ie] = sgrid .* (ω * e * H) .+ T # ω * s * e * H + T
-        # end
+        e = egrid[ie]
+        c_constrained[:, ie] = sgrid .* (ω * e * H) .+ T
     end
 
     c_poli = deepcopy(c_pol)
 
     bmin = 0.0
-    bmax = exp(γ) * (maximum(agrid)- ω * maximum(sgrid) * maximum(egrid) * H) # NOTE egrid is not in [elo, ehi] b/c transformed
-    bgrid = bmin .+ ((1:na) / na).^2 * (bmax - bmin)                          # but makes quadrature work (normalize to 1)
+    bmax = exp(γ) * (maximum(agrid)- ω * maximum(sgrid) * maximum(egrid) * H) # NOTE egrid is not exactly in [elo, ehi] b/c
+    bgrid = bmin .+ ((1:na) / na).^2 * (bmax - bmin)                          # slightly renormalized to ensure ∫e g(e) de = 1
+
     # a grid (cash on hand) implied by bgrid (assets) is: map b into a using equation at top of page 4
     agrid_big = Array{Float64}(undef, na, ns, ne)
     for ie in 1:ne
@@ -320,7 +360,6 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
         end
     end
     @assert all(agrid_big - c_pol .>= -1e16) "Consumption is not always less than cash-on-hand."
-    println("Cpolicy counter: $(counter)")
 
     # Construct weights for calculating distribution over (b, s, e), see the KF loop to undersatnd how these Arrays are used
     bpgrid_big = Array{S}(undef, na, ns, ne)   # bp implied by consumption policy
@@ -388,7 +427,6 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
 
         counter += 1
     end
-    println("KF counter: $(counter)")
 
     return c_pol, bgrid, pd, reject
 end
