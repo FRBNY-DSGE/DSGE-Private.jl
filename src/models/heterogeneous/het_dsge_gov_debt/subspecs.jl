@@ -40,7 +40,7 @@ function init_subspec!(m::HetDSGEGovDebt)
     # Subspec 8, but with γ = 0.5
     elseif subspec(m) == "ss10"
         return ss10!(m)
-    # Do not calibrate for s_H / s_L and zlo
+    # Do not calibrate for s_H / s_L and elo
     elseif subspec(m) == "ss11"
         return ss11!(m)
     # Only estimate shocks
@@ -100,12 +100,12 @@ function fix_all_except_sigmas!(m::HetDSGEGovDebt)
 
     m <= parameter(:BoverY, 0.26, fixed = true, description = "B / Y", tex_label = "B / Y")
 
-    m <= parameter(:zlo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+    m <= parameter(:elo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
 
-    m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
+    m <= parameter(:ehi, 2-m[:elo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 
@@ -254,12 +254,12 @@ function fix_all_but_shocks!(m::HetDSGEGovDebt)
 
     m <= parameter(:BoverY, 0.26, fixed = true, description = "B / Y", tex_label = "B / Y")
 
-    m <= parameter(:zlo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+    m <= parameter(:elo, 0.0323232, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
 
-    m <= parameter(:zhi, 2-m[:zlo].value, fixed = true,
+    m <= parameter(:ehi, 2-m[:elo].value, fixed = true,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 
@@ -773,8 +773,8 @@ function ss11!(m::HetDSGEGovDebt)
     m <= parameter(:vardlinc, 0.0, fixed = true, tex_label = "vardlinc",
                    description = "var(log(deviations in annual income))")
 
-    # Since not calibrating, we let zlo and s_H / s_L be free parameters
-    m <= parameter(:zlo, 1.035e-8, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+    # Since not calibrating, we let elo and s_H / s_L be free parameters
+    m <= parameter(:elo, 1.035e-8, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = false,
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
@@ -811,8 +811,8 @@ function ss12!(m::HetDSGEGovDebt)
     m <= parameter(:vardlinc, 0.0, fixed = true, tex_label = "vardlinc",
                    description = "var(log(deviations in annual income))")
 
-    # Since not calibrating, we let zlo and s_H / s_L be free parameters
-    m <= parameter(:zlo, 1.035e-8, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
+    # Since not calibrating, we let elo and s_H / s_L be free parameters
+    m <= parameter(:elo, 1.035e-8, (1e-18, 0.8-eps()), (1e-18, 0.8-eps()), Untransformed(),
                    Uniform(1e-18, 0.8-eps()), fixed = true,
                    description = "Lower bound on second income shock to mollify actual income",
                    tex_label = "\\underbar{z}")
