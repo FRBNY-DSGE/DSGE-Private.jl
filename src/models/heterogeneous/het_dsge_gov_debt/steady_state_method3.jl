@@ -1,6 +1,6 @@
 function method3_steadystate!(m::HetDSGEGovDebt;
                               βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
-                              βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.9999999),
+                              βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.999999),
                               excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
                               roots_algorithm = nothing,
                               euler_anderson::Bool = true,
@@ -63,7 +63,7 @@ function method3_steadystate!(m::HetDSGEGovDebt;
 
         # TODO: Remove these lines
         if verbose == :high
-            @show sum(m[:μstar].value)
+            println("The distribution μ(a, s) integrates to $(round(sum(m[:μstar].value), digits = 3)).")
         end
         if doplots
             p = plot(fit(Histogram, agrid, Weights(m[:μstar].value[1:na]), nbins = na), label = "low skill", color = :blue)
@@ -168,7 +168,7 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                      kf_anderson = kf_anderson)
             excess = compute_excess(KF, bp, bg)
             if verbose == :high
-                @show counter, β, excess
+                println("On iteration $(counter) and guess β=$(round(β, digits = 6)), the excess bonds are $(excess).")
             end
 
             # bisection
@@ -432,6 +432,7 @@ function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::Abstr
             c = 1 ./ ((β * R * exp(-γ)) .* sum_term)
             b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
             sum_term .= 0. # Reset the values to zero (done with it for this loop)
+            @assert !all(b .< 0.) "All elements of b (assets today) are negative. Try increasing the number of agrid points and/or lowering β"
 
             # Handle constrained consumption today: for b < 0, need to reset c such that b is exactly 0. See line 254
             c[b .< 0.] = -(bp[b .< 0] ./ R) .+  ω * sgrid[is] * egrid[ie] * H .+ T
@@ -587,14 +588,13 @@ function integrate_out_e(agrid::AbstractVector{S}, agrid_big::AbstractArray{S, 3
         # policy with cash-on-hand, so a linear interpolation over the sorted indices is an effective way to
         # "integrate out" the egrid.
         C_Final[:, is] = interp_one(vec_agrid_big_is[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
-        if !all(agrid .- C_final[:, is] .>= -1e-16)
-            @assert all(agrid .- C_Final[:, is] .>= tol) "For skill s=$(round(sgrid[is], digits = 3)), max(C(a, s) - a) = $(round(maximum(C_Final[:, is] - agrid), digits = 3)). Try decreasing the Setting na_full"
+        if !any(agrid .- C_Final[:, is] .< -1e-16)
+            @assert all(agrid .- C_Final[:, is] .>= tol) "For skill s=$(round(sgrid[is], digits = 3)), max(C(a, s) - a) = $(maximum(C_Final[:, is] - agrid)). Try decreasing the Setting na_full"
 
             inds              = agrid .< C_Final[:, is]
-            C_final[inds, is] = agrid[inds]
+            C_Final[inds, is] = agrid[inds]             # Require consumption policy to equal agrid
         end
     end
-
 
     #  D(b, s, e) -> D(a, s)
     D_as = zeros(S, na, ns)
