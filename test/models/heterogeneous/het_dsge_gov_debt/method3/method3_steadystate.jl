@@ -1,4 +1,17 @@
-using DSGE, Test, Plots, BenchmarkTools, Roots
+using DSGE, Test, Plots, BenchmarkTools, Roots, ModelConstructors
+
+m = HetDSGEGovDebt(; ref_dir =
+                   joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
+DSGE.method3_steadystate!(m, tol = 5e-4, verbose = :high, doplots = false, βhi = .9)
+new_na = 350
+m <= Setting(:na1_state, new_na, "Cash on hand distribution grid points (Lo)")
+m <= Setting(:na2_state, new_na, "Cash on hand distribution grid points (hi)")
+m <= Setting(:na1_jump,  new_na, "Cash on hand distribution grid points (Lo)")
+m <= Setting(:na2_jump,  new_na, "Cash on hand distribution grid points (hi)")
+m <= Setting(:na,        new_na, "Cash on hand distribution grid points")
+DSGE.method3_steadystate!(m, tol = 5e-4, verbose = :high, doplots = false)
+
+
 
 # Uncomment following block to plot the consumption policy function and distribution
 #=
@@ -41,7 +54,7 @@ println("New endogenous grid method, interpolation, Anderson acceleration for Ko
     DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none,
                               kf_anderson = true)
 end
-=#
+
 println("New endogenous grid method, interpolation, Anderson acceleration for Euler iteration and Kolmogorov equation")
 @btime begin
     m = HetDSGEGovDebt(; ref_dir =
@@ -60,15 +73,6 @@ println("New endogenous grid method, interpolation, Anderson acceleration for Eu
 
 end
 
-println("New endogenous grid method, interpolation, Anderson acceleration for Euler iteration and Kolmogorov equation, FalsePosition")
-@btime begin
-    m = HetDSGEGovDebt(; ref_dir =
-                       joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none, roots_algorithm = Roots.FalsePosition(),
-                              euler_anderson = true, kf_anderson = true, βhi = .89)
-
-end
-
 println("New endogenous grid method, interpolation, Anderson acceleration for Euler iteration and Kolmogorov equation, Brent")
 @btime begin
     m = HetDSGEGovDebt(; ref_dir =
@@ -81,7 +85,7 @@ end
 m11 = HetDSGEGovDebt("ss11"; ref_dir =
                      joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
 DSGE.method3_steadystate!(m11; tol = 5e-4, doplots = false, verbose = :high)
-
+=#
 
 ## Using bracket methods from Roots. Have to specify lower βlo and βhi that work, or the methods won't work, but if these
 ## values are specified, then AlefeldPotraShi, FalsePosition, and Brent are faster

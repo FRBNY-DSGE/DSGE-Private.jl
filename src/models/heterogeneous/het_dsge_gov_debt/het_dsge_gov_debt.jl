@@ -621,12 +621,13 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:λ, 2.0, "λ parameter in the Tauchen distribution calculation")
 
     # x: Cash on Hand Grid Setup
-    m <= Setting(:na1_state, 300, "Cash on hand distribution grid points (Lo)")
-    m <= Setting(:na2_state, 300, "Cash on hand distribution grid points (hi)")
-    m <= Setting(:na1_jump,  300, "Cash on hand distribution grid points (Lo)")
-    m <= Setting(:na2_jump,  300, "Cash on hand distribution grid points (hi)")
-    m <= Setting(:na,        300, "Cash on hand distribution grid points")
-    m <= Setting(:na_c,      100, "Number of additional grid points for constrained people")
+    m <= Setting(:na_full,   300,                      "Cash on hand distribution grid points (unreduced)")
+    m <= Setting(:na1_state, get_setting(m, :na_full), "Cash on hand distribution grid points (Lo)")
+    m <= Setting(:na2_state, get_setting(m, :na_full), "Cash on hand distribution grid points (hi)")
+    m <= Setting(:na1_jump,  get_setting(m, :na_full), "Cash on hand distribution grid points (Lo)")
+    m <= Setting(:na2_jump,  get_setting(m, :na_full), "Cash on hand distribution grid points (hi)")
+    m <= Setting(:na,        get_setting(m, :na_full), "Cash on hand distribution grid points")
+    m <= Setting(:na_c,      100,                      "Number of additional grid points for constrained people")
 
     # e: ideosyncratic income shock grid setup
     m <= Setting(:ne, 5, "e shock grid points")
@@ -669,6 +670,7 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:trunc_distr, false)
     m <= Setting(:rescale_weights, true)
     m <= Setting(:mindens, 1e-8)
+    m <= Setting(:C_tol, 1e-8, "Tolerance for condition that all agents cannot consume more than available cash-on-hand")
 
     # Function-valued variables include distributional variables
     m <= Setting(:n_function_valued_backward_looking_states, 1, "Number of function-valued" *
@@ -873,10 +875,10 @@ function init_states_and_jumps!(m::AbstractModel, states::Vector{Symbol},
 end
 
 function reset_grids!(m)
-    m <= Setting(:na1_state, 300)
-    m <= Setting(:na2_state, 300)
-    m <= Setting(:na1_jump,  300)
-    m <= Setting(:na2_jump,  300)
+    m <= Setting(:na1_state, get_setting(m, :na_full))
+    m <= Setting(:na2_state, get_setting(m, :na_full))
+    m <= Setting(:na1_jump,  get_setting(m, :na_full))
+    m <= Setting(:na2_jump,  get_setting(m, :na_full))
 
     setup_indices!(m)
     init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))

@@ -3,9 +3,9 @@ function method3_steadystate!(m::HetDSGEGovDebt;
                               βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.9999999),
                               excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
                               roots_algorithm = nothing,
-                              euler_anderson::Bool = false,
-                              kf_anderson::Bool = false,
-                              doplots::Bool = true, verbose::Symbol = :high) where {S <: Real}
+                              euler_anderson::Bool = true,
+                              kf_anderson::Bool = true,
+                              doplots::Bool = false, verbose::Symbol = :none) where {S <: Real}
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
     # estimate the non steady state parameters, there's no need to recompute
     # elo/ehi, etc.
@@ -108,7 +108,7 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     βhi_temp = βhi
 
     reject  = false
-    counter = 1
+    counter = 0
 
     # Initial guess
     β        = NaN # Need to define β here so it's accessible outside of while lopp
@@ -156,7 +156,7 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
 
     # If you don't have a β, guess a β
     if isnothing(roots_algorithm)
-        while abs(excess) > tol && counter < maxit # clearing markets
+        while abs(excess) > tol && counter <= maxit # clearing markets
             β = (βlo + βhi) / 2.0
 
             c_pol_in, bp, KF, reject = method3_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
@@ -232,7 +232,7 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         end
     end
     C_Final, KF_Final, ell = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol_in, KF, ω, H, T, γ;
-                                             g_of_e = g_of_e, ewts = ewts)
+                                             tol = get_setting(m, :C_tol))
 
     # If policy function does not converge, we signal to likelihood that should reject
     m <= Setting(:auto_reject, reject)
@@ -266,11 +266,11 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
                                        f::Matrix{S}, egrid::Vector{Float64}, ewts::Vector{Float64},
                                        g_of_e::Vector{Float64},
                                        dist::S = 1., tol::S = 1e-10;
-                                       maxit::Int64 = 500, euler_anderson::Bool = false,
+                                       maxit::Int64 = 1000, euler_anderson::Bool = false,
                                        kf_anderson::Bool = false) where {S <: Real}
 
     colors = [:red, :blue, :green, :yellow, :purple]
-    counter = 1
+    counter = 0
     reject = false
 
     # Constrainted consumption
@@ -292,15 +292,16 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
                                                                        bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T),
                       c_pol, ftol = tol, iterations = maxit, m = 5, method = :anderson)
         if !out.f_converged
-            @warn "Euler iteration did not converge. The final distance is $(dist)"
+            @warn "Euler iteration did not converge. The final distance is $(out.residual_norm)"
             reject = true
         end
         c_pol = out.zero
     else
         c_poli = similar(c_pol)
-        while dist > tol && counter < maxit # TODO: rewrap the consumption function loop inside a function b/c fixed point problem
+        while dist > tol && counter <= maxit # TODO: rewrap the consumption function loop inside a function b/c fixed point problem
             fixedpoint_c_policy!(c_poli, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
                                  bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T)
+
             dist  = maximum(abs.(c_pol - c_poli)) # Inf norm
             c_pol = deepcopy(c_poli)
             counter += 1
@@ -323,23 +324,20 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     pdi = similar(pd)     # D'(b', s', e')
     if kf_anderson
         out = nlsolve((F_pd, pd) -> fixedpoint_KF_nlsolve!(F_pd, pd, na, ns, ne, ibp_pol, wts_big, ewts, g_of_e, f),
-                      pd, ftol = tol, iterations = maxit * 2, method = :anderson, m = 5)
+                      pd, ftol = tol, iterations = maxit, method = :anderson, m = 5)
         pd  = out.zero
     else
         counter = 0
-        while dif > tol
+        while dif > tol && counter <= maxit
             fixedpoint_KF!(pdi, pd, na, ns, ne, ibp_pol, wts_big, ewts, g_of_e, f)
 
             # check convergence
-            dif = maximum(abs.(pdi - pd))
-
-            # Make sure that distribution integrates to 1
-            @assert isapprox(sum(pdi), 1.0, atol = 1e-6)
-            pd   = deepcopy(pdi)
-
+            dif      = maximum(abs.(pdi - pd))
+            pd       = deepcopy(pdi)
             counter += 1
         end
     end
+    @assert isapprox(sum(pd), 1.0, atol = 1e-6)
 
     return c_pol, bgrid, pd, reject
 end
@@ -360,10 +358,8 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
                     # Note that f[is, isp] is prob going froms sgrid[is] to sgrid[isp], so we do want to
                     # iterate over the second element rather than the first, despite the p(s'|s) notation
                     sum_term   .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[:, isp, iep]
-                    verify_one  +=  f[is, isp] * ewts[iep] * g_of_e[iep]
                 end
             end
-            @test isapprox(verify_one, 1.0, atol = 1e-5)
 
             # Compute ell(a, s) = β * R * exp(-γ) * (Σₛ∫ₑ)
             # l = β * R * exp(-γ) * sum_term
@@ -372,6 +368,7 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
             c = 1 ./ ((β * R * exp(-γ)) .* sum_term)
             b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
             sum_term .= 0. # Reset the values to zero (done with it for this loop)
+            @assert !all(b .< 0.) "All elements of b (assets today) are negative. Try increasing the number of agrid points and/or lowering β"
 
             # Handle constrained consumption today: for b < 0, need to reset c such that b is exactly 0. See line 254
             c[b .< 0.] = -(bp[b .< 0] ./ R) .+  ω * sgrid[is] * egrid[ie] * H .+ T
@@ -572,9 +569,7 @@ end
 # Maps c(b, s, e) -> c(a, s) and D(b, s, e) -> D(a, s)
 function integrate_out_e(agrid::AbstractVector{S}, agrid_big::AbstractArray{S, 3},
                          bgrid::AbstractVector{S}, sgrid::AbstractVector{S}, c_pol::AbstractArray{S, 3}, D_bse::AbstractArray{S, 3},
-                         ω::S, H::S, T::S, γ::S;
-                         g_of_e::AbstractVector{S} = Vector{S}(undef, 0),
-                         ewts::AbstractVector{S} = Vector{S}(undef, 0)) where {S <: Real}
+                         ω::S, H::S, T::S, γ::S; tol::Float64 = -1e-8) where {S <: Real}
     # Map c(b, s, e) -> c(a, s, e)
     na, ns, ne = size(agrid_big)
     C_Final    = Matrix{S}(undef, na, ns)
@@ -592,8 +587,14 @@ function integrate_out_e(agrid::AbstractVector{S}, agrid_big::AbstractArray{S, 3
         # policy with cash-on-hand, so a linear interpolation over the sorted indices is an effective way to
         # "integrate out" the egrid.
         C_Final[:, is] = interp_one(vec_agrid_big_is[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
-        @assert all(agrid .- C_Final[:, is] .>= -1e-14)
+        if !all(agrid .- C_final[:, is] .>= -1e-16)
+            @assert all(agrid .- C_Final[:, is] .>= tol) "For skill s=$(round(sgrid[is], digits = 3)), max(C(a, s) - a) = $(round(maximum(C_Final[:, is] - agrid), digits = 3)). Try decreasing the Setting na_full"
+
+            inds              = agrid .< C_Final[:, is]
+            C_final[inds, is] = agrid[inds]
+        end
     end
+
 
     #  D(b, s, e) -> D(a, s)
     D_as = zeros(S, na, ns)
@@ -837,7 +838,6 @@ function construct_agrid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
                          ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int) where {S <: Real}
     smin = minimum(sgrid)                            # lowest possible skill
     emin = minimum(egrid)                            # lowest possible realization of idiosyncratic shock
-    emin = 1.
     alo  = ω * smin * emin * H - R * η * exp(-γ) + T # lowest SS possible cash on hand
     ahi  = max(alo * 2., alo + 20.0)                 # upper bound on cash on hand
 
