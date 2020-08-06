@@ -9,7 +9,7 @@ module DSGE
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
     using DataStructures: SortedDict, insert!, ForwardOrdering
-    using Roots: Bisection, find_zero, Order1, Order2, Order5, A42, AlefeldPotraShi, FalsePosition, Brent, fzero, ConvergenceFailed
+    using Roots: find_zero, fzero, ConvergenceFailed, AbstractBracketing, AbstractSecant
     using StatsBase: sample, Weights, Histogram
     using Plots.PlotMeasures
     using StatsFuns: chisqinvcdf
