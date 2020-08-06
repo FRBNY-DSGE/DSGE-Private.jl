@@ -1,29 +1,5 @@
 using DSGE, Test, Plots, BenchmarkTools, Roots, ModelConstructors
 
-m = HetDSGEGovDebt(; ref_dir =
-                   joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-DSGE.method3_steadystate!(m, tol = 5e-4, verbose = :high, doplots = false, βhi = .9)
-new_na = 350
-m <= Setting(:na1_state, new_na, "Cash on hand distribution grid points (Lo)")
-m <= Setting(:na2_state, new_na, "Cash on hand distribution grid points (hi)")
-m <= Setting(:na1_jump,  new_na, "Cash on hand distribution grid points (Lo)")
-m <= Setting(:na2_jump,  new_na, "Cash on hand distribution grid points (hi)")
-m <= Setting(:na,        new_na, "Cash on hand distribution grid points")
-DSGE.method3_steadystate!(m, tol = 5e-4, verbose = :high, doplots = false)
-
-
-
-# Uncomment following block to plot the consumption policy function and distribution
-#=
-m = HetDSGEGovDebt(; ref_dir =
-                   joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-DSGE.steadystate!(m, tol = 5e-4, verbose = :high, doplots = true)
-m = HetDSGEGovDebt(; ref_dir =
-                   joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-DSGE.method3_steadystate!(m, tol = 5e-4, verbose = :high, doplots = true)
-=#
-
-#=
 println("Old endogenous grid method")
 @btime begin
     m = HetDSGEGovDebt(; ref_dir =
@@ -85,6 +61,15 @@ end
 m11 = HetDSGEGovDebt("ss11"; ref_dir =
                      joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
 DSGE.method3_steadystate!(m11; tol = 5e-4, doplots = false, verbose = :high)
+
+# Uncomment following block to plot the consumption policy function and distribution
+#=
+m = HetDSGEGovDebt(; ref_dir =
+                   joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
+DSGE.steadystate!(m, tol = 5e-4, verbose = :high, doplots = true)
+m = HetDSGEGovDebt(; ref_dir =
+                   joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
+DSGE.method3_steadystate!(m, tol = 5e-4, verbose = :high, doplots = true)
 =#
 
 ## Using bracket methods from Roots. Have to specify lower βlo and βhi that work, or the methods won't work, but if these
