@@ -68,19 +68,11 @@ function method3_steadystate!(m::HetDSGEGovDebt;
         if doplots
             p = plot(fit(Histogram, agrid, Weights(m[:μstar].value[1:na]), nbins = na), label = "low skill", color = :blue)
             plot!(fit(Histogram, agrid, Weights(m[:μstar].value[(na + 1):end]), nbins = na), label = "high skill", color = :red)
-            if use_quadrature
-                savefig(p, "method3_quadrature_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
-            else
-                savefig(p, "method3_sortinterp_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
-            end
+            savefig(p, "method3_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
 
             p = plot(agrid, m[:cstar].value[1:na], label = "low skill")
             plot!(p, agrid, m[:cstar].value[(na + 1):end], label = "high skill")
-            if use_quadrature
-                savefig(p, "method3_quadrature_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
-            else
-                savefig(p, "method3_sortinterp_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
-            end
+            savefig(p, "method3_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
         end
 
         m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
@@ -168,7 +160,7 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                      kf_anderson = kf_anderson)
             excess = compute_excess(KF, bp, bg)
             if verbose == :high
-                println("On iteration $(counter) and guess β=$(round(β, digits = 6)), the excess bonds are $(excess).")
+                println("On (i, β) = ($(counter), $(round(β, digits = 6))), excess bonds are $(excess).")
             end
 
             # bisection
@@ -219,7 +211,7 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
             for ie in 1:ne
                 plot!(bgrid, c_pol_in[:, is, ie], label = "e=$(egrid[ie])")
             end
-            savefig(p, "method3_agrid_vs_C_varye_s=$(sgrid[is]).pdf")
+            savefig(p, "method3_bgrid_vs_C_varye_s=$(sgrid[is]).pdf")
         end
 
         for is in 1:ns
@@ -228,7 +220,7 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                 plot!(fit(Histogram, bgrid, Weights(KF[:, is, ie]), nbins = na), label = "e=$(egrid[ie])")
             end
 
-            savefig(p, "method3_agrid_vs_D_varye_s=$(sgrid[is]).pdf")
+            savefig(p, "method3_bgrid_vs_D_varye_s=$(sgrid[is]).pdf")
         end
     end
     C_Final, KF_Final, ell = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol_in, KF, ω, H, T, γ;
