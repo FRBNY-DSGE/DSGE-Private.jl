@@ -53,7 +53,7 @@ function steadystate!(m::HetDSGEGovDebt;
         for ahi_guess in ahi_guesses
             try
                 # Construct agrid
-                agrid, awts, ascale = construct_agrid(sgrid, egrid, ω, H, R, η, γ, T, na; ahi_inc = ahi_guess)
+                agrid, awts, ascale = cash_grid(sgrid, egrid, ω, H, R, η, γ, T, na; ahi_inc = ahi_guess)
 
                 m <= Setting(:alo, agrid[1])
                 m <= Setting(:ahi, agrid[end])
@@ -902,9 +902,9 @@ function construct_egrid(ehi::S, elo::S, ne::Int) where {S <: Real}
     return egrid, ewts, g_of_e
 end
 
-function construct_agrid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
-                         ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int;
-                         ahi_inc::S = NaN) where {S <: Real}
+function cash_grid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
+                   ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int;
+                   ahi_inc::S = NaN) where {S <: Real}
     smin = minimum(sgrid)                            # lowest possible skill
     emin = minimum(egrid)                            # lowest possible realization of idiosyncratic shock
     alo  = ω * smin * emin * H - R * η * exp(-γ) + T # lowest SS possible cash on hand

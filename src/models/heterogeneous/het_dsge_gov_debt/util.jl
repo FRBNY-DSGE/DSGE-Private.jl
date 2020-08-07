@@ -10,22 +10,6 @@ function persistent_skill_process(sH_over_sL::AbstractFloat, pLH::AbstractFloat,
     return f, sgrid, swts, sscale
 end
 
-function cash_grid(sgrid::AbstractArray, ω::AbstractFloat, H::AbstractFloat,
-                   r::AbstractFloat, η::AbstractFloat, γ::AbstractFloat,
-                   T::AbstractFloat, elo::AbstractFloat, na::Int)
-    smin = minimum(sgrid)*elo                                   # lowest possible skill
-    xlo_ss = ω*smin*H - (1+r)*η*exp(-γ) + T + sgrid[1]*ω*H*0.05 # lowest SS possible cash on hand
-
-    xlo = xlo_ss                        # lower bound on cash on hand - could be < xlo_ss
-    xhi = max(xlo*2, xlo + 12.0)         # upper bound on cash on hand
-    xscale = (xhi-xlo)                  # size of w grids
-
-    # Make grids
-    xgrid = collect(range(xlo,stop = xhi, length = na)) # Evenly spaced grid
-    xwts  = (xscale/na)*ones(na)          # Quadrature weights
-    return xgrid, xwts, xlo, xhi, xscale
-end
-
 """
 ```
 function interp_one(xpts::T, ypts::T, x::T) where {T<:Vector{Float64}}

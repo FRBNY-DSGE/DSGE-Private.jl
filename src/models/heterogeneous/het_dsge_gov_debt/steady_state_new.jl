@@ -341,7 +341,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     for is in 1:ns
         # Sort the a's and use those for everything
         sorted_inds = sortperm(vec(agrid_big[:, is, :]))
-        # agrid_big is the grid of a implied by bgrid, whereas xgrid is the grid of a that's paseed in
+        # agrid_big is the grid of a implied by bgrid, whereas agrid is the grid of a that's paseed in
         C_Final[:, is] = interp_one(vec(agrid_big[:, is, :])[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
         @test all(agrid .- C_Final[:, is] .>= -1e16)
     end
