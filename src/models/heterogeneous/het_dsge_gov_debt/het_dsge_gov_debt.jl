@@ -487,7 +487,7 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
     m <= SteadyStateParameterGrid(:cstar, fill(NaN, na*ns),
                                   description = "Steady-state consumption", tex_label = "c_*")
     m <= SteadyStateParameterGrid(:μstar, fill(NaN, na*ns), description = "Steady-state" *
-                                  " cross-sectional density of cash on hand",
+                                  " cross-sectional density of cash-on-hand",
                                   tex_label = "\\mu_*")
     m <= SteadyStateParameter(:βstar, NaN, description = "Steady-state discount factor",
                                   tex_label = "\\beta_*")
@@ -620,14 +620,15 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:ns, 2, "Skill distribution grid points")
     m <= Setting(:λ, 2.0, "λ parameter in the Tauchen distribution calculation")
 
-    # x: Cash on Hand Grid Setup
-    m <= Setting(:na_full,   300,                      "Cash on hand distribution grid points (unreduced)")
-    m <= Setting(:na1_state, get_setting(m, :na_full), "Cash on hand distribution grid points (Lo)")
-    m <= Setting(:na2_state, get_setting(m, :na_full), "Cash on hand distribution grid points (hi)")
-    m <= Setting(:na1_jump,  get_setting(m, :na_full), "Cash on hand distribution grid points (Lo)")
-    m <= Setting(:na2_jump,  get_setting(m, :na_full), "Cash on hand distribution grid points (hi)")
-    m <= Setting(:na,        get_setting(m, :na_full), "Cash on hand distribution grid points")
+    # x: cash-on-hand Grid Setup
+    m <= Setting(:na_full,   300,                      "Cash-on-hand distribution grid points (unreduced)")
+    m <= Setting(:na1_state, get_setting(m, :na_full), "Cash-on-hand distribution grid points (Lo)")
+    m <= Setting(:na2_state, get_setting(m, :na_full), "Cash-on-hand distribution grid points (hi)")
+    m <= Setting(:na1_jump,  get_setting(m, :na_full), "Cash-on-hand distribution grid points (Lo)")
+    m <= Setting(:na2_jump,  get_setting(m, :na_full), "Cash-on-hand distribution grid points (hi)")
+    m <= Setting(:na,        get_setting(m, :na_full), "Cash-on-hand distribution grid points")
     m <= Setting(:na_c,      100,                      "Number of additional grid points for constrained people")
+    m <= Setting(:ahi_inc,   40.,                      "Distance between the minimum and maximum values of the cash-on-hand grid.")
 
     # e: ideosyncratic income shock grid setup
     m <= Setting(:ne, 5, "e shock grid points")
@@ -670,7 +671,11 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:trunc_distr, false)
     m <= Setting(:rescale_weights, true)
     m <= Setting(:mindens, 1e-8)
-    m <= Setting(:C_tol, 1e-8, "Tolerance for condition that all agents cannot consume more than available cash-on-hand")
+
+    # Tolerances for steady-state solution
+    m <= Setting(:C_tol,    -1e-8, "Tolerance for condition that all agents cannot consume more than available cash-on-hand")
+    m <= Setting(:kf_tol,    1e-10, "Tolerance for Kolmogorov forward equation")
+    m <= Setting(:euler_tol, 1e-10, "Tolerance for Euler equation")
 
     # Function-valued variables include distributional variables
     m <= Setting(:n_function_valued_backward_looking_states, 1, "Number of function-valued" *
@@ -684,7 +689,7 @@ function model_settings!(m::HetDSGEGovDebt)
     # Note, these settings assume normalization.
     # The n degrees of freedom removed depends on the distributions/dimensions
     # of heterogeneity that we have discretized over, in this case,
-    # cash on hand and the skill distribution. In general the rule of
+    # cash-on-hand and the skill distribution. In general the rule of
     # thumb is, remove one degree of freedom for the first endogenous distribution (cash on
     # hand), then one additional degree of freedom for each exogenous distribution (skill
     # distribution). Multiple endogenous distributions only permit removing a single degree

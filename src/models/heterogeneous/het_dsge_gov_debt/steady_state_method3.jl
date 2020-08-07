@@ -42,7 +42,8 @@ function method3_steadystate!(m::HetDSGEGovDebt;
         egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne)
 
         # Construct agrid
-        agrid, awts, ascale = construct_agrid(sgrid, egrid, ω, H, R, η, γ, T, na)
+        agrid, awts, ascale = construct_agrid(sgrid, egrid, ω, H, R, η, γ, T, na;
+                                              ahi_inc = haskey(get_settings(m), :ahi_inc) ? get_setting(m, :ahi_inc) : NaN)
 
         m <= Setting(:alo, agrid[1])
         m <= Setting(:ahi, agrid[end])
@@ -124,7 +125,9 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                  f, egrid, ewts, g_of_e,
                                                                  maxit = get_setting(m, :policy_maxit),
                                                                  euler_anderson = euler_anderson,
-                                                                 kf_anderson = kf_anderson)
+                                                                 kf_anderson = kf_anderson,
+                                                                 euler_tol = get_setting(m, :euler_tol),
+                                                                 kf_tol = get_setting(m, :kf_tol))
 
         excess_lo = compute_excess(KF, bp, bg)
 
@@ -135,7 +138,10 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                      f, egrid, ewts, g_of_e,
                                                                      maxit = get_setting(m, :policy_maxit),
                                                                      euler_anderson = euler_anderson,
-                                                                     kf_anderson = kf_anderson)
+                                                                     kf_anderson = kf_anderson,
+                                                                     euler_tol = get_setting(m, :euler_tol),
+                                                                     kf_tol = get_setting(m, :kf_tol))
+
             excess_hi = compute_excess(KF, bp, bg)
 
             if excess_hi > 0
@@ -157,7 +163,10 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                      f, egrid, ewts, g_of_e,
                                                                      maxit = get_setting(m, :policy_maxit),
                                                                      euler_anderson = euler_anderson,
-                                                                     kf_anderson = kf_anderson)
+                                                                     kf_anderson = kf_anderson,
+                                                                     euler_tol = get_setting(m, :euler_tol),
+                                                                     kf_tol = get_setting(m, :kf_tol))
+
             excess = compute_excess(KF, bp, bg)
             if verbose == :high
                 println("On (i, β) = ($(counter), $(round(β, digits = 6))), excess bonds are $(excess).")
@@ -182,23 +191,29 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     elseif isa(roots_algorithm, AbstractBracketing)
         β = find_zero(β -> bisect_β(β, na, ns, ne, na_c, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value, agrid, sgrid, c_pol_in,
                                     KF_in, f, egrid, ewts, g_of_e, bg, get_setting(m, :policy_maxit),
-                                    euler_anderson, kf_anderson), (βlo, βhi), roots_algorithm, maxevals = maxit, atol = tol)
+                                    euler_anderson, kf_anderson, get_setting(m, :euler_tol), get_setting(m, :kf_tol)),
+                      (βlo, βhi), roots_algorithm, maxevals = maxit, atol = tol)
         c_pol_in, bp, KF, reject = method3_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value,
                                                                  agrid, sgrid, c_pol_in, KF_in,
                                                                  f, egrid, ewts, g_of_e,
                                                                  maxit = get_setting(m, :policy_maxit),
                                                                  euler_anderson = euler_anderson,
-                                                                 kf_anderson = kf_anderson)
+                                                                 kf_anderson = kf_anderson,
+                                                                 euler_tol = get_setting(m, :euler_tol),
+                                                                 kf_tol = get_setting(m, :kf_tol))
     elseif isa(roots_algorithm, AbstractSecant)
         β = find_zero(β -> bisect_β(β, na, ns, ne, na_c, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value, agrid, sgrid, c_pol_in,
                                     KF_in, f, egrid, ewts, g_of_e, bg, get_setting(m, :policy_maxit),
-                                    euler_anderson, kf_anderson), (βlo + βhi) / 2., roots_algorithm, maxevals = maxit, atol = tol)
+                                    euler_anderson, kf_anderson, get_setting(m, :euler_tol), get_setting(m, :kf_tol)),
+                      (βlo + βhi) / 2., roots_algorithm, maxevals = maxit, atol = tol)
         c_pol_in, bp, KF, reject = method3_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value,
                                                                  agrid, sgrid, c_pol_in, KF_in,
                                                                  f, egrid, ewts, g_of_e,
                                                                  maxit = get_setting(m, :policy_maxit),
                                                                  euler_anderson = euler_anderson,
-                                                                 kf_anderson = kf_anderson)
+                                                                 kf_anderson = kf_anderson,
+                                                                 euler_tol = get_setting(m, :euler_tol),
+                                                                 kf_tol = get_setting(m, :kf_tol))
     else
         error("Cannot use the Roots algorithm $(typeof(roots_algorithm))")
     end
@@ -241,13 +256,15 @@ function bisect_β(β::S, na::Int, ns::Int, ne::Int, na_c::Int, R::S, ω::S, H::
                   ehi::S, elo::S, agrid::AbstractVector{S}, sgrid::AbstractVector{S},
                   c_pol_in::AbstractArray{S, 3}, KF_in::AbstractArray{S, 3}, f::AbstractMatrix{S},
                   egrid::AbstractVector{S}, ewts::AbstractVector{S}, g_of_e::AbstractVector{S}, bg::S,
-                  maxit::Int, euler_anderson::Bool, kf_anderson::Bool) where {S <: Real}
+                  maxit::Int, euler_anderson::Bool, kf_anderson::Bool, euler_tol::S, kf_tol::S) where {S <: Real}
     c_pol_in, bp, KF, reject = method3_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, ehi, elo,
                                                              agrid, sgrid, c_pol_in, KF_in,
                                                              f, egrid, ewts, g_of_e,
                                                              maxit = maxit,
                                                              euler_anderson = euler_anderson,
-                                                             kf_anderson = kf_anderson)
+                                                             kf_anderson = kf_anderson,
+                                                             euler_tol = euler_tol,
+                                                             kf_tol = kf_tol)
     excess = compute_excess(KF, bp, bg)
     return excess
 end
@@ -256,10 +273,9 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
                                        T::S, γ::S, ehi::S, elo::S, agrid::Vector{S},
                                        sgrid::Vector{S}, c_pol::Array{S}, KF_in::Array{S},
                                        f::Matrix{S}, egrid::Vector{Float64}, ewts::Vector{Float64},
-                                       g_of_e::Vector{Float64},
-                                       dist::S = 1., tol::S = 1e-10;
-                                       maxit::Int64 = 1000, euler_anderson::Bool = false,
-                                       kf_anderson::Bool = false) where {S <: Real}
+                                       g_of_e::Vector{Float64}, dist::S = 1.; maxit::Int64 = 1000,
+                                       euler_anderson::Bool = false, kf_anderson::Bool = false,
+                                       euler_tol::S = 1e-10, kf_tol::S = 1e-10) where {S <: Real}
 
     colors = [:red, :blue, :green, :yellow, :purple]
     counter = 0
@@ -282,7 +298,7 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     if euler_anderson
         out = nlsolve((F_c_pol, c_pol) -> fixedpoint_c_policy_nlsolve!(F_c_pol, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
                                                                        bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T),
-                      c_pol, ftol = tol, iterations = maxit, m = 5, method = :anderson)
+                      c_pol, ftol = euler_tol, iterations = maxit, m = 5, method = :anderson)
         if !out.f_converged
             @warn "Euler iteration did not converge. The final distance is $(out.residual_norm)"
             reject = true
@@ -290,7 +306,7 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
         c_pol = out.zero
     else
         c_poli = similar(c_pol)
-        while dist > tol && counter <= maxit # TODO: rewrap the consumption function loop inside a function b/c fixed point problem
+        while dist > euler_tol && counter <= maxit
             fixedpoint_c_policy!(c_poli, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
                                  bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T)
 
@@ -316,11 +332,11 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     pdi = similar(pd)     # D'(b', s', e')
     if kf_anderson
         out = nlsolve((F_pd, pd) -> fixedpoint_KF_nlsolve!(F_pd, pd, na, ns, ne, ibp_pol, wts_big, ewts, g_of_e, f),
-                      pd, ftol = tol, iterations = maxit, method = :anderson, m = 5)
+                      pd, ftol = kf_tol, iterations = maxit, method = :anderson, m = 5)
         pd  = out.zero
     else
         counter = 0
-        while dif > tol && counter <= maxit
+        while dif > kf_tol && counter <= maxit
             fixedpoint_KF!(pdi, pd, na, ns, ne, ibp_pol, wts_big, ewts, g_of_e, f)
 
             # check convergence
@@ -360,7 +376,7 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
             c = 1 ./ ((β * R * exp(-γ)) .* sum_term)
             b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
             sum_term .= 0. # Reset the values to zero (done with it for this loop)
-            @assert !all(b .< 0.) "All elements of b (assets today) are negative. Try increasing the number of agrid points and/or lowering β"
+            @assert !all(b .< 0.) "All elements of b (assets today) are negative. The last element is b=$(round(b[end], digits = 3)). Try increasing the upper bound of the agrid, increasing the number of agrid points, and/or lowering β"
 
             # Handle constrained consumption today: for b < 0, need to reset c such that b is exactly 0. See line 254
             c[b .< 0.] = -(bp[b .< 0] ./ R) .+  ω * sgrid[is] * egrid[ie] * H .+ T
@@ -369,7 +385,7 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
             # If b[1] is positive, then people aren't using a c(0, s, e) policy but also must have some spare b
             # that they additionally consume. This code block assumes "relative" monotonicity of c
             if b[1] > 0.
-                @assert c_constrained[is, ie] < c[1] # Check consuming more than implied by constrained rule if b[1] > 0
+                @assert c_constrained[is, ie] < c[1] "c[1] - c_constrained[is, ie]=$(c[1] - c_constrained[is, ie]), try increasing the number of agrid points or maximum agrid value." # Check consuming more than implied by constrained rule if b[1] > 0
                 c_c = collect(range(c_constrained[is, ie], c[1], length = na_c)) # constrained rule is an equal spacing
                 b_c = exp(γ) * (-ω * sgrid[is] * egrid[ie] * H - T .+ c_c)       # between no-assets rule and c[1]
                 if -1e-14 < b_c[1] < 0.
@@ -433,7 +449,7 @@ function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::Abstr
             # If b[1] is positive, then people aren't using a c(0, s, e) policy but also must have some spare b
             # that they additionally consume. This code block assumes "relative" monotonicity of c
             if b[1] > 0.
-                @assert c_constrained[is, ie] < c[1] # Check consuming more than implied by constrained rule if b[1] > 0
+                @assert c_constrained[is, ie] < c[1] "c[1] - c_constrained[is, ie]=$(c[1] - c_constrained[is, ie]), try increasing the number of agrid points or maximum agrid value." # Check consuming more than implied by constrained rule if b[1] > 0
                 c_c = collect(range(c_constrained[is, ie], c[1], length = na_c)) # constrained rule is an equal spacing
                 b_c = exp(γ) * (-ω * sgrid[is] * egrid[ie] * H - T .+ c_c)       # between no-assets rule and c[1]
                 if -1e-14 < b_c[1] < 0.
@@ -827,11 +843,16 @@ function construct_egrid(ehi::S, elo::S, ne::Int) where {S <: Real}
 end
 
 function construct_agrid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
-                         ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int) where {S <: Real}
+                         ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int;
+                         ahi_inc::S = NaN) where {S <: Real}
     smin = minimum(sgrid)                            # lowest possible skill
     emin = minimum(egrid)                            # lowest possible realization of idiosyncratic shock
     alo  = ω * smin * emin * H - R * η * exp(-γ) + T # lowest SS possible cash on hand
-    ahi  = max(alo * 2., alo + 20.0)                 # upper bound on cash on hand
+    ahi  = if isnan(ahi_inc)
+        ahi = max(alo * 2., alo + 20.0)              # upper bound on cash on hand
+    else
+        ahi = alo + ahi_inc
+    end
 
     ascale = (ahi - alo)                                  # size of w grids
     agrid  = collect(range(alo, stop = ahi, length = na)) # Evenly spaced grid
