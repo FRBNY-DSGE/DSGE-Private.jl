@@ -1,0 +1,89 @@
+########################
+observables.jl
+########################
+
+DATA SERIES
+1.	Population
+US: CNP16OV Thousands|Monthly|Not SA|16+
+EU: LFEMTTTTEZQ647S Individuals|Quarterly|SA|15+ Employed
+1.	GDP
+US: GDP Billions|Quarterly|SA|Dollars
+EU: EUNNGDP Millions|Quarterly|SA|Euros
+1.	GDP Deflator
+US: GDPDEF Index=100|Quarterly|SA
+EU: NAGIGP01EZQ661S Index=100|Quarterly|SA
+1.	CPI
+US: CPIAUCSL Index=100|Monthly|SA|All Items
+EU: CP0000EZ19M086NEST Index=100|Monthly|Not SA|All Items
+1.	Nominal Interest Rate
+US: DFF Percent|Daily|Not SA
+EU: INTDSREZM193N Percent per Annum|Monthly|Not SA
+1.	Real Exchange Rate
+US: RBUSBIS Index=100|Monthly|Not SA|Broad (Proxy)
+
+DATA TRANSFORMATIONS
+1.	Real GDP Growth Domestic/Foreign: % Q over Q
+2.	CPI Domestic/Foreign: Annual % (4x % Q over Q)
+3.	Nominal Rate Domestic/Foreign: % Q over Q (Annual % / 4)
+4.	Real Exchange Rate: Normalized to 1
+
+########################
+small_linear.jl
+########################
+PRIORS USED
+•	η : https://www.dallasfed.org/~/media/documents/institute/wpapers/2019/0359.pdf
+•	ω:  https://www.dallasfed.org/~/media/documents/institute/wpapers/2019/0359.pdf
+•	ξ_p : ζ_p in SmetsWouters
+•	γ_r: ρ in SmetsWouters
+•	γ_π: ψ1 in AnSchorfheide
+•	ρ_m : exogenous processes - autocorrelation in SmetsWouters / https://www.dallasfed.org/~/media/documents/institute/wpapers/2019/0359.pdf
+•	σ_m : σ_R in AnSchorfheide
+•	ρ_z : https://www.dallasfed.org/~/media/documents/institute/wpapers/2019/0359.pdf
+•	σ_z : σ_z in AnSchorfheide
+•	ρ_uip : exogenous processes - autocorrelation in SmetsWouters
+•	σ_uip : σ_z in AnSchorfheide
+
+    m <= parameter(:η, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(1.0, 0.2), fixed=false,
+                   description="η: Trade price elasticity.",
+                   tex_label="\\eta")
+
+    m <= parameter(:ω, 0.2, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.2, 0.05), fixed=false,
+                   description="ω: Trade openness.",
+                   tex_label="\\omega")
+
+    m <= parameter(:ξ_p, 0.84, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.1), fixed=false,
+                   description="ξ_p: Price stickiness.",
+                   tex_label="\\xi_p")
+
+    m <= parameter(:γ_r, 0.82, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.75, 0.10), fixed=false,
+                   description="γ_r: Taylor rule inertia coefficient.",
+                   tex_label="\\gamma_r")
+
+    m <= parameter(:γ_π, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(1.5, 0.25), fixed=false,
+                   description="γ_π: Response in Taylor rule to inflation.",
+                   tex_label="\\gamma_\\pi")
+
+    # Exogenous process
+    m <= parameter(:ρ_m, 0.14, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+                   description="ρ_m: Monetary shock persistence AR(1) coefficient.",
+                   tex_label="\\rho_m")
+
+    m <= parameter(:σ_m, 0.01, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, 0.4), fixed=false,
+                   description="σ_m: Monetary shock standard deviation.",
+                   tex_label="\\sigma_m")
+
+    m <= parameter(:ρ_z, 0.8, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.2, 0.1), fixed=false,
+                   description="ρ_z: Technology shock persistence AR(1) coefficient.",
+                   tex_label="\\rho_z")
+
+    m <= parameter(:σ_z, 0.01, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, 0.5), fixed=false,
+                   description="σ_z: Technology shock standard deviation.",
+                   tex_label="\\sigma_z")
+
+    m <= parameter(:ρ_uip, 0.66, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+                   description="ρ_uip: UIP shock persistence AR(1) coefficient.",
+                   tex_label="\\rho_{uip}")
+
+    m <= parameter(:σ_uip, 0.01, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, 0.5), fixed=false,
+                   description="σ_uip: UIP shock standard deviation.",
+                   tex_label="\\sigma_{uip}")

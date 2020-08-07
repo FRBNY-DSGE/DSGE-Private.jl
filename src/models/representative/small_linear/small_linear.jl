@@ -214,20 +214,15 @@ those).
 """
 function init_parameters!(m::SmallLinear)
     # Initialize parameters
-    # m <= parameter(:γ_Q, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q: Domestic steady state growth rate of technology.", tex_label="\\gamma_Q")
-    m <= parameter(:γ_Q, 1.5, fixed=true, description="γ_Q: Domestic steady state growth rate of technology.", tex_label="\\gamma_Q")
+    m <= parameter(:γ_Q, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q: Domestic steady state growth rate of technology.", tex_label="\\gamma_Q")
 
-    # m <= parameter(:γ_Q_f, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q_f: Foreign steady state growth rate of technology.", tex_label="\\gamma_Q^f")
-    m <= parameter(:γ_Q_f, 1.5, fixed=true, description="γ_Q_f: Foreign steady state growth rate of technology.", tex_label="\\gamma_Q^f")
+    m <= parameter(:γ_Q_f, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), Normal(0.40, 0.20), fixed=false, description="γ_Q_f: Foreign steady state growth rate of technology.", tex_label="\\gamma_Q^f")
 
-    # m <= parameter(:π_star, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star: Domestic target inflation rate.", tex_label="\\pi*")
-    m <= parameter(:π_star, 8.1508, fixed=true, description="π_star: Domestic target inflation rate.", tex_label="\\pi*")
+    m <= parameter(:π_star, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star: Domestic target inflation rate.", tex_label="\\pi*")
 
-    # m <= parameter(:π_star_f, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star_f: Foreign target inflation rate.", tex_label="\\pi*^f")
-    m <= parameter(:π_star_f, 8.1508, fixed=true, description="π_star_f: Foreign target inflation rate.", tex_label="\\pi*^f")
+    m <= parameter(:π_star_f, 8.1508, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(7., 2.), fixed=false, description="π_star_f: Foreign target inflation rate.", tex_label="\\pi*^f")
 
-    # m <= parameter(:rA, 1.0025, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(0.5, 0.5), fixed=false, description="rA: β (discount factor) = 1/(1+ rA/400).", tex_label="rA")
-     m <= parameter(:rA, 1.0025, fixed=true, description="rA: β (discount factor) = 1/(1+ rA/400).", tex_label="rA")
+    m <= parameter(:rA, 1.0025, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(0.5, 0.5), fixed=false, description="rA: β (discount factor) = 1/(1+ rA/400).", tex_label="rA")
 
     m <= parameter(:σ, 1.0, fixed=true,
                    description="σ: Inverse elasticity of substitution.",
@@ -237,11 +232,11 @@ function init_parameters!(m::SmallLinear)
                    description="𝛘: Inverse labor supply elasticity.",
                    tex_label="\\chi")
 
-    m <= parameter(:η, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(1.0, 0.2), fixed=false,
+    m <= parameter(:η, 1.5, fixed=true,
                    description="η: Trade price elasticity.",
                    tex_label="\\eta")
 
-    m <= parameter(:ω, 0.2, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.2, 0.05), fixed=false,
+    m <= parameter(:ω, 0.2, fixed=true,
                    description="ω: Trade openness.",
                    tex_label="\\omega")
 
@@ -253,15 +248,15 @@ function init_parameters!(m::SmallLinear)
                    description="β: Home consumer's discount rate.",
                    tex_label="\\beta")
 
-    m <= parameter(:ξ_p, 0.84, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.1), fixed=false,
+    m <= parameter(:ξ_p, 0.84, fixed=true,
                    description="ξ_p: Price stickiness.",
                    tex_label="\\xi_p")
 
-    m <= parameter(:γ_r, 0.82, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.75, 0.10), fixed=false,
+    m <= parameter(:γ_r, 0.82, fixed=true,
                    description="γ_r: Taylor rule inertia coefficient.",
                    tex_label="\\gamma_r")
 
-    m <= parameter(:γ_π, 1.5, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), GammaAlt(1.5, 0.25), fixed=false,
+    m <= parameter(:γ_π, 1.5, fixed=true,
                    description="γ_π: Response in Taylor rule to inflation.",
                    tex_label="\\gamma_\\pi")
 
@@ -270,32 +265,54 @@ function init_parameters!(m::SmallLinear)
                    tex_label="\\theta_p")
 
     # Exogenous process
-    m <= parameter(:ρ_m, 0.14, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+    m <= parameter(:ρ_m, 0.14, fixed=true,
                    description="ρ_m: Monetary shock persistence AR(1) coefficient.",
                    tex_label="\\rho_m")
 
-    m <= parameter(:σ_m, 0.01, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, 0.4), fixed=false,
+    m <= parameter(:σ_m, 0.01, fixed=true,
                    description="σ_m: Monetary shock standard deviation.",
                    tex_label="\\sigma_m")
 
-    m <= parameter(:ρ_z, 0.8, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.2, 0.1), fixed=false,
+    m <= parameter(:ρ_z, 0.8, fixed=true,
                    description="ρ_z: Technology shock persistence AR(1) coefficient.",
                    tex_label="\\rho_z")
 
-    m <= parameter(:σ_z, 0.01, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, 0.5), fixed=false,
+    m <= parameter(:σ_z, 0.01, fixed=true,
                    description="σ_z: Technology shock standard deviation.",
                    tex_label="\\sigma_z")
 
-    m <= parameter(:ρ_uip, 0.66, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+    m <= parameter(:ρ_uip, 0.66, fixed=true,
                    description="ρ_uip: UIP shock persistence AR(1) coefficient.",
                    tex_label="\\rho_{uip}")
 
-    m <= parameter(:σ_uip, 0.01, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, 0.5), fixed=false,
+    m <= parameter(:σ_uip, 0.01, fixed=true,
                    description="σ_uip: UIP shock standard deviation.",
                    tex_label="\\sigma_{uip}")
 
     # Measurement errors
-    init_observable_errors!(m)
+    m <= parameter(:e_y, 0.211464, fixed=true,
+                   description="e_y: Measurement error on domestic GDP growth.",
+                   tex_label="e_y")
+
+    m <= parameter(:e_y_f, 0.101671, fixed=true,
+                   description="e_y_f: Measurement error on foreign GDP growth.",
+                   tex_label="e_y^f")
+
+    m <= parameter(:e_π, 0.605250, fixed=true,
+                   description="e_π: Measurement error on domestic inflation.",
+                   tex_label="e_\\pi")
+
+    m <= parameter(:e_π_f, 0.476141, fixed=true,
+                   description="e_π_f: Measurement error on foreign inflation.",
+                   tex_label="e_\\pi^f")
+
+    m <= parameter(:e_r_n, 0.182046, fixed=true,
+                   description="e_r_n: Measurement error on the domestic interest rate.",
+                   tex_label="e_r^n")
+
+    m <= parameter(:e_r_n_f, 0.084715, fixed=true,
+                   description="e_r_n_f: Measurement error on the foreign interest rate.",
+                   tex_label="e_r^{n,f}")
 
     # Steady states
     m <= SteadyStateParameter(:l_ss, NaN, description="Home steady state labor supply", tex_label="l_ss")
