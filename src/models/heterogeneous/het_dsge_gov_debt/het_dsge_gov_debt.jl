@@ -628,7 +628,8 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:na2_jump,  get_setting(m, :na_full), "Cash-on-hand distribution grid points (hi)")
     m <= Setting(:na,        get_setting(m, :na_full), "Cash-on-hand distribution grid points")
     m <= Setting(:na_c,      100,                      "Number of additional grid points for constrained people")
-    m <= Setting(:ahi_inc,   40.,                      "Distance between the minimum and maximum values of the cash-on-hand grid.")
+    m <= Setting(:ahi_incs,  [30., 40., 50., 60.],     "Guesses for distance between the minimum and " *
+                                                       "maximum values of the cash-on-hand grid.")
 
     # e: ideosyncratic income shock grid setup
     m <= Setting(:ne, 5, "e shock grid points")

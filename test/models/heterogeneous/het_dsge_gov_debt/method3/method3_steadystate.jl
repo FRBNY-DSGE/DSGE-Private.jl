@@ -1,5 +1,6 @@
 using DSGE, Test, Plots, BenchmarkTools, Roots, ModelConstructors
 
+#=
 println("Old endogenous grid method")
 @btime begin
     m = HetDSGEGovDebt(; ref_dir =
@@ -7,7 +8,6 @@ println("Old endogenous grid method")
     DSGE.steadystate!(m, tol = 5e-4, verbose = :none, doplots = false)
 end
 =#
-#=
 println("New endogenous grid method, interpolation")
 @btime begin
     m = HetDSGEGovDebt(; ref_dir =

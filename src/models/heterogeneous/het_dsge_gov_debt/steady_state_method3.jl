@@ -41,44 +41,66 @@ function method3_steadystate!(m::HetDSGEGovDebt;
         # Construct egrid
         egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne)
 
-        # Construct agrid
-        agrid, awts, ascale = construct_agrid(sgrid, egrid, ω, H, R, η, γ, T, na;
-                                              ahi_inc = haskey(get_settings(m), :ahi_inc) ? get_setting(m, :ahi_inc) : NaN)
-
-        m <= Setting(:alo, agrid[1])
-        m <= Setting(:ahi, agrid[end])
-        m <= Setting(:ascale, ascale)
-
-        # Once have updated grids, can call steady state and compute other two moments
-        method3_find_steadystate!(m, na, ns, ne,
-                                  egrid, ewts, g_of_e,
-                                  f, agrid, sgrid,
-                                  R, H, η, γ, ω, T, bg;
-                                  βlo = βlo, βhi = βhi,
-                                  excess = excess, tol = tol, maxit = maxit,
-                                  βband = βband, doplots = doplots,
-                                  m_anderson = haskey(get_settings(m), :m_anderson) ? get_setting(m, :m_anderson) : 5,
-                                  euler_anderson = euler_anderson,
-                                  kf_anderson = kf_anderson,
-                                  roots_algorithm = roots_algorithm,
-                                  verbose = verbose)
-
-        # TODO: Remove these lines
-        if verbose == :high
-            println("The distribution μ(a, s) integrates to $(round(sum(m[:μstar].value), digits = 3)).")
+        # Run loop expanding the agrid if a CashOnHandError is caught
+        ahi_guesses = if haskey(get_settings(m), :ahi_incs) # Construct guesses for the upper bound of agrid
+            get_setting(m, :ahi_incs)
+        elseif haskey(get_settings(m), :ahi_inc)
+            [get_setting(m, :ahi_inc)]
+        else
+            [NaN]
         end
-        if doplots
-            p = plot(fit(Histogram, agrid, Weights(m[:μstar].value[1:na]), nbins = na), label = "low skill", color = :blue)
-            plot!(fit(Histogram, agrid, Weights(m[:μstar].value[(na + 1):end]), nbins = na), label = "high skill", color = :red)
-            savefig(p, "method3_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+        m_anderson = haskey(get_settings(m), :m_anderson) ? get_setting(m, :m_anderson) : 5 # Do this calculation here
+        for ahi_guess in ahi_guesses
+            try
+                # Construct agrid
+                agrid, awts, ascale = construct_agrid(sgrid, egrid, ω, H, R, η, γ, T, na; ahi_inc = ahi_guess)
 
-            p = plot(agrid, m[:cstar].value[1:na], label = "low skill")
-            plot!(p, agrid, m[:cstar].value[(na + 1):end], label = "high skill")
-            savefig(p, "method3_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+                m <= Setting(:alo, agrid[1])
+                m <= Setting(:ahi, agrid[end])
+                m <= Setting(:ascale, ascale)
+
+                # Once have updated grids, can call steady state and compute other two moments
+                method3_find_steadystate!(m, na, ns, ne,
+                                          egrid, ewts, g_of_e,
+                                          f, agrid, sgrid,
+                                          R, H, η, γ, ω, T, bg;
+                                          βlo = βlo, βhi = βhi,
+                                          excess = excess, tol = tol, maxit = maxit,
+                                          βband = βband, doplots = doplots,
+                                          m_anderson = m_anderson,
+                                          euler_anderson = euler_anderson,
+                                          kf_anderson = kf_anderson,
+                                          roots_algorithm = roots_algorithm,
+                                          verbose = verbose)
+
+                if verbose == :high
+                    println("The distribution μ(a, s) integrates to $(round(sum(m[:μstar].value), digits = 3)).")
+                end
+
+                if doplots
+                    p = plot(fit(Histogram, agrid, Weights(m[:μstar].value[1:na]), nbins = na),
+                             label = "low skill", color = :blue)
+                    plot!(fit(Histogram, agrid, Weights(m[:μstar].value[(na + 1):end]), nbins = na),
+                          label = "high skill", color = :red)
+                    savefig(p, "method3_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+
+                    p = plot(agrid, m[:cstar].value[1:na], label = "low skill")
+                    plot!(p, agrid, m[:cstar].value[(na + 1):end], label = "high skill")
+                    savefig(p, "method3_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+                end
+
+                m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
+                m[:pc0] = frac_zero(m[:μstar].value, m[:cstar].value, agrid, kron(swts, awts), ns)
+
+                break
+            catch e
+                if isa(e, CashOnHandError) && ahi_guess != ahi_guesses[end]
+                    continue
+                else
+                    rethrow(e)
+                end
+            end
         end
-
-        m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
-        m[:pc0] = frac_zero(m[:μstar].value, m[:cstar].value, agrid, kron(swts, awts), ns)
     end
 
     nothing
