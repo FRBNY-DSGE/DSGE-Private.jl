@@ -126,3 +126,20 @@ function generate_us_and_es(ni, ne)
     end
     =#
 end
+
+"""
+```
+CashOnHandError <: Exception
+```
+A `CashOnHandError` is thrown when:
+
+1. The implied assets today `b` are all negative during the Euler iteration.
+2. The consumption policy at the smallest `b` value is smaller than the constrained consumption policy.
+3. Some assets today `b` for constrained agents are negative.
+4. Consumption is not always less than cash on hand after mapping the consumption policy from `(b, s, e)` to `(a, s)`.
+"""
+mutable struct CashOnHandError <: Exception
+    msg::String
+end
+CashOnHandError() = CashOnHandError("Consumption policy is not consistent with cash on hand.")
+Base.showerror(io::IO, ex::CashOnHandError) = print(io, ex.msg)
