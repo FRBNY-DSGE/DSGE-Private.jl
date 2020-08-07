@@ -13,7 +13,7 @@ function augment_model_states(endo::AbstractDict{Symbol, UnitRange}, n_model_sta
     end
 
     # Ensure all ranges are consecutive
-    endo_ranges = endo_aug.vals
+    # endo_ranges = endo_aug.vals
   #=  for i in 1:length(endo_ranges)
         if i == 1
             @assert endo_ranges[1].start == 1
