@@ -8,11 +8,14 @@ println("Old endogenous grid method")
     DSGE.steadystate!(m, tol = 5e-4, verbose = :none, doplots = false)
 end
 =#
+
 println("New endogenous grid method, interpolation")
 @btime begin
     m = HetDSGEGovDebt(; ref_dir =
                        joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none)
+    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none,
+                              euler_anderson = false, kf_anderson = false)
+
 end
 
 println("New endogenous grid method, interpolation, Anderson acceleration for Euler iteration")
@@ -20,7 +23,7 @@ println("New endogenous grid method, interpolation, Anderson acceleration for Eu
     m = HetDSGEGovDebt(; ref_dir =
                        joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
     DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none,
-                              euler_anderson = true)
+                              kf_anderson = false)
 end
 
 println("New endogenous grid method, interpolation, Anderson acceleration for Kolmogorov equation")
@@ -28,34 +31,31 @@ println("New endogenous grid method, interpolation, Anderson acceleration for Ko
     m = HetDSGEGovDebt(; ref_dir =
                        joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
     DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none,
-                              kf_anderson = true)
+                              euler_anderson = false)
+end
+
+println("New endogenous grid method, interpolation, Anderson acceleration for Kolmogorov equation, m = 3")
+@btime begin
+    m = HetDSGEGovDebt(; ref_dir =
+                       joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
+    m <= Setting(:m_anderson, 3)
+    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none,
+                              euler_anderson = false)
 end
 
 println("New endogenous grid method, interpolation, Anderson acceleration for Euler iteration and Kolmogorov equation")
 @btime begin
     m = HetDSGEGovDebt(; ref_dir =
                        joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none,
-                              euler_anderson = true, kf_anderson = true)
-
+    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none)
 end
 
-println("New endogenous grid method, interpolation, Anderson acceleration for Euler iteration and Kolmogorov equation, AlefeldPotraShi")
+println("New endogenous grid method, interpolation, Anderson acceleration for Euler iteration and Kolmogorov equation, m = 3")
 @btime begin
     m = HetDSGEGovDebt(; ref_dir =
                        joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none, roots_algorithm = Roots.AlefeldPotraShi(),
-                              euler_anderson = true, kf_anderson = true, βhi = .89)
-
-end
-
-println("New endogenous grid method, interpolation, Anderson acceleration for Euler iteration and Kolmogorov equation, Brent")
-@btime begin
-    m = HetDSGEGovDebt(; ref_dir =
-                       joinpath(dirname(@__FILE__), "../../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none, roots_algorithm = Roots.Brent(),
-                              euler_anderson = true, kf_anderson = true, βhi = .89)
-
+    m <= Setting(:m_anderson, 3)
+    DSGE.method3_steadystate!(m; tol = 5e-4, doplots = false, verbose = :none)
 end
 
 m11 = HetDSGEGovDebt("ss11"; ref_dir =

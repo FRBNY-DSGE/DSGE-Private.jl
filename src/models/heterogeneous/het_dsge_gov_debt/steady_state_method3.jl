@@ -340,8 +340,8 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
             fixedpoint_c_policy!(c_poli, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
                                  bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T)
 
-            dist  = maximum(abs.(c_pol - c_poli)) # Inf norm
-            c_pol = deepcopy(c_poli)
+            dist     = maximum(abs.(c_pol - c_poli)) # Inf norm
+            c_pol   .= c_poli
             counter += 1
 
             if counter == maxit
@@ -374,7 +374,7 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
 
             # check convergence
             dif      = maximum(abs.(pdi - pd))
-            pd       = deepcopy(pdi)
+            pd      .= pdi
             counter += 1
         end
     end
