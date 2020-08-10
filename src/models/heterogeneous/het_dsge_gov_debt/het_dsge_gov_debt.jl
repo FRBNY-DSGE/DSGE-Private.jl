@@ -540,27 +540,28 @@ function init_grids!(m::HetDSGEGovDebt)
 
     grids = OrderedDict()
 
-    # Skill grid
-    f, sgrid, swts, sscale = persistent_skill_process(m[:sH_over_sL].value, m[:pLH].value,
-                                                      m[:pHL].value, get_setting(m, :ns))
+    # Construct sgrid
+    sgrid, swts, sscale = construct_sgrid(m[:pHL].value, m[:pLH].value, m[:sH_over_sL].value, ns)
+    m.grids[:sgrid] = Grid(sgrid, swts, sscale)
+    grids[:fgrid] = [[1-m[:pLH] m[:pLH].value]; [m[:pHL].value 1-m[:pHL].value]]
+
+    # Construct egrid
+    egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne) # Don't track egrid in grids b/c summarized by agrid
+
     # Markov transition matrix for skill
-    grids[:sgrid] = Grid(sgrid, swts, sscale)
-    grids[:fgrid] = f
 
-    xgrid, xwts, xlo, xhi, xscale = cash_grid(sgrid, m[:ωstar].value, m[:H].value,
-                                              m[:r].scaledvalue, m[:η].value, m[:γ].scaledvalue,
-                                              m[:Tstar].value, m[:elo].value, na)
+    agrid, awts, ascale = construct_agrid(sgrid, egrid, m[:ωstar].value, m[:H].value,
+                                          1 + m[:r].scaledvalue, m[:η].value, m[:γ].scaledvalue, m[:Tstar].value, na)
+    grids[:agrid] = Grid(uniform_quadrature(xscale), xlo, xhi, na, scale = xscale)
 
-    grids[:xgrid] = Grid(uniform_quadrature(xscale), xlo, xhi, na, scale = xscale)
-
-    m <= Setting(:xlo, xlo)
-    m <= Setting(:xhi, xhi)
-    m <= Setting(:xscale, xscale)
+    m <= Setting(:alo, agrid[1])
+    m <= Setting(:ahi, agrid[end])
+    m <= Setting(:ascale, ascale)
 
     # Total grid vectorized across both dimensions
     grids[:sgrid_total] = kron(sgrid, ones(na))
-    grids[:xgrid_total] = kron(ones(ns), grids[:xgrid].points)
-    grids[:weights_total] = kron(swts, grids[:xgrid].weights)
+    grids[:agrid_total] = kron(ones(ns), grids[:agrid].points)
+    grids[:weights_total] = kron(swts, grids[:agrid].weights)
 
     m.grids = grids
 end
