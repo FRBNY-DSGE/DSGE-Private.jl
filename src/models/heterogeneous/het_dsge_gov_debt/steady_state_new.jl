@@ -2,7 +2,7 @@ function steadystate!(m::HetDSGEGovDebt;
                       βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
                       βhi::S = exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
                       excess::S = 5000.,
-                      tol::S = 1e-4,
+                      tol::S = 1e-3,
                       maxit::Int64 = 20,
                       βband::S = 1e-2,
                       doplots::Bool = true, verbose::Symbol = :high) where {S<:AbstractFloat}
@@ -103,7 +103,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                            βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
                            βhi::S = exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
                            excess::S = 5000.,
-                           tol::S = 1e-4,
+                           tol::S = 1e-3,
                            maxit::Int64 = 20,
                            βband::S = 1e-2, verbose::Symbol = :high) where {S<:AbstractFloat}
 
@@ -210,14 +210,14 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
     # Constrainted consumption
     c_constrained = Matrix{Float64}(undef, ns, ne)
-    for is in 1:ns
-        for ie in 1:ne
+    for ie in 1:ne
+        for is in 1:ns
             e = egrid[ie] #minimum([egrid[ie], 1.0])
             c_constrained[is, ie] = ω*sgrid[is]*e*H + T
         end
     end
 
-    c_poli = deepcopy(c_pol)
+    c_poli .= c_pol
     dist = 1
 
     bmin = 0.0
@@ -225,15 +225,15 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     bgrid = bmin .+ ((1:na) / na).^2 * (bmax - bmin)                          # but makes quadrature work (normalize to 1)
     # a grid implied by bgrid is: map b into a using equation at top of page 4
     agrid_big = Array{Float64}(undef, na, ns, ne)
-    for is in 1:ns
-        for ie in 1:ne
+    for ie in 1:ne
+        for is in 1:ns
             agrid_big[:, is, ie] = (ω * sgrid[is] * egrid[ie] * H + T) .+ exp(-γ) .* bgrid
         end
     end
 
     while dist>tol && counter<maxit
-        for is in 1:ns
-            for ie in 1:ne
+        for ie in 1:ne
+            for is in 1:ns
                # Keep only non-constrained
                # non_c_inds = bgrid .> 0.0 #=vec(exp(γ)*((bgrid ./ R) .- ω*sgrid[is]*egrid[ie]*H .-
 #                                         T .+ c_pol[:, is, ie])) .> 0.0 =#
@@ -277,11 +277,20 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                 end =#
 
                 # Nearest points, linear interpolation
-#                @show b
+#                @sho b
 
-                c_poli[:, is, ie] = interp_one(b, c, bgrid)
+                c_poli[:, is, ie] = try
+                    interp_one(b, c, bgrid)
+                catch e
+                    if !issorted(b)
+                        bsorted_inds = sortperm(b)
+                        interp_one(b[bsorted_inds], c[bsorted_inds], bgrid)
+                    else
+                        rethrow(e)
+                    end
+                end
             end
-        end
+       end
 
         dist = maximum(abs.(c_pol - c_poli))
         c_pol = deepcopy(c_poli) #  c_pol = damp*c_poli + (1-damp)* c_pol
@@ -351,9 +360,9 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
     # Compute a' implied by interpolated C_Final (back on the usual grid of a)
     ap = Array{Float64}(undef, na, ns, ne, ns)
-    for is in 1:ns
-        for isp in 1:ns
-            for iep in 1:ne
+    for isp in 1:ns
+        for iep in 1:ne
+            for is in 1:ns
                 ap[:, is, iep, isp] = ω*sgrid[isp]*egrid[iep]*H .+ R*exp(-γ)*(agrid - C_Final[:, is])
             end
         end
@@ -516,7 +525,7 @@ end
 function policy_hetdsgegovdebt_old(nx::Int, ns::Int, β::S, R::S, ω::S, H::S, η::S,
                                T::S, γ::S, ehi::S, elo::S, xgrid::Vector{S},
                                sgrid::Vector{S}, xswts::Vector{S}, Win::Vector{S},
-                               f::Matrix{S}, dist::S = 1., tol::S = 1e-4;
+                               f::Matrix{S}, dist::S = 1., tol::S = 1e-3;
                                maxit::Int64 = 500, damp::S = 0.5) where {S<:AbstractFloat}
     n    = nx*ns
     c    = zeros(n)                  # consumption
