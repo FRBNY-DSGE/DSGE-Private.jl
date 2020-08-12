@@ -1,4 +1,4 @@
-function method3_steadystate!(m::HetDSGEGovDebt;
+function steadystate!(m::HetDSGEGovDebt;
                               βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
                               βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.999999),
                               excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,

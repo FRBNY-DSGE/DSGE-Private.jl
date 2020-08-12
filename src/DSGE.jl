@@ -421,7 +421,6 @@ module DSGE
 
     include("models/heterogeneous/het_dsge_gov_debt/util.jl")
     include("models/heterogeneous/het_dsge_gov_debt/het_dsge_gov_debt.jl")
-    include("models/heterogeneous/het_dsge_gov_debt/steady_state_new.jl")
     include("models/heterogeneous/het_dsge_gov_debt/steady_state_method3.jl")
     include("models/heterogeneous/het_dsge_gov_debt/subspecs.jl")
     include("models/heterogeneous/het_dsge_gov_debt/jacobian.jl")
