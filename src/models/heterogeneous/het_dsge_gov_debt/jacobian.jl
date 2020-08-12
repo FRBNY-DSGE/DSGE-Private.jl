@@ -58,7 +58,6 @@ function jacobian(m::HetDSGEGovDebt)
     sgrid::Vector{Float64} = m.grids[:sgrid].points
     swts::Vector{Float64}  = m.grids[:sgrid].weights
     fgrid::Matrix{Float64} = m.grids[:fgrid]
-    aswts = kron(swts,awts)
 
     elo::Float64 = m[:elo].value
     ehi::Float64 = m[:ehi].value
@@ -73,18 +72,18 @@ function jacobian(m::HetDSGEGovDebt)
     unc = 1 ./ ell .<= repeat(agrid,ns) .+ η
 
     dF1_dELL, dF1_dRZ, dF1_dELLP, dF1_dWHP, dF1_dTTP, ee =
-        euler_equation_hetdsgegovdebt(na, ns, qp, qfunction_hetdsgegovdebt, agrid, sgrid, fgrid, unc, aswts,
+        euler_equation_hetdsgegovdebt(na, ns, qp, qfunction_hetdsgegovdebt, agrid, sgrid, fgrid, unc,
                                R, γ, β, η, ell, T, ω, H)
 
     # KF Equation
     dF2_dWH, dF2_dRZ, dF2_dTT,dF2_dELL, bigΨ, dF2_dM =
-        kolmogorov_fwd_hetdsgegovdebt(na, ns, qfunction_hetdsgegovdebt, qp, agrid, sgrid, fgrid, unc, aswts,
+        kolmogorov_fwd_hetdsgegovdebt(na, ns, qfunction_hetdsgegovdebt, qp, agrid, sgrid, fgrid, unc,
                                R, γ, ell, μ, η, T, ω, H, ee)
 
     # Market clearing, lambda function
     c = min.(1 ./ ell,repeat(agrid,ns).+η)
-    lam = (aswts.*μ)'*(1 ./ c) # average marginal utility which the union uses to set wages
-    aggc = (aswts .* μ)'c
+    lam = dot(μ, (1 ./ c)) # average marginal utility which the union uses to set wages
+    aggc = dot(μ, c)
     ϕ = lam*ω/(H^ϕh) # now that we know lam in steady state, choose disutility to target hours H
 
     setup_indices!(m)
@@ -118,21 +117,21 @@ function jacobian(m::HetDSGEGovDebt)
 
     # aggregate consumption
     JJ[first(eq[:eq_agg_consumption]),first(endo[:C_t])] = -aggc
-    JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(μ .* unc .* aswts .* c)'
-    JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]]      = (aswts .* c)' # note, now we linearize
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])] = -(aswts .* c)' * dF2_dRZ
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:w_t])] =  (aswts .* c)' * dF2_dWH
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:L_t])] =  (aswts .* c)' * dF2_dWH
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:t_t])] =  (aswts .* c)' * dF2_dTT
+    JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(μ .* unc .* c)
+    JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]]      = c # note, now we linearize
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])] = -dot(c, dF2_dRZ)
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:w_t])] =  dot(c, dF2_dWH)
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:L_t])] =  dot(c, dF2_dWH)
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:t_t])] =  dot(c, dF2_dTT)
 
     # lambda = average marginal utility
     JJ[first(eq[:eq_lambda]),first(endo[:margutil_t])] = lam
-    JJ[first(eq[:eq_lambda]),endo[:kf_t]]              = -(aswts ./ c)' # note, now we linearize
-    JJ[first(eq[:eq_lambda]),first(endo[:z_t])]        =  (aswts ./ c)' * dF2_dRZ
-    JJ[first(eq[:eq_lambda]),first(endo[:w_t])]        = -(aswts ./ c)' * dF2_dWH
-    JJ[first(eq[:eq_lambda]),first(endo[:L_t])]        = -(aswts ./ c)' * dF2_dWH
-    JJ[first(eq[:eq_lambda]),first(endo[:t_t])]        = -(aswts ./ c)' * dF2_dTT
-    JJ[first(eq[:eq_lambda]),endo[:l_t]]               = -(aswts .* unc .* μ ./ c)'
+    JJ[first(eq[:eq_lambda]),endo[:kf_t]]              = -(1 ./ c) # note, now we linearize
+    JJ[first(eq[:eq_lambda]),first(endo[:z_t])]        =  dot(1 ./ c, dF2_dRZ)
+    JJ[first(eq[:eq_lambda]),first(endo[:w_t])]        = -dot(1 ./ c, dF2_dWH)
+    JJ[first(eq[:eq_lambda]),first(endo[:L_t])]        = -dot(1 ./ c, dF2_dWH)
+    JJ[first(eq[:eq_lambda]),first(endo[:t_t])]        = -dot(1 ./ c, dF2_dTT)
+    JJ[first(eq[:eq_lambda]),endo[:l_t]]               = -(unc .* μ ./ c)
 
     # transfer
     JJ[first(eq[:eq_transfers]),first(endo[:t_t])]         = T
@@ -285,17 +284,6 @@ function jacobian(m::HetDSGEGovDebt)
     JJ[first(eq[:eq_rm]),first(endo[:rm′_t])] = 1.
     JJ[first(eq[:eq_rm]),first(endo[:rm_t])]  = -ρ_mon
 
-#=
-    # consumption
-    JJ[first(eq[:eq_consumption]), endo[:l_t]]     = (μ .*unc.*aswts .* c)'
-    JJ[first(eq[:eq_consumption]), endo[:kf_t]]      = -(aswts .* c)' # note, now we linearize
-    JJ[first(eq[:eq_consumption]),first(endo[:R_t])] = -(aswts .* c)' * dF2_dRZ
-    JJ[first(eq[:eq_consumption]),first(endo[:z_t])] =  (aswts .* c)' * dF2_dRZ
-    JJ[first(eq[:eq_consumption]),first(endo[:w_t])] = -(aswts .* c)' * dF2_dWH
-    JJ[first(eq[:eq_consumption]),first(endo[:L_t])] = -(aswts .* c)' * dF2_dWH
-    JJ[first(eq[:eq_consumption]),first(endo[:t_t])] = -(aswts .* c)' * dF2_dTT
-=#
-
     if !m.testing && get_setting(m, :normalize_distr_variables)
         JJ  = normalize(m, JJ)
     end
@@ -307,7 +295,6 @@ function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
                                        agrid::Vector{Float64}, sgrid::Vector{Float64},
                                        fgrid::Matrix{Float64},
                                        unc::BitArray,
-                                       aswts::Vector{Float64},
                                        R::Float64, γ::Float64, β::Float64,
                                        η::Float64, ell::Vector{Float64}, T::Float64,
                                        ω::Float64, H::Float64)
@@ -331,8 +318,8 @@ function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
                 for iap=1:na
                     ip = na*(isp-1)+iap
                     ee[i,ip] = (agrid[iap] - R*(exp(-γ))*max(agrid[ia]-1/ell[i], -η) - T)/(ω*H*sgrid[isp])
-                    ξ[i,ip] = ((β*R*aswts[i]*exp(-γ))/(ω*H*sgrid[isp])^2)*max(ell[ip],1/(agrid[iap]+η))*qp(ee[i,ip])*fgrid[iss,isp]
-                    Ξ[i,ip] = ((β*R*aswts[i]*exp(-γ))/(ω*H*sgrid[isp]))*max(ell[ip],1/(agrid[iap]+η))*qfunction(ee[i,ip])*fgrid[iss,isp]
+                    ξ[i,ip] = ((β*R*exp(-γ))/(ω*H*sgrid[isp])^2)*max(ell[ip],1/(agrid[iap]+η))*qp(ee[i,ip])*fgrid[iss,isp]
+                    Ξ[i,ip] = ((β*R*exp(-γ))/(ω*H*sgrid[isp]))*max(ell[ip],1/(agrid[iap]+η))*qfunction(ee[i,ip])*fgrid[iss,isp]
                     sumELL += ξ[i,ip]*R*(exp(-γ))*unc[i]/ell[i]
                     sumRZ  += ξ[i,ip]*R*(exp(-γ))*max(agrid[ia] - 1/ell[i],-η)
                     dF1_dELLP[i,ip] = Ξ[i,ip]*unc[ip]
@@ -353,7 +340,6 @@ function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
                                 qfunction::Function, qp::Function,
                                 agrid::Vector{Float64}, sgrid::Vector{Float64},
                                 fgrid::Matrix{Float64}, unc::BitArray,
-                                aswts::Vector{Float64},
                                 R::Float64, γ::Float64,
                                 ell::Vector{Float64}, μ::Vector{Float64},
                                 η::Float64, T::Float64, ω::Float64, H::Float64, ee::Matrix{Float64})
@@ -375,13 +361,13 @@ function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
             for iss=1:ns
                 for ia=1:na
                     i = na*(iss-1)+ia
-                    bigΨ[ip,i] = aswts[i]*μ[i]*qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp])
-                    smallψ[ip,i] = aswts[i]*μ[i]*qp(ee[i,ip])*fgrid[iss,isp]/((ω*H*sgrid[isp])^2)
+                    bigΨ[ip,i] = μ[i]*qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp])
+                    smallψ[ip,i] = μ[i]*qp(ee[i,ip])*fgrid[iss,isp]/((ω*H*sgrid[isp])^2)
                     sumWH += bigΨ[ip,i] + smallψ[ip,i]*ee[i,ip]*(ω*H*sgrid[isp])
                     sumRZ += smallψ[ip,i]*(R*exp(-γ))*max(agrid[ia] - 1/ell[i],-η)
                     dF2_dELL[ip,i] = smallψ[ip,i]*(R*exp(-γ))*(unc[i]/ell[i])
                     sumTT += smallψ[ip,i]*T
-                    dF2_dM[ip,i] = aswts[i]*qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp]) # note, now we linearize
+                    dF2_dM[ip,i] = qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp]) # note, now we linearize
                 end
             end
             dF2_dWH[ip] = -sumWH
