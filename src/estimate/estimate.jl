@@ -160,7 +160,7 @@ function estimate(m::AbstractModel, data::AbstractArray;
         @save "model_MH.jld2" m
 
         ## Calculate the Hessian at the posterior mode
-        hessian = if calculate_hessian(m)
+        hessian = if calculate_hessian(m) && isempty(proposal_covariance)
             if VERBOSITY[verbose] >= VERBOSITY[:low]
                 println("Recalculating Hessian...")
             end
@@ -174,7 +174,7 @@ function estimate(m::AbstractModel, data::AbstractArray;
             hessian
 
             ## Read in a pre-calculated Hessian
-        else
+        elseif isempty(proposal_covariance)
             fn = hessian_path(m)
             if VERBOSITY[verbose] >= VERBOSITY[:low]
                 println("Using pre-calculated Hessian from $fn")
