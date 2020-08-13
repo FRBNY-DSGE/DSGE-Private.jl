@@ -534,9 +534,10 @@ init_grids!(m::HetDSGEGovDebt)
 """
 function init_grids!(m::HetDSGEGovDebt)
 
-    na      = get_setting(m, :na)
-    ns      = get_setting(m, :ns)
-    λ       = get_setting(m, :λ)
+    na = get_setting(m, :na)
+    ns = get_setting(m, :ns)
+    ne = get_setting(m, :ne)
+    λ  = get_setting(m, :λ)
 
     grids = OrderedDict()
 
@@ -552,7 +553,7 @@ function init_grids!(m::HetDSGEGovDebt)
 
     agrid, awts, ascale = construct_agrid(sgrid, egrid, m[:ωstar].value, m[:H].value,
                                           1 + m[:r].scaledvalue, m[:η].value, m[:γ].scaledvalue, m[:Tstar].value, na)
-    grids[:agrid] = Grid(uniform_quadrature(xscale), xlo, xhi, na, scale = xscale)
+    grids[:agrid] = Grid(agrid, awts, ascale)
 
     m <= Setting(:alo, agrid[1])
     m <= Setting(:ahi, agrid[end])

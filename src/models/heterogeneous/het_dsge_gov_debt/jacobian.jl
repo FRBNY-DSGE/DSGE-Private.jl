@@ -116,7 +116,7 @@ function jacobian(m::HetDSGEGovDebt)
     JJ[eq[:eq_kolmogorov_fwd],endo[:t_t]]   = dF2_dM*dF2_dTT
 
     # aggregate consumption
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:C_t])] = -aggc
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:C_t])] = -aggc # normalize C_t by mean consumption
     JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(μ .* unc .* c)
     JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]]      = c # note, now we linearize
     JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])] = -dot(c, dF2_dRZ)

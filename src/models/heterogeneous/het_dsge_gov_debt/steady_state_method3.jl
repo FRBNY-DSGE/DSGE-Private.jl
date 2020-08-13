@@ -53,7 +53,7 @@ function steadystate!(m::HetDSGEGovDebt;
         for ahi_guess in ahi_guesses
             try
                 # Construct agrid
-                agrid, awts, ascale = cash_grid(sgrid, egrid, ω, H, R, η, γ, T, na; ahi_inc = ahi_guess)
+                agrid, awts, ascale = construct_agrid(sgrid, egrid, ω, H, R, η, γ, T, na; ahi_inc = ahi_guess)
 
                 m <= Setting(:alo, agrid[1])
                 m <= Setting(:ahi, agrid[end])
@@ -91,6 +91,7 @@ function steadystate!(m::HetDSGEGovDebt;
 
                 m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
                 m[:pc0] = frac_zero(m[:μstar].value, m[:cstar].value, agrid, kron(swts, awts), ns)
+                m.grids[:agrid] = Grid(agrid, awts, ascale) # Save final agrid
 
                 break
             catch e
@@ -692,7 +693,6 @@ function integrate_out_e(agrid::AbstractVector{S}, agrid_big::AbstractArray{S, 3
     return vec(C_Final), vec(D_as), ell
 end
 
-
 @inline function mollifier_hetdsgegovdebt(e::S, ehi::S, elo::S) where {S <: Real}
     In = 0.443993816237631
     if e<ehi && e>elo
@@ -902,9 +902,9 @@ function construct_egrid(ehi::S, elo::S, ne::Int) where {S <: Real}
     return egrid, ewts, g_of_e
 end
 
-function cash_grid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
-                   ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int;
-                   ahi_inc::S = NaN) where {S <: Real}
+function construct_agrid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
+                         ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int;
+                         ahi_inc::S = NaN) where {S <: Real}
     smin = minimum(sgrid)                            # lowest possible skill
     emin = minimum(egrid)                            # lowest possible realization of idiosyncratic shock
     alo  = ω * smin * emin * H - R * η * exp(-γ) + T # lowest SS possible cash on hand
