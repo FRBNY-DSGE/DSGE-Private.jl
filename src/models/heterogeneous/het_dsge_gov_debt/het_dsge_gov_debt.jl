@@ -676,9 +676,10 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:mindens, 1e-8)
 
     # Tolerances for steady-state solution
-    m <= Setting(:C_tol,    -1e-8, "Tolerance for condition that all agents cannot consume more than available cash-on-hand")
+    m <= Setting(:C_tol,    -1e-8,  "Tolerance for condition that all agents cannot consume more than available cash-on-hand")
     m <= Setting(:kf_tol,    1e-10, "Tolerance for Kolmogorov forward equation")
     m <= Setting(:euler_tol, 1e-10, "Tolerance for Euler equation")
+    m <= Setting(:eigen_tol, 2e-1,  "Tolerance for eigenvalue's distance from 1 in Kolmogorov forward equation")
 
     # Function-valued variables include distributional variables
     m <= Setting(:n_function_valued_backward_looking_states, 1, "Number of function-valued" *
