@@ -117,13 +117,13 @@ function intermediatedec!(endogvar::Vector{Float64},nendogvars::Int,nexog::Int,l
 
     endogvar[endogenous_states[:i_t]] = endogvar[endogenous_states[:Vi_t]]*endogvarm1[endogenous_states[:i_t]]/techshk #inv = i(X_{t-1},τ_t) from (2.9) in TA
 
-    @show gshk, params[keys[:ϕ_p]]*1.0, endogvar[endogenous_states[:Vp_t]]*1.0
+    #@show gshk, params[keys[:ϕ_p]]*1.0, endogvar[endogenous_states[:Vp_t]]*1.0
 
     aayy::Float64 = 1.0/gshk-(params[keys[:ϕ_p]]/2.0)*(endogvar[endogenous_states[:Vp_t]]-1.0)*(endogvar[endogenous_states[:Vp_t]]-1.0) #A_{y,t} from (1.33) in TA
     rkss::Float64 = params[keys[:gz]]/params[keys[:β]]-1.0+params[keys[:δ]] #r^k from (1.46) in TA
     utilcost::Float64 = (rkss/params[keys[:σ_a]])*(exp(params[keys[:σ_a]]*(endogvar[endogenous_states[:u_t]]-1.0))-1.0) #Utilization Cost = a(u_t) from (1.14) in TA
 
-    @show aayy, endogvar[endogenous_states[:c_t]]*1.0, endogvar[endogenous_states[:i_t]]*1.0, utilcost, endogvarm1[endogenous_states[:k_t]]*1.0, params[keys[:gz]]*1.0, techshk
+    #@show aayy, endogvar[endogenous_states[:c_t]]*1.0, endogvar[endogenous_states[:i_t]]*1.0, utilcost, endogvarm1[endogenous_states[:k_t]]*1.0, params[keys[:gz]]*1.0, techshk
 
     endogvar[endogenous_states[:y_t]] = (1.0/aayy)*( endogvar[endogenous_states[:c_t]]+endogvar[endogenous_states[:i_t]] + utilcost*(endogvarm1[endogenous_states[:k_t]]/(params[keys[:gz]]*techshk)) ) #gdp = y_t - see (1.32) in TA
     endogvar[endogenous_states[:w_t]] = endogvarm1[endogenous_states[:w_t]]*endogvar[endogenous_states[:π_w]]/(params[keys[:gz]]*techshk*endogvar[endogenous_states[:π_t]]) #rw = w_t (1.34) in TA

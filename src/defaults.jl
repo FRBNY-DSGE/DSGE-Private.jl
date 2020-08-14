@@ -156,8 +156,8 @@ function default_settings!(m::AbstractModel)
     settings[:smc_iteration] = Setting(:smc_iteration, 1, "The iteration index for the number of times smc has been run on the same data vintage. Primarily for numerical accuracy/testing purposes.")
     settings[:previous_data_vintage] = Setting(:previous_data_vintage, vint, "The old data vintage to start SMC from when time tempering.")
     # Alternative policy
-    baseline_policy = AltPolicy(:historical, eqcond, solve, forecast_init = identity)
-    settings[:alternative_policy] = Setting(:alternative_policy, baseline_policy)
+    ## baseline_policy = AltPolicy(:historical, eqcond, solve, forecast_init = identity)
+    ## settings[:alternative_policy] = Setting(:alternative_policy, baseline_policy)
 
     return settings
 end

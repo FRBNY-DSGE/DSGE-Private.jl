@@ -244,13 +244,13 @@ function init_parameters!(m::GHLS)
                    description="ϵ_p: Steady state net price markup",
                    tex_label="\\epsilon_p")
 
-   # m <= parameter(:ϵ_w, 0.143, fixed=true, scaling=x -> 1/x + 1,
-   #                 description="ϵ_w: Steady state net wage markup.",
-   #                 tex_label="\\epsilon_w")
-
-   m <= parameter(:ϵ_w, 0.14, (1e-5, 1.5), (1e-5, 1.5), Exponential(), Normal(.15, .05), fixed=false, scaling = x -> 1/x + 1,
-                   description="ϵ_w: Steady state net wage markup",
+   m <= parameter(:ϵ_w, 0.143, fixed=true, scaling=x -> 1/x + 1,
+                   description="ϵ_w: Steady state net wage markup.",
                    tex_label="\\epsilon_w")
+
+   # m <= parameter(:ϵ_w, 0.14, (1e-5, 1.5), (1e-5, 1.5), Exponential(), Normal(.15, .05), fixed=false, scaling = x -> 1/x + 1,
+   #                 description="ϵ_w: Steady state net wage markup",
+   #                 tex_label="\\epsilon_w")
 
    m <= parameter(:ψ_L, 1., fixed=true,
                    description="ψ_L: The disutility of labor.",

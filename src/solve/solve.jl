@@ -70,7 +70,7 @@ solve(m::GHLS; parallel = false)
 # Description:
 Computes the model solution and corresponding coefficients matrix α⋆ (see a in Equation 2.21 in Technical Appendix of GHLS (2017))
 """
-function solve(m::GHLS, parallel::Bool=true)
+function solve(m::GHLS; parallel::Bool=true, anderson::Bool = true)
 
     # Create the shock grid for use in interpolation
     m.approx.exoggrid, m.approx.shockbounds, m.approx.shockdistance = gen_shockgrid(m.approx.nshockgrid, m.approx.nexogshocks, m.approx.ns, m.approx.nexogvars,m.parameters,m.keys)
@@ -127,9 +127,9 @@ function solve(m::GHLS, parallel::Bool=true)
 
     # Runs the fixedpoint convergence algorithm to find true non-linear solution and associated α coefficients
     α_star, convergence = if parallel
-        fixedpoint_parallel(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial, get_setting(m, :zero_lower_bound))
+        fixedpoint_parallel(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial, get_setting(m, :zero_lower_bound); use_anderson = anderson)
     else
-        fixedpoint(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial, get_setting(m, :zero_lower_bound))
+        fixedpoint(m[:rkss].value, m.approx, m.parameters, m.keys, m[:labss].value, m.exogenous_shocks, m.endogenous_states, α_initial, get_setting(m, :zero_lower_bound); use_anderson = anderson)
     end
 
     return α_star
@@ -442,13 +442,13 @@ end
 # Description:
 Uses a fixed point convergence algorithm to determine the functions that solve the model and their associated α coefficients. In particular, we put the equations defining the model solution into the form f = g(f), where f is a vector of functions and g is a vector-valued function. We then iterate on f until we reach such a fixed point. Note also that here we use an approximation for f rather than the true f, which is why the α coefficients are needed. See section 2 of technical appendix of Gust et. al (2017).
 """
-function fixedpoint(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2}, zlbswitch::Bool)
+function fixedpoint(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2}, zlbswitch::Bool; use_anderson::Bool = true)
 
     # Initialize
     α_star = copy(α_initial)
     α_new = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 2*approx.ns)
-    α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
-    updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
+    #α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
+    #updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
     convergence = false
     avg_error = 0.0
 
@@ -460,34 +460,37 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
 
 
       function residuals!(F, α_star)
-        avg_error = 0.0
-        for j in 1:approx.ns
-            err = 0.0
-            for k in 1:approx.ngridpoints
+        α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
+        updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
+        #avg_error = 0.0
+        @simd for j in 1:approx.ns
+            #err = 0.0
+            @simd for k in 1:approx.ngridpoints
                 updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
-                err += err2
+                #err += err2
             end
             mul!(α_temp, approx.bbtinv', updated_approx_functions')
             F[:, j] = vec(α_temp[:, 1:approx.nfunc])
             F[: , j + approx.ns] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
-
-
         end
-        println((F - α_star)[1,1:5])
-        return F - α_star
+        #F -= α_star
     end
 
-    NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04)
+    if use_anderson
+        #NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04, m=0)
+        α_star = NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04, m=0).zero
+        #α_star = α_stars['zero']
+    else
 
 
     # Get fixed point using iterative convergence method
     # Loop until convergence (avg_error < tolfun) or niter reached
-#=    for i in 1:niter
+    for i in 1:niter
         avg_error = 0.0
 
         # Calculate g(f) to get new guess for f and then calculate new approximation
         # Note that we can do this separately for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
-        @time for j in 1:approx.ns
+        for j in 1:approx.ns
 
             err = 0.0
             for k in 1:approx.ngridpoints
@@ -522,7 +525,8 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
 
         # Updated α are convex combination of old and new (dampening step to help fixed point algorithm converge)
         α_star = (1.0 - step)*α_star + step*α_new
-    end =#
+    end
+end
 
     return α_star, convergence
 end
@@ -543,7 +547,7 @@ end
 # Description:
 Uses a parallel version of the fixed point convergence algorithm to determine the functions that solve the model and their associated α coefficients. In particular, we put the equations defining the model solution into the form f = g(f), where f is a vector of functions and g is a vector-valued function. We then iterate on f until we reach such a fixed point. Note also that here we use an approximation for f rather than the true f, which is why the α coefficients are needed. See section 2 of technical appendix of Gust et. al (2017).
 """
-function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2}, zlbswitch::Bool)
+function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2}, zlbswitch::Bool; use_anderson::Bool = true)
 
 
     # Initialize
