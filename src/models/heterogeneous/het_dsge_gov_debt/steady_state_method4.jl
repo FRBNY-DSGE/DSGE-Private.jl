@@ -1,4 +1,4 @@
-# TODO: refactor, huge number of allocations being made somewhere
+# TODO: refactor to reduce number of allocations further, e.g. C_Final, c_pol_in, etc.
 function method4_steadystate!(m::HetDSGEGovDebt;
                               βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
                               βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.999999),
@@ -116,7 +116,7 @@ function method4_steadystate!(m::HetDSGEGovDebt;
     nothing
 end
 
-# REWRITE, MULTIPLE DISPATCH FOR EIGENVECTOR APPROACH TO AVOID ALLOCATING KF_in
+# TODO: refactor to not allocate KF_in if using kf_eigen or transition_mat if using kf_anderson
 function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                    egrid::Vector{Float64}, ewts::Vector{Float64}, g_of_e::Vector{Float64},
                                    f::Matrix{Float64},
@@ -162,6 +162,8 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                        euler_anderson = euler_anderson,
                                                                        kf_anderson = kf_anderson,
                                                                        kf_eigen = kf_eigen,
+                                                                       eigen_method = haskey(get_settings(m), :eigen_method) ?
+                                                                       get_setting(m, :eigen_method) : :krylov,
                                                                        euler_tol = get_setting(m, :euler_tol),
                                                                        kf_tol = get_setting(m, :kf_tol),
                                                                        eigen_tol = get_setting(m, :eigen_tol),
@@ -180,6 +182,8 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                        euler_anderson = euler_anderson,
                                                                        kf_anderson = kf_anderson,
                                                                        kf_eigen = kf_eigen,
+                                                                       eigen_method = haskey(get_settings(m), :eigen_method) ?
+                                                                       get_setting(m, :eigen_method) : :krylov,
                                                                        euler_tol = get_setting(m, :euler_tol),
                                                                        kf_tol = get_setting(m, :kf_tol),
                                                                        eigen_tol = get_setting(m, :eigen_tol),
@@ -209,6 +213,8 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                            euler_anderson = euler_anderson,
                                                                            kf_anderson = kf_anderson,
                                                                            kf_eigen = kf_eigen,
+                                                                           eigen_method = haskey(get_settings(m), :eigen_method) ?
+                                                                           get_setting(m, :eigen_method) : :krylov,
                                                                            euler_tol = get_setting(m, :euler_tol),
                                                                            kf_tol = get_setting(m, :kf_tol),
                                                                            eigen_tol = get_setting(m, :eigen_tol),
@@ -234,37 +240,55 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         if counter == maxit
             @warn "Euler iteration does not converge"
             reject = true
+            # TODO: maybe do not auto-update c_pol_in unless you have euler iteration covnergence.
+            #       c_pol_in should instead be set back to initial guess
         end
     elseif isa(roots_algorithm, AbstractBracketing)
-        error("Have not ensured this works yet.")
         β = find_zero(β -> bisect_β(β, na, ns, ne, na_c, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value, agrid, sgrid, c_pol_in,
-                                    KF_in, f, egrid, ewts, g_of_e, bg, get_setting(m, :policy_maxit), m_anderson,
-                                    euler_anderson, kf_anderson, get_setting(m, :euler_tol), get_setting(m, :kf_tol)),
+                                    KF_in, f, egrid, ewts, g_of_e, transition_mat, qfunc, bg, get_setting(m, :policy_maxit), m_anderson,
+                                    euler_anderson, kf_anderson, kf_eigen, haskey(get_settings(m), :eigen_method) ?
+                                    get_setting(m, :eigen_method) : :krylov,
+                                    get_setting(m, :euler_tol), get_setting(m, :kf_tol), get_setting(m, :eigen_tol), get_setting(m, :C_tol)),
                       (βlo, βhi), roots_algorithm, maxevals = maxit, atol = tol)
-        c_pol_in, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value,
-                                                                 agrid, sgrid, c_pol_in, KF_in,
-                                                                 f, egrid, ewts, g_of_e,
-                                                                 maxit = get_setting(m, :policy_maxit),
-                                                                 m_anderson = m_anderson,
-                                                                 euler_anderson = euler_anderson,
-                                                                 kf_anderson = kf_anderson,
-                                                                 euler_tol = get_setting(m, :euler_tol),
-                                                                 kf_tol = get_setting(m, :kf_tol))
+        c_pol_in, c_as, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
+                                                                       m[:ehi].value, m[:elo].value,
+                                                                       agrid, sgrid, c_pol_in, KF_in,
+                                                                       f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                                       maxit = get_setting(m, :policy_maxit),
+                                                                       m_anderson = m_anderson,
+                                                                       euler_anderson = euler_anderson,
+                                                                       kf_anderson = kf_anderson,
+                                                                       kf_eigen = kf_eigen,
+                                                                       eigen_method = haskey(get_settings(m), :eigen_method) ?
+                                                                       get_setting(m, :eigen_method) : :krylov,
+                                                                       euler_tol = get_setting(m, :euler_tol),
+                                                                       kf_tol = get_setting(m, :kf_tol),
+                                                                       eigen_tol = get_setting(m, :eigen_tol),
+                                                                       C_tol = get_setting(m, :C_tol))
+
     elseif isa(roots_algorithm, AbstractSecant)
-        error("Have not ensured this works yet.")
         β = find_zero(β -> bisect_β(β, na, ns, ne, na_c, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value, agrid, sgrid, c_pol_in,
-                                    KF_in, f, egrid, ewts, g_of_e, bg, get_setting(m, :policy_maxit), m_anderson,
-                                    euler_anderson, kf_anderson, get_setting(m, :euler_tol), get_setting(m, :kf_tol)),
+                                    KF_in, f, egrid, ewts, g_of_e, transition_mat, qfunc, bg, get_setting(m, :policy_maxit), m_anderson,
+                                    euler_anderson, kf_anderson, kf_eigen, haskey(get_settings(m), :eigen_method) ?
+                                    get_setting(m, :eigen_method) : :krylov,
+                                    get_setting(m, :euler_tol), get_setting(m, :kf_tol), get_setting(m, :eigen_tol),
+                                    get_setting(m, :C_tol)),
                       (βlo + βhi) / 2., roots_algorithm, maxevals = maxit, atol = tol)
-        c_pol_in, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value,
-                                                                 agrid, sgrid, c_pol_in, KF_in,
-                                                                 f, egrid, ewts, g_of_e,
-                                                                 maxit = get_setting(m, :policy_maxit),
-                                                                 m_anderson = m_anderson,
-                                                                 euler_anderson = euler_anderson,
-                                                                 kf_anderson = kf_anderson,
-                                                                 euler_tol = get_setting(m, :euler_tol),
-                                                                 kf_tol = get_setting(m, :kf_tol))
+        c_pol_in, c_as, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
+                                                                       m[:ehi].value, m[:elo].value,
+                                                                       agrid, sgrid, c_pol_in, KF_in,
+                                                                       f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                                       maxit = get_setting(m, :policy_maxit),
+                                                                       m_anderson = m_anderson,
+                                                                       euler_anderson = euler_anderson,
+                                                                       kf_anderson = kf_anderson,
+                                                                       kf_eigen = kf_eigen,
+                                                                       eigen_method = haskey(get_settings(m), :eigen_method) ?
+                                                                       get_setting(m, :eigen_method) : :krylov,
+                                                                       euler_tol = get_setting(m, :euler_tol),
+                                                                       kf_tol = get_setting(m, :kf_tol),
+                                                                       eigen_tol = get_setting(m, :eigen_tol),
+                                                                       C_tol = get_setting(m, :C_tol))
     else
         error("Cannot use the Roots algorithm $(typeof(roots_algorithm))")
     end
@@ -293,18 +317,23 @@ end
 
 function bisect_β(β::S, na::Int, ns::Int, ne::Int, na_c::Int, R::S, ω::S, H::S, η::S, T::S, γ::S,
                   ehi::S, elo::S, agrid::AbstractVector{S}, sgrid::AbstractVector{S},
-                  c_pol_in::AbstractArray{S, 3}, KF_in::AbstractArray{S, 3}, f::AbstractMatrix{S},
-                  egrid::AbstractVector{S}, ewts::AbstractVector{S}, g_of_e::AbstractVector{S}, bg::S,
-                  maxit::Int, m_anderson::Int, euler_anderson::Bool, kf_anderson::Bool, euler_tol::S, kf_tol::S) where {S <: Real}
-    c_pol_in, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ, ehi, elo,
-                                                             agrid, sgrid, c_pol_in, KF_in,
-                                                             f, egrid, ewts, g_of_e,
-                                                             maxit = maxit,
-                                                             m_anderson = m_anderson,
-                                                             euler_anderson = euler_anderson,
-                                                             kf_anderson = kf_anderson,
-                                                             euler_tol = euler_tol,
-                                                             kf_tol = kf_tol)
+                  c_pol_in::AbstractArray{S, 3}, KF_in::AbstractArray{S, 2}, f::AbstractMatrix{S},
+                  egrid::AbstractVector{S}, ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
+                  transition_mat::AbstractMatrix{S}, qfunc, bg::S,
+                  maxit::Int, m_anderson::Int, euler_anderson::Bool, kf_anderson::Bool, kf_eigen::Bool,
+                  eigen_method::Symbol, euler_tol::S, kf_tol::S, eigen_tol::S, C_tol::S) where {S <: Real}
+    ~, ~, bp, KF, ~ = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
+                                                    ehi, elo, agrid, sgrid, c_pol_in, KF_in,
+                                                    f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                    maxit = maxit, m_anderson = m_anderson,
+                                                    euler_anderson = euler_anderson,
+                                                    kf_anderson = kf_anderson,
+                                                    kf_eigen = kf_eigen,
+                                                    eigen_method = eigen_method,
+                                                    euler_tol = euler_tol,
+                                                    kf_tol = kf_tol,
+                                                    eigen_tol = eigen_tol,
+                                                    C_tol = C_tol)
     excess = method4_compute_excess(KF, bp, bg)
     return excess
 end
@@ -316,7 +345,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
                                        g_of_e::Vector{Float64}, transition_mat::AbstractMatrix{S}, qfunc, dist::S = 1.;
                                        maxit::Int64 = 1000, m_anderson::Int = 5,
                                        euler_anderson::Bool = false, kf_anderson::Bool = false, kf_eigen::Bool = false,
-                                       euler_tol::S = 1e-10, kf_tol::S = 1e-10,
+                                       eigen_method::Symbol = :krylov, euler_tol::S = 1e-10, kf_tol::S = 1e-10,
                                        eigen_tol::S = 2e-1, C_tol::S = -1e-8) where {S <: Real}
 
     colors = [:red, :blue, :green, :yellow, :purple]
@@ -379,7 +408,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
         D_as = vec(out.zero) # out.zero already allocated so just re-assign D_as
     elseif kf_eigen
         D_as = stationary_KF!(transition_mat, c_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T, (agrid[end] - agrid[1]) / length(agrid);
-                              tol = eigen_tol)
+                              tol = eigen_tol, method = eigen_method)
     else
         D_as  = deepcopy(KF_in) # do not want to alter the initial guess
         D′_as = similar(D_as)
@@ -448,43 +477,41 @@ end
 
 function stationary_KF!(transition_mat::AbstractMatrix{S}, C_as::AbstractMatrix{S},
                         agrid::AbstractVector{S}, sgrid::AbstractVector{S}, f::AbstractMatrix{S}, qfunc,
-                        ω::S, H::S, R::S, γ::S, T::S, ι::S; tol::S = 2e-1) where {S <: Real}
-    # Check D(a, s) solves the KF equation by constructing the transition matrix A and solving the eigenvalue problem
+                        ω::S, H::S, R::S, γ::S, T::S, ι::S; tol::S = 2e-1, method::Symbol = :krylov) where {S <: Real}
+    # Check D(a, s) solves the KF equation by constructing the transition matrix A and solving the eigenvalue problem.
+    # Note that the Kolmogorov forward equation we use is defined for m(a, s) = D(a, s) / ι, hence
     # vec(m′(a, s))     = A * ι * vec(m(a, s)), which reduces to
     # vec(D′(a, s)) / ι = A * vec(D(a, s))
     # vec(D′(a, s))     = A * ι * vec(D(a, s))
-    na = length(agrid)
-    ns = length(sgrid)
-    for is in 1:ns
-        for ia in 1:na
-            for isp in 1:ns
-                for iap in 1:na
-                    transition_mat[na * (isp - 1) + iap, na * (is - 1) + ia] = f[is, isp] / (ω * H * sgrid[isp]) *
-                        qfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_as[ia, is]) - T) / (ω * H * sgrid[isp]))
-                end
-            end
-        end
-    end
+    construct_transition!(transition_mat, C_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T)
 
-    # Find largest eigenvalue.
+    # Find largest eigenvalue and associated eigenvector
     # For computational reasons, we solve D(a, s) / ι = A * D(a, s) instead of D(a, s) = A * ι * D(a, s)
-    D, V  = (eigen(transition_mat)..., )
-    max_D = argmax(abs.(D))
-
-    if abs(D[max_D] - 1 / ι) > tol && print_warning
-        @warn "Your eigenvalue is too far from 1, something is wrong."
-    end
-
-    # Pick eigenvector associated w/ largest eigenvalue and moving it back to values
-    μ   = real(V[:, max_D])
+    ~, μ = stationary_eigenvector(sparse(transition_mat), ι, method; tol = tol)
     μ ./= sum(μ) # normalize to 1
 
     # return reshape(μ, na, ns)
     return μ
 end
 
+function construct_transition!(transition_mat::AbstractMatrix{S}, C_as::AbstractMatrix{S},
+                               agrid::AbstractVector{S}, sgrid::AbstractVector{S}, f::AbstractMatrix{S},
+                               qfunc, ω::S, H::S, R::S, γ::S, T::S) where {S <: Real}
+    na = length(agrid)
+    ns = length(sgrid)
+    @inbounds @simd for is in 1:ns
+        @inbounds @simd for ia in 1:na
+            @inbounds @simd for isp in 1:ns
+                @inbounds @simd for iap in 1:na
+                    transition_mat[na * (isp - 1) + iap, na * (is - 1) + ia] = f[is, isp] / (ω * H * sgrid[isp]) *
+                        qfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_as[ia, is]) - T) / (ω * H * sgrid[isp]))
+                end
+            end
+        end
+    end
+end
+
 # Maps c(b, s, e) -> c(a, s)
-# THIS FUNCTION IS EXPENSIVE, make more things in place to speed up the method
 function integrate_out_e(agrid::AbstractVector{S}, agrid_big::AbstractArray{S, 3},
                          bgrid::AbstractVector{S}, sgrid::AbstractVector{S}, c_pol::AbstractArray{S, 3},
                          ω::S, H::S, T::S, γ::S; tol::Float64 = -1e-8) where {S <: Real}

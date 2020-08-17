@@ -4,7 +4,7 @@ module DSGE
     using ModelConstructors, SMC
     using QuadGK, Interpolations, FastGaussQuadrature
     using Dates, Test, BenchmarkTools
-    using Distributed, Distributions, FileIO, FredData, HDF5, JLD2, LinearAlgebra
+    using ArnoldiMethod, Distributed, Distributions, FileIO, FredData, HDF5, JLD2, KrylovKit, LinearAlgebra
     using Missings, NLsolve, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
@@ -378,6 +378,7 @@ module DSGE
 
     # Heterogeneous Agent Models
     include("models/heterogeneous/util.jl")
+    include("models/heterogeneous/steady_state_helpers/kolmogorov_forward.jl")
 
     include("models/heterogeneous/krusell_smith/krusell_smith.jl")
     include("models/heterogeneous/krusell_smith/steady_state.jl")
