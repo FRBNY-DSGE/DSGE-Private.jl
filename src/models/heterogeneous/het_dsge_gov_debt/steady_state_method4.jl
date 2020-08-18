@@ -5,8 +5,8 @@ function method4_steadystate!(m::HetDSGEGovDebt;
                               excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
                               roots_algorithm = nothing,
                               euler_anderson::Bool = true,
-                              kf_anderson::Bool = true,
-                              kf_eigen::Bool = false,
+                              kf_anderson::Bool = false,
+                              kf_eigen::Bool = true,
                               doplots::Bool = false, verbose::Symbol = :none) where {S <: Real}
     @assert !(kf_eigen && kf_anderson) "Only one of kf_anderson and kf_eigen can be true"
 
