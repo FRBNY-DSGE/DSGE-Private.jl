@@ -104,7 +104,9 @@ function method4_steadystate!(m::HetDSGEGovDebt;
 
                 break
             catch e
-                if isa(e, CashOnHandError) && ahi_guess != ahi_guesses[end]
+                if ahi_guess == ahi_guesses[end]
+                    rethrow(e)
+                elseif isa(e, CashOnHandError) # Try to address this problem by increasing ahi
                     continue
                 else
                     rethrow(e)
@@ -150,44 +152,49 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     # If you have a β saved, start from there (if you don't, βhi and βlo are defined as they are passed in to function)
     elseif !isnan(m[:βstar].value)
 
-        # If one has computed β* before, we first bisect into a neighborhood around it
+        # If one has computed β* before, then we first bisect into a neighborhood around it and check if the signs are the opposite
         βlo_temp = m[:βstar].value - βband
         βhi_temp = m[:βstar].value + βband
-        c_pol_in, c_as, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
-                                                                       m[:ehi].value, m[:elo].value,
-                                                                       agrid, sgrid, c_pol_in, KF_in,
-                                                                       f, egrid, ewts, g_of_e, transition_mat, qfunc,
-                                                                       maxit = get_setting(m, :policy_maxit),
-                                                                       m_anderson = m_anderson,
-                                                                       euler_anderson = euler_anderson,
-                                                                       kf_anderson = kf_anderson,
-                                                                       kf_eigen = kf_eigen,
-                                                                       eigen_method = haskey(get_settings(m), :eigen_method) ?
-                                                                       get_setting(m, :eigen_method) : :krylov,
-                                                                       euler_tol = get_setting(m, :euler_tol),
-                                                                       kf_tol = get_setting(m, :kf_tol),
-                                                                       eigen_tol = get_setting(m, :eigen_tol),
-                                                                       C_tol = get_setting(m, :C_tol))
+        c_pol_out, c_as, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
+                                                                        m[:ehi].value, m[:elo].value,
+                                                                        agrid, sgrid, c_pol_in, KF_in,
+                                                                        f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                                        maxit = get_setting(m, :policy_maxit),
+                                                                        m_anderson = m_anderson,
+                                                                        euler_anderson = euler_anderson,
+                                                                        kf_anderson = kf_anderson,
+                                                                        kf_eigen = kf_eigen,
+                                                                        eigen_method = haskey(get_settings(m), :eigen_method) ?
+                                                                        get_setting(m, :eigen_method) : :krylov,
+                                                                        euler_tol = get_setting(m, :euler_tol),
+                                                                        kf_tol = get_setting(m, :kf_tol),
+                                                                        eigen_tol = get_setting(m, :eigen_tol),
+                                                                        C_tol = get_setting(m, :C_tol))
 
         excess_lo = method4_compute_excess(KF, bp, bg)
 
         if excess_lo < 0 && abs(excess_lo) > tol
             βlo = βlo_temp
-        c_pol_in, c_as, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
-                                                                       m[:ehi].value, m[:elo].value,
-                                                                       agrid, sgrid, c_pol_in, KF_in,
-                                                                       f, egrid, ewts, g_of_e, transition_mat, qfunc,
-                                                                       maxit = get_setting(m, :policy_maxit),
-                                                                       m_anderson = m_anderson,
-                                                                       euler_anderson = euler_anderson,
-                                                                       kf_anderson = kf_anderson,
-                                                                       kf_eigen = kf_eigen,
-                                                                       eigen_method = haskey(get_settings(m), :eigen_method) ?
-                                                                       get_setting(m, :eigen_method) : :krylov,
-                                                                       euler_tol = get_setting(m, :euler_tol),
-                                                                       kf_tol = get_setting(m, :kf_tol),
-                                                                       eigen_tol = get_setting(m, :eigen_tol),
-                                                                       C_tol = get_setting(m, :C_tol))
+            c_pol_out, c_as, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
+                                                                            m[:ehi].value, m[:elo].value,
+                                                                            agrid, sgrid, c_pol_in, KF_in,
+                                                                            f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                                            maxit = get_setting(m, :policy_maxit),
+                                                                            m_anderson = m_anderson,
+                                                                            euler_anderson = euler_anderson,
+                                                                            kf_anderson = kf_anderson,
+                                                                            kf_eigen = kf_eigen,
+                                                                            eigen_method = haskey(get_settings(m), :eigen_method) ?
+                                                                            get_setting(m, :eigen_method) : :krylov,
+                                                                            euler_tol = get_setting(m, :euler_tol),
+                                                                            kf_tol = get_setting(m, :kf_tol),
+                                                                            eigen_tol = get_setting(m, :eigen_tol),
+                                                                            C_tol = get_setting(m, :C_tol))
+
+            # Update the guess for c(b, s, e) only if the Euler iteration converged
+            if !reject
+                c_pol_in = c_pol_out
+            end
 
             excess_hi = method4_compute_excess(KF, bp, bg)
 
@@ -203,22 +210,26 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     if isnothing(roots_algorithm)
         while abs(excess) > tol && counter <= maxit # clearing markets
             β = (βlo + βhi) / 2.0
+            c_pol_out, c_as, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
+                                                                            m[:ehi].value, m[:elo].value,
+                                                                            agrid, sgrid, c_pol_in, KF_in,
+                                                                            f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                                            maxit = get_setting(m, :policy_maxit),
+                                                                            m_anderson = m_anderson,
+                                                                            euler_anderson = euler_anderson,
+                                                                            kf_anderson = kf_anderson,
+                                                                            kf_eigen = kf_eigen,
+                                                                            eigen_method = haskey(get_settings(m), :eigen_method) ?
+                                                                            get_setting(m, :eigen_method) : :krylov,
+                                                                            euler_tol = get_setting(m, :euler_tol),
+                                                                            kf_tol = get_setting(m, :kf_tol),
+                                                                            eigen_tol = get_setting(m, :eigen_tol),
+                                                                            C_tol = get_setting(m, :C_tol))
 
-            c_pol_in, c_as, bp, KF, reject = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
-                                                                           m[:ehi].value, m[:elo].value,
-                                                                           agrid, sgrid, c_pol_in, KF_in,
-                                                                           f, egrid, ewts, g_of_e, transition_mat, qfunc,
-                                                                           maxit = get_setting(m, :policy_maxit),
-                                                                           m_anderson = m_anderson,
-                                                                           euler_anderson = euler_anderson,
-                                                                           kf_anderson = kf_anderson,
-                                                                           kf_eigen = kf_eigen,
-                                                                           eigen_method = haskey(get_settings(m), :eigen_method) ?
-                                                                           get_setting(m, :eigen_method) : :krylov,
-                                                                           euler_tol = get_setting(m, :euler_tol),
-                                                                           kf_tol = get_setting(m, :kf_tol),
-                                                                           eigen_tol = get_setting(m, :eigen_tol),
-                                                                           C_tol = get_setting(m, :C_tol))
+            # Update the guess for c(b, s, e) only if the Euler iteration converged
+            if !reject
+                c_pol_in = c_pol_out
+            end
 
             excess = method4_compute_excess(KF, bp, bg)
             if verbose == :high
@@ -226,7 +237,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
             end
 
             # bisection
-            if excess > 0
+            if excess > 0 || reject # Consumption policy iterations typically do not converge when β is too close to 1
                 βhi = β
             elseif excess < 0
                 βlo = β
