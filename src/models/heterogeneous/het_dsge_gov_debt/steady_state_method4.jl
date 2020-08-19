@@ -83,13 +83,13 @@ function method4_steadystate!(m::HetDSGEGovDebt;
                                           verbose = verbose)
 
                 if verbose == :high
-                    println("The distribution μ(a, s) integrates to $(round(sum(m[:μstar].value), digits = 3)).")
+                    println("The distribution μ(a, s) integrates to $(round(sum(m[:Dstar].value), digits = 3)).")
                 end
 
                 if doplots
-                    p = plot(fit(Histogram, agrid, Weights(m[:μstar].value[1:na]), nbins = na),
+                    p = plot(fit(Histogram, agrid, Weights(m[:Dstar].value[1:na]), nbins = na),
                              label = "low skill", color = :blue)
-                    plot!(fit(Histogram, agrid, Weights(m[:μstar].value[(na + 1):end]), nbins = na),
+                    plot!(fit(Histogram, agrid, Weights(m[:Dstar].value[(na + 1):end]), nbins = na),
                           label = "high skill", color = :red)
                     savefig(p, "method4_agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
 
@@ -98,8 +98,9 @@ function method4_steadystate!(m::HetDSGEGovDebt;
                     savefig(p, "method4_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
                 end
 
-                m[:mpc] = ave_mpc(m[:μstar].value,   m[:cstar].value, agrid, kron(swts, awts), na, ns)
-                m[:pc0] = frac_zero(m[:μstar].value, m[:cstar].value, agrid, kron(swts, awts), ns)
+                # use ones for now before refactoring since no longer using quadrature over s
+                m[:mpc] = ave_mpc(m[:Dstar].value,   m[:cstar].value, agrid, kron(ones(size(swts)), awts), na, ns)
+                m[:pc0] = frac_zero(m[:Dstar].value, m[:cstar].value, agrid, kron(ones(size(swts)), awts), ns)
                 m.grids[:agrid] = Grid(agrid, awts, ascale) # Save final agrid
 
                 break
@@ -319,7 +320,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     m <= Setting(:auto_reject, reject)
     m[:lstar]  = 1 ./ c_as
     m[:cstar]  = c_as
-    m[:μstar]  = KF
+    m[:Dstar]  = KF
     m[:βstar]  = β
     m[:β_save] = β
 

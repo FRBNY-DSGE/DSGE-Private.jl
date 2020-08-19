@@ -42,7 +42,7 @@ function jacobian(m::HetDSGEGovDebt)
 
     ell::Vector{Float64}  = m[:lstar].value
     c::Vector{Float64}    = m[:cstar].value # Should be able to comment this out, reduce allocation
-    μ::Vector{Float64}    = m[:μstar].value
+    D::Vector{Float64}    = m[:Dstar].value
     β::Float64            = m[:βstar].value
 
     T::Float64     = m[:Tstar].value
@@ -78,12 +78,12 @@ function jacobian(m::HetDSGEGovDebt)
     # KF Equation
     dF2_dWH, dF2_dRZ, dF2_dTT,dF2_dELL, bigΨ, dF2_dM =
         kolmogorov_fwd_hetdsgegovdebt(na, ns, qfunction_hetdsgegovdebt, qp, agrid, sgrid, fgrid, unc,
-                               R, γ, ell, μ, η, T, ω, H, ee)
+                               R, γ, ell, D, η, T, ω, H, ee)
 
     # Market clearing, lambda function
     c = min.(1 ./ ell,repeat(agrid,ns).+η)
-    lam = dot(μ, (1 ./ c)) # average marginal utility which the union uses to set wages
-    aggc = dot(μ, c)
+    lam = dot(D, (1 ./ c)) # average marginal utility which the union uses to set wages
+    aggc = dot(D, c)
     ϕ = lam*ω/(H^ϕh) # now that we know lam in steady state, choose disutility to target hours H
 
     setup_indices!(m)
@@ -91,7 +91,7 @@ function jacobian(m::HetDSGEGovDebt)
 
     nvars = get_setting(m, :nvars)
 
-    # Make the Jacobian. Left dimension is [ell, μ, scalars],
+    # Make the Jacobian. Left dimension is [ell, D, scalars],
     # right dimension is twice the left dimension's size b/c perturb w.r.t. today & tomorrow's values
     JJ = zeros(S, nvars, 2*nvars)
 
@@ -117,7 +117,7 @@ function jacobian(m::HetDSGEGovDebt)
 
     # aggregate consumption
     JJ[first(eq[:eq_agg_consumption]),first(endo[:C_t])] = -aggc # normalize C_t by mean consumption
-    JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(μ .* unc .* c)
+    JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(D .* unc .* c)
     JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]]      = c # note, now we linearize
     JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])] = -dot(c, dF2_dRZ)
     JJ[first(eq[:eq_agg_consumption]),first(endo[:w_t])] =  dot(c, dF2_dWH)
@@ -131,7 +131,7 @@ function jacobian(m::HetDSGEGovDebt)
     JJ[first(eq[:eq_lambda]),first(endo[:w_t])]        = -dot(1 ./ c, dF2_dWH)
     JJ[first(eq[:eq_lambda]),first(endo[:L_t])]        = -dot(1 ./ c, dF2_dWH)
     JJ[first(eq[:eq_lambda]),first(endo[:t_t])]        = -dot(1 ./ c, dF2_dTT)
-    JJ[first(eq[:eq_lambda]),endo[:l_t]]               = -(unc .* μ ./ c)
+    JJ[first(eq[:eq_lambda]),endo[:l_t]]               = -(unc .* D ./ c)
 
     # transfer
     JJ[first(eq[:eq_transfers]),first(endo[:t_t])]         = T
@@ -341,7 +341,7 @@ function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
                                 agrid::Vector{Float64}, sgrid::Vector{Float64},
                                 fgrid::Matrix{Float64}, unc::BitArray,
                                 R::Float64, γ::Float64,
-                                ell::Vector{Float64}, μ::Vector{Float64},
+                                ell::Vector{Float64}, D::Vector{Float64},
                                 η::Float64, T::Float64, ω::Float64, H::Float64, ee::Matrix{Float64})
     nans = na*ns
     bigΨ    = zeros(nans, nans)
@@ -361,8 +361,8 @@ function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
             for iss=1:ns
                 for ia=1:na
                     i = na*(iss-1)+ia
-                    bigΨ[ip,i] = μ[i]*qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp])
-                    smallψ[ip,i] = μ[i]*qp(ee[i,ip])*fgrid[iss,isp]/((ω*H*sgrid[isp])^2)
+                    bigΨ[ip,i] = D[i]*qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp])
+                    smallψ[ip,i] = D[i]*qp(ee[i,ip])*fgrid[iss,isp]/((ω*H*sgrid[isp])^2)
                     sumWH += bigΨ[ip,i] + smallψ[ip,i]*ee[i,ip]*(ω*H*sgrid[isp])
                     sumRZ += smallψ[ip,i]*(R*exp(-γ))*max(agrid[ia] - 1/ell[i],-η)
                     dF2_dELL[ip,i] = smallψ[ip,i]*(R*exp(-γ))*(unc[i]/ell[i])
@@ -430,9 +430,9 @@ function compose_normalization_matrices(m::HetDSGEGovDebt)
         nyscalars = get_setting(m, :nyscalars)
         nascalars = get_setting(m, :nascalars)
         mindens = get_setting(m, :mindens)
-        μ = m[:μstar].value
+        D = m[:Dstar].value
 
-        na1 = maximum(findall(μ[1:na].>mindens)) # Chop off unneeded cash-on-hand grid points for low-skill workers b/c no one there
+        na1 = maximum(findall(D[1:na].>mindens)) # Chop off unneeded cash-on-hand grid points for low-skill workers b/c no one there
         m <= Setting(:na1_state, na1)
         m <= Setting(:na1_jump, na1)
 
@@ -525,7 +525,7 @@ function truncate_distribution!(m::HetDSGEGovDebt)
     rescale_weights = get_setting(m, :rescale_weights)
 
     na = get_setting(m, :na)
-    μ = m[:μstar].value
+    D = m[:Dstar].value
     ell = m[:lstar].value
     c = m[:cstar].value
     agrid = m.grids[:agrid].points
@@ -534,8 +534,8 @@ function truncate_distribution!(m::HetDSGEGovDebt)
 
     if trunc_distr
         oldna = na
-        na = maximum(findall(μ[1:na]+μ[na+1:2*na] .> mindens)) # used to be 1e-8
-        m[:μstar] = μ[[1:na;oldna+1:oldna+na]]
+        na = maximum(findall(D[1:na]+D[na+1:2*na] .> mindens)) # used to be 1e-8
+        m[:Dstar] = D[[1:na;oldna+1:oldna+na]]
         m[:lstar] = ell[[1:na;oldna+1:oldna+na]]
         m[:cstar] = c[[1:na;oldna+1:oldna+na]]
         if rescale_weights

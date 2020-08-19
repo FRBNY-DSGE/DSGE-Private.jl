@@ -486,7 +486,7 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                                   marginal utility of consumption", tex_label = "l_*")
     m <= SteadyStateParameterGrid(:cstar, fill(NaN, na*ns),
                                   description = "Steady-state consumption", tex_label = "c_*")
-    m <= SteadyStateParameterGrid(:μstar, fill(NaN, na*ns), description = "Steady-state" *
+    m <= SteadyStateParameterGrid(:Dstar, fill(NaN, na*ns), description = "Steady-state" *
                                   " cross-sectional density of cash-on-hand",
                                   tex_label = "\\mu_*")
     m <= SteadyStateParameter(:βstar, NaN, description = "Steady-state discount factor",
