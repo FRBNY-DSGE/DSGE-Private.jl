@@ -1,4 +1,4 @@
-function jacobian(m::HetDSGEGovDebt)
+function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     reset_grids!(m)
     #truncate_distribution!(m)
 

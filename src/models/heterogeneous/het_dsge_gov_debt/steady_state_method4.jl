@@ -21,7 +21,9 @@ function method4_steadystate!(m::HetDSGEGovDebt;
         ns = get_setting(m, :ns)
         ne = get_setting(m, :ne)
 
-        m[:sH_over_sL], m[:elo], m[:ehi] = compute_income_process_parameters(m)
+        if get_setting(m, :calibrate_income_targets)
+            m[:sH_over_sL], m[:elo], m[:ehi] = compute_income_process_parameters(m)
+        end
 
         # Parameters
         ω = m[:ωstar].value
@@ -83,7 +85,7 @@ function method4_steadystate!(m::HetDSGEGovDebt;
                                           verbose = verbose)
 
                 if verbose == :high
-                    println("The distribution μ(a, s) integrates to $(round(sum(m[:Dstar].value), digits = 3)).")
+                    println("The distribution D(a, s) integrates to $(round(sum(m[:Dstar].value), digits = 3)).")
                 end
 
                 if doplots

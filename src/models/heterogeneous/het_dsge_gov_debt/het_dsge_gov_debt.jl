@@ -524,6 +524,7 @@ function aggregate_steadystate!(m::HetDSGEGovDebt)
                               description = "Net lump sump taxes", tex_label = "Tg")
     m <= SteadyStateParameter(:Tstar, m[:Rkstar]*m[:kstar]*exp(-m[:γ]) - m[:xstar] - m[:Tg],
                               description = "Net transfer to households", tex_label = "T_*")
+
     return m
 end
 
@@ -543,7 +544,7 @@ function init_grids!(m::HetDSGEGovDebt)
 
     # Construct sgrid
     sgrid, swts, sscale = construct_sgrid(m[:pHL].value, m[:pLH].value, m[:sH_over_sL].value, ns)
-    m.grids[:sgrid] = Grid(sgrid, swts, sscale)
+    grids[:sgrid] = Grid(sgrid, swts, sscale)
     grids[:fgrid] = [[1-m[:pLH] m[:pLH].value]; [m[:pHL].value 1-m[:pHL].value]]
 
     # Construct egrid
