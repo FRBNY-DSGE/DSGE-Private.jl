@@ -86,6 +86,17 @@ function method4_steadystate!(m::HetDSGEGovDebt;
 
                 if verbose == :high
                     println("The distribution D(a, s) integrates to $(round(sum(m[:Dstar].value), digits = 3)).")
+
+                    # Calculate some summary statistics
+                    los_save = sum(m[:Dstar].value[1:na] .* (agrid - m[:cstar].value[1:na]))
+                    his_save = sum(m[:Dstar].value[1+na:end] .* (agrid - m[:cstar].value[1+na:end]))
+                    los_C    = sum(m[:Dstar].value[1:na] .* m[:cstar].value[1:na])
+                    his_C    = sum(m[:Dstar].value[1+na:end] .* m[:cstar].value[1+na:end])
+                    println("Aggregate savings by low and high skill workers (resp.):            " *
+                            "($(round(los_save, digits = 3)), " * "$(round(his_save, digits = 3)))")
+                    println("Aggregate consumption by low and high skill workers (resp.):        " *
+                            "($(round(los_C, digits = 3)), " * "$(round(his_C, digits = 3)))")
+
                 end
 
                 if doplots
@@ -98,6 +109,10 @@ function method4_steadystate!(m::HetDSGEGovDebt;
                     p = plot(agrid, m[:cstar].value[1:na], label = "low skill")
                     plot!(p, agrid, m[:cstar].value[(na + 1):end], label = "high skill")
                     savefig(p, "method4_agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+
+                    p = plot(agrid, agrid - m[:cstar].value[1:na], label = "low skill")
+                    plot!(p, agrid, agrid - m[:cstar].value[(na + 1):end], label = "high skill")
+                    savefig(p, "method4_agrid_vs_Saving_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
                 end
 
                 # use ones for now before refactoring since no longer using quadrature over s
