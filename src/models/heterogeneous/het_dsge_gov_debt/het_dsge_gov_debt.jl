@@ -683,6 +683,10 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:euler_tol, 1e-10, "Tolerance for Euler equation")
     m <= Setting(:eigen_tol, 2e-1,  "Tolerance for eigenvalue's distance from 1 in Kolmogorov forward equation")
 
+    # Numerical settings for steady-state solution
+    m <= Setting(:m_anderson, 1, "How many previous proposals to track during Anderson acceleration")
+    m <= Setting(:β_anderson, 1., "Damping term for Anderson acceleration")
+
     # Function-valued variables include distributional variables
     m <= Setting(:n_function_valued_backward_looking_states, 1, "Number of function-valued" *
                  " backward looking state variables")

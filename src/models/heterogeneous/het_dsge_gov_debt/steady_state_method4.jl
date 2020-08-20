@@ -407,7 +407,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     if euler_anderson
         out = nlsolve((F_c_pol, c_pol) -> fixedpoint_c_policy_nlsolve!(F_c_pol, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
                                                                        bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T),
-                      c_pol, ftol = euler_tol, iterations = maxit, m = m_anderson, β = β_anderson, method = :anderson)
+                      c_pol, ftol = euler_tol, iterations = maxit, m = m_anderson, beta = β_anderson, method = :anderson)
         if !out.f_converged
             @warn "Euler iteration did not converge. The final distance is $(out.residual_norm)"
             reject = true
@@ -442,7 +442,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     # Fixed point problem for D(a, s)
     if kf_anderson
         out  = nlsolve((F_D, D_as_in) -> fixedpoint_KF_nlsolve!(F_D, D_as_in, c_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T),
-                        KF_in, ftol = kf_tol, iterations = maxit, method = :anderson, m = m_anderson, β = β_anderson)
+                        KF_in, ftol = kf_tol, iterations = maxit, method = :anderson, m = m_anderson, beta = β_anderson)
         D_as = vec(out.zero) # out.zero already allocated so just re-assign D_as
     elseif kf_eigen
         D_as = stationary_KF!(transition_mat, c_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T, (agrid[end] - agrid[1]) / length(agrid);
