@@ -58,7 +58,8 @@ function method4_steadystate!(m::HetDSGEGovDebt;
         else
             [NaN]
         end
-        m_anderson = haskey(get_settings(m), :m_anderson) ? get_setting(m, :m_anderson) : 5 # Do this calculation here
+        m_anderson = haskey(get_settings(m), :m_anderson) ? get_setting(m, :m_anderson) : 5
+        β_anderson = haskey(get_settings(m), :β_anderson) ? get_setting(m, :β_anderson) : 1.
         for ahi_guess in ahi_guesses
             try
                 # Construct agrid
@@ -77,6 +78,7 @@ function method4_steadystate!(m::HetDSGEGovDebt;
                                           excess = excess, tol = tol, maxit = maxit,
                                           βband = βband, doplots = doplots,
                                           m_anderson = m_anderson,
+                                          β_anderson = β_anderson,
                                           transition_mat = kf_eigen ? Matrix{S}(undef, na * ns, na * ns) : Matrix{S}(undef, 0, 0),
                                           euler_anderson = euler_anderson,
                                           kf_anderson = kf_anderson,
@@ -146,7 +148,8 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                    βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.9999999),
                                    excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
                                    euler_anderson::Bool = false, kf_anderson::Bool = false, kf_eigen::Bool = false,
-                                   m_anderson::Int, transition_mat::Matrix{S} = Matrix{S}(undef, 0, 0), roots_algorithm = nothing,
+                                   m_anderson::Int = 5, β_anderson::S = 1.,
+                                   transition_mat::Matrix{S} = Matrix{S}(undef, 0, 0), roots_algorithm = nothing,
                                    doplots::Bool = false, verbose::Symbol = :high) where {S <: Real}
 
     na_c = get_setting(m, :na_c)
@@ -179,6 +182,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                         f, egrid, ewts, g_of_e, transition_mat, qfunc,
                                                                         maxit = get_setting(m, :policy_maxit),
                                                                         m_anderson = m_anderson,
+                                                                        β_anderson = β_anderson,
                                                                         euler_anderson = euler_anderson,
                                                                         kf_anderson = kf_anderson,
                                                                         kf_eigen = kf_eigen,
@@ -199,6 +203,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                             f, egrid, ewts, g_of_e, transition_mat, qfunc,
                                                                             maxit = get_setting(m, :policy_maxit),
                                                                             m_anderson = m_anderson,
+                                                                            β_anderson = β_anderson,
                                                                             euler_anderson = euler_anderson,
                                                                             kf_anderson = kf_anderson,
                                                                             kf_eigen = kf_eigen,
@@ -234,6 +239,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                             f, egrid, ewts, g_of_e, transition_mat, qfunc,
                                                                             maxit = get_setting(m, :policy_maxit),
                                                                             m_anderson = m_anderson,
+                                                                            β_anderson = β_anderson,
                                                                             euler_anderson = euler_anderson,
                                                                             kf_anderson = kf_anderson,
                                                                             kf_eigen = kf_eigen,
@@ -285,6 +291,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                        f, egrid, ewts, g_of_e, transition_mat, qfunc,
                                                                        maxit = get_setting(m, :policy_maxit),
                                                                        m_anderson = m_anderson,
+                                                                       β_anderson = β_anderson,
                                                                        euler_anderson = euler_anderson,
                                                                        kf_anderson = kf_anderson,
                                                                        kf_eigen = kf_eigen,
@@ -298,7 +305,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     elseif isa(roots_algorithm, AbstractSecant)
         β = find_zero(β -> bisect_β(β, na, ns, ne, na_c, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value, agrid, sgrid, c_pol_in,
                                     KF_in, f, egrid, ewts, g_of_e, transition_mat, qfunc, bg, get_setting(m, :policy_maxit), m_anderson,
-                                    euler_anderson, kf_anderson, kf_eigen, haskey(get_settings(m), :eigen_method) ?
+                                    β_anderson, euler_anderson, kf_anderson, kf_eigen, haskey(get_settings(m), :eigen_method) ?
                                     get_setting(m, :eigen_method) : :krylov,
                                     get_setting(m, :euler_tol), get_setting(m, :kf_tol), get_setting(m, :eigen_tol),
                                     get_setting(m, :C_tol)),
@@ -308,6 +315,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                        agrid, sgrid, c_pol_in, KF_in,
                                                                        f, egrid, ewts, g_of_e, transition_mat, qfunc,
                                                                        maxit = get_setting(m, :policy_maxit),
+                                                                       β_anderson = β_anderson,
                                                                        m_anderson = m_anderson,
                                                                        euler_anderson = euler_anderson,
                                                                        kf_anderson = kf_anderson,
@@ -349,12 +357,13 @@ function bisect_β(β::S, na::Int, ns::Int, ne::Int, na_c::Int, R::S, ω::S, H::
                   c_pol_in::AbstractArray{S, 3}, KF_in::AbstractArray{S, 2}, f::AbstractMatrix{S},
                   egrid::AbstractVector{S}, ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
                   transition_mat::AbstractMatrix{S}, qfunc, bg::S,
-                  maxit::Int, m_anderson::Int, euler_anderson::Bool, kf_anderson::Bool, kf_eigen::Bool,
+                  maxit::Int, m_anderson::Int, β_anderson::S, euler_anderson::Bool, kf_anderson::Bool, kf_eigen::Bool,
                   eigen_method::Symbol, euler_tol::S, kf_tol::S, eigen_tol::S, C_tol::S) where {S <: Real}
     ~, ~, bp, KF, ~ = method4_policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
                                                     ehi, elo, agrid, sgrid, c_pol_in, KF_in,
                                                     f, egrid, ewts, g_of_e, transition_mat, qfunc,
                                                     maxit = maxit, m_anderson = m_anderson,
+                                                    β_anderson = β_anderson,
                                                     euler_anderson = euler_anderson,
                                                     kf_anderson = kf_anderson,
                                                     kf_eigen = kf_eigen,
@@ -372,7 +381,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
                                        sgrid::Vector{S}, c_pol::AbstractArray{S, 3}, KF_in::AbstractArray{S, 2},
                                        f::Matrix{S}, egrid::Vector{Float64}, ewts::Vector{Float64},
                                        g_of_e::Vector{Float64}, transition_mat::AbstractMatrix{S}, qfunc, dist::S = 1.;
-                                       maxit::Int64 = 1000, m_anderson::Int = 5,
+                                       maxit::Int64 = 1000, m_anderson::Int = 5, β_anderson::S = 1.,
                                        euler_anderson::Bool = false, kf_anderson::Bool = false, kf_eigen::Bool = false,
                                        eigen_method::Symbol = :krylov, euler_tol::S = 1e-10, kf_tol::S = 1e-10,
                                        eigen_tol::S = 2e-1, C_tol::S = -1e-8) where {S <: Real}
@@ -398,7 +407,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     if euler_anderson
         out = nlsolve((F_c_pol, c_pol) -> fixedpoint_c_policy_nlsolve!(F_c_pol, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
                                                                        bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T),
-                      c_pol, ftol = euler_tol, iterations = maxit, m = m_anderson, method = :anderson)
+                      c_pol, ftol = euler_tol, iterations = maxit, m = m_anderson, β = β_anderson, method = :anderson)
         if !out.f_converged
             @warn "Euler iteration did not converge. The final distance is $(out.residual_norm)"
             reject = true
@@ -433,7 +442,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     # Fixed point problem for D(a, s)
     if kf_anderson
         out  = nlsolve((F_D, D_as_in) -> fixedpoint_KF_nlsolve!(F_D, D_as_in, c_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T),
-                        KF_in, ftol = kf_tol, iterations = maxit, method = :anderson, m = m_anderson)
+                        KF_in, ftol = kf_tol, iterations = maxit, method = :anderson, m = m_anderson, β = β_anderson)
         D_as = vec(out.zero) # out.zero already allocated so just re-assign D_as
     elseif kf_eigen
         D_as = stationary_KF!(transition_mat, c_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T, (agrid[end] - agrid[1]) / length(agrid);
