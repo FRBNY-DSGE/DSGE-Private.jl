@@ -410,10 +410,11 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
             b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
             sum_term .= 0. # Reset the values to zero (done with it for this loop)
             if all(b .< 0.)
+                # Increasing upper bound of agrid and number of egrid points are generally the best options
                 throw(CashOnHandError("All elements of b (assets today) are negative. " *
                                       "The last element is b=$(round(b[end], digits = 3)). " *
                                       "Try increasing the upper bound of the agrid, increasing " *
-                                      "the number of agrid points, and/or lowering β"))
+                                      "the number of egrid points, increasing the number of agrid points, and/or lowering β"))
             end
 
             # Handle constrained consumption today: for b < 0, need to reset c such that b is exactly 0. See line 254
@@ -423,11 +424,11 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
             # If b[1] is positive, then people aren't using a c(0, s, e) policy but also must have some spare b
             # that they additionally consume. This code block assumes "relative" monotonicity of c
             if b[1] > 0.
-                if c[1] < c_constrained[is, ie]
-                    # Check consuming more than implied by constrained rule if b[1] > 0
+                if c[1] < c_constrained[is, ie] # Check consuming more than implied by constrained rule if b[1] > 0
+                    # Increasing upper bound of agrid and number of egrid points are generally the best options
                     throw(CashOnHandError("c[1] - c_constrained[is, ie]=$(c[1] - c_constrained[is, ie]), " *
-                                          "try increasing the upper bound of the agrid " *
-                                          "or the number of agrid points."))
+                                          "try increasing the upper bound of the agrid, " *
+                                          "the number of egrid points, or the number of agrid points."))
                 end
                 c_c = collect(range(c_constrained[is, ie], c[1], length = na_c)) # constrained rule is an equal spacing
                 b_c = exp(γ) * (-ω * sgrid[is] * egrid[ie] * H - T .+ c_c)       # between no-assets rule and c[1]
@@ -435,7 +436,9 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
                     b_c[1] = 0. # Force the first point to be zero (in case of floating point errors)
                 end
                 if any(b_c .< -1e-14)
-                    throw(CashOnHandError("Some assets today for constrained agents are negative."))
+                    # Increasing upper bound of agrid and number of egrid points are generally the best options
+                    throw(CashOnHandError("Some assets today for constrained agents are negative. Try increasing the " *
+                                          "upper bound of the agrid, the number of egrid points, or the number of agrid points."))
                 end
                 cutoff = findlast(b_c .< b[1])
                 b = vcat(b_c[1:cutoff], b) # Add additional points for constrained people
@@ -486,6 +489,7 @@ function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::Abstr
             b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
             sum_term .= 0. # Reset the values to zero (done with it for this loop)
             if all(b .< 0.)
+                # Increasing upper bound of agrid and number of egrid points are generally the best options
                 throw(CashOnHandError("All elements of b (assets today) are negative. " *
                                       "The last element is b=$(round(b[end], digits = 3)). " *
                                       "Try increasing the upper bound of agrid, increasing " *
@@ -499,8 +503,8 @@ function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::Abstr
             # If b[1] is positive, then people aren't using a c(0, s, e) policy but also must have some spare b
             # that they additionally consume. This code block assumes "relative" monotonicity of c
             if b[1] > 0.
-                if c[1] < c_constrained[is, ie]
-                    # Check consuming more than implied by constrained rule if b[1] > 0
+                if c[1] < c_constrained[is, ie] # Check consuming more than implied by constrained rule if b[1] > 0
+                    # Increasing upper bound of agrid and number of egrid points are generally the best options
                     throw(CashOnHandError("c[1] - c_constrained[is, ie]=$(c[1] - c_constrained[is, ie]), " *
                                           "try increasing the upper bound of the agrid " *
                                           "or the number of agrid points."))
