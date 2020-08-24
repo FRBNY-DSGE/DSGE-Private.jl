@@ -379,6 +379,7 @@ module DSGE
     # Heterogeneous Agent Models
     include("models/heterogeneous/util.jl")
     include("models/heterogeneous/steady_state_helpers/kolmogorov_forward.jl")
+    include("solve/discrete_time_reduction/copula.jl")
 
     include("models/heterogeneous/krusell_smith/krusell_smith.jl")
     include("models/heterogeneous/krusell_smith/steady_state.jl")
