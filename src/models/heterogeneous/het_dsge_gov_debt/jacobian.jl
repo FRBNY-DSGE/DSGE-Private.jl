@@ -1,6 +1,6 @@
 function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
-    reset_grids!(m)
-    #truncate_distribution!(m)
+    # reset_grids!(m) # to make this work with an adaptive agrid, we can't reset grid
+    # truncate_distribution!(m)
 
     # Load in endogenous state and eq cond indices
     endo = augment_model_states(m.endogenous_states_original,#m.endogenous_states_unnormalized,
@@ -70,9 +70,10 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     qfunction_hetdsgegovdebt(x) = mollifier_hetdsgegovdebt(x, ehi, elo)
 
     unc = 1 ./ ell .<= repeat(agrid,ns) .+ η
+    ι   = (agrid[end] - agrid[1]) / na
 
     dF1_dELL, dF1_dRZ, dF1_dELLP, dF1_dWHP, dF1_dTTP, ee =
-        euler_equation_hetdsgegovdebt(na, ns, qp, qfunction_hetdsgegovdebt, agrid, sgrid, fgrid, unc,
+        euler_equation_hetdsgegovdebt(na, ns, qp, qfunction_hetdsgegovdebt, agrid, sgrid, fgrid, unc, ι,
                                R, γ, β, η, ell, T, ω, H)
 
     # KF Equation
@@ -107,37 +108,37 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
 
     # KF eqn
     JJ[eq[:eq_kolmogorov_fwd],endo[:kf′_t]] = -Matrix{Float64}(I, nans, nans)
-    JJ[eq[:eq_kolmogorov_fwd],endo[:kf_t]]  = dF2_dM
+    JJ[eq[:eq_kolmogorov_fwd],endo[:kf_t]]  = dF2_dM * ι
     JJ[eq[:eq_kolmogorov_fwd],endo[:l_t]]   = dF2_dELL
     JJ[eq[:eq_kolmogorov_fwd],endo[:R_t]]   = dF2_dRZ
-    JJ[eq[:eq_kolmogorov_fwd],endo[:z_t]]   = -dF2_dM*dF2_dRZ
-    JJ[eq[:eq_kolmogorov_fwd],endo[:w_t]]   = dF2_dM*dF2_dWH
-    JJ[eq[:eq_kolmogorov_fwd],endo[:L_t]]   = dF2_dM*dF2_dWH
-    JJ[eq[:eq_kolmogorov_fwd],endo[:t_t]]   = dF2_dM*dF2_dTT
+    JJ[eq[:eq_kolmogorov_fwd],endo[:z_t]]   = -dF2_dM * dF2_dRZ * ι
+    JJ[eq[:eq_kolmogorov_fwd],endo[:w_t]]   = dF2_dM * dF2_dWH * ι
+    JJ[eq[:eq_kolmogorov_fwd],endo[:L_t]]   = dF2_dM * dF2_dWH * ι
+    JJ[eq[:eq_kolmogorov_fwd],endo[:t_t]]   = dF2_dM * dF2_dTT * ι
 
     # aggregate consumption
     JJ[first(eq[:eq_agg_consumption]),first(endo[:C_t])] = -aggc # normalize C_t by mean consumption
     JJ[first(eq[:eq_agg_consumption]), endo[:l_t]]       = -(D .* unc .* c)
-    JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]]      = c # note, now we linearize
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])] = -dot(c, dF2_dRZ)
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:w_t])] =  dot(c, dF2_dWH)
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:L_t])] =  dot(c, dF2_dWH)
-    JJ[first(eq[:eq_agg_consumption]),first(endo[:t_t])] =  dot(c, dF2_dTT)
+    JJ[first(eq[:eq_agg_consumption]), endo[:kf_t]]      = ι .* c # note, now we linearize
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:z_t])] = -dot(ι .* c, dF2_dRZ)
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:w_t])] =  dot(ι .* c, dF2_dWH)
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:L_t])] =  dot(ι .* c, dF2_dWH)
+    JJ[first(eq[:eq_agg_consumption]),first(endo[:t_t])] =  dot(ι .* c, dF2_dTT)
 
     # lambda = average marginal utility
     JJ[first(eq[:eq_lambda]),first(endo[:margutil_t])] = lam
-    JJ[first(eq[:eq_lambda]),endo[:kf_t]]              = -(1 ./ c) # note, now we linearize
-    JJ[first(eq[:eq_lambda]),first(endo[:z_t])]        =  dot(1 ./ c, dF2_dRZ)
-    JJ[first(eq[:eq_lambda]),first(endo[:w_t])]        = -dot(1 ./ c, dF2_dWH)
-    JJ[first(eq[:eq_lambda]),first(endo[:L_t])]        = -dot(1 ./ c, dF2_dWH)
-    JJ[first(eq[:eq_lambda]),first(endo[:t_t])]        = -dot(1 ./ c, dF2_dTT)
+    JJ[first(eq[:eq_lambda]),endo[:kf_t]]              = -(ι ./ c) # note, now we linearize
+    JJ[first(eq[:eq_lambda]),first(endo[:z_t])]        =  dot(ι ./ c, dF2_dRZ)
+    JJ[first(eq[:eq_lambda]),first(endo[:w_t])]        = -dot(ι ./ c, dF2_dWH)
+    JJ[first(eq[:eq_lambda]),first(endo[:L_t])]        = -dot(ι ./ c, dF2_dWH)
+    JJ[first(eq[:eq_lambda]),first(endo[:t_t])]        = -dot(ι ./ c, dF2_dTT)
     JJ[first(eq[:eq_lambda]),endo[:l_t]]               = -(unc .* D ./ c)
 
     # transfer
     JJ[first(eq[:eq_transfers]),first(endo[:t_t])]         = T
-    JJ[first(eq[:eq_transfers]),first(endo[:capreturn_t])] = -Rk * kstar
-    JJ[first(eq[:eq_transfers]),first(endo[:k_t])]         = -Rk * kstar
-    JJ[first(eq[:eq_transfers]),first(endo[:z_t])]         = Rk * kstar
+    JJ[first(eq[:eq_transfers]),first(endo[:capreturn_t])] = -Rk * kstar * exp(-γ)
+    JJ[first(eq[:eq_transfers]),first(endo[:k_t])]         = -Rk * kstar * exp(-γ)
+    JJ[first(eq[:eq_transfers]),first(endo[:z_t])]         = Rk * kstar * exp(-γ)
     JJ[first(eq[:eq_transfers]),first(endo[:I_t])]         = xstar
     JJ[first(eq[:eq_transfers]),first(endo[:mc_t])]        = ystar
     #JJ[first(eq[:eq_transfers]),first(endo[:y_t])]        = (1-1/g)*ystar
@@ -163,10 +164,10 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
 
     # capital accumulation
     JJ[first(eq[:eq_capital_accumulation]),first(endo[:k′_t])] = 1.
-    JJ[first(eq[:eq_capital_accumulation]),first(endo[:k_t])]  = -(1 - δ)
-    JJ[first(eq[:eq_capital_accumulation]),first(endo[:z_t])]  =  (1 - δ)
-    JJ[first(eq[:eq_capital_accumulation]),first(endo[:μ_t])]  = -xstar / kstar
-    JJ[first(eq[:eq_capital_accumulation]),first(endo[:I_t])]  = -xstar / kstar
+    JJ[first(eq[:eq_capital_accumulation]),first(endo[:k_t])]  = -(1 - δ) * exp(-γ)
+    JJ[first(eq[:eq_capital_accumulation]),first(endo[:z_t])]  =  (1 - δ) * exp(-γ) # we divide this line by kstar here, which does not happen
+    JJ[first(eq[:eq_capital_accumulation]),first(endo[:μ_t])]  = -xstar / kstar # in the Jacobian from autodiff (since it doesn't know it should
+    JJ[first(eq[:eq_capital_accumulation]),first(endo[:I_t])]  = -xstar / kstar # unless the residual is divided by kstar)
 
     # wage phillips curve
     JJ[first(eq[:eq_wage_phillips]),first(endo[:π_w_t])]      = -1.
@@ -294,7 +295,7 @@ function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
                                        qp::Function, qfunction::Function,
                                        agrid::Vector{Float64}, sgrid::Vector{Float64},
                                        fgrid::Matrix{Float64},
-                                       unc::BitArray,
+                                       unc::BitArray, ι::Float64,
                                        R::Float64, γ::Float64, β::Float64,
                                        η::Float64, ell::Vector{Float64}, T::Float64,
                                        ω::Float64, H::Float64)
@@ -318,8 +319,8 @@ function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
                 for iap=1:na
                     ip = na*(isp-1)+iap
                     ee[i,ip] = (agrid[iap] - R*(exp(-γ))*max(agrid[ia]-1/ell[i], -η) - T)/(ω*H*sgrid[isp])
-                    ξ[i,ip] = ((β*R*exp(-γ))/(ω*H*sgrid[isp])^2)*max(ell[ip],1/(agrid[iap]+η))*qp(ee[i,ip])*fgrid[iss,isp]
-                    Ξ[i,ip] = ((β*R*exp(-γ))/(ω*H*sgrid[isp]))*max(ell[ip],1/(agrid[iap]+η))*qfunction(ee[i,ip])*fgrid[iss,isp]
+                    ξ[i,ip] = ι * ((β*R*exp(-γ))/(ω*H*sgrid[isp])^2)*max(ell[ip],1/(agrid[iap]+η))*qp(ee[i,ip])*fgrid[iss,isp]
+                    Ξ[i,ip] = ι * ((β*R*exp(-γ))/(ω*H*sgrid[isp]))*max(ell[ip],1/(agrid[iap]+η))*qfunction(ee[i,ip])*fgrid[iss,isp]
                     sumELL += ξ[i,ip]*R*(exp(-γ))*unc[i]/ell[i]
                     sumRZ  += ξ[i,ip]*R*(exp(-γ))*max(agrid[ia] - 1/ell[i],-η)
                     dF1_dELLP[i,ip] = Ξ[i,ip]*unc[ip]
@@ -365,7 +366,7 @@ function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
                     smallψ[ip,i] = D[i]*qp(ee[i,ip])*fgrid[iss,isp]/((ω*H*sgrid[isp])^2)
                     sumWH += bigΨ[ip,i] + smallψ[ip,i]*ee[i,ip]*(ω*H*sgrid[isp])
                     sumRZ += smallψ[ip,i]*(R*exp(-γ))*max(agrid[ia] - 1/ell[i],-η)
-                    dF2_dELL[ip,i] = smallψ[ip,i]*(R*exp(-γ))*(unc[i]/ell[i])
+                    dF2_dELL[ip,i] = -smallψ[ip,i]*(R*exp(-γ))*(unc[i]/ell[i])
                     sumTT += smallψ[ip,i]*T
                     dF2_dM[ip,i] = qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp]) # note, now we linearize
                 end
@@ -375,6 +376,7 @@ function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
             dF2_dTT[ip] = -sumTT
         end
     end
+
     return dF2_dWH, dF2_dRZ, dF2_dTT, dF2_dELL, bigΨ, dF2_dM
 end
 
