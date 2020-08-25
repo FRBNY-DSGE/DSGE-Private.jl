@@ -1,6 +1,6 @@
 function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     # reset_grids!(m) # to make this work with an adaptive agrid, we can't reset grid
-    # truncate_distribution!(m)
+    truncate_distribution!(m)
 
     # Load in endogenous state and eq cond indices
     endo = augment_model_states(m.endogenous_states_original,#m.endogenous_states_unnormalized,
