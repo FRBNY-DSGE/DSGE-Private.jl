@@ -935,7 +935,7 @@ function construct_bgrid_agrid_big(agrid::AbstractVector{S}, sgrid::AbstractVect
     agrid_big = Array{Float64}(undef, na, ns, ne)
     for ie in 1:ne
         for is in 1:ns
-            agrid_big[:, is, ie] = (ω * sgrid[is] * egrid[ie] * H + T) .+ exp(-γ) * R .* bgrid
+            agrid_big[:, is, ie] = (ω * sgrid[is] * egrid[ie] * H + T) .+ exp(-γ) .* bgrid
         end
     end
 
