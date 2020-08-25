@@ -395,19 +395,31 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
             verify_one = 0.0
             for iep in 1:ne     # Inner integral over e' (done first b/c Julia is column major)
                 for isp in 1:ns # Outer sum over s'
-                    #               p(s'|s)    * iota(e')  *      g(e')    * c(a, s')^{-1}
+                    #               p(s'|s)    * iota(e')  *      g(e')    * c(b′, s', e′)^{-1}
                     # Note that f[is, isp] is prob going froms sgrid[is] to sgrid[isp], so we do want to
                     # iterate over the second element rather than the first, despite the p(s'|s) notation
                     sum_term   .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[:, isp, iep]
                 end
             end
 
-            # Compute ell(a, s) = β * R * exp(-γ) * (Σₛ∫ₑ)
-            # l = β * R * exp(-γ) * sum_term
-            # Compute consumption today: c(b', s) = 1/l(a, s) and then
-            # assets today: b = exp(γ) * (b' / R - w * s * e * H - T + c)
-            c = 1 ./ ((β * R * exp(-γ)) .* sum_term)
-            b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
+            # Compute ell(b′, s, e) = β * R * exp(-γ) * (Σₛₚ∫ₑₚ) = β * R * exp(-γ) * sum_term
+            # Note that b′ is a choice variable today because it is how much an agent chooses to save
+            # today to obtain b′ assets tomorrow. Thus, agents do not have any uncertainty about b′
+            # once they know what s and e today are, hence the quadrature for the expectation
+            # only needs to occur over (s′, e′). It follows that consumption today as a function
+            # of savings b′ tomorrow is c(b′, s, e) = 1 / ell(b′, s, e).
+            #
+            # Note that c(b′, s, e) is the quantity of consumption today that will get you to b′ tomorrow,
+            # not the quantity of consumption chosen if an agent has b′ assets today.
+            # Once you know c(b′, s, e), you can calculate b(b′), i.e. assets today as a function of b′:
+            # b′ / R = exp(-γ) b - c + ω * s * e * H + T ⇒ b = exp(γ) * (b′ / R - ω * s * e * H - T + c)
+            #
+            # We now have c = c(b′, s, e) and b = b(b′), where b′ = bgrid, i.e. it is a fixed grid.
+            # Since c(b′, s, e) and b(b′) are functions, c(b′, s, e) and b(b′) map b′ to a unique
+            # choice of consumption today and assets today. In other words, given b′ tomorrow, there is
+            # no other pair (c, b) that implies b′ tomorrow. Thus, c(b(b′), s, e) = c(b′, s, e)
+            c = 1 ./ ((β * R * exp(-γ)) .* sum_term) # c(b′, s, e)
+            b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c)) # b(b′)
             sum_term .= 0. # Reset the values to zero (done with it for this loop)
             if all(b .< 0.)
                 # Increasing upper bound of agrid and number of egrid points are generally the best options
@@ -417,13 +429,13 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
                                       "the number of egrid points, increasing the number of agrid points, and/or lowering β"))
             end
 
-            # Handle constrained consumption today: for b < 0, need to reset c such that b is exactly 0. See line 254
+            # Handle constrained consumption today: for b < 0, need to reset c(b′, s, e) such that b today is exactly 0
             c[b .< 0.] = -(bp[b .< 0] ./ R) .+  ω * sgrid[is] * egrid[ie] * H .+ T
             b         .= vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
 
-            # If b[1] is positive, then people aren't using a c(0, s, e) policy but also must have some spare b
-            # that they additionally consume. This code block assumes "relative" monotonicity of c
-            if b[1] > 0.
+            # If b[1] is positive, then people aren't using a c(0, s, e) policy (i.e. save nothing and set b′ = 0)
+            # but also must have some spare assets they consume. So need to handle some edge cases
+            if b[1] > 0. # This code block assumes b_c > 0 for all i in 2:length(b)
                 if c[1] < c_constrained[is, ie] # Check consuming more than implied by constrained rule if b[1] > 0
                     # Increasing upper bound of agrid and number of egrid points are generally the best options
                     throw(CashOnHandError("c[1] - c_constrained[is, ie]=$(c[1] - c_constrained[is, ie]), " *
@@ -460,6 +472,7 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
     end
 end
 
+# See fixedpoint_c_policy! for comments. This function produces the residual c_pol - F(c_pol)
 function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::AbstractArray{S, 3}, ns::Int, ne::Int, na_c::Int,
                                       sum_term::AbstractVector{S}, f::AbstractMatrix{S},
                                       ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
@@ -468,61 +481,47 @@ function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::Abstr
                                       β::S, R::S, γ::S, ω::S, H::S, T::S) where {S <: Real}
     for is in 1:ns
         for ie in 1:ne
-            # Sums
             verify_one = 0.0
-            for iep in 1:ne     # Inner integral over e' (done first b/c Julia is column major)
-                for isp in 1:ns # Outer sum over s'
-                    #               p(s'|s)    * iota(e')  *      g(e')    * c(a, s')^{-1}
-                    # Note that f[is, isp] is prob going froms sgrid[is] to sgrid[isp], so we do want to
-                    # iterate over the second element rather than the first, despite the p(s'|s) notation
+            for iep in 1:ne
+                for isp in 1:ns
                     sum_term   .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[:, isp, iep]
                     verify_one  +=  f[is, isp] * ewts[iep] * g_of_e[iep]
                 end
             end
             @test isapprox(verify_one, 1.0, atol = 1e-5)
 
-            # Compute ell(a, s) = β * R * exp(-γ) * (Σₛ∫ₑ)
-            # l = β * R * exp(-γ) * sum_term
-            # Compute consumption today: c(b', s) = 1/l(a, s) and then
-            # assets today: b = exp(γ) * (b' / R - w * s * e * H - T + c)
             c = 1 ./ ((β * R * exp(-γ)) .* sum_term)
             b = vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
-            sum_term .= 0. # Reset the values to zero (done with it for this loop)
+            sum_term .= 0.
             if all(b .< 0.)
-                # Increasing upper bound of agrid and number of egrid points are generally the best options
                 throw(CashOnHandError("All elements of b (assets today) are negative. " *
                                       "The last element is b=$(round(b[end], digits = 3)). " *
                                       "Try increasing the upper bound of agrid, increasing " *
                                       "the number of agrid points, and/or lowering β"))
             end
 
-            # Handle constrained consumption today: for b < 0, need to reset c such that b is exactly 0. See line 254
             c[b .< 0.] = -(bp[b .< 0] ./ R) .+  ω * sgrid[is] * egrid[ie] * H .+ T
             b         .= vec(exp(γ) * ((bp ./ R) .- ω * sgrid[is] * egrid[ie] * H .- T .+ c))
 
-            # If b[1] is positive, then people aren't using a c(0, s, e) policy but also must have some spare b
-            # that they additionally consume. This code block assumes "relative" monotonicity of c
             if b[1] > 0.
-                if c[1] < c_constrained[is, ie] # Check consuming more than implied by constrained rule if b[1] > 0
-                    # Increasing upper bound of agrid and number of egrid points are generally the best options
+                if c[1] < c_constrained[is, ie]
                     throw(CashOnHandError("c[1] - c_constrained[is, ie]=$(c[1] - c_constrained[is, ie]), " *
                                           "try increasing the upper bound of the agrid " *
                                           "or the number of agrid points."))
                 end
-                c_c = collect(range(c_constrained[is, ie], c[1], length = na_c)) # constrained rule is an equal spacing
-                b_c = exp(γ) * (-ω * sgrid[is] * egrid[ie] * H - T .+ c_c)       # between no-assets rule and c[1]
+                c_c = collect(range(c_constrained[is, ie], c[1], length = na_c))
+                b_c = exp(γ) * (-ω * sgrid[is] * egrid[ie] * H - T .+ c_c)
                 if -1e-10 < b_c[1] < 0.
-                    b_c[1] = 0. # Force the first point to be zero (in case of floating point errors)
+                    b_c[1] = 0.
                 end
                 if any(b_c .< -1e-10)
                     throw(CashOnHandError("Some assets today for constrained agents are negative."))
                 end
                 cutoff = findlast(b_c .< b[1])
-                b = vcat(b_c[1:cutoff], b) # Add additional points for constrained people
-                c = vcat(c_c[1:cutoff], c) # so that, for the new b, the condition b[1] ≈ 0 holds
+                b = vcat(b_c[1:cutoff], b)
+                c = vcat(c_c[1:cutoff], c)
             end
 
-            # Nearest points, linear interpolation
             F_c_pol[:, is, ie] = try
                 interp_one(b, c, bgrid) - c_pol[:, is, ie]
             catch e
