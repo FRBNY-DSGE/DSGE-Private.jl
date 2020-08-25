@@ -248,7 +248,7 @@ function method3_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     end
 
     # Integrate out the e dimension
-    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T)
+    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T, R)
     if doplots
         for is in 1:ns
             p = plot()
@@ -319,7 +319,7 @@ function method3_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
         c_constrained[:, ie] = sgrid .* (ω * e * H) .+ T
     end
 
-    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T)
+    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T, R)
 
     # Allocate memory here
     bp       = bgrid # bp = b' = bprime, only to make it clear that we're working with b', not b
@@ -926,7 +926,7 @@ function construct_agrid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
 end
 
 function construct_bgrid_agrid_big(agrid::AbstractVector{S}, sgrid::AbstractVector{S}, egrid::AbstractVector{S},
-                                   na::Int, ns::Int, ne::Int, γ::S, ω::S, H::S, T::S) where {S <: Real}
+                                   na::Int, ns::Int, ne::Int, γ::S, ω::S, H::S, T::S, R::S) where {S <: Real}
 
     bmin = 0.0
     bmax = exp(γ) * (maximum(agrid)- ω * maximum(sgrid) * maximum(egrid) * H) # NOTE egrid is not exactly in [elo, ehi] b/c
@@ -936,7 +936,7 @@ function construct_bgrid_agrid_big(agrid::AbstractVector{S}, sgrid::AbstractVect
     agrid_big = Array{Float64}(undef, na, ns, ne)
     for ie in 1:ne
         for is in 1:ns
-            agrid_big[:, is, ie] = (ω * sgrid[is] * egrid[ie] * H + T) .+ exp(-γ) .* bgrid
+            agrid_big[:, is, ie] = (ω * sgrid[is] * egrid[ie] * H + T) .+ exp(-γ) * R .* bgrid
         end
     end
 

@@ -330,7 +330,7 @@ function method4_find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         error("Cannot use the Roots algorithm $(typeof(roots_algorithm))")
     end
 
-    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T)
+    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T, R)
     if doplots
         for is in 1:ns
             p = plot()
@@ -397,7 +397,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
         c_constrained[:, ie] = sgrid .* (ω * e * H) .+ T
     end
 
-    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T)
+    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T, R)
 
     # Allocate memory here
     bp       = bgrid # bp = b' = bprime, only to make it clear that we're working with b', not b
