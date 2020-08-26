@@ -436,7 +436,7 @@ function method4_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     end
 
     # Calculate c(a, s) and bp(a, s)
-    c_as = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol, ω, H, T, γ, tol = C_tol)
+    c_as = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol, tol = C_tol)
     bp   = (R * exp(-γ)) .* (agrid .- c_as)
 
     # Fixed point problem for D(a, s)
@@ -550,9 +550,9 @@ function construct_transition!(transition_mat::AbstractMatrix{S}, C_as::Abstract
 end
 
 # Maps c(b, s, e) -> c(a, s)
-function integrate_out_e(agrid::AbstractVector{S}, agrid_big::AbstractArray{S, 3},
-                         bgrid::AbstractVector{S}, sgrid::AbstractVector{S}, c_pol::AbstractArray{S, 3},
-                         ω::S, H::S, T::S, γ::S; tol::Float64 = -1e-8) where {S <: Real}
+function integrate_out_e(agrid::AbstractVector{S2}, agrid_big::AbstractArray{S2, 3},
+                         bgrid::AbstractVector{S2}, sgrid::AbstractVector{S2}, c_pol::AbstractArray{S1, 3};
+                         tol::Float64 = -1e-8) where {S1 <: Real, S2 <: Real}
     # Map c(b, s, e) -> c(a, s, e)
     na, ns, ne = size(agrid_big)
     C_as    = Matrix{S}(undef, na, ns)

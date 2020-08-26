@@ -439,7 +439,7 @@ function method6_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     end
 
     # Calculate c(a, s) and bp(a, s)
-    c_as = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol, ω, H, T, γ, tol = C_tol)
+    c_as = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol, tol = C_tol)
     bp   = (R * exp(-γ)) .* (agrid .- c_as)
 
     # Fixed point problem for D(a, s)
@@ -484,7 +484,7 @@ function cas2cbse(c_as::AbstractArray{S1}, agrid::AbstractVector{S2}, sgrid::Abs
 
     # Create the correspondence from c(a, s) to c(b, s, e) using the fact that c(a, s) is known,
     # hence as long as (b_implied, s, e) is consistent with (a, s), then this correspondence works.
-    c_bse = similar(b_implied)
+    c_bse = Array{eltype(c_as)}(undef, na, ns, ne)
     for ie in 1:ne
         for is in 1:ns
             c_bse[:, is, ie] = interp_one(b_implied[:, is, ie], c_as[:, is], bgrid)

@@ -435,7 +435,7 @@ function method5_policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β:
     end
 
     # Calculate c(a, s) and bp(a, s)
-    c_as = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol, ω, H, T, γ, tol = C_tol)
+    c_as = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol, tol = C_tol)
     bp   = (R * exp(-γ)) .* (agrid .- c_as)
 
     # Now make sure c(a, s) solves the Euler equation to which we apply a Taylor expansion
