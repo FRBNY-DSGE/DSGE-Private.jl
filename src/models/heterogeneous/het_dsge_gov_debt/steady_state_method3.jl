@@ -657,7 +657,7 @@ function integrate_out_e(agrid::AbstractVector{S}, agrid_big::AbstractArray{S, 3
         # "integrate out" the egrid.
         C_Final[:, is] = interp_one(vec_agrid_big_is[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
         if !any(agrid - C_Final[:, is] .< -1e-16)
-            if any(agrid  - C_Final[:, is] .< -1e-14)
+            if any(agrid  - C_Final[:, is] .< tol)
                 throw(CashOnHandError("For skill s=$(round(sgrid[is], digits = 3)), " *
                                       "max(C(a, s) - a) = $(maximum(C_Final[:, is] - agrid)). Try increasing the upper bound " *
                                       "of the agrid or decreasing the number of agrid points."))
@@ -924,12 +924,17 @@ function construct_agrid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
     return agrid, awts, ascale
 end
 
-function construct_bgrid_agrid_big(agrid::AbstractVector{S}, sgrid::AbstractVector{S}, egrid::AbstractVector{S},
-                                   na::Int, ns::Int, ne::Int, γ::S, ω::S, H::S, T::S, R::S) where {S <: Real}
+@inline function construct_bgrid_agrid_big(agrid::AbstractVector{S}, sgrid::AbstractVector{S}, egrid::AbstractVector{S},
+                                           na::Int, ns::Int, ne::Int, γ::S, ω::S, H::S, T::S, R::S) where {S <: Real}
 
-    bmin = 0.0
-    bmax = exp(γ) * (maximum(agrid)- ω * maximum(sgrid) * maximum(egrid) * H) # NOTE egrid is not exactly in [elo, ehi] b/c
-    bgrid = bmin .+ ((1:na) / na).^2 * (bmax - bmin)                          # slightly renormalized to ensure ∫e g(e) de = 1
+    bgrid = construct_bgrid(agrid, sgrid, egrid, na, γ, ω, H, T, R)
+    agrid_big = construct_agrid_big(bgrid, sgrid, egrid, na, ns, ne, γ, ω, H, T, R)
+
+    return bgrid, agrid_big
+end
+
+@inline function construct_agrid_big(bgrid::AbstractVector{S}, sgrid::AbstractVector{S}, egrid::AbstractVector{S},
+                                     na::Int, ns::Int, ne::Int, γ::S, ω::S, H::S, T::S, R::S) where {S <: Real}
 
     # a grid (cash on hand) implied by bgrid (assets) is: map b into a using equation at top of page 4
     agrid_big = Array{Float64}(undef, na, ns, ne)
@@ -939,5 +944,12 @@ function construct_bgrid_agrid_big(agrid::AbstractVector{S}, sgrid::AbstractVect
         end
     end
 
-    return bgrid, agrid_big
+    return agrid_big
+end
+
+@inline function construct_bgrid(agrid::AbstractVector{S}, sgrid::AbstractVector{S}, egrid::AbstractVector{S},
+                                 na::Int, γ::S, ω::S, H::S, T::S, R::S) where {S <: Real}
+    bmin = 0.0
+    bmax = exp(γ) * (maximum(agrid) - ω * maximum(sgrid) * maximum(egrid) * H) # NOTE egrid is not exactly in [elo, ehi] b/c
+    return bmin .+ ((1:na) / na).^2 * (bmax - bmin)                           # slightly renormalized to ensure ∫e g(e) de = 1
 end

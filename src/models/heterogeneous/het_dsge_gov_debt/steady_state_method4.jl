@@ -555,7 +555,7 @@ function integrate_out_e(agrid::AbstractVector{S2}, agrid_big::AbstractArray{S2,
                          tol::Float64 = -1e-8) where {S1 <: Real, S2 <: Real}
     # Map c(b, s, e) -> c(a, s, e)
     na, ns, ne = size(agrid_big)
-    C_as    = Matrix{S}(undef, na, ns)
+    C_as    = Matrix{S1}(undef, na, ns)
     for is in 1:ns
         # Sort the a's, given the skill level
         vec_agrid_big_is = vec(agrid_big[:, is, :])
@@ -571,7 +571,7 @@ function integrate_out_e(agrid::AbstractVector{S2}, agrid_big::AbstractArray{S2,
         # "integrate out" the egrid.
         C_as[:, is] = interp_one(vec_agrid_big_is[sorted_inds], vec(c_pol[:, is, :])[sorted_inds], agrid)
         if !any(agrid - C_as[:, is] .< -1e-16)
-            if any(agrid  - C_as[:, is] .< -1e-14)
+            if any(agrid  - C_as[:, is] .< tol)
                 throw(CashOnHandError("For skill s=$(round(sgrid[is], digits = 3)), " *
                                       "max(C(a, s) - a) = $(maximum(C_as[:, is] - agrid)). Try increasing the upper bound " *
                                       "of the agrid or decreasing the number of agrid points."))
