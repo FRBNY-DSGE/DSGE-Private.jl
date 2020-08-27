@@ -550,12 +550,12 @@ function construct_transition!(transition_mat::AbstractMatrix{S}, C_as::Abstract
 end
 
 # Maps c(b, s, e) -> c(a, s)
-function integrate_out_e(agrid::AbstractVector{S2}, agrid_big::AbstractArray{S2, 3},
-                         bgrid::AbstractVector{S2}, sgrid::AbstractVector{S2}, c_pol::AbstractArray{S1, 3};
-                         tol::Float64 = -1e-8) where {S1 <: Real, S2 <: Real}
+function integrate_out_e(agrid::AbstractVector{S1}, agrid_big::AbstractArray{S2, 3},
+                         bgrid::AbstractVector{S1}, sgrid::AbstractVector{S1}, c_pol::AbstractArray{S3, 3};
+                         tol::Float64 = -1e-8) where {S1 <: Real, S2 <: Real, S3 <: Real}
     # Map c(b, s, e) -> c(a, s, e)
     na, ns, ne = size(agrid_big)
-    C_as    = Matrix{S1}(undef, na, ns)
+    C_as    = Matrix{S3}(undef, na, ns)
     for is in 1:ns
         # Sort the a's, given the skill level
         vec_agrid_big_is = vec(agrid_big[:, is, :])

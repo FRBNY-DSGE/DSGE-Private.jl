@@ -933,11 +933,11 @@ end
     return bgrid, agrid_big
 end
 
-@inline function construct_agrid_big(bgrid::AbstractVector{S}, sgrid::AbstractVector{S}, egrid::AbstractVector{S},
-                                     na::Int, ns::Int, ne::Int, γ::S, ω::S, H::S, T::S, R::S) where {S <: Real}
+@inline function construct_agrid_big(bgrid::AbstractVector{S1}, sgrid::AbstractVector{S1}, egrid::AbstractVector{S1},
+                                     na::Int, ns::Int, ne::Int, γ::S2, ω::S2, H::S2, T::S2, R::S2) where {S1 <: Real, S2 <: Real}
 
     # a grid (cash on hand) implied by bgrid (assets) is: map b into a using equation at top of page 4
-    agrid_big = Array{Float64}(undef, na, ns, ne)
+    agrid_big = Array{S2}(undef, na, ns, ne)
     for ie in 1:ne
         for is in 1:ns
             agrid_big[:, is, ie] = (ω * sgrid[is] * egrid[ie] * H + T) .+ exp(-γ) .* bgrid

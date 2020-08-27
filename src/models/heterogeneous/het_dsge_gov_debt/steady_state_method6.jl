@@ -472,10 +472,10 @@ end
 # c(a, s) -> c(b, s, e)
 function cas2cbse(c_as::AbstractArray{S1}, agrid::AbstractVector{S2}, sgrid::AbstractVector{S2},
                   egrid::AbstractVector{S2}, bgrid::AbstractVector{S2}, na::Int, ns::Int, ne::Int,
-                  γ::S1, ω::S1, H::S1, T::S1, R::S1) where {S1 <: Real, S2 <: Real}
+                  γ::S3, ω::S3, H::S3, T::S3, R::S3) where {S1 <: Real, S2 <: Real, S3 <: Real}
 
     # Given (a, s, e), can uniquely identify an implied b
-    b_implied = Array{eltype(agrid)}(undef, na, ns, ne)
+    b_implied = Array{typeof(R)}(undef, na, ns, ne)
     for ie in 1:ne
         for is in 1:ns
             b_implied[:, is, ie] = (agrid .- (ω * sgrid[is] * egrid[ie] * H + T)) ./ (exp(-γ) *  R)

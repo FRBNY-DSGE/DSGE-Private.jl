@@ -16,7 +16,8 @@ function interp_one(xpts::T, ypts::T, x::T) where {T<:Vector{Float64}}
 ```
 Mimics behavior of interp1 in MATLAB. Takes set {(x_i, y_i)}, linearly interpolates between each (x_i, y_i) and (x_{i+1}, y_{i+1}), and then returns vector y for interpolated points in x.
 """
-function interp_one(xpts::T, ypts::T, x::T) where {T <: AbstractVector{<: Real}}
+function interp_one(xpts::T1, ypts::T2,
+                    x::T3) where {T1 <: AbstractVector{<: Real}, T2 <: AbstractVector{<: Real}, T3 <: AbstractVector{<: Real}}
     @assert length(xpts) == length(ypts)
     intf = extrapolate(interpolate((xpts,), ypts, Gridded(Linear())), Line())
     y = [intf(v) for v in x]
