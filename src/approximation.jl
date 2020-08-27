@@ -111,7 +111,7 @@ function init_settings!(approx::Approximation)
     approx.nmsv = 7
     approx.nfunc = 7
     approx.nindplus = 1
-    approx.nshockgrid = [7,2,2,2,2,1]# CHANGE TO THIS AFTER DONE TESTING: [7,3,3,3,3,1]
+    approx.nshockgrid = [7,3,3,3,3,1]# CHANGE TO THIS AFTER DONE TESTING: [7,3,3,3,3,1]
     approx.indplus = [3]
 end
 

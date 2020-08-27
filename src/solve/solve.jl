@@ -447,8 +447,9 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
     # Initialize
     α_star = copy(α_initial)
     α_new = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 2*approx.ns)
-    #α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
-    #updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
+    α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
+    #tests = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 2*approx.ns)
+    updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
     convergence = false
     avg_error = 0.0
 
@@ -456,30 +457,41 @@ function fixedpoint(rkss::Float64, approx::Approximation, params::Array{Abstract
     niter = 150
     tolfun = 1.0e-04
     step  = 7.0e-01
+    #j = 1
 
 
+      function residuals!(F, α_stars)
+          #α_star[:,j] = α_stars[1:(approx.ngridpoints*approx.nfunc)]
+          #α_star[:,j+approx.ns] = α_stars[(approx.ngridpoints*approx.nfunc+1):end]
 
-      function residuals!(F, α_star)
-        α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
-        updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
-        #avg_error = 0.0
-        @simd for j in 1:approx.ns
-            #err = 0.0
-            @simd for k in 1:approx.ngridpoints
-                updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
-                #err += err2
-            end
-            mul!(α_temp, approx.bbtinv', updated_approx_functions')
-            F[:, j] = vec(α_temp[:, 1:approx.nfunc])
-            F[: , j + approx.ns] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
-        end
-        #F -= α_star
+          #α_star = reshape(α_stars, approc.nfunc * approx.ngridpoints, 2*approx.ns)
+          @simd for j in 1:approx.ns
+              @simd for k in 1:approx.ngridpoints
+                  updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_stars, labss, exogenous_shocks, endogenous_states, zlbswitch)
+              end
+
+              mul!(α_temp, approx.bbtinv', updated_approx_functions')
+              F[:, j] = vec(α_temp[:, 1:approx.nfunc])
+              F[: , j + approx.ns] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
+          end
+          #F = vec(tests)
+          #F[1:(approx.ngridpoints*approx.nfunc)] = vec(α_temp[:, 1:approx.nfunc])
+          #F[(approx.ngridpoints * approx.nfunc + 1):end] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
+        F .-= α_stars
     end
 
     if use_anderson
+        α_star = NLsolve.nlsolve(residuals!,α_initial; ftol = 1.0e-04, method = :anderson, m=5).zero
+        #α_star = NLsolve.fixedpoint(residuals!,vec(α_initial); ftol = 1.0e-04, m=0).zero
+        #@simd for l in 1:approx.ns
+        #    j = l
+        #    temps = NLsolve.fixedpoint(residuals!,vcat(vec(α_star[:,j]),vec(α_star[:,j+approx.ns])); ftol = 1.0e-04).zero
+        #    α_star[:,j] = temps[1:(approx.ngridpoints * approx.nfunc)]
+        #    α_star[:,j+approx.ns] = temps[(approx.ngridpoints * approx.nfunc+1):end]
+        #end
+        @show α_initial ≈ α_star
         #NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04, m=0)
-        α_star = NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04, m=0).zero
-        #α_star = α_stars['zero']
+        #α_star = NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04, m=0).zero
     else
 
 
