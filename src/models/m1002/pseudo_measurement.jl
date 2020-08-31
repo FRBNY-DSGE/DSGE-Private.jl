@@ -1,7 +1,7 @@
- """
+"""
 ```
-pseudo_measurement(m::Model1002{T},
-    TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vector{T}) where {T<:AbstractFloat}
+pseudo_measurement(m::Model1002{T}, TTT::Matrix{T}, RRR::Matrix{T},
+    CCC::Vector{T}; reg::Int = 1) where {T<:AbstractFloat}
 ```
 
 Assign pseudo-measurement equation (a linear combination of states):
@@ -19,15 +19,99 @@ function pseudo_measurement(m::Model1002{T},
     endo_addl = m.endogenous_states_augmented
     pseudo    = m.pseudo_observables
 
+    # Initialize pseudo ZZ and DD matrices
     _n_states = n_states_augmented(m)
     _n_pseudo = n_pseudo_observables(m)
+
+    ZZ_pseudo = zeros(_n_pseudo, _n_states)
+    DD_pseudo = zeros(_n_pseudo)
+
+    # Handle integrated series
+    no_integ_inds = inds_states_no_integ_series(m)
+
+    if haskey(m.endogenous_states, :pgap_t)
+        no_integ_inds = setdiff(no_integ_inds, [m.endogenous_states[:pgap_t]])
+    end
+    if haskey(m.endogenous_states, :ygap_t)
+        no_integ_inds = setdiff(no_integ_inds, [m.endogenous_states[:ygap_t]])
+    end
+
+    if haskey(get_settings(m), :integrated_series) || haskey(m.endogenous_states, :pgap_t) ||
+        haskey(m.endogenous_states, :ygap_t)
+        TTT = @view TTT[no_integ_inds, no_integ_inds]
+    end
 
     # Compute TTT^10, used for Expected10YearRateGap, Expected10YearRate, and Expected10YearNaturalRate
     TTT10 = (1/40)*((UniformScaling(1.) - TTT)\(TTT - TTT^41))
 
-    # Initialize pseudo ZZ and DD matrices
-    ZZ_pseudo = zeros(_n_pseudo, _n_states)
-    DD_pseudo = zeros(_n_pseudo)
+    if get_setting(m, :add_laborproductivity_measurement)
+        # Construct pseudo-obs from integrated states first
+        ZZ_pseudo[pseudo[:laborproductivity], endo[:y_t]] = 1.
+        ZZ_pseudo[pseudo[:laborproductivity], endo[:L_t]] = -1.
+        # ZZ_pseudo[pseudo[:laborproductivity], endo_addl[:cum_z_t]] = 1.
+        DD_pseudo[pseudo[:laborproductivity]] = 100. * log(m[:ystar] / m[:Lstar])
+
+        # Remove integrated states (e.g. states w/unit roots)
+        # RRR and CCC aren't used, so we don't do anything with them
+    end
+
+    if get_setting(m, :add_nominalgdp_level)
+        ZZ_pseudo[pseudo[:NominalGDPLevel], endo_addl[:cum_y_t]]     = 1.
+        ZZ_pseudo[pseudo[:NominalGDPLevel], endo_addl[:cum_z_t]]     = 1.
+        ZZ_pseudo[pseudo[:NominalGDPLevel], endo_addl[:cum_e_gdp_t]] = 1.
+        ZZ_pseudo[pseudo[:NominalGDPLevel], endo_addl[:cum_π_t]]     = 1.
+    end
+
+    if get_setting(m, :add_nominalgdp_growth)
+        ZZ_pseudo[pseudo[:NominalGDPGrowth], endo[:y_t]]           = 1.
+        ZZ_pseudo[pseudo[:NominalGDPGrowth], endo_addl[:y_t1]]     = -1.
+        ZZ_pseudo[pseudo[:NominalGDPGrowth], endo_addl[:z_t]]      = 1.
+        ZZ_pseudo[pseudo[:NominalGDPGrowth], endo_addl[:e_gdp_t]]  = 1.
+        ZZ_pseudo[pseudo[:NominalGDPGrowth], endo_addl[:e_gdp_t1]] = -m[:me_level]
+        ZZ_pseudo[pseudo[:NominalGDPGrowth], endo[:π_t]]           = 1.
+        DD_pseudo[pseudo[:NominalGDPGrowth]]                       = 100. * (exp(m[:z_star] - 1.) + (m[:π_star] - 1.))
+    end
+
+    if get_setting(m, :add_cumulative)
+        ZZ_pseudo[pseudo[:AccumOutputGap], endo_addl[:cum_y_t]]   = 1.
+        ZZ_pseudo[pseudo[:AccumOutputGap], endo_addl[:cum_y_f_t]] = -1.
+
+        ZZ_pseudo[pseudo[:GDPLevel], endo_addl[:cum_y_t]]     = 1.
+        ZZ_pseudo[pseudo[:GDPLevel], endo_addl[:cum_z_t]]     = 1.
+        ZZ_pseudo[pseudo[:GDPLevel], endo_addl[:cum_e_gdp_t]] = 1.
+
+        ZZ_pseudo[pseudo[:FlexibleGDPLevel], endo_addl[:cum_y_f_t]] = 1.
+        ZZ_pseudo[pseudo[:FlexibleGDPLevel], endo_addl[:cum_z_t]]   = 1.
+
+        ZZ_pseudo[pseudo[:ConsumptionLevel], endo_addl[:cum_c_t]]     = 1.
+        ZZ_pseudo[pseudo[:ConsumptionLevel], endo_addl[:cum_z_t]]     = 1.
+
+        ZZ_pseudo[pseudo[:FlexibleConsumptionLevel], endo_addl[:cum_c_f_t]] = 1.
+        ZZ_pseudo[pseudo[:FlexibleConsumptionLevel], endo_addl[:cum_z_t]]   = 1.
+
+        ZZ_pseudo[pseudo[:InvestmentLevel], endo_addl[:cum_i_t]]     = 1.
+        ZZ_pseudo[pseudo[:InvestmentLevel], endo_addl[:cum_z_t]]     = 1.
+
+        ZZ_pseudo[pseudo[:FlexibleInvestmentLevel], endo_addl[:cum_i_f_t]] = 1.
+        ZZ_pseudo[pseudo[:FlexibleInvestmentLevel], endo_addl[:cum_z_t]]   = 1.
+    end
+
+    if get_setting(m, :add_flexible_price_growth)
+        ZZ_pseudo[pseudo[:FlexibleGDPGrowth], endo[:y_f_t]]       = 1.
+        ZZ_pseudo[pseudo[:FlexibleGDPGrowth], endo_addl[:y_f_t1]] = -1.
+        ZZ_pseudo[pseudo[:FlexibleGDPGrowth], endo[:z_t]]         = 1.
+        DD_pseudo[pseudo[:FlexibleGDPGrowth]]                     = 100. * (exp(m[:z_star]) - 1.)
+
+        ZZ_pseudo[pseudo[:FlexibleInvestmentGrowth], endo[:i_f_t]]       = 1.
+        ZZ_pseudo[pseudo[:FlexibleInvestmentGrowth], endo_addl[:i_f_t1]] = -1.
+        ZZ_pseudo[pseudo[:FlexibleInvestmentGrowth], endo[:z_t]]         = 1.
+        DD_pseudo[pseudo[:FlexibleInvestmentGrowth]]                     = 100. * (exp(m[:z_star]) - 1.)
+
+        ZZ_pseudo[pseudo[:FlexibleConsumptionGrowth], endo[:c_f_t]]       = 1.
+        ZZ_pseudo[pseudo[:FlexibleConsumptionGrowth], endo_addl[:c_f_t1]] = -1.
+        ZZ_pseudo[pseudo[:FlexibleConsumptionGrowth], endo[:z_t]]         = 1.
+        DD_pseudo[pseudo[:FlexibleConsumptionGrowth]]                     = 100. * (exp(m[:z_star]) - 1.)
+    end
 
     ##########################################################
     ## PSEUDO-OBSERVABLE EQUATIONS
@@ -38,6 +122,18 @@ function pseudo_measurement(m::Model1002{T},
 
     ## Flexible Output
     ZZ_pseudo[pseudo[:y_f_t],endo[:y_f_t]] = 1.
+
+    ## Pseudo GDP Growth
+    if haskey(m.settings, :add_pseudo_gdp)
+        if get_setting(m, :add_pseudo_gdp) && subspec(m) in ["ss59", "ss60", "ss61"]
+            ZZ_pseudo[pseudo[:PseudoGDP], endo[:y_t]]          = 1.0
+            ZZ_pseudo[pseudo[:PseudoGDP], endo_addl[:y_t1]]     = -1.0
+            ZZ_pseudo[pseudo[:PseudoGDP], endo[:z_t]]          = 1.0
+            ZZ_pseudo[pseudo[:PseudoGDP], endo_addl[:e_gdp_t]]  = 1.0
+            ZZ_pseudo[pseudo[:PseudoGDP], endo_addl[:e_gdp_t1]] = -m[:me_level]
+            DD_pseudo[pseudo[:PseudoGDP]]                      = 100*(exp(m[:z_star])-1)
+        end
+    end
 
     ## Natural Rate
     ZZ_pseudo[pseudo[:NaturalRate],endo[:r_f_t]] = 1.
@@ -69,6 +165,9 @@ function pseudo_measurement(m::Model1002{T},
     ## Flexible Wages
     ZZ_pseudo[pseudo[:FlexibleWages],endo[:w_f_t]] = 1.
 
+    # ## b Wages
+    # ZZ_pseudo[pseudo[:b_t],endo[:b_t]] = 1.
+
     ## Hours
     ZZ_pseudo[pseudo[:Hours],endo[:L_t]] = 1.
 
@@ -79,18 +178,18 @@ function pseudo_measurement(m::Model1002{T},
     ZZ_pseudo[pseudo[:z_t], endo[:z_t]] = 1.
 
     ## Expected 10-Year Rate Gap
-    ZZ_pseudo[pseudo[:Expected10YearRateGap], :] = TTT10[endo[:R_t], :] - TTT10[endo[:r_f_t], :] - TTT10[endo[:Eπ_t], :]
+    ZZ_pseudo[pseudo[:Expected10YearRateGap], no_integ_inds] = TTT10[endo[:R_t], :] - TTT10[endo[:r_f_t], :] - TTT10[endo[:Eπ_t], :]
 
     ## Nominal FFR
     ZZ_pseudo[pseudo[:NominalFFR], endo[:R_t]] = 1.
     DD_pseudo[pseudo[:NominalFFR]] = m[:Rstarn]
 
     ## Expected 10-Year Interest Rate
-    ZZ_pseudo[pseudo[:Expected10YearRate], :] = TTT10[endo[:R_t], :]
+    ZZ_pseudo[pseudo[:Expected10YearRate], no_integ_inds] = TTT10[endo[:R_t], :]
     DD_pseudo[pseudo[:Expected10YearRate]]    = m[:Rstarn]
 
     ## Expected 10-Year Natural Rate
-    ZZ_pseudo[pseudo[:Expected10YearNaturalRate], :] = TTT10[endo[:r_f_t], :] + TTT10[endo[:Eπ_t], :]
+    ZZ_pseudo[pseudo[:Expected10YearNaturalRate], no_integ_inds] = TTT10[endo[:r_f_t], :] + TTT10[endo[:Eπ_t], :]
     DD_pseudo[pseudo[:Expected10YearNaturalRate]]    = m[:Rstarn]
 
     ## Expected Nominal Natural Rate
@@ -116,8 +215,72 @@ function pseudo_measurement(m::Model1002{T},
     ## u_t
     ZZ_pseudo[pseudo[:u_t], endo[:u_t]] = 1.
 
+    ## Nominal Wage Growth
+    if haskey(m.settings, :add_NominalWageGrowth)
+        if get_setting(m, :add_NominalWageGrowth)
+            ZZ_pseudo[pseudo[:NominalWageGrowth],endo[:w_t]] = 1.
+            ZZ_pseudo[pseudo[:NominalWageGrowth],endo_addl[:w_t1]] = -1.
+            ZZ_pseudo[pseudo[:NominalWageGrowth],endo[:z_t]] = 1.
+            ZZ_pseudo[pseudo[:NominalWageGrowth],endo[:π_t]] = 1.
+            DD_pseudo[pseudo[:NominalWageGrowth]]            = 100*(m[:π_star]-1) + 100*(exp(m[:z_star])-1)
+        end
+    end
+
+    # ## i_f_t
+    # ZZ_pseudo[pseudo[:i_f_t], endo[:i_f_t]] = 1.
+
+    # ## R_t
+    # ZZ_pseudo[pseudo[:R_t], endo[:R_t]] = 1.
+    # DD_pseudo[pseudo[:R_t]] = 100.0*(m[:rstar]-1.0)
+
+    # ## c_f_t
+    # ZZ_pseudo[pseudo[:c_f_t], endo[:c_f_t]] = 1.
+
+    # ## c_t
+    # ZZ_pseudo[pseudo[:c_t], endo[:c_t]] = 1.
+
+    # ## qk_f_t
+    # ZZ_pseudo[pseudo[:qk_f_t], endo[:qk_f_t]] = 1.
+
+    # ## k_f_t
+    # ZZ_pseudo[pseudo[:k_f_t], endo[:k_f_t]] = 1.
+
+    # ## r_f_t
+    # ZZ_pseudo[pseudo[:r_f_t], endo[:r_f_t]] = 1.
+
+    # ## kbar_f_t
+    # ZZ_pseudo[pseudo[:kbar_f_t], endo[:kbar_f_t]] = 1.
+
+    # ## u_f_t
+    # ZZ_pseudo[pseudo[:u_f_t], endo[:u_f_t]] = 1.
+
+    # ## rk_f_t
+    # ZZ_pseudo[pseudo[:rk_f_t], endo[:rk_f_t]] = 1.
+
+    # ## w_f_t
+    # ZZ_pseudo[pseudo[:w_f_t], endo[:w_f_t]] = 1.
+
+    # ## L_f_t
+    # ZZ_pseudo[pseudo[:L_f_t], endo[:L_f_t]] = 1.
+
+    # ## rktil_f_t
+    # ZZ_pseudo[pseudo[:rktil_f_t], endo[:rktil_f_t]] = 1.
+
+    # ## n_f_t
+    # ZZ_pseudo[pseudo[:n_f_t], endo[:n_f_t]] = 1.
+
+    ## labor share
+    if haskey(m.settings, :add_laborshare_measurement)
+        if get_setting(m, :add_laborshare_measurement)
+            ZZ_pseudo[pseudo[:laborshare_t], endo[:w_t]] = 1.
+            ZZ_pseudo[pseudo[:laborshare_t], endo[:L_t]] = 1.
+            ZZ_pseudo[pseudo[:laborshare_t], endo[:y_t]] = -1.
+            DD_pseudo[pseudo[:laborshare_t]] = 100. * log(m[:wstar] * m[:Lstar] / m[:ystar])
+        end
+    end
+
     ## Fundamental inflation related pseudo-obs
-    if subspec(m) in ["ss13", "ss14", "ss15", "ss16", "ss17"]
+    if subspec(m) in ["ss13", "ss14", "ss15", "ss16", "ss17", "ss18", "ss19"]
         # Compute coefficient on Sinf
         betabar = exp((1-m[:σ_c] ) * m[:z_star]) * m[:β]
         κ = ((1 - m[:ζ_p]*m[:β]*exp((1 - m[:σ_c])*m[:z_star]))*
@@ -131,7 +294,7 @@ function pseudo_measurement(m::Model1002{T},
         ZZ_pseudo[pseudo[:πtil_t], endo_addl[:πtil_t]] = 1.
         DD_pseudo[pseudo[:πtil_t]] = 100 * (m[:π_star] - 1)
         ZZ_pseudo[pseudo[:e_tfp_t], endo_addl[:e_tfp_t]] = 1.
-        if subspec(m) in ["ss14", "ss15", "ss16"]
+        if subspec(m) in ["ss14", "ss15", "ss16", "ss18", "ss19"]
             ZZ_pseudo[pseudo[:e_tfp_t1], endo_addl[:e_tfp_t1]] = 1.
         end
     end
@@ -146,6 +309,59 @@ function pseudo_measurement(m::Model1002{T},
         end
         for i in to_add_addl
             ZZ_pseudo[pseudo[i], endo_addl[i]] = 1.
+        end
+    end
+
+    if haskey(m.settings, :add_covid_pseudoobs)
+        if get_setting(m, :add_covid_pseudoobs) && subspec(m) in ["ss59", "ss60", "ss61"]
+            ZZ_pseudo[pseudo[:ziid], endo[:ziid_t]] = 1.
+            ZZ_pseudo[pseudo[:varphiiid], endo[:φ_t]] = 1.
+            ZZ_pseudo[pseudo[:biidc], endo[:biidc_t]] = 1.
+        end
+    end
+
+    if haskey(m.settings, :add_ztil)
+        if get_setting(m, :add_ztil)
+            ZZ_pseudo[pseudo[:ztil], endo[:ztil_t]] = 1.
+        end
+    end
+
+    if haskey(m.settings, :add_zp)
+        if get_setting(m, :add_zp)
+            ZZ_pseudo[pseudo[:zp], endo[:zp_t]] = 1.
+        end
+    end
+
+    if haskey(m.settings, :add_pgap)
+        if get_setting(m, :add_pgap)
+            ZZ_pseudo[pseudo[:pgap], endo[:pgap_t]] = 1.
+        end
+    end
+
+    if haskey(m.settings, :add_ygap)
+        if get_setting(m, :add_ygap)
+            ZZ_pseudo[pseudo[:ygap], endo[:ygap_t]] = 1.
+        end
+    end
+
+    if haskey(m.settings, :add_urhat)
+        if get_setting(m, :add_urhat)
+            ZZ_pseudo[pseudo[:urhat], endo[:L_t]] = -0.7366220966444673
+            DD_pseudo[pseudo[:urhat]] = -32.257825316004364 + -0.7366220966444673 * m[:Lmean]
+        end
+    end
+
+    if haskey(m.settings, :add_rw)
+        if get_setting(m, :add_rw)
+            ZZ_pseudo[pseudo[:rw], endo[:rw_t]]     = 1.
+            ZZ_pseudo[pseudo[:Rref], endo[:Rref_t]] = 1.
+            DD_pseudo[pseudo[:Rref]]                = m[:Rstarn]
+        end
+    end
+
+    for para in m.parameters
+        if !isempty(para.regimes)
+            ModelConstructors.toggle_regime!(para, 1)
         end
     end
 
