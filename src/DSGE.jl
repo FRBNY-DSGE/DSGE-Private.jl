@@ -9,7 +9,7 @@ module DSGE
     using QuantEcon: solve_discrete_lyapunov
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample, Weights
-    using DelimitedFiles
+    using DelimitedFiles, LoopVectorization, TimerOutputs
 #    using StatsFuns: chisqinvcdf
     import Base: isempty
     import Calculus

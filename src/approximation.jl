@@ -257,14 +257,14 @@ function smolyakpoly(nmsv::Int,ngridpoints::Int,nindplus::Int,indplus::Array{Int
     smolyakpoly[1] = 1.0
 
     # Every function approximation has at least two basis functions (first/second order Chebyshev polynomials)
-    for i in 1:nmsv
-	smolyakpoly_aux = xx[i]
-        smolyakpoly[2*i] = smolyakpoly_aux
-        smolyakpoly[2*i+1] = 2.0*(smolyakpoly_aux)^2-1.0
+    @inbounds @simd for i in 1:nmsv
+	#smolyakpoly_aux = xx[i]
+        smolyakpoly[2*i] = xx[i]#smolyakpoly_aux
+        smolyakpoly[2*i+1] = 2.0*(xx[i])^2-1.0
     end
 
     # Some functions get two additional basis functions (third/fourth order Chebyshev polynomials)
-    for i in 1:nindplus
+    @inbounds @simd for i in 1:nindplus
 	xx_aux =xx[indplus[i]]
         smolyakpoly[2*nmsv+2*(i-1)+2] = 4.0*xx_aux^3-3.0*xx_aux
         smolyakpoly[2*nmsv+2*(i-1)+3] = 8.0*xx_aux^4-8.0*xx_aux^2+1.0

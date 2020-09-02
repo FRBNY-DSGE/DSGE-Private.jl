@@ -9,6 +9,11 @@ Returns endogenous state variables in [-1,1] domain or the inverse function depe
 ...
 """
 function msv2xx(msv::Vector{Float64}, nmsv::Int, slopeconmsv::Vector{Float64})
+    #=tmp = Array{Float64}(undef, nmsv)
+    for i in 1:nmsv
+        tmp[i] = slopeconmsv[i] * msv[i] + slopeconmsv[nmsv+i]
+    end
+    return tmp=#
     return slopeconmsv[1:nmsv] .* msv + slopeconmsv[nmsv+1:2*nmsv]
 end
 
@@ -162,20 +167,25 @@ end
 # Description:
 The decision rule, which updates endogenous variables and shocks given current endogenous values and innovations. Will first approximate the necessary functions before calling intermediatedec! to update state variables.
 """
-function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64}, zlbswitch::Bool)
+function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64}, zlbswitch::Bool, funcmat::Array{Float64,2}, funcmatplus::Array{Float64,2}, shockindex::Array{Int64,1}, lmsv::Array{Float64,1}, currentshockvalues::Array{Float64,1}, weighttemp::Array{Float64,1}, funcapp::Array{Float64,1}, funcappplus::Array{Float64,1}, xx::Array{Float64,1}, polyvec::Array{Float64,1}, weightvec::Array{Float64,1})
 
+    #@show "Big Bang"
+    #@btime begin
+
+    #@show "Initialization"
+    #@time begin
     #Initialize Variables
     shockindexall=ones(Int64,approx.nexogvars)
-    shockindex=Array{Int64}(undef,approx.nexogshocks)
-    shockindex_inter=Array{Int64}(undef,approx.nexogshocks)
-    lmsv=Array{Float64}(undef,approx.nmsv)
-    currentshockvalues=Array{Float64}(undef,approx.nexogvars)
-    funcmatplus=Array{Float64}(undef,approx.nfunc,approx.ninter)
-    weighttemp=Array{Float64}(undef,approx.nexogshocks)
-    funcapp=Array{Float64}(undef,approx.nfunc)
-    funcapp_plus=Array{Float64}(undef,approx.nfunc)
-    xx=Array{Float64}(undef,approx.nmsv)
-    polyvec=Array{Float64}(undef,approx.ngridpoints)
+    #shockindex=Array{Int64}(undef,approx.nexogshocks)
+    #shockindex_inter=Array{Int64}(undef,approx.nexogshocks)
+    #lmsv=Array{Float64}(undef,approx.nmsv)
+    #currentshockvalues=Array{Float64}(undef,approx.nexogvars)
+    #funcmatplus=Array{Float64}(undef,approx.nfunc,approx.ninter)
+    #weighttemp=Array{Float64}(undef,approx.nexogshocks)
+    #funcapp=Array{Float64}(undef,approx.nfunc)
+    #funcapp_plus=Array{Float64}(undef,approx.nfunc)
+    #xx=Array{Float64}(undef,approx.nmsv)
+    #polyvec=Array{Float64}(undef,approx.ngridpoints)
 
     omegaweight = 100000.0
 
@@ -186,9 +196,10 @@ function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vec
     currentshockvalues[4]::Float64 = params[keys[:ρ_int]]*endogvarm1[endogenous_states[:mon_t]] + params[keys[:σ_R]]*innovations[4]
     currentshockvalues[5]::Float64 = params[keys[:ρ_g]]*endogvarm1[endogenous_states[:g_t]] + params[keys[:σ_g]]*innovations[5]
     currentshockvalues[6] = 0.0 #a shock
-
+    #end
     # Finds shock index associated with current shock value (rounded down)
-    @simd for i in 1:approx.nexogshocks
+    #@show "nexogshocks"
+    @fastmath @inbounds @simd for i in 1:approx.nexogshocks
         if (currentshockvalues[i] < approx.shockbounds[i,1])
             shockindex[i] = 1
         elseif (currentshockvalues[i] > approx.shockbounds[i,2])
@@ -197,32 +208,41 @@ function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vec
             shockindex[i] = floor(Int64,1.0+(currentshockvalues[i]-approx.shockbounds[i,1])/approx.shockdistance[i])
         end
     end
-
+    #@show "Second"
+    #@time begin
     # Lowest possible state (all indices rounded down)
     shockindexall[1:approx.nexogshocks] = shockindex
     stateindex0 = exogposition(shockindexall,approx.nshockgrid,approx.nexogvars)
 
     # Highest possible state (all indices rounded up)
-    shockindexall[1:approx.nexogshocks] = shockindex + approx.interpolatemat[:,approx.ninter]
+    shockindexall[1:approx.nexogshocks] = shockindex .+ approx.interpolatemat[:,approx.ninter]
     stateindex1 = exogposition(shockindexall,approx.nshockgrid,approx.nexogvars)
 
     # One possible function for each possible interpolation (i.e. every combination of rounding up/down)
-    funcmat = Array{Float64}(undef,approx.nfunc,approx.ninter)
-    weightvec = Array{Float64}(undef,approx.ninter)
+    #funcmat = Array{Float64}(undef,approx.nfunc,approx.ninter)
+    #weightvec = Array{Float64}(undef,approx.ninter)
 
     #Log the minimum state variables
-    lmsv[1:approx.nmsv] = log.(endogvarm1[1:approx.nmsv])
+    for i in 1:approx.nmsv
+        lmsv[i] = log(endogvarm1[i])
+    end
+    #lmsv[1:approx.nmsv] = log.(endogvarm1[1:approx.nmsv])
 
     # Convert endogenous variables to [-1, 1] domain
     xx = msv2xx(lmsv,approx.nmsv,approx.slopeconmsv)
-
+#end
     # Get polynomials evaluated at these values  (this is T(ϕ(X_{t-1})))
     polyvec = smolyakpoly(approx.nmsv,approx.ngridpoints,approx.nindplus,approx.indplus,xx)
 
     prod_sd = prod(approx.shockdistance)
+@fastmath @inbounds begin
 
-    @inbounds @simd for i in 1:approx.ninter
-        @inbounds @simd for j in 1:approx.nexogshocks
+    #@views diffs0 = currentshockvalues[1:approx.nexogshocks] .- approx.exoggrid[1:approx.nexogshocks,stateindex0]
+    #@views diffs1 = approx.exoggrid[1:approx.nexogshocks,stateindex1] .- currentshockvalues[1:approx.nexogshocks]
+    #@show "ninter call"
+    @simd for i in 1:approx.ninter
+        #@views shockindexall[1:approx.nexogshocks] = shockindex .+ approx.interpolatemat[1:approx.nexogshocks,i]
+        @simd for j in 1:approx.nexogshocks
             shockindexall[j] = shockindex[j] + approx.interpolatemat[j,i]
 
             # Shock grid points that are closer to actual shock values result in lower weights
@@ -231,10 +251,11 @@ function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vec
         end
         stateindex = exogposition(shockindexall,approx.nshockgrid,approx.nexogvars)
         stateindexplus = stateindex+approx.ns
-        @inbounds @simd for ifunc in 1:approx.nfunc
+        @simd for ifunc in 1:approx.nfunc
             @views funcmat[ifunc,i] = BLAS.dot(approx.ngridpoints, alphacoeff[(ifunc-1)*approx.ngridpoints+1:ifunc*approx.ngridpoints, stateindex], 1, polyvec, 1)
             @views funcmatplus[ifunc,i] = BLAS.dot(approx.ngridpoints, alphacoeff[(ifunc-1)*approx.ngridpoints+1:ifunc*approx.ngridpoints, stateindexplus],1, polyvec, 1)
         end
+        #@views weighttemp = float(1 .- approx.interpolatemat[:,i]) .* diffs0 .+ float(approx.interpolatemat[:,i]) .* diffs1
 
         # Give weight to inverse interpolation, so that in the end interpolations that are closer to actual shocks are given high weights, note this is Γ_{k}
         # Note prod_sd is the most prod(weighttemp) can be
@@ -248,6 +269,7 @@ function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vec
     omegapoly = 1.0 #SINCE ZLBINTERMEDIATE IS FALSE
 
     #endogvar = Array{Float64}(undef, nendogvars+nexogvars)
+    #@show "intermediatedec!"
     intermediatedec!(endogvar,approx.nendogvars,approx.nexogvars,labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp,zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
     if ( (endogvar[endogenous_states[:rm_t]] < 1.0) & (zlbswitch == true) ) #zlb case
         zlbintermediate = true
@@ -256,7 +278,8 @@ function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vec
         intermediatedec!(endogvar,approx.nendogvars,approx.nexogvars, labss, endogvarm1,currentshockvalues, funcapp,omegapoly,funcapp_plus,zlbintermediate, endogenous_states, exogenous_shocks, params, keys)
         endogvar[9] = 1.0
     end
-
+end
+#end
     return nothing
 end
 
@@ -308,11 +331,11 @@ For a given collocation point, return associated errors.
 - `alphacoeff::Array{Float64, 2}`: Polynomial coefficients.
 ...
 """
-function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shockpos::Int64, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, zlbswitch::Bool)
+function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shockpos::Int64, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64},alphacoeff::Array{Float64,2}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, zlbswitch::Bool, polyappnew::Array{Float64,1}, endogvar::Array{Float64,1}, endogvarzlb::Array{Float64,1}, endogvarp::Array{Float64,1}, endogvarzlbp::Array{Float64,1}, slopeconxxmsv::Array{Float64,1}, xgridmsv::Array{Float64,1}, abserror::Array{Float64,1}, ev::Array{Float64,1}, exp_eul::Array{Float64,1}, currentshockvalues::Array{Float64,1}, polyapp::Array{Float64,1}, endogvarm1::Array{Float64,1}, innovations::Array{Float64,1}, funcmat::Array{Float64,2}, funcmatplus::Array{Float64,2}, shockindex::Array{Int64,1}, lmsv::Array{Float64,1}, weighttemp::Array{Float64,1}, funcapp::Array{Float64,1}, funcapp_plus::Array{Float64,1}, xx::Array{Float64,1}, polyvec::Array{Float64,1}, weightvec::Array{Float64,1})
 
-    #Initilize Variables
+    #Initialize Variables
     zlbinfo  = approx.statezlbinfo[shockpos]
-    polyappnew = Array{Float64}(undef,2*approx.nfunc)
+    #=polyappnew = Array{Float64}(undef,2*approx.nfunc)
     endogvar = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
     endogvarzlb = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
     endogvarp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
@@ -325,10 +348,12 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
 
     currentshockvalues = Array{Float64}(undef,approx.nexogvars)
     polyapp = Array{Float64}(undef,2*approx.nfunc)
-    endogvarm1 = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    endogvarm1 = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)=#
     exp_var = zeros(12)
     #exp_var = Array{Float64}(undef, 12, approx.nquad)
-    innovations = Array{Float64}(undef,approx.nexogvars)
+    #innovations = Array{Float64}(undef,approx.nexogvars)
+
+    #@fastmath begin
 
     # Gets shock values for given position on shock grid
     currentshockvalues[1:approx.nexogshocks] = approx.exoggrid[1:approx.nexogshocks,shockpos]
@@ -343,8 +368,8 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
 
     # Get endogenous variable values for that grid point and convert back from [-1, 1] domain
     xgridmsv = approx.xgrid[1:approx.nmsv,gridindex]
-    slopeconxxmsv[1:approx.nmsv] = approx.slopeconxx[1:approx.nmsv]
-    slopeconxxmsv[approx.nmsv+1:2*approx.nmsv] = approx.slopeconxx[approx.nmsv+1:approx.nmsv+approx.nmsv]
+    slopeconxxmsv[1:approx.nmsv] = @views approx.slopeconxx[1:approx.nmsv]
+    slopeconxxmsv[approx.nmsv+1:2*approx.nmsv] = @views approx.slopeconxx[approx.nmsv+1:approx.nmsv+approx.nmsv]
     endogvarm1[1:approx.nmsv] = exp.( msv2xx(xgridmsv,approx.nmsv,slopeconxxmsv) )
 
     zlbintermediate = false  #force evaluation of 1 poly case at date t
@@ -359,10 +384,25 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
     end
 
     # Calculates conditional expectations
+    #@show "nquad loop starts"
+    #=funcmatplus=Array{Float64}(undef,approx.nfunc,approx.ninter)
+    funcmat=Array{Float64}(undef,approx.nfunc,approx.ninter)
+    #shockindexall=ones(Int64,approx.nexogvars)
+    shockindex=Array{Int64}(undef,approx.nexogshocks)
+    lmsv=Array{Float64}(undef,approx.nmsv)
+    currentshockvalues=Array{Float64}(undef,approx.nexogvars)
+    #funcmatplus=Array{Float64}(undef,approx.nfunc,approx.ninter)
+    weighttemp=Array{Float64}(undef,approx.nexogshocks)
+    funcapp=Array{Float64}(undef,approx.nfunc)
+    funcapp_plus=Array{Float64}(undef,approx.nfunc)
+    xx=Array{Float64}(undef,approx.nmsv)
+    polyvec=Array{Float64}(undef,approx.ngridpoints)
+    weightvec = Array{Float64}(undef,approx.ninter)=#
     @inbounds @simd for ss in 1:approx.nquad
         innovations[1:approx.nexogshocks] = approx.ghnodes[:,ss]
 
-        decr!(endogvarp,approx,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, zlbswitch)
+        #@show "decr call"
+        decr!(endogvarp,approx,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, zlbswitch, funcmat, funcmatplus, shockindex,lmsv,currentshockvalues,weighttemp,funcapp,funcapp_plus,xx,polyvec,weightvec)
 
         techshkp = exp(endogvarp[endogenous_states[:ztil_t]])
         invshkp = exp(endogvarp[endogenous_states[:μ_t]])
@@ -391,8 +431,11 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
         end
 
         # Approximate expectation by taking weighted sum over integration nodes
-        exp_var .+= approx.ghweights[ss]*ev
+        #exp_var .+= approx.ghweights[ss]*ev
         #exp_var[:,ss] = approx.ghweights[ss]*ev
+        for p in 1:12
+            exp_var[p] += approx.ghweights[ss]*ev[p]
+        end
     end
 
     #exp_var = vec(sum(exp_var,dims=2))
@@ -441,13 +484,13 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
 
     # Gets average error across all polynomials
     erravg = 0.0
-    for ifunc in 1:2*approx.nfunc
+    @inbounds for ifunc in 1:2*approx.nfunc
         abserror[ifunc] = abs(polyappnew[ifunc]-polyapp[ifunc])
         erravg += abserror[ifunc]
     end
 
     erravg /= (2*approx.nfunc)
-
+#end
     return polyappnew, erravg
 
 end
