@@ -45,13 +45,15 @@ into `plot_history_and_forecast`.
 function plot_history_and_forecast(m::AbstractDSGEModel, var::Symbol, class::Symbol,
                                    input_type::Symbol, cond_type::Symbol;
                                    title::String = "", plot_handle::Plots.Plot = plot(),
-				   save_as_csv::Bool = false,
+                				   save_as_csv::Bool = false,
+                                   weights::Array{Float64} = [],
                                    kwargs...)
 
     plots = plot_history_and_forecast(m, [var], class, input_type, cond_type;
                                       titles = isempty(title) ? String[] : [title],
                                       plot_handles = Plots.Plot[plot_handle],
-				      save_as_csv = save_as_csv,
+				                      save_as_csv = save_as_csv,
+                                      weights = weights,
                                       kwargs...)
     return plots[var]
 end
@@ -67,7 +69,8 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
                                    titles::Vector{String} = String[],
                                    plot_handles::Vector{Plots.Plot} = Plots.Plot[plot() for i = 1:length(vars)],
                                    verbose::Symbol = :low,
-				   save_as_csv::Bool = false,
+				                   save_as_csv::Bool = false,
+                                   weights::Array{Float64} = [],
                                    kwargs...)
 
     # Determine output_vars
@@ -113,7 +116,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
 	        mkdir("blog_plot_data")
             end
             CSV.write(string("blog_plot_data/", get_setting(m, :data_vintage), 
-	                        "_", replace(title, " " => "_"), var, ".csv"), df_plot_data)
+                             "_", replace(title, " " => "_"), "_", var, join(map(x->string(x), weights), "_"), ".csv"), df_plot_data)
         end
 
         # Save plot
@@ -216,6 +219,7 @@ histforecast
     date_ticks = Base.filter(x -> Dates.month(x) == 3,            date_ticks)
     date_ticks = Base.filter(x -> Dates.year(x) % tick_size == 0, date_ticks)
     xticks --> (map(Dates.value, date_ticks), map(Dates.year, date_ticks))
+    
 
     # Bands
     sort!(bands_pcts, rev = true) # s.t. non-transparent bands will be plotted correctly

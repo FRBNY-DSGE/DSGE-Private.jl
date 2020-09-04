@@ -64,13 +64,15 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   var::Symbol, class::Symbol,
                                   input_type::Symbol, cond_type::Symbol;
                                   title::String = "",
-				  save_as_csv::Bool = false,
+	                			  save_as_csv::Bool = false,
+                                  weights::Array{Float64} = [],
                                   kwargs...)
 
     plots = plot_forecast_comparison(m_old, m_new, [var], class, input_type, cond_type;
                                      titles = isempty(title) ? String[] : [title],
                                      save_as_csv = save_as_csv,
-				     kwargs...)
+                                     weights = weights,
+				                     kwargs...)
     return plots[var]
 end
 
@@ -80,14 +82,16 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   var::Symbol, class::Symbol,
                                   input_type::Symbol, cond_type::Symbol;
                                   title::String = "",
-				  save_as_csv::Bool = false,
+				                  save_as_csv::Bool = false,
+                                  weights::Array{Float64} = [],
                                   kwargs...)
 
     plots = plot_forecast_comparison(m_old, m_new, [var_old], class_old,
                                      [var], class, input_type, cond_type;
                                      titles = isempty(title) ? String[] : [title],
                                      save_as_csv = save_as_csv,
-				     kwargs...)
+                                     weights = weights,
+				                     kwargs...)
     return plots[var]
 end
 
@@ -111,7 +115,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   plotroot::String = "",
                                   titles::Vector{String} = String[],
                                   verbose::Symbol = :low,
-				  save_as_csv::Bool = false,
+				                  save_as_csv::Bool = false,
+                                  weights::Array{Float64} = [],
                                   kwargs...)
     # Read in MeansBands
     histold = read_mb(m_old, input_type_old, cond_type_old, Symbol(:hist, class),
@@ -160,7 +165,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
             end
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_new"))
             CSV.write(string("blog_plot_data/", get_setting(m_new, :data_vintage),
-                                "_", replace(title, " " => "_"), var, ".csv"), df_plot_data)
+                                "_", replace(title, " " => "_"), "_", var, 
+                                join(map(x->string(x), weights), "_"), ".csv"), df_plot_data)
         end
 		    
 
@@ -197,7 +203,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   plotroot::String = "",
                                   titles::Vector{String} = String[],
                                   verbose::Symbol = :low,
-				  save_as_csv::Bool = false,
+				                  save_as_csv::Bool = false,
+                                  weights::Array{Float64} = [],
                                   kwargs...)
     # Read in MeansBands
     histold = read_mb(m_old, input_type_old, cond_type_old, Symbol(:hist, class_old),
@@ -246,7 +253,9 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
             end
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_new"))
             CSV.write(string("blog_plot_data/", get_setting(m_new, :data_vintage),
-                                "_", replace(title, " " => "_"), var, ".csv"), df_plot_data)
+                                "_", replace(title, " " => "_"), "_", var, 
+                                join(map(x->string(x), weights), "_"),
+                                ".csv"), df_plot_data)
         end
 		    
 
