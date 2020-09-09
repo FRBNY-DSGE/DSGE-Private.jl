@@ -45,6 +45,8 @@ into `plot_history_and_forecast`.
 function plot_history_and_forecast(m::AbstractModel, var::Symbol, class::Symbol,
                                    input_type::Symbol, cond_type::Symbol;
                                    title::String = "", plot_handle::Plots.Plot = plot(),
+                				   save_as_csv::Bool = false,
+                                   weights::Vector{Float64} = Vector{Float64}(undef,0),
                                    kwargs...)
 
     plots = plot_history_and_forecast(m, [var], class, input_type, cond_type;
@@ -64,6 +66,8 @@ function plot_history_and_forecast(m::AbstractModel, vars::Vector{Symbol}, class
                                    titles::Vector{String} = String[],
                                    plot_handles::Vector{Plots.Plot} = Plots.Plot[plot() for i = 1:length(vars)],
                                    verbose::Symbol = :low,
+				                   save_as_csv::Bool = false,
+                                   weights::Vector{Float64} = Vector{Float64}(undef,0),
                                    kwargs...)
     # Determine output_vars
     if untrans && fourquarter
@@ -99,6 +103,14 @@ function plot_history_and_forecast(m::AbstractModel, vars::Vector{Symbol}, class
                       ylabel = series_ylabel(m, var, class, untrans = untrans,
                                              fourquarter = fourquarter),
                       title = title, kwargs...)
+        if save_as_csv
+	    if !isdir("blog_plot_data")
+	        mkdir("blog_plot_data")
+            end
+            CSV.write(string("blog_plot_data/", get_setting(m, :data_vintage),
+                             "_", replace(title, " " => "_"), "_", var, join(map(x->string(x), weights), "_"), ".csv"), df_plot_data)
+        end
+
         # Save plot
         if !isempty(plotroot)
             output_file = get_forecast_filename(plotroot, filestring_base(m), input_type, cond_type,
@@ -169,6 +181,10 @@ histforecast
                    label_bands = false,
                    transparent_bands = true,
                    tick_size = 2)
+
+
+
+
     # Error checking
     if length(hf.args) != 3 || typeof(hf.args[1]) != Symbol ||
         typeof(hf.args[2]) != MeansBands || typeof(hf.args[3]) != MeansBands
@@ -193,6 +209,7 @@ histforecast
     date_ticks = Base.filter(x -> Dates.month(x) == 3,            date_ticks)
     date_ticks = Base.filter(x -> Dates.year(x) % tick_size == 0, date_ticks)
     xticks --> (map(Dates.value, date_ticks), map(Dates.year, date_ticks))
+
 
     # Bands
     sort!(bands_pcts, rev = true) # s.t. non-transparent bands will be plotted correctly
@@ -249,6 +266,15 @@ histforecast
         end
     end
 
+    # Set up dataframes to save means to CSV
+    if save_as_csv
+        df_mean_hist = DataFrame()
+    	df_mean_forecast = DataFrame()
+	df_means = DataFrame()
+    end
+
+
+
     # Mean history
     @series begin
         seriestype :=  :line
@@ -274,6 +300,22 @@ histforecast
 
         inds = intersect(findall(start_date .<= dates .<= end_date),
                          findall(hist.means[end, :date] .<= dates .<= forecast.means[end, :date]))
+        if save_as_csv
+	   df_mean_forecast.dates = combined.means[inds, :date]
+	   df_mean_forecast.mean_forecast = combined.means[inds, var]
+	   df_means = join(df_mean_hist, df_mean_forecast, on = :dates, kind = :outer)
+
+
+    	        if size(df_means) != (0, 0)
+        	     df_plot_data.mean_history = df_means.mean_history
+      		     df_plot_data.mean_forecast = df_means.mean_forecast
+    		end
+        end
+
+
+
         combined.means[inds, :date], combined.means[inds, var]
     end
+
+
 end
