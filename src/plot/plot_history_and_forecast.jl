@@ -46,7 +46,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, var::Symbol, class::Sym
                                    input_type::Symbol, cond_type::Symbol;
                                    title::String = "", plot_handle::Plots.Plot = plot(),
                 				   save_as_csv::Bool = false,
-                                   weights::Array{Float64} = [],
+                                   weights::Array{Float64} = Array{Float64}(undef, 0),
                                    kwargs...)
 
     plots = plot_history_and_forecast(m, [var], class, input_type, cond_type;
@@ -70,7 +70,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
                                    plot_handles::Vector{Plots.Plot} = Plots.Plot[plot() for i = 1:length(vars)],
                                    verbose::Symbol = :low,
 				                   save_as_csv::Bool = false,
-                                   weights::Array{Float64} = [],
+                                   weights::Vector{Float64} = Vector{Float64}(undef, 0),
                                    kwargs...)
 
     # Determine output_vars
