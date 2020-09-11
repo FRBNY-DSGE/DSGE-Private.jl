@@ -183,7 +183,7 @@ function lindecrule_markov(pp::Array{Float64, 2}, sigma::Array{Float64, 2}, nend
     #Initilize Variables
     bblin=zeros(nendogvars,nexogvars)
 
-    @fastmath @inbounds @simd for i in 1:nexogshocks
+    @fastmath @inbounds for i in 1:nexogshocks
         bblin[:,i] = sigma[1:nendogvars,i]/sigma[nendogvars+i,i]
     end
 
@@ -387,21 +387,21 @@ function initial_α(nendogvars::Int, nexogvars::Int, nexogshocks::Int, nmsv::Int
     slopeconxxmsv[nmsv+1:2*nmsv] = slopeconxx[nmsv+1:nmsv+nmsv]
 
     # Converts endog var back to msv domain and calculates deviation from steady state
-    @inbounds @simd for i in 1:ngridpoints
+    @inbounds for i in 1:ngridpoints
         endogvarm1[1:nmsv,i] = msv2xx(xgrid[1:nmsv,i],nmsv,slopeconxxmsv)-endogsteady[1:nmsv]
     end
 
     yy = zeros(nfunc,ngridpoints)
 
     # For each shock grid point
-    @fastmath @inbounds @simd for ss in 1:ns
+    @fastmath @inbounds for ss in 1:ns
         exogval = zeros(nexogvars)
 
         # Get shock values
         exogval[1:nexogshocks] = exoggrid[1:nexogshocks,ss]
 
         # Get linear solution
-        @fastmath @inbounds @simd for i in 1:ngridpoints
+        @fastmath @inbounds for i in 1:ngridpoints
             mul!(endogvar, aalin, endogvarm1[:,i])
             mul!(exogpart, bblin, exogval)
             endogvar = endogsteady[1:nendogvars] + endogvar + exogpart
@@ -410,8 +410,8 @@ function initial_α(nendogvars::Int, nexogvars::Int, nexogshocks::Int, nmsv::Int
 
         # Get alphas by multiplying by inverse of Smoylak basis functions (since we want alphas to solve yy = bbt*alphass)
         mul!(alphass,yy,bbtinv)
-        @fastmath @inbounds @simd for i in 1:ngridpoints
-            @fastmath @inbounds @simd for ifunc in 1:nfunc
+        @fastmath @inbounds for i in 1:ngridpoints
+            @fastmath @inbounds for ifunc in 1:nfunc
                 #If (alphass(ifunc,i) < 1.0e-8) alphass(ifunc,i) = 0.0d0
                 initialalphas[(ifunc-1)*ngridpoints+i,ss] = alphass[ifunc,i]
                 #Initial guess for ZLB polynomials is same as non-ZLB
@@ -444,15 +444,11 @@ Uses a fixed point convergence algorithm to determine the functions that solve t
 """
 function fixedpoints(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2}, zlbswitch::Bool; use_anderson::Bool = true)
 
-    #to = TimerOutput()
-    #@timeit to "fixedpoints" begin
     # Initialize
     α_star = copy(α_initial)
     α_new = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 2*approx.ns)
     α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
     updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
-    #updated_approx_functions = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
-    #approx_k = MVector{2*approx.nfunc,Float64}(undef)
     convergence = false
     avg_error = 0.0
 
@@ -468,8 +464,8 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
           #α_star[:,j+approx.ns] = α_stars[(approx.ngridpoints*approx.nfunc+1):end]
 
           #α_star = reshape(α_stars, approc.nfunc * approx.ngridpoints, 2*approx.ns)
-          @inbounds @simd for j in 1:approx.ns
-              @inbounds @simd for k in 1:approx.ngridpoints
+          @inbounds for j in 1:approx.ns
+              @inbounds for k in 1:approx.ngridpoints
                   updated_approx_functions[:, k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_stars, labss, exogenous_shocks, endogenous_states, zlbswitch)
               end
 
@@ -521,7 +517,7 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
     innovations = Array{Float64}(undef,approx.nexogvars)
 
     # decr! initialization
-    funcmatplus=Array{Float64}(undef,approx.nfunc,approx.ninter)
+    #=funcmatplus=Array{Float64}(undef,approx.nfunc,approx.ninter)
     funcmat = Array{Float64}(undef, approx.nfunc, approx.ninter)
     shockindex=Array{Int64}(undef,approx.nexogshocks)
     lmsv=Array{Float64}(undef,approx.nmsv)
@@ -531,7 +527,7 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
     funcapp_plus=Array{Float64}(undef,approx.nfunc)
     xx=Array{Float64}(undef,approx.nmsv)
     polyvec=Array{Float64}(undef,approx.ngridpoints)
-    weightvec=Array{Float64}(undef,approx.ninter)
+    weightvec=Array{Float64}(undef,approx.ninter)=#
 
     for i in 1:niter
         avg_error = 0.0
@@ -539,12 +535,12 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
         # Calculate g(f) to get new guess for f and then calculate new approximation
         # Note that we can do this separately for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
         @show "loop within iter starts"
-        @time for j in 1:approx.ns
+        @time @inbounds for j in 1:approx.ns
 
             err = 0.0
             #@show "ngridpoint loop"
-            @inbounds @simd for k in 1:approx.ngridpoints
-                updated_approx_functions[:,k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations, funcmat, funcmatplus, shockindex, lmsv, weighttemp, funcapp, funcapp_plus, xx, polyvec, weightvec)
+            @inbounds for k in 1:approx.ngridpoints
+                updated_approx_functions[:,k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)#, funcmat, funcmatplus, shockindex, lmsv, weighttemp, funcapp, funcapp_plus, xx, polyvec, weightvec)
                 #approx_k, err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
                 #for m in 1:2*approx.nfunc
                 #    updated_approx_functions[m,k] = approx_k[m]
@@ -695,7 +691,7 @@ function parallel_help(rkss::Float64, approx::Approximation, params::Array{Abstr
     α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
 
     # Calculate g(f) to get new guess for f at given exogenous state and then calculate new approximation
-    @inbounds @simd for k in 1:approx.ngridpoints
+    @inbounds for k in 1:approx.ngridpoints
         updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
         err += err2
     end

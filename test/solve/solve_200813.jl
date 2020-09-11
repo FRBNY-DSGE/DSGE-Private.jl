@@ -1,4 +1,4 @@
-using DSGE, NLsolve, Test, BenchmarkTools, TimerOutputs
+using DSGE, NLsolve, Test, BenchmarkTools
 
 #m=GHLS()
 #@show "anderson first"
@@ -7,8 +7,6 @@ using DSGE, NLsolve, Test, BenchmarkTools, TimerOutputs
 #const to = TimerOutput()
 function speeds()
 m = GHLS()
-@show "Iteration next"
-#@timeit to "solve" solve(m; parallel = false, anderson = false)
 @btime alpha_iter = solve($m; parallel = false, anderson = false)
 end
 speeds()
