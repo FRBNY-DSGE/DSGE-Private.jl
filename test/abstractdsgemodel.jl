@@ -7,6 +7,7 @@ m <= Setting(:hessian_path, "")
 # Dates, indices, number of periods for each regime
 @testset "Test field access functions for AbstractDSGEModel objects" begin
     @test DSGE.get_parameters(m) == m.parameters
+    @test DSGE.get_steady_state(m) == m.steady_state
     @test DSGE.get_rng(m) == m.rng
     @test DSGE.get_settings(m) == m.settings
     @test DSGE.get_observables(m) == m.observables

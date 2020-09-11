@@ -196,6 +196,9 @@ end
 # Interface for accessing parameters
 get_parameters(m::AbstractDSGEModel) = m.parameters
 
+# Interface for accessing steady-state parameters
+get_steady_state(m::AbstractDSGEModel) = m.steady_state
+
 # Interface for accessing rng
 get_rng(m::AbstractDSGEModel) = m.rng
 
@@ -408,6 +411,14 @@ Update `m.parameters` with `values`, recomputing the steady-state parameter valu
 function update!(m::AbstractDSGEModel, values::ParameterVector{T}) where T
     ModelConstructors.update!(m.parameters, [θ.value for θ in values])
     steadystate!(m)
+end
+
+function parameters2namedtuple(m::AbstractDSGEModel; include_steadystate::Bool = false)
+    if include_steadystate
+        return parameters2namedtuple(vcat(get_parameters(m), get_steady_state(m)))
+    else
+        return parameters2namedtuple(get_parameters(m))
+    end
 end
 
 """
