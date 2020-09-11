@@ -1,9 +1,11 @@
+# TODO: compare against linearized Jacobian and corrected coefficients of Jacobian, also port
+# faster calculation of Euler and KF Jacobian matrices
 function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
-    # reset_grids!(m) # to make this work with an adaptive agrid, we can't reset grid
+    # reset_grids!(m) # to make this work with an adaptive agrid, we can't reset grid, also doesn't seem necessary
     truncate_distribution!(m)
 
     # Load in endogenous state and eq cond indices
-    endo = augment_model_states(m.endogenous_states_original,#m.endogenous_states_unnormalized,
+    endo = augment_model_states(m.endogenous_states_original, # m.endogenous_states_unnormalized,
                          n_model_states_original(m))
     eq   = m.equilibrium_conditions
 
@@ -36,7 +38,6 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     Tg::Float64 = m[:Tg].value
     δb::Float64 = m[:δb].value
     bg::Float64 = m[:bg].value
-
 
     R = 1 + r
 
@@ -181,7 +182,8 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     JJ[first(eq[:eq_price_phillips]),first(endo[:π_t])]   = -1.
     JJ[first(eq[:eq_price_phillips]),first(endo[:mc_t])]  = κ_p #(1+lamf)/(lamf*Φp)
     JJ[first(eq[:eq_price_phillips]),first(endo[:λ_f_t])] = 1. #1/Φp
-    JJ[first(eq[:eq_price_phillips]),first(endo[:π′_t])]  = 1 / R
+    # JJ[first(eq[:eq_price_phillips]),first(endo[:π′_t])]  = 1 / R # coefficient π′_t is β̃, not 1/R
+    JJ[first(eq[:eq_price_phillips]),first(endo[:π′_t])]  = exp(γ) / R
 
     # marginal cost
     JJ[first(eq[:eq_marginal_cost]),first(endo[:mc_t])]        = 1.
@@ -308,15 +310,16 @@ function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
     dF1_dELLP = zeros(nans, nans)
     dF1_dWHP = zeros(nans)
     dF1_dTTP = zeros(nans)
-    for iss=1:ns
-        for ia=1:na
+
+    @inbounds for iss=1:ns
+        @inbounds for ia=1:na
             i  = na*(iss-1)+ia
             sumELL = 0.
             sumRZ  = 0.
             sumWH  = 0.
             sumTT  = 0.
-            for isp=1:ns
-                for iap=1:na
+            @inbounds for isp=1:ns
+                @inbounds for iap=1:na
                     ip = na*(isp-1)+iap
                     ee[i,ip] = (agrid[iap] - R*(exp(-γ))*max(agrid[ia]-1/ell[i], -η) - T)/(ω*H*sgrid[isp])
                     ξ[i,ip] = ι * ((β*R*exp(-γ))/(ω*H*sgrid[isp])^2)*max(ell[ip],1/(agrid[iap]+η))*qp(ee[i,ip])*fgrid[iss,isp]
@@ -338,42 +341,36 @@ function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
 end
 
 function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
-                                qfunction::Function, qp::Function,
-                                agrid::Vector{Float64}, sgrid::Vector{Float64},
-                                fgrid::Matrix{Float64}, unc::BitArray,
-                                R::Float64, γ::Float64,
-                                ell::Vector{Float64}, D::Vector{Float64},
-                                η::Float64, T::Float64, ω::Float64, H::Float64, ee::Matrix{Float64})
-    nans = na*ns
-    bigΨ    = zeros(nans, nans)
-    smallψ = zeros(nans, nans)
-    dF2_dRZ = zeros(nans)
-    dF2_dM = zeros(nans, nans)
-    dF2_dELL = zeros(nans, nans)
-    dF2_dWH = zeros(nans)
-    dF2_dTT = zeros(nans)
+                                       qfunction::Function, qp::Function,
+                                       agrid::Vector{S}, sgrid::Vector{S},
+                                       fgrid::Matrix{S}, unc::BitArray,
+                                       R::S, γ::S, ell::Vector{S}, D::Vector{S},
+                                       η::S, T::S, ω::S, H::S) where {S <: Real}
+    nans     = na * ns
+    bigΨ     = zeros(S, nans, nans)
+    smallψ   = zeros(S, nans, nans)
+    dF2_dRZ  = zeros(S, nans)
+    dF2_dM   = zeros(S, nans, nans)
+    dF2_dELL = zeros(S, nans, nans)
+    dF2_dWH  = zeros(S, nans)
+    dF2_dTT  = zeros(S, nans)
 
-    for isp=1:ns
-        for iap=1:na
-            ip  = na*(isp-1)+iap
-            sumWH = 0.
-            sumRZ = 0.
-            sumTT = 0.
-            for iss=1:ns
-                for ia=1:na
-                    i = na*(iss-1)+ia
-                    bigΨ[ip,i] = D[i]*qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp])
-                    smallψ[ip,i] = D[i]*qp(ee[i,ip])*fgrid[iss,isp]/((ω*H*sgrid[isp])^2)
-                    sumWH += bigΨ[ip,i] + smallψ[ip,i]*ee[i,ip]*(ω*H*sgrid[isp])
-                    sumRZ += smallψ[ip,i]*(R*exp(-γ))*max(agrid[ia] - 1/ell[i],-η)
-                    dF2_dELL[ip,i] = -smallψ[ip,i]*(R*exp(-γ))*(unc[i]/ell[i])
-                    sumTT += smallψ[ip,i]*T
-                    dF2_dM[ip,i] = qfunction(ee[i,ip])*fgrid[iss,isp]/(ω*H*sgrid[isp]) # note, now we linearize
+    @inbounds for iss = 1:ns
+        @inbounds for ia = 1:na
+            i = na * (iss - 1) + ia # (a, s)
+            @inbounds for isp = 1:ns
+                @inbounds for iap = 1:na
+                    ip              = na * (isp - 1) + iap # (a', s')
+                    ee              = (agrid[iap] - R * (exp(-γ)) * max(agrid[ia] - 1 / ell[i], -η) - T) / (ω * H * sgrid[isp])
+                    bigΨ[ip, i]     = D[i] * qfunction(ee) * fgrid[iss,isp] / (ω * H * sgrid[isp])
+                    smallψ[ip, i]   = D[i] * qp(ee) * fgrid[iss,isp] / ((ω * H * sgrid[isp])^2)
+                    dF2_dELL[ip, i] = -smallψ[ip, i] * (R * exp(-γ)) * (unc[i] / ell[i])
+                    dF2_dM[ip, i]   = qfunction(ee) * fgrid[iss, isp] / (ω * H * sgrid[isp])
+                    dF2_dRZ[ip]    -= smallψ[ip, i] * (R * exp(-γ)) * max(agrid[ia] - 1 / ell[i], -η)
+                    dF2_dWH[ip]    -= bigΨ[ip, i] + smallψ[ip, i] * ee * (ω * H * sgrid[isp])
+                    dF2_dTT[ip]    -= smallψ[ip, i] * T
                 end
             end
-            dF2_dWH[ip] = -sumWH
-            dF2_dRZ[ip] = -sumRZ
-            dF2_dTT[ip] = -sumTT
         end
     end
 
