@@ -631,7 +631,7 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:na2_jump,  get_setting(m, :na_full), "Cash-on-hand distribution grid points (hi)")
     m <= Setting(:na,        get_setting(m, :na_full), "Cash-on-hand distribution grid points")
     m <= Setting(:na_c,      100,                      "Number of additional grid points for constrained people")
-    m <= Setting(:ahi_incs,  [30., 40., 50., 60., 100., 150., 200., 250., 300., 350., 400., 450., 500., 550., 600., 650., 
+    m <= Setting(:ahi_incs,  [30., 40., 50., 60., 100., 150., 200., 250., 300., 350., 400., 450., 500., 550., 600., 650.,
                               700., 750., 800., 850., 900., 950., 1000.],     "Guesses for distance between the minimum and " *
                                                        "maximum values of the cash-on-hand grid.")
 
@@ -665,7 +665,7 @@ function model_settings!(m::HetDSGEGovDebt)
     m <= Setting(:auto_reject, false, "This flag is set when policy function doesn't converge")
 
     # Steady state constants
-    m <= Setting(:ni, 10000)
+    m <= Setting(:n_calibration_iters, 10000, "Number of iterations for calibration functions")
     # m <= Setting(:nz, 1000)
     m <= Setting(:fix_random_matrices, true, "Determines if use fixed matrices")
     m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_es.jld2","us"))
