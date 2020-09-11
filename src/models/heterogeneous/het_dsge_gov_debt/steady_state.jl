@@ -1,12 +1,10 @@
 # TODO: refactor to reduce number of allocations further, e.g. C_Final, c_pol_in, etc.
+#       e.g. refactor to not allocate KF_in if using kf_eigen or transition_mat if using kf_anderson
 function steadystate!(m::HetDSGEGovDebt;
                       βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
                       βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.999999),
                       excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
-                      roots_algorithm = nothing,
-                      euler_anderson::Bool = true,
-                      kf_anderson::Bool = false,
-                      kf_eigen::Bool = true,
+                      euler_anderson::Bool = true, kf_anderson::Bool = false, kf_eigen::Bool = true,
                       doplots::Bool = false, verbose::Symbol = :none) where {S <: Real}
     @assert !(kf_eigen && kf_anderson) "Only one of kf_anderson and kf_eigen can be true"
 
@@ -28,7 +26,6 @@ function steadystate!(m::HetDSGEGovDebt;
                                                       m[:pLH].value, m[:pHL].value,
                                                       us, es, get_setting(m, :n_calibration_iters))
         end
-
 
         # Parameters
         ω = m[:ωstar].value
@@ -75,51 +72,23 @@ function steadystate!(m::HetDSGEGovDebt;
                 m <= Setting(:ascale, ascale)
 
                 # Once have updated grids, can call steady state and compute other two moments
-                find_steadystate!(m, na, ns, ne,
-                                  egrid, ewts, g_of_e,
-                                  f, agrid, sgrid,
-                                  R, H, η, γ, ω, T, bg, qfunc;
-                                  βlo = βlo, βhi = βhi,
-                                  excess = excess, tol = tol, maxit = maxit,
-                                  βband = βband, doplots = doplots,
-                                  m_anderson = m_anderson,
-                                  β_anderson = β_anderson,
+                find_steadystate!(m, na, ns, ne, egrid, ewts, g_of_e,
+                                  f, agrid, sgrid, R, H, η, γ, ω, T, bg, qfunc;
+                                  βlo = βlo, βhi = βhi, excess = excess, tol = tol, maxit = maxit,
+                                  βband = βband, doplots = doplots, m_anderson = m_anderson, β_anderson = β_anderson,
                                   transition_mat = kf_eigen ? Matrix{S}(undef, na * ns, na * ns) : Matrix{S}(undef, 0, 0),
-                                  euler_anderson = euler_anderson,
-                                  kf_anderson = kf_anderson,
-                                  kf_eigen = kf_eigen,
-                                  roots_algorithm = roots_algorithm,
+                                  euler_anderson = euler_anderson, kf_anderson = kf_anderson, kf_eigen = kf_eigen,
                                   verbose = verbose)
 
                 if verbose == :high
                     println("The distribution D(a, s) integrates to $(round(sum(m[:Dstar].value), digits = 3)).")
 
                     # Calculate some summary statistics
-                    los_save = sum(m[:Dstar].value[1:na] .* (agrid - m[:cstar].value[1:na]))
-                    his_save = sum(m[:Dstar].value[1+na:end] .* (agrid - m[:cstar].value[1+na:end]))
-                    los_C    = sum(m[:Dstar].value[1:na] .* m[:cstar].value[1:na])
-                    his_C    = sum(m[:Dstar].value[1+na:end] .* m[:cstar].value[1+na:end])
-                    println("Aggregate savings by low and high skill workers (resp.):            " *
-                            "($(round(los_save, digits = 3)), " * "$(round(his_save, digits = 3)))")
-                    println("Aggregate consumption by low and high skill workers (resp.):        " *
-                            "($(round(los_C, digits = 3)), " * "$(round(his_C, digits = 3)))")
-
+                    print_summary_stats(m)
                 end
 
                 if doplots
-                    p = plot(fit(Histogram, agrid, Weights(m[:Dstar].value[1:na]), nbins = na),
-                             label = "low skill", color = :blue)
-                    plot!(fit(Histogram, agrid, Weights(m[:Dstar].value[(na + 1):end]), nbins = na),
-                          label = "high skill", color = :red)
-                    savefig(p, "agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
-
-                    p = plot(agrid, m[:cstar].value[1:na], label = "low skill")
-                    plot!(p, agrid, m[:cstar].value[(na + 1):end], label = "high skill")
-                    savefig(p, "agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
-
-                    p = plot(agrid, agrid - m[:cstar].value[1:na], label = "low skill")
-                    plot!(p, agrid, agrid - m[:cstar].value[(na + 1):end], label = "high skill")
-                    savefig(p, "agrid_vs_Saving_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+                    plot_steadystate_asgrid(m, agrid)
                 end
 
                 # use ones for now before refactoring since no longer using quadrature over s
@@ -138,12 +107,10 @@ function steadystate!(m::HetDSGEGovDebt;
                 end
             end
         end
+    end
+    m
 end
 
-nothing
-end
-
-# TODO: refactor to not allocate KF_in if using kf_eigen or transition_mat if using kf_anderson
 function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                            egrid::Vector{Float64}, ewts::Vector{Float64}, g_of_e::Vector{Float64},
                            f::Matrix{Float64},
@@ -154,7 +121,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                            excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
                            euler_anderson::Bool = false, kf_anderson::Bool = false, kf_eigen::Bool = false,
                            m_anderson::Int = 5, β_anderson::S = 1.,
-                           transition_mat::Matrix{S} = Matrix{S}(undef, 0, 0), roots_algorithm = nothing,
+                           transition_mat::Matrix{S} = Matrix{S}(undef, 0, 0),
                            doplots::Bool = false, verbose::Symbol = :high) where {S <: Real}
 
     na_c = get_setting(m, :na_c)
@@ -166,9 +133,9 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     counter = 0
 
     # Initial guess
-    β              = NaN # Need to define β here so it's accessible outside of while lopp
-    c_pol_in       = (R - 1) * repeat(agrid, 1, ns, ne) .+ ω * H * repeat(sgrid', na, 1, ne)
-    KF_in          = fill(1.0 / (ns * na), na, ns)
+    β         = NaN # Need to define β here so it's accessible outside of while lopp
+    c_pol_in  = (R - 1) * repeat(agrid, 1, ns, ne) .+ ω * H * repeat(sgrid', na, 1, ne)
+    KF_in     = fill(1.0 / (ns * na), na, ns)
 
     # If want to keep the last β/don't recompute
     if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
@@ -234,8 +201,6 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         end
     end
 
-# If you don't have a β, guess a β
-if isnothing(roots_algorithm)
     while abs(excess) > tol && counter <= maxit # clearing markets
         β = (βlo + βhi) / 2.0
         c_pol_out, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
@@ -283,102 +248,22 @@ if isnothing(roots_algorithm)
         # TODO: maybe do not auto-update c_pol_in unless you have euler iteration covnergence.
         #       c_pol_in should instead be set back to initial guess
     end
-elseif isa(roots_algorithm, AbstractBracketing)
-    β = find_zero(β -> bisect_β(β, na, ns, ne, na_c, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value, agrid, sgrid, c_pol_in,
-                                KF_in, f, egrid, ewts, g_of_e, transition_mat, qfunc, bg, get_setting(m, :policy_maxit), m_anderson,
-                                euler_anderson, kf_anderson, kf_eigen, haskey(get_settings(m), :eigen_method) ?
-                                get_setting(m, :eigen_method) : :krylov,
-                                get_setting(m, :euler_tol), get_setting(m, :kf_tol), get_setting(m, :eigen_tol), get_setting(m, :C_tol)),
-                  (βlo, βhi), roots_algorithm, maxevals = maxit, atol = tol)
-    c_pol_in, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
-                                                           m[:ehi].value, m[:elo].value,
-                                                           agrid, sgrid, c_pol_in, KF_in,
-                                                           f, egrid, ewts, g_of_e, transition_mat, qfunc,
-                                                           maxit = get_setting(m, :policy_maxit),
-                                                           m_anderson = m_anderson,
-                                                           β_anderson = β_anderson,
-                                                           euler_anderson = euler_anderson,
-                                                           kf_anderson = kf_anderson,
-                                                           kf_eigen = kf_eigen,
-                                                           eigen_method = haskey(get_settings(m), :eigen_method) ?
-                                                           get_setting(m, :eigen_method) : :krylov,
-                                                           euler_tol = get_setting(m, :euler_tol),
-                                                           kf_tol = get_setting(m, :kf_tol),
-                                                           eigen_tol = get_setting(m, :eigen_tol),
-                                                           C_tol = get_setting(m, :C_tol))
 
-elseif isa(roots_algorithm, AbstractSecant)
-    β = find_zero(β -> bisect_β(β, na, ns, ne, na_c, R, ω, H, η, T, γ, m[:ehi].value, m[:elo].value, agrid, sgrid, c_pol_in,
-                                KF_in, f, egrid, ewts, g_of_e, transition_mat, qfunc, bg, get_setting(m, :policy_maxit), m_anderson,
-                                β_anderson, euler_anderson, kf_anderson, kf_eigen, haskey(get_settings(m), :eigen_method) ?
-                                get_setting(m, :eigen_method) : :krylov,
-                                get_setting(m, :euler_tol), get_setting(m, :kf_tol), get_setting(m, :eigen_tol),
-                                get_setting(m, :C_tol)),
-                  (βlo + βhi) / 2., roots_algorithm, maxevals = maxit, atol = tol)
-c_pol_in, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
-                                                       m[:ehi].value, m[:elo].value,
-                                                       agrid, sgrid, c_pol_in, KF_in,
-                                                       f, egrid, ewts, g_of_e, transition_mat, qfunc,
-                                                       maxit = get_setting(m, :policy_maxit),
-                                                       β_anderson = β_anderson,
-                                                       m_anderson = m_anderson,
-                                                       euler_anderson = euler_anderson,
-                                                       kf_anderson = kf_anderson,
-                                                       kf_eigen = kf_eigen,
-                                                       eigen_method = haskey(get_settings(m), :eigen_method) ?
-                                                       get_setting(m, :eigen_method) : :krylov,
-                                                       euler_tol = get_setting(m, :euler_tol),
-                                                       kf_tol = get_setting(m, :kf_tol),
-                                                       eigen_tol = get_setting(m, :eigen_tol),
-                                                       C_tol = get_setting(m, :C_tol))
-else
-error("Cannot use the Roots algorithm $(typeof(roots_algorithm))")
-end
+    bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T, R)
 
-bgrid, agrid_big = construct_bgrid_agrid_big(agrid, sgrid, egrid, na, ns, ne, γ, ω, H, T, R)
-if doplots
-    for is in 1:ns
-        p = plot()
-        for ie in 1:ne
-            plot!(bgrid, c_pol_in[:, is, ie], label = "e=$(egrid[ie])")
-        end
-        savefig(p, "bgrid_vs_C_varye_s=$(sgrid[is]).pdf")
+    if doplots
+        plot_steadystate_bsegrid(bgrid, egrid, c_pol_in)
     end
-end
 
-# If policy function does not converge, we signal to likelihood that should reject
-m <= Setting(:auto_reject, reject)
-m[:lstar]  = 1 ./ c_as
-m[:cstar]  = c_as
-m[:Dstar]  = KF
-m[:βstar]  = β
-m[:β_save] = β
+    # If policy function does not converge, we signal to likelihood that should reject
+    m <= Setting(:auto_reject, reject)
+    m[:lstar]  = 1 ./ c_as
+    m[:cstar]  = c_as
+    m[:Dstar]  = KF
+    m[:βstar]  = β
+    m[:β_save] = β
 
-nothing
-end
-
-function bisect_β(β::S, na::Int, ns::Int, ne::Int, na_c::Int, R::S, ω::S, H::S, η::S, T::S, γ::S,
-                  ehi::S, elo::S, agrid::AbstractVector{S}, sgrid::AbstractVector{S},
-                  c_pol_in::AbstractArray{S, 3}, KF_in::AbstractArray{S, 2}, f::AbstractMatrix{S},
-                  egrid::AbstractVector{S}, ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
-                  transition_mat::AbstractMatrix{S}, qfunc, bg::S,
-                  maxit::Int, m_anderson::Int, β_anderson::S, euler_anderson::Bool, kf_anderson::Bool, kf_eigen::Bool,
-                  eigen_method::Symbol, euler_tol::S, kf_tol::S, eigen_tol::S, C_tol::S) where {S <: Real}
-    ~, ~, bp, KF, ~ = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
-                                            ehi, elo, agrid, sgrid, c_pol_in, KF_in,
-                                            f, egrid, ewts, g_of_e, transition_mat, qfunc,
-                                            maxit = maxit, m_anderson = m_anderson,
-                                            β_anderson = β_anderson,
-                                            euler_anderson = euler_anderson,
-                                            kf_anderson = kf_anderson,
-                                            kf_eigen = kf_eigen,
-                                            eigen_method = eigen_method,
-                                            euler_tol = euler_tol,
-                                            kf_tol = kf_tol,
-                                            eigen_tol = eigen_tol,
-                                            C_tol = C_tol)
-    excess = compute_excess(KF, bp, bg)
-    return excess
+    m
 end
 
 function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S, ω::S, H::S, η::S,
@@ -477,12 +362,12 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
                               bp::AbstractVector{S}, bgrid::AbstractVector{S}, sgrid::AbstractVector{S},
                               egrid::AbstractVector{S}, c_constrained::AbstractMatrix{S},
                               β::S, R::S, γ::S, ω::S, H::S, T::S) where {S <: Real}
-    for is in 1:ns
-        for ie in 1:ne
+    @inbounds for is in 1:ns
+        @inbounds for ie in 1:ne
             # Sums
             verify_one = 0.0
-            for iep in 1:ne     # Inner integral over e' (done first b/c Julia is column major)
-                for isp in 1:ns # Outer sum over s'
+            @inbounds for iep in 1:ne     # Inner integral over e' (done first b/c Julia is column major)
+                @inbounds for isp in 1:ns # Outer sum over s'
                     #               p(s'|s)    * iota(e')  *      g(e')    * c(b′, s', e′)^{-1}
                     # Note that f[is, isp] is prob going froms sgrid[is] to sgrid[isp], so we do want to
                     # iterate over the second element rather than the first, despite the p(s'|s) notation
@@ -546,19 +431,19 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
                 c = vcat(c_c[1:cutoff], c) # so that, for the new b, the condition b[1] ≈ 0 holds
             end
 
-# Nearest points, linear interpolation
-c_poli[:, is, ie] = try
-    interp_one(b, c, bgrid)
-catch e
-    if !issorted(b)
-        bsorted_inds = sortperm(b)
-        interp_one(b[bsorted_inds], c[bsorted_inds], bgrid)
-    else
-        rethrow(e)
+            # Nearest points, linear interpolation
+            c_poli[:, is, ie] = try
+                interp_one(b, c, bgrid)
+            catch e
+                if !issorted(b)
+                    bsorted_inds = sortperm(b)
+                    interp_one(b[bsorted_inds], c[bsorted_inds], bgrid)
+                else
+                    rethrow(e)
+                end
+            end
+        end
     end
-end
-end
-end
 end
 
 # See fixedpoint_c_policy! for comments. This function produces the residual c_pol - F(c_pol)
@@ -568,11 +453,11 @@ function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::Abstr
                                       bp::AbstractVector{S}, bgrid::AbstractVector{S}, sgrid::AbstractVector{S},
                                       egrid::AbstractVector{S}, c_constrained::AbstractMatrix{S},
                                       β::S, R::S, γ::S, ω::S, H::S, T::S) where {S <: Real}
-    for is in 1:ns
-        for ie in 1:ne
+    @inbounds for is in 1:ns
+        @inbounds for ie in 1:ne
             verify_one = 0.0
-            for iep in 1:ne
-                for isp in 1:ns
+            @inbounds for iep in 1:ne
+                @inbounds for isp in 1:ns
                     sum_term   .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[:, isp, iep]
                     verify_one  +=  f[is, isp] * ewts[iep] * g_of_e[iep]
                 end
@@ -633,10 +518,10 @@ function fixedpoint_KF!(D′_as::AbstractArray{S, 2}, D_as::AbstractArray{S, 2},
 
     # Calculate D′(a, s) from  D(a, s) by using the KF equation
     na, ns = size(D_as)
-    for isp in 1:ns
-        for iap in 1:na
-            for is in 1:ns
-                for ia in 1:na
+    @inbounds for isp in 1:ns
+        @inbounds for iap in 1:na
+            @inbounds for is in 1:ns
+                @inbounds for ia in 1:na
                     # Technically calculating m′(a, s) from D(a, s) in this step
                     D′_as[iap, isp] += D_as[ia, is] * f[is, isp] / (ω * H * sgrid[isp]) *
                         qfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_pol[ia, is]) - T) / (ω * H * sgrid[isp]))
@@ -657,10 +542,10 @@ function fixedpoint_KF_nlsolve!(F_D::AbstractArray{S, 2}, D_as::AbstractArray{S,
 
     # Calculate D′(a, s) from  D(a, s) by using the KF equation
     na, ns = size(D_as)
-    for isp in 1:ns
-        for iap in 1:na
-            for is in 1:ns
-                for ia in 1:na
+    @inbounds for isp in 1:ns
+        @inbounds for iap in 1:na
+            @inbounds for is in 1:ns
+                @inbounds for ia in 1:na
                     F_D[iap, isp] += D_as[ia, is] * f[is, isp] / (ω * H * sgrid[isp]) *
                         qfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_pol[ia, is]) - T) / (ω * H * sgrid[isp]))
                 end
@@ -696,10 +581,10 @@ function construct_transition!(transition_mat::AbstractMatrix{S}, C_as::Abstract
                                qfunc, ω::S, H::S, R::S, γ::S, T::S) where {S <: Real}
     na = length(agrid)
     ns = length(sgrid)
-    @inbounds @simd for is in 1:ns
-        @inbounds @simd for ia in 1:na
-            @inbounds @simd for isp in 1:ns
-                @inbounds @simd for iap in 1:na
+    @inbounds for is in 1:ns
+        @inbounds for ia in 1:na
+            @inbounds for isp in 1:ns
+                @inbounds for iap in 1:na
                     transition_mat[na * (isp - 1) + iap, na * (is - 1) + ia] = f[is, isp] / (ω * H * sgrid[isp]) *
                         qfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_as[ia, is]) - T) / (ω * H * sgrid[isp]))
                 end
@@ -715,7 +600,7 @@ function integrate_out_e(agrid::AbstractVector{S1}, agrid_big::AbstractArray{S2,
     # Map c(b, s, e) -> c(a, s, e)
     na, ns, ne = size(agrid_big)
     C_as    = Matrix{S3}(undef, na, ns)
-    for is in 1:ns
+    @inbounds for is in 1:ns
         # Sort the a's, given the skill level
         vec_agrid_big_is = vec(agrid_big[:, is, :])
         sorted_inds = sortperm(vec_agrid_big_is)
@@ -746,4 +631,33 @@ end
 
 @inline function compute_excess(μ::AbstractVector{S}, bp::AbstractVector{S}, bg::S) where {S <: Real}
     return dot(μ, bp) - bg # Compute excess supply of savings, which is a fn of w
+end
+
+function plot_steadystate_asgrid(m::HetDSGEGovDebt, agrid::AbstractVector{S}) where {S <: Real}
+    na = get_setting(m, :na)
+    p = plot(fit(Histogram, agrid, Weights(m[:Dstar].value[1:na]), nbins = na),
+             label = "low skill", color = :blue)
+    plot!(fit(Histogram, agrid, Weights(m[:Dstar].value[(na + 1):end]), nbins = na),
+          label = "high skill", color = :red)
+    savefig(p, "agrid_vs_D_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+
+    p = plot(agrid, m[:cstar].value[1:na], label = "low skill")
+    plot!(p, agrid, m[:cstar].value[(na + 1):end], label = "high skill")
+    savefig(p, "agrid_vs_C_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+
+    p = plot(agrid, agrid - m[:cstar].value[1:na], label = "low skill")
+    plot!(p, agrid, agrid - m[:cstar].value[(na + 1):end], label = "high skill")
+    savefig(p, "agrid_vs_Saving_beta=$(string(round(m[:βstar].value, digits = 3))).pdf")
+end
+
+function plot_steadystate_bsegrid(bgrid::AbstractVector{S}, egrid::AbstractVector{S}, c_pol_in::AbstractArray{S, 3}) where {S <: Real}
+    ns = size(c_pol_in, 2)
+    ne = size(c_pol_in, 3)
+    for is in 1:ns
+        p = plot()
+        for ie in 1:ne
+            plot!(bgrid, c_pol_in[:, is, ie], label = "e=$(egrid[ie])")
+        end
+        savefig(p, "bgrid_vs_C_varye_s=$(sgrid[is]).pdf")
+    end
 end

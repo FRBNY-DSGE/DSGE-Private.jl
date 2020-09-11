@@ -376,6 +376,18 @@ function generate_us_and_es(ni, ne)
     =#
 end
 
+function print_summary_stats(m::HetDSGEGovDebt)
+    na = get_setting(m, :na)
+    los_save = sum(m[:Dstar].value[1:na] .* (agrid - m[:cstar].value[1:na]))
+    his_save = sum(m[:Dstar].value[1+na:end] .* (agrid - m[:cstar].value[1+na:end]))
+    los_C    = sum(m[:Dstar].value[1:na] .* m[:cstar].value[1:na])
+    his_C    = sum(m[:Dstar].value[1+na:end] .* m[:cstar].value[1+na:end])
+    println("Aggregate savings by low and high skill workers (resp.):            " *
+            "($(round(los_save, digits = 3)), " * "$(round(his_save, digits = 3)))")
+    println("Aggregate consumption by low and high skill workers (resp.):        " *
+            "($(round(los_C, digits = 3)), " * "$(round(his_C, digits = 3)))")
+end
+
 """
 ```
 CashOnHandError <: Exception
