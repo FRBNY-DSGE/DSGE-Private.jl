@@ -244,7 +244,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     end
 
     if counter == maxit
-        @warn "Euler iteration does not converge"
+        @warn "Bisection for β does not converge to a market-clearing value."
         reject = true
         # TODO: maybe do not auto-update c_pol_in unless you have euler iteration covnergence.
         #       c_pol_in should instead be set back to initial guess
