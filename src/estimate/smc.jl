@@ -1,8 +1,8 @@
 """
 ```
-smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix; verbose::Symbol, old_data::Matrix)
-smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame)
-smc(m::Union{AbstractDSGEModel,AbstractVARModel})
+smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix; verbose::Symbol, old_data::Matrix)
+smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame)
+smc2(m::Union{AbstractDSGEModel,AbstractVARModel})
 ```
 
 ### Arguments:
@@ -82,7 +82,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
             catch err
                 if isa(err, ParamBoundsError) || isa(err, CashOnHandError)
                     return -Inf
-                else 
+                else
                     throw(err)
                 end
             end
