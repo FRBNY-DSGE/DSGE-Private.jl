@@ -1,9 +1,15 @@
-function klein(m::AbstractModel)
+function klein(m::AbstractDSGEModel; autodiff::Bool = false)
 
     #################
     # Linearization:
     #################
-    Jac1 = Matrix{Float64}(jacobian(m))
+    if autodiff
+        nt′, nt = construct_steadystate_namedtuples(m) # construct NamedTuple of steady state values
+        Jac1 = Matrix{Float64}(jacobian(m, nt′, nt))
+    else
+        Jac1 = Matrix{Float64}(jacobian(m))
+    end
+
     ##################################################################################
     # Klein Solution Method---apply generalized Schur decomposition a la Klein (2000)
     ##################################################################################
