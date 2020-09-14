@@ -1,5 +1,3 @@
-# TODO: compare against linearized Jacobian and corrected coefficients of Jacobian, also port
-# faster calculation of Euler and KF Jacobian matrices
 function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     # reset_grids!(m) # to make this work with an adaptive agrid, we can't reset grid, also doesn't seem necessary
     truncate_distribution!(m)

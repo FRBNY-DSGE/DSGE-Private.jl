@@ -636,7 +636,7 @@ function model_settings!(m::HetDSGEGovDebt)
                                                        "maximum values of the cash-on-hand grid.")
 
     # e: ideosyncratic income shock grid setup
-    m <= Setting(:ne, 5, "e shock grid points")
+    m <= Setting(:ne, 6, "e shock grid points")
 
     m <= Setting(:binsize, 4) # Setting binsize=1 gives us what we had before doing the binning reduction
     m <= Setting(:poor_man_reduc, true) #note that we're actually doing more than the "poor man reduction" now however this turns ont both poorman truncation and binning reduction
