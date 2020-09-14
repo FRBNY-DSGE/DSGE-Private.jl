@@ -1,4 +1,4 @@
-@inline function mollifier_hetdsgegovdebt(e::S, ehi::S, elo::S) where {S <: Real}
+@inline function mollifier_hetdsgegovdebt(e::S0, ehi::S1, elo::S1) where {S0 <: Real, S1 <: Real}
     In = 0.443993816237631
     if e<ehi && e>elo
         temp = -1.0 + 2.0 * (e - elo) / (ehi - elo)
@@ -8,7 +8,7 @@
 end
 
 
-@inline function dmollifier_hetdsgegovdebt(x::S, ehi::S, elo::S) where {S <: Real}
+@inline function dmollifier_hetdsgegovdebt(x::S0, ehi::S1, elo::S1) where {S0 <: Real, S1 <: Real}
     In = 0.443993816237631
     if x<ehi && x>elo
         temp = (-1.0 + 2.0*(x-elo)/(ehi-elo))
@@ -117,25 +117,28 @@ function skill_moments(sH_over_sL::Real, elo::Real, pLH::S, pHL::S, us::Matrix{S
     linc1, linc2 = ln_annual_inc(es, us, elo, P, πss, sgrid, ni)
     return var(linc1), var(linc2 - linc1)
 end
-
+#=
 """
 ```
-function loss(x::Vector{S}, target::Vector{S}) where {S <: Real}
+loss(x::Vector{S}, target::Vector{S}) where {S <: Real}
 ```
 
 Computes for given vector and target vector, the sum of absolute loss.
 """
+=#
 loss(x::Vector{S}, target::Vector{S}) where {S <: Real} = sum(abs.(x-target))
 
+#=
 """
 ```
-function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
-                  us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
-                  initial_guess::Vector{S} = [6.3, 0.03]) where {S <: Real}
+best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
+         us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
+         initial_guess::Vector{S} = [6.3, 0.03]) where {S <: Real}
 ```
 
 Uses Nelder-Mead (gradient descent algorithm) to optimize for income moments.
 """
+=#
 function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Vector{S},
                   us::Matrix{S}, es::Matrix{S}, max_iter::Int = 20,
                   initial_guess::Vector{S} = [6.3, 0.03]) where {S <: Real}
@@ -274,12 +277,14 @@ function persistent_skill_process(sH_over_sL::AbstractFloat, pLH::AbstractFloat,
     return f, sgrid, swts, sscale
 end
 
+#=
 """
 ```
-function interp_one(xpts::T, ypts::T, x::T) where {T<:Vector{Float64}}
+interp_one(xpts::T, ypts::T, x::T) where {T<:Vector{Float64}}
 ```
 Mimics behavior of interp1 in MATLAB. Takes set {(x_i, y_i)}, linearly interpolates between each (x_i, y_i) and (x_{i+1}, y_{i+1}), and then returns vector y for interpolated points in x.
 """
+=#
 function interp_one(xpts::T1, ypts::T2,
                     x::T3) where {T1 <: AbstractVector{<: Real}, T2 <: AbstractVector{<: Real}, T3 <: AbstractVector{<: Real}}
     @assert length(xpts) == length(ypts)
@@ -288,12 +293,14 @@ function interp_one(xpts::T1, ypts::T2,
     return y
 end
 
+#=
 """
 ```
-function histc(points, grid)
+histc(points, grid)
 ```
 Mimics behavior of histc function in MATLAB.
 """
+=#
 function histc(points, grid) # TODO: see if I can avoid declaring these variables global, e.g. found probably doesn't need to be
     N      = size(grid, 1)
     ib_pol = zeros(Int64, size(points))
@@ -343,6 +350,7 @@ function histc(points, grid) # TODO: see if I can avoid declaring these variable
     return ib_pol, wei
 end
 
+#=
 """
 ```
 generate_us_and_es(ni, ne)
@@ -355,6 +363,7 @@ The us are draws from U[0, 1] used to construct nodes for the skill distribution
 
 The es are the grid nodes for the exogenous i.i.d productivity shock.
 """
+=#
 function generate_us_and_es(ni, ne)
     us = rand(ni, 8)
     ue = rand(ni, 8)
@@ -387,7 +396,7 @@ function print_summary_stats(m::HetDSGEGovDebt)
     println("Aggregate consumption by low and high skill workers (resp.):        " *
             "($(round(los_C, digits = 3)), " * "$(round(his_C, digits = 3)))")
 end
-
+#=
 """
 ```
 CashOnHandError <: Exception
@@ -399,6 +408,7 @@ A `CashOnHandError` is thrown when:
 3. Some assets today `b` for constrained agents are negative.
 4. Consumption is not always less than cash on hand after mapping the consumption policy from `(b, s, e)` to `(a, s)`.
 """
+=#
 mutable struct CashOnHandError <: Exception
     msg::String
 end

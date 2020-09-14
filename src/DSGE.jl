@@ -2,7 +2,7 @@ isdefined(Base, :__precompile__) && __precompile__(false)
 
 module DSGE
     using ModelConstructors, SMC
-    using QuadGK, Interpolations, FastGaussQuadrature
+    using FastGaussQuadrature, ForwardDiff, Interpolations, QuadGK
     using Dates, Test, BenchmarkTools
     using ArnoldiMethod, Distributed, Distributions, FileIO, FredData, HDF5, JLD2, KrylovKit, LinearAlgebra
     using Missings, NLsolve, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
@@ -378,6 +378,7 @@ module DSGE
 
     # Heterogeneous Agent Models
     include("models/heterogeneous/util.jl")
+    include("models/heterogeneous/macros.jl")
     include("models/heterogeneous/steady_state_helpers/kolmogorov_forward.jl")
     include("solve/discrete_time_reduction/copula.jl")
 
@@ -431,7 +432,7 @@ module DSGE
     include("models/heterogeneous/het_dsge_gov_debt/subspecs.jl")
     include("models/heterogeneous/het_dsge_gov_debt/reduction.jl")
     include("models/heterogeneous/het_dsge_gov_debt/manual_jacobian.jl")
-    # include("models/heterogeneous/het_dsge_gov_debt/ad_jacobian.jl")
+    include("models/heterogeneous/het_dsge_gov_debt/ad_jacobian.jl")
     include("models/heterogeneous/het_dsge_gov_debt/shock_loading.jl")
     include("models/heterogeneous/het_dsge_gov_debt/observables.jl")
     include("models/heterogeneous/het_dsge_gov_debt/measurement.jl")
