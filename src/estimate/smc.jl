@@ -80,7 +80,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
             try
                 update!(m, parameters)
             catch err
-                if isa(err, ParamBoundsError)
+                if isa(err, ParamBoundsError) || isa(err, CashOnHandError)
                     return -Inf
                 else 
                     throw(err)
