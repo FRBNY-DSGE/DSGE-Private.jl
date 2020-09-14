@@ -26,7 +26,7 @@ module DSGE
                               n_shocks_expectational, n_observables, n_pseudo_observables,
                               n_equilibrium_conditions, n_parameters, n_parameters_steady_state,
                               n_parameters_free, SteadyStateParameterGrid, get_setting, prior,
-                              savepath, filestring_base, data_vintage
+                              savepath, filestring_base, data_vintage, parameters2namedtuple
     import SMC: get_vals, get_logpost
     import Calculus, Missings, Nullables
     import StateSpaceRoutines: KalmanFilter
@@ -430,7 +430,8 @@ module DSGE
     # include("models/heterogeneous/het_dsge_gov_debt/steady_state_method6.jl")
     include("models/heterogeneous/het_dsge_gov_debt/subspecs.jl")
     include("models/heterogeneous/het_dsge_gov_debt/reduction.jl")
-    include("models/heterogeneous/het_dsge_gov_debt/jacobian.jl")
+    include("models/heterogeneous/het_dsge_gov_debt/manual_jacobian.jl")
+    # include("models/heterogeneous/het_dsge_gov_debt/ad_jacobian.jl")
     include("models/heterogeneous/het_dsge_gov_debt/shock_loading.jl")
     include("models/heterogeneous/het_dsge_gov_debt/observables.jl")
     include("models/heterogeneous/het_dsge_gov_debt/measurement.jl")

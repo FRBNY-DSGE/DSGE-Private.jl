@@ -78,7 +78,7 @@ function posterior!(m::Union{AbstractDSGEModel{T},AbstractVARModel{T}},
         try
             DSGE.update!(m, parameters)
         catch err
-            if isa(err, ParamBoundsError)
+            if isa(err, ParamBoundsError) || isa(err, CashOnHandError) || isa(err, KolmogorovForwardError)
                 return -Inf
             else
                 throw(err)

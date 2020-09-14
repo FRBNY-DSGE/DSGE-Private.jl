@@ -39,8 +39,21 @@ function stationary_eigenvector(A::AbstractMatrix, c::S = 1., method::Symbol = :
     λ, V = stationary_eigenvector(A, method; kwargs...)
 
     if abs(λ - 1 / c) > tol
-        @warn "Your eigenvalue is too far from 1 / $(c)"
+       throw(KolmogorovForwardError("Your eigenvalue ($(round(λ, digits = 5))) is too far from $(1/c)"))
     end
 
     return λ, V
 end
+
+"""
+```
+KolmogorovForwardError <: Exception
+```
+A `KolmogorovForwardError` indicates an error encountered during solution of the Kolmogorov Forward equation, typically
+in the steady state.
+"""
+mutable struct KolmogorovForwardError <: Exception
+    msg::String
+end
+KolmogorovForwardError() = KolmogorovForwardError("")
+Base.showerror(io::IO, ex::KolmogorovForwardError) = print(io, ex.msg)

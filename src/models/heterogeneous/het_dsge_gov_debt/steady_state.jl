@@ -24,7 +24,8 @@ function steadystate!(m::HetDSGEGovDebt;
         else
             m[:varlinc], m[:vardlinc] = skill_moments(m[:sH_over_sL].value, m[:elo].value,
                                                       m[:pLH].value, m[:pHL].value,
-                                                      us, es, get_setting(m, :n_calibration_iters))
+                                                      get_setting(m, :us),
+                                                      get_setting(m, :es), get_setting(m, :n_calibration_iters))
         end
 
         # Parameters
