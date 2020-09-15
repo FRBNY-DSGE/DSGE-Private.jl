@@ -2,11 +2,14 @@ include("util.jl")
 using UnPack, SparseDiffTools, SparsityDetection, SparseArrays
 # REMAINDER TODO:
 # 1. Create function that creates Jacobian caches or sparsity patterns
+# 2. TODO: figure out how to catche zero residual input and construct the steady state NamedTuple AFTER truncation
 function jacobian(m::HetDSGEGovDebt{T}, nt′::NamedTuple, nt::NamedTuple) where {T}
     x = zeros(T, 2 * get_setting(m, :nvars)::Int)
     return jacobian(m, nt′, nt, x)
 end
 function jacobian(m::HetDSGEGovDebt, nt′::NamedTuple, nt::NamedTuple, x::Vector{S}) where {S <: Real}
+    reset_grids!(m; init_grids = false) # to make this work with an adaptive agrid, we cannot recreate grid of steady-state approximation
+    truncate_distribution!(m, nt′, nt)
 
     # Indexing and steady state value
     id      = DSGE.augment_model_states(m.endogenous_states_original, DSGE.n_model_states_original(m)) # endogenous states and jump variables
@@ -46,7 +49,6 @@ function jacobian(m::HetDSGEGovDebt, nt′::NamedTuple, nt::NamedTuple, x::Vecto
     resF = (dF, xarg) ->_jac_residuals_hetdsgegovdebt(dF, xarg, id, nt′, nt, θ, agrη_unc, unc_float, s_fn, sp_fn, q_fn, m.grids,
                                                       dF2_dWH, dF2_dRZ, dF2_dTT, dF2_dELL, dF2_dM,
                                                       m.equilibrium_conditions)
-
     output = Vector{eltype(x)}(undef, length(x) ÷ 2)
     JJ = ForwardDiff.jacobian(resF, output, x)
     if !m.testing && get_setting(m, :normalize_distr_variables)

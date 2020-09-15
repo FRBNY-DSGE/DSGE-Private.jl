@@ -6,6 +6,8 @@ import DSGE: klein_transition_matrices, n_model_states, n_backward_looking_state
 # What do you want to do?
 write_analytical_jacobian = false
 write_autodiff_jacobian = false
+write_analytical_solution = true
+write_autodiff_solution = true
 check_jacobian_indices = true
 check_analytical_jacobian = true
 check_autodiff_jacobian = true
@@ -292,12 +294,36 @@ if check_autodiff_jacobian
     end
 end
 
-if check_solution
+if write_analytical_solution
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
     steadystate!(m)
-    na_save = get_setting(m, :na)
-    m.testing = false
-    m <= Setting(:na, nx_save)
-    gx, hx, _ = klein(m)
+    gx_analytical, hx_analytical, _ = klein(m; autodiff = false)
+    JLD2.jldopen("$path/reference/solve.jld2", true, true, true, IOStream) do file
+        write(file, "gx", gx_analytical)
+        write(file, "hx", hx_analytical)
+    end
+end
+
+if write_autodiff_solution
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
+    steadystate!(m)
+    gx_autodiff, hx_autodiff, _ = klein(m; autodiff = true)
+    JLD2.jldopen("$path/reference/solve_autodiff.jld2", true, true, true, IOStream) do file
+        write(file, "gx", gx_autodiff)
+        write(file, "hx", hx_autodiff)
+    end
+end
+
+if check_analytical_solution
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
+    steadystate!(m)
+    gx_analytical, hx_analytical, _ = klein(m; autodiff = false)
 
     file = JLD2.jldopen("$path/reference/solve.jld2", "r")
     saved_gx   = read(file, "gx")
@@ -305,8 +331,26 @@ if check_solution
     close(file)
 
     @testset "Check solve outputs" begin
-        @test saved_gx  ≈ gx
-        @test saved_hx  ≈ hx
+        @test saved_gx  ≈ gx_analytical
+        @test saved_hx  ≈ hx_analytical
+    end
+end
+
+if check_autodiff_solution
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
+    steadystate!(m)
+    gx_autodiff, hx_autodiff, _ = klein(m; autodiff = true)
+
+    file = JLD2.jldopen("$path/reference/solve_autodiff.jld2", "r")
+    saved_gx   = read(file, "gx")
+    saved_hx   = read(file, "hx")
+    close(file)
+
+    @testset "Check solve outputs" begin
+        @test saved_gx  ≈ gx_autodiff
+        @test saved_hx  ≈ hx_autodiff
     end
 end
 

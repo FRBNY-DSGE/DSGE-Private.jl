@@ -11,7 +11,7 @@ function normalize(m::HetDSGEGovDebt, JJ::Matrix{Float64})
     return Jac1
 end
 
-# use proxy distributions method - now `averaging' so that Qx'*Qx should not `add mass'
+# use proxy distributions method - now `averaging' so that Qx'*Qx should not "add mass"
 # Basically, maps an `n` length vector to a smaller vector by binning grid points into new bins of size binsize
 # (with a size of 1 being an `n` to `n` mapping)
 # TODO: Refactor to use Kronecker and Diagonal, and BlockBandedMatrix
@@ -43,48 +43,34 @@ function compose_normalization_matrices(m::HetDSGEGovDebt)
     if get_setting(m, :poor_man_reduc)
         na = get_setting(m, :na1_state) #:na) # Want the na1_state, not na, b/c want dimension of low skill cash on hand
         ns = get_setting(m, :ns)
-        n = na*ns #get_setting(m, :na1) + get_setting(m, :na2) #
+        n = na * ns #get_setting(m, :na1) + get_setting(m, :na2) #
         nscalars = get_setting(m, :nscalars)
         nyscalars = get_setting(m, :nyscalars)
         nascalars = get_setting(m, :nascalars)
         mindens = get_setting(m, :mindens)
         D = m[:Dstar].value
 
-        na1 = maximum(findall(D[1:na].>mindens)) # Chop off unneeded cash-on-hand grid points for low-skill workers b/c no one there
+        na1 = maximum(findall(D[1:na] .> mindens)) # Chop off unneeded cash-on-hand grid points for low-skill workers b/c no one there
         m <= Setting(:na1_state, na1)
         m <= Setting(:na1_jump, na1)
 
-        setup_indices!(m) # Update the indices
-        init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps)) # Update mapping from states/jumps to indices
-        normalize_model_state_indices!(m) # Update state indices to enforce Kolmogorov distribution integrates to 1
-        endogenous_states_augmented = [:C_t1]
-       for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i + first(m.endogenous_states[get_setting(m, :jumps)[end]]) end #first(collect(values(m.endogenous_states))[end]) end # Augment the model w/post-steady-state states
+        update_reduced_indices!(m)
 
-        m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
-                     length(m.endogenous_states_augmented)) # Update number of states (incl. augmented states)
-
-        Reduc = eye(n)
-        Reduc=Reduc[[1:na1;na+1:n],:] # Remove eliminated cash-on-hand grid points for low skill workers
+        Reduc = eye(n) # use Diagonal or sparse matrix?
+        Reduc = Reduc[[1:na1;na+1:n],:] # Remove eliminated cash-on-hand grid points for low skill workers
 
         minn_noag = 0
         binsize = get_setting(m, :binsize) # this is the maximum binsize which seemed to leave the IRFs unchanged, you can experiment with this
-        # setting binsize = 1 should return what we had before
+        # Note that setting binsize = 1 should return what we had before
         (ProxL, n_newL, n_noagL, n_gpsL) = avg_prox(na1, binsize, minn_noag) # Get new indices corresponding to binning
-        (ProxH, n_newH, n_noagH, n_gpsH) = avg_prox(na, binsize,minn_noag)   # reduction of distributions
+        (ProxH, n_newH, n_noagH, n_gpsH) = avg_prox(na, binsize, minn_noag)   # reduction of distributions
         m <= Setting(:na1_state, n_newL)
         m <= Setting(:na2_state, n_newH)
         if get_setting(m, :reduce_ell) # Reduce ell by using binning
             m <= Setting(:na1_jump, n_newL)
             m <= Setting(:na2_jump, n_newH)
         end
-        setup_indices!(m) # Update indices, states, jumps, augmenetd states, etc.
-        init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))
-        normalize_model_state_indices!(m)
-        endogenous_states_augmented = [:C_t1]
-        for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i + first(m.endogenous_states[get_setting(m, :jumps)[end]]) end #first(collect(values(m.endogenous_states))[end]) end
-
-        m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
-                     length(m.endogenous_states_augmented))
+        update_reduced_indices!(m)
 
         # S is made from an orthogonal matrix, so further reduction by projecting onto an orthogonal basis?
         Prox = cat(ProxL, ProxH, dims = [1 2]) # TODO: Create a BlockBanded Matrix here rather than cat
@@ -106,7 +92,6 @@ function compose_normalization_matrices(m::HetDSGEGovDebt)
         Qright    = cat(Qx',Qy',Qx',Qy', dims = [1,2])
 
         return Qx, Qy, Qleft, Qright # Qx, Qy are the individual components of Qleft, Qright
-
     else
         na = get_setting(m, :na)
         ns = get_setting(m, :ns)
@@ -137,29 +122,33 @@ function compose_normalization_matrices(m::HetDSGEGovDebt)
     end
 end
 
-function truncate_distribution!(m::HetDSGEGovDebt)
-    mindens = get_setting(m, :mindens)
-    trunc_distr = get_setting(m, :trunc_distr)
-    rescale_weights = get_setting(m, :rescale_weights)
+function truncate_distribution!(m::HetDSGEGovDebt, nt′::NamedTuple = NamedTuple(), nt::NamedTuple = NamedTuple())
+    @assert ((isempty(nt′) && isempty(nt)) || (!isempty(nt′) && !isempty(nt))) "NamedTuple inputs to truncate_distribution! " *
+             "must either both be empty or both nonempty"
+    if get_setting(m, :trunc_distr)
+        mindens = get_setting(m, :mindens)
+        rescale_weights = get_setting(m, :rescale_weights)
 
-    na = get_setting(m, :na)
-    D = m[:Dstar].value
-    ell = m[:lstar].value
-    c = m[:cstar].value
-    agrid = m.grids[:agrid].points
-    #alo = get_setting(m, :alo)
-    swts::Vector{Float64}  = m.grids[:sgrid].weights
+        na = get_setting(m, :na)
+        D = m[:Dstar].value
+        ell = m[:lstar].value
+        c = m[:cstar].value
+        agrid = m.grids[:agrid].points
+        swts::Vector{Float64}  = m.grids[:sgrid].weights
 
-    if trunc_distr
         oldna = na
         na = maximum(findall(D[1:na]+D[na+1:2*na] .> mindens)) # used to be 1e-8
-        m[:Dstar] = D[[1:na;oldna+1:oldna+na]]
-        m[:lstar] = ell[[1:na;oldna+1:oldna+na]]
-        m[:cstar] = c[[1:na;oldna+1:oldna+na]]
+        m[:Dstar] = D[[1:na; oldna+1:oldna+na]]
+        m[:lstar] = ell[[1:na; oldna+1:oldna+na]]
+        m[:cstar] = c[[1:na; oldna+1:oldna+na]]
         if rescale_weights
             ahi = agrid[na]
             alo = agrid[1]
             ascale = ahi-alo
+            ι      = ascale / na
+        end
+        if !isempty(nt) # then nt′ is also nonempty
+            nt′
         end
         m <= Setting(:na, na)
         m <= Setting(:ahi, ahi)
@@ -170,17 +159,19 @@ function truncate_distribution!(m::HetDSGEGovDebt)
         m <= Setting(:n, nans)
         m <= Setting(:na, na)
 
-        setup_indices!(m)
-
-        init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))
-
-        normalize_model_state_indices!(m)
-
-        endogenous_states_augmented = [:C_t1]
-        for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i + first(m.endogenous_states[get_setting(m, :jumps)[end]]) end #first(collect(values(m.endogenous_states))[end]) end
-
-        m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
-                     length(m.endogenous_states_augmented))
-
+        update_reduced_indices!(m)
     end
+end
+
+function update_reduced_indices!(m::HetDSGEGovDebt)
+        setup_indices!(m) # Update the indices
+        init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps)) # Update mapping from states/jumps to indices
+        normalize_model_state_indices!(m)
+        endogenous_states_augmented = [:C_t1]
+        for (i,k) in enumerate(endogenous_states_augmented) # Augment the model w/post-steady-state states
+            m.endogenous_states_augmented[k] = i +
+                first(m.endogenous_states[get_setting(m, :jumps)[end]]) # first(collect(values(m.endogenous_states))[end])
+        end
+        m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
+                     length(m.endogenous_states_augmented)) # Update number of states (incl. augmented states)
 end

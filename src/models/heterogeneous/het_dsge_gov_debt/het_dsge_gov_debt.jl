@@ -889,7 +889,7 @@ function init_states_and_jumps!(m::AbstractModel, states::Vector{Symbol},
                  method, we have n_states and n_jumps")
 end
 
-function reset_grids!(m)
+function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true)
     m <= Setting(:na1_state, get_setting(m, :na_full))
     m <= Setting(:na2_state, get_setting(m, :na_full))
     m <= Setting(:na1_jump,  get_setting(m, :na_full))
@@ -897,7 +897,10 @@ function reset_grids!(m)
 
     setup_indices!(m)
     init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))
-    init_grids!(m)
+
+    if init_grids # Sometimes don't want to re-initialize the grids but maintain saved ones
+        init_grids!(m)
+    end
 
     # So that the indices of m.endogenous_states reflect the normalization
     normalize_model_state_indices!(m)
