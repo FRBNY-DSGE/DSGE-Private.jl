@@ -1,40 +1,53 @@
 using DSGE, ModelConstructors, Random
 using Test, BenchmarkTools
-using JLD2, FileIO
+using JLD2, FileIO, HDF5
 import DSGE: klein_transition_matrices, n_model_states, n_backward_looking_states
 # TODO: resave Jacobian components and verify they match
 # What do you want to do?
 write_analytical_jacobian = false
+write_autodiff_jacobian = false
+check_jacobian_indices = true
 check_analytical_jacobian = true
+check_autodiff_jacobian = true
 check_solution = false
 check_irfs = false
 
-
 path = dirname(@__FILE__)
 
-m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-m <= Setting(:steady_state_only, true)
-m <= Setting(:reduce_ell, false)
-
 if write_analytical_jacobian
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
     m.testing = true # So that it will test against the unnormalized Jacobian
     m[:βstar] = NaN
     m <= Setting(:steady_state_only, true)
     steadystate!(m)
-    h5open("$path/reference/jacobian.h5", "w") do file
+    h5open("$path/reference/analytical_jacobian.h5", "w") do file
         write(file, "JJ", DSGE.jacobian(m))
     end
 end
 
-if check_analytical_jacobian
+if write_autodiff_jacobian
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
     m.testing = true # So that it will test against the unnormalized Jacobian
     m[:βstar] = NaN
     m <= Setting(:steady_state_only, true)
     steadystate!(m)
-    JJ = DSGE.jacobian(m)
+    nt′, nt = DSGE.construct_steadystate_namedtuples(m)
+    h5open("$path/reference/autodiff_jacobian.h5", "w") do file
+        write(file, "ad_JJ", DSGE.jacobian(m, nt′, nt))
+        write(file, "JJ", DSGE.jacobian(m, nt′, nt))
+    end
+end
 
-    file = JLD2.jldopen("$path/reference/jacobian.jld2", "r")
-    saved_JJ  = h5read("$path/reference/jacobian.h5", "JJ")
+if check_jacobian_indices
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
+
+    file = JLD2.jldopen("$path/reference/indices_jacobian.jld2", "r")
     KFP = read(file, "KFP")
     KKP = read(file, "KKP")
     LRRP = read(file, "LRRP")
@@ -243,9 +256,39 @@ if check_analytical_jacobian
             @test F41 == eq[:eq_g_budget_constraint]
         end
     end
+end
 
+if check_analytical_jacobian
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
+    m.testing = true # So that it will test against the unnormalized Jacobian
+    m[:βstar] = NaN
+    m <= Setting(:steady_state_only, true)
+    steadystate!(m)
+    JJ = DSGE.jacobian(m)
+
+    analytical_JJ  = h5read("$path/reference/analytical_jacobian.h5", "JJ")
     @testset "Analytical Jacobian of HetDSGEGovDebt" begin
-        @test JJ ≈ saved_JJ
+        @test JJ ≈ analytical_JJ
+    end
+end
+
+if check_autodiff_jacobian
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:steady_state_only, true)
+    m <= Setting(:reduce_ell, false)
+    m.testing = true # So that it will test against the unnormalized Jacobian
+    m[:βstar] = NaN
+    m <= Setting(:steady_state_only, true)
+    steadystate!(m)
+    nt′, nt = DSGE.construct_steadystate_namedtuples(m)
+    JJ      = DSGE.jacobian(m, nt′, nt)
+
+    autodiff_JJ  = h5read("$path/reference/autodiff_jacobian.h5", "ad_JJ")
+    autodiff_JJ2  = h5read("$path/reference/autodiff_jacobian.h5", "JJ")
+    @testset "Autodiff Jacobian of HetDSGEGovDebt" begin
+        @test JJ ≈ autodiff_JJ
     end
 end
 
@@ -268,9 +311,7 @@ if check_solution
 end
 
 if check_irfs
-    #if check_steady_state==false
-        steadystate!(m)
-    #end
+    steadystate!(m)
 
     file = jldopen("$path/reference/irfs.jld2", "r")
 

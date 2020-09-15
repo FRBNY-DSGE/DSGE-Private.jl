@@ -1,9 +1,9 @@
 include("util.jl")
 using UnPack, SparseDiffTools, SparsityDetection, SparseArrays
 # REMAINDER TODO:
-# 1. Create function that creates Jacobian caches or spairsity patterns
+# 1. Create function that creates Jacobian caches or sparsity patterns
 function jacobian(m::HetDSGEGovDebt{T}, nt′::NamedTuple, nt::NamedTuple) where {T}
-    x = zeros(T, get_setting(m, :nvars)::Int)
+    x = zeros(T, 2 * get_setting(m, :nvars)::Int)
     return jacobian(m, nt′, nt, x)
 end
 function jacobian(m::HetDSGEGovDebt, nt′::NamedTuple, nt::NamedTuple, x::Vector{S}) where {S <: Real}
