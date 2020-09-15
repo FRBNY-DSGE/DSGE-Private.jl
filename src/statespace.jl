@@ -169,7 +169,7 @@ function compute_system(m::AbstractDSGEModel{T}; apply_altpolicy = false,
     elseif solution_method == :klein
         # Unpacking the method from solve to hang on to TTT_jump
         if m.spec == "het_dsge"
-            TTT_jump, TTT_state, eu = klein(m)
+            TTT_jump, TTT_state, eu = klein(m; autodiff = haskey(get_settings(m), :autodiff) ? get_setting(m, :autodiff) : false)
         else
             TTT_jump, TTT_state, eu = klein(m)
         end

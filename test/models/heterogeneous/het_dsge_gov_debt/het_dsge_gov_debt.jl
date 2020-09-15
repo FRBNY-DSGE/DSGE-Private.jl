@@ -6,23 +6,25 @@ import DSGE: klein_transition_matrices, n_model_states, n_backward_looking_state
 # What do you want to do?
 write_analytical_jacobian = false
 write_autodiff_jacobian = false
-write_analytical_solution = true
-write_autodiff_solution = true
+write_analytical_solution = false
+write_autodiff_solution = false
+write_analytical_irfs = false
+write_autodiff_irfs = false
 check_jacobian_indices = true
 check_analytical_jacobian = true
 check_autodiff_jacobian = true
-check_solution = false
-check_irfs = false
+check_analytical_solution = true
+check_autodiff_solution = true
+check_analytical_irfs = true
+check_autodiff_irfs = true
 
 path = dirname(@__FILE__)
 
 if write_analytical_jacobian
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
     m.testing = true # So that it will test against the unnormalized Jacobian
     m[:βstar] = NaN
-    m <= Setting(:steady_state_only, true)
     steadystate!(m)
     h5open("$path/reference/analytical_jacobian.h5", "w") do file
         write(file, "JJ", DSGE.jacobian(m))
@@ -31,11 +33,9 @@ end
 
 if write_autodiff_jacobian
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
     m.testing = true # So that it will test against the unnormalized Jacobian
     m[:βstar] = NaN
-    m <= Setting(:steady_state_only, true)
     steadystate!(m)
     nt′, nt = DSGE.construct_steadystate_namedtuples(m)
     h5open("$path/reference/autodiff_jacobian.h5", "w") do file
@@ -46,7 +46,6 @@ end
 
 if check_jacobian_indices
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
 
     file = JLD2.jldopen("$path/reference/indices_jacobian.jld2", "r")
@@ -262,11 +261,9 @@ end
 
 if check_analytical_jacobian
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
     m.testing = true # So that it will test against the unnormalized Jacobian
     m[:βstar] = NaN
-    m <= Setting(:steady_state_only, true)
     steadystate!(m)
     JJ = DSGE.jacobian(m)
 
@@ -278,11 +275,9 @@ end
 
 if check_autodiff_jacobian
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
     m.testing = true # So that it will test against the unnormalized Jacobian
     m[:βstar] = NaN
-    m <= Setting(:steady_state_only, true)
     steadystate!(m)
     nt′, nt = DSGE.construct_steadystate_namedtuples(m)
     JJ      = DSGE.jacobian(m, nt′, nt)
@@ -296,7 +291,6 @@ end
 
 if write_analytical_solution
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
     steadystate!(m)
     gx_analytical, hx_analytical, _ = klein(m; autodiff = false)
@@ -308,7 +302,6 @@ end
 
 if write_autodiff_solution
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
     steadystate!(m)
     gx_autodiff, hx_autodiff, _ = klein(m; autodiff = true)
@@ -320,7 +313,6 @@ end
 
 if check_analytical_solution
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
     steadystate!(m)
     gx_analytical, hx_analytical, _ = klein(m; autodiff = false)
@@ -330,7 +322,7 @@ if check_analytical_solution
     saved_hx   = read(file, "hx")
     close(file)
 
-    @testset "Check solve outputs" begin
+    @testset "Check analytical solve outputs" begin
         @test saved_gx  ≈ gx_analytical
         @test saved_hx  ≈ hx_analytical
     end
@@ -338,7 +330,6 @@ end
 
 if check_autodiff_solution
     m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
-    m <= Setting(:steady_state_only, true)
     m <= Setting(:reduce_ell, false)
     steadystate!(m)
     gx_autodiff, hx_autodiff, _ = klein(m; autodiff = true)
@@ -348,19 +339,77 @@ if check_autodiff_solution
     saved_hx   = read(file, "hx")
     close(file)
 
-    @testset "Check solve outputs" begin
+    @testset "Check autodiff solve outputs" begin
         @test saved_gx  ≈ gx_autodiff
         @test saved_hx  ≈ hx_autodiff
     end
 end
 
-if check_irfs
+if write_analytical_irfs
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:reduce_ell, false)
+    steadystate!(m)
+    sys = compute_system(m)
+    states, obs, pseudo = impulse_responses(m, sys, use_augmented_states = true)
+    endo = m.endogenous_states_original
+    JLD2.jldopen("$path/reference/irfs.jld2", true, true, true, IOStream) do file
+        write(file, "IRFkf", states[endo[:kf′_t], 1:20, 3])
+        write(file, "IRFsh", vec(states[endo[:z′_t], 1:20, 3]))
+        write(file, "IRFell", states[endo[:l′_t], 1:20, 3])
+        write(file, "IRFR", vec(states[endo[:R′_t], 1:20, 3]))
+        write(file, "IRFi", vec(states[endo[:i′_t], 1:20, 3]))
+        write(file, "IRFW", vec(states[endo[:w′_t], 1:20, 3]))
+        write(file, "IRFPI", vec(states[endo[:π′_t], 1:20, 3]))
+        write(file, "IRFT", vec(states[endo[:t′_t], 1:20, 3]))
+        write(file, "IRFY", vec(states[endo[:y′_t], 1:20, 3]))
+        write(file, "IRFPIW", vec(states[endo[:π_w′_t], 1:20, 3]))
+        write(file, "IRFX", vec(states[endo[:I′_t], 1:20, 3]))
+        write(file, "IRFK", vec(states[endo[:k′_t], 1:20, 3]))
+        write(file, "IRFQ", vec(states[endo[:Q′_t], 1:20, 3]))
+        write(file, "IRFRK", vec(states[endo[:capreturn′_t], 1:20, 3]))
+        write(file, "IRFH", vec(states[endo[:L′_t], 1:20, 3]))
+        write(file, "IRFMC", vec(states[endo[:mc′_t], 1:20, 3]))
+        write(file, "IRFLAM", vec(states[endo[:margutil′_t], 1:20, 3]))
+    end
+end
+
+if write_autodiff_irfs
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:reduce_ell, false)
+    m <= Setting(:autodiff, true)
+    steadystate!(m)
+    sys = compute_system(m)
+    states, obs, pseudo = impulse_responses(m, sys, use_augmented_states = true)
+    endo = m.endogenous_states_original
+    JLD2.jldopen("$path/reference/irfs_autodiff.jld2", true, true, true, IOStream) do file
+        write(file, "IRFkf", states[endo[:kf′_t], 1:20, 3])
+        write(file, "IRFsh", vec(states[endo[:z′_t], 1:20, 3]))
+        write(file, "IRFell", states[endo[:l′_t], 1:20, 3])
+        write(file, "IRFR", vec(states[endo[:R′_t], 1:20, 3]))
+        write(file, "IRFi", vec(states[endo[:i′_t], 1:20, 3]))
+        write(file, "IRFW", vec(states[endo[:w′_t], 1:20, 3]))
+        write(file, "IRFPI", vec(states[endo[:π′_t], 1:20, 3]))
+        write(file, "IRFT", vec(states[endo[:t′_t], 1:20, 3]))
+        write(file, "IRFY", vec(states[endo[:y′_t], 1:20, 3]))
+        write(file, "IRFPIW", vec(states[endo[:π_w′_t], 1:20, 3]))
+        write(file, "IRFX", vec(states[endo[:I′_t], 1:20, 3]))
+        write(file, "IRFK", vec(states[endo[:k′_t], 1:20, 3]))
+        write(file, "IRFQ", vec(states[endo[:Q′_t], 1:20, 3]))
+        write(file, "IRFRK", vec(states[endo[:capreturn′_t], 1:20, 3]))
+        write(file, "IRFH", vec(states[endo[:L′_t], 1:20, 3]))
+        write(file, "IRFMC", vec(states[endo[:mc′_t], 1:20, 3]))
+        write(file, "IRFLAM", vec(states[endo[:margutil′_t], 1:20, 3]))
+    end
+end
+
+if check_analytical_irfs
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:reduce_ell, false)
     steadystate!(m)
 
     file = jldopen("$path/reference/irfs.jld2", "r")
 
     IRFkf = read(file, "IRFkf")
-    IRFZ = read(file, "IRFZ")
     IRFsh = read(file, "IRFsh")
     IRFell = read(file, "IRFell")
     IRFR = read(file, "IRFR")
@@ -375,18 +424,76 @@ if check_irfs
     IRFQ = read(file, "IRFQ")
     IRFRK = read(file, "IRFRK")
     IRFH = read(file, "IRFH")
-    IRFc = read(file, "IRFc")
-    IRFC = read(file, "IRFC")
+    # IRFc = read(file, "IRFc")
+    # IRFC = read(file, "IRFC")
     IRFMC = read(file, "IRFMC")
     IRFLAM = read(file, "IRFLAM")
-    IRFm = read(file, "IRFm")
+    # IRFm = read(file, "IRFm")
     close(file)
 
     sys = compute_system(m)
     states, obs, pseudo = impulse_responses(m, sys, use_augmented_states = true)
     endo = m.endogenous_states_original
 
-    @testset "Check IRFs" begin
+    @testset "Check Analytical IRFs" begin
+        #Last entry is 3 because it's the third shock, the Z shock
+        @test IRFkf ≈ states[endo[:kf′_t], 1:20, 3]
+        @test IRFsh ≈ vec(states[endo[:z′_t], 1:20, 3])
+        @test IRFell ≈ states[endo[:l′_t], 1:20, 3]
+        @test IRFR ≈ vec(states[endo[:R′_t], 1:20, 3])
+        @test IRFi ≈ vec(states[endo[:i′_t], 1:20, 3])
+        @test IRFW ≈ vec(states[endo[:w′_t], 1:20, 3])
+        @test IRFPI ≈ vec(states[endo[:π′_t], 1:20, 3])
+        @test IRFT ≈ vec(states[endo[:t′_t], 1:20, 3])
+        @test IRFY ≈ vec(states[endo[:y′_t], 1:20, 3])
+        @test IRFPIW ≈ vec(states[endo[:π_w′_t], 1:20, 3])
+        @test IRFX ≈ vec(states[endo[:I′_t], 1:20, 3])
+        @test IRFK ≈ vec(states[endo[:k′_t], 1:20, 3])
+        @test IRFQ ≈ vec(states[endo[:Q′_t], 1:20, 3])
+        @test IRFRK ≈ vec(states[endo[:capreturn′_t], 1:20, 3])
+        @test IRFH ≈ vec(states[endo[:L′_t], 1:20, 3])
+        #@test IRFC ≈ vec(obs[m.observables[:obs_consumption], 1:20, 3])
+        @test IRFMC ≈ vec(states[endo[:mc′_t], 1:20, 3])
+        @test IRFLAM ≈ vec(states[endo[:margutil′_t], 1:20, 3])
+        #@test IRFm ≈ vec(states[endo[:margutil′_t], 1:20, 3])
+    end
+end
+
+if check_autodiff_irfs
+    m = HetDSGEGovDebt(testing_gamma = true, ref_dir = HETDSGEGOVDEBT)
+    m <= Setting(:reduce_ell, false)
+    m <= Setting(:autodiff, true)
+    steadystate!(m)
+
+    file = jldopen("$path/reference/irfs_autodiff.jld2", "r")
+
+    IRFkf = read(file, "IRFkf")
+    IRFsh = read(file, "IRFsh")
+    IRFell = read(file, "IRFell")
+    IRFR = read(file, "IRFR")
+    IRFi = read(file, "IRFi")
+    IRFW = read(file, "IRFW")
+    IRFPI = read(file, "IRFPI")
+    IRFT = read(file, "IRFT")
+    IRFY = read(file, "IRFY")
+    IRFPIW = read(file, "IRFPIW")
+    IRFX = read(file, "IRFX")
+    IRFK = read(file, "IRFK")
+    IRFQ = read(file, "IRFQ")
+    IRFRK = read(file, "IRFRK")
+    IRFH = read(file, "IRFH")
+    # IRFc = read(file, "IRFc")
+    # IRFC = read(file, "IRFC")
+    IRFMC = read(file, "IRFMC")
+    IRFLAM = read(file, "IRFLAM")
+    # IRFm = read(file, "IRFm")
+    close(file)
+
+    sys = compute_system(m)
+    states, obs, pseudo = impulse_responses(m, sys, use_augmented_states = true)
+    endo = m.endogenous_states_original
+
+    @testset "Check Autodiff IRFs" begin
         #Last entry is 3 because it's the third shock, the Z shock
         @test IRFkf ≈ states[endo[:kf′_t], 1:20, 3]
         @test IRFsh ≈ vec(states[endo[:z′_t], 1:20, 3])
