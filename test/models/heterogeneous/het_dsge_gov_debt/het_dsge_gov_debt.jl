@@ -2,7 +2,7 @@ using DSGE, ModelConstructors, Random
 using Test, BenchmarkTools
 using JLD2, FileIO, HDF5
 import DSGE: klein_transition_matrices, n_model_states, n_backward_looking_states
-# TODO: resave Jacobian components and verify they match
+
 # What do you want to do?
 write_analytical_jacobian = false
 write_autodiff_jacobian = false
@@ -37,9 +37,7 @@ if write_autodiff_jacobian
     m.testing = true # So that it will test against the unnormalized Jacobian
     m[:βstar] = NaN
     steadystate!(m)
-    nt′, nt = DSGE.construct_steadystate_namedtuples(m)
     h5open("$path/reference/autodiff_jacobian.h5", "w") do file
-        write(file, "ad_JJ", DSGE.jacobian(m, nt′, nt))
         write(file, "JJ", DSGE.jacobian(m, nt′, nt))
     end
 end
@@ -279,11 +277,9 @@ if check_autodiff_jacobian
     m.testing = true # So that it will test against the unnormalized Jacobian
     m[:βstar] = NaN
     steadystate!(m)
-    nt′, nt = DSGE.construct_steadystate_namedtuples(m)
-    JJ      = DSGE.jacobian(m, nt′, nt)
+    JJ      = DSGE.autodiff_jacobian(m)
 
-    autodiff_JJ  = h5read("$path/reference/autodiff_jacobian.h5", "ad_JJ")
-    autodiff_JJ2  = h5read("$path/reference/autodiff_jacobian.h5", "JJ")
+    autodiff_JJ  = h5read("$path/reference/autodiff_jacobian.h5", "JJ")
     @testset "Autodiff Jacobian of HetDSGEGovDebt" begin
         @test JJ ≈ autodiff_JJ
     end

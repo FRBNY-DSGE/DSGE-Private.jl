@@ -122,9 +122,9 @@ function compose_normalization_matrices(m::HetDSGEGovDebt)
     end
 end
 
-function truncate_distribution!(m::HetDSGEGovDebt, nt′::NamedTuple = NamedTuple(), nt::NamedTuple = NamedTuple())
-    @assert ((isempty(nt′) && isempty(nt)) || (!isempty(nt′) && !isempty(nt))) "NamedTuple inputs to truncate_distribution! " *
-             "must either both be empty or both nonempty"
+function truncate_distribution!(m::HetDSGEGovDebt) #, nt′::NamedTuple = NamedTuple(), nt::NamedTuple = NamedTuple())
+#=    @assert ((isempty(nt′) && isempty(nt)) || (!isempty(nt′) && !isempty(nt))) "NamedTuple inputs to truncate_distribution! " *
+             "must either both be empty or both nonempty"=#
     if get_setting(m, :trunc_distr)
         mindens = get_setting(m, :mindens)
         rescale_weights = get_setting(m, :rescale_weights)
@@ -145,10 +145,6 @@ function truncate_distribution!(m::HetDSGEGovDebt, nt′::NamedTuple = NamedTupl
             ahi = agrid[na]
             alo = agrid[1]
             ascale = ahi-alo
-            ι      = ascale / na
-        end
-        if !isempty(nt) # then nt′ is also nonempty
-            nt′
         end
         m <= Setting(:na, na)
         m <= Setting(:ahi, ahi)

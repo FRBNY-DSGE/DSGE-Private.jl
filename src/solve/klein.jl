@@ -4,8 +4,7 @@ function klein(m::AbstractDSGEModel; autodiff::Bool = false)
     # Linearization:
     #################
     if autodiff
-        nt′, nt = construct_steadystate_namedtuples(m) # construct NamedTuple of steady state values
-        Jac1 = Matrix{Float64}(jacobian(m, nt′, nt))
+        Jac1 = Matrix{Float64}(autodiff_jacobian(m))
     else
         Jac1 = Matrix{Float64}(jacobian(m))
     end
