@@ -15,6 +15,7 @@ function klein(m::AbstractDSGEModel; autodiff::Bool = false)
 
     # NK is number of predetermined variables
     NK = get_setting(m, :n_predetermined_variables)
+    eu = 0 # Assume everything is fine at first
     # n is number of variables (predet + non-predet)
 	n = size(Jac1, 1)
 
@@ -38,8 +39,10 @@ function klein(m::AbstractDSGEModel; autodiff::Bool = false)
 	nk = sum(eigselect)
 	if nk>NK
 	    @warn "Equilibrium is locally indeterminate"
+        eu = -1
 	elseif nk<NK
 	    @warn "No local equilibrium exists"
+        eu = -1
 	end
 
 	U::Matrix{Float64} = QZ.Z'
@@ -98,12 +101,13 @@ function klein(m::AbstractDSGEModel; autodiff::Bool = false)
     eighx = eigvals(hx_coef)
     if abs(norm(eighx, Inf) - norm(eigst, Inf)) > 1e-4
 		@warn "max abs eigenvalue of S11invT11 and hx are different!"
+        eu = -1
 	end
 
 	# next, want to represent policy functions in terms of meaningful things
 	# gx_fval = Qy'*gx_coef*Qx
 	# hx_fval = Qx'*hx_coef*Qx
-    return gx_coef, hx_coef, 0
+    return gx_coef, hx_coef, eu
 end
 
 # Need an additional transition_equation function to properly stack the

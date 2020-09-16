@@ -171,7 +171,7 @@ function compute_system(m::AbstractDSGEModel{T}; apply_altpolicy = false,
         if m.spec == "het_dsge"
             TTT_jump, TTT_state, eu = klein(m; autodiff = haskey(get_settings(m), :autodiff) ? get_setting(m, :autodiff) : false)
         else
-            TTT_jump, TTT_state, eu = klein(m)
+            TTT_jump, TTT_state, eu = klein(m; autodiff = haskey(get_settings(m), :autodiff) ? get_setting(m, :autodiff) : false)
         end
         if eu==-1
             throw(KleinError())
