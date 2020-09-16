@@ -1,6 +1,6 @@
 function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     reset_grids!(m; init_grids = false) # to make this work with an adaptive agrid, we cannot recreate grid of steady-state approximation
-    truncate_distribution!(m)
+    # truncate_distribution!(m)
 
     # Load in endogenous state and eqcond indices
     endo = augment_model_states(m.endogenous_states_original, # m.endogenous_states_unnormalized,
@@ -51,7 +51,6 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     Rk::Float64    = m[:Rkstar].value
     kstar::Float64 = m[:kstar].value
 
-
     agrid::Vector{Float64} = m.grids[:agrid].points
     awts::Vector{Float64}  = m.grids[:agrid].weights
     sgrid::Vector{Float64} = m.grids[:sgrid].points
@@ -68,7 +67,7 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     qp(z) = dmollifier_hetdsgegovdebt(z, ehi, elo)
     qfunction_hetdsgegovdebt(x) = mollifier_hetdsgegovdebt(x, ehi, elo)
 
-    unc = 1 ./ ell .<= repeat(agrid,ns) .+ η
+    unc = 1 ./ ell .<= repeat(agrid, ns) .+ η
     ι   = (agrid[end] - agrid[1]) / na
 
     dF1_dELL, dF1_dRZ, dF1_dELLP, dF1_dWHP, dF1_dTTP, ee =

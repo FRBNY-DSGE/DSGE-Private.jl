@@ -160,14 +160,14 @@ function truncate_distribution!(m::HetDSGEGovDebt) #, nt′::NamedTuple = NamedT
 end
 
 function update_reduced_indices!(m::HetDSGEGovDebt)
-        setup_indices!(m) # Update the indices
-        init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps)) # Update mapping from states/jumps to indices
-        normalize_model_state_indices!(m)
-        endogenous_states_augmented = [:C_t1]
-        for (i,k) in enumerate(endogenous_states_augmented) # Augment the model w/post-steady-state states
-            m.endogenous_states_augmented[k] = i +
-                first(m.endogenous_states[get_setting(m, :jumps)[end]]) # first(collect(values(m.endogenous_states))[end])
-        end
-        m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
-                     length(m.endogenous_states_augmented)) # Update number of states (incl. augmented states)
+    setup_indices!(m) # Update the indices
+    init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps)) # Update mapping from states/jumps to indices
+    normalize_model_state_indices!(m)
+    endogenous_states_augmented = [:C_t1]
+    for (i,k) in enumerate(endogenous_states_augmented) # Augment the model w/post-steady-state states
+        m.endogenous_states_augmented[k] = i +
+            first(m.endogenous_states[get_setting(m, :jumps)[end]]) # first(collect(values(m.endogenous_states))[end])
+    end
+    m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
+                 length(m.endogenous_states_augmented)) # Update number of states (incl. augmented states)
 end

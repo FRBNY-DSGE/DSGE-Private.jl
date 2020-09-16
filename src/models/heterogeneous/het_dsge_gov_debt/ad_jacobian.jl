@@ -6,7 +6,7 @@ using UnPack, SparseDiffTools, SparsityDetection, SparseArrays
 function autodiff_jacobian(m::HetDSGEGovDebt{T}) where {T}
     # Make sure grids and indices correspond to steady state
     reset_grids!(m; init_grids = false) # to make this work with an adaptive agrid, we cannot recreate grid of steady-state approximation
-    truncate_distribution!(m)
+    # truncate_distribution!(m)
 
     x = zeros(T, 2 * get_setting(m, :nvars)::Int)  # linearize around steady state
     nt′, nt = construct_steadystate_namedtuples(m) # construct NamedTuple of steady state values
