@@ -60,9 +60,30 @@ function ave_mpc(m::AbstractArray, c::AbstractArray, agrid::AbstractArray,
     return mpc
 end
 
+# Save as above but assumes aswts = 1
+function ave_mpc(m::AbstractArray, c::AbstractArray, agrid::AbstractArray,
+                 na::Int, ns::Int)
+    mpc = 0.
+    for iss=1:ns
+        i = na*(iss-1)+1
+        mpc += m[i]*(c[i+1] - c[i])/(agrid[2] - agrid[1])
+        for ia=2:na
+            i = na*(iss-1)+ia
+            mpc += m[i]*(c[i] - c[i-1])/(agrid[ia] - agrid[ia-1])
+        end
+    end
+    return mpc
+end
+
 function frac_zero(m::AbstractArray, c::AbstractArray, agrid::AbstractArray,
                    aswts::AbstractArray, ns::Int)
     return sum(aswts .* m .* (c .== repeat(agrid, ns)))
+end
+
+# same as above but assume aswts = 1
+function frac_zero(m::AbstractArray, c::AbstractArray, agrid::AbstractArray,
+                   ns::Int)
+    return sum(m .* (c .== repeat(agrid, ns)))
 end
 
 function ssample(us::Matrix{S}, P::Matrix{S}, πss::AbstractArray,
@@ -387,6 +408,7 @@ end
 
 function print_summary_stats(m::HetDSGEGovDebt)
     na = get_setting(m, :na)
+    agrid = m.grids[:agrid].points
     los_save = sum(m[:Dstar].value[1:na] .* (agrid - m[:cstar].value[1:na]))
     his_save = sum(m[:Dstar].value[1+na:end] .* (agrid - m[:cstar].value[1+na:end]))
     los_C    = sum(m[:Dstar].value[1:na] .* m[:cstar].value[1:na])

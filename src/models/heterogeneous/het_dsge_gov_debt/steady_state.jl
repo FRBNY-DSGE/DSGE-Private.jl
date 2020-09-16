@@ -93,8 +93,8 @@ function steadystate!(m::HetDSGEGovDebt;
                 end
 
                 # use ones for now before refactoring since no longer using quadrature over s
-                m[:mpc] = ave_mpc(m[:Dstar].value,   m[:cstar].value, agrid, kron(ones(size(swts)), awts), na, ns)
-                m[:pc0] = frac_zero(m[:Dstar].value, m[:cstar].value, agrid, kron(ones(size(swts)), awts), ns)
+                m[:mpc] = ave_mpc(m[:Dstar].value,   m[:cstar].value, agrid, na, ns)
+                m[:pc0] = frac_zero(m[:Dstar].value, m[:cstar].value, agrid, ns)
                 m.grids[:agrid] = Grid(agrid, awts, ascale) # Save final agrid
 
                 break
