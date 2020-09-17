@@ -76,14 +76,14 @@ function ave_mpc(m::AbstractArray, c::AbstractArray, agrid::AbstractArray,
 end
 
 function frac_zero(m::AbstractArray, c::AbstractArray, agrid::AbstractArray,
-                   aswts::AbstractArray, ns::Int)
-    return sum(aswts .* m .* (c .== repeat(agrid, ns)))
+                   aswts::AbstractArray, ns::Int; atol::Real = 1e-10)
+    return sum(aswts .* m .* (isapprox.(c, repeat(agrid, ns); atol = atol)))
 end
 
 # same as above but assume aswts = 1
 function frac_zero(m::AbstractArray, c::AbstractArray, agrid::AbstractArray,
-                   ns::Int)
-    return sum(m .* (c .== repeat(agrid, ns)))
+                   ns::Int; atol::Real = 1e-10)
+    return sum(m .* (isapprox.(c, repeat(agrid, ns); atol = atol)))
 end
 
 function ssample(us::Matrix{S}, P::Matrix{S}, πss::AbstractArray,
