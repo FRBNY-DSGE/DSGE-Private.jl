@@ -49,6 +49,9 @@ function init_subspec!(m::HetDSGEGovDebt)
     # Estimate all parameters but only target MPC and fraction of zero cash on hand
     elseif subspec(m) == "ss13"
         return ss13!(m)
+    # Estimate all parameters but only target MPC
+    elseif subspec(m) == "ss14"
+        return ss14!(m)
     else
         error("This subspec should be a 0")
     end
@@ -87,12 +90,12 @@ function fix_all_except_sigmas!(m::HetDSGEGovDebt)
     m <= parameter(:β_save, 0.0, fixed = true,
                    description = "saving the betas per particle",
                    tex_label = "\\beta_save")
-    m <= parameter(:sH_over_sL, 6.33333, (3.0, 9.0), (3.0, 9.0), Untransformed(),
-                   Uniform(3.0, 9.0), fixed = true,
+    m <= parameter(:sH_over_sL, 6.33333, (3., 9.0), (3., 9.0), Untransformed(),
+                   Uniform(3., 9.0), fixed = true,
                    description = "Ratio of high to low earners", tex_label = "s_H / s_L")
 
-    m <= parameter(:pLH, 0.005, (0.0025, 0.095), (0.0025, 0.095), Untransformed(),
-                   Uniform(0.005, 0.095), fixed = true,
+    m <= parameter(:pLH, 0.005, (.0025, .095), (.0025, .095), Untransformed(),
+                   Uniform(1e-4, .5), fixed = true,
                    description = "Prob of going from low to high persistent skill",
                    tex_label = "p(s_L \\mid s_H)")
 
@@ -856,4 +859,48 @@ function ss13!(m::HetDSGEGovDebt)
     m <= parameter(:sH_over_sL, 8.99999, (3.0, 9.0), (3.0, 9.0), Untransformed(),
                    Uniform(3.0, 9.0), fixed = false,
                    description = "Ratio of high to low earners", tex_label = "s_H / s_L")
+end
+
+"""
+```
+ss14!(m::HetDSGEGovDebt)
+```
+
+Initializes model for run when we estimate all parameters but only target MPC
+"""
+function ss14!(m::HetDSGEGovDebt)
+    m <= Setting(:calibrate_income_targets, false, "Calibrate for varlinc and vardlinc")
+
+    # Set targets
+    m <= Setting(:targets, [0.16], "Targets for [MPC]")
+    m <= Setting(:target_vars, [:mpc],
+                 "Symbols of variables we're targeting")
+    m <= Setting(:target_σt, [0.2],
+                 "Target \\sigma_t for MPC, pc0, varlinc, and vardlinc")
+
+    # Give model new parameters
+    m <= parameter(:varlinc, 0.0, fixed = true, tex_label = "varlinc",
+                   description = "var(log(annual income))")
+    m <= parameter(:vardlinc, 0.0, fixed = true, tex_label = "vardlinc",
+                   description = "var(log(deviations in annual income))")
+
+    # Since not calibrating, we let elo and s_H / s_L be free parameters
+    m <= parameter(:elo, 1.035e-8, (1e-18, 0.9-eps()), (1e-18, 0.9-eps()), Untransformed(),
+                   Uniform(1e-18, 0.9-eps()), fixed = false,
+                   description = "Lower bound on second income shock to mollify actual income",
+                   tex_label = "\\underbar{z}")
+    m <= parameter(:ehi, 2-m[:elo].value, fixed = true,
+                   description = "Upper bound on second income shock to mollify actual income",
+                   tex_label = "\\bar{e}")
+    m <= parameter(:sH_over_sL, 8.99999, (1.1, 15.0), (1.1, 15.0), Untransformed(),
+                   Uniform(1.1, 15.0), fixed = false,
+                   description = "Ratio of high to low earners", tex_label = "s_H / s_L")
+    m <= parameter(:pLH, 0.005, (1e-4, 0.5), (1e-4, 0.5), Untransformed(),
+                   Uniform(1e-4, 0.5), fixed = false,
+                   description = "Prob of going from low to high persistent skill",
+                   tex_label = "p(s_L \\mid s_H)")
+    m <= parameter(:pHL, 0.03, (1e-4, 0.5), (1e-4, 0.5), Untransformed(),
+                   Uniform(1e-4, 0.5), fixed = false,
+                   description = "Prob of going from high to low persistent skill",
+                   tex_label = "p(s_H \\mid s_L)")
 end
