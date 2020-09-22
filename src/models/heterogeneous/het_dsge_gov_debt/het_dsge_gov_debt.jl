@@ -491,6 +491,10 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                                   tex_label = "\\mu_*")
     m <= SteadyStateParameter(:βstar, NaN, description = "Steady-state discount factor",
                                   tex_label = "\\beta_*")
+    m <= SteadyStateParameter(:euler_err, NaN, description = "Euler equation percentage point error in Linf norm",
+                              tex_label = "Euler \\% Error (L^\\infty norm)")
+    m <= SteadyStateParameter(:euler_deviation, NaN, description = "Euler equation error in Linf norm",
+                              tex_label = "Euler Error (L^\\infty norm)")
 end
 
 """

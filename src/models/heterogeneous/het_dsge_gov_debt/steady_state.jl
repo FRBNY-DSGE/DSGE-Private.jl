@@ -161,6 +161,10 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                 kf_eigen = kf_eigen,
                                                                 eigen_method = haskey(get_settings(m), :eigen_method) ?
                                                                 get_setting(m, :eigen_method) : :krylov,
+                                                                cas_fixedpoint = haskey(get_settings(m), :cas_fixedpoint) ?
+                                                                get_setting(m, :cas_fixedpoint) : false,
+                                                                cas_learning_rate = haskey(get_settings(m), :cas_learning_rate) ?
+                                                                get_setting(m, :cas_learning_rate) : .3,
                                                                 euler_tol = get_setting(m, :euler_tol),
                                                                 kf_tol = get_setting(m, :kf_tol),
                                                                 eigen_tol = get_setting(m, :eigen_tol),
@@ -182,6 +186,10 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                     kf_eigen = kf_eigen,
                                                                     eigen_method = haskey(get_settings(m), :eigen_method) ?
                                                                     get_setting(m, :eigen_method) : :krylov,
+                                                                    cas_fixedpoint = haskey(get_settings(m), :cas_fixedpoint) ?
+                                                                    get_setting(m, :cas_fixedpoint) : false,
+                                                                    cas_learning_rate = haskey(get_settings(m), :cas_learning_rate) ?
+                                                                    get_setting(m, :cas_learning_rate) : .3,
                                                                     euler_tol = get_setting(m, :euler_tol),
                                                                     kf_tol = get_setting(m, :kf_tol),
                                                                     eigen_tol = get_setting(m, :eigen_tol),
@@ -216,6 +224,10 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                                                                 kf_eigen = kf_eigen,
                                                                 eigen_method = haskey(get_settings(m), :eigen_method) ?
                                                                 get_setting(m, :eigen_method) : :krylov,
+                                                                cas_fixedpoint = haskey(get_settings(m), :cas_fixedpoint) ?
+                                                                get_setting(m, :cas_fixedpoint) : false,
+                                                                cas_learning_rate = haskey(get_settings(m), :cas_learning_rate) ?
+                                                                get_setting(m, :cas_learning_rate) : .3,
                                                                 euler_tol = get_setting(m, :euler_tol),
                                                                 kf_tol = get_setting(m, :kf_tol),
                                                                 eigen_tol = get_setting(m, :eigen_tol),
@@ -256,13 +268,23 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         plot_steadystate_bsegrid(bgrid, egrid, c_pol_in)
     end
 
+    # Calculate euler equation error
+    euler_err, euler_dev = if (haskey(get_settings(m), :cas_fixedpoint) ? get_setting(m, :cas_fixedpoint) : false)
+        cas_euler_err(reshape(c_as, na, ns), β, R, γ, T, ω, H, na, ns, agrid, sgrid, f, qfunc)
+    else
+        cbse_euler_err(c_pol_in, ns, ne, na_c, f, ewts, g_of_e, bgrid, bgrid, sgrid,
+                       egrid, β, R, γ, ω, H, T)
+    end
+
     # If policy function does not converge, we signal to likelihood that should reject
     m <= Setting(:auto_reject, reject)
-    m[:lstar]  = 1 ./ c_as
-    m[:cstar]  = c_as
-    m[:Dstar]  = KF
-    m[:βstar]  = β
-    m[:β_save] = β
+    m[:lstar]     = 1 ./ c_as
+    m[:cstar]     = c_as
+    m[:Dstar]     = KF
+    m[:βstar]     = β
+    m[:β_save]    = β
+    m[:euler_err] = euler_err
+    m[:euler_deviation] = euler_dev
 
     m
 end
@@ -274,7 +296,8 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                                g_of_e::Vector{Float64}, transition_mat::AbstractMatrix{S}, qfunc, dist::S = 1.;
                                maxit::Int64 = 1000, m_anderson::Int = 5, β_anderson::S = 1.,
                                euler_anderson::Bool = false, kf_anderson::Bool = false, kf_eigen::Bool = false,
-                               eigen_method::Symbol = :krylov, euler_tol::S = 1e-10, kf_tol::S = 1e-10,
+                               eigen_method::Symbol = :krylov, cas_fixedpoint::Bool = false, cas_learning_rate::Float64 = .3,
+                               euler_tol::S = 1e-10, kf_tol::S = 1e-10,
                                eigen_tol::S = 2e-1, C_tol::S = -1e-8) where {S <: Real}
 
     colors = [:red, :blue, :green, :yellow, :purple]
@@ -296,8 +319,8 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
     # Fixed point problem for c_poli
     if euler_anderson
-        out = nlsolve((F_c_pol, c_pol) -> fixedpoint_c_policy_nlsolve!(F_c_pol, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
-                                                                       bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T),
+        out = nlsolve((F_c_pol, c_pol) -> fixedpoint_cbse_nlsolve!(F_c_pol, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
+                                                                   bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T),
                       c_pol, ftol = euler_tol, iterations = maxit, m = m_anderson, beta = β_anderson, method = :anderson)
         if !out.f_converged
             @warn "Euler iteration did not converge. The final distance is $(out.residual_norm)"
@@ -307,8 +330,8 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     else
         c_poli = similar(c_pol)
         while dist > euler_tol && counter <= maxit
-            fixedpoint_c_policy!(c_poli, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
-                                 bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T)
+            fixedpoint_cbse!(c_poli, c_pol, ns, ne, na_c, sum_term, f, ewts, g_of_e,
+                             bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T)
 
             dist     = maximum(abs.(c_pol - c_poli)) # Inf norm
             c_pol   .= c_poli
@@ -326,9 +349,38 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                               "The maximum excess is $(maximum(c_pol - agrid_big))."))
     end
 
-    # Calculate c(a, s) and bp(a, s)
+    # Calculate c(a, s)
     c_as = integrate_out_e(agrid, agrid_big, bgrid, sgrid, c_pol, tol = C_tol)
-    bp   = (R * exp(-γ)) .* (agrid .- c_as)
+
+    # Solve Euler equation in (a, s)?
+    if cas_fixedpoint # TODO: wrap inside its own function
+        agrη = repeat(agrid, 1, ns)
+        ell_pol_in = similar(c_as)
+        euler_equation_hetdsgegovdebt!(ell_pol_in, β, 1., R, γ, T, ω, H, c_as, c_as, na, ns, (agrid[end] - agrid[1]) / na,
+                                       agrid, sgrid, f, agrη, qfunc)
+        c_as .= min.(agrη, 1 ./ ell_pol_in)
+        ell_pol_out = similar(ell_pol_in)
+        dist = 1.
+        while dist > euler_tol && counter <= maxit
+            euler_equation_hetdsgegovdebt!(ell_pol_out, β, 1., R, γ, T, ω, H, c_as, c_as, na, ns, (agrid[end] - agrid[1]) / na,
+                                           agrid, sgrid, f, agrη, qfunc)
+
+            ell_pol_out .= cas_learning_rate .* ell_pol_out + (1 - cas_learning_rate) .* ell_pol_in
+            dist         = maximum(abs.(ell_pol_in - ell_pol_out))
+            ell_pol_in  .= ell_pol_out
+            c_as        .= min.(agrη, 1 ./ ell_pol_out)
+
+            counter += 1
+
+            if counter == maxit
+                @warn "Euler iteration did not converge for the second fixed point over the (a, s) grid. The final distance is $(dist)"
+                reject = true
+            end
+        end
+    end
+
+    # Calculate bp(a, s)
+    bp = (R * exp(-γ)) .* (agrid .- c_as)
 
     # Fixed point problem for D(a, s)
     if kf_anderson
@@ -357,12 +409,13 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
     return c_pol, vec(c_as), vec(bp), D_as, reject
 end
 
-function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{S, 3}, ns::Int, ne::Int, na_c::Int,
-                              sum_term::AbstractVector{S}, f::AbstractMatrix{S},
-                              ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
-                              bp::AbstractVector{S}, bgrid::AbstractVector{S}, sgrid::AbstractVector{S},
-                              egrid::AbstractVector{S}, c_constrained::AbstractMatrix{S},
-                              β::S, R::S, γ::S, ω::S, H::S, T::S) where {S <: Real}
+function fixedpoint_cbse!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{S, 3}, ns::Int, ne::Int, na_c::Int,
+                          sum_term::AbstractVector{S}, f::AbstractMatrix{S},
+                          ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
+                          bp::AbstractVector{S}, bgrid::AbstractVector{S}, sgrid::AbstractVector{S},
+                          egrid::AbstractVector{S}, c_constrained::AbstractMatrix{S},
+                          β::S, R::S, γ::S, ω::S, H::S, T::S) where {S <: Real}
+
     @inbounds for is in 1:ns
         @inbounds for ie in 1:ne
             # Sums
@@ -372,10 +425,9 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
                     #               p(s'|s)    * iota(e')  *      g(e')    * c(b′, s', e′)^{-1}
                     # Note that f[is, isp] is prob going froms sgrid[is] to sgrid[isp], so we do want to
                     # iterate over the second element rather than the first, despite the p(s'|s) notation
-                    sum_term   .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[:, isp, iep]
+                    sum_term .+= (f[is, isp] * ewts[iep] * g_of_e[iep]) ./ c_pol[:, isp, iep]
                 end
             end
-
 
             # Compute ell(b′, s, e) = β * R * exp(-γ) * (Σₛₚ∫ₑₚ) = β * R * exp(-γ) * sum_term
             # Note that b′ is a choice variable today because it is how much an agent chooses to save
@@ -447,13 +499,13 @@ function fixedpoint_c_policy!(c_poli::AbstractArray{S, 3}, c_pol::AbstractArray{
     end
 end
 
-# See fixedpoint_c_policy! for comments. This function produces the residual c_pol - F(c_pol)
-function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::AbstractArray{S, 3}, ns::Int, ne::Int, na_c::Int,
-                                      sum_term::AbstractVector{S}, f::AbstractMatrix{S},
-                                      ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
-                                      bp::AbstractVector{S}, bgrid::AbstractVector{S}, sgrid::AbstractVector{S},
-                                      egrid::AbstractVector{S}, c_constrained::AbstractMatrix{S},
-                                      β::S, R::S, γ::S, ω::S, H::S, T::S) where {S <: Real}
+# See fixedpoint_cbse! for comments. This function produces the residual c_pol - F(c_pol)
+function fixedpoint_cbse_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::AbstractArray{S, 3}, ns::Int, ne::Int, na_c::Int,
+                                  sum_term::AbstractVector{S}, f::AbstractMatrix{S},
+                                  ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
+                                  bp::AbstractVector{S}, bgrid::AbstractVector{S}, sgrid::AbstractVector{S},
+                                  egrid::AbstractVector{S}, c_constrained::AbstractMatrix{S},
+                                  β::S, R::S, γ::S, ω::S, H::S, T::S) where {S <: Real}
     @inbounds for is in 1:ns
         @inbounds for ie in 1:ne
             verify_one = 0.0
@@ -509,6 +561,45 @@ function fixedpoint_c_policy_nlsolve!(F_c_pol::AbstractArray{S, 3}, c_pol::Abstr
             end
         end
     end
+end
+
+@inline function euler_equation_hetdsgegovdebt!(ret_ell::AbstractMatrix{S0}, β::S1, b_t::S0,
+                                                R_t::S0, z′_t::S0, t′_t::S0, ω′_t::S0, H′_t::S0, # recall Hₜ ≡ Lₜ
+                                                cfunc::AbstractMatrix{S0}, cfunc′::AbstractMatrix{S0},
+                                                na::Int, ns::Int, ι::S1,
+                                                agrid::AbstractVector{S1}, sgrid::AbstractVector{S1}, fgrid::AbstractMatrix{S1},
+                                                agrη::AbstractMatrix{S1}, q_fn::Function) where {S0 <: Real, S1 <: Real}
+
+    enegzpt = exp(-z′_t)
+    Renegzpt = R_t * enegzpt
+    ω′_H′ = ω′_t * H′_t
+
+    # Loop over s
+    @inbounds @simd for iss = 1:ns
+        # Loop over a
+        @inbounds @simd for ia = 1:na
+            # Index for outcome
+            ell_euler = 0.
+
+            # Sum over s'
+            @inbounds @simd for isp = 1:ns
+                ω′_s′_H′ = ω′_H′ * sgrid[isp]
+
+                # Sum over a'
+                @inbounds @simd for iap = 1:na
+                    # ee = (a' - Rₜ * exp(-z') (a - cₜ(a, s)) - T') / (ω's'H')
+                    ee = (agrid[iap] - Renegzpt *
+                          (agrid[ia] - cfunc[ia, iss]) - t′_t) / ω′_s′_H′
+
+                    # ι * ∑∑(exp(-z'ₜ)/c'(a', s')) * g(ee) * p(s'|s) /(ω's'H') # f[iss, isp] = p(s'|s)
+                    ell_euler += (enegzpt / cfunc′[iap, isp]) * q_fn(ee) * fgrid[iss, isp] / ω′_s′_H′
+                end
+            end
+            ret_ell[ia, iss] = max((ι * β * b_t * R_t) * ell_euler, 1 / agrη[ia, iss])
+        end
+    end
+
+    return ret_ell
 end
 
 function fixedpoint_KF!(D′_as::AbstractArray{S, 2}, D_as::AbstractArray{S, 2}, C_pol::AbstractArray{S, 2},
@@ -633,6 +724,38 @@ end
 @inline function compute_excess(μ::AbstractVector{S}, bp::AbstractVector{S}, bg::S) where {S <: Real}
     return dot(μ, bp) - bg # Compute excess supply of savings, which is a fn of w
 end
+
+@inline function cas_euler_err(c_as::AbstractMatrix{S0},
+                               β::S0, R::S0, γ::S0, T::S0, ω::S0, H::S0, na::Int, ns::Int,
+                               agrid::AbstractVector{S1}, sgrid::AbstractVector{S1},
+                               f::AbstractMatrix{S1}, qfunc) where {S0 <: Real, S1 <: Real}
+    ell_pol_in = similar(c_as)
+    agrη = repeat(agrid, 1, ns)
+    euler_equation_hetdsgegovdebt!(ell_pol_in, β, 1., R, γ, T, ω, H, c_as, c_as, na, ns, (agrid[end] - agrid[1]) / na,
+                                   agrid, sgrid, f, agrη, qfunc)
+    # return maximum(abs.((1 ./ ell_pol_in - c_as) ./ c_as))
+    return maximum(abs.((1 ./ (ell_pol_in .* c_as) .- 1.))), maximum(abs.(1 ./ ell_pol_in - c_as))
+end
+
+@inline function cbse_euler_err(cbse::AbstractArray{S, 3}, ns::Int, ne::Int, na_c::Int,
+                                f::AbstractMatrix{S}, ewts::AbstractVector{S}, g_of_e::AbstractVector{S},
+                                bp::AbstractVector{S}, bgrid::AbstractVector{S}, sgrid::AbstractVector{S},
+                                egrid::AbstractVector{S}, β::S, R::S, γ::S, ω::S, H::S, T::S) where {S <: Real}
+
+    c_constrained = Matrix{Float64}(undef, ns, ne)
+    for ie in 1:ne
+        e = egrid[ie]
+        c_constrained[:, ie] = sgrid .* (ω * e * H) .+ T
+    end
+
+    cbse_out = similar(cbse)
+    sum_term = zeros(size(bgrid))
+    fixedpoint_cbse!(cbse_out, cbse, ns, ne, na_c, sum_term, f, ewts, g_of_e,
+                     bp, bgrid, sgrid, egrid, c_constrained, β, R, γ, ω, H, T)
+    return maximum(abs.(cbse_out ./ cbse .- 1.)), maximum(abs.(cbse_out - cbse))
+end
+
+
 
 function plot_steadystate_asgrid(m::HetDSGEGovDebt, agrid::AbstractVector{S}) where {S <: Real}
     na = get_setting(m, :na)
