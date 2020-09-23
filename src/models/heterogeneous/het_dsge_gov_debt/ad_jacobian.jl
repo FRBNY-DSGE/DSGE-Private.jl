@@ -30,8 +30,8 @@ function autodiff_jacobian(m::HetDSGEGovDebt{T}) where {T}
     ns   = DSGE.get_setting(m, :ns)::Int64
 
     # Define some wrapper functions around mollifier and investment cost function
-    @inline q_fn(x::S0) where {S0 <: Real}  = mollifier_hetdsgegovdebt(x,  θ[:ehi], θ[:elo])
-    @inline qp_fn(x::S0) where {S0 <: Real} = dmollifier_hetdsgegovdebt(x, θ[:ehi], θ[:elo])
+    @inline g_fn(x::S0) where {S0 <: Real}  = mollifier_hetdsgegovdebt(x,  θ[:ehi], θ[:elo])
+    @inline gp_fn(x::S0) where {S0 <: Real} = dmollifier_hetdsgegovdebt(x, θ[:ehi], θ[:elo])
 
     @inline s_fn(x::S0) where {S0 <: Real} = (θ[:spp] / 2.0) * (x - exp(θ[:γ])) ^ 2.0 # so that s(exp(γ)) = s'(exp(γ)) = 0.
     @inline sp_fn(x::S0) where {S0 <: Real} = θ[:spp] * (x - exp(θ[:γ]))
@@ -41,12 +41,12 @@ function autodiff_jacobian(m::HetDSGEGovDebt{T}) where {T}
     unc_float      = float.(unc)
     agrη_unc[unc] .= 0.
 
-    dF2_dWH, dF2_dRZ, dF2_dTT, dF2_dELL, bigΨ, dF2_dM = kolmogorov_fwd_hetdsgegovdebt(na, ns, q_fn, qp_fn,
+    dF2_dWH, dF2_dRZ, dF2_dTT, dF2_dELL, bigΨ, dF2_dM = kolmogorov_fwd_hetdsgegovdebt(na, ns, g_fn, gp_fn,
                                                                                       agrid, sgrid, fgrid, unc,
                                                                                       m[:r] + 1., m[:γ].scaledvalue,
                                                                                       m[:lstar].value, m[:Dstar].value, m[:η].value,
                                                                                       m[:Tstar].value, m[:ωstar].value, m[:H].value)
-    resF = (dF, xarg) ->_jac_residuals_hetdsgegovdebt(dF, xarg, id, nt′, nt, θ, agrη_unc, unc_float, s_fn, sp_fn, q_fn, m.grids,
+    resF = (dF, xarg) ->_jac_residuals_hetdsgegovdebt(dF, xarg, id, nt′, nt, θ, agrη_unc, unc_float, s_fn, sp_fn, g_fn, m.grids,
                                                       dF2_dWH, dF2_dRZ, dF2_dTT, dF2_dELL, dF2_dM,
                                                       m.equilibrium_conditions)
     output = Vector{eltype(x)}(undef, length(x) ÷ 2)
@@ -95,7 +95,7 @@ function _jac_residuals_hetdsgegovdebt(dF::AbstractVector{<: Real}, x::AbstractV
                                        id::AbstractDict{Symbol, UnitRange}, nt′::NamedTuple, nt::NamedTuple,
                                        θ::NamedTuple, agrη_unc::AbstractArray{S0},
                                        unc_float::AbstractArray{S0}, s_fn::Function, sp_fn::Function,
-                                       q_fn::Function, grids::OrderedDict{Symbol,Union{Grid, Array}}, dF2_dWH::AbstractVector{S0},
+                                       g_fn::Function, grids::OrderedDict{Symbol,Union{Grid, Array}}, dF2_dWH::AbstractVector{S0},
                                        dF2_dRZ::AbstractVector{S0}, dF2_dTT::AbstractVector{S0},
                                        dF2_dELL::AbstractMatrix{S0}, dF2_dM::AbstractMatrix{S0},
                                        eq::OrderedDict{Symbol,UnitRange}) where {S0 <: Real}
@@ -165,7 +165,7 @@ function _jac_residuals_hetdsgegovdebt(dF::AbstractVector{<: Real}, x::AbstractV
 
     # Set up Euler equation
     l_t_RHS = Vector{eltype(x)}(undef, nans) # RHS of Euler Equation
-    euler_equation!(l_t_RHS, β, b_t, R_t, z′_t, t′_t, w′_t, L′_t, cfunc, cfunc′, na, ns, ι, agrid, sgrid, fgrid, q_fn)
+    euler_equation!(l_t_RHS, β, b_t, R_t, z′_t, t′_t, w′_t, L′_t, cfunc, cfunc′, na, ns, ι, agrid, sgrid, fgrid, g_fn)
 
     # Functional equations
 
@@ -236,7 +236,7 @@ end
                                  cfunc::AbstractVector{S0}, cfunc′::AbstractVector{S0},
                                  na::Int, ns::Int, ι::S1,
                                  agrid::AbstractVector{S1}, sgrid::AbstractVector{S1}, fgrid::AbstractMatrix{S1},
-                                 q_fn::Function) where {S0 <: Real, S1 <: Real}
+                                 g_fn::Function) where {S0 <: Real, S1 <: Real}
 
     enegzpt = exp(-z′_t)
     Renegzpt = R_t * enegzpt
@@ -263,7 +263,7 @@ end
                           (agrid[ia] - cfunc[i]) - t′_t) / ω′_s′_H′
 
                     # ι * ∑∑(exp(-z'ₜ)/c'(a', s')) * g(ee) * p(s'|s) /(ω's'H') # f[iss, isp] = p(s'|s)
-                    ell_euler += (enegzpt / cfunc′[ip]) * q_fn(ee) * fgrid[iss, isp] / ω′_s′_H′
+                    ell_euler += (enegzpt / cfunc′[ip]) * g_fn(ee) * fgrid[iss, isp] / ω′_s′_H′
                 end
             end
             ret_ell[i] = (ι * β * b_t * R_t) * ell_euler

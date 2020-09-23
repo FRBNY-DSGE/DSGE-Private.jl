@@ -51,7 +51,7 @@ function steadystate!(m::HetDSGEGovDebt;
         egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne)
 
         # Initialize mollifier function
-        qfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
+        gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
 
         # Run loop expanding the agrid if a CashOnHandError is caught
         ahi_guesses = if haskey(get_settings(m), :ahi_incs) # Construct guesses for the upper bound of agrid
@@ -74,7 +74,7 @@ function steadystate!(m::HetDSGEGovDebt;
 
                 # Once have updated grids, can call steady state and compute other two moments
                 find_steadystate!(m, na, ns, ne, egrid, ewts, g_of_e,
-                                  f, agrid, sgrid, R, H, η, γ, ω, T, bg, qfunc;
+                                  f, agrid, sgrid, R, H, η, γ, ω, T, bg, gfunc;
                                   βlo = βlo, βhi = βhi, excess = excess, tol = tol, maxit = maxit,
                                   βband = βband, doplots = doplots, m_anderson = m_anderson, β_anderson = β_anderson,
                                   transition_mat = kf_eigen ? Matrix{S}(undef, na * ns, na * ns) : Matrix{S}(undef, 0, 0),
@@ -116,7 +116,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
                            egrid::Vector{Float64}, ewts::Vector{Float64}, g_of_e::Vector{Float64},
                            f::Matrix{Float64},
                            agrid::Vector{Float64}, sgrid::Vector{Float64},
-                           R::Float64, H::Float64, η::Float64, γ::Float64, ω::Float64, T::Float64, bg::Float64, qfunc;
+                           R::Float64, H::Float64, η::Float64, γ::Float64, ω::Float64, T::Float64, bg::Float64, gfunc;
                            βlo::S = 0.5*exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue),
                            βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.9999999),
                            excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
@@ -152,7 +152,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         c_pol_out, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
                                                                 m[:ehi].value, m[:elo].value,
                                                                 agrid, sgrid, c_pol_in, KF_in,
-                                                                f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                                f, egrid, ewts, g_of_e, transition_mat, gfunc,
                                                                 maxit = get_setting(m, :policy_maxit),
                                                                 m_anderson = m_anderson,
                                                                 β_anderson = β_anderson,
@@ -177,7 +177,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
             c_pol_out, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
                                                                     m[:ehi].value, m[:elo].value,
                                                                     agrid, sgrid, c_pol_in, KF_in,
-                                                                    f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                                    f, egrid, ewts, g_of_e, transition_mat, gfunc,
                                                                     maxit = get_setting(m, :policy_maxit),
                                                                     m_anderson = m_anderson,
                                                                     β_anderson = β_anderson,
@@ -215,7 +215,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         c_pol_out, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
                                                                 m[:ehi].value, m[:elo].value,
                                                                 agrid, sgrid, c_pol_in, KF_in,
-                                                                f, egrid, ewts, g_of_e, transition_mat, qfunc,
+                                                                f, egrid, ewts, g_of_e, transition_mat, gfunc,
                                                                 maxit = get_setting(m, :policy_maxit),
                                                                 m_anderson = m_anderson,
                                                                 β_anderson = β_anderson,
@@ -270,7 +270,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
 
     # Calculate euler equation error
     euler_err, euler_dev = if (haskey(get_settings(m), :cas_fixedpoint) ? get_setting(m, :cas_fixedpoint) : false)
-        cas_euler_err(reshape(c_as, na, ns), β, R, γ, T, ω, H, na, ns, agrid, sgrid, f, qfunc)
+        cas_euler_err(reshape(c_as, na, ns), β, R, γ, T, ω, H, na, ns, agrid, sgrid, f, gfunc)
     else
         cbse_euler_err(c_pol_in, ns, ne, na_c, f, ewts, g_of_e, bgrid, bgrid, sgrid,
                        egrid, β, R, γ, ω, H, T)
@@ -293,7 +293,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
                                T::S, γ::S, ehi::S, elo::S, agrid::Vector{S},
                                sgrid::Vector{S}, c_pol::AbstractArray{S, 3}, KF_in::AbstractArray{S, 2},
                                f::Matrix{S}, egrid::Vector{Float64}, ewts::Vector{Float64},
-                               g_of_e::Vector{Float64}, transition_mat::AbstractMatrix{S}, qfunc, dist::S = 1.;
+                               g_of_e::Vector{Float64}, transition_mat::AbstractMatrix{S}, gfunc, dist::S = 1.;
                                maxit::Int64 = 1000, m_anderson::Int = 5, β_anderson::S = 1.,
                                euler_anderson::Bool = false, kf_anderson::Bool = false, kf_eigen::Bool = false,
                                eigen_method::Symbol = :krylov, cas_fixedpoint::Bool = false, cas_learning_rate::Float64 = .3,
@@ -357,13 +357,13 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         agrη = repeat(agrid, 1, ns)
         ell_pol_in = similar(c_as)
         euler_equation_hetdsgegovdebt!(ell_pol_in, β, 1., R, γ, T, ω, H, c_as, c_as, na, ns, (agrid[end] - agrid[1]) / na,
-                                       agrid, sgrid, f, agrη, qfunc)
+                                       agrid, sgrid, f, agrη, gfunc)
         c_as .= min.(agrη, 1 ./ ell_pol_in)
         ell_pol_out = similar(ell_pol_in)
         dist = 1.
         while dist > euler_tol && counter <= maxit
             euler_equation_hetdsgegovdebt!(ell_pol_out, β, 1., R, γ, T, ω, H, c_as, c_as, na, ns, (agrid[end] - agrid[1]) / na,
-                                           agrid, sgrid, f, agrη, qfunc)
+                                           agrid, sgrid, f, agrη, gfunc)
 
             ell_pol_out .= cas_learning_rate .* ell_pol_out + (1 - cas_learning_rate) .* ell_pol_in
             dist         = maximum(abs.(ell_pol_in - ell_pol_out))
@@ -384,11 +384,11 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
 
     # Fixed point problem for D(a, s)
     if kf_anderson
-        out  = nlsolve((F_D, D_as_in) -> fixedpoint_KF_nlsolve!(F_D, D_as_in, c_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T),
+        out  = nlsolve((F_D, D_as_in) -> fixedpoint_KF_nlsolve!(F_D, D_as_in, c_as, agrid, sgrid, f, gfunc, ω, H, R, γ, T),
                        KF_in, ftol = kf_tol, iterations = maxit, method = :anderson, m = m_anderson, beta = β_anderson)
         D_as = vec(out.zero) # out.zero already allocated so just re-assign D_as
     elseif kf_eigen
-        D_as = stationary_KF!(transition_mat, c_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T, (agrid[end] - agrid[1]) / length(agrid);
+        D_as = stationary_KF!(transition_mat, c_as, agrid, sgrid, f, gfunc, ω, H, R, γ, T, (agrid[end] - agrid[1]) / length(agrid);
                               tol = eigen_tol, method = eigen_method)
     else
         D_as  = deepcopy(KF_in) # do not want to alter the initial guess
@@ -396,7 +396,7 @@ function policy_hetdsgegovdebt(na::Int, ns::Int, ne::Int, na_c::Int, β::S, R::S
         counter = 0
         dif     = 1.
         while dif > kf_tol && counter <= maxit
-            fixedpoint_KF!(D′_as, D_as, c_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T)
+            fixedpoint_KF!(D′_as, D_as, c_as, agrid, sgrid, f, gfunc, ω, H, R, γ, T)
 
             # check convergence
             dif      = maximum(abs.(D′_as - D_as))
@@ -568,7 +568,7 @@ end
                                                 cfunc::AbstractMatrix{S0}, cfunc′::AbstractMatrix{S0},
                                                 na::Int, ns::Int, ι::S1,
                                                 agrid::AbstractVector{S1}, sgrid::AbstractVector{S1}, fgrid::AbstractMatrix{S1},
-                                                agrη::AbstractMatrix{S1}, q_fn::Function) where {S0 <: Real, S1 <: Real}
+                                                agrη::AbstractMatrix{S1}, g_fn::Function) where {S0 <: Real, S1 <: Real}
 
     enegzpt = exp(-z′_t)
     Renegzpt = R_t * enegzpt
@@ -592,7 +592,7 @@ end
                           (agrid[ia] - cfunc[ia, iss]) - t′_t) / ω′_s′_H′
 
                     # ι * ∑∑(exp(-z'ₜ)/c'(a', s')) * g(ee) * p(s'|s) /(ω's'H') # f[iss, isp] = p(s'|s)
-                    ell_euler += (enegzpt / cfunc′[iap, isp]) * q_fn(ee) * fgrid[iss, isp] / ω′_s′_H′
+                    ell_euler += (enegzpt / cfunc′[iap, isp]) * g_fn(ee) * fgrid[iss, isp] / ω′_s′_H′
                 end
             end
             ret_ell[ia, iss] = max((ι * β * b_t * R_t) * ell_euler, 1 / agrη[ia, iss])
@@ -604,7 +604,7 @@ end
 
 function fixedpoint_KF!(D′_as::AbstractArray{S, 2}, D_as::AbstractArray{S, 2}, C_pol::AbstractArray{S, 2},
                         agrid::AbstractVector{S}, sgrid::AbstractVector{S}, f::AbstractMatrix{S},
-                        qfunc, ω::S, H::S, R::S, γ::S, T::S) where {S <: Real}
+                        gfunc, ω::S, H::S, R::S, γ::S, T::S) where {S <: Real}
 
     D′_as .= 0.
 
@@ -616,7 +616,7 @@ function fixedpoint_KF!(D′_as::AbstractArray{S, 2}, D_as::AbstractArray{S, 2},
                 @inbounds for ia in 1:na
                     # Technically calculating m′(a, s) from D(a, s) in this step
                     D′_as[iap, isp] += D_as[ia, is] * f[is, isp] / (ω * H * sgrid[isp]) *
-                        qfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_pol[ia, is]) - T) / (ω * H * sgrid[isp]))
+                        gfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_pol[ia, is]) - T) / (ω * H * sgrid[isp]))
                 end
             end
         end
@@ -627,7 +627,7 @@ end
 
 function fixedpoint_KF_nlsolve!(F_D::AbstractArray{S, 2}, D_as::AbstractArray{S, 2}, C_pol::AbstractArray{S, 2},
                                 agrid::AbstractVector{S}, sgrid::AbstractVector{S}, f::AbstractMatrix{S},
-                                qfunc, ω::S, H::S, R::S, γ::S, T::S) where {S <: Real}
+                                gfunc, ω::S, H::S, R::S, γ::S, T::S) where {S <: Real}
 
     # Zero out
     F_D .= 0.
@@ -639,7 +639,7 @@ function fixedpoint_KF_nlsolve!(F_D::AbstractArray{S, 2}, D_as::AbstractArray{S,
             @inbounds for is in 1:ns
                 @inbounds for ia in 1:na
                     F_D[iap, isp] += D_as[ia, is] * f[is, isp] / (ω * H * sgrid[isp]) *
-                        qfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_pol[ia, is]) - T) / (ω * H * sgrid[isp]))
+                        gfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_pol[ia, is]) - T) / (ω * H * sgrid[isp]))
                 end
             end
         end
@@ -650,14 +650,14 @@ function fixedpoint_KF_nlsolve!(F_D::AbstractArray{S, 2}, D_as::AbstractArray{S,
 end
 
 function stationary_KF!(transition_mat::AbstractMatrix{S}, C_as::AbstractMatrix{S},
-                        agrid::AbstractVector{S}, sgrid::AbstractVector{S}, f::AbstractMatrix{S}, qfunc,
+                        agrid::AbstractVector{S}, sgrid::AbstractVector{S}, f::AbstractMatrix{S}, gfunc,
                         ω::S, H::S, R::S, γ::S, T::S, ι::S; tol::S = 2e-1, method::Symbol = :krylov) where {S <: Real}
     # Check D(a, s) solves the KF equation by constructing the transition matrix A and solving the eigenvalue problem.
     # Note that the Kolmogorov forward equation we use is defined for m(a, s) = D(a, s) / ι, hence
     # vec(m′(a, s))     = A * ι * vec(m(a, s)), which reduces to
     # vec(D′(a, s)) / ι = A * vec(D(a, s))
     # vec(D′(a, s))     = A * ι * vec(D(a, s))
-    construct_transition!(transition_mat, C_as, agrid, sgrid, f, qfunc, ω, H, R, γ, T)
+    construct_transition!(transition_mat, C_as, agrid, sgrid, f, gfunc, ω, H, R, γ, T)
 
     # Find largest eigenvalue and associated eigenvector
     # For computational reasons, we solve D(a, s) / ι = A * D(a, s) instead of D(a, s) = A * ι * D(a, s)
@@ -670,7 +670,7 @@ end
 
 function construct_transition!(transition_mat::AbstractMatrix{S}, C_as::AbstractMatrix{S},
                                agrid::AbstractVector{S}, sgrid::AbstractVector{S}, f::AbstractMatrix{S},
-                               qfunc, ω::S, H::S, R::S, γ::S, T::S) where {S <: Real}
+                               gfunc, ω::S, H::S, R::S, γ::S, T::S) where {S <: Real}
     na = length(agrid)
     ns = length(sgrid)
     @inbounds for is in 1:ns
@@ -678,7 +678,7 @@ function construct_transition!(transition_mat::AbstractMatrix{S}, C_as::Abstract
             @inbounds for isp in 1:ns
                 @inbounds for iap in 1:na
                     transition_mat[na * (isp - 1) + iap, na * (is - 1) + ia] = f[is, isp] / (ω * H * sgrid[isp]) *
-                        qfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_as[ia, is]) - T) / (ω * H * sgrid[isp]))
+                        gfunc((agrid[iap] - R * exp(-γ) * (agrid[ia] - C_as[ia, is]) - T) / (ω * H * sgrid[isp]))
                 end
             end
         end
@@ -728,11 +728,11 @@ end
 @inline function cas_euler_err(c_as::AbstractMatrix{S0},
                                β::S0, R::S0, γ::S0, T::S0, ω::S0, H::S0, na::Int, ns::Int,
                                agrid::AbstractVector{S1}, sgrid::AbstractVector{S1},
-                               f::AbstractMatrix{S1}, qfunc) where {S0 <: Real, S1 <: Real}
+                               f::AbstractMatrix{S1}, gfunc) where {S0 <: Real, S1 <: Real}
     ell_pol_in = similar(c_as)
     agrη = repeat(agrid, 1, ns)
     euler_equation_hetdsgegovdebt!(ell_pol_in, β, 1., R, γ, T, ω, H, c_as, c_as, na, ns, (agrid[end] - agrid[1]) / na,
-                                   agrid, sgrid, f, agrη, qfunc)
+                                   agrid, sgrid, f, agrη, gfunc)
     # return maximum(abs.((1 ./ ell_pol_in - c_as) ./ c_as))
     return maximum(abs.((1 ./ (ell_pol_in .* c_as) .- 1.))), maximum(abs.(1 ./ ell_pol_in - c_as))
 end
