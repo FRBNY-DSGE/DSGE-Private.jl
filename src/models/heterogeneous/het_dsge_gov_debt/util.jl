@@ -224,13 +224,13 @@ function transform_ab(a::S, b::S, grid::AbstractVector{S}) where {S <: Real}
     return xs
 end
 
-function construct_egrid(ehi::S, elo::S, ne::Int) where {S <: Real}
+function construct_egrid(ehi::S, elo::S, ne::Int, gfunc::Function = mollifier_hetdsgegovdebt) where {S <: Real}
     # Construct egrid
-    egrid, ewts = gausslegendre(ne)
-    egrid      .= transform_ab(elo, ehi, egrid)
+    egrid, ewts = gausslegendre(ne) # ne point gauss-legendre quadrature -> xᵢ, wᵢ
+    egrid      .= transform_ab(elo, ehi, egrid) # xᵢ∈[-1, 1] -> eᵢ∈[elo, ehi]
 
-    # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ = 1
-    g_of_e      = map(x -> mollifier_hetdsgegovdebt(x, ehi, elo), egrid) # g(eᵢ)
+    # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ = 1 b/c g(e) is a pdf
+    g_of_e      = map(x -> gfunc(x, ehi, elo), egrid) # g(eᵢ)
     ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1
     egrid     ./= dot(g_of_e .* egrid, ewts) # Normalize egrid so that mean ∫ e g(e) de = 1, should be a small adjustment
 

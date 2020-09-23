@@ -49,6 +49,7 @@ function steadystate!(m::HetDSGEGovDebt;
 
         # Construct egrid
         egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne)
+        # m.grids[:egrid] = Grid(egrid, ewts)
 
         # Initialize mollifier function
         gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
