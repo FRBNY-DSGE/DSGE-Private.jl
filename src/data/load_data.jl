@@ -392,7 +392,6 @@ function isvalid_data(m::AbstractDSGEModel, df::DataFrame; cond_type::Symbol = :
         end
     end
 
-
     return valid
 end
 
