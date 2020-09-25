@@ -10,6 +10,7 @@ module DSGE
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample, Weights
     using DelimitedFiles, LoopVectorization, TimerOutputs
+    using Dolo
 #    using StatsFuns: chisqinvcdf
     import Base: isempty
     import Calculus

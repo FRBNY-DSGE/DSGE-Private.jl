@@ -233,7 +233,7 @@ function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vec
 
     prod_sd = prod(approx.shockdistance)
 @fastmath @inbounds begin
-    for i in approx.ninter:-1:1
+    for i in 1:approx.ninter
         #@views shockindexall[1:approx.nexogshocks] = shockindex .+ approx.interpolatemat[1:approx.nexogshocks,i]
         for j in 1:approx.nexogshocks
             shockindexall[j] = shockindex[j] + approx.interpolatemat[j,i]

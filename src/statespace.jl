@@ -200,13 +200,26 @@ function compute_system(m::GHLS;
     m_e = 0.25
     EE = m_e * Diagonal([m[:e_y].value^2, m[:e_π].value^2, m[:e_R].value^2, m[:e_c].value^2, m[:e_i].value^2])
 
+    # Decr! Initialization
+    funcmatplus=Array{Float64}(undef,m.approx.nfunc,m.approx.ninter)
+    funcmat=Array{Float64}(undef,m.approx.nfunc,m.approx.ninter)
+    shockindex=Array{Int64}(undef,m.approx.nexogshocks)
+    lmsv=Array{Float64}(undef,m.approx.nmsv)
+    currentshockvalues=Array{Float64}(undef,m.approx.nexogvars)
+    weighttemp=Array{Float64}(undef,m.approx.nexogshocks)
+    funcapp=Array{Float64}(undef,m.approx.nfunc)
+    funcapp_plus=Array{Float64}(undef,m.approx.nfunc)
+    xx=Array{Float64}(undef,m.approx.nmsv)
+    polyvec=Array{Float64}(undef,m.approx.ngridpoints)
+    weightvec = Array{Float64}(undef,m.approx.ninter)
+
     # Define transition and measurement functions
     function Φ(s_t1::Vector{Float64}, ϵ_t::Vector{Float64})
         #@show "Phi runs"
         #@show s_t1
         #s_t1 = exp.(s_t1)
         endogvar = Array{Float64}(undef, m.approx.nendogvars+m.approx.nexogvars)
-        decr!(endogvar, m.approx, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states, get_setting(m, :zero_lower_bound))
+        decr!(endogvar, m.approx, s_t1, ϵ_t, m.parameters, m.keys, m[:labss].value, α_star, m.exogenous_shocks, m.endogenous_states, get_setting(m, :zero_lower_bound), funcmat, funcmatplus, shockindex,lmsv,currentshockvalues,weighttemp,funcapp,funcapp_plus,xx,polyvec,weightvec)
 
         # The current period state includes the lags of GDP, consumption, and investment
         append!(endogvar,[s_t1[m.endogenous_states[:y_t]], s_t1[m.endogenous_states[:c_t]], s_t1[m.endogenous_states[:i_t]]])

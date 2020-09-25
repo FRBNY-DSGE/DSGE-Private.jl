@@ -629,13 +629,32 @@ function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array
     NLsolve.fixedpoint(residuals, α_initial; ftol=1.0e-04) =#
     # Get fixed point using iterative convergence method
     # Loop until convergence (avg_error < tolfun) or niter reached
+
+    polyappnew = Array{Float64}(undef,2*approx.nfunc)
+    endogvar = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    endogvarzlb = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    endogvarp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    endogvarzlbp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    slopeconxxmsv = Array{Float64}(undef,2*approx.nmsv)
+    xgridmsv = Array{Float64}(undef,approx.nmsv)
+    abserror = Array{Float64}(undef,2*approx.nfunc)
+    ev = Array{Float64}(undef,12)
+    exp_eul = Array{Float64}(undef,12)
+
+    currentshockvalues = Array{Float64}(undef,approx.nexogvars)
+    polyapp = Array{Float64}(undef,2*approx.nfunc)
+    endogvarm1 = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    #exp_var = zeros(12)
+    innovations = Array{Float64}(undef,approx.nexogvars)
+
     for i in 1:niter
         avg_error = 0.0
 
         # Calculates new α_new and avg_error
         # Note that are doing this in parallel for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
-        α_here = @sync @distributed (hcat) for j in 1:approx.ns
-            parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states,α_star,j, zlbswitch)
+        @time α_here = @sync @distributed (hcat) for j in 1:approx.ns
+            parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states,α_star,j, zlbswitch,
+                          polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
         end
 
         α_new[:,1:approx.ns] = α_here[:,1:3:end]
@@ -681,7 +700,24 @@ end
 # Description:
 Helper function for parallel version of fixed point that calculates g(f) at a given exogenous state.
 """
-function parallel_help(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},shockpos::Int, zlbswitch::Bool)
+function parallel_help(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},shockpos::Int, zlbswitch::Bool, polyappnew::Array{Float64,1}, endogvar::Array{Float64,1}, endogvarzlb::Array{Float64,1}, endogvarp::Array{Float64,1}, endogvarzlbp::Array{Float64,1}, slopeconxxmsv::Array{Float64,1}, xgridmsv::Array{Float64,1}, abserror::Array{Float64,1}, ev::Array{Float64,1}, exp_eul::Array{Float64,1}, currentshockvalues::Array{Float64,1}, polyapp::Array{Float64,1}, endogvarm1::Array{Float64,1}, innovations::Array{Float64,1})
+
+    polyappnew = Array{Float64}(undef,2*approx.nfunc)
+    endogvar = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    endogvarzlb = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    endogvarp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    endogvarzlbp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    slopeconxxmsv = Array{Float64}(undef,2*approx.nmsv)
+    xgridmsv = Array{Float64}(undef,approx.nmsv)
+    abserror = Array{Float64}(undef,2*approx.nfunc)
+    ev = Array{Float64}(undef,12)
+    exp_eul = Array{Float64}(undef,12)
+
+    currentshockvalues = Array{Float64}(undef,approx.nexogvars)
+    polyapp = Array{Float64}(undef,2*approx.nfunc)
+    endogvarm1 = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    #exp_var = zeros(12)
+    innovations = Array{Float64}(undef,approx.nexogvars)
 
     # Initialize variables
     parallel_info = zeros(approx.nfunc*approx.ngridpoints,3)
@@ -692,7 +728,7 @@ function parallel_help(rkss::Float64, approx::Approximation, params::Array{Abstr
 
     # Calculate g(f) to get new guess for f at given exogenous state and then calculate new approximation
     @inbounds for k in 1:approx.ngridpoints
-        updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
+        updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
         err += err2
     end
 

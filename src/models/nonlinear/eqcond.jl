@@ -254,7 +254,7 @@ function eqcond(m::GHLS)
 
     # Asset shock (treat as liquidity/η shock)
     Γ0[eq[:eq_b], endo[:b_t]] = -1.0
-    Γ1[eq[:eq_b], endo[:b_t]] = -0.85
+    Γ1[eq[:eq_b], endo[:b_t]] = -1.0*m[:ρ_η] #Was -0.85 - changed 09/21/2020
     Ψ[eq[:eq_b], exo[:b_sh]]  = -1.0
 
     # Investment-specific technology

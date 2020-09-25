@@ -1,10 +1,12 @@
-using DSGE, DelimitedFiles, JLD2
+#addprocs_frbny(32)
+#ENV["juliafrbnymemory"] = "2G"
+using DSGE, DelimitedFiles, JLD2, BenchmarkTools
 
 m = GHLS()
 #@load "model_MH.jld2" m
-m <= Setting(:sampling_method, :MH)
+m <= Setting(:sampling_method, :SMC)
 m <= Setting(:use_parallel_workers, true)
-m <= Setting(:n_particles, 50)
+m <= Setting(:n_particles, 50000)
 m <= Setting(:date_presample_start, quartertodate("1983-Q1"))
 m <= Setting(:date_mainsample_start, quartertodate("1983-Q1"))
 m <= Setting(:date_mainsample_end, quartertodate("2014-Q1"))
