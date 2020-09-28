@@ -4,18 +4,22 @@ using BenchmarkTools, ModelConstructors
 generate_output = false
 time_methods = false
 doplots = false
-lse
-m = HetDSGEGovDebt(; ref_dir =
-                   joinpath(dirname(@__FILE__), "../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
-DSGE.steadystate!(m)
+#lse
 
-@testset "EGM Steady State Solution for HetDSGEGovDebt" begin
-    @test_throws AssertionError DSGE.steadystate!(m; kf_eigen = true, kf_anderson = true)
+for ss in ["ss11", "ss15"] 
+
+    println(ss)
+    m = HetDSGEGovDebt(ss; ref_dir =
+                       joinpath(dirname(@__FILE__), "../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
     DSGE.steadystate!(m)
 
-    if generate_output
-        JLD2.jldopen(joinpath(dirname(@__FILE__), "../../../reference/het_dsge_gov_debt_egm_steadystate.jld2"),
-                     true, true, true, IOStream) do file
+    @testset "EGM Steady State Solution for HetDSGEGovDebt" begin
+        @test_throws AssertionError DSGE.steadystate!(m; kf_eigen = true, kf_anderson = true)
+        DSGE.steadystate!(m)
+
+        if generate_output
+            JLD2.jldopen(joinpath(dirname(@__FILE__), "../../../reference/het_dsge_gov_debt_egm_steadystate.jld2"),
+                         true, true, true, IOStream) do file
             write(file, "lstar", m[:lstar].value)
             write(file, "Dstar", m[:Dstar].value)
             write(file, "cstar", m[:cstar].value)
@@ -32,29 +36,29 @@ end
 
 #=
 m1 = HetDSGEGovDebt(; ref_dir =
-                   joinpath(dirname(@__FILE__), "../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
+joinpath(dirname(@__FILE__), "../../../../src/models/heterogeneous/het_dsge_gov_debt/reference"))
 m1 <= Setting(:cas_fixedpoint, true)
 DSGE.steadystate!(m1)
 @testset "EGM Steady State Solution with Second Fixed Point for HetDSGEGovDebt" begin
-    @test_throws AssertionError DSGE.steadystate!(m1; kf_eigen = true, kf_anderson = true)
-    DSGE.steadystate!(m1)
+@test_throws AssertionError DSGE.steadystate!(m1; kf_eigen = true, kf_anderson = true)
+DSGE.steadystate!(m1)
 
-    if generate_output
-        JLD2.jldopen(joinpath(dirname(@__FILE__), "../../../reference/het_dsge_gov_debt_egm_cas_fixedpoint_steadystate.jld2"),
-                     true, true, true, IOStream) do file
-            write(file, "lstar", m1[:lstar].value)
-            write(file, "Dstar", m1[:Dstar].value)
-            write(file, "cstar", m1[:cstar].value)
-            write(file, "beta", m1[:βstar].value)
-        end
-    else
-        output = JLD2.jldopen(joinpath(dirname(@__FILE__), "../../../reference/het_dsge_gov_debt_egm_cas_fixedpoint_steadystate.jld2"),
-                              "r")
-        @test all(m1[:lstar].value ≈ output["lstar"])
-        @test all(m1[:Dstar].value ≈ output["Dstar"])
-        @test all(m1[:cstar].value ≈ output["cstar"])
-        @test m1[:βstar].value ≈ output["beta"]
-    end
+if generate_output
+JLD2.jldopen(joinpath(dirname(@__FILE__), "../../../reference/het_dsge_gov_debt_egm_cas_fixedpoint_steadystate.jld2"),
+true, true, true, IOStream) do file
+write(file, "lstar", m1[:lstar].value)
+write(file, "Dstar", m1[:Dstar].value)
+write(file, "cstar", m1[:cstar].value)
+write(file, "beta", m1[:βstar].value)
+end
+else
+output = JLD2.jldopen(joinpath(dirname(@__FILE__), "../../../reference/het_dsge_gov_debt_egm_cas_fixedpoint_steadystate.jld2"),
+"r")
+@test all(m1[:lstar].value ≈ output["lstar"])
+@test all(m1[:Dstar].value ≈ output["Dstar"])
+@test all(m1[:cstar].value ≈ output["cstar"])
+@test m1[:βstar].value ≈ output["beta"]
+end
 end
 =#
 if time_methods
@@ -136,4 +140,5 @@ end
 
 if doplots
     DSGE.steadystate!(m; tol = 1e-4, doplots = true, verbose = :high, kf_eigen = true, kf_anderson = false)
+end
 end
