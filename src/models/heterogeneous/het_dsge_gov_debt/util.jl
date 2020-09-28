@@ -15,14 +15,19 @@ end
     return 1/(e*σ*sqrt(2*π))*exp(-(log(x)-μ)/(2*σ^2))
 end
 
+
 @inline function lognormal_mean(ehi::S1, elo::S1, μ::S1, σ::S1) where {S1 <: Real}
-    Φ(x) = .5 + .5*erf(x/sqrt(2))
+    Φ(x) = .5 + 1/2*erf(x/sqrt(2))
     x_0(x) = (log(x)-μ)/σ
-    return exp(μ+σ^2/2)*(Φ(σ-x_0(elo))-Φ(σ-x_0(ehi)))/(Φ(ehi)-Φ(elo))
+    return exp(μ+σ^2/2)*(Φ(σ-x_0(elo))-Φ(σ-x_0(ehi)))/(Φ(x_0(ehi))-Φ(x_0(elo)))
 end
 
-    
-
+@inline function calc_lognormal_mu(ehi::S1, elo::S1, σ::S1) where {S1 <: Real}
+    function nl_mean!(F, x)
+        F[1] = DSGE.lognormal_mean(ehi, elo, x[1], σ) - 1.
+    end
+    return nlsolve(nl_mean!, [σ^2/2]).zero[1]
+end
 
 @inline function mollifier_hetdsgegovdebt(e::S0, ehi::S1, elo::S1) where {S0 <: Real, S1 <: Real}
     In = 0.443993816237631

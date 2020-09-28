@@ -21,10 +21,7 @@ function steadystate!(m::HetDSGEGovDebt;
             gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
         elseif get_setting(m, :gfunc_type) == :lognormal
             # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
-            function nl_mean!(F, x)
-                F[1] = DSGE.lognormal_mean(m[:ehi].value, m[:elo].value, x[1], m[:σ_e].value) - 1
-            end
-            m[:μ_e].value = nlsolve(nl_mean!, [-m[:σ_e].value^2/2]).zero[1]
+            m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
             gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
             gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
         end
