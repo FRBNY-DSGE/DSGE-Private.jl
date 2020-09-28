@@ -849,7 +849,7 @@ function ss13!(m::HetDSGEGovDebt)
     m <= Setting(:target_vars, [:mpc, :pc0],
                  "Symbols of variables we're targeting")
     m <= Setting(:target_σt, [0.2, 0.1],
-                 "Target \\sigma_t for MPC, pc0, varlinc, and vardlinc")
+                 "Target \\sigma_t for MPC and pc0")
 
     # Give model new parameters
     m <= parameter(:varlinc, 0.0, fixed = true, tex_label = "varlinc",
