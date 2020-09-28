@@ -15,22 +15,15 @@ function steadystate!(m::HetDSGEGovDebt;
         return
     else
         # Initialize g function
-        gfunc(x) = gfunc_default(x) 
-        if get_setting(m, :gfunc_type) == :mollifier
-            gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
-            gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
-        elseif get_setting(m, :gfunc_type) == :lognormal
-            # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
-            m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
-            gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
-            gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
-        end
+        gfunc = construct_gfunc!(m)
+        gfunc_wbounds = construct_gfunc_wbounds!(m; recalculate_μ = false)
 
-        reset_grids!(m; gfunc = gfunc)
+        # Update grid settings for state space
+        reset_grids!(m; gfunc = gfunc) # ensure state space grid is full, not the reduced one
         na = get_setting(m, :na)
         ns = get_setting(m, :ns)
         ne = get_setting(m, :ne)
-       
+
         if get_setting(m, :calibrate_income_targets)
             m[:sH_over_sL], m[:elo], m[:ehi] = compute_income_process_parameters(m, gfunc_wbounds)
         else
@@ -54,15 +47,14 @@ function steadystate!(m::HetDSGEGovDebt;
         pHL = m[:pHL].value
         f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
         sH_over_sL = m[:sH_over_sL].value
-     
+
         # Construct sgrid
         sgrid, swts, sscale = construct_sgrid(pHL, pLH, sH_over_sL, ns)
         m.grids[:sgrid] = Grid(sgrid, swts, sscale)
 
         # Construct egrid
         egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc)
-        # m.grids[:egrid] = Grid(egrid, ewts)
-
+        m.grids[:egrid] = Grid(egrid, ewts, sum(ewts)) # scale must equal the sum of the weights
 
         # Run loop expanding the agrid if a CashOnHandError is caught
         ahi_guesses = if haskey(get_settings(m), :ahi_incs) # Construct guesses for the upper bound of agrid

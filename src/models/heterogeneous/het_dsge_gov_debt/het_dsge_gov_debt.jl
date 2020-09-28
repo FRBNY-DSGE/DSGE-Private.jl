@@ -205,7 +205,7 @@ function HetDSGEGovDebt(subspec::String="ss0";
 
     m <= Setting(:ref_dir, ref_dir, "Absolute filepath to reference directory")
 
-    # # Set observable transformations
+    # Set observable transformations
     init_observable_mappings!(m)
 
     # Set settings
@@ -229,39 +229,25 @@ function HetDSGEGovDebt(subspec::String="ss0";
     # Init what will keep track of # of states, jumps, and states/jump indices
     # (need model indices first)
     init_states_and_jumps!(m, states, jumps)
-    
+
     # Initialize parameters
     init_parameters!(m, testing_gamma = testing_gamma)
 
     # Initialize aggregate steady state parameters (necessary for grid construction)
     aggregate_steadystate!(m)
-   
-
 
     # Initialize g function
-    gfunc(x) = gfunc_default(x)
-    if get_setting(m, :gfunc_type) == :lognormal
-        # calculate mu
-        m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
-        gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
-    elseif get_setting(m, :gfunc_type) == :mollifier
-        gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
-    else 
-        gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
-    end
-
-    #println(m[:μ_e].value)
+    gfunc = construct_gfunc!(m)
 
     # Initialize grids
     init_grids!(m, gfunc)
-   
+
     # Solve for the steady state
     #=if get_setting(m, :new_steady_state)
         new_steadystate!(m)
     else
         steadystate!(m)
     end=#
-
 
     # So that the indices of m.endogenous_states reflect the normalization
     normalize_model_state_indices!(m)
@@ -366,7 +352,7 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    description = "var(log(annual income))")
     m <= parameter(:vardlinc, 0.0, fixed = true, tex_label = "vardlinc",
                    description = "var(log(deviations in annual income))")
-    if m.subspec == "ss15"
+    if subspec(m) in ["ss15", "ss16"]
         m <= parameter(:σ_e, 0.5, fixed = true, tex_label = "sigma_e",
                        description = "Standard dev. of e distribution")
         m <= parameter(:μ_e, 0.0, fixed = true, tex_label = "mu_e",
@@ -556,11 +542,10 @@ end
 
 """
 ```
-init_grids!(m::HetDSGEGovDebt)
+init_grids!(m::HetDSGEGovDebt, gfunc)
 ```
 """
 function init_grids!(m::HetDSGEGovDebt, gfunc::Function)
-
 
     na = get_setting(m, :na)
     ns = get_setting(m, :ns)
@@ -575,10 +560,10 @@ function init_grids!(m::HetDSGEGovDebt, gfunc::Function)
     grids[:fgrid] = [[1-m[:pLH] m[:pLH].value]; [m[:pHL].value 1-m[:pHL].value]]
 
     # Construct egrid
-    egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc) # Don't track egrid in grids b/c summarized by agrid
+    egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc)
+    m.grids[:egrid] = Grid(egrid, ewts, sum(ewts)) # scale must equal the sum of the weights
 
     # Markov transition matrix for skill
-
     agrid, awts, ascale = construct_agrid(sgrid, egrid, m[:ωstar].value, m[:H].value,
                                           1 + m[:r].scaledvalue, m[:η].value, m[:γ].scaledvalue, m[:Tstar].value, na)
     grids[:agrid] = Grid(agrid, awts, ascale)
@@ -616,8 +601,8 @@ function model_settings!(m::HetDSGEGovDebt)
     # Likelihood method
     m <= Setting(:use_chand_recursion, true)
 
-    # G Function type, use mollifier by default 
-    if m.subspec == "ss15"
+    # g function type, use mollifier by default
+    if subspec(m) in ["ss15", "ss16"]
         m <= Setting(:gfunc_type, :lognormal)
     else
         m <= Setting(:gfunc_type, :mollifier)
@@ -923,7 +908,11 @@ function init_states_and_jumps!(m::AbstractModel, states::Vector{Symbol},
                  method, we have n_states and n_jumps")
 end
 
-function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true, gfunc::Function = gfunc_default)
+# Reset grids from reduced state space to full state space. The `init_grids` keyword
+# allows the user to avoid re-initializing the full state space grid. A use case is when the grid was adaptively set,
+# so re-initializing would result in a different grid than the one used for the steady-state approximation.
+# The gfunc keyword is required to help reconstruct the agrid if init_grids is true.
+function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true, gfunc::Function = construct_gfunc!(m; recalculate_μ = false))
     m <= Setting(:na1_state, get_setting(m, :na_full))
     m <= Setting(:na2_state, get_setting(m, :na_full))
     m <= Setting(:na1_jump,  get_setting(m, :na_full))

@@ -1,3 +1,43 @@
+function construct_gfunc!(m::HetDSGEGovDebt; recalculate_μ::Bool = true)
+    gfunc_type = get_setting(m, :gfunc_type)
+    if gfunc_type == :mollifier
+        _mollifier_gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
+
+        return _mollifier_gfunc
+    elseif gfunc_type == :lognormal
+        # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
+        if recalculate_μ && !(m[:elo].fixed && m[:ehi].fixed)
+            m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
+        end
+        _lognormal_gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+
+        return _lognormal_gfunc
+    else
+        error("gfunc_type $(gfunc_type) is not recognized. It must be one of [:mollifier, :lognormal]")
+    end
+end
+
+function construct_gfunc_wbounds!(m::HetDSGEGovDebt; recalculate_μ::Bool = true)
+    gfunc_type = get_setting(m, :gfunc_type)
+    if gfunc_type == :mollifier
+        _mollifier_gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
+        _mollifier_gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
+
+        return _mollifier_gfunc, _mollifier_gfunc_wbounds
+    elseif gfunc_type == :lognormal
+        # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
+        if !(m[:elo].fixed && m[:ehi].fixed)
+            m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
+        end
+        _lognormal_gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+
+        _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
+        return _lognormal_gfunc_wbounds
+    else
+        error("gfunc_type $(gfunc_type) is not recognized. It must be one of [:mollifier, :lognormal]")
+    end
+end
+
 @inline function gfunc_default(e::S0) where {S0 <: Real}
     return 0.0
 end

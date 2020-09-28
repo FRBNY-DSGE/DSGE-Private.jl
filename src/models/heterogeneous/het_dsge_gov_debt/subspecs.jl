@@ -55,6 +55,9 @@ function init_subspec!(m::HetDSGEGovDebt)
     # Use LogNormal distribution for e, otherwise equivalent to ss11
     elseif subspec(m) == "ss15"
         return ss15!(m)
+    # Use LogNormal distribution for e, otherwise equivalent to ss13
+    elseif subspec(m) == "ss16"
+        return ss16!(m)
     else
         error("This subspec should be a 0")
     end
@@ -890,27 +893,30 @@ function ss14!(m::HetDSGEGovDebt)
     m <= Setting(:targets, [0.16], "Targets for [MPC]")
     m <= Setting(:target_vars, [:mpc],
                  "Symbols of variables we're targeting")
-    m <= Setting(:target_σt, [0.2], 
+    m <= Setting(:target_σt, [0.2],
                  "Target \\sigma_t for MPC, pc0, varlinc, and vardlinc")
 end
-
-
 
 """
 ```
 ss15!(m::HetDSGEGovDebt)
 ```
 
-Initializes model for run with LogNormal e distribution.
+Initializes model with same specification as `ss11`
+but with with log-normal e distribution
 """
 function ss15!(m::HetDSGEGovDebt)
     ss11!(m)
-    
- #   m <= Setting(:gfunc_type, :lognormal)
-        
-    # Add LogNormal parameters
-#=    m <= parameter(:σ_e, 0.5, fixed = true, tex_label = "sigma_e",
-                   description = "Standard dev. of e distribution")
-    m <= parameter(:μ_e, 1.0, fixed = true, tex_label = "mu_e",
-                   description = "mu of e distribution") =#
+end
+
+"""
+```
+ss16!(m::HetDSGEGovDebt)
+```
+
+Initializes model with same specification as `ss13`
+but with with log-normal e distribution
+"""
+function ss16!(m::HetDSGEGovDebt)
+    ss13!(m)
 end
