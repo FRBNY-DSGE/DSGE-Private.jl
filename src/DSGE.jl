@@ -8,6 +8,8 @@ module DSGE
     using Missings, NLsolve, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
+    using SpecialFunctions, UnPack
+    using SparseDiffTools, SparsityDetection
     using DataStructures: SortedDict, insert!, ForwardOrdering
     using Roots: find_zero, fzero, ConvergenceFailed, AbstractBracketing, AbstractSecant
     using StatsBase: sample, Weights, Histogram
