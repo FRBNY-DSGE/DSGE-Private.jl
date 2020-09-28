@@ -14,13 +14,28 @@ function steadystate!(m::HetDSGEGovDebt;
     if !isnan(m[:βstar].value) && get_setting(m, :estimate_only_non_steady_state_parameters)
         return
     else
-        reset_grids!(m)
+        # Initialize g function
+        gfunc(x) = gfunc_default(x) 
+        if get_setting(m, :gfunc_type) == :mollifier
+            gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
+            gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
+        elseif get_setting(m, :gfunc_type) == :lognormal
+            # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
+            function nl_mean!(F, x)
+                F[1] = DSGE.lognormal_mean(m[:ehi].value, m[:elo].value, x[1], m[:σ_e].value) - 1
+            end
+            m[:μ_e].value = nlsolve(nl_mean!, [-m[:σ_e].value^2/2]).zero[1]
+            gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+            gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
+        end
+
+        reset_grids!(m; gfunc = gfunc)
         na = get_setting(m, :na)
         ns = get_setting(m, :ns)
         ne = get_setting(m, :ne)
-
+       
         if get_setting(m, :calibrate_income_targets)
-            m[:sH_over_sL], m[:elo], m[:ehi] = compute_income_process_parameters(m)
+            m[:sH_over_sL], m[:elo], m[:ehi] = compute_income_process_parameters(m, gfunc_wbounds)
         else
             m[:varlinc], m[:vardlinc] = skill_moments(m[:sH_over_sL].value, m[:elo].value,
                                                       m[:pLH].value, m[:pHL].value,
@@ -42,17 +57,15 @@ function steadystate!(m::HetDSGEGovDebt;
         pHL = m[:pHL].value
         f = [[1-pLH pLH];[pHL 1-pHL]] # f1[i,j] is prob of going from i to j
         sH_over_sL = m[:sH_over_sL].value
-
+     
         # Construct sgrid
         sgrid, swts, sscale = construct_sgrid(pHL, pLH, sH_over_sL, ns)
         m.grids[:sgrid] = Grid(sgrid, swts, sscale)
 
         # Construct egrid
-        egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne)
+        egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc)
         # m.grids[:egrid] = Grid(egrid, ewts)
 
-        # Initialize mollifier function
-        gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
 
         # Run loop expanding the agrid if a CashOnHandError is caught
         ahi_guesses = if haskey(get_settings(m), :ahi_incs) # Construct guesses for the upper bound of agrid

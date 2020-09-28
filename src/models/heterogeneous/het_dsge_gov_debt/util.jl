@@ -1,3 +1,29 @@
+@inline function gfunc_default(e::S0) where {S0 <: Real}
+    return 0.0
+end
+
+@inline function lognormal_hetdsgegovdebt(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
+    return pdf(truncated(LogNormal(μ, σ), elo, ehi), e)
+end
+
+@inline function lognormal_cdf(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
+    erf(x) = (2/π)*quadgk(exp(-x^2), 0, x, rtol=1e-3)
+    return .5 + .5*erf((log(x)-μ)/(sqrt(2)*σ))
+end
+
+@inline function lognormal_pdf(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
+    return 1/(e*σ*sqrt(2*π))*exp(-(log(x)-μ)/(2*σ^2))
+end
+
+@inline function lognormal_mean(ehi::S1, elo::S1, μ::S1, σ::S1) where {S1 <: Real}
+    Φ(x) = .5 + .5*erf(x/sqrt(2))
+    x_0(x) = (log(x)-μ)/σ
+    return exp(μ+σ^2/2)*(Φ(σ-x_0(elo))-Φ(σ-x_0(ehi)))/(Φ(ehi)-Φ(elo))
+end
+
+    
+
+
 @inline function mollifier_hetdsgegovdebt(e::S0, ehi::S1, elo::S1) where {S0 <: Real, S1 <: Real}
     In = 0.443993816237631
     if e<ehi && e>elo
@@ -175,12 +201,12 @@ function best_fit(pLH::S, pHL::S, target::Vector{S}, lower::Vector{S}, upper::Ve
     return sH_over_sL_argmin, elo_argmin, min_varlinc, min_vardlinc
 end
 
-function compute_income_process_parameters(m::AbstractDSGEModel)
+function compute_income_process_parameters(m::AbstractDSGEModel, gfunc::Function)
     # Determines whether random or not
     us, es = if get_setting(m, :fix_random_matrices)
         get_setting(m, :us), get_setting(m, :es)
     else
-        generate_us_and_es(ni, ne)
+        generate_us_and_es(ni, ne, gfunc)
     end
 
     target = get_setting(m, :calibration_targets)
@@ -224,13 +250,13 @@ function transform_ab(a::S, b::S, grid::AbstractVector{S}) where {S <: Real}
     return xs
 end
 
-function construct_egrid(ehi::S, elo::S, ne::Int, gfunc::Function = mollifier_hetdsgegovdebt) where {S <: Real}
+function construct_egrid(ehi::S, elo::S, ne::Int, gfunc::Function) where {S <: Real}
     # Construct egrid
     egrid, ewts = gausslegendre(ne) # ne point gauss-legendre quadrature -> xᵢ, wᵢ
     egrid      .= transform_ab(elo, ehi, egrid) # xᵢ∈[-1, 1] -> eᵢ∈[elo, ehi]
 
     # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ = 1 b/c g(e) is a pdf
-    g_of_e      = map(x -> gfunc(x, ehi, elo), egrid) # g(eᵢ)
+    g_of_e      = map(x -> gfunc(x), egrid) # g(eᵢ)
     ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1
     egrid     ./= dot(g_of_e .* egrid, ewts) # Normalize egrid so that mean ∫ e g(e) de = 1, should be a small adjustment
 
@@ -242,6 +268,7 @@ function construct_agrid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
                          ahi_inc::S = NaN) where {S <: Real}
     smin = minimum(sgrid)                            # lowest possible skill
     emin = minimum(egrid)                            # lowest possible realization of idiosyncratic shock
+
     alo  = ω * smin * emin * H - R * η * exp(-γ) + T # lowest SS possible cash on hand
     ahi  = if isnan(ahi_inc)
         ahi = max(alo * 2., alo + 20.0)              # upper bound on cash on hand
@@ -385,12 +412,13 @@ The us are draws from U[0, 1] used to construct nodes for the skill distribution
 The es are the grid nodes for the exogenous i.i.d productivity shock.
 """
 =#
-function generate_us_and_es(ni, ne)
+function generate_us_and_es(ni, ne, gfunc::Function)
     us = rand(ni, 8)
     ue = rand(ni, 8)
 
     egrid  = collect(range(0., stop = 2., length = ne))
-    eprob  = [2*mollifier_hetdsgegovdebt(egrid[i], 2., 0.) / ne for i=1:ne]
+    #eprob  = [2*gfunc(egrid[i], 2., 0.) / ne for i=1:ne]
+    eprob  = [2*gfunc(egrid[i], 2., 0.) / ne for i=1:ne]
     eprob /= sum(eprob)
 
     ecdf = cumsum(eprob)

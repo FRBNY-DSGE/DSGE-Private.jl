@@ -17,6 +17,7 @@ function autodiff_jacobian(m::HetDSGEGovDebt{T}) where {T}
 
     # Load in parameters, steady-state parameters, and grids. May need to add Type Assert back to @unpack macro if this is type unstable
     θ = parameters2namedtuple(m; include_steadystate = true)
+
 #=    @unpack α, δ, γ, η, ρ_b, ρ_g, ρ_z, ρ_μ, ρ_λ_w, ρ_λ_f, ρ_rm, spp, ϕh, ρR, ψπ, ψy, κ_p, κ_w = m
     @unpack H, Tg, δb, bg, xstar, ystar, Rkstar, kstar, π_star = m=#
 

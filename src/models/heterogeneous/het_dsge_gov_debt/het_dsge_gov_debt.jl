@@ -229,16 +229,35 @@ function HetDSGEGovDebt(subspec::String="ss0";
     # Init what will keep track of # of states, jumps, and states/jump indices
     # (need model indices first)
     init_states_and_jumps!(m, states, jumps)
-
+    
     # Initialize parameters
     init_parameters!(m, testing_gamma = testing_gamma)
 
     # Initialize aggregate steady state parameters (necessary for grid construction)
     aggregate_steadystate!(m)
+   
+
+
+    # Initialize g function
+    gfunc(x) = gfunc_default(x)
+    if get_setting(m, :gfunc_type) == :lognormal
+        # calculate mu
+        function nl_mean!(F, x)
+            F[1] = DSGE.lognormal_mean(m[:ehi].value, m[:elo].value, x[1], m[:σ_e].value) - 1
+        end
+        m[:μ_e].value = nlsolve(nl_mean!, [-m[:σ_e].value^2/2]).zero[1]
+        gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+    elseif get_setting(m, :gfunc_type) == :mollifier
+        gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
+    else 
+        gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
+    end
+
+    #println(m[:μ_e].value)
 
     # Initialize grids
-    init_grids!(m)
-
+    init_grids!(m, gfunc)
+   
     # Solve for the steady state
     #=if get_setting(m, :new_steady_state)
         new_steadystate!(m)
@@ -350,6 +369,12 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    description = "var(log(annual income))")
     m <= parameter(:vardlinc, 0.0, fixed = true, tex_label = "vardlinc",
                    description = "var(log(deviations in annual income))")
+    if m.subspec == "ss15"
+        m <= parameter(:σ_e, 0.5, fixed = true, tex_label = "sigma_e",
+                       description = "Standard dev. of e distribution")
+        m <= parameter(:μ_e, 0.0, fixed = true, tex_label = "mu_e",
+                       description = "mu of e distribution")
+    end
 
     # Not in m1002
     m <= parameter(:η, 0.0, description = "η: Borrowing constraint (normalized by TFP)",
@@ -537,7 +562,8 @@ end
 init_grids!(m::HetDSGEGovDebt)
 ```
 """
-function init_grids!(m::HetDSGEGovDebt)
+function init_grids!(m::HetDSGEGovDebt, gfunc::Function)
+
 
     na = get_setting(m, :na)
     ns = get_setting(m, :ns)
@@ -552,7 +578,7 @@ function init_grids!(m::HetDSGEGovDebt)
     grids[:fgrid] = [[1-m[:pLH] m[:pLH].value]; [m[:pHL].value 1-m[:pHL].value]]
 
     # Construct egrid
-    egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne) # Don't track egrid in grids b/c summarized by agrid
+    egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc) # Don't track egrid in grids b/c summarized by agrid
 
     # Markov transition matrix for skill
 
@@ -592,6 +618,13 @@ function model_settings!(m::HetDSGEGovDebt)
 
     # Likelihood method
     m <= Setting(:use_chand_recursion, true)
+
+    # G Function type, use mollifier by default 
+    if m.subspec == "ss15"
+        m <= Setting(:gfunc_type, :lognormal)
+    else
+        m <= Setting(:gfunc_type, :mollifier)
+    end
 
     # Anticipated shocks
     m <= Setting(:n_anticipated_shocks, 0,
@@ -893,7 +926,7 @@ function init_states_and_jumps!(m::AbstractModel, states::Vector{Symbol},
                  method, we have n_states and n_jumps")
 end
 
-function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true)
+function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true, gfunc::Function = gfunc_default)
     m <= Setting(:na1_state, get_setting(m, :na_full))
     m <= Setting(:na2_state, get_setting(m, :na_full))
     m <= Setting(:na1_jump,  get_setting(m, :na_full))
@@ -903,7 +936,7 @@ function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true)
     init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))
 
     if init_grids # Sometimes don't want to re-initialize the grids but maintain saved ones
-        init_grids!(m)
+        init_grids!(m, gfunc)
     end
 
     # So that the indices of m.endogenous_states reflect the normalization
