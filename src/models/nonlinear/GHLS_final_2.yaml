@@ -1,0 +1,179 @@
+name: GHLS
+
+symbols:
+
+    exogenous: [errliq, errinv, errtech, errint, errgshk, errelast, errelastw]
+    states: [cap, gdp, dp, notr, realw, liqshk, invshk, intshk, gshk, elastshk, elastwshk]
+    controls: [cc,inv]
+
+    #states: [k, c, i, pi, w, lambda_c, qk, u, rm, y, x, R, qk, L, mc, rk, muc, Vi, Vp, Vw, pi_w, bc, bi, b, mu, ztil, mon, g, elast, elastw, unk]
+    #controls: [pi,w,c,i,lambda_c,qk,u]
+    #expectations: [Ei, Erk, Ec, EVw, Etechshock, Epi, Eqk, Elambda_c, Ei_sh, Erk_sh, Ec_sh, EVw_sh, Etechshock_sh, Epi_sh, Eqk_sh, Elambda_c_sh]
+    parameters: [delta, shrgy, epsilon_p, epsilon_w, psi_L, rho_eta, rho_int, rho_elast, rho_elastw, sigma_elast, sigma_elastw, alpha, beta, pi_bar, gz, gamma_pi, gamma_x, gamma_g, rho_R, gamma, sigma_a, sigma_L, phi_w, phi_p, phi_I, ap, aw, rho_g, rho_mu, sigma_g, sigma_eta, sigma_mu, sigma_Z, sigma_R, e_y, e_pi, e_R, e_c, e_i]
+
+definitions:
+    techshk: errtech
+
+    gg: 1.0/(1.0-shrgy)
+    gamtil: gamma/gz
+    mc: (epsilon_p-1.0)/epsilon_p
+    k2yrat: ((mc*alpha)/(gz/beta-(1.0-delta)))*gz
+    shriy: (1.0 - (1.0-delta)/gz)*k2yrat
+    shrcy: (1.0 - shrgy - shriy)
+    labss: (((epsilon_w - 1.0)/epsilon_w)*(1.0-alpha)*(1.0 - beta*gamtil)*((epsilon_p-1.0)/epsilon_p)*(1.0/(psi_L*(1.0 - gamtil)))*(1.0/shrcy))^(1.0/(sigma_L+1))
+    kappa_w: ((1.0-gamtil)/(1.0-beta*gamtil))*epsilon_w*psi_L*labss^(1.0+sigma_L)/phi_w
+    kappa_p: (epsilon_p-1.0)/(phi_p*(1.0+beta*(1-ap)))
+    kss: labss*(gz^(alpha/(alpha-1.0)))*k2yrat^(1.0/(1.0-alpha))
+    gdpss: (kss/gz)^alpha*labss^(1.0-alpha)
+    invss : shriy*gdpss
+    phii_jpt: phi_I/invss
+    css: shrcy*gdpss
+    rwss: (1.0 - alpha)*mc*gdpss/labss
+    mucss: (1.0/css)*(1.0/(1.0 - gamtil))
+    lamss: mucss*(1.0 - beta*gamtil)
+    rss: gz*pi_bar/beta
+    rkss: gz/beta - 1.0 + delta
+    bw : aw
+
+    gamtil: gamma/gz
+    lam: (-(1+gamtil*gamtil*beta)*cc + gamtil*(cc(-1)-techshk) + gamtil*beta*(cc(1) + techshk(1)))/((1-gamtil)*(1-gamtil*beta))
+
+    tobq: -invshk + phii_jpt*(1+beta)*inv-phii_jpt*inv(-1) - beta*phii_jpt*inv(+1) + phii_jpt*techshk - beta*phii_jpt*techshk(1)
+    rentalk: (tobq(-1) - (1-delta)*beta/gz*tobq - lam + lam(-1) + techshk) / (1-((1-delta)*beta/gz))
+
+    util: (1/sigma_a)*rentalk
+    lab: (gdp-alpha*(util + cap(-1) - techshk))/(1-alpha)
+    xhp: alpha*util + (1-alpha)*lab
+
+    nomr: notr
+    mcost: realw - (gdp - lab)
+
+    vi:  inv - inv(-1) + techshk
+    vp: dp - (1-ap)*dp(-1)
+
+    vw: beta*vw(1) + kappa_w*(sigma_L*lab - lam - realw) - (kappa_w/(epsilon_w-1))*elastwshk
+    dw: (1-aw)*dp(-1) + (1-bw)*techshk + vw
+
+    bc: -1/(1-gamtil)*(cc(1)+gamtil*(techshk(1)-cc))
+    bi: (inv(1) - inv + techshk(1))
+
+    muc: lam + gamtil*beta*bc
+    #biagain: lam(1)*
+
+equations:
+    transition:
+        - cap = (1-(1-delta)/gz)*(inv + invshk) + ((1-delta)/gz)*(cap(-1) - techshk)
+        - gdp = gg*shrcy*cc + gshk + gg*shriy*inv + gg*alpha*((epsilon_p-1)/epsilon_p)*util
+        - dp = beta/(1+beta*(1-ap))*dp(+1) + (1-ap)/(1+beta*(1-ap))*dp(-1) + kappa_p*mcost - (kappa_p/(epsilon_p-1))*elastshk
+        - notr =  rho_R*notr(-1) + (1-rho_R)*(gamma_pi*dp + gamma_x*xhp + gamma_g*(gdp - gdp(-1) + techshk)) + intshk
+        - realw = realw(-1) + dw - dp - techshk
+        - liqshk = rho_eta*liqshk(-1) + errliq
+        - invshk = rho_mu*invshk(-1) + errinv
+        - intshk = rho_R*intshk(-1) + errint
+        - gshk = rho_g*gshk(-1) + errgshk
+        - elastshk = rho_elast*elastshk(-1) + errelast
+        - elastwshk = rho_elastw*elastwshk(-1) + errelastw
+
+    arbitrage:
+        - -lam + lam(1) + (notr - dp(1)) + liqshk - techshk(1)
+        - -rentalk + realw + lab - util - cap(-1) + techshk
+        - -(1-gamtil)*muc -cc + gamtil*(cc(-1) - techshk)
+
+    direct_response:
+        - inv = inv(-1) - 0.5*(lam + tobq + invshk - 1.0)
+
+calibration:
+    # Parameters
+    delta: 0.025
+    shrgy: 0.2
+    epsilon_p: 6.0
+    epsilon_w: 8.0
+    psi_L: 1.0
+    rho_eta: 0.9
+    rho_int: 0.0
+    rho_elast: 0.98
+    rho_elastw: 0.98
+    sigma_elast: 0.01
+    sigma_elastw: 0.01
+
+    # Steady-state parameters
+    alpha: 0.167
+    beta: 0.9985
+    pi_bar: 1.006
+    gz: 1.005
+
+    # Monetary Policy Rule Parameters
+    gamma_pi: 1.9
+    gamma_x: 0.164
+    gamma_g: 0.73
+    rho_R: 0.6945
+
+    # Endogenous Propagation Parameters
+    gamma: 0.5232
+    sigma_a: 5.65
+    sigma_L: 2.047
+    phi_w: 4029.7
+    phi_p: 113.363
+    phi_I: 3.48
+    ap: 0.265
+    aw: 0.69
+
+    # Exogenous Process Parameters - Autocorrelation
+    rho_g: 0.95
+    rho_mu: 0.77
+
+    # Exogenous Process Parameters - Standard Deviation
+    sigma_g: 0.00177
+    sigma_eta: 0.00138
+    sigma_mu: 0.00494
+    sigma_Z: 0.00421
+    sigma_R: 0.0018
+
+    #Measurement Errors
+    e_y: 0.00323357
+    e_pi: 0.00122426
+    e_R: 0.00358562
+    e_c: 0.00256811
+    e_i: 0.01218603
+
+    # Controls
+    cc: 0.8720924
+    inv: 0.1731098
+    cap: 5.799178
+    gdp: 1.306502
+    dp: 1.006
+    notr: 1.0
+    realw: 0.1
+    liqshk: 0.0
+    invshk: 0.0
+    intshk: 0.0
+    gshk: 0.0
+    elastshk: 0.0
+    elastwshk: 0.0
+    errliq: 0.0
+    errinv: 0.0
+    errtech: 0.0
+    errint: 0.0
+    errgshk: 0.0
+    errelast: 0.0
+    errelastw: 0.0
+
+domain:
+    cap: [cap*.1, cap*1.9]
+    gdp: [gdp*.1, gdp*1.9]
+    dp: [dp*.1, dp*1.9]
+    notr: [0.0, 10.0]
+    realw: [realw*0.1, realw*1.9]
+    liqshk: [liqshk*0.1, liqshk*1.9]
+    invshk: [invshk*0.1, invshk*1.9]
+    intshk: [intshk*0.1, intshk*1.9]
+    gshk: [gshk*0.1, gshk*1.9]
+    elastshk: [elastshk*0.1, elastshk*1.9]
+    elastwshk: [elastwshk*0.1, elastwshk*1.9]
+
+exogenous: !Normal
+    Sigma: [[sigma_eta^2,0,0,0,0,0,0], [0,sigma_mu^2,0,0,0,0,0], [0,0,sigma_Z^2,0,0,0,0], [0,0,0,sigma_R^2,0,0,0], [0,0,0,0,sigma_g^2,0,0], [0,0,0,0,0,sigma_elast^2,0], [0,0,0,0,0,0,sigma_elastw^2]]
+
+options:
+    grid: !Smolyak
+        mu: [2,2,2,2,2,2,2,2,2,2,2]
