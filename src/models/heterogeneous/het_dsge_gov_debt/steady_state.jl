@@ -112,6 +112,7 @@ function steadystate!(m::HetDSGEGovDebt;
             end
         end
     end
+@show "Complete steady state"
     m
 end
 

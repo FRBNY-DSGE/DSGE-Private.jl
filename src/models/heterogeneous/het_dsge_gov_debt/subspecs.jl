@@ -52,10 +52,10 @@ function init_subspec!(m::HetDSGEGovDebt)
     # Estimate all parameters but only target MPC
     elseif subspec(m) == "ss14"
         return ss14!(m)
-    # Use LogNormal distribution for e, otherwise equivalent to ss11
+    # Use LogNormal distribution for e and estimate ehi, otherwise equivalent to ss11
     elseif subspec(m) == "ss15"
         return ss15!(m)
-    # Use LogNormal distribution for e, otherwise equivalent to ss13
+    # Use LogNormal distribution for e and estimate ehi, otherwise equivalent to ss13
     elseif subspec(m) == "ss16"
         return ss16!(m)
     else
@@ -903,9 +903,14 @@ ss15!(m::HetDSGEGovDebt)
 ```
 
 Initializes model with same specification as `ss11`
-but with with log-normal e distribution
+but with with log-normal e distribution and estimating ehi
 """
 function ss15!(m::HetDSGEGovDebt)
+    m <= parameter(:ehi, 2-m[:elo].value, (1. + 1e-18, 5.), (1. + 1e-18, 5.), Untransformed(),
+                   Uniform(1. + 1e-18, 5.), fixed = false,
+                   description = "Upper bound on second income shock to mollify actual income",
+                   tex_label = "\\bar{z}")
+
     ss11!(m)
 end
 
@@ -915,8 +920,13 @@ ss16!(m::HetDSGEGovDebt)
 ```
 
 Initializes model with same specification as `ss13`
-but with with log-normal e distribution
+but with with log-normal e distribution and estimating ehi
 """
 function ss16!(m::HetDSGEGovDebt)
+    m <= parameter(:ehi, 2-m[:elo].value, (1. + 1e-18, 5.), (1. + 1e-18, 5.), Untransformed(),
+                   Uniform(1. + 1e-18, 5.), fixed = false,
+                   description = "Upper bound on second income shock to mollify actual income",
+                   tex_label = "\\bar{z}")
+
     ss13!(m)
 end

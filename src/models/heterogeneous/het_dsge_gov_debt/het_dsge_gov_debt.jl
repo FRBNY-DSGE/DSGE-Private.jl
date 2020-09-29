@@ -354,7 +354,7 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    description = "var(log(deviations in annual income))")
     if subspec(m) in ["ss15", "ss16"]
         m <= parameter(:σ_e, 0.5, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
-                       RootInverseGamma(0.5, 0.1), fixed = false, tex_label = "\\sigma_e",
+                       RootInverseGamma(2., 0.1), fixed = false, tex_label = "\\sigma_e",
                        description = "σ of e distribution")
         m <= parameter(:μ_e, 0.0, fixed = true, tex_label = "\\mu_e",
                        description = "μ of e distribution")
