@@ -35,7 +35,6 @@ definitions:
     rkss: gz/beta - 1.0 + delta
     bw : aw
 
-    gamtil: gamma/gz
     lam: (-(1+gamtil*gamtil*beta)*cc + gamtil*(cc(-1)-techshk) + gamtil*beta*(cc(1) + techshk(1)))/((1-gamtil)*(1-gamtil*beta))
 
     tobq: -invshk + phii_jpt*(1+beta)*inv-phii_jpt*inv(-1) - beta*phii_jpt*inv(+1) + phii_jpt*techshk - beta*phii_jpt*techshk(1)
@@ -62,9 +61,9 @@ definitions:
 
 equations:
     transition:
-        - cap = (1-(1-delta)/gz)*(inv + invshk) + ((1-delta)/gz)*(cap(-1) - techshk)
+        - cap = (1-(1-delta)/gz)*(inv(-1) + invshk) + ((1-delta)/gz)*(cap(-1) - techshk)
         - gdp = gg*shrcy*cc + gshk + gg*shriy*inv + gg*alpha*((epsilon_p-1)/epsilon_p)*util
-        - dp = beta/(1+beta*(1-ap))*dp(+1) + (1-ap)/(1+beta*(1-ap))*dp(-1) + kappa_p*mcost - (kappa_p/(epsilon_p-1))*elastshk
+        - dp = beta/(1+beta*(1-ap))*dp(1) + (1-ap)/(1+beta*(1-ap))*dp(-1) + kappa_p*mcost - (kappa_p/(epsilon_p-1))*elastshk
         - notr =  rho_R*notr(-1) + (1-rho_R)*(gamma_pi*dp + gamma_x*xhp + gamma_g*(gdp - gdp(-1) + techshk)) + intshk
         - realw = realw(-1) + dw - dp - techshk
         - liqshk = rho_eta*liqshk(-1) + errliq
@@ -80,7 +79,8 @@ equations:
         - -(1-gamtil)*muc -cc + gamtil*(cc(-1) - techshk)
 
     direct_response:
-        - inv = inv(-1) - 0.5*(lam + tobq + invshk - 1.0)
+    #     - inv = inv(1) + (lam + tobq + invshk - 1.0)
+        - inv = inv(1) + (lam + tobq + invshk - 1.0)
 
 calibration:
     # Parameters
