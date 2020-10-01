@@ -15,7 +15,7 @@ function steadystate!(m::HetDSGEGovDebt;
         return
     else
         # Initialize g function
-#=        gfunc_type = get_setting(m, :gfunc_type)
+        gfunc_type = get_setting(m, :gfunc_type)
         gfunc_wbounds = if gfunc_type == :mollifier
             _mollifier_gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
         elseif gfunc_type == :lognormal
@@ -25,18 +25,30 @@ function steadystate!(m::HetDSGEGovDebt;
             end
             # _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
             _lognormal_gfunc_wbounds(x, y, z) = pdf(truncated(LogNormal(m[:μ_e].value, m[:σ_e].value), z, y), x)
-        end=#
-        gfunc_wbounds = construct_gfunc_wbounds!(m)
+        end
         gfunc(x) = gfunc_wbounds(x, m[:ehi].value, m[:elo].value)
 
         if get_setting(m, :gfunc_type) == :lognormal
-            @assert 1. ≈ DSGE.lognormal_mean(m[:ehi].value, m[:elo].value,
-                                             m[:μ_e].value, m[:σ_e].value) "After constructing gfunc, lognormal mean is not 1"
+            mean1 = 1. ≈ lognormal_mean(m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+            if !mean1
+                mean1_diff = 1. - lognormal_mean(m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+                @assert mean1 "After constructing gfunc, lognormal mean is not 1. The difference is $(mean1_diff)"
+            end
         end
 
         if gfunc_wbounds((m[:ehi] + m[:elo]) / 2., m[:ehi].value, m[:elo].value) ≈ 0.
-            gfunc_wbounds = construct_gfunc_wbounds!(m)
+            gfunc_wbounds = if gfunc_type == :mollifier
+                _mollifier_gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
+            elseif gfunc_type == :lognormal
+                # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
+                if !(m[:elo].fixed && m[:ehi].fixed)
+                    m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
+                end
+                # _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
+                _lognormal_gfunc_wbounds(x, y, z) = pdf(truncated(LogNormal(m[:μ_e].value, m[:σ_e].value), z, y), x)
+            end
             gfunc(x) = gfunc_wbounds(x, m[:ehi].value, m[:elo].value)
+
             if gfunc_wbounds((m[:ehi] + m[:elo]) / 2., m[:ehi].value, m[:elo].value) ≈ 0. ||
                 gfunc((m[:ehi] + m[:elo]) / 2.) ≈ 0.
                 @assert false "Reconstructing the gfunc once more fails to ensure it is properly formed."
