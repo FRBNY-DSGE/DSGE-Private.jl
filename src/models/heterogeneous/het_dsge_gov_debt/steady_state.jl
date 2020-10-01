@@ -15,11 +15,37 @@ function steadystate!(m::HetDSGEGovDebt;
         return
     else
         # Initialize g function
-        gfunc = construct_gfunc!(m)
-        gfunc_wbounds = construct_gfunc_wbounds!(m; recalculate_μ = false)
+#=        gfunc_type = get_setting(m, :gfunc_type)
+        gfunc_wbounds = if gfunc_type == :mollifier
+            _mollifier_gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
+        elseif gfunc_type == :lognormal
+            # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
+            if !(m[:elo].fixed && m[:ehi].fixed)
+                m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
+            end
+            # _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
+            _lognormal_gfunc_wbounds(x, y, z) = pdf(truncated(LogNormal(m[:μ_e].value, m[:σ_e].value), z, y), x)
+        end=#
+        gfunc_wbounds = construct_gfunc_wbounds!(m)
+        gfunc(x) = gfunc_wbounds(x, m[:ehi].value, m[:elo].value)
 
-        # Update grid settings for state space
-        reset_grids!(m; gfunc = gfunc) # ensure state space grid is full, not the reduced one
+        if get_setting(m, :gfunc_type) == :lognormal
+            @assert 1. ≈ DSGE.lognormal_mean(m[:ehi].value, m[:elo].value,
+                                             m[:μ_e].value, m[:σ_e].value) "After constructing gfunc, lognormal mean is not 1"
+        end
+
+        if gfunc_wbounds((m[:ehi] + m[:elo]) / 2., m[:ehi].value, m[:elo].value) ≈ 0.
+            gfunc_wbounds = construct_gfunc_wbounds!(m)
+            gfunc(x) = gfunc_wbounds(x, m[:ehi].value, m[:elo].value)
+            if gfunc_wbounds((m[:ehi] + m[:elo]) / 2., m[:ehi].value, m[:elo].value) ≈ 0. ||
+                gfunc((m[:ehi] + m[:elo]) / 2.) ≈ 0.
+                @assert false "Reconstructing the gfunc once more fails to ensure it is properly formed."
+            end
+        end
+
+        # Update grid settings to ensure state space grid is full, not the reduced one
+        reset_grids!(m)
+
         na = get_setting(m, :na)
         ns = get_setting(m, :ns)
         ne = get_setting(m, :ne)
@@ -42,6 +68,7 @@ function steadystate!(m::HetDSGEGovDebt;
         η  = m[:η].value
         bg = m[:bg].value
 
+        ## TODO: these grid constructions may be unnecessary b/c done by reset_grids!
         # Construct Markov transition matrix for skill
         pLH = m[:pLH].value
         pHL = m[:pHL].value
@@ -53,7 +80,25 @@ function steadystate!(m::HetDSGEGovDebt;
         m.grids[:sgrid] = Grid(sgrid, swts, sscale)
 
         # Construct egrid
-        egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc)
+        # egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc)
+        reconstruct_gfunc = false
+        egrid, ewts, g_of_e = try
+             construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc_wbounds)
+        catch err
+            if isa(err, AssertionError)
+                @show (m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+                new_gfunc_wbounds = construct_gfunc_wbounds!(m; recalculate_μ = false)
+                @show new_gfunc_wbounds((m[:elo] + m[:ehi]) / 2., m[:ehi].value, m[:elo].value)
+                reconstruct_gfunc = true
+                construct_egrid(m[:ehi].value, m[:elo].value, ne, new_gfunc_wbounds)
+            else
+                rethrow(err)
+            end
+        end
+        if reconstruct_gfunc
+            gfunc_wbounds = construct_gfunc_wbounds!(m; recalculate_μ = true)
+            gfunc(x) = gfunc_wbounds(x, m[:ehi].value, m[:elo].value)
+        end
         m.grids[:egrid] = Grid(egrid, ewts, sum(ewts)) # scale must equal the sum of the weights
 
         # Run loop expanding the agrid if a CashOnHandError is caught
@@ -69,7 +114,7 @@ function steadystate!(m::HetDSGEGovDebt;
         for ahi_guess in ahi_guesses
             try
                 # Construct agrid
-                agrid, awts, ascale = construct_agrid(sgrid, egrid, ω, H, R, η, γ, T, na; ahi_inc = ahi_guess)
+                agrid, awts, ascale = construct_agrid(minimum(sgrid), minimum(egrid), ω, H, R, η, γ, T, na; ahi_inc = ahi_guess)
 
                 m <= Setting(:alo, agrid[1])
                 m <= Setting(:ahi, agrid[end])

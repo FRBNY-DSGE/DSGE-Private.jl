@@ -1,7 +1,7 @@
-function construct_gfunc!(m::HetDSGEGovDebt; recalculate_μ::Bool = true)
+function construct_gfunc!(m::HetDSGEGovDebt; recalculate_μ::Bool = true, check_egrid::Bool = false)
     gfunc_type = get_setting(m, :gfunc_type)
     if gfunc_type == :mollifier
-        _mollifier_gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
+        _mollifier_gfunc = (x) -> mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
 
         return _mollifier_gfunc
     elseif gfunc_type == :lognormal
@@ -9,7 +9,7 @@ function construct_gfunc!(m::HetDSGEGovDebt; recalculate_μ::Bool = true)
         if recalculate_μ && !(m[:elo].fixed && m[:ehi].fixed)
             m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
         end
-        _lognormal_gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+        _lognormal_gfunc = (x) -> lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
 
         return _lognormal_gfunc
     else
@@ -17,56 +17,46 @@ function construct_gfunc!(m::HetDSGEGovDebt; recalculate_μ::Bool = true)
     end
 end
 
-function construct_gfunc_wbounds!(m::HetDSGEGovDebt; recalculate_μ::Bool = true)
+function construct_gfunc_wbounds(m::HetDSGEGovDebt)
     gfunc_type = get_setting(m, :gfunc_type)
     if gfunc_type == :mollifier
-        _mollifier_gfunc(x) = mollifier_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value)
-        _mollifier_gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
-
-        return _mollifier_gfunc, _mollifier_gfunc_wbounds
+        return (x, y, z) -> mollifier_hetdsgegovdebt(x, y, z)
     elseif gfunc_type == :lognormal
         # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
-        if !(m[:elo].fixed && m[:ehi].fixed)
+        if recalculate_μ && !(m[:elo].fixed && m[:ehi].fixed)
             m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
         end
-        _lognormal_gfunc(x) = lognormal_hetdsgegovdebt(x, m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
 
-        _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
-        return _lognormal_gfunc_wbounds
+        return (x, y, z) -> lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
     else
         error("gfunc_type $(gfunc_type) is not recognized. It must be one of [:mollifier, :lognormal]")
     end
-end
-
-@inline function gfunc_default(e::S0) where {S0 <: Real}
-    return 0.0
 end
 
 @inline function lognormal_hetdsgegovdebt(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
     return pdf(truncated(LogNormal(μ, σ), elo, ehi), e)
 end
 
-@inline function lognormal_cdf(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
+#= @inline function lognormal_cdf(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
     erf(x) = (2/π)*quadgk(exp(-x^2), 0, x, rtol=1e-3)
     return .5 + .5*erf((log(x)-μ)/(sqrt(2)*σ))
-end
+end =#
 
-@inline function lognormal_pdf(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
+#= @inline function lognormal_pdf(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
     return 1/(e*σ*sqrt(2*π))*exp(-(log(x)-μ)/(2*σ^2))
-end
-
+end =#
 
 @inline function lognormal_mean(ehi::S1, elo::S1, μ::S1, σ::S1) where {S1 <: Real}
-    Φ(x) = .5 + 1/2*erf(x/sqrt(2))
+    Φ(x) = .5 + .5 * erf(x / sqrt(2.))
     x_0(x) = (log(x)-μ)/σ
-    return exp(μ+σ^2/2)*(Φ(σ-x_0(elo))-Φ(σ-x_0(ehi)))/(Φ(x_0(ehi))-Φ(x_0(elo)))
+    return exp(μ + σ^2 / 2.) * (Φ(σ - x_0(elo)) - Φ(σ - x_0(ehi))) / (Φ(x_0(ehi)) - Φ(x_0(elo)))
 end
 
 @inline function calc_lognormal_mu(ehi::S1, elo::S1, σ::S1) where {S1 <: Real}
     function nl_mean!(F, x)
-        F[1] = DSGE.lognormal_mean(ehi, elo, x[1], σ) - 1.
+        F[1] = lognormal_mean(ehi, elo, x[1], σ) - 1.
     end
-    return nlsolve(nl_mean!, [σ^2/2]).zero[1]
+    return nlsolve(nl_mean!, [σ^2 / 2.]).zero[1]
 end
 
 @inline function mollifier_hetdsgegovdebt(e::S0, ehi::S1, elo::S1) where {S0 <: Real, S1 <: Real}
@@ -295,8 +285,10 @@ function transform_ab(a::S, b::S, grid::AbstractVector{S}) where {S <: Real}
     return xs
 end
 
-function construct_egrid(ehi::S, elo::S, ne::Int, gfunc::Function) where {S <: Real}
+# function construct_egrid(ehi::S, elo::S, ne::Int, gfunc::Function) where {S <: Real}
+function construct_egrid(ehi::S, elo::S, ne::Int, gfunc_wbounds::Function) where {S <: Real}
     # Construct egrid
+    gfunc(x)    = gfunc_wbounds(x, ehi, elo)
     egrid, ewts = gausslegendre(ne) # ne point gauss-legendre quadrature -> xᵢ, wᵢ
     egrid      .= transform_ab(elo, ehi, egrid) # xᵢ∈[-1, 1] -> eᵢ∈[elo, ehi]
 
@@ -304,15 +296,62 @@ function construct_egrid(ehi::S, elo::S, ne::Int, gfunc::Function) where {S <: R
     g_of_e      = map(x -> gfunc(x), egrid) # g(eᵢ)
     ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1
     egrid     ./= dot(g_of_e .* egrid, ewts) # Normalize egrid so that mean ∫ e g(e) de = 1, should be a small adjustment
+#=    if any(isnan.(egrid))
+        @show "Calculated a NaN egrid"
+        @show (ehi, elo, ne)
+        @show ewts
+        @show gausslegendre(ne)
+
+        egrid, ewts = gausslegendre(ne) # ne point gauss-legendre quadrature -> xᵢ, wᵢ
+        @show egrid
+        egrid      .= transform_ab(elo, ehi, egrid) # xᵢ∈[-1, 1] -> eᵢ∈[elo, ehi]
+        @show egrid
+
+        # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ = 1 b/c g(e) is a pdf
+        g_of_e      = map(x -> gfunc(x), egrid) # g(eᵢ)
+        @show g_of_e
+        pts = range(0., stop = 3., length = 1000)
+        for pt in pts
+            if !(gfunc(pt) ≈ 0)
+                @show "Found lower point for which g_of_e is not zero"
+                @show pt
+                break
+            end
+        end
+        for pt in reverse(pts)
+            if !(gfunc(pt) ≈ 0)
+                @show "Found upper point for which g_of_e is not zero"
+                @show pt
+                break
+            end
+        end
+        ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1
+        @show ewts
+        egrid     ./= dot(g_of_e .* egrid, ewts) # Normalize egrid so that mean ∫ e g(e) de = 1, should be a small adjustment
+    end
+
+    if any(isnan.(egrid))
+        @assert m[:ehi].value == ehi "ehi matches what is stored in m"
+        @assert m[:elo].value == elo "elo matches what is stored in m"
+        gfunc = construct_gfunc!(m; recalculate_μ = false)
+        egrid, ewts = gausslegendre(ne) # ne point gauss-legendre quadrature -> xᵢ, wᵢ
+        egrid      .= transform_ab(elo, ehi, egrid) # xᵢ∈[-1, 1] -> eᵢ∈[elo, ehi]
+
+        # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ = 1 b/c g(e) is a pdf
+        g_of_e      = map(x -> gfunc(x), egrid) # g(eᵢ)
+        ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1
+        egrid     ./= dot(g_of_e .* egrid, ewts) # Normalize egrid so that mean ∫ e g(e) de = 1, should be a small adjustment
+
+        @assert !(any(isnan.(egrid))) "Even after reconstructing gfunc, we get NaNs in egrid"
+    end
+=#
+    @assert !(any(isnan.(egrid)))
 
     return egrid, ewts, g_of_e
 end
 
-function construct_agrid(sgrid::AbstractVector{S}, egrid::AbstractVector{S},
-                         ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int;
+function construct_agrid(smin::S, emin::S, ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int;
                          ahi_inc::S = NaN) where {S <: Real}
-    smin = minimum(sgrid)                            # lowest possible skill
-    emin = minimum(egrid)                            # lowest possible realization of idiosyncratic shock
 
     alo  = ω * smin * emin * H - R * η * exp(-γ) + T # lowest SS possible cash on hand
     ahi  = if isnan(ahi_inc)

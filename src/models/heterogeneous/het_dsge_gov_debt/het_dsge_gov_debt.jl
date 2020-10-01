@@ -236,11 +236,8 @@ function HetDSGEGovDebt(subspec::String="ss0";
     # Initialize aggregate steady state parameters (necessary for grid construction)
     aggregate_steadystate!(m)
 
-    # Initialize g function
-    gfunc = construct_gfunc!(m)
-
     # Initialize grids
-    init_grids!(m, gfunc)
+    init_grids!(m)
 
     # Solve for the steady state
     #=if get_setting(m, :new_steady_state)
@@ -543,10 +540,10 @@ end
 
 """
 ```
-init_grids!(m::HetDSGEGovDebt, gfunc)
+init_grids!(m::HetDSGEGovDebt)
 ```
 """
-function init_grids!(m::HetDSGEGovDebt, gfunc::Function)
+function init_grids!(m::HetDSGEGovDebt)
 
     na = get_setting(m, :na)
     ns = get_setting(m, :ns)
@@ -560,12 +557,8 @@ function init_grids!(m::HetDSGEGovDebt, gfunc::Function)
     grids[:sgrid] = Grid(sgrid, swts, sscale)
     grids[:fgrid] = [[1-m[:pLH] m[:pLH].value]; [m[:pHL].value 1-m[:pHL].value]]
 
-    # Construct egrid
-    egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc)
-    m.grids[:egrid] = Grid(egrid, ewts, sum(ewts)) # scale must equal the sum of the weights
-
     # Markov transition matrix for skill
-    agrid, awts, ascale = construct_agrid(sgrid, egrid, m[:ωstar].value, m[:H].value,
+    agrid, awts, ascale = construct_agrid(minimum(sgrid), m[:elo].value, m[:ωstar].value, m[:H].value,
                                           1 + m[:r].scaledvalue, m[:η].value, m[:γ].scaledvalue, m[:Tstar].value, na)
     grids[:agrid] = Grid(agrid, awts, ascale)
 
@@ -912,8 +905,7 @@ end
 # Reset grids from reduced state space to full state space. The `init_grids` keyword
 # allows the user to avoid re-initializing the full state space grid. A use case is when the grid was adaptively set,
 # so re-initializing would result in a different grid than the one used for the steady-state approximation.
-# The gfunc keyword is required to help reconstruct the agrid if init_grids is true.
-function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true, gfunc::Function = construct_gfunc!(m; recalculate_μ = false))
+function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true)
     m <= Setting(:na1_state, get_setting(m, :na_full))
     m <= Setting(:na2_state, get_setting(m, :na_full))
     m <= Setting(:na1_jump,  get_setting(m, :na_full))
@@ -923,7 +915,7 @@ function reset_grids!(m::HetDSGEGovDebt; init_grids::Bool = true, gfunc::Functio
     init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))
 
     if init_grids # Sometimes don't want to re-initialize the grids but maintain saved ones
-        init_grids!(m, gfunc)
+        init_grids!(m)
     end
 
     # So that the indices of m.endogenous_states reflect the normalization

@@ -906,12 +906,12 @@ Initializes model with same specification as `ss11`
 but with with log-normal e distribution and estimating ehi
 """
 function ss15!(m::HetDSGEGovDebt)
-    m <= parameter(:ehi, 2-m[:elo].value, (1. + 1e-18, 5.), (1. + 1e-18, 5.), Untransformed(),
-                   Uniform(1. + 1e-18, 5.), fixed = false,
+    ss11!(m)
+
+    m <= parameter(:ehi, 2-m[:elo].value, (1.1, 5.), (1.1, 5.), Untransformed(),
+                   Uniform(1.1, 5.), fixed = false,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
-
-    ss11!(m)
 end
 
 """
@@ -923,10 +923,11 @@ Initializes model with same specification as `ss13`
 but with with log-normal e distribution and estimating ehi
 """
 function ss16!(m::HetDSGEGovDebt)
-    m <= parameter(:ehi, 2-m[:elo].value, (1. + 1e-18, 5.), (1. + 1e-18, 5.), Untransformed(),
-                   Uniform(1. + 1e-18, 5.), fixed = false,
+    ss13!(m)
+
+    m <= parameter(:ehi, 2-m[:elo].value, (1.1, 5.), (1.1, 5.), Untransformed(),
+                   Uniform(1.1, 5.), fixed = false,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 
-    ss13!(m)
 end
