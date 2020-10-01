@@ -17,7 +17,7 @@ function construct_gfunc!(m::HetDSGEGovDebt; recalculate_μ::Bool = true, check_
     end
 end
 
-function construct_gfunc_wbounds(m::HetDSGEGovDebt)
+function construct_gfunc_wbounds!(m::HetDSGEGovDebt; recalculate_μ::Bool = true)
     gfunc_type = get_setting(m, :gfunc_type)
     if gfunc_type == :mollifier
         return (x, y, z) -> mollifier_hetdsgegovdebt(x, y, z)
