@@ -5,7 +5,7 @@ function steadystate!(m::HetDSGEGovDebt;
                       βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.999999),
                       excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
                       euler_anderson::Bool = true, kf_anderson::Bool = false, kf_eigen::Bool = true,
-                      doplots::Bool = false, construct_gfunc_only::Bool = false, verbose::Symbol = :none) where {S <: Real}
+                      doplots::Bool = false, verbose::Symbol = :none) where {S <: Real}
     @assert !(kf_eigen && kf_anderson) "Only one of kf_anderson and kf_eigen can be true"
 
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
@@ -29,41 +29,6 @@ function steadystate!(m::HetDSGEGovDebt;
             _lognormal_gfunc_wbounds(x, y, z) = pdf(truncated(LogNormal(m[:μ_e].value, m[:σ_e].value), z, y), x)
         end
         gfunc(x) = gfunc_wbounds(x, ehi, elo)
-
-        if get_setting(m, :gfunc_type) == :lognormal
-            mean1 = 1. ≈ lognormal_mean(ehi, elo, m[:μ_e].value, m[:σ_e].value)
-            if !mean1
-                # Try to enforce the mean again
-                m[:μ_e].value = calc_lognormal_mu(ehi, elo, m[:σ_e].value)
-
-                mean1 = 1. ≈ lognormal_mean(ehi, elo, m[:μ_e].value, m[:σ_e].value)
-                mean1_diff = 1. - lognormal_mean(ehi, elo, m[:μ_e].value, m[:σ_e].value)
-                @assert mean1 "After constructing gfunc, lognormal mean is not 1. The difference is $(mean1_diff)"
-            end
-        end
-
-        if gfunc_wbounds((ehi + elo) / 2., ehi, elo) ≈ 0.
-            gfunc_wbounds = if gfunc_type == :mollifier
-                _mollifier_gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
-            elseif gfunc_type == :lognormal
-                # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
-                if !(m[:elo].fixed && m[:ehi].fixed)
-                    m[:μ_e].value = calc_lognormal_mu(ehi, elo, m[:σ_e].value)
-                end
-                # _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
-                _lognormal_gfunc_wbounds(x, y, z) = pdf(truncated(LogNormal(m[:μ_e].value, m[:σ_e].value), z, y), x)
-            end
-            gfunc(x) = gfunc_wbounds(x, ehi, elo)
-
-            if gfunc_wbounds((ehi + elo) / 2., ehi, elo) ≈ 0. ||
-                gfunc((ehi + elo) / 2.) ≈ 0.
-                @assert false "Reconstructing the gfunc once more fails to ensure it is properly formed."
-            end
-        end
-
-        if construct_gfunc_only
-            return true
-        end
 
         # Update grid settings to ensure state space grid is full, not the reduced one
         reset_grids!(m)
@@ -103,25 +68,13 @@ function steadystate!(m::HetDSGEGovDebt;
 
         # Construct egrid
         # egrid, ewts, g_of_e = construct_egrid(ehi, elo, ne, gfunc)
-        reconstruct_gfunc = false
-        egrid, ewts, g_of_e = try
-             construct_egrid(ehi, elo, ne, gfunc_wbounds)
-        catch err
-            if isa(err, AssertionError)
-                @show (ehi, elo, m[:μ_e].value, m[:σ_e].value)
-                new_gfunc_wbounds = construct_gfunc_wbounds!(m; recalculate_μ = false)
-                @show new_gfunc_wbounds((m[:elo] + m[:ehi]) / 2., ehi, elo)
-                reconstruct_gfunc = true
-                construct_egrid(ehi, elo, ne, new_gfunc_wbounds)
-            else
-                rethrow(err)
-            end
-        end
-        if reconstruct_gfunc
-            gfunc_wbounds = construct_gfunc_wbounds!(m; recalculate_μ = true)
-            gfunc(x) = gfunc_wbounds(x, ehi, elo)
-        end
+        egrid, ewts, g_of_e = construct_egrid(ehi, elo, ne, gfunc_wbounds)
         m.grids[:egrid] = Grid(egrid, ewts, sum(ewts)) # scale must equal the sum of the weights
+
+        if gfunc_wbounds((ehi + elo) / 2., ehi, elo) ≈ 0. ||
+            gfunc((ehi + elo) / 2.) ≈ 0. || all(g_of_e ≈ 0.)
+            throw(MalformedTruncationError("Reconstructing the gfunc once more fails to ensure it is properly formed."))
+        end
 
         # Run loop expanding the agrid if a CashOnHandError is caught
         ahi_guesses = if haskey(get_settings(m), :ahi_incs) # Construct guesses for the upper bound of agrid

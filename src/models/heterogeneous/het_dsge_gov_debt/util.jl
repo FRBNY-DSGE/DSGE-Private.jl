@@ -563,8 +563,7 @@ end
 CashOnHandError() = CashOnHandError("Consumption policy is not consistent with cash on hand.")
 Base.showerror(io::IO, ex::CashOnHandError) = print(io, ex.msg)
 
-# MAY WANT TO MOVE THIS ELSEWHERE AS A GENERIC THING PEOPLE WANT TO USE
-mutable struct ParamDomainError <: Exception
+mutable struct MalformedTruncationError <: Exception
     msg::String
 end
-Base.showerror(io::IO, ex::ParamDomainError) = print(io, ex.msg)
+Base.showerror(io::IO, ex::MalformedTruncationError) = print(io, ex.msg)
