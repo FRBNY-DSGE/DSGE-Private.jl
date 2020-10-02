@@ -60,27 +60,27 @@ definitions:
     #biagain: lam(1)*
 
 equations:
-    transition:
-        - cap = (1-(1-delta)/gz)*(inv(-1) + invshk) + ((1-delta)/gz)*(cap(-1) - techshk)
-        - gdp = gg*shrcy*cc + gshk + gg*shriy*inv + gg*alpha*((epsilon_p-1)/epsilon_p)*util
-        - dp = beta/(1+beta*(1-ap))*dp(1) + (1-ap)/(1+beta*(1-ap))*dp(-1) + kappa_p*mcost - (kappa_p/(epsilon_p-1))*elastshk
-        - notr =  rho_R*notr(-1) + (1-rho_R)*(gamma_pi*dp + gamma_x*xhp + gamma_g*(gdp - gdp(-1) + techshk)) + intshk
-        - realw = realw(-1) + dw - dp - techshk
-        - liqshk = rho_eta*liqshk(-1) + errliq
-        - invshk = rho_mu*invshk(-1) + errinv
-        - intshk = rho_R*intshk(-1) + errint
-        - gshk = rho_g*gshk(-1) + errgshk
-        - elastshk = rho_elast*elastshk(-1) + errelast
-        - elastwshk = rho_elastw*elastwshk(-1) + errelastw
-
     arbitrage:
+        - -cap + (1-(1-delta)/gz)*(inv(-1) + invshk) + ((1-delta)/gz)*(cap(-1) - techshk)
+        - -gdp + gg*shrcy*cc + gshk + gg*shriy*inv + gg*alpha*((epsilon_p-1)/epsilon_p)*util
+        - -dp + beta/(1+beta*(1-ap))*dp(1) + (1-ap)/(1+beta*(1-ap))*dp(-1) + kappa_p*mcost - (kappa_p/(epsilon_p-1))*elastshk
+        - -notr + rho_R*notr(-1) + (1-rho_R)*(gamma_pi*dp + gamma_x*xhp + gamma_g*(gdp - gdp(-1) + techshk)) + intshk
+        - -realw + realw(-1) + dw - dp - techshk
+        - -liqshk + rho_eta*liqshk(-1) + errliq
+        - -invshk + rho_mu*invshk(-1) + errinv
+        - -intshk + rho_R*intshk(-1) + errint
+        - -gshk + rho_g*gshk(-1) + errgshk
+        - -elastshk + rho_elast*elastshk(-1) + errelast
+        - -elastwshk + rho_elastw*elastwshk(-1) + errelastw
+
+    #arbitrage:
         - -lam + lam(1) + (notr - dp(1)) + liqshk - techshk(1)
         - -rentalk + realw + lab - util - cap(-1) + techshk
         - -(1-gamtil)*muc -cc + gamtil*(cc(-1) - techshk)
 
-    direct_response:
+    # direct_response:
     #     - inv = inv(1) + (lam + tobq + invshk - 1.0)
-        - inv = inv(1) + (lam + tobq + invshk - 1.0)
+    #     - inv = inv(1) + (lam + tobq + invshk - 1.0)
 
 calibration:
     # Parameters
