@@ -72,7 +72,7 @@ function steadystate!(m::HetDSGEGovDebt;
         m.grids[:egrid] = Grid(egrid, ewts, sum(ewts)) # scale must equal the sum of the weights
 
         if gfunc_wbounds((ehi + elo) / 2., ehi, elo) ≈ 0. ||
-            gfunc((ehi + elo) / 2.) ≈ 0. || all(g_of_e ≈ 0.)
+            gfunc((ehi + elo) / 2.) ≈ 0. || all(map(x->x ≈ 0., g_of_e))
             throw(MalformedTruncationError("Reconstructing the gfunc once more fails to ensure it is properly formed."))
         end
 
