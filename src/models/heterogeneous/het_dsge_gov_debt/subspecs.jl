@@ -908,8 +908,8 @@ but with with log-normal e distribution and estimating ehi
 function ss15!(m::HetDSGEGovDebt)
     ss11!(m)
 
-    m <= parameter(:ehi, 2-m[:elo].value, (1.1, 5.), (1.1, 5.), Untransformed(),
-                   Uniform(1.1, 5.), fixed = false,
+    m <= parameter(:ehi, 2-m[:elo].value, (1.1, 2.5), (1.1, 2.5), Untransformed(),
+                   Uniform(1.1, 2.5), fixed = false,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 end
@@ -925,8 +925,8 @@ but with with log-normal e distribution and estimating ehi
 function ss16!(m::HetDSGEGovDebt)
     ss13!(m)
 
-    m <= parameter(:ehi, 2-m[:elo].value, (1.1, 5.), (1.1, 5.), Untransformed(),
-                   Uniform(1.1, 5.), fixed = false,
+    m <= parameter(:ehi, 2-m[:elo].value, (1.1, 2.5), (1.1, 2.5), Untransformed(),
+                   Uniform(1.1, 2.5), fixed = false,
                    description = "Upper bound on second income shock to mollify actual income",
                    tex_label = "\\bar{z}")
 

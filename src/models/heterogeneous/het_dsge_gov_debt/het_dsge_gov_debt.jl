@@ -350,7 +350,7 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
     m <= parameter(:vardlinc, 0.0, fixed = true, tex_label = "vardlinc",
                    description = "var(log(deviations in annual income))")
     if subspec(m) in ["ss15", "ss16"]
-        m <= parameter(:σ_e, 0.5, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+        m <= parameter(:σ_e, 0.5, (1e-8, 1.), (1e-8, 1.), ModelConstructors.Exponential(),
                        RootInverseGamma(2., 0.1), fixed = false, tex_label = "\\sigma_e",
                        description = "σ of e distribution")
         m <= parameter(:μ_e, 0.0, fixed = true, tex_label = "\\mu_e",

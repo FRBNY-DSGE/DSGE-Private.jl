@@ -49,14 +49,28 @@ end =#
 @inline function lognormal_mean(ehi::S1, elo::S1, μ::S1, σ::S1) where {S1 <: Real}
     Φ(x) = .5 + .5 * erf(x / sqrt(2.))
     x_0(x) = (log(x)-μ)/σ
-    return exp(μ + σ^2 / 2.) * (Φ(σ - x_0(elo)) - Φ(σ - x_0(ehi))) / (Φ(x_0(ehi)) - Φ(x_0(elo)))
+    elo_0 = x_0(elo)
+    ehi_0 = x_0(ehi)
+    num1 = σ - elo_0
+    num2 = σ - ehi_0
+
+    if abs(elo_0) >= 8. || abs(ehi_0) >= 8. || abs(num1) >= 8. || abs(num2) >= 8.
+        throw(DomainError("The chosen ehi, elo, μ, and σ cannot yield numerically accurate results for Float64"))
+    end
+
+    return exp(μ + σ^2 / 2.) * (Φ(num1) - Φ(num2)) / (Φ(ehi_0) - Φ(elo_0))
 end
 
 @inline function calc_lognormal_mu(ehi::S1, elo::S1, σ::S1) where {S1 <: Real}
     function nl_mean!(F, x)
         F[1] = lognormal_mean(ehi, elo, x[1], σ) - 1.
     end
-    return nlsolve(nl_mean!, [σ^2 / 2.]).zero[1]
+    results = nlsolve(nl_mean!, [σ^2 / 2.], iterations = 10000)
+    if results.f_converged
+        return results.zero[1]
+    else
+        throw(DomainError("Cannot find μ implying mean of 1 for truncated lognormal, given inputted ehi, elo, and σ"))
+    end
 end
 
 @inline function mollifier_hetdsgegovdebt(e::S0, ehi::S1, elo::S1) where {S0 <: Real, S1 <: Real}
@@ -548,3 +562,9 @@ mutable struct CashOnHandError <: Exception
 end
 CashOnHandError() = CashOnHandError("Consumption policy is not consistent with cash on hand.")
 Base.showerror(io::IO, ex::CashOnHandError) = print(io, ex.msg)
+
+# MAY WANT TO MOVE THIS ELSEWHERE AS A GENERIC THING PEOPLE WANT TO USE
+mutable struct ParamDomainError <: Exception
+    msg::String
+end
+Base.showerror(io::IO, ex::ParamDomainError) = print(io, ex.msg)

@@ -5,7 +5,7 @@ function steadystate!(m::HetDSGEGovDebt;
                       βhi::S = min(exp(m[:γ].scaledvalue)/(1 + m[:r].scaledvalue), 0.999999),
                       excess::S = 5000., tol::S = 1e-4, maxit::Int64 = 20, βband::S = 1e-2,
                       euler_anderson::Bool = true, kf_anderson::Bool = false, kf_eigen::Bool = true,
-                      doplots::Bool = false, verbose::Symbol = :none) where {S <: Real}
+                      doplots::Bool = false, construct_gfunc_only::Bool = false, verbose::Symbol = :none) where {S <: Real}
     @assert !(kf_eigen && kf_anderson) "Only one of kf_anderson and kf_eigen can be true"
 
     # If we have already solved for βstar (i.e. it's not NaN) and we only want to
@@ -15,44 +15,54 @@ function steadystate!(m::HetDSGEGovDebt;
         return
     else
         # Initialize g function
+        elo = m[:elo].value
+        ehi = m[:ehi].value
         gfunc_type = get_setting(m, :gfunc_type)
         gfunc_wbounds = if gfunc_type == :mollifier
             _mollifier_gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
         elseif gfunc_type == :lognormal
             # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
             if !(m[:elo].fixed && m[:ehi].fixed)
-                m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
+                m[:μ_e].value = calc_lognormal_mu(ehi, elo, m[:σ_e].value)
             end
             # _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
             _lognormal_gfunc_wbounds(x, y, z) = pdf(truncated(LogNormal(m[:μ_e].value, m[:σ_e].value), z, y), x)
         end
-        gfunc(x) = gfunc_wbounds(x, m[:ehi].value, m[:elo].value)
+        gfunc(x) = gfunc_wbounds(x, ehi, elo)
 
         if get_setting(m, :gfunc_type) == :lognormal
-            mean1 = 1. ≈ lognormal_mean(m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+            mean1 = 1. ≈ lognormal_mean(ehi, elo, m[:μ_e].value, m[:σ_e].value)
             if !mean1
-                mean1_diff = 1. - lognormal_mean(m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+                # Try to enforce the mean again
+                m[:μ_e].value = calc_lognormal_mu(ehi, elo, m[:σ_e].value)
+
+                mean1 = 1. ≈ lognormal_mean(ehi, elo, m[:μ_e].value, m[:σ_e].value)
+                mean1_diff = 1. - lognormal_mean(ehi, elo, m[:μ_e].value, m[:σ_e].value)
                 @assert mean1 "After constructing gfunc, lognormal mean is not 1. The difference is $(mean1_diff)"
             end
         end
 
-        if gfunc_wbounds((m[:ehi] + m[:elo]) / 2., m[:ehi].value, m[:elo].value) ≈ 0.
+        if gfunc_wbounds((ehi + elo) / 2., ehi, elo) ≈ 0.
             gfunc_wbounds = if gfunc_type == :mollifier
                 _mollifier_gfunc_wbounds(x, y, z) = mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
             elseif gfunc_type == :lognormal
                 # calculate mu (do we need to do this every steady state if ehi and elo are fixed?
                 if !(m[:elo].fixed && m[:ehi].fixed)
-                    m[:μ_e].value = calc_lognormal_mu(m[:ehi].value, m[:elo].value, m[:σ_e].value)
+                    m[:μ_e].value = calc_lognormal_mu(ehi, elo, m[:σ_e].value)
                 end
                 # _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
                 _lognormal_gfunc_wbounds(x, y, z) = pdf(truncated(LogNormal(m[:μ_e].value, m[:σ_e].value), z, y), x)
             end
-            gfunc(x) = gfunc_wbounds(x, m[:ehi].value, m[:elo].value)
+            gfunc(x) = gfunc_wbounds(x, ehi, elo)
 
-            if gfunc_wbounds((m[:ehi] + m[:elo]) / 2., m[:ehi].value, m[:elo].value) ≈ 0. ||
-                gfunc((m[:ehi] + m[:elo]) / 2.) ≈ 0.
+            if gfunc_wbounds((ehi + elo) / 2., ehi, elo) ≈ 0. ||
+                gfunc((ehi + elo) / 2.) ≈ 0.
                 @assert false "Reconstructing the gfunc once more fails to ensure it is properly formed."
             end
+        end
+
+        if construct_gfunc_only
+            return true
         end
 
         # Update grid settings to ensure state space grid is full, not the reduced one
@@ -65,7 +75,7 @@ function steadystate!(m::HetDSGEGovDebt;
         if get_setting(m, :calibrate_income_targets)
             m[:sH_over_sL], m[:elo], m[:ehi] = compute_income_process_parameters(m, gfunc_wbounds)
         else
-            m[:varlinc], m[:vardlinc] = skill_moments(m[:sH_over_sL].value, m[:elo].value,
+            m[:varlinc], m[:vardlinc] = skill_moments(m[:sH_over_sL].value, elo,
                                                       m[:pLH].value, m[:pHL].value,
                                                       get_setting(m, :us),
                                                       get_setting(m, :es), get_setting(m, :n_calibration_iters))
@@ -92,24 +102,24 @@ function steadystate!(m::HetDSGEGovDebt;
         m.grids[:sgrid] = Grid(sgrid, swts, sscale)
 
         # Construct egrid
-        # egrid, ewts, g_of_e = construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc)
+        # egrid, ewts, g_of_e = construct_egrid(ehi, elo, ne, gfunc)
         reconstruct_gfunc = false
         egrid, ewts, g_of_e = try
-             construct_egrid(m[:ehi].value, m[:elo].value, ne, gfunc_wbounds)
+             construct_egrid(ehi, elo, ne, gfunc_wbounds)
         catch err
             if isa(err, AssertionError)
-                @show (m[:ehi].value, m[:elo].value, m[:μ_e].value, m[:σ_e].value)
+                @show (ehi, elo, m[:μ_e].value, m[:σ_e].value)
                 new_gfunc_wbounds = construct_gfunc_wbounds!(m; recalculate_μ = false)
-                @show new_gfunc_wbounds((m[:elo] + m[:ehi]) / 2., m[:ehi].value, m[:elo].value)
+                @show new_gfunc_wbounds((m[:elo] + m[:ehi]) / 2., ehi, elo)
                 reconstruct_gfunc = true
-                construct_egrid(m[:ehi].value, m[:elo].value, ne, new_gfunc_wbounds)
+                construct_egrid(ehi, elo, ne, new_gfunc_wbounds)
             else
                 rethrow(err)
             end
         end
         if reconstruct_gfunc
             gfunc_wbounds = construct_gfunc_wbounds!(m; recalculate_μ = true)
-            gfunc(x) = gfunc_wbounds(x, m[:ehi].value, m[:elo].value)
+            gfunc(x) = gfunc_wbounds(x, ehi, elo)
         end
         m.grids[:egrid] = Grid(egrid, ewts, sum(ewts)) # scale must equal the sum of the weights
 
@@ -197,6 +207,8 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     β         = NaN # Need to define β here so it's accessible outside of while lopp
     c_pol_in  = (R - 1) * repeat(agrid, 1, ns, ne) .+ ω * H * repeat(sgrid', na, 1, ne)
     KF_in     = fill(1.0 / (ns * na), na, ns)
+    ehi       = m[:ehi].value
+    elo       = m[:elo].value
 
     # If want to keep the last β/don't recompute
     if get_setting(m, :use_last_βstar) && !isnan(m[:βstar].value)
@@ -210,7 +222,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         βlo_temp = m[:βstar].value - βband
         βhi_temp = m[:βstar].value + βband
         c_pol_out, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
-                                                                m[:ehi].value, m[:elo].value,
+                                                                ehi, elo,
                                                                 agrid, sgrid, c_pol_in, KF_in,
                                                                 f, egrid, ewts, g_of_e, transition_mat, gfunc,
                                                                 maxit = get_setting(m, :policy_maxit),
@@ -235,7 +247,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
         if excess_lo < 0 && abs(excess_lo) > tol
             βlo = βlo_temp
             c_pol_out, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, βlo_temp, R, ω, H, η, T, γ,
-                                                                    m[:ehi].value, m[:elo].value,
+                                                                    ehi, elo,
                                                                     agrid, sgrid, c_pol_in, KF_in,
                                                                     f, egrid, ewts, g_of_e, transition_mat, gfunc,
                                                                     maxit = get_setting(m, :policy_maxit),
@@ -273,7 +285,7 @@ function find_steadystate!(m::HetDSGEGovDebt, na::Int, ns::Int, ne::Int,
     while abs(excess) > tol && counter <= maxit # clearing markets
         β = (βlo + βhi) / 2.0
         c_pol_out, c_as, bp, KF, reject = policy_hetdsgegovdebt(na, ns, ne, na_c, β, R, ω, H, η, T, γ,
-                                                                m[:ehi].value, m[:elo].value,
+                                                                ehi, elo,
                                                                 agrid, sgrid, c_pol_in, KF_in,
                                                                 f, egrid, ewts, g_of_e, transition_mat, gfunc,
                                                                 maxit = get_setting(m, :policy_maxit),
