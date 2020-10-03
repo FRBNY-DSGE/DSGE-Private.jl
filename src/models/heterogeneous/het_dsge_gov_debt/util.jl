@@ -356,6 +356,9 @@ function construct_egrid(ehi::S, elo::S, ne::Int, gfunc_wbounds::Function) where
 
     # Normalize egrid, ewts so that ∫ g(e) de ≈ ∑ᵢ g(eᵢ) * wᵢ = 1 b/c g(e) is a pdf
     g_of_e      = map(x -> gfunc(x), egrid) # g(eᵢ)
+    if all(g_of_e .≈ 0.)
+        throw(MalformedTruncationError("The gfunc is not properly formed. All quadrature points yield zero mass."))
+    end
     ewts      ./= dot(g_of_e, ewts) # normalize wᵢ to w̃ᵢ so that ∑ᵢ w̃ᵢ * gᵢ = 1
     egrid     ./= dot(g_of_e .* egrid, ewts) # Normalize egrid so that mean ∫ e g(e) de = 1, should be a small adjustment
 #=    if any(isnan.(egrid))
@@ -406,8 +409,8 @@ function construct_egrid(ehi::S, elo::S, ne::Int, gfunc_wbounds::Function) where
 
         @assert !(any(isnan.(egrid))) "Even after reconstructing gfunc, we get NaNs in egrid"
     end
-=#
     @assert !(any(isnan.(egrid)))
+=#
 
     return egrid, ewts, g_of_e
 end

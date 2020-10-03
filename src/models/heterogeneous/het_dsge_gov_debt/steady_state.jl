@@ -79,11 +79,6 @@ function steadystate!(m::HetDSGEGovDebt;
         egrid, ewts, g_of_e = construct_egrid(ehi, elo, ne, gfunc_wbounds)
         m.grids[:egrid] = Grid(egrid, ewts, sum(ewts)) # scale must equal the sum of the weights
 
-        if gfunc_wbounds((ehi + elo) / 2., ehi, elo) ≈ 0. ||
-            gfunc((ehi + elo) / 2.) ≈ 0. || all(map(x->x ≈ 0., g_of_e))
-            throw(MalformedTruncationError("Reconstructing the gfunc once more fails to ensure it is properly formed."))
-        end
-
         # Run loop expanding the agrid if a CashOnHandError is caught
         ahi_guesses = if haskey(get_settings(m), :ahi_incs) # Construct guesses for the upper bound of agrid
             get_setting(m, :ahi_incs)
