@@ -54,10 +54,6 @@ end =#
     num1 = σ - elo_0
     num2 = σ - ehi_0
 
-    if abs(elo_0) >= 8. || abs(ehi_0) >= 8. || abs(num1) >= 8. || abs(num2) >= 8.
-        throw(DomainError("The chosen ehi, elo, μ, and σ cannot yield numerically accurate results for Float64"))
-    end
-
     return exp(μ + σ^2 / 2.) * (Φ(num1) - Φ(num2)) / (Φ(ehi_0) - Φ(elo_0))
 end
 
@@ -177,6 +173,7 @@ function ssample(us::Matrix{S}, P::Matrix{S}, πss::AbstractArray,
     return shist
 end
 
+# For mollifier
 function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, P::Matrix{S},
                        πss::AbstractArray, sgrid::AbstractArray,
                        ni::Int) where {S <: Real}
@@ -186,9 +183,9 @@ function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, P::Matrix{S},
     for i=1:ni
         inc1 = 0.
         for t=1:4
-            eshock = 1. + (1. - elo)*(ehist[i,t]-1.)
-            sshock = (sgrid[1] + (sgrid[2] - sgrid[1])*(s_inds[i,t] - 1.))
-            inc1 += eshock*sshock
+            eshock = 1. + (1. - elo)*(ehist[i,t]-1.) # this is just the actual eshock. Multiplying by (1 - elo) transforms ehist,
+            sshock = (sgrid[1] + (sgrid[2] - sgrid[1])*(s_inds[i,t] - 1.)) # which was generated on a [0, 2] grid, onto [elo, 2].
+            inc1 += eshock*sshock                    # Subtract 1 from ehist b/c re-centering
         end
         inc2 = 0.
         for t=5:8
@@ -202,6 +199,33 @@ function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, P::Matrix{S},
     return linc1, linc2
 end
 
+# For generic gfunc
+function ln_annual_inc(ehist::Matrix{S}, us::Matrix{S}, elo::S, ehi::S, P::Matrix{S},
+                       πss::AbstractArray, sgrid::AbstractArray,
+                       ni::Int) where {S <: Real}
+    s_inds = ssample(us,P,πss,ni)
+    linc1 = zeros(ni)
+    linc2 = zeros(ni)
+    for i=1:ni
+        inc1 = 0.
+        for t=1:4
+            eshock = ehist[i,t] # unlike mollifier, it is assumed that ehist is indeed the eshock
+            sshock = (sgrid[1] + (sgrid[2] - sgrid[1])*(s_inds[i,t] - 1.))
+            inc1 += eshock*sshock
+        end
+        inc2 = 0.
+        for t=5:8
+            eshock = ehist[i,t]
+            sshock = (sgrid[1] + (sgrid[2] - sgrid[1])*(s_inds[i,t] - 1.))
+            inc2 += eshock*sshock
+        end
+        linc1[i] += log(inc1)
+        linc2[i] += log(inc2)
+    end
+    return linc1, linc2
+end
+
+# For mollifier
 function skill_moments(sH_over_sL::Real, elo::Real, pLH::S, pHL::S, us::Matrix{S},
                        es::Matrix{S}, ni::Int = 10000) where {S <: Real}
     πL    = pHL / (pLH + pHL)
@@ -213,6 +237,29 @@ function skill_moments(sH_over_sL::Real, elo::Real, pLH::S, pHL::S, us::Matrix{S
     linc1, linc2 = ln_annual_inc(es, us, elo, P, πss, sgrid, ni)
     return var(linc1), var(linc2 - linc1)
 end
+
+# Generic gfunc distribution for e shock
+function skill_moments(sH_over_sL::S, elo::S, ehi::S, pLH::S, pHL::S, us::Matrix{S},
+                       ue::Matrix{S}, gfunc_wbounds::Function, ne::Int, ni::Int = 10000) where {S <: Real}
+    # Construct s transition dynamics
+    πL    = pHL / (pLH + pHL)
+    πss   = [πL; 1.0-πL]
+    P     = [[1.0-pLH pLH]; [pHL 1.0-pHL]]
+    slo   = 1.0 / (πL + (1-πL) * sH_over_sL)
+    shi   = sH_over_sL * slo
+    sgrid = [slo; shi]
+
+    # Sample from gfunc for e shock
+    egrid = collect(range(elo, stop = ehi, length = ne))
+    eprob = [gfunc_wbounds(x, ehi, elo) / ne for x in egrid] # divide by ne b/c uniform quadrature
+    eprob ./= sum(eprob)  # normalize discrete approximation to 1
+    ecdf  = cumsum(eprob) # get CDF to use fact F(e) ∼ U[0, 1]
+    es    = esample(ue, egrid, ecdf, ni, ne)
+
+    linc1, linc2 = ln_annual_inc(es, us, elo, ehi, P, πss, sgrid, ni)
+    return var(linc1), var(linc2 - linc1)
+end
+
 #=
 """
 ```
@@ -252,6 +299,7 @@ end
 
 function compute_income_process_parameters(m::AbstractDSGEModel, gfunc::Function)
     # Determines whether random or not
+    error("This function is not properly formed")
     us, es = if get_setting(m, :fix_random_matrices)
         get_setting(m, :us), get_setting(m, :es)
     else
@@ -270,13 +318,13 @@ end
 
 function esample(ue::Matrix{S}, egrid::AbstractArray, ecdf::AbstractArray,
                  ni::Int, ne::Int) where {S <: Real}
-    eave = 0.5*egrid[1:ne-1]+0.5*egrid[2:ne]
+    eave = 0.5*egrid[1:ne-1]+0.5*egrid[2:ne] # midpoint of egrid
     es = zeros(ni,8)
     for i=1:ni
         for t=1:8
             for ie=1:ne-1
                 if ecdf[ie] < ue[i,t] <= ecdf[ie+1]
-                    es[i,t] = eave[ie]
+                    es[i,t] = eave[ie] # sample using fact F(e) ∼ U[0, 1] and assign draw to midpoint of egrid
                 end
             end
         end
@@ -499,7 +547,7 @@ end
 #=
 """
 ```
-generate_us_and_es(ni, ne)
+generate_us_and_es(ni, ne, gfunc, gfunc_type)
 ```
 
 There is no need to recall this function, unless one wants to undo the seeding
@@ -507,10 +555,10 @@ in all past saved output.
 
 The us are draws from U[0, 1] used to construct nodes for the skill distribution.
 
-The es are the grid nodes for the exogenous i.i.d productivity shock.
-"""
-=#
-function generate_us_and_es(ni, ne, gfunc::Function)
+The es are the grid nodes for the exogenous i.i.d productivity shock whose
+pdf is given by `gfunc` and name by `gfunc_type`.
+"""=#
+function generate_us_and_es(ni, ne, gfunc::Function, gfunc_type::Symbol)
     us = rand(ni, 8)
     ue = rand(ni, 8)
 
@@ -522,14 +570,39 @@ function generate_us_and_es(ni, ne, gfunc::Function)
     ecdf = cumsum(eprob)
     eave = 0.5 * egrid[1:ne-1] + 0.5 * egrid[2:ne]
     es   = esample(ue, egrid, ecdf, ni, ne)
-
-    return us, es
-    #=
-    JLD2.jldopen("$HETDSGEGOVDEBT/reference/us_es.jld2", true, true, true, IOStream) do file
+#=
+    JLD2.jldopen("$HETDSGEGOVDEBT/us_es_$(gfunc_type).jld2", true, true, true, IOStream) do file
         file["us"] = us
         file["es"] = es
     end
-    =#
+=#
+    return us, es
+end
+
+#=
+"""
+```
+generate_us_and_ue(ni, ne)
+```
+
+There is no need to recall this function, unless one wants to undo the seeding
+in all past saved output.
+
+The us are draws from U[0, 1] used to construct nodes for the skill distribution.
+
+The ue are draws from U[0, 1] used to construct nodes for the exogenous i.i.d productivity shock
+whose pdf is given by `gfunc` and name by `gfunc_type`.
+"""=#
+function generate_us_and_ue(ni, ne, gfunc_type::Symbol, filepath::String)
+    us = rand(ni, 8)
+    ue = rand(ni, 8)
+#=
+    JLD2.jldopen("$(filepath)/us_ue_$(gfunc_type).jld2", true, true, true, IOStream) do file
+        file["us"] = us
+        file["ue"] = ue
+    end
+=#
+    return us, ue
 end
 
 function print_summary_stats(m::HetDSGEGovDebt)

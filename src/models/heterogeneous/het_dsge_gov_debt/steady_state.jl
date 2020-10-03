@@ -40,10 +40,18 @@ function steadystate!(m::HetDSGEGovDebt;
         if get_setting(m, :calibrate_income_targets)
             m[:sH_over_sL], m[:elo], m[:ehi] = compute_income_process_parameters(m, gfunc_wbounds)
         else
-            m[:varlinc], m[:vardlinc] = skill_moments(m[:sH_over_sL].value, elo,
-                                                      m[:pLH].value, m[:pHL].value,
-                                                      get_setting(m, :us),
-                                                      get_setting(m, :es), get_setting(m, :n_calibration_iters))
+            if get_setting(m, :gfunc_type) == :mollifier
+                m[:varlinc], m[:vardlinc] = skill_moments(m[:sH_over_sL].value, elo,
+                                                          m[:pLH].value, m[:pHL].value,
+                                                          get_setting(m, :us),
+                                                          get_setting(m, :es), get_setting(m, :n_calibration_iters))
+            else
+                m[:varlinc], m[:vardlinc] = skill_moments(m[:sH_over_sL].value, elo, ehi,
+                                                          m[:pLH].value, m[:pHL].value,
+                                                          get_setting(m, :us),
+                                                          get_setting(m, :ue), gfunc_wbounds,
+                                                          get_setting(m, :ne_moments), get_setting(m, :n_calibration_iters))
+            end
         end
 
         # Parameters

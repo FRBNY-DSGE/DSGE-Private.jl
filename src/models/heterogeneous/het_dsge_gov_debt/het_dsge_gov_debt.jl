@@ -650,6 +650,7 @@ function model_settings!(m::HetDSGEGovDebt)
 
     # e: ideosyncratic income shock grid setup
     m <= Setting(:ne, 6, "e shock grid points")
+    m <= Setting(:ne_moments, 1000, "e shock grid points to approximate cumulative distribution function for calculating log income moments")
 
     m <= Setting(:binsize, 4) # Setting binsize=1 gives us what we had before doing the binning reduction
     m <= Setting(:poor_man_reduc, true) #note that we're actually doing more than the "poor man reduction" now however this turns ont both poorman truncation and binning reduction
@@ -679,10 +680,14 @@ function model_settings!(m::HetDSGEGovDebt)
 
     # Steady state constants
     m <= Setting(:n_calibration_iters, 10000, "Number of iterations for calibration functions")
-    # m <= Setting(:nz, 1000)
     m <= Setting(:fix_random_matrices, true, "Determines if use fixed matrices")
-    m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_es.jld2","us"))
-    m <= Setting(:es, load(get_setting(m, :ref_dir) * "/us_es.jld2","es"))
+    if get_setting(m, :gfunc_type) == :mollifier # with mollifier, we can save actual eshock
+        m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_es.jld2","us"))
+        m <= Setting(:es, load(get_setting(m, :ref_dir) * "/us_es.jld2","es"))
+    else # with generic e shock distribution, we can only save uniform draws.
+        m <= Setting(:us, load(get_setting(m, :ref_dir) * "/us_ue_$(get_setting(m, :gfunc_type)).jld2", "us"))
+        m <= Setting(:ue, load(get_setting(m, :ref_dir) * "/us_ue_$(get_setting(m, :gfunc_type)).jld2", "ue"))
+    end
     # m <= Setting(:zs, load(get_setting(m, :ref_dir) * "/us_zs.jld2","zs")) # Renamed to `e` shock
 
     # Misc
