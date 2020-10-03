@@ -418,6 +418,10 @@ end
 function construct_agrid(smin::S, emin::S, ω::S, H::S, R::S, η::S, γ::S, T::S, na::Int;
                          ahi_inc::S = NaN) where {S <: Real}
 
+    if isnan(emin)
+        throw(MalformedTruncationError("The gfunc is not properly formed. Minimum egrid value is a NaN."))
+    end
+
     alo  = ω * smin * emin * H - R * η * exp(-γ) + T # lowest SS possible cash on hand
     ahi  = if isnan(ahi_inc)
         ahi = max(alo * 2., alo + 20.0)              # upper bound on cash on hand
