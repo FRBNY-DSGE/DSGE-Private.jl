@@ -25,8 +25,7 @@ function steadystate!(m::HetDSGEGovDebt;
             if !(m[:elo].fixed && m[:ehi].fixed)
                 m[:μ_e].value = calc_lognormal_mu(ehi, elo, m[:σ_e].value)
             end
-            # _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
-            _lognormal_gfunc_wbounds(x, y, z) = pdf(truncated(LogNormal(m[:μ_e].value, m[:σ_e].value), z, y), x)
+            _lognormal_gfunc_wbounds(x, y, z) = lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
         end
         gfunc(x) = gfunc_wbounds(x, ehi, elo)
 

@@ -30,9 +30,18 @@ function autodiff_jacobian(m::HetDSGEGovDebt{T}) where {T}
     na   = DSGE.get_setting(m, :na)::Int64
     ns   = DSGE.get_setting(m, :ns)::Int64
 
-    # Define some wrapper functions around mollifier and investment cost function
-    @inline g_fn(x::S0) where {S0 <: Real}  = mollifier_hetdsgegovdebt(x,  θ[:ehi], θ[:elo])
-    @inline gp_fn(x::S0) where {S0 <: Real} = dmollifier_hetdsgegovdebt(x, θ[:ehi], θ[:elo])
+    # Define some wrapper functions around e shock distribution and investment cost function
+    gfunc_type = get_setting(m, :gfunc_type)
+    if gfunc_type == :mollifier
+        gfunc_wbounds = (x, y, z) -> mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
+        gpfunc_wbounds = (x, y, z) -> dmollifier_hetdsgegovdebt(x, y, z)
+    elseif gfunc_type == :lognormal
+        gfunc_wbounds = (x, y, z) -> lognormal_hetdsgegovdebt(x, y, z, θ[:μ_e].value, θ[:σ_e].value)
+        gpfunc_wbounds = (x, y, z) -> dlognormal_hetdsgegovdebt(x, y, z, θ[:μ_e].value, θ[:σ_e].value)
+    end
+
+    @inline g_fn(x::S0) where {S0 <: Real}  = gfunc_wbounds(x,  θ[:ehi], θ[:elo])
+    @inline gp_fn(x::S0) where {S0 <: Real} = gpfunc_wbounds(x, θ[:ehi], θ[:elo])
 
     @inline s_fn(x::S0) where {S0 <: Real} = (θ[:spp] / 2.0) * (x - exp(θ[:γ])) ^ 2.0 # so that s(exp(γ)) = s'(exp(γ)) = 0.
     @inline sp_fn(x::S0) where {S0 <: Real} = θ[:spp] * (x - exp(θ[:γ]))

@@ -64,19 +64,28 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     ns::Int = get_setting(m, :ns)
     nans = na*ns
 
-    gp(z) = dmollifier_hetdsgegovdebt(z, ehi, elo)
-    gfunction_hetdsgegovdebt(x) = mollifier_hetdsgegovdebt(x, ehi, elo)
+    gfunc_type = get_setting(m, :gfunc_type)
+    if gfunc_type == :mollifier
+        gfunc_wbounds = (x, y, z) -> mollifier_hetdsgegovdebt(x, y, z) # need this for generate_us_and_es
+        gpfunc_wbounds = (x, y, z) -> dmollifier_hetdsgegovdebt(x, y, z)
+    elseif gfunc_type == :lognormal
+        gfunc_wbounds = (x, y, z) -> lognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
+        gpfunc_wbounds = (x, y, z) -> dlognormal_hetdsgegovdebt(x, y, z, m[:μ_e].value, m[:σ_e].value)
+    end
+
+    gpfunc(x) = gpfunc_wbounds(x, ehi, elo)
+    gfunc(x) = gfunc_wbounds(x, ehi, elo)
 
     unc = 1 ./ ell .<= repeat(agrid, ns) .+ η
     ι   = (agrid[end] - agrid[1]) / na
 
     dF1_dELL, dF1_dRZ, dF1_dELLP, dF1_dWHP, dF1_dTTP, ee =
-        euler_equation_hetdsgegovdebt(na, ns, gp, gfunction_hetdsgegovdebt, agrid, sgrid, fgrid, unc, ι,
+        euler_equation_hetdsgegovdebt(na, ns, gpfunc, gfunc, agrid, sgrid, fgrid, unc, ι,
                                R, γ, β, η, ell, T, ω, H)
 
     # KF Equation
     dF2_dWH, dF2_dRZ, dF2_dTT,dF2_dELL, bigΨ, dF2_dM =
-        kolmogorov_fwd_hetdsgegovdebt(na, ns, gfunction_hetdsgegovdebt, gp, agrid, sgrid, fgrid, unc,
+        kolmogorov_fwd_hetdsgegovdebt(na, ns, gfunc, gpfunc, agrid, sgrid, fgrid, unc,
                                R, γ, ell, D, η, T, ω, H)
 
     # Market clearing, lambda function
@@ -291,7 +300,7 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
 end
 
 function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
-                                       gp::Function, gfunction::Function,
+                                       gpfunc::Function, gfunc::Function,
                                        agrid::Vector{Float64}, sgrid::Vector{Float64},
                                        fgrid::Matrix{Float64},
                                        unc::BitArray, ι::Float64,
@@ -319,8 +328,8 @@ function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
                 @inbounds for iap=1:na
                     ip = na*(isp-1)+iap
                     ee[i,ip] = (agrid[iap] - R*(exp(-γ))*max(agrid[ia]-1/ell[i], -η) - T)/(ω*H*sgrid[isp])
-                    ξ[i,ip] = ι * ((β*R*exp(-γ))/(ω*H*sgrid[isp])^2)*max(ell[ip],1/(agrid[iap]+η))*gp(ee[i,ip])*fgrid[iss,isp]
-                    Ξ[i,ip] = ι * ((β*R*exp(-γ))/(ω*H*sgrid[isp]))*max(ell[ip],1/(agrid[iap]+η))*gfunction(ee[i,ip])*fgrid[iss,isp]
+                    ξ[i,ip] = ι * ((β*R*exp(-γ))/(ω*H*sgrid[isp])^2)*max(ell[ip],1/(agrid[iap]+η))*gpfunc(ee[i,ip])*fgrid[iss,isp]
+                    Ξ[i,ip] = ι * ((β*R*exp(-γ))/(ω*H*sgrid[isp]))*max(ell[ip],1/(agrid[iap]+η))*gfunc(ee[i,ip])*fgrid[iss,isp]
                     sumELL += ξ[i,ip]*R*(exp(-γ))*unc[i]/ell[i]
                     sumRZ  += ξ[i,ip]*R*(exp(-γ))*max(agrid[ia] - 1/ell[i],-η)
                     dF1_dELLP[i,ip] = Ξ[i,ip]*unc[ip]
@@ -338,7 +347,7 @@ function euler_equation_hetdsgegovdebt(na::Int, ns::Int,
 end
 
 function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
-                                       gfunction::Function, gp::Function,
+                                       gfunc::Function, gpfunc::Function,
                                        agrid::Vector{S}, sgrid::Vector{S},
                                        fgrid::Matrix{S}, unc::BitArray,
                                        R::S, γ::S, ell::Vector{S}, D::Vector{S},
@@ -359,10 +368,10 @@ function kolmogorov_fwd_hetdsgegovdebt(na::Int, ns::Int,
                 @inbounds for iap = 1:na
                     ip              = na * (isp - 1) + iap # (a', s')
                     ee              = (agrid[iap] - R * (exp(-γ)) * max(agrid[ia] - 1 / ell[i], -η) - T) / (ω * H * sgrid[isp])
-                    bigΨ[ip, i]     = D[i] * gfunction(ee) * fgrid[iss,isp] / (ω * H * sgrid[isp])
-                    smallψ[ip, i]   = D[i] * gp(ee) * fgrid[iss,isp] / ((ω * H * sgrid[isp])^2)
+                    bigΨ[ip, i]     = D[i] * gfunc(ee) * fgrid[iss,isp] / (ω * H * sgrid[isp])
+                    smallψ[ip, i]   = D[i] * gpfunc(ee) * fgrid[iss,isp] / ((ω * H * sgrid[isp])^2)
                     dF2_dELL[ip, i] = -smallψ[ip, i] * (R * exp(-γ)) * (unc[i] / ell[i])
-                    dF2_dM[ip, i]   = gfunction(ee) * fgrid[iss, isp] / (ω * H * sgrid[isp])
+                    dF2_dM[ip, i]   = gfunc(ee) * fgrid[iss, isp] / (ω * H * sgrid[isp])
                     dF2_dRZ[ip]    -= smallψ[ip, i] * (R * exp(-γ)) * max(agrid[ia] - 1 / ell[i], -η)
                     dF2_dWH[ip]    -= bigΨ[ip, i] + smallψ[ip, i] * ee * (ω * H * sgrid[isp])
                     dF2_dTT[ip]    -= smallψ[ip, i] * T
