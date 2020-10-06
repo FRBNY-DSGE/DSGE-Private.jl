@@ -538,7 +538,6 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
         @time @inbounds for j in 1:approx.ns
 
             err = 0.0
-            #@show "ngridpoint loop"
             @inbounds for k in 1:approx.ngridpoints
                 updated_approx_functions[:,k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)#, funcmat, funcmatplus, shockindex, lmsv, weighttemp, funcapp, funcapp_plus, xx, polyvec, weightvec)
                 #approx_k, err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
@@ -729,6 +728,7 @@ function parallel_help(rkss::Float64, approx::Approximation, params::Array{Abstr
     # Calculate g(f) to get new guess for f at given exogenous state and then calculate new approximation
     @inbounds for k in 1:approx.ngridpoints
         updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
+
         err += err2
     end
 

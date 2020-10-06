@@ -173,7 +173,7 @@ end
 The decision rule, which updates endogenous variables and shocks given current endogenous values and innovations. Will first approximate the necessary functions before calling intermediatedec! to update state variables.
 """
 function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vector{Float64},innovations::Vector{Float64},params::Array{AbstractParameter{Float64},1}, keys::OrderedCollections.OrderedDict{Symbol,Int64}, labss::Float64, alphacoeff::Array{Float64,2},exogenous_shocks::OrderedCollections.OrderedDict{Symbol,Int64},endogenous_states::OrderedCollections.OrderedDict{Symbol,Int64}, zlbswitch::Bool, funcmat::Array{Float64,2}, funcmatplus::Array{Float64,2}, shockindex::Array{Int64,1}, lmsv::Array{Float64,1}, currentshockvalues::Array{Float64,1}, weighttemp::Array{Float64,1}, funcapp::Array{Float64,1}, funcappplus::Array{Float64,1}, xx::Array{Float64,1}, polyvec::Array{Float64,1}, weightvec::Array{Float64,1})
-
+#@time begin
     #Initialize Variables
     shockindexall=ones(Int64,approx.nexogvars)
     #=shockindex=Array{Int64}(undef,approx.nexogshocks)
@@ -247,6 +247,7 @@ function decr!(endogvar::Vector{Float64}, approx::Approximation, endogvarm1::Vec
         end
         stateindex = exogposition(shockindexall,approx.nshockgrid,approx.nexogvars)
         stateindexplus = stateindex+approx.ns
+
         for ifunc in 1:approx.nfunc
             @views funcmat[ifunc,i] = BLAS.dot(approx.ngridpoints, alphacoeff[(ifunc-1)*approx.ngridpoints+1:ifunc*approx.ngridpoints, stateindex], 1, polyvec, 1)
             @views funcmatplus[ifunc,i] = BLAS.dot(approx.ngridpoints, alphacoeff[(ifunc-1)*approx.ngridpoints+1:ifunc*approx.ngridpoints, stateindexplus],1, polyvec, 1)
@@ -393,9 +394,8 @@ function decr_euler(rkss::Float64, approx::Approximation, gridindex::Int64,shock
     weightvec = Array{Float64}(undef,approx.ninter)
 
     @inbounds for ss in 1:approx.nquad
-        innovations[1:approx.nexogshocks] = approx.ghnodes[:,ss]
+        innovations[1:approx.nexogshocks] = @views approx.ghnodes[:,ss]
 
-        #@show "decr call"
         decr!(endogvarp,approx,endogvar,innovations,params, keys, labss, alphacoeff, exogenous_shocks, endogenous_states, zlbswitch, funcmat, funcmatplus, shockindex,lmsv,currentshockvalues,weighttemp,funcapp,funcapp_plus,xx,polyvec,weightvec)
 
         techshkp = exp(endogvarp[endogenous_states[:ztil_t]])

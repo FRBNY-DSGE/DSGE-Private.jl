@@ -37,7 +37,7 @@ definitions:
 
     lam: (-(1+gamtil*gamtil*beta)*cc + gamtil*(cc(-1)-techshk) + gamtil*beta*(cc(1) + techshk(1)))/((1-gamtil)*(1-gamtil*beta))
 
-    tobq: -invshk + phii_jpt*(1+beta)*inv-phii_jpt*inv(-1) - beta*phii_jpt*inv(+1) + phii_jpt*techshk - beta*phii_jpt*techshk(1)
+    tobq: -invshk + phii_jpt*(1+beta)*inv-phii_jpt*inv(-1) - beta*phii_jpt*inv(1) + phii_jpt*techshk - beta*phii_jpt*techshk(1)
     rentalk: (tobq(-1) - (1-delta)*beta/gz*tobq - lam + lam(-1) + techshk) / (1-((1-delta)*beta/gz))
 
     util: (1/sigma_a)*rentalk
