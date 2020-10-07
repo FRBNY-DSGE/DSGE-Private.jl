@@ -7,7 +7,7 @@ using DSGE, NLsolve, Test, BenchmarkTools
 #const to = TimerOutput()
 function speeds()
 m = GHLS()
-@btime alpha_iter = solve($m; parallel = true, anderson = false)
+@btime alpha_iter = solve($m; parallel = false, anderson = false)
 end
 speeds()
 #=

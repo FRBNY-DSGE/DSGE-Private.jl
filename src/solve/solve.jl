@@ -535,10 +535,10 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
         # Calculate g(f) to get new guess for f and then calculate new approximation
         # Note that we can do this separately for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
         @show "loop within iter starts"
-        @time @inbounds for j in 1:approx.ns
+        @time for j in 1:approx.ns
 
             err = 0.0
-            @inbounds for k in 1:approx.ngridpoints
+            for k in 1:approx.ngridpoints
                 updated_approx_functions[:,k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)#, funcmat, funcmatplus, shockindex, lmsv, weighttemp, funcapp, funcapp_plus, xx, polyvec, weightvec)
                 #approx_k, err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
                 #for m in 1:2*approx.nfunc
