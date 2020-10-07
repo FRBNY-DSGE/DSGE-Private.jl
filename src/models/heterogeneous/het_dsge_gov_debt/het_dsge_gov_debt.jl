@@ -121,7 +121,7 @@ function init_model_indices!(m::HetDSGEGovDebt, states::Vector{Symbol}, jumps::V
     endogenous_states = collect(vcat(states, jumps))
 
     # Exogenous shocks
-    exogenous_shocks = collect([:b_sh,:g_sh,:z_sh,:μ_sh,:λ_w_sh, :λ_f_sh,:rm_sh])
+    exogenous_shocks = collect([:b_sh,:g_sh,:z_sh,:μ_sh,:λ_w_sh, :λ_f_sh,:rm_sh, :π_star_sh])
 
     # Equilibrium conditions
     equilibrium_conditions = collect([:eq_euler,:eq_kolmogorov_fwd,
@@ -132,7 +132,7 @@ function init_model_indices!(m::HetDSGEGovDebt, states::Vector{Symbol}, jumps::V
                                       :eq_nominal_wage_inflation, :eq_fiscal_rule,
                                       :eq_g_budget_constraint, :LI,:LY,
                                       :LW,:LX,:eq_b,:eq_g,:eq_z,:eq_μ,:eq_λ_w,
-                                      :eq_λ_f, :eq_rm])
+                                      :eq_λ_f, :eq_rm, :eq_π_star])
 
     # Additional states added after solving model
     # Lagged states and observables measurement error
@@ -218,7 +218,7 @@ function HetDSGEGovDebt(subspec::String="ss0";
 
     # Endogenous states
     states = collect([:kf′_t,:k′_t,:i′_t1, :y′_t1,:w′_t1,:I′_t1, :bg′_t,
-                      :b′_t,:g′_t,:z′_t,:μ′_t,:λ_w′_t, :λ_f′_t,:rm′_t])
+                      :b′_t,:g′_t,:z′_t,:μ′_t,:λ_w′_t, :λ_f′_t,:rm′_t, :π_star′_t])
 
     jumps = collect([:l′_t,:C′_t,:R′_t,:i′_t,:t′_t,:w′_t, :L′_t,:π′_t,:π_w′_t,
                      :margutil′_t,:y′_t, :I′_t,:mc′_t,:Q′_t,:capreturn′_t, :tg′_t])
@@ -427,6 +427,11 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    description = "ρ_rm: AR(1) coefficient in the monetary policy shock process.",
                    tex_label = "\\rho_{r^m}")
 
+    m <= parameter(:ρ_π_star, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+                   BetaAlt(0.5, 0.2), fixed = false,
+                   description = "ρ_π_star: AR(1) coefficient in the monetary policy shock process.",
+                   tex_label = "\\rho_{pi_star}")
+
     m <= parameter(:σ_g, 0.15, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_g: standard dev. of the government spending process.",
@@ -455,6 +460,11 @@ function init_parameters!(m::HetDSGEGovDebt; testing_gamma::Bool = false)
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_r_m: standard dev. of the monetary policy shock.",
                    tex_label = "\\sigma_{r^m}")
+
+    m <= parameter(:σ_π_star, 0.15, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+                   RootInverseGamma(2, 0.10), fixed = false,
+                   description = "σ_π_star: standard dev. of the monetary policy shock.",
+                   tex_label = "\\sigma_{pi_star}")
 
     m <= parameter(:π_star, 0.7000, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
                    GammaAlt(0.62, 0.1), fixed=false, scaling = x -> 1 + x/100, # estimated as percentage point, but when doing any
@@ -755,27 +765,28 @@ function setup_indices!(m::HetDSGEGovDebt)
     endo[:λ_w′_t] = nans_state+11:nans_state+11 # wage markup
     endo[:λ_f′_t] = nans_state+12:nans_state+12 # price markup
     endo[:rm′_t]  = nans_state+13:nans_state+13 # monetary policy shock
+    endo[:π_star′_t]  = nans_state+14:nans_state+14 # flexible income target
 
     # Function-valued jumps
-    endo[:l′_t]   = nans_state+14:nans_state+nans_jump+13 # ell function
-    nans_state_jump_14 = nans_state + nans_jump + 14
+    endo[:l′_t]   = nans_state+15:nans_state+nans_jump+14 # ell function
+    nans_state_jump_15 = nans_state + nans_jump + 15
 
     # Scalar-valued jumps
-    endo[:C′_t]         = nans_state_jump_14:nans_state_jump_14       # real interest rate
-    endo[:R′_t]         = nans_state_jump_14+1:nans_state_jump_14+1   # real interest rate
-    endo[:i′_t]         = nans_state_jump_14+2:nans_state_jump_14+2   # nominal interest rate
-    endo[:t′_t]         = nans_state_jump_14+3:nans_state_jump_14+3   # transfers + dividends
-    endo[:w′_t]         = nans_state_jump_14+4:nans_state_jump_14+4   # real wage
-    endo[:L′_t]         = nans_state_jump_14+5:nans_state_jump_14+5   # hours worked
-    endo[:π′_t]         = nans_state_jump_14+6:nans_state_jump_14+6   # inflation
-    endo[:π_w′_t]       = nans_state_jump_14+7:nans_state_jump_14+7   # nominal wage inflation
-    endo[:margutil′_t]  = nans_state_jump_14+8:nans_state_jump_14+8   # avg marginal utility
-    endo[:y′_t]         = nans_state_jump_14+9:nans_state_jump_14+9   # gdp
-    endo[:I′_t]         = nans_state_jump_14+10:nans_state_jump_14+10 # investment
-    endo[:mc′_t]        = nans_state_jump_14+11:nans_state_jump_14+11 # marginal cost - this is ζ in HetDSGEGovDebtₖd.pdf
-    endo[:Q′_t]         = nans_state_jump_14+12:nans_state_jump_14+12 # Tobin's qfunction
-    endo[:capreturn′_t] = nans_state_jump_14+13:nans_state_jump_14+13 # return on capital
-    endo[:tg′_t]        = nans_state_jump_14+14:nans_state_jump_14+14
+    endo[:C′_t]         = nans_state_jump_15:nans_state_jump_15       # real interest rate
+    endo[:R′_t]         = nans_state_jump_15+1:nans_state_jump_15+1   # real interest rate
+    endo[:i′_t]         = nans_state_jump_15+2:nans_state_jump_15+2   # nominal interest rate
+    endo[:t′_t]         = nans_state_jump_15+3:nans_state_jump_15+3   # transfers + dividends
+    endo[:w′_t]         = nans_state_jump_15+4:nans_state_jump_15+4   # real wage
+    endo[:L′_t]         = nans_state_jump_15+5:nans_state_jump_15+5   # hours worked
+    endo[:π′_t]         = nans_state_jump_15+6:nans_state_jump_15+6   # inflation
+    endo[:π_w′_t]       = nans_state_jump_15+7:nans_state_jump_15+7   # nominal wage inflation
+    endo[:margutil′_t]  = nans_state_jump_15+8:nans_state_jump_15+8   # avg marginal utility
+    endo[:y′_t]         = nans_state_jump_15+9:nans_state_jump_15+9   # gdp
+    endo[:I′_t]         = nans_state_jump_15+10:nans_state_jump_15+10 # investment
+    endo[:mc′_t]        = nans_state_jump_15+11:nans_state_jump_15+11 # marginal cost - this is ζ in HetDSGEGovDebtₖd.pdf
+    endo[:Q′_t]         = nans_state_jump_15+12:nans_state_jump_15+12 # Tobin's qfunction
+    endo[:capreturn′_t] = nans_state_jump_15+13:nans_state_jump_15+13 # return on capital
+    endo[:tg′_t]        = nans_state_jump_15+14:nans_state_jump_15+14
 
     # Function blocks which output a function
     eqconds[:eq_euler]                  = 1:nans_state
@@ -818,14 +829,15 @@ function setup_indices!(m::HetDSGEGovDebt)
     eqconds[:eq_λ_w] = nans_state_mul_2+26:nans_state_mul_2+26 # wage mkup LAMW
     eqconds[:eq_λ_f] = nans_state_mul_2+27:nans_state_mul_2+27 # price mkup LAMF
     eqconds[:eq_rm]  = nans_state_mul_2+28:nans_state_mul_2+28 # monetary policy MON
+    eqconds[:eq_π_star]  = nans_state_mul_2+29:nans_state_mul_2+29 # flexible inflation target
 
     # Total grid x*s
     m <= Setting(:n_state, (get_setting(m, :na1_state) + get_setting(m, :na2_state)),
                  "Total grid size, multiplying across grid dimensions.")
     m <= Setting(:n_jump, (get_setting(m, :na1_jump) + get_setting(m, :na2_jump)),
              "Total grid size, multiplying across grid dimensions.")
-    m <= Setting(:nvars,     2 * get_setting(m, :n_state) + 28, "num variables")
-    m <= Setting(:nscalars,  28, "num eqs which output scalars")
+    m <= Setting(:nvars,     2 * get_setting(m, :n_state) + 29, "num variables")
+    m <= Setting(:nscalars,  29, "num eqs which output scalars")
     m <= Setting(:nyscalars, 15, "num scalar jumps")
     m <= Setting(:nascalars, get_setting(m, :nscalars) - get_setting(m, :nyscalars),
                  "num scalar states")

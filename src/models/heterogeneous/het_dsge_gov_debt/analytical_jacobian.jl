@@ -25,6 +25,7 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     ρ_lamw::Float64 = m[:ρ_λ_w].value
     ρ_lamf::Float64 = m[:ρ_λ_f].value
     ρ_mon::Float64  = m[:ρ_rm].value
+    ρ_π_star::Float64  = m[:ρ_π_star].value
     spp::Float64   = m[:spp].value
     ϕh::Float64    = m[:ϕh].value
     ρ_R::Float64    = m[:ρR].value
@@ -213,6 +214,7 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     JJ[first(eq[:eq_taylor]),first(endo[:i_t])]  = -1.
     JJ[first(eq[:eq_taylor]),first(endo[:i_t1])] = ρ_R
     JJ[first(eq[:eq_taylor]),first(endo[:π_t])]  = (1 - ρ_R) * ψπ
+    JJ[first(eq[:eq_taylor]),first(endo[:π_star_t])]  = -(1 - ρ_R) * ψπ
     JJ[first(eq[:eq_taylor]),first(endo[:y_t])]  = (1 - ρ_R) * ψy
     JJ[first(eq[:eq_taylor]),first(endo[:y_t1])] = -(1 - ρ_R) * ψy
     JJ[first(eq[:eq_taylor]),first(endo[:z_t])]  = (1 - ρ_R) * ψy
@@ -292,6 +294,11 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     # monetary policy shock
     JJ[first(eq[:eq_rm]),first(endo[:rm′_t])] = 1.
     JJ[first(eq[:eq_rm]),first(endo[:rm_t])]  = -ρ_mon
+
+    # inflation expectations
+    JJ[first(eq[:eq_π_star]),first(endo[:π_star′_t])] = 1.
+    JJ[first(eq[:eq_π_star]),first(endo[:π_star_t])]  = -ρ_mon
+
 
     if !m.testing && get_setting(m, :normalize_distr_variables)
         JJ  = normalize(m, JJ)
