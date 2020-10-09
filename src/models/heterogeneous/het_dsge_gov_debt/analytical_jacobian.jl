@@ -1,4 +1,5 @@
 function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
+
     reset_grids!(m; init_grids = false) # to make this work with an adaptive agrid, we cannot recreate grid of steady-state approximation
     # truncate_distribution!(m)
 
@@ -6,7 +7,6 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     endo = augment_model_states(m.endogenous_states_original, # m.endogenous_states_unnormalized,
                                 n_model_states_original(m))
     eq   = m.equilibrium_conditions
-
     # Load in parameters, steady-state parameters, and grids
     r::Float64     = m[:r].scaledvalue
     α::Float64     = m[:α].value
@@ -103,7 +103,6 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     # Make the Jacobian. Left dimension is [ell, D, scalars],
     # right dimension is twice the left dimension's size b/c perturb w.r.t. today & tomorrow's values
     JJ = zeros(S, nvars, 2*nvars)
-
     # Euler equation
     JJ[eq[:eq_euler],endo[:l′_t]] = dF1_dELLP
     JJ[eq[:eq_euler],endo[:z′_t]] = -dF1_dRZ
@@ -299,10 +298,10 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
     JJ[first(eq[:eq_π_star]),first(endo[:π_star′_t])] = 1.
     JJ[first(eq[:eq_π_star]),first(endo[:π_star_t])]  = -ρ_mon
 
-
     if !m.testing && get_setting(m, :normalize_distr_variables)
         JJ  = normalize(m, JJ)
     end
+
     return JJ
 end
 
