@@ -529,6 +529,12 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
     polyvec=Array{Float64}(undef,approx.ngridpoints)
     weightvec=Array{Float64}(undef,approx.ninter)=#
 
+    #@time α_here = @sync @distributed (hcat) for j in 1:approx.ns
+        α_here = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 3*approx.ns)
+        @time for j in 1:approx.ns
+            α_here[:,(3*(j-1)+1):(3*(j-1)+3)] = parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states,α_star,j, zlbswitch,
+                          polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
+
     for i in 1:niter
         avg_error = 0.0
 
@@ -651,8 +657,10 @@ function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array
 
         # Calculates new α_new and avg_error
         # Note that are doing this in parallel for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
-        @time α_here = @sync @distributed (hcat) for j in 1:approx.ns
-            parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states,α_star,j, zlbswitch,
+        #@time α_here = @sync @distributed (hcat) for j in 1:approx.ns
+        α_here = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 3*approx.ns)
+        @time for j in 1:approx.ns
+            α_here[:,(3*(j-1)+1):(3*(j-1)+3)] = parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states,α_star,j, zlbswitch,
                           polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
         end
 
