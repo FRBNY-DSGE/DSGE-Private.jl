@@ -424,6 +424,48 @@ function initial_α(nendogvars::Int, nexogvars::Int, nexogshocks::Int, nmsv::Int
 
 end
 
+function iter_help(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},shockpos::Int, zlbswitch::Bool, polyappnew::Array{Float64,1}, endogvar::Array{Float64,1}, endogvarzlb::Array{Float64,1}, endogvarp::Array{Float64,1}, endogvarzlbp::Array{Float64,1}, slopeconxxmsv::Array{Float64,1}, xgridmsv::Array{Float64,1}, abserror::Array{Float64,1}, ev::Array{Float64,1}, exp_eul::Array{Float64,1}, currentshockvalues::Array{Float64,1}, polyapp::Array{Float64,1}, endogvarm1::Array{Float64,1}, innovations::Array{Float64,1})
+
+    # polyappnew = Array{Float64}(undef,2*approx.nfunc)
+    # endogvar = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # endogvarzlb = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # endogvarp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # endogvarzlbp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # slopeconxxmsv = Array{Float64}(undef,2*approx.nmsv)
+    # xgridmsv = Array{Float64}(undef,approx.nmsv)
+    # abserror = Array{Float64}(undef,2*approx.nfunc)
+    # ev = Array{Float64}(undef,12)
+    # exp_eul = Array{Float64}(undef,12)
+
+    # currentshockvalues = Array{Float64}(undef,approx.nexogvars)
+    # polyapp = Array{Float64}(undef,2*approx.nfunc)
+    # endogvarm1 = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # exp_var = zeros(12)
+    # innovations = Array{Float64}(undef,approx.nexogvars)
+
+    # Initialize variables
+    parallel_info = zeros(approx.nfunc*approx.ngridpoints,2)
+    updated_approx_polynomials = Array{Float64}(undef,2*approx.nfunc, approx.ngridpoints)
+    err = 0.0
+    α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
+
+    # Calculate g(f) to get new guess for f at given exogenous state and then calculate new approximation
+    @inbounds for k in 1:approx.ngridpoints
+        updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
+
+        err += err2
+    end
+
+    # Solve for α by multiplying by inverse matrix of Smolyak basis polynomials
+    mul!(α_temp, approx.bbtinv', updated_approx_polynomials')
+
+    # Transform the matrix of α coefficients associated with this exogenous state to a vector and store in the matrix of new α coefficient
+    @views parallel_info[:, 1] = vec(α_temp[:, 1:approx.nfunc])
+    @views parallel_info[:, 2] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
+    # parallel_info[1,3] = err
+
+    return parallel_info, err
+end
 
 """
     fixedpoint(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2}, zlbswitch::Bool)
@@ -458,7 +500,7 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
     step  = 7.0e-01
     #j = 1
 
-
+#=
       function residuals!(F, α_stars)
           #α_star[:,j] = α_stars[1:(approx.ngridpoints*approx.nfunc)]
           #α_star[:,j+approx.ns] = α_stars[(approx.ngridpoints*approx.nfunc+1):end]
@@ -492,7 +534,7 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
         #NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04, m=0)
         #α_star = NLsolve.fixedpoint(residuals!, α_initial; ftol = 1.0e-04, m=0).zero
     else
-
+=#
 
     # Get fixed point using iterative convergence method
     # Loop until convergence (avg_error < tolfun) or niter reached
@@ -529,28 +571,44 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
     polyvec=Array{Float64}(undef,approx.ngridpoints)
     weightvec=Array{Float64}(undef,approx.ninter)=#
 
+    errj = zeros(approx.ns)
+    errk = zeros(approx.ngridpoints)
+    parallel_info = zeros(approx.nfunc*approx.ngridpoints,2)
+#=
     #@time α_here = @sync @distributed (hcat) for j in 1:approx.ns
         α_here = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 3*approx.ns)
         @time for j in 1:approx.ns
             α_here[:,(3*(j-1)+1):(3*(j-1)+3)] = parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states,α_star,j, zlbswitch,
                           polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
-
+        end
+=#
     for i in 1:niter
         avg_error = 0.0
 
         # Calculate g(f) to get new guess for f and then calculate new approximation
         # Note that we can do this separately for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
-        @show "loop within iter starts"
-        @time for j in 1:approx.ns
+        #@show "loop within iter starts"
+        @inbounds @simd for j in 1:approx.ns
+            #parallel_info, err[j] = iter_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states, α_star, j, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
 
-            err = 0.0
+#=
+            #err = 0.0
+            for k in 1:approx.ngridpoints
+                @btime begin
+                    $updated_approx_functions[:,$k], err2 = decr_euler($rkss, $approx, $k, $j, $params, $keys, $α_star, $labss, $exogenous_shocks, $endogenous_states, $zlbswitch, $polyappnew, $endogvar, $endogvarzlb, $endogvarp, $endogvarzlbp, $slopeconxxmsv, $xgridmsv, $abserror, $ev, $exp_eul, $currentshockvalues, $polyapp, $endogvarm1, $innovations)#, funcmat, funcmatplus, shockindex, lmsv, weighttemp, funcapp, funcapp_plus, xx, polyvec, weightvec)
+                    $errk[$k] = err2
+                end
+                #approx_k, err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
+                #err += err2
+                updated_approx_functions[:,k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
+                errk[k] = err2
+            end
+=#
             for k in 1:approx.ngridpoints
                 updated_approx_functions[:,k], err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)#, funcmat, funcmatplus, shockindex, lmsv, weighttemp, funcapp, funcapp_plus, xx, polyvec, weightvec)
                 #approx_k, err2 = decr_euler(rkss, approx, k, j, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch)
-                #for m in 1:2*approx.nfunc
-                #    updated_approx_functions[m,k] = approx_k[m]
-                #end
-                err += err2
+                #err += err2
+                errk[k] = err2
             end
 
             # Solve for α by multiplying by inverse matrix of Smolyak basis polynomials
@@ -559,11 +617,15 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
 
             # Transform the matrix of α coefficients associated with this exogenous state to a vector and store in the matrix of new α coefficients
             #@show "Veccing"
-            α_new[:, j] = vec(α_temp[:, 1:approx.nfunc])
-            α_new[:, j + approx.ns] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
 
-            avg_error += err
-        end
+            @views α_new[:, j] = vec(α_temp[:, 1:approx.nfunc])
+            @views α_new[:, j + approx.ns] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
+            # @views α_new[:, j] = parallel_info[:,1] #vec(α_temp[:, 1:approx.nfunc])
+            # @views α_new[:, j + approx.ns] = parallel_info[:,2] #vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
+            errj[j] = sum(errk)
+end
+            avg_error = sum(errj)
+        #end
 
         # Normalize summed error to get average
         avg_error /= 2*approx.ngridpoints*approx.ns
@@ -583,7 +645,7 @@ function fixedpoints(rkss::Float64, approx::Approximation, params::Array{Abstrac
         # Updated α are convex combination of old and new (dampening step to help fixed point algorithm converge)
         α_star = (1.0 - step)*α_star + step*α_new
     end
-end
+#end
 #end
     return α_star, convergence
 end
@@ -604,12 +666,13 @@ end
 # Description:
 Uses a parallel version of the fixed point convergence algorithm to determine the functions that solve the model and their associated α coefficients. In particular, we put the equations defining the model solution into the form f = g(f), where f is a vector of functions and g is a vector-valued function. We then iterate on f until we reach such a fixed point. Note also that here we use an approximation for f rather than the true f, which is why the α coefficients are needed. See section 2 of technical appendix of Gust et. al (2017).
 """
-function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_initial::Array{Float64,2}, zlbswitch::Bool; use_anderson::Bool = true)
+function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2}, zlbswitch::Bool; use_anderson::Bool = true)
 
 
     # Initialize
-    α_star = copy(α_initial)
+    #α_star = copy(α_initial)
     α_new = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 2*approx.ns)
+    α_here = Array{Float64}(undef, approx.nfunc * approx.ngridpoints ,3*approx.ns)
     #α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
     #updated_approx_functions = Array{Float64}(undef, 2*approx.nfunc, approx.ngridpoints)
     convergence = false
@@ -657,10 +720,8 @@ function fixedpoint_parallel(rkss::Float64, approx::Approximation, params::Array
 
         # Calculates new α_new and avg_error
         # Note that are doing this in parallel for each exogenous state (which corresponds to a grid point on the exogenous shock grid)
-        #@time α_here = @sync @distributed (hcat) for j in 1:approx.ns
-        α_here = Array{Float64}(undef, approx.nfunc*approx.ngridpoints, 3*approx.ns)
-        @time for j in 1:approx.ns
-            α_here[:,(3*(j-1)+1):(3*(j-1)+3)] = parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states,α_star,j, zlbswitch,
+        @time α_here = @sync @distributed (hcat) for j in 1:approx.ns
+            parallel_help(rkss, approx, params, keys, labss, exogenous_shocks, endogenous_states,α_star,j, zlbswitch,
                           polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
         end
 
@@ -709,22 +770,22 @@ Helper function for parallel version of fixed point that calculates g(f) at a gi
 """
 function parallel_help(rkss::Float64, approx::Approximation, params::Array{AbstractParameter{Float64},1}, keys::OrderedDict{Symbol,Int64}, labss::Float64, exogenous_shocks::OrderedDict{Symbol,Int64},endogenous_states::OrderedDict{Symbol,Int64}, α_star::Array{Float64,2},shockpos::Int, zlbswitch::Bool, polyappnew::Array{Float64,1}, endogvar::Array{Float64,1}, endogvarzlb::Array{Float64,1}, endogvarp::Array{Float64,1}, endogvarzlbp::Array{Float64,1}, slopeconxxmsv::Array{Float64,1}, xgridmsv::Array{Float64,1}, abserror::Array{Float64,1}, ev::Array{Float64,1}, exp_eul::Array{Float64,1}, currentshockvalues::Array{Float64,1}, polyapp::Array{Float64,1}, endogvarm1::Array{Float64,1}, innovations::Array{Float64,1})
 
-    polyappnew = Array{Float64}(undef,2*approx.nfunc)
-    endogvar = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
-    endogvarzlb = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
-    endogvarp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
-    endogvarzlbp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
-    slopeconxxmsv = Array{Float64}(undef,2*approx.nmsv)
-    xgridmsv = Array{Float64}(undef,approx.nmsv)
-    abserror = Array{Float64}(undef,2*approx.nfunc)
-    ev = Array{Float64}(undef,12)
-    exp_eul = Array{Float64}(undef,12)
+    # polyappnew = Array{Float64}(undef,2*approx.nfunc)
+    # endogvar = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # endogvarzlb = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # endogvarp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # endogvarzlbp = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # slopeconxxmsv = Array{Float64}(undef,2*approx.nmsv)
+    # xgridmsv = Array{Float64}(undef,approx.nmsv)
+    # abserror = Array{Float64}(undef,2*approx.nfunc)
+    # ev = Array{Float64}(undef,12)
+    # exp_eul = Array{Float64}(undef,12)
 
-    currentshockvalues = Array{Float64}(undef,approx.nexogvars)
-    polyapp = Array{Float64}(undef,2*approx.nfunc)
-    endogvarm1 = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
-    #exp_var = zeros(12)
-    innovations = Array{Float64}(undef,approx.nexogvars)
+    # currentshockvalues = Array{Float64}(undef,approx.nexogvars)
+    # polyapp = Array{Float64}(undef,2*approx.nfunc)
+    # endogvarm1 = Array{Float64}(undef,approx.nendogvars+approx.nexogvars)
+    # exp_var = zeros(12)
+    # innovations = Array{Float64}(undef,approx.nexogvars)
 
     # Initialize variables
     parallel_info = zeros(approx.nfunc*approx.ngridpoints,3)
@@ -733,19 +794,23 @@ function parallel_help(rkss::Float64, approx::Approximation, params::Array{Abstr
     err = 0.0
     α_temp = Array{Float64}(undef, approx.ngridpoints, 2*approx.nfunc)
 
+    errk = zeros(approx.ngridpoints)
+
     # Calculate g(f) to get new guess for f at given exogenous state and then calculate new approximation
     @inbounds for k in 1:approx.ngridpoints
         updated_approx_polynomials[:, k], err2 = decr_euler(rkss, approx, k, shockpos, params, keys, α_star, labss, exogenous_shocks, endogenous_states, zlbswitch, polyappnew, endogvar, endogvarzlb, endogvarp, endogvarzlbp, slopeconxxmsv, xgridmsv, abserror, ev, exp_eul, currentshockvalues, polyapp, endogvarm1, innovations)
 
-        err += err2
+        errk[k] = err2
+        #err += err2
     end
+    err = sum(errk)
 
     # Solve for α by multiplying by inverse matrix of Smolyak basis polynomials
     mul!(α_temp, approx.bbtinv', updated_approx_polynomials')
 
     # Transform the matrix of α coefficients associated with this exogenous state to a vector and store in the matrix of new α coefficient
-    parallel_info[:, 1] = vec(α_temp[:, 1:approx.nfunc])
-    parallel_info[:, 2] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
+    @views parallel_info[:, 1] = vec(α_temp[:, 1:approx.nfunc])
+    @views parallel_info[:, 2] = vec(α_temp[:, approx.nfunc+1:2*approx.nfunc])
     parallel_info[1,3] = err
 
     return parallel_info

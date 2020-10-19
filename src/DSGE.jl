@@ -9,8 +9,8 @@ module DSGE
     using QuantEcon: solve_discrete_lyapunov
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample, Weights
-    using DelimitedFiles#, LoopVectorization, TimerOutputs
-    using Dolo
+    using DelimitedFiles, LoopVectorization#, TimerOutputs
+#    using Dolo
 #    using StatsFuns: chisqinvcdf
     import Base: isempty
     import Calculus
