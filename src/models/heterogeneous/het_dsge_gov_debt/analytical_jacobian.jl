@@ -296,7 +296,7 @@ function jacobian(m::HetDSGEGovDebt{S}) where {S <: Real}
 
     # inflation expectations
     JJ[first(eq[:eq_π_star]),first(endo[:π_star′_t])] = 1.
-    JJ[first(eq[:eq_π_star]),first(endo[:π_star_t])]  = -ρ_mon
+    JJ[first(eq[:eq_π_star]),first(endo[:π_star_t])]  = -ρ_π_star
 
     if !m.testing && get_setting(m, :normalize_distr_variables)
         JJ  = normalize(m, JJ)
