@@ -38,12 +38,8 @@ end
 end
 
 @inline function dlognormal_hetdsgegovdebt(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
-    # pdf: f(x) = exp(-(log(x) - μ)² / (2 σ²)) / (x σ sqrt(2π))
-    # Derivative: f(x) (-(log(x) - μ) / σ² / x) - exp(-(log(x) - μ)² / (2 σ²)) / (σ sqrt(2π)) / x²
-    #             = f(x) (-(log(x) - μ) / (σ² x)) - f(x) / x
-    #             = -f(x) / x * ((log(x) - μ) / σ² + 1)
     if elo <= e <= ehi # We take interior derivatives
-        return -pdf(LogNormal(μ, σ), e) / e * ((log(e) - μ) / σ^2 + 1.)
+        return -((μ+σ^2+log(e))/(e*σ^2))*pdf(truncated(LogNormal(μ,σ), elo, ehi),e)
     else
         0.
     end
