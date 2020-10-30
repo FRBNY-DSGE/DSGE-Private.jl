@@ -43,7 +43,8 @@ end
     #             = f(x) (-(log(x) - μ) / (σ² x)) - f(x) / x
     #             = -f(x) / x * ((log(x) - μ) / σ² + 1)
     if elo <= e <= ehi # We take interior derivatives
-        return -pdf(LogNormal(μ, σ), e) / e * ((log(e) - μ) / σ^2 + 1.)
+        return -((μ+σ^2+log(e))/(e*σ^2))*pdf(truncated(LogNormal(μ,σ), elo, ehi),e)
+        #return -pdf(LogNormal(μ, σ), e) / e * ((log(e) - μ) / σ^2 + 1.)
     else
         0.
     end
