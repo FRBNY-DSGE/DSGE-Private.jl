@@ -39,7 +39,9 @@ end
 
 @inline function dlognormal_hetdsgegovdebt(e::S0, ehi::S1, elo::S1, μ::S1, σ::S1) where {S0 <: Real, S1 <: Real}
     if elo <= e <= ehi # We take interior derivatives
-        return -((μ+σ^2+log(e))/(e*σ^2))*pdf(truncated(LogNormal(μ,σ), elo, ehi),e)
+        # To double check, enter exp(-(log(x) - mu)^2 / (2 * sigma^2)) / (x * sigma * sqrt(2 * pi))
+        # into a derivative calculator
+        return -((-μ + σ^2 + log(e)) / (e * σ^2)) * pdf(LogNormal(μ, σ), e)
     else
         0.
     end
