@@ -587,9 +587,12 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
 
             # TODO: generalize this code block
             # It is currently assumed that ffreg is the first regime w/ZLB (and cannot be another temporary altpolicy),
-            # so ffreg + nzlb is the first regime w/out ZLB.
+            # so ffreg + nzlb is the first regime w/out ZLB. Starting from nzlb + 1 ensures we populate the lift-off
+            # regime correctly, as the lift-off is no longer the final regime, and won't be covered by
+            # setting Tcal[end] = TTT_gensys_final
             # First UnitRange is for actual regime number, second for the index of Tcal, Rcal, & Ccal
-            for (fcast_reg, ical) in zip((ffreg + nzlb):fcast_gensys2_regimes[end], (nzlb + 2):(ng2 + 1))
+            for (fcast_reg, ical) in zip((ffreg + nzlb):fcast_gensys2_regimes[end], (nzlb + 1):(ng2 + 1))
+
                 TTT_gensys, CCC_gensys, RRR_gensys, eu =
                     gensys(Γ0s[fcast_reg], Γ1s[fcast_reg], Cs[fcast_reg], Ψs[fcast_reg], Πs[fcast_reg],
                            1+1e-6, verbose = verbose)
