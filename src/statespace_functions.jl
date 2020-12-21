@@ -1380,6 +1380,15 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; apply_altpolicy::Bool = fa
         fcast_regimes = collect(n_hist_regimes + 1:n_regimes)
     end
 
+    # Solve Taylor
+    m2 = copy(m)
+    m2 <= Setting(:solution_method, :gensys)
+    T_taylor, R_taylor, C_taylor = solve(m2; apply_altpolicy = false, regime_switching = false)
+    measure_taylor = measurement(m2, T_taylor, R_taylor, C_taylor)
+    pseudo_taylor = pseudo_measurement(m2, T_taylor, R_taylor, C_taylor)
+
+
+
     # Solve model
     transitions = Vector{Vector{Transition{T}}}(undef, n_tvis)
     TTTs_vec    = Vector{Vector{Matrix{T}}}(undef, n_tvis)
