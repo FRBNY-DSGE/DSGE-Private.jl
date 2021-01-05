@@ -350,7 +350,7 @@ function solve_one_regime(m::AbstractDSGEModel{T}; apply_altpolicy = false,
 
         # Augment states
         TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys; regime_switching = true,
-                                       regime = regime)
+                                       reg = regime)
     end
 
     return TTT, RRR, CCC
@@ -401,7 +401,7 @@ function solve_non_gensys2_regimes!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}
 
             # Populate the TTTs, etc., for regime `reg`
             TTTs[reg], RRRs[reg], CCCs[reg] =
-                augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
+                augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys, reg = reg)
         else
             TTTs[reg], RRRs[reg], CCCs[reg] =
                 altpolicy_solve(m; regime_switching = true, regimes = Int[reg])
@@ -430,7 +430,7 @@ function solve_non_gensys2_regimes!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}
 
                 # Populate the TTTs, etc., for regime `reg`
                 TTTs[reg], RRRs[reg], CCCs[reg] =
-                    augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
+                    augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys, reg = reg)
             end
         end
     end
@@ -513,7 +513,7 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
             CCC_gensys = real(CCC_gensys)
 
             TTTs[fcast_reg], RRRs[fcast_reg], CCCs[fcast_reg] = DSGE.augment_states(m, TTT_gensys,
-                                                                                    RRR_gensys, CCC_gensys)
+                                                                                    RRR_gensys, CCC_gensys, reg = fcast_reg)
         end
     end
 
@@ -652,7 +652,7 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
         # TODO: fairly certain the i here can range from 2:end rather than 1:end, and
         # populate_reg should be updated appropriately
         for (i, reg) in enumerate(populate_reg)
-            TTTs[reg], RRRs[reg], CCCs[reg] = augment_states(m, Tcal[i], Rcal[i], Ccal[i])
+            TTTs[reg], RRRs[reg], CCCs[reg] = augment_states(m, Tcal[i], Rcal[i], Ccal[i], reg = reg)
         end
     else
         Tcal, Rcal, Ccal = gensys_cplus(m, Γ0s[gensys2_regimes], Γ1s[gensys2_regimes],
@@ -666,7 +666,7 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
         Ccal[end] = CCC_gensys_final
 
         for (i, fcast_reg) in enumerate(populate_reg)
-            TTTs[fcast_reg], RRRs[fcast_reg], CCCs[fcast_reg] = augment_states(m, Tcal[i], Rcal[i], Ccal[i])
+            TTTs[fcast_reg], RRRs[fcast_reg], CCCs[fcast_reg] = augment_states(m, Tcal[i], Rcal[i], Ccal[i], reg = fcast_reg)
         end
     end
 

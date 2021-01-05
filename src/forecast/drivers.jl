@@ -832,9 +832,14 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
     forecast_vars = vcat(unbddforecast_vars, bddforecast_vars)
     forecasts_to_compute = intersect(output_vars, forecast_vars)
 
+    if return_loglh
+        kal = filter(m, df, system; cond_type = cond_type)
+        loglhed = kal[:loglh]
+    end
+
     if !isempty(forecasts_to_compute)
         # Get initial forecast state vector s_T
-        s_T = if run_smoother && !return_loglh # ONLY THIS BRANCH WORKS FOR REGIME SWITCHING
+        s_T = if run_smoother # ONLY THIS BRANCH WORKS FOR REGIME SWITCHING
             # The last smoothed state is either s_{T|T} (if !uncertainty) or
             # drawn from N(s_{T|T}, P_{T|T}) (if uncertainty)
             histstates[:, end]
@@ -1140,10 +1145,6 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
         end
     end
 
-    if return_loglh
-        return kal[:loglh]
-    end
-
     ### 3. Shock Decompositions
 
     shockdecs_to_compute = intersect(output_vars, shockdec_vars)
@@ -1251,6 +1252,9 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
     if testing_carter_kohn && input_type == :full && get_setting(m, :forecast_smoother) == :carter_kohn
         forecast_output[:conded] = conded
+    end
+    if return_loglh
+        return loglhed
     end
     return forecast_output
 end
