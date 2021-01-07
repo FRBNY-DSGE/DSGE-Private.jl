@@ -97,7 +97,7 @@ function eqcond(m::AnSchorfheide, reg::Int)
     Γ1[eq[:eq_Eπ], endo[:Eπ_t]] = 1
     Π[eq[:eq_Eπ], ex[:Eπ_sh]] = 1
 
-
+#=
    # We additionally need to directly add the equation(s) for pgap, ygap, etc. here rather than just
    # in the altpolicy files b/c
    # (1) Regime-switching won't work otherwise
@@ -268,7 +268,7 @@ function eqcond(m::AnSchorfheide, reg::Int)
            end
        end
    end
-
+=#
    for para in m.parameters
         if !isempty(para.regimes)
             ModelConstructors.toggle_regime!(para, 1)

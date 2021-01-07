@@ -13,7 +13,8 @@ x_t = ZZ_pseudo*s_t + DD_pseudo
 function pseudo_measurement(m::AnSchorfheide{T},
                             TTT::Matrix{T},
                             RRR::Matrix{T},
-                            CCC::Vector{T}) where {T<:AbstractFloat}
+                            CCC::Vector{T};
+                            reg::Int = 1, information_set::UnitRange = reg:reg) where {T<:AbstractFloat}
     endo   = m.endogenous_states
     pseudo = m.pseudo_observables
 
@@ -23,6 +24,16 @@ function pseudo_measurement(m::AnSchorfheide{T},
     # Initialize pseudo ZZ and DD matrices
     ZZ_pseudo = zeros(_n_pseudo, _n_states)
     DD_pseudo = zeros(_n_pseudo)
+
+    for para in m.parameters
+        if !isempty(para.regimes)
+            if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
+                ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
+            else
+                ModelConstructors.toggle_regime!(para, reg)
+            end
+        end
+    end
 
     ##########################################################
     ## PSEUDO-OBSERVABLE EQUATIONS
@@ -46,6 +57,12 @@ function pseudo_measurement(m::AnSchorfheide{T},
     ZZ_pseudo[pseudo[:RealFFR], endo[:R_t]] = 1.
     ZZ_pseudo[pseudo[:RealFFR], endo[:π_t]] = -4.
     DD_pseudo[pseudo[:RealFFR]] = m[:π_star] + m[:rA] + 4.0*m[:γ_Q] - 4.0*(100. * (m[:π_star] - 1.))
+
+    for para in m.parameters
+        if !isempty(para.regimes)
+            ModelConstructors.toggle_regime!(para, 1)
+        end
+    end
 
     return PseudoMeasurement(ZZ_pseudo, DD_pseudo)
 end
