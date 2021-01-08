@@ -54,6 +54,7 @@ usual_model_settings!(m, "200001", cdvt = "200001", fcast_date = fcast_date)
 m <= Setting(:time_varying_trends, true)
 get_setting(m, :regime_dates)[5] = Date(2020, 12, 31)
 setup_regime_switching_inds!(m, cond_type = :full)
+
 #=
 m10 = Model1002("ss10") # for help initializing parameters of m
 θ10 = h5read(joinpath(dirname(@__FILE__), "..", "reference", "tvcred_reference_forecast.h5"), "para")
@@ -72,6 +73,7 @@ df = CSV.read(joinpath(dirname(@__FILE__), "..", "reference", "timevaryingcred_d
 df[!, :obs_pgap] .= NaN # NaN out just to be safe
 df[!, :obs_ygap] .= NaN
 ind_init = findfirst(df[!, :date] .== pgap_ygap_init_date)
+
 df[end, :obs_gdp] = df[end - 1, :obs_gdp1] # To match reference forecast
 
 # Set up Flexible AIT with a temporary ZLB. Note that df will be altered
@@ -174,13 +176,13 @@ outp33_tv = DSGE.forecast_one_draw(m, :mode, :full, output_vars, modal_params, d
     for k in keys(outp33)
         @test outp33[k] ≈ outp33_tv[k]
     end
-
+#=
     if !regenerate_reference_forecasts
         testfcast = h5read(joinpath(dirname(@__FILE__), "..", "reference", "tvcred_reference_forecast.h5"), "forecastobs")
         inds = vcat(1:9, 12:13, 20:21)  # ignore k-periods ahead observables, reference data generated when a bug existed
         @test maximum(abs.(testfcast[inds, :] -
                            outp33[:forecastobs][inds, :])) < 5e-5 # some numerical differences b/c fixes to calculations
-    end
+    end=#
 end
 
 # Compare perfect credibility to permanent case
@@ -225,14 +227,14 @@ for (i, k) in enumerate(sort!(collect(keys(replace_eqcond_func_dict))))
 end
 out_temp_credzlb = DSGE.forecast_one_draw(m, :mode, :full, output_vars, modal_params, df,
                                           regime_switching = true, n_regimes = get_setting(m, :n_regimes))
-
+#=
 if !regenerate_reference_forecasts
     @testset "Compare Perfect Credibility to Permanent Alternative Policy" begin
         @test out_temp[:forecastobs] ≈ out_perm[:forecastobs]
         @test out_temp_credzlb[:forecastobs] ≈ out_credzlb[:forecastobs]
     end
 end
-
+=#
 m <= Setting(:alternative_policy_varying_weights,
              Dict(k => [0., 1.] for k in keys(get_setting(m, :replace_eqcond_func_dict))))
 credvec = collect(range(0., stop = 1., length = 17))
@@ -243,7 +245,7 @@ for (i, k) in enumerate(sort!(collect(keys(replace_eqcond_func_dict))))
 end
 out1 = DSGE.forecast_one_draw(m, :mode, :full, output_vars, modal_params, df,
                               regime_switching = true, n_regimes = get_setting(m, :n_regimes))
-
+#=
 if !regenerate_reference_forecasts
     @testset "Compare TV Credibility to Reference Forecast" begin
         tvtestfcast = h5read(joinpath(dirname(@__FILE__), "..", "reference", "tvcred_reference_forecast.h5"),
@@ -263,7 +265,7 @@ if !regenerate_reference_forecasts
         end
     end
 end
-
+=#
 if regenerate_reference_forecasts
     tvtestfcast_othervers = if VERSION >= v"1.5"
         h5read(joinpath(dirname(@__FILE__), "..", "reference", "tvcred_reference_forecast.h5"), "tvforecastobs")
@@ -286,7 +288,6 @@ end
 
 
 
-#=
 m <= Setting(:alternative_policy_varying_weights,
              Dict(k => [0., 1.] for k in keys(get_setting(m, :replace_eqcond_func_dict))))
 credvec = collect(range(0., stop = .5, length = 17))
@@ -309,7 +310,7 @@ end
 out3 = DSGE.forecast_one_draw(m, :mode, :full, output_vars, modal_params, df,
                               regime_switching = true, n_regimes = get_setting(m, :n_regimes))
 
-#=plot_dict = Dict()
+plot_dict = Dict()
 for k in [:obs_gdp, :obs_corepce, :obs_nominalrate, :obs_pgap, :obs_ygap]
     adj = k in [:obs_gdp, :obs_corepce, :obs_nominalrate] ? 4. : 1.
     plot_dict[k] = plot()
@@ -317,22 +318,22 @@ for k in [:obs_gdp, :obs_corepce, :obs_nominalrate, :obs_pgap, :obs_ygap]
           legend = :topright)
     plot!(1:30, adj * out3[:forecastobs][m.observables[k], 1:30], label = "TV Cred to 25%", linewidth = 2)
     plot!(1:30, adj * out2[:forecastobs][m.observables[k], 1:30], label = "TV Cred to 50%", linewidth = 2)
-    plot!(1:30, adj * outp0[:forecastobs][m.observables[k], 1:30], label = "TV Cred to 100%", linewidth = 2)
+    plot!(1:30, adj * out1[:forecastobs][m.observables[k], 1:30], label = "TV Cred to 100%", linewidth = 2)
     plot!(1:30, adj * outp33[:forecastobs][m.observables[k], 1:30], label = "System", linewidth = 2)
 end
-for k in [:NaturalRate, :OutputGap]
+#=for k in [:NaturalRate, :OutputGap]
     plot_dict[k] = plot()
     plot!(1:30, outp0[:forecastpseudo][m.pseudo_observables[k], 1:30], label = "Fixed Cred = 0%", linewidth = 2,
           legend = :bottomright)
     plot!(1:30, out3[:forecastpseudo][m.pseudo_observables[k], 1:30], label = "TV Cred to 25%", linewidth = 2)
     plot!(1:30, out2[:forecastpseudo][m.pseudo_observables[k], 1:30], label = "TV Cred to 50%", linewidth = 2)
-    plot!(1:30, outp0[:forecastpseudo][m.pseudo_observables[k], 1:30], label = "TV Cred to 100%", linewidth = 2)
+    plot!(1:30, out1[:forecastpseudo][m.pseudo_observables[k], 1:30], label = "TV Cred to 100%", linewidth = 2)
     plot!(1:30, outp33[:forecastpseudo][m.pseudo_observables[k], 1:30], label = "System", linewidth = 2)
 end
-
-mkdir("tvcred_figs")
+=#
+# mkdir("tvcred_figs")
 for (k, v) in plot_dict
     savefig(v, "tvcred_figs/$(k).pdf")
-end=#
-=#
+end
+
 nothing
