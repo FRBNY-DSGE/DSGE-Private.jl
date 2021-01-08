@@ -54,7 +54,7 @@ usual_model_settings!(m, "200001", cdvt = "200001", fcast_date = fcast_date)
 m <= Setting(:time_varying_trends, true)
 get_setting(m, :regime_dates)[5] = Date(2020, 12, 31)
 setup_regime_switching_inds!(m, cond_type = :full)
-
+#=
 m10 = Model1002("ss10") # for help initializing parameters of m
 θ10 = h5read(joinpath(dirname(@__FILE__), "..", "reference", "tvcred_reference_forecast.h5"), "para")
 DSGE.update!(m10, θ10)
@@ -63,7 +63,7 @@ for k in map(x-> x.key, m10.parameters)
     update_vals[m.keys[k]] = m10[k].value
 end
 DSGE.update!(m, update_vals) # make sure parameters match Model 1002 ss10, w/zeros for other parameters
-
+=#
 # Parameterize
 tvcred_parameterize!(m)
 
