@@ -67,6 +67,7 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
             if uncertain_altpolicy && apply_altpolicy
                 weights = get_setting(m, :imperfect_awareness_weights)
                 altpols = get_setting(m, :alternative_policies)
+
                 inds = 1:n_states(m)
                 TTT_gensys, RRR_gensys, CCC_gensys = gensys_uncertain_altpol(m, weights, altpols; apply_altpolicy = apply_altpolicy,
                                                                              TTT = TTT[inds, inds])
@@ -308,6 +309,7 @@ function solve_non_gensys2_regimes!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}
             if haskey(get_settings(m), :imperfect_awareness_varying_weights) &&
                 haskey(get_setting(m, :imperfect_awareness_varying_weights), reg)
                 weights = get_setting(m, :imperfect_awareness_varying_weights)[reg]
+
                 TTT_gensys, RRR_gensys, CCC_gensys =
                     gensys_uncertain_altpol(m, weights, altpols; apply_altpolicy = false,
                                             TTT = TTT_gensys, regime_switching = true, regimes = Int[reg])
@@ -350,7 +352,6 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
         else
             get_setting(m, :imperfect_awareness_weights)
         end
-
         altpols = get_setting(m, :alternative_policies)
 
         TTT_final_weighted, RRR_final_weighted, CCC_final_weighted =
@@ -445,7 +446,6 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
                     else
                         weights = get_setting(m, :imperfect_awareness_weights)
                     end
-
                     altpols = get_setting(m, :alternative_policies)
 
                     TTT_gensys, RRR_gensys, CCC_gensys =
