@@ -123,7 +123,7 @@ function prepare_forecast_inputs!(m::AbstractDSGEModel{S},
         println("uncertain_altpolicy: " *
                 string(haskey(get_settings(m), :uncertain_altpolicy) ? get_setting(m, :uncertain_altpolicy) : false))
         println("uncertain_zlb: " * string(haskey(get_settings(m), :uncertain_zlb) ? get_setting(m, :uncertain_zlb) : false))
-        println("time-varying credibility: " * string(haskey(get_settings(m), :imperfect_awareness_varying_weights)))
+        # println("time-varying credibility: " * string(haskey(get_settings(m), :imperfect_awareness_varying_weights)))
         if haskey(get_settings(m), :uncertain_altpolicy) ? get_setting(m, :uncertain_altpolicy) : false
             println("Desired policy rule: " *
                     string(haskey(get_settings(m), :regime_eqcond_info) ?
@@ -132,12 +132,12 @@ function prepare_forecast_inputs!(m::AbstractDSGEModel{S},
                                                                                                    :regime_eqcond_info))))] :
                            get_setting(m, :alternative_policy).key))
             println("Other policy rules: " * join([string(x.key) for x in get_setting(m, :alternative_policies)], ", "))
-            if haskey(get_settings(m), :imperfect_awareness_varying_weights)
+            #=if haskey(get_settings(m), :imperfect_awareness_varying_weights)
                 weights_dict = get_setting(m, :imperfect_awareness_varying_weights)
                 println("Credibility weights: ", OrderedDict(reg => weights_dict[reg] for reg in first_replace_reg:last_replace_reg))
             else
                 println("Credibility weights: ", get_setting(m, :imperfect_awareness_weights))
-            end
+            end=#
         end
         if haskey(get_settings(m), :temporary_zlb_length)
             println("temporary zlb length = ", get_setting(m, :temporary_zlb_length))
