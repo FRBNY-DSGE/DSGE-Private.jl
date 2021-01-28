@@ -11,11 +11,38 @@ function zero_rate_replace_eq_entries(m::AbstractDSGEModel,
 
     eq             = m.equilibrium_conditions
     endo           = m.endogenous_states
+    exo            = m.exogenous_shocks
 
     Γ0[eq[:eq_mp], :] .= 0.
     Γ1[eq[:eq_mp], :] .= 0.
     Γ0[eq[:eq_mp], endo[:R_t]] = 1.0
-    C[eq[:eq_mp]] = 0.0 / 4. - m[:Rstarn]
+    C[eq[:eq_mp]] = 0.0225 - m[:Rstarn]
+
+#     Ψ[eq[:eq_mp], :] .= 0.0
+
+#     Γ0[eq[:eq_mp], endo[:rm_t]] = -1.0# / 100.
+#     Γ1[eq[:eq_rm], endo[:rm_t]] = 0.0
+#     Ψ[eq[:eq_rm], exo[:rm_sh]] = 1.0# / 100.
+
+#=
+    Ψ[eq[:eq_mp], exo[:rm_sh]] = 0.0
+    Ψ[eq[:eq_rm], exo[:rm_sh]] = 0.0
+    Γ0[eq[:eq_rm], :] .= 0.
+    Γ1[eq[:eq_rm], :] .= 0.
+=#
+#     if n_mon_anticipated_shocks(m) > 0
+#         Γ1[eq[:eq_rm], endo[:rm_tl1]]   = 0.
+        # Γ0[eq[:eq_rml1], endo[:rm_tl1]] = 0.
+        # Ψ[eq[:eq_rml1], exo[:rm_shl1]]  = 0.
+#=
+        if n_mon_anticipated_shocks(m) > 1
+            for i = 2:n_mon_anticipated_shocks(m)
+                Γ1[eq[Symbol("eq_rml$(i-1)")], endo[Symbol("rm_tl$i")]] = 0.
+                Γ0[eq[Symbol("eq_rml$i")], endo[Symbol("rm_tl$i")]]     = 0.
+                Ψ[eq[Symbol("eq_rml$i")], exo[Symbol("rm_shl$i")]]      = 0.
+            end
+        end=#
+    end
 
     return Γ0, Γ1, C, Ψ, Π
 end

@@ -311,7 +311,6 @@ function forecast(m::AbstractDSGEModel, system::RegimeSwitchingSystem{S}, z0::Ve
             interest_rate_forecast = getindex(D + Z*z_t, ind_r)
             if interest_rate_forecast < zlb_value
                 continue_enforce = check_zero_rate ? abs.(Z[ind_r, :]' * R[:, ind_r_sh]) > 1e-4 : true
-
                 if continue_enforce
                     # Solve for interest rate shock causing interest rate forecast to be exactly ZLB
                     ϵ_t[ind_r_sh] = 0. # get forecast when MP shock

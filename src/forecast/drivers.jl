@@ -1023,7 +1023,6 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
         end
 
         # 2B. Bounded forecasts
-
         if !isempty(intersect(output_vars, bddforecast_vars))
             if pegFFR
                 nshocks = size(system[:RRR], 2)

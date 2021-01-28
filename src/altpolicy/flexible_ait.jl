@@ -56,7 +56,11 @@ function flexible_ait_replace_eq_entries(m::AbstractDSGEModel,
 
     # Add MP shocks
     Γ0[eq[:eq_mp], endo[:rm_t]]     = -1.
-
+#=    Γ1[eq[:eq_rm], endo[:rm_t]]     = m[:ρ_rm]
+    if n_mon_anticipated_shocks(m) > 0
+        Γ1[eq[:eq_rm], endo[:rm_tl1]] = 1.0
+    end
+=#
     return Γ0, Γ1, C, Ψ, Π
 end
 

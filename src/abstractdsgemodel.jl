@@ -623,7 +623,13 @@ function setup_param_regimes!(m::AbstractDSGEModel, param_mat::Array{Int, 2} = M
     for i in 1:n_parameters(m)
         reg_dict = Dict{Int, Int}()
         for reg in 1:nmodel_regs
+            para_reg = param_mat[i,reg]
             reg_dict[reg] = param_mat[i, reg]
+
+            set_regime_prior!(m.parameters[i], para_reg, m.parameters[i].prior)
+            set_regime_fixed!(m.parameters[i], para_reg, m.parameters[i].fixed,
+                              update_valuebounds = m.parameters[i].valuebounds)
+            set_regime_val!(m.parameters[i], para_reg, m.parameters[i].value)
         end
         param_reg[m.parameters[i].key] = reg_dict
     end
