@@ -9,7 +9,7 @@ else
 end
 
 Random.seed!(1793)
-@testset "Test regime switching" begin
+#=@testset "Test regime switching" begin
     n_reg_temp = 14
 
     m = Model1002("ss10", custom_settings = Dict{Symbol, Setting}(:add_altpolicy_pgap => Setting(:add_altpolicy_pgap, true)))
@@ -405,25 +405,36 @@ end
         end
     end
 end
+=#
+#@testset "Test smoothing with regime switching and gensys2 matches plain Kalman filtering and conditional data" begin
+    n_reg_temp = 16
 
-@testset "Test smoothing with regime switching and gensys2 matches plain Kalman filtering and conditional data" begin
-    n_reg_temp = 8
+    m = Model1002("ss10", custom_settings =
+                  Dict{Symbol, Setting}(:add_pgap => Setting(:add_pgap, true),
+                                        :add_ygap => Setting(:add_ygap, true),
+                                        :pgap_value => Setting(:pgap_value, 0.),
+                                        :pgap_type => Setting(:pgap_type, :flexible_ait),
+                                        :ygap_value => Setting(:ygap_value, 12.),
+                                        :ygap_type => Setting(:ygap_type, :flexible_ait)))
 
-    m = Model1002("ss10", custom_settings = Dict{Symbol, Setting}(:add_altpolicy_pgap => Setting(:add_altpolicy_pgap, true)))
     m <= Setting(:date_forecast_start, Date(2020, 3, 31))
     m <= Setting(:date_conditional_end, Date(2020, 3, 31))
     m <= Setting(:regime_switching, true)
-    m <= Setting(:regime_dates, Dict{Int, Date}(1 => date_presample_start(m),
+#=    m <= Setting(:regime_dates, Dict{Int, Date}(1 => date_presample_start(m),
                                                 2 => Date(2019, 12, 31),
-                                                3 => Date(2020, 3, 31)))
+                                                3 => Date(2020, 3, 31)))=#
+    m <= Setting(:regime_dates, Dict{Int, Date}(1 => date_presample_start(m),
+                                                2 => Date(2019, 6, 30),
+                                                3 => Date(2019, 9, 30)))
     m = setup_regime_switching_inds!(m)
 
     t_s, r_s, c_s = solve(m, regimes = Int[3])
 
     regime_dates = Dict{Int, Date}()
     regime_dates[1] = date_presample_start(m)
-    for (i, date) in zip(2:n_reg_temp, Date(2019,12,31):Dates.Month(3):Date(3000,3,31))
-        regime_dates[i] = date
+#     for (i, date) in zip(2:n_reg_temp, Date(2019,12,31):Dates.Month(3):Date(3000,3,31))
+    for (i, date) in zip(2:n_reg_temp, Date(2019,6,30):Dates.Month(3):Date(3000,3,31))
+        regime_dates[i] = DSGE.lastdayofquarter(date)
     end
     m <= Setting(:regime_dates, regime_dates)
 
@@ -432,28 +443,54 @@ end
     m = setup_regime_switching_inds!(m)
 
     # Use gensy2 for temporary rule
-    m <= Setting(:gensys2, true)
+    m <= Setting(:gensys2, false)
     # Replace eqcond with temp rule
     m <= Setting(:replace_eqcond, true)
     # Which rule to replace with in which periods
     replace_eqcond = Dict{Int, DSGE.EqcondEntry}()
-    for i in 3:n_reg_temp-1
-        replace_eqcond[i] = DSGE.EqcondEntry(DSGE.zero_rate(), [1., 0.])
+    for i in 3:(3 + 4) # n_reg_temp-1
+        # replace_eqcond[i] = DSGE.EqcondEntry(DSGE.zero_rate(), [1., 0.])
+        # replace_eqcond[i] = DSGE.EqcondEntry(DSGE.zero_rate(), [i / n_reg_temp, 1. - i / n_reg_temp])
+        # replace_eqcond[i] = DSGE.EqcondEntry(DSGE.zero_rate(), [0.1, .9])
+        # replace_eqcond[i] = DSGE.EqcondEntry(DSGE.zero_rate(), i == 3 ? [0., 1.] : [i / n_reg_temp, 1. - i / n_reg_temp])
+        # replace_eqcond[i] = DSGE.EqcondEntry(DSGE.flexible_ait(), i == 3 ? [0., 1.] : [i / n_reg_temp, 1. - i / n_reg_temp])
+        replace_eqcond[i] = DSGE.EqcondEntry(DSGE.default_policy(), i == 3 ? [0., 1.] : [i / n_reg_temp, 1. - i / n_reg_temp])
     end
-    replace_eqcond[n_reg_temp] = DSGE.EqcondEntry(AltPolicy(:historical, eqcond, solve), [1., 0.])
+    # replace_eqcond[n_reg_temp] = DSGE.EqcondEntry(AltPolicy(:historical, eqcond, solve), [1., 0.])
+#=for i in 8:n_reg_temp
+    replace_eqcond[i] = DSGE.EqcondEntry(flexible_ait(), [i / n_reg_temp, 1. - i / n_reg_temp])
+end=#
 
     m <= Setting(:regime_eqcond_info, replace_eqcond)
 
-    m <= Setting(:pgap_value, 12.0 : 0.0)
-    m <= Setting(:pgap_type, :ngdp)
     m = setup_regime_switching_inds!(m; cond_type = :full)
 
-    sys = compute_system(m)
+m <= Setting(:tvis_information_set, [1:1, 2:2, [i:n_reg_temp for i in 3:n_reg_temp]...])
+m <= Setting(:uncertain_altpolicy, false)
+m <= Setting(:uncertain_temp_altpol, false)
+m <= Setting(:temporary_altpol_length, 5)
+m <= Setting(:skip_altpolicy_state_init, true)
+m <= Setting(:alternative_policies, [DSGE.default_policy()])
+m <= Setting(:temporary_altpolicy_names, [:default_policy])
+#=    tworule_eqcond_info = deepcopy(get_setting(m, :regime_eqcond_info))
+    for (reg, eq_entry) in tworule_eqcond_info
+        if reg >= 8
+            tworule_eqcond_info[reg] = DSGE.EqcondEntry(DSGE.default_policy(), [1.])
+        end
+        tworule_eqcond_info[reg].weights = [1.]
+    end
+    tworule = MultiPeriodAltPolicy(:two_rule, tworule_eqcond_info, gensys2 = true,
+                                   temporary_altpolicy_names = [:zero_rate],
+                                   temporary_altpolicy_length = 5,
+                                   infoset = copy(get_setting(m, :tvis_information_set)))
+m <= Setting(:alternative_policies, [tworule])=#
+# sys = compute_system(m)
+sys = compute_system(m; tvis = true)
     df = load(joinpath(dirname(@__FILE__), "../reference/regime_switch_data.jld2"), "regime_switch_df_none")
-    df[end, :obs_hours] = NaN
+    #=df[end, :obs_hours] = NaN
     df[end, :obs_wages] = NaN
-    df[end, :obs_consumption] = NaN
-    df[end, :obs_nominalrate] = NaN
+    df[end, :obs_consumption] = NaN=#
+    df[end - 2:end, :obs_nominalrate] = NaN
 
     data = df_to_matrix(m, df; cond_type = :full)
     regime_inds, i_zlb_start, splice_zlb_regime = DSGE.zlb_plus_regime_indices(m, data, date_presample_start(m))
@@ -464,12 +501,15 @@ end
 
     # Add anticipated data to df
     df[!, :obs_longinflation] = convert(Vector{Union{Float64, Missing}}, df[!, :obs_longinflation])
+    df[!, :obs_longrate] = convert(Vector{Union{Float64, Missing}}, df[!, :obs_longrate])
     df[!, :obs_nominalrate1] = convert(Vector{Union{Float64, Missing}}, df[!, :obs_nominalrate1])
     df[end, :obs_longinflation] = .5
-    df[end - 3, :obs_nominalrate1] = .5475
+    df[end - 10, :obs_nominalrate1] = .5475
+    df[end, :obs_longrate] = .24
 
     histstates = Dict()
     histobs = Dict()
+condobs = Dict()
     for k in [:koopman, :hamilton, :carter_kohn, :durbin_koopman]
         m <= Setting(:forecast_smoother, k)
         histstates[k], _, _, _ = smooth(m, df, sys; cond_type = :full, draw_states = false)
@@ -477,16 +517,21 @@ end
 
     kal = DSGE.filter(m, df, sys; cond_type = :full)
 
-    for k in [:koopman, :hamilton, :durbin_koopman, :carter_kohn]
-        condobs = sys[3, :ZZ] * histstates[k][:, end] + sys[3, :DD]
+    # for k in [:koopman, :hamilton, :durbin_koopman, :carter_kohn]
+    for k in [:carter_kohn, :koopman, :hamilton, :carter_kohn, :durbin_koopman]
+    @show k
+        condobs[k] = sys[3, :ZZ] * histstates[k][:, end] + sys[3, :DD]
         histobs[k] = sys[2, :ZZ] * histstates[k][:, 1:end - 1] .+ sys[2, :DD]
         @test histstates[k][:, end] ≈ kal[:s_T]
 
         # Check the implied observables matches conditional data
-        for (i, j) in zip([1, 4, 5, 8, 10], [:obs_gdp, :obs_gdpdeflator, :obs_corepce, :obs_investment, :obs_longinflation])
-            @test condobs[i] ≈ df[end, j]
+        for (i, j) in zip([1, 4, 5, 8, 10, 11], [:obs_gdp, :obs_gdpdeflator, :obs_corepce, :obs_investment, :obs_longinflation, :obs_longrate])
+            if k == :koopman
+                @show condobs[k][i] - df[end, j]
+                @test condobs[k][i] ≈ df[end, j]
+            end
         end
-        @test histobs[k][m.observables[:obs_nominalrate1], end - 2] ≈ df[end - 3, :obs_nominalrate1]
+    @test histobs[k][m.observables[:obs_nominalrate1], end - 2] ≈ df[end - 10, :obs_nominalrate1]
     end
 
     # Check states match among the different smoothers
@@ -506,10 +551,10 @@ end
     histobs_draw = sys[2, :ZZ] * histstates_draw[:, 1:end - 1] .+ sys[2, :DD]
 
     # Check the implied observables matches conditional data
-    for (i, j) in zip([1, 4, 5, 8, 10], [:obs_gdp, :obs_gdpdeflator, :obs_corepce, :obs_investment, :obs_longinflation])
+    for (i, j) in zip([1, 4, 5, 8, 10, 11], [:obs_gdp, :obs_gdpdeflator, :obs_corepce, :obs_investment, :obs_longinflation, :obs_longrate])
         @test condobs_draw[i] ≈ df[end, j]
     end
-    @test histobs_draw[m.observables[:obs_nominalrate1], end - 2] ≈ df[end - 3, :obs_nominalrate1]
+    @test histobs_draw[m.observables[:obs_nominalrate1], end - 2] ≈ df[end - 10, :obs_nominalrate1]
 
     inds = vcat(1:9, 13:13) # can't check other variables b/c they're missing, so drawing states would generate uncertainty
     @test histobs_draw[inds, 19:end-1] ≈ histobs[:durbin_koopman][inds, 19:end-1]
@@ -534,6 +579,6 @@ end
             write(file, "data", df_to_matrix(m, df; cond_type = :full))
         end
     end
-end
+#end
 
 nothing
