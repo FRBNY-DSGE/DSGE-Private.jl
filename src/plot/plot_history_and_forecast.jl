@@ -4,7 +4,7 @@ plot_history_and_forecast(m, var, class, input_type, cond_type;
     title = "", plot_handle = plot(), kwargs...)
 
 plot_history_and_forecast(m, vars, class, input_type, cond_type;
-    forecast_string = "", bdd_and_unbdd = false,
+    forecast_string = "", use_bdd = :unbdd,
 
     plotroot = figurespath(m, \"forecast\"), titles = [],
     plot_handles = fill(plot(), length(vars)), verbose = :low,
@@ -25,7 +25,7 @@ full-distribution forecast, you can specify the `bands_style` and `bands_pcts`.
 
 ### Keyword Arguments
 - `forecast_string::String`
-- `bdd_and_unbdd::Bool`: if true, then unbounded means and bounded bands are plotted
+- `use_bdd::Symbol`: if true, then unbounded means and bounded bands are plotted
 - `untrans::Bool`: whether to plot untransformed (model units) history and forecast
 - `fourquarter::Bool`: whether to plot four-quarter history and forecast
 - `plotroot::String`: if nonempty, plots will be saved in that directory
@@ -61,7 +61,7 @@ end
 function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, class::Symbol,
                                    input_type::Symbol, cond_type::Symbol;
                                    forecast_string::String = "",
-                                   bdd_and_unbdd::Bool = false,
+                                   use_bdd::Symbol = false,
                                    zero_shocks::Bool = false,
                                    untrans::Bool = false,
                                    fourquarter::Bool = false,
@@ -90,7 +90,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
     # Read in MeansBands
     hist  = read_mb(m, input_type, cond_type, Symbol(hist_prod, class), forecast_string = forecast_string)
     fcast = read_mb(m, input_type, cond_type, Symbol(fcast_prod, class), forecast_string = forecast_string,
-                    bdd_and_unbdd = bdd_and_unbdd,
+                    use_bdd = use_bdd,
                     zero_shocks = zero_shocks)
 
     # Get titles if not provided

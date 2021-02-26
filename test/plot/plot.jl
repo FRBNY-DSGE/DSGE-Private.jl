@@ -28,13 +28,13 @@ println("The following warning is expected test behavior:")
 
 # Plot history and forecast
 plot_history_and_forecast(m, :obs_nominalrate, :obs, :full, :none,
-                          bdd_and_unbdd = true,
+                          use_bdd = :bdd_and_unbdd,
                           start_date = DSGE.quartertodate("2007-Q1"),
                           verbose = :none)
 
 # Plot forecast comparison
 plot_forecast_comparison(m, m, :obs_nominalrate, :obs, :full, :none,
-                         bdd_and_unbdd = true,
+                         use_bdd = :bdd_and_unbdd,
                          start_date = DSGE.quartertodate("2007-Q1"),
                          verbose = :none)
 
