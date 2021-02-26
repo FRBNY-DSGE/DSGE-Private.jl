@@ -47,6 +47,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, var::Symbol, class::Sym
                                    title::String = "", plot_handle::Plots.Plot = plot(),
                 				   save_as_csv::Bool = false,
                                    weights::Vector = [],
+                                   use_bdd::Symbol = :unbdd,
                                    kwargs...)
 
     plots = plot_history_and_forecast(m, [var], class, input_type, cond_type;
@@ -54,6 +55,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, var::Symbol, class::Sym
                                       plot_handles = Plots.Plot[plot_handle],
 				                      save_as_csv = save_as_csv,
                                       weights = weights,
+                                      use_bdd = use_bdd,
                                       kwargs...)
     return plots[var]
 end
@@ -61,7 +63,7 @@ end
 function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, class::Symbol,
                                    input_type::Symbol, cond_type::Symbol;
                                    forecast_string::String = "",
-                                   use_bdd::Symbol = false,
+                                   use_bdd::Symbol = :unbdd,
                                    zero_shocks::Bool = false,
                                    untrans::Bool = false,
                                    fourquarter::Bool = false,

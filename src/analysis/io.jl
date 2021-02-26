@@ -175,7 +175,7 @@ function read_mb(m::AbstractDSGEModel, input_type::Symbol, cond_type::Symbol,
         bdd_file = get_meansbands_output_file(m, input_type, cond_type, bdd_output_var;
                                               forecast_string = forecast_string,
                                               directory = directory)
-        if use_bdd = :bdd
+        if use_bdd == :bdd
             read_mb(bdd_file)
         else
             read_bdd_and_unbdd_mb(bdd_file, unbdd_file)
