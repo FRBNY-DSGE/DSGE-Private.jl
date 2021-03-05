@@ -179,7 +179,7 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
             end
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_new"))
             CSV.write(string("blog_plot_data/", get_setting(m_new, :data_vintage),
-                             "_", replace(title, " " => "_"), "_", var,
+                             "_", replace(replace(title, " " => "_"), "," => ""), "_", var,
                              join(string.(weights), "_"), ".csv"), df_plot_data)
         end
 
@@ -268,7 +268,7 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
             end
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_new"))
             CSV.write(string("blog_plot_data/", get_setting(m_new, :data_vintage),
-                             "_", replace(title, " " => "_"), "_", var,
+                             "_", replace(replace(title, " " => "_"), "," => ""), "_", var,
                              "_", join(string.(weights), "_"), ".csv"), df_plot_data)
         end
 
