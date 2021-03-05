@@ -1,12 +1,14 @@
 """
 ```
 plot_forecast_comparison(m_old, m_new, var, class, input_type, cond_type;
-    save_as_csv = false, title = "", kwargs...)
+    save_as_csv = false, title = "", use_bdd_new::Symbol = :unbdd,
+    use_bdd_old::Symbol = :unbdd, kwargs...)
 
 plot_forecast_comparison(m_old, m_new, vars, class, input_type, cond_type;
     input_type_old = input_type, cond_type_old = cond_type,
     forecast_string = "", forecast_string_old = forecast_string,
-    bdd_and_unbdd = false, bands_pcts = [\"90.0%\"],
+    use_bdd_new = :unbdd, use_bdd_old = :unbdd,
+    bands_pcts = [\"90.0%\"],
     old_names = Dict(:hist => "", :forecast => \"Old Forecast\"),
     new_names = Dict(:hist => "", :forecast => \"New Forecast\"),
     old_colors = Dict(:hist => :grey, :forecast => :blue, :bands => :blue),
@@ -37,7 +39,10 @@ Plot forecasts from `m_old` and `m_new` of `var` or `vars`.
 - `cond_type_old::Symbol`
 - `forecast_string::String`
 - `forecast_string_old::String`
-- `bdd_and_unbdd::Bool`: if true, then unbounded means and bounded bands are plotted
+- `use_bdd_new::Symbol`: specifies combination of bounded/unbounded means &
+    bounded/unbounded bands for the new forecast
+- `use_bdd_old::Symbol`: specifies combination of bounded/unbounded means &
+    bounded/unbounded bands for the old forecast
 - `bands_pcts::Vector{String}`: which bands to plot
 - `old_names::Dict{Symbol, String}`: maps keys `[:hist, :forecast, :bands]` to
   labels for old forecast
@@ -65,12 +70,16 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   input_type::Symbol, cond_type::Symbol;
                                   title::String = "",
 	                			  save_as_csv::Bool = false,
+                                  use_bdd_new::Symbol = :unbdd,
+                                  use_bdd_old::Symbol = :unbdd,
                                   weights::Array{Float64} = [],
                                   kwargs...)
 
     plots = plot_forecast_comparison(m_old, m_new, [var], class, input_type, cond_type;
                                      titles = isempty(title) ? String[] : [title],
                                      save_as_csv = save_as_csv,
+                                     use_bdd_new = use_bdd_new,
+                                     use_bdd_old = use_bdd_old,
                                      weights = weights,
 				                     kwargs...)
     return plots[var]
@@ -83,6 +92,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   input_type::Symbol, cond_type::Symbol;
                                   title::String = "",
 				                  save_as_csv::Bool = false,
+                                  use_bdd_new::Symbol = :unbdd,
+                                  use_bdd_old::Symbol = :unbdd,
                                   weights::Array{Float64} = [],
                                   kwargs...)
 
@@ -90,6 +101,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                      [var], class, input_type, cond_type;
                                      titles = isempty(title) ? String[] : [title],
                                      save_as_csv = save_as_csv,
+                                     use_bdd_new = use_bdd_new,
+                                     use_bdd_old = use_bdd_old,
                                      weights = weights,
 				                     kwargs...)
     return plots[var]
@@ -102,7 +115,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   cond_type_old::Symbol = cond_type,
                                   forecast_string::String = "",
                                   forecast_string_old::String = forecast_string,
-                                  use_bdd::Symbol = :unbdd,
+                                  use_bdd_new::Symbol = :unbdd,
+                                  use_bdd_old::Symbol = :unbdd,
                                   bands_pcts::Vector{String} = ["90.0%"],
                                   old_names = Dict(:hist => "", :forecast => "Old Forecast"),
                                   new_names = Dict(:hist => "", :forecast => "New Forecast"),
@@ -122,11 +136,11 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
     histold = read_mb(m_old, input_type_old, cond_type_old, Symbol(:hist, class),
                       forecast_string = forecast_string_old)
     forecastold = read_mb(m_old, input_type_old, cond_type_old, Symbol(:forecast, class),
-                       forecast_string = forecast_string_old, use_bdd = use_bdd)
+                          forecast_string = forecast_string_old, use_bdd = use_bdd_old)
     histnew = read_mb(m_new, input_type, cond_type, Symbol(:hist, class),
                       forecast_string = forecast_string)
     forecastnew = read_mb(m_new, input_type, cond_type, Symbol(:forecast, class),
-                       forecast_string = forecast_string, use_bdd = use_bdd)
+                          forecast_string = forecast_string, use_bdd = use_bdd_new)
 
     # Get titles if not provided
     if isempty(titles)
@@ -142,16 +156,16 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
 
         # Call recipe
         plots[var] = histforecast(var, histold, forecastold;
-		     		  df_plot_data = df_plot_data, save_as_csv = save_as_csv,
+		     		              df_plot_data = df_plot_data, save_as_csv = save_as_csv,
                                   names = old_names, colors = old_colors,
                                   alphas = old_alphas, styles = old_styles,
                                   bands_pcts = bands_pcts, bands_style = :line,
                                   title = title, ylabel = series_ylabel(m_new, var, class),
                                   kwargs...)
-	if save_as_csv
-   	    df_plot_data = df_plot_data[setdiff(names(df_plot_data), [:mean_history])]
+	    if save_as_csv
+   	        df_plot_data = df_plot_data[setdiff(names(df_plot_data), [:mean_history])]
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_old"))
-	end
+	    end
 
         histforecast!(var, histnew, forecastnew;
 	              df_plot_data = df_plot_data, save_as_csv = save_as_csv,
@@ -165,8 +179,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
             end
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_new"))
             CSV.write(string("blog_plot_data/", get_setting(m_new, :data_vintage),
-                                "_", replace(title, " " => "_"), "_", var,
-                                join(map(x->string(x), weights), "_"), ".csv"), df_plot_data)
+                             "_", replace(title, " " => "_"), "_", var,
+                             join(string.(weights), "_"), ".csv"), df_plot_data)
         end
 
 
@@ -190,7 +204,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   cond_type_old::Symbol = cond_type,
                                   forecast_string::String = "",
                                   forecast_string_old::String = forecast_string,
-                                  use_bdd::Symbol = :unbdd,
+                                  use_bdd_new::Symbol = :unbdd,
+                                  use_bdd_old::Symbol = :unbdd,
                                   bands_pcts::Vector{String} = ["90.0%"],
                                   old_names = Dict(:hist => "", :forecast => "Old Forecast"),
                                   new_names = Dict(:hist => "", :forecast => "New Forecast"),
@@ -210,11 +225,11 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
     histold = read_mb(m_old, input_type_old, cond_type_old, Symbol(:hist, class_old),
                       forecast_string = forecast_string_old)
     forecastold = read_mb(m_old, input_type_old, cond_type_old, Symbol(:forecast, class_old),
-                       forecast_string = forecast_string_old, use_bdd = use_bdd)
+                          forecast_string = forecast_string_old, use_bdd = use_bdd_old)
     histnew = read_mb(m_new, input_type, cond_type, Symbol(:hist, class),
                       forecast_string = forecast_string)
     forecastnew = read_mb(m_new, input_type, cond_type, Symbol(:forecast, class),
-                       forecast_string = forecast_string, use_bdd = use_bdd)
+                          forecast_string = forecast_string, use_bdd = use_bdd_new)
 
     # Get titles if not provided
     if isempty(titles)
@@ -230,19 +245,19 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
 
         # Call recipe
         plots[var] = histforecast(var_old, histold, forecastold;
-		     		  df_plot_data = df_plot_data, save_as_csv = save_as_csv,
+		     		              df_plot_data = df_plot_data, save_as_csv = save_as_csv,
                                   names = old_names, colors = old_colors,
                                   alphas = old_alphas, styles = old_styles,
                                   bands_pcts = bands_pcts, bands_style = :line,
                                   title = title, ylabel = series_ylabel(m_new, var, class),
                                   kwargs...)
-	if save_as_csv
-   	    df_plot_data = df_plot_data[setdiff(names(df_plot_data), [:mean_history])]
+	    if save_as_csv
+   	        df_plot_data = df_plot_data[setdiff(names(df_plot_data), [:mean_history])]
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_old"))
-	end
+	    end
 
         histforecast!(var, histnew, forecastnew;
-	              df_plot_data = df_plot_data, save_as_csv = save_as_csv,
+	                  df_plot_data = df_plot_data, save_as_csv = save_as_csv,
                       names = new_names, colors = new_colors,
                       alphas = new_alphas, styles = new_styles,
                       bands_pcts = bands_pcts, bands_style = :line, kwargs...)
@@ -253,12 +268,9 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
             end
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_new"))
             CSV.write(string("blog_plot_data/", get_setting(m_new, :data_vintage),
-                                "_", replace(title, " " => "_"), "_", var,
-                                join(map(x->string(x), weights), "_"),
-                                ".csv"), df_plot_data)
+                             "_", replace(title, " " => "_"), "_", var,
+                             join(string.(weights), "_"), ".csv"), df_plot_data)
         end
-
-
 
         # Save plot
         if !isempty(plotroot)

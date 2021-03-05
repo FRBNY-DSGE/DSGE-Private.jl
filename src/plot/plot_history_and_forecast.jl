@@ -29,7 +29,6 @@ full-distribution forecast, you can specify the `bands_style` and `bands_pcts`.
     b. `:bdd_and_unbdd` -> bounded bands (from `:bddforecastobs`, etc.) and unbounded means (from `:forecastobs`, etc.)
     c. `:unbdd` -> unbounded bands and unbounded means (from `:forecastobs`, etc.)
 - TODO: add `use_modal_line` kwarg
->>>>>>> Update plot_history_and_forecast to allow bounded output vars
 - `untrans::Bool`: whether to plot untransformed (model units) history and forecast
 - `fourquarter::Bool`: whether to plot four-quarter history and forecast
 - `plotroot::String`: if nonempty, plots will be saved in that directory
@@ -182,8 +181,8 @@ are supported as keyword arguments.
 histforecast
 
 @recipe function f(hf::HistForecast;
-		   df_plot_data = DataFrame(),
-		   save_as_csv = false,
+		           df_plot_data = DataFrame(),
+		           save_as_csv = false,
                    start_date = hf.args[2].means[1, :date],
                    end_date = hf.args[3].means[end, :date],
                    names = Dict{Symbol, String}(),
