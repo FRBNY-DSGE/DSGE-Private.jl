@@ -116,11 +116,12 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
                                              fourquarter = fourquarter),
                       title = title, kwargs...)
         if save_as_csv
-	    if !isdir("blog_plot_data")
-	        mkdir("blog_plot_data")
+	        if !isdir("blog_plot_data")
+	            mkdir("blog_plot_data")
             end
             CSV.write(string("blog_plot_data/", get_setting(m, :data_vintage),
-                             "_", replace(title, " " => "_"), "_", var, join(map(x->string(x), weights), "_"), ".csv"), df_plot_data)
+                             "_", replace(title, " " => "_"), "_", var,
+                             "_", join(map(x->string(x), weights), "_"), ".csv"), df_plot_data)
         end
 
         # Save plot
@@ -240,12 +241,12 @@ histforecast
         lb = combined.bands[var][inds, Symbol(pct, " LB")]
         ub = combined.bands[var][inds, Symbol(pct, " UB")]
 
-	# save bands to csv
-	if save_as_csv
-	    df_plot_data.lb = lb
-	    rename!(df_plot_data, :lb => Symbol("$(pct)_lb"))
-	    df_plot_data.ub = ub
-	    rename!(df_plot_data, :ub => Symbol("$(pct)_ub"))
+	    # save bands to csv
+	    if save_as_csv
+	        df_plot_data.lb = lb
+	        rename!(df_plot_data, :lb => Symbol("$(pct)_lb"))
+	        df_plot_data.ub = ub
+	        rename!(df_plot_data, :ub => Symbol("$(pct)_ub"))
         end
 
         bands_color = haskey(colors, :bands) ? colors[:bands] : :blue
@@ -296,10 +297,8 @@ histforecast
     if save_as_csv
         df_mean_hist = DataFrame()
     	df_mean_forecast = DataFrame()
-	df_means = DataFrame()
+	    df_means = DataFrame()
     end
-
-
 
     # Mean history
     @series begin
@@ -333,14 +332,14 @@ histforecast
         inds = intersect(findall(start_date .<= dates .<= end_date),
                          findall(hist.means[end, :date] .<= dates .<= forecast.means[end, :date]))
         if save_as_csv
-	   df_mean_forecast.dates = combined.means[inds, :date]
-	   df_mean_forecast.mean_forecast = combined.means[inds, var]
-	   df_means = join(df_mean_hist, df_mean_forecast, on = :dates, kind = :outer)
+	        df_mean_forecast.dates = combined.means[inds, :date]
+	        df_mean_forecast.mean_forecast = combined.means[inds, var]
+	        df_means = join(df_mean_hist, df_mean_forecast, on = :dates, kind = :outer)
 
 
-    	        if size(df_means) != (0, 0)
-        	     df_plot_data.mean_history = df_means.mean_history
-      		     df_plot_data.mean_forecast = df_means.mean_forecast
+    	    if size(df_means) != (0, 0)
+        	    df_plot_data.mean_history = df_means.mean_history
+      		    df_plot_data.mean_forecast = df_means.mean_forecast
     		end
         end
 
