@@ -120,7 +120,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
 	            mkdir("blog_plot_data")
             end
             CSV.write(string("blog_plot_data/", get_setting(m, :data_vintage),
-                             "_", replace(replace(title, " " => "_") "," => ""), "_", var,
+                             "_", replace(replace(title, " " => "_"), "," => ""), "_", var,
                              "_", join(map(x->string(x), weights), "_"), ".csv"), df_plot_data)
         end
 
