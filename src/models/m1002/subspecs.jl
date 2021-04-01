@@ -35,7 +35,10 @@ function init_subspec!(m::Model1002)
         return ss59!(m)
     elseif subspec(m) == "ss60"
         return ss60!(m)
-
+    elseif subspec(m) == "ss62"
+        return ss62!(m)
+    elseif subspec(m) == "ss63"
+        return ss63!(m)
     else
         error("This subspec is not defined.")
     end
@@ -271,7 +274,7 @@ end
 ss59!(m::Model1002)
 ```
 
-Initializes subspec 59 of `Model1002' for purposes of plotting forecasts. 
+Initializes subspec 59 of `Model1002' for purposes of plotting forecasts.
 Returns subspec 60.
 """
 function ss59!(m::Model1002)
@@ -365,3 +368,28 @@ end
                            tex_label=@sprintf("\\sigma_{ant%d}",i))
         end
     end
+
+
+"""
+```
+ss62!(m::Model1002)
+```
+
+Initializes subspec 62 of `Model1002' for purposes of plotting forecasts.
+Returns subspec 60. Just needed for filepathing
+"""
+function ss62!(m::Model1002)
+    ss60!(m)
+end
+
+"""
+```
+ss63!(m::Model1002)
+```
+
+Initializes subspec 63 of `Model1002' for purposes of plotting forecasts.
+Returns subspec 60. Just needed for filepathing.
+"""
+function ss63!(m::Model1002)
+    ss60!(m)
+end
