@@ -3,7 +3,8 @@ isdefined(Base, :__precompile__) && __precompile__(false)
 module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
-    using BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff, HDF5, JLD2, LinearAlgebra
+    using ArnoldiMethod, BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff,
+    using HDF5, JLD2, KrylovKit, LinearAlgebra
     using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
@@ -394,6 +395,7 @@ module DSGE
 
     # Heterogeneous Agent Models
     include("models/heterogeneous/util.jl")
+    include("models/heterogeneous/steady_state_helpers/kolmogorov_forward.jl")
 
     include("models/heterogeneous/krusell_smith/krusell_smith.jl")
     include("models/heterogeneous/krusell_smith/steady_state.jl")
