@@ -163,7 +163,7 @@ module DSGE
 
         # models/heterogeneous/
         KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
-        RepDSGEGovDebt, HetDSGESimpleTaylor, HetDSGELag, Grid,
+        RepDSGEGovDebt, HetDSGESimpleTaylor, HetDSGELag, BayerBornLuetticke, Grid,
 
         #### Continuous time
         # models
@@ -396,6 +396,7 @@ module DSGE
     # Heterogeneous Agent Models
     include("models/heterogeneous/util.jl")
     include("models/heterogeneous/steady_state_helpers/kolmogorov_forward.jl")
+    include("models/heterogeneous/steady_state_helpers/ndgrid_evaluations.jl")
 
     include("models/heterogeneous/krusell_smith/krusell_smith.jl")
     include("models/heterogeneous/krusell_smith/steady_state.jl")
@@ -446,6 +447,17 @@ module DSGE
     include("models/heterogeneous/het_dsge_gov_debt/observables.jl")
     include("models/heterogeneous/het_dsge_gov_debt/measurement.jl")
     include("models/heterogeneous/het_dsge_gov_debt/augment_states.jl")
+
+    include("models/heterogeneous/bayer_born_luetticke/bayer_born_luetticke.jl")
+    include("models/heterogeneous/bayer_born_luetticke/util.jl")
+    # include("models/heterogeneous/bayer_born_luetticke/steady_state.jl")
+    include("models/heterogeneous/bayer_born_luetticke/subspecs.jl")
+    # include("models/heterogeneous/bayer_born_luetticke/jacobian.jl")
+    # include("models/heterogeneous/bayer_born_luetticke/shock_loading.jl")
+    include("models/heterogeneous/bayer_born_luetticke/observables.jl")
+    include("models/heterogeneous/bayer_born_luetticke/pseudo_observables.jl")
+    # include("models/heterogeneous/bayer_born_luetticke/measurement.jl")
+    # include("models/heterogeneous/bayer_born_luetticke/augment_states.jl")
 
     include("models/representative/rep_dsge_gov_debt/rep_dsge_gov_debt.jl")
     include("models/representative/rep_dsge_gov_debt/subspecs.jl")

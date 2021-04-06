@@ -7,8 +7,10 @@ mutable struct Grid{T <: Real}
     points::Vector{T}
     weights::Vector{T}
     scale::T
-    Grid(points, weights, scale) = sum(weights) ≈ scale ? new{T}(points, weights, scale) : error("scaled weights do not sum up properly")
+    Grid{T}(points, weights, scale) where {T <: Real} = sum(weights) ≈ scale ? new(points, weights, scale) : error("scaled weights do not sum up properly")
 end
+
+Grid(points::Vector{T}, weights::Vector{T}, scale::T) where {T <: Real} = Grid{T}(points, weights, scale)
 
 # Constructor utilizing a custom weight calculation function
 function Grid(quadrature::Function,
@@ -25,7 +27,7 @@ end
 # A pre-populated version of that rule that only accepts 3 arguments:
 # Lower bound, upper bound, and number of points
 function uniform_quadrature(lower_bound::T, upper_bound::T, n_points::Int;
-                            scale::T = 1) where {T<:Real}
+                            scale::T = one(T)) where {T<:Real}
     grid = collect(range(lower_bound, stop = upper_bound, length = n_points))
     weights = fill(scale/n_points, n_points)
     return grid, weights
