@@ -3,7 +3,7 @@ isdefined(Base, :__precompile__) && __precompile__(false)
 module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
-    using ArnoldiMethod, BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff,
+    using ArnoldiMethod, BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff
     using HDF5, JLD2, KrylovKit, LinearAlgebra
     using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots

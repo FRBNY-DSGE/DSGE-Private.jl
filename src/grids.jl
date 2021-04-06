@@ -3,11 +3,11 @@ import Distributions: Normal, pdf, cdf
 ###############################
 # Type Definition/Constructors
 ###############################
-mutable struct Grid
-    points::Vector{Float64}
-    weights::Vector{Float64}
-    scale::Float64
-    Grid(points, weights, scale) = sum(weights) ≈ scale ? new(points, weights, scale) : error("scaled weights do not sum up properly")
+mutable struct Grid{T <: Real}
+    points::Vector{T}
+    weights::Vector{T}
+    scale::T
+    Grid(points, weights, scale) = sum(weights) ≈ scale ? new{T}(points, weights, scale) : error("scaled weights do not sum up properly")
 end
 
 # Constructor utilizing a custom weight calculation function
@@ -104,6 +104,39 @@ end
 
 function quadrature_sum(grid::Grid, x::Vector{T}) where {T<:Real}
     return sum(x, grid)
+end
+
+###########################################################################
+# ndgrid port from VectorizedRoutines but updated for current Julia syntax
+###########################################################################
+ndgrid(v::AbstractVector) = copy(v)
+
+function ndgrid(v1::AbstractVector{T}, v2::AbstractVector{T}) where {T}
+    m, n = length(v1), length(v2)
+    v1 = reshape(v1, m, 1)
+    v2 = reshape(v2, 1, n)
+    (repeat(v1, 1, n), repeat(v2, m, 1))
+end
+
+function ndgrid_fill(a, v, s, snext)
+    for j = 1:length(a)
+        a[j] = v[div(rem(j-1, snext), s)+1]
+    end
+end
+
+function ndgrid(vs::AbstractVector{T}...) where {T}
+    n = length(vs)
+    sz = map(length, vs)
+    out = ntuple(i->Array{T}(undef, sz), n)
+    s = 1
+    for i=1:n
+        a = out[i]::Array
+        v = vs[i]
+        snext = s*size(a,i)
+        ndgrid_fill(a, v, s, snext)
+        s = snext
+    end
+    out
 end
 
 # # Defining arithmetic on/standard function evaluation of grids
