@@ -1,0 +1,117 @@
+"""
+```
+Ksupply(RB_guess, R_guess, m::BayerBornLuetticke, Vm, Vk, distr, inc, eff_int)
+```
+Calculate the aggregate savings when households face idiosyncratic income risk.
+
+Idiosyncratic state is tuple ``(m,k,y)``, where
+``m``: liquid assets, ``k``: illiquid assets, ``y``: labor income
+
+# Arguments
+- `R_guess`: real interest rate illiquid assets
+- `RB_guess`: nominal rate on liquid assets
+- `w_guess`: wages
+- `profit_guess`: profits
+
+# Returns
+- `K`,`B`: aggregate saving in illiquid (`K`) and liquid (`B`) assets
+-  `TransitionMat`,`TransitionMat_a`,`TransitionMat_n`: `sparse` transition matrices
+    (average, with [`a`] or without [`n`] adjustment of illiquid asset)
+- `distr`: ergodic steady state of `TransitionMat`
+- `c_a_star`,`m_a_star`,`k_a_star`,`c_n_star`,`m_n_star`: optimal policies for
+    consumption [`c`], liquid [`m`] and illiquid [`k`] asset, with [`a`] or
+    without [`n`] adjustment of illiquid asset
+- `V_m`,`V_k`: marginal value functions
+"""
+function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke, Vm::AbstractArray, Vk::AbstractArray, distr_guess::AbstractArray,
+    inc::AbstractArray, eff_int::AbstractArray; verbose::Symbol = :none, coarse::Bool = false) where {T <: Real}
+
+    ## Set up
+    # initialize distance variables
+    dist                = 9999.0
+    dist1               = dist
+    dist2               = dist
+
+    q                   = 1.0       # price of Capital
+
+    # Map parameter values to NamedTuple
+    θ                   = parameters2namedtuple(m) # and pass parameters as a NamedTuple
+
+    #----------------------------------------------------------------------------
+    # Iterate over consumption policies
+    #----------------------------------------------------------------------------
+    count               = 0
+    n                   = size(Vm)
+    ϵ                   = get_setting(m, coarse ? :coarse_ϵ : :ϵ)
+
+    # containers for policies, initialized here
+    # so we have access to them outside the while loop below
+    m_n_star            = Vector{T}(undef, 0) # just need to make sure these have the right types
+    m_a_star            = Vector{T}(undef, 0)
+    k_a_star            = Vector{T}(undef, 0)
+    c_a_star            = Vector{T}(undef, 0)
+    c_n_star            = Vector{T}(undef, 0)
+
+    while dist > ϵ && count < get_setting(m, :max_value_function_iters) # Iterate consumption policies until convergence
+        count          += 1
+
+        # Take expectations for labor income change # TODO: is there a more efficient way to write this expectation w/out using reshape?
+        EVk             = reshape(reshape(Vk, (n[1] * n[2], n[3])) * m.grids[:Π]', (n[1], n[2], n[3]))
+        EVm             = reshape((reshape(eff_int, (n[1] * n[2], n[3])) .*
+                                   reshape(Vm, (n[1] * n[2], n[3]))) * m.grids[:Π]', (n[1], n[2], n[3]))
+
+        # Policy update step
+        c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
+            EGM_policyupdate(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, m, false)
+
+        # marginal value update step
+        Vk_new, Vm_new  = updateV(EVk, c_a_star, c_n_star, m_n_star, R_guess - 1.0, q, θ, get_gridpts(m, :m_grid), m.grids[:Π])
+
+        # Calculate distance in updates
+        dist1           = maximum(abs, invmutil(Vk_new, θ[:ξ]) - invmutil(Vk, θ[:ξ]))
+        dist2           = maximum(abs, invmutil(Vm_new, θ[:ξ]) - invmutil(Vm, θ[:ξ]))
+        dist            = max(dist1, dist2) # distance of old and new policy
+
+        # update policy guess/marginal values of liquid/illiquid assets
+        Vm              = Vm_new
+        Vk              = Vk_new
+    end
+    if verbose != :none
+        println("The maximum absolute error in the marginal value functions is $(dist)")
+    end
+
+    #------------------------------------------------------
+    # Find stationary distribution (Is direct transition better for large model?) (TODO: investigate this question)
+    #------------------------------------------------------
+
+    # Define transition matrix
+    S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, m.grids[:Π],
+                                                     n, get_idiosyncratic_gridpts(m))
+    TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n)) # TODO: faster way to construct this, e.g. BlockBanded?
+    TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
+    TransitionMat                   = θ[:λ] * TransitionMat_a + (1.0 - θ[:λ]) * TransitionMat_n
+
+    if get_setting(m, :kfe_method) == :krylov
+        # Calculate left-hand unit eigenvector (uses KrylovKit package)
+        aux   = real.(eigsolve(TransitionMat', 1)[2][1])
+        distr = reshape((aux[:]) ./ loop_sum(aux), n) # use loop_sum here b/c scale and size of elements in aux => rounding error not a concern
+
+    elseif get_setting(m, :kfe_method) == :direct
+        # Direct Transition
+        distr = get_untransformed_values(m[:distr])
+        distr, dist, count = MultipleDirectTransition(m_a_star, m_n_star, k_a_star, distr, θ[:λ], m.grids[:Π],
+                                                      n, get_idiosyncratic_gridpts(m), ϵ; iters = get_setting(m, :n_direct_transition_iters))
+    else
+        error("Solution method for Kolmogorov forward equation $(get_setting(m, :kfe_method)) is not recognized. " *
+              "Available methods are [:krylov, :direct]")
+    end
+    #-----------------------------------------------------------------------------
+    # Calculate capital stock
+    #-----------------------------------------------------------------------------
+    #=K = sum(distr[:] .* m.grids[:k_ndgrid][:])
+    B = sum(distr[:] .* m.grids[:m_ndgrid][:])=#
+    K = dot(distr, m.grids[:k_ndgrid]) # faster to use dot
+    B = dot(distr, m.grids[:m_ndgrid])
+
+    return K, B, TransitionMat, TransitionMat_a, TransitionMat_n, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star, Vm, Vk, distr
+end

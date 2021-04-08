@@ -188,7 +188,7 @@ function init_model_indices!(m::BayerBornLuetticke)
     m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
                  length(m.endogenous_states_augmented))=#
 end
-
+# TODO: maybe add coarse as a kwarg
 function BayerBornLuetticke(subspec::String="ss0";
                             custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
                             testing = false)
@@ -252,7 +252,7 @@ function BayerBornLuetticke(subspec::String="ss0";
     # aggregate_steadystate!(m)
 
     # Initialize grids
-    init_grids!(m)
+    # init_grids!(m; coarse = true)
 
     # Solve for the steady state
     # steadystate!(m)
@@ -303,7 +303,7 @@ function init_parameters!(m::BayerBornLuetticke)
     m <= parameter(:σ_h, 0.12, fixed = true,
                    description = "σ_h: standard deviation of income shock",
                    tex_label = "\\sigma_{h}")
-    m <= parameter(:ι, 1. / 16.2, fixed = true,
+    m <= parameter(:ι, 1. / 16, fixed = true,
                    description = "ι: probability of return to worker",
                    tex_label = "\\iota")
     m <= parameter(:ζ, 1. / 3750., fixed = true,
@@ -311,9 +311,6 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\zeta")
 
     # Technological parameters
-    m <= parameter(:ζ, 1. / 3750., fixed = true,
-                   description = "ζ: probability of becoming an entrepreneur",
-                   tex_label = "\\zeta")
     m <= parameter(:α, 0.318, fixed = true,
                    description = "Capital share", tex_label = "\\alpha")
     m <= parameter(:δ_0, (.07 + .016) / 4., fixed = true,
@@ -330,10 +327,6 @@ function init_parameters!(m::BayerBornLuetticke)
     # Monetary policy
     m <= parameter(:RB, m[:π] * 1.0 ^ 0.25, fixed = true, # THIS MIGHT BE SET AS A STEADY STATE PARAMETER RATHER THAN HERE
                    description = "Steady-state nominal interest rate", tex_label = "\\RB")
-
-    # Workers
-    m <= parameter(:H, 1., fixed = true, description = "Average human capital in stationary equilibrium", tex_label = "H")
-    m <= parameter(:HW, 1., fixed = true, description = "Equilibriumf raction of workers in stationary equilibrium", tex_label = "HW")
 
     # Remaining steady-state parameters
     m <= parameter(:ψ, 0.1, fixed = true,
@@ -540,6 +533,13 @@ function init_parameters!(m::BayerBornLuetticke)
 
     # Steady-state parameters
 
+    # Parameters pertaining to idiosyncratic state space
+    m <= SteadyStateParameter(:H, NaN,  description = "Long-run average human capital " *
+                              "in stationary equilibrium", tex_label = "H")
+    m <= SteadyStateParameter(:HW, NaN, description =
+                              "Long-run fraction of workers in stationary equilibrium",
+                              tex_label = "HW") # there are workers and entrepreneurs in equilibrium
+
     # Aggregate scalars (just initialized here, these will be populated by the steadystate!)
     m <= SteadyStateParameter(:K_star, NaN, description = "Capital stock (steady-state)",
                               tex_label = "\\K_*")
@@ -559,7 +559,9 @@ function init_parameters!(m::BayerBornLuetticke)
                               tex_label = "\\B_*")
 
     # Steady state grids for functional/distributional variables pre-reduction
-    m <= SteadyStateParameterGrid(:distr_star, fill(NaN, get_setting(m, :nm), get_setting(m, :nk), get_setting(m, :ny)),
+    total_idio_states = get_setting(m, :nm) * get_setting(m, :nk) * get_setting(m, :ny)
+    m <= SteadyStateParameterGrid(:distr_star, fill(1. / total_idio_states, # populate with a uniform guess
+                                                    get_setting(m, :nm), get_setting(m, :nk), get_setting(m, :ny)),
                                   description = "Distribution over idiosyncratic states (steady-state)", tex_label = "D_*")
     m <= SteadyStateParameterGrid(:marginal_pdf_m_star, fill(NaN, get_setting(m, :nm)),
                                   description = "Steady-state expected discounted
@@ -620,8 +622,8 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     ss[:R_sh] = (1., "MP shock (steady-state)", "")
     ss[:P_sh] = (1., "Progressivity shock (steady-state)", "")
     ss[:S_sh] = (1., "Idiosyncratic risk shock (steady-state)", "")
-    ss[:rk] = (1. + interest(get_untransformed_values(m[:K_star]), 1. / m[:μ_p],
-                             get_untransformed_values(m[:N_star]), m[:α], m[:δ_0]), "Rental rate on capital (steady-state)", "")
+    ss[:rk] = (1. + _bbl_interest(get_untransformed_values(m[:K_star]), 1. / m[:μ_p],
+                                  get_untransformed_values(m[:N_star]), m[:α], m[:δ_0]), "Rental rate on capital (steady-state)", "")
     ss[:LP] = (1. + ss[:rk][1] - ss[:RB][1], "Liquidity premium (ex-post) (steady-state)", "")
     ss[:LPXA] = (1. + ss[:rk][1] - ss[:RB][1], "Liquidity premium (ex-ante) (steady-state)", "")
     ss[:π] = (1., "Inflation (steady-state)", "")
@@ -667,46 +669,6 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     return m
 end
 
-"""
-```
-init_grids!(m::BayerBornLuetticke)
-```
-This function constructs the grids used for distribution/functional states
-and stores them in m.grids
-"""
-function init_grids!(m::BayerBornLuetticke{T}) where {T <: Real}
-
-    # Initialize dictionary for holding grids
-    grids = Dict{Symbol, Union{Grid, Matrix{T}, Array{T, 3}}}()
-
-    # Initialize transition matrix and income grid
-    # recall that for Grid constructor, arg 2 = quadrature weights, arg 3 = "scale" or Lebesgue measure,
-    # and that uniform_quadrature's 2nd output is the weights vector
-    grids[:y_grid] = Grid(_construct_income_grid_bbl(get_setting(m, :coarse_ymin), get_setting(m, :coarse_ymax), get_setting(m, :coarse_ny)),
-                          uniform_quadrature(get_setting(m, :coarse_ymin), get_setting(m, :coarse_ymax), get_setting(m, :coarse_ny);
-                                             scale = get_setting(m, :coarse_ymax) - get_setting(m, :coarse_ymin))[2],
-                          get_setting(m, :coarse_ymax) - get_setting(m, :coarse_ymin))
-    grids[:Π]      = [0.9 0.1; 0.1 0.9]
-
-    # Illiquid asset grid
-    grids[:k_grid] = Grid(_construct_illiquid_asset_grid_bbl(get_setting(m, :kmin), get_setting(m, :kmax), get_setting(m, :nk)),
-                          uniform_quadrature(get_setting(m, :kmin), get_setting(m, :kmax), get_setting(m, :nk);
-                                             scale = get_setting(m, :kmax) - get_setting(m, :kmin))[2],
-                          get_setting(m, :kmax) - get_setting(m, :kmin))
-
-    # Liquid asset grid
-    grids[:m_grid] = Grid(_construct_liquid_asset_grid_bbl(get_setting(m, :mmin), get_setting(m, :mmax), get_setting(m, :nm)),
-                          uniform_quadrature(get_setting(m, :mmin), get_setting(m, :mmax), get_setting(m, :nm);
-                                             scale = get_setting(m, :mmax) - get_setting(m, :mmin))[2],
-                          get_setting(m, :mmax) - get_setting(m, :mmin))
-
-    # Construct ndgrids (TODO: delete this and be Julian by never allocating these grids and using list comprehensions)
-    grids[:m_ndgrid], grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid(grids[:m_grid].points, grids[:k_grid].points, grids[:y_grid].points)
-    grids[:weights_ndgrid] = eval_three_states((x, y, z) -> x * y * z, grids[:m_grid].weights, grids[:k_grid].weights, grids[:y_grid].weights)
-
-    m.grids = grids
-end
-
 function model_settings!(m::BayerBornLuetticke)
 
     ## Defaults and overrides of defaults
@@ -723,24 +685,39 @@ function model_settings!(m::BayerBornLuetticke)
 
     # Coarse grid settings
     m <= Setting(:coarse_ϵ,  1e-5, "Steady-state tolerance for coarse grid")
-    m <= Setting(:coarse_ny, 2, "Number of idiosyncratic income states for coarse grid")
+    m <= Setting(:coarse_ny, 6, "Number of idiosyncratic income states for coarse grid")
+    m <= Setting(:coarse_nm, 40, "Number of liquid asset (bond) points for coarse grid")
+    m <= Setting(:coarse_nk, 41, "Number of illiquid asset (capital) points for coarse grid")
+    m <= Setting(:coarse_y_bin_bounds, Vector{Float64}(undef, 0),
+                 "Bounds of the bins of the income states on coarse grid")
     m <= Setting(:coarse_ymin, 0.5, "Minimum grid value for income states on coarse grid")
     m <= Setting(:coarse_ymax, 1.5, "Maximum grid value for income states on coarse grid")
+    m <= Setting(:coarse_mmin, -6.6, "Minimum grid value for liquid assets (bond) on coarse grid")
+    m <= Setting(:coarse_mmax, 1000., "Maximum grid value for liquid assets (bond) on coarse grid")
+    m <= Setting(:coarse_kmin, 0., "Minimum grid value for illiquid assets (capital) on coarse grid")
+    m <= Setting(:coarse_kmax, 1500., "Maximum grid value for illiquid assets (capital) on coarse grid")
 
     # Refined grid settings
-    m <= Setting(:ϵ, 1e-10, "Steady-state tolerance")
-    m <= Setting(:ny, 21, "Number of idiosyncratic income states for refined grid")
-    m <= Setting(:nk, 80, "Number of illiquid asset (capital) points for refined grid")
+    m <= Setting(:ϵ, 1e-10, "Steady-state tolerance for refined grid")
+    m <= Setting(:ny, 22, "Number of idiosyncratic income states for refined grid")
     m <= Setting(:nm, 80, "Number of liquid asset (bond) points for refined grid")
+    m <= Setting(:nk, 80, "Number of illiquid asset (capital) points for refined grid")
+    m <= Setting(:y_bin_bounds, Vector{Float64}(undef, 0),
+                 "Bounds of the bins of the income states on coarse grid")
     m <= Setting(:ymin, 0.5, "Minimum grid value for income states on refined grid")
     m <= Setting(:ymax, 1.5, "Maximum grid value for income states on refined grid")
-    m <= Setting(:kmin, 0., "Minimum grid value for illiquid assets (capital) on refined grid")
-    m <= Setting(:kmax, 1500., "Maximum grid value for illiquid assets (capital) on refined grid")
     m <= Setting(:mmin, -6.6, "Minimum grid value for liquid assets (bond) on refined grid")
     m <= Setting(:mmax, 1000., "Maximum grid value for liquid assets (bond) on refined grid")
+    m <= Setting(:kmin, 0., "Minimum grid value for illiquid assets (capital) on refined grid")
+    m <= Setting(:kmax, 1500., "Maximum grid value for illiquid assets (capital) on refined grid")
+
+    # Consumption policy iteration
+    m <= Setting(:max_value_function_iters, 1000, "Maximum number of fixed point iterations for the marginal value functions")
 
     # Kolmogorov forward equation
-    m <= Setting(:eigen_method, :krylov, "Method for solving Kolmogorov forward equation as an eigenvalue problem")
+    m <= Setting(:kfe_method, :krylov, "Method for solving Kolmogorov forward equation")
+    m <= Setting(:n_direct_transition_iters, 10_000,
+                 "Number of iterations when approximating stationary distribution directly as a limit of the transition equation")
 
     # Reduction settings for the following reduction strategy:
     # (1) Keep DCT coefficients of value functions that explain some fraction of total "energy"
@@ -835,6 +812,10 @@ function setup_indices!(m::BayerBornLuetticke)
     jump_vars = m.jump_variables
     endo = m.endogenous_states # note that these are the model states, so they include predetermined states and jumps
     eqconds = m.equilibrium_conditions
+
+    # Update number of scalar states and jumps
+    m <= Setting(:n_scalar_states, length(get_aggregate_state_variables(m)))
+    m <= Setting(:n_scalar_jumps, length(get_aggregate_jump_variables(m)))
 
     # Compute size of idiosyncratic state space
     n_idio_states = get_setting(m, :n_idiosyncratic_states)
@@ -1005,7 +986,7 @@ reset_grids!(m::BayerBornLuetticke)
 ```
 This is a very important function. ANy time you reduce the grid, you need to restore to the full grid before evaluating steadystate/jacobian/likelihood again. Otherwise, you'll keep redsucing and after just a few times, you'll be left with NOTHING. So PSA: reset your grid when you're done with whatever you need to do with the smaller grid!
 """
-function reset_grids!(m)
+function reset_grids!(m::BayerBornLuetticke)
     # TODO: reset_grids is not done, may need to update settings to have "default" values saved for the grid
 
     m <= Setting(:nx1_state, 300)
