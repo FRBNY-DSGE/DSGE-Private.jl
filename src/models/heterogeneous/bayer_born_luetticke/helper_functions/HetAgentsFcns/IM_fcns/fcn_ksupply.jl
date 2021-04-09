@@ -62,21 +62,21 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke, Vm::AbstractArr
 
         # Policy update step
         c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
-            EGM_policyupdate(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, m, false)
+            EGM_policyupdate(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, θ, m.grids, false)
 
         # marginal value update step
         Vk_new, Vm_new  = updateV(EVk, c_a_star, c_n_star, m_n_star, R_guess - 1.0, q, θ, get_gridpts(m, :m_grid), m.grids[:Π])
 
         # Calculate distance in updates
-        dist1           = maximum(abs, invmutil(Vk_new, θ[:ξ]) - invmutil(Vk, θ[:ξ]))
-        dist2           = maximum(abs, invmutil(Vm_new, θ[:ξ]) - invmutil(Vm, θ[:ξ]))
+        dist1           = maximum(abs, _bbl_invmutil(Vk_new, θ[:ξ]) - _bbl_invmutil(Vk, θ[:ξ]))
+        dist2           = maximum(abs, _bbl_invmutil(Vm_new, θ[:ξ]) - _bbl_invmutil(Vm, θ[:ξ]))
         dist            = max(dist1, dist2) # distance of old and new policy
 
         # update policy guess/marginal values of liquid/illiquid assets
         Vm              = Vm_new
         Vk              = Vk_new
     end
-    if verbose != :none
+    if verbose == :high
         println("The maximum absolute error in the marginal value functions is $(dist)")
     end
 
@@ -86,7 +86,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke, Vm::AbstractArr
 
     # Define transition matrix
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, m.grids[:Π],
-                                                     n, get_idiosyncratic_gridpts(m))
+                                                     n, DSGE.get_idiosyncratic_gridpts(m))
     TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n)) # TODO: faster way to construct this, e.g. BlockBanded?
     TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
     TransitionMat                   = θ[:λ] * TransitionMat_a + (1.0 - θ[:λ]) * TransitionMat_n
@@ -100,7 +100,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke, Vm::AbstractArr
         # Direct Transition
         distr = get_untransformed_values(m[:distr])
         distr, dist, count = MultipleDirectTransition(m_a_star, m_n_star, k_a_star, distr, θ[:λ], m.grids[:Π],
-                                                      n, get_idiosyncratic_gridpts(m), ϵ; iters = get_setting(m, :n_direct_transition_iters))
+                                                      n, DSGE.get_idiosyncratic_gridpts(m), ϵ; iters = get_setting(m, :n_direct_transition_iters))
     else
         error("Solution method for Kolmogorov forward equation $(get_setting(m, :kfe_method)) is not recognized. " *
               "Available methods are [:krylov, :direct]")

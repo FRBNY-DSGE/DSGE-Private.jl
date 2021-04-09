@@ -33,7 +33,7 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
 
     # Liquid asset grid
     m_grid = _construct_liquid_asset_grid_bbl(mmin, mmax, nm)
-    m_grid[findfirst(x -> x >= 0, m_grid)] = 0.0 # Guarantee there is a zero is on the m grid (liquid asset)
+    m_grid[findlast(x -> x < 0, m_grid)] = 0.0 # Guarantee there is a zero is on the m grid (liquid asset)
     grids[:m_grid] = Grid(m_grid, uniform_quadrature(mmin, mmax, nm; scale = mmax - mmin)[2], mmax - mmin)
 
     # Illiquid asset grid
@@ -61,7 +61,7 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
     # Update long-run average level of human capital (of the worker) to be consistent with income process
     Paux  = Π ^ 1000 # compute LR average implied by process
     m[:H] = Paux[1, 1:end-1]' * y_grid[1:end-1] # ignore last state b/c last state is entrepreneurs' state
-    m[:HW] = 1. / (1. - Paux[end, end])
+    m[:HW] = coarse ? 1. : m[:HW] = 1. / (1. - Paux[end, end])
 
     # Construct and store income grid and transition matrix
     y_worker_weights = uniform_quadrature(ymin, ymax, ny_min1; scale = ny_min1 / ny)[2] # weights for worker states

@@ -7,15 +7,16 @@ _bbl_mutil(c::Array, ξ::AbstractParameter)      = _bbl_mutil(c, get_untransform
 _bbl_invmutil(mu::Array, ξ::AbstractParameter)  = _bbl_invmutil(c, get_untransformed_values(ξ))
 
 # Incomes (K:capital, A: TFP): Interest rate = MPK.-δ, Wage = MPL, profits = Y-wL-(r+\delta)*K
-_bbl_interest(K::Number, A::Number, N::Number, α::AbstractParameter, δ_0::AbstractParameter) = A .* α .* (K ./ N) .^(α - 1.0) .- δ_0
-_bbl_wage(K::Number, A::Number, N::Number, α::AbstractParameter) = A .* (1 - α) .* (K./N) .^α
-_bbl_output(K::Number, A::Number, N::Number, α::AbstractParameter) = A .* K .^(α) .* N .^(1 - α)
+_bbl_interest(K::Number, A::Number, N::Number, α::AbstractParameter, δ_0::AbstractParameter) = A * α * (K / N) ^(α - 1.0) - δ_0
+_bbl_wage(K::Number, A::Number, N::Number, α::AbstractParameter) = A * (1. - α) * (K/N) ^ α
+_bbl_output(K::Number, A::Number, N::Number, α::AbstractParameter) = A * K ^(α) * N ^(1 - α)
 @inline function _bbl_employment(K::Number, A::Number, α::AbstractParameter, τ_lev::AbstractParameter,
-                            τ_prog::AbstractParameter, γ::AbstractParameter)
-    return (A .* (1.0 - α) .* (τ_lev .* (1.0 - τ_prog)).^(1.0 / (1.0 - τ_prog))
-     .* K .^(α )).^((1.0 - τ_prog)./(γ + τ_prog + (α) .* (1 - τ_prog)))
+                                 τ_prog::AbstractParameter, γ::AbstractParameter)
+    return (A * (1.0 - α) * (τ_lev * (1.0 - τ_prog))^(1.0 / (1.0 - τ_prog))
+            * K ^(α))^((1.0 - τ_prog) / (γ + τ_prog + (α) * (1. - τ_prog)))
 end
 
+#=
 @doc raw"""
     distrSummaries(distr,c_a_star,c_n_star,n_par,inc,incgross,m_par)
 
@@ -146,3 +147,4 @@ function distrSummaries(distr::AbstractArray,c_a_star::AbstractArray,
     return     distr_m, distr_k, distr_y, share_borrower, giniwealth, I90share,I90sharenet, ginicompconsumption,#=
             =# sdlogx, c9010, giniconsumption, sdlogc, y5010, giniincome, sdlogy, w90share, p10C, p50C, p90C
 end
+=#

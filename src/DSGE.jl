@@ -72,6 +72,9 @@ module DSGE
         # abstractvarmodel.jl
         AbstractVARModel, AbstractDSGEVARModel, AbstractDSGEVECMModel,
 
+        # grids.jl # TODO: delete these exports. Just exporting while we're experimenting with BayerBornLuetticke
+        ndgrid, get_grid, get_gridpts, get_gridwts, get_gridscale,
+
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, RegimeSwitchingSystem, compute_system, var_approx_state_space,
         n_regimes,
@@ -461,7 +464,8 @@ module DSGE
     # include("models/heterogeneous/bayer_born_luetticke/augment_states.jl")
     include("models/heterogeneous/bayer_born_luetticke/helper_functions/Parameters.jl")
     include("models/heterogeneous/bayer_born_luetticke/helper_functions/numerical/bayer_born_luetticke_numerical.jl")
-    include("models/heterogeneous/bayer_born_luetticke/helper_functions/HetAgentsFcns/bayer_born_luetticke_HetAgentsFcns.jl")
+    include("models/heterogeneous/bayer_born_luetticke/helper_functions/HetAgentsFcns/grids.jl")
+    # include("models/heterogeneous/bayer_born_luetticke/helper_functions/HetAgentsFcns/bayer_born_luetticke_HetAgentsFcns.jl")
 
     include("models/representative/rep_dsge_gov_debt/rep_dsge_gov_debt.jl")
     include("models/representative/rep_dsge_gov_debt/subspecs.jl")

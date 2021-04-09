@@ -1,7 +1,7 @@
 function MakeTransition(m_a_star::AbstractArray{T,3},
                         m_n_star::AbstractArray{T,3},
                         k_a_star::AbstractArray{T,3},
-                        Π::AbstractArray{T,2}, dims::NTuple{3, Int64}
+                        Π::AbstractArray{T,2}, dims::NTuple{3, Int64},
                         grids::NTuple{3, <: AbstractVector{T}}) where {T <: Real}
 
     # unpack dims and grids

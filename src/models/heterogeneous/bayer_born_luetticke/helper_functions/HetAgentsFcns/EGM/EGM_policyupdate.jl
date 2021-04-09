@@ -133,7 +133,7 @@ for j in eachindex(m_a_aux)
     s * (EMU[idx + aux_index[j] + 1])
 end
 
-c_a_aux         = invmutil(EMU_star, θ[:ξ])
+c_a_aux         = _bbl_invmutil(EMU_star, θ[:ξ])
 
 # Resources that lead to capital choice
 # k'= c + m*(k") + k" - w*h*N
@@ -166,7 +166,7 @@ for j = 1:n[3] # Iterate over income states
         # => this step gets resources that lead to k"=0 and m'<m*(k"=0) when z = zⱼ
         res_list[j]  = m_grid[log_index] .+ c_k_cons .- aux_inc[j]
         mon_list[j]  = m_grid[log_index]
-        cap_list[j]  = zeros(eltype(EVm), length(log_index)) # a bunch of zeros b/c choosing zero capital
+        cap_list[j]  = zeros(eltype(EVm), count(log_index)) # a bunch of zeros b/c choosing zero capital
     else
         # optimal m* choice is lowest gridpoint on m_grid => constrained in m too, so
         # we postpone handling this case until further down

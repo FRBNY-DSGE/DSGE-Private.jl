@@ -252,7 +252,7 @@ function BayerBornLuetticke(subspec::String="ss0";
     # aggregate_steadystate!(m)
 
     # Initialize grids
-    # init_grids!(m; coarse = true)
+    init_grids!(m; coarse = true)
 
     # Solve for the steady state
     # steadystate!(m)
@@ -333,7 +333,7 @@ function init_parameters!(m::BayerBornLuetticke)
                    description = "Steady-state bond to capital ratio", tex_label = "\\psi")
     m <= parameter(:τ_lev, 0.825, fixed = true,
                    description = "Steady-state income tax rate level", tex_label = "\\tau^L")
-    m <= parameter(:τ_prog, 0.825, fixed = true,
+    m <= parameter(:τ_prog, 0.12, fixed = true,
                    description = "Steady-state income tax rate progressivity", tex_label = "\\tau^P")
     m <= parameter(:R, 1.01, fixed = true, # THIS MIGHT BE SET AS A STEADY STATE PARAMETER RATHER THAN HERE
                    description = "Steady-state return of capital (unused)", tex_label = "R")

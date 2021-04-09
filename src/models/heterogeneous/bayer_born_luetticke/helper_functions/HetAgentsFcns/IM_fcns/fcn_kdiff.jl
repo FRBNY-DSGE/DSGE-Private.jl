@@ -22,14 +22,14 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
     #----------------------------------------------------------------------------
     # Calculate other prices from capital stock
     #----------------------------------------------------------------------------
-    N           = _bbl_employment(K_guess, 1.0 / (m[:μ_p] * m[:μ_w]), m[:τ_lev],  # employment
-                                  m[:τ_prog], m[:γ])
+    N           = _bbl_employment(K_guess, 1.0 / (m[:μ_p] * m[:μ_w]), m[:α],      # employment
+                                  m[:τ_lev], m[:τ_prog], m[:γ])
     w           = _bbl_wage(K_guess, 1.0 / m[:μ_p], N, m[:α])                     # wages
-    rk          = _bbl_interest(K_guess, 1.0 / m[:μ_p], N, m[:α])                 # Return on illiquid asset
+    rk          = _bbl_interest(K_guess, 1.0 / m[:μ_p], N, m[:α], m[:δ_0])        # Return on illiquid asset
     profits     = (1.0 - 1.0 / m[:μ_p]) .* _bbl_output(K_guess, 1.0, N, m[:α])    # Profit income
     RB          = m[:RB] / m[:π]                                                  # Real return on liquid assets
-    pos_liq_ret = RB + m[:Rbar]
-    eff_int     = [x <= 0. ? 0. : pos_liq_ret for x in get_gridpts(m, :m_ndgrid)] # effective rate depending on assets
+    neg_liq_ret = RB + m[:Rbar]
+    eff_int     = [x <= 0. ? neg_liq_ret : RB for x in m.grids[:m_ndgrid]]        # effective rate depending on assets
     GHHFA       = (m[:γ] + m[:τ_prog]) / (m[:γ] + 1.0)                            # transformation (scaling) for composite good
 
     #----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
 
     # gross (labor) incomes
     incgross        = get_gridpts(m, :y_grid) .* (mcw * w * N / m[:H])           # gross income workers (wages)
-    incgross[end]   = get_gridpts(m, :y_grid)[end] .* profits                    # gross income entrepreneurs (profits)
+    incgross[end]   = get_gridpts(m, :y_grid)[end] * profits                     # gross income entrepreneurs (profits)
 
     # net (labor) incomes
     incnet          = m[:τ_lev] * incgross .^ (1.0 - m[:τ_prog])
@@ -53,10 +53,10 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
     av_tax_rate     = dot((incgross - incnet), distr_y) / dot(incgross, distr_y)
 
     # TODO: replace the y_ndgrid calculation with just repeating the incnet vector OR use list comprehension later on
+    ny              = get_setting(m, coarse ? :coarse_ny : :ny)
     inc[1]          = (GHHFA * m[:τ_lev]) .* (m.grids[:y_ndgrid] .* (mcw * w * N / m[:H])) .^ (1.0 - m[:τ_prog]) .+
         ((1.0 - mcw) * w * N * (1.0 - av_tax_rate) * m[:HW])         # labor income net of taxes incl. union profits
-
-    inc[1][:,:,end] = m[:τ_lev] * (view(m.grids[:y_ndgrid], :, :, end) * profits) .^ (1.0 - m[:τ_prog]) # profit income net of taxes
+    inc[1][:,:,end] = m[:τ_lev] * (view(m.grids[:y_ndgrid], :, :, ny) * profits) .^ (1.0 - m[:τ_prog]) # profit income net of taxes
 
     # incomes out of wealth # TODO: replace these steps OR use list comprehension later on
     inc[2]          = rk .* m.grids[:k_ndgrid]                                  # rental income
@@ -72,7 +72,7 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
         # c_guess     = inc[1] .+ inc[2] .* (inc[2] .> 0) .+ inc[3] .* (m.grids[:m_ndgrid] .> 0.)
         c_guess     = copy(inc[1])
         pos_rental_income = inc[2] .> 0.
-        pos_liquid_assets = m.grid[:m_ndgrid] .> 0.
+        pos_liquid_assets = m.grids[:m_ndgrid] .> 0.
         c_guess[pos_rental_income] .+= inc[2][pos_rental_income]
         c_guess[pos_liquid_assets] .+= inc[3][pos_liquid_assets]
         if any(x -> x < 0., c_guess)

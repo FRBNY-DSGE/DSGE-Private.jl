@@ -3,19 +3,19 @@ function updateV(EVk::Array,
                  c_n_star::Array,
                  m_n_star::Array,
                  r::Real, q::Real,
-                 θ::NamedTuple
+                 θ::NamedTuple,
                  m_grid::AbstractVector,
                  Π::Array)
 
     # Setup
-    β::Float64 = get_untransformed_values(θ[:β])
+    β::Float64 = θ[:β]
     n = size(c_n_star)
 
     #----------------------------------------------------------------------------
     ## Update Marginal Value Bonds
     #----------------------------------------------------------------------------
-    mutil_c_n = mutil(c_n_star, θ[:ξ])                         # marginal utility at consumption policy no adjustment
-    mutil_c_a = mutil(c_a_star, θ[:ξ])                         # marginal utility at consumption policy adjustment
+    mutil_c_n = _bbl_mutil(c_n_star, θ[:ξ])                         # marginal utility at consumption policy no adjustment
+    mutil_c_a = _bbl_mutil(c_a_star, θ[:ξ])                         # marginal utility at consumption policy adjustment
 
     # Compute expected marginal utility at consumption policy (w &w/o adjustment)
     # Some special handling here to avoid an allocation that would be made if we did

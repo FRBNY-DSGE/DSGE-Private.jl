@@ -25,10 +25,10 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     #-------------------------------------------------------
 
     # Construct coarse grid based on information from settings
-    init_grids!(m; coarse = true)
+    DSGE.init_grids!(m; coarse = true)
 
-    if verbose != :none
-        println("Finding equilibrium capital stock for coarse income grid")
+    if verbose in [:low, :high]
+        println("Finding equilibrium capital stock for coarse income grid . . .")
     end
 
     # Capital stock guesses
@@ -46,19 +46,17 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
 
     # b.) Find equilibrium capital stock (multigrid on y,m,k)
     KSS = CustomBrent(d_coarse, brent_Kmin, brent_Kmax)[1]
-    @assert false
 
-    if verbose != :none
-        println("Capital stock is")
-        println(KSS)
+    if verbose in [:low, :high]
+        println("Capital stock is $(KSS)")
     end
     # -------------------------------------------------------------------------------
     ## STEP 2: Find the stationary equilibrium for final grid
     # -------------------------------------------------------------------------------
-    if verbose != :none
-        println("Finding equilibrium capital stock for final income grid")
+    if verbose in [:low, :high]
+        println("Finding equilibrium capital stock for refined income grid . . .")
     end
-    init_grids!(m)
+    DSGE.init_grids!(m)
 
     # Find stationary equilibrium for refined economy
     # a.) Define excess demand function with coarse = false
@@ -76,7 +74,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     VmSS     = BrentOut[3][2]
     VkSS     = BrentOut[3][3]
     distrSS  = BrentOut[3][4]
-    if verbose != :none
+    if verbose in [:low, :high]
         println("Capital stock is $(KSS)")
     end
 
