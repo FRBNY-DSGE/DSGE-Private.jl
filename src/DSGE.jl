@@ -4,8 +4,8 @@ module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
     using ArnoldiMethod, BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff
-    using FieldMetadata, LaTeXStrings, Flatten, Setfield, Parameters
-    using HDF5, JLD2, KrylovKit, LinearAlgebra
+    using FieldMetadata, LaTeXStrings, Flatten, Setfield, Parameters # TODO: delete these lines
+    using HDF5, Interpolations, JLD2, KrylovKit, LinearAlgebra
     using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
@@ -241,6 +241,7 @@ module DSGE
     include("solve/gensys2_uncertain_altpol.jl")
     include("solve/solve.jl")
     include("solve/klein.jl")
+    include("solve/discrete_time_reduction/copula.jl")
 
     include("estimate/smc/particle.jl") # need to add this first b/c need ParticleCloud
     #include("estimate/smc/initialization.jl")

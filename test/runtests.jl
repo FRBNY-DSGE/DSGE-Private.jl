@@ -33,6 +33,7 @@ my_tests = [
             #"solve/solve_ct",
             #"solve/gensys_ct",
             #"solve/reduction",
+            "solve/discrete_time_reduction/copula",
 
             "estimate/filter",
             "estimate/cat",
