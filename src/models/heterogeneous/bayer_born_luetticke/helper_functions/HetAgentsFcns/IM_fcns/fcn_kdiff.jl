@@ -11,7 +11,6 @@ Requires global functions `employment(K,A,m_par)`, `interest(K,A,N,m_par)`,
 
 # Arguments
 - `K_guess::Float64`: capital stock guess
-- `n_par::NumericalParameters`, `m_par::ModelParameters`
 """
 function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
                initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),
@@ -43,7 +42,7 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
     mcw             = 1.0 / m[:μ_w]                                              # wage markup
 
     # gross (labor) incomes
-    incgross        = get_gridpts(m, :y_grid) .* (mcw * w * N / m[:H])           # gross income workers (wages)
+    incgross        = get_gridpts(m, :y_grid) .* (mcw * w * N / m[:H_star])      # gross income workers (wages)
     incgross[end]   = get_gridpts(m, :y_grid)[end] * profits                     # gross income entrepreneurs (profits)
 
     # net (labor) incomes
@@ -54,8 +53,8 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
 
     # TODO: replace the y_ndgrid calculation with just repeating the incnet vector OR use list comprehension later on
     ny              = get_setting(m, coarse ? :coarse_ny : :ny)
-    inc[1]          = (GHHFA * m[:τ_lev]) .* (m.grids[:y_ndgrid] .* (mcw * w * N / m[:H])) .^ (1.0 - m[:τ_prog]) .+
-        ((1.0 - mcw) * w * N * (1.0 - av_tax_rate) * m[:HW])         # labor income net of taxes incl. union profits
+    inc[1]          = (GHHFA * m[:τ_lev]) .* (m.grids[:y_ndgrid] .* (mcw * w * N / m[:H_star])) .^ (1.0 - m[:τ_prog]) .+
+        ((1.0 - mcw) * w * N * (1.0 - av_tax_rate) * m[:HW_star])         # labor income net of taxes incl. union profits
     inc[1][:,:,end] = m[:τ_lev] * (view(m.grids[:y_ndgrid], :, :, ny) * profits) .^ (1.0 - m[:τ_prog]) # profit income net of taxes
 
     # incomes out of wealth # TODO: replace these steps OR use list comprehension later on

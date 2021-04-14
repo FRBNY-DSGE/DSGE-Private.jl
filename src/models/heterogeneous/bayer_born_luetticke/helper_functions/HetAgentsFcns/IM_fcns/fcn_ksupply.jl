@@ -1,6 +1,7 @@
 """
 ```
-Ksupply(RB_guess, R_guess, m::BayerBornLuetticke, Vm, Vk, distr, inc, eff_int)
+Ksupply(RB_guess, R_guess, m, Vm, Vk,
+        distr, inc, eff_int; verbose = :none, coarse = false) where {T <: Real}
 ```
 Calculate the aggregate savings when households face idiosyncratic income risk.
 
@@ -10,8 +11,12 @@ Idiosyncratic state is tuple ``(m,k,y)``, where
 # Arguments
 - `R_guess`: real interest rate illiquid assets
 - `RB_guess`: nominal rate on liquid assets
-- `w_guess`: wages
-- `profit_guess`: profits
+- `m`: DSGE model object
+- `Vm`: guess for marginal value function to liquid assets
+- `Vk`: guess for marginal value function to illiquid assets
+- `distr`: guess for distribution over idiosyncratic states
+- `inc`: Vector of different types of income in every idiosyncratic state
+- `eff_int`: effective interest rate on liquid assets
 
 # Returns
 - `K`,`B`: aggregate saving in illiquid (`K`) and liquid (`B`) assets
@@ -24,7 +29,7 @@ Idiosyncratic state is tuple ``(m,k,y)``, where
 - `V_m`,`V_k`: marginal value functions
 """
 function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke, Vm::AbstractArray, Vk::AbstractArray, distr_guess::AbstractArray,
-    inc::AbstractArray, eff_int::AbstractArray; verbose::Symbol = :none, coarse::Bool = false) where {T <: Real}
+                 inc::AbstractArray, eff_int::AbstractArray; verbose::Symbol = :none, coarse::Bool = false) where {T <: Real}
 
     ## Set up
     # initialize distance variables
@@ -51,7 +56,6 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke, Vm::AbstractArr
     k_a_star            = Vector{T}(undef, 0)
     c_a_star            = Vector{T}(undef, 0)
     c_n_star            = Vector{T}(undef, 0)
-
     while dist > ϵ && count < get_setting(m, :max_value_function_iters) # Iterate consumption policies until convergence
         count          += 1
 

@@ -138,7 +138,7 @@ c_a_aux         = _bbl_invmutil(EMU_star, θ[:ξ])
 # Resources that lead to capital choice
 # k'= c + m*(k") + k" - w*h*N
 # = value of todays cap and money holdings
-Resource        = c_a_aux + m_a_aux + inc_IA[1, :, :] - inc_lab[1, :, :]
+@views Resource = c_a_aux + m_a_aux + inc_IA[1, :, :] - inc_lab[1, :, :]
 
 # Money constraint is not binding, but capital constraint is binding
 m_star_zero     = m_a_aux[1, :] # Money holdings that correspond to k'=0:  m*(k=0)

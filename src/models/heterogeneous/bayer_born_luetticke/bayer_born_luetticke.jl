@@ -534,62 +534,141 @@ function init_parameters!(m::BayerBornLuetticke)
     # Steady-state parameters
 
     # Parameters pertaining to idiosyncratic state space
-    m <= SteadyStateParameter(:H, NaN,  description = "Long-run average human capital " *
+    m <= SteadyStateParameter(:H_star, NaN,  description = "Long-run average human capital " *
                               "in stationary equilibrium", tex_label = "H")
-    m <= SteadyStateParameter(:HW, NaN, description =
+    m <= SteadyStateParameter(:HW_star, NaN, description =
                               "Long-run fraction of workers in stationary equilibrium",
                               tex_label = "HW") # there are workers and entrepreneurs in equilibrium
 
     # Aggregate scalars (just initialized here, these will be populated by the steadystate!)
     m <= SteadyStateParameter(:K_star, NaN, description = "Capital stock (steady-state)",
-                              tex_label = "\\K_*")
+                              tex_label = "K_*")
     m <= SteadyStateParameter(:N_star, NaN, description = "Labor supply (steady-state)",
-                              tex_label = "\\N_*")
+                              tex_label = "N_*")
     m <= SteadyStateParameter(:Y_star, NaN, description = "Output (steady-state)",
-                              tex_label = "\\Y_*")
+                              tex_label = "Y_*")
     m <= SteadyStateParameter(:G_star, NaN, description = "Government spending (steady-state)",
-                              tex_label = "\\G_*")
+                              tex_label = "G_*")
     m <= SteadyStateParameter(:w_star, NaN, description = "Wage (steady-state)",
-                              tex_label = "\\w_*")
+                              tex_label = "w_*")
     m <= SteadyStateParameter(:T_star, NaN, description = "Tax revenue (steady-state)",
-                              tex_label = "\\T_*")
+                              tex_label = "T_*")
     m <= SteadyStateParameter(:I_star, NaN, description = "Investment (steady-state)",
-                              tex_label = "\\I_*")
+                              tex_label = "I_*")
     m <= SteadyStateParameter(:B_star, NaN, description = "Bond supply (steady-state)",
-                              tex_label = "\\B_*")
+                              tex_label = "B_*")
+    m <= SteadyStateParameter(:avg_tax_rate_star, NaN, description = "Average tax rate (steady-state)",
+                              tex_label = "avgtaxrate_*")
 
-    # Steady state grids for functional/distributional variables pre-reduction
+    # Aggregate scalars computed after solving steady state
+    m <= SteadyStateParameter(:A_star, NaN, description = "Bond spread (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Z_star, NaN, description = "TFP (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Ψ_star, NaN, description = "MEI (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:μ_p_star, NaN, description = "Price mark-up (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:μ_w_star, NaN, description = "Wage mark-up (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:τ_prog_star, NaN, description = "Tax progressivity (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:τ_level_star, NaN, description = "Tax level (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:σ_star, NaN, description = "Idiosyncratic risk (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:τ_prog_obs_star, NaN, description = "Observed tax progressivity (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:G_sh_star, NaN, description = "Government spending shock (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:R_sh_star, NaN, description = "MP shock (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:P_sh_star, NaN, description = "Progressivity shock (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:S_sh_star, NaN, description = "Idiosyncratic risk shock (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:rk_star, NaN, description = "Rental rate on capital (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:LP_star, NaN, description = "Liquidity premium (ex-post) (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:LPXA_star, NaN, description = "Liquidity premium (ex-ante) (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:π_star, NaN, description = "Inflation (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:π_w_star, NaN, description = "Wage Inflation (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:BD_star, NaN, description = "Debt (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:C_star, NaN, description = "Consumption (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:q_star, NaN, description = "Capital price (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:mc_star, NaN, description = "Marginal cost (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:mc_w_star, NaN, description = "Wage marginal cost (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:mc_w_w_star, NaN, description = "Wage marginal cost (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:u_star, NaN, description = "Capital utilization rate (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:profits_star, NaN, description = "Profits (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:union_profits_star, NaN, description = "Union Profits (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:BY_star, NaN, description = "Bond to output ratio (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:TY_star, NaN, description = "Tax revenue to output ratio (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:T_l1_star, NaN, description = "Tax revenue first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Y_l1_star, NaN, description = "Output first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:B_l1_star, NaN, description = "Bond supply first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:G_l1_star, NaN, description = "Government spending first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:I_l1_star, NaN, description = "Investment first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:w_l1_star, NaN, description = "Wages first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:q_l1_star, NaN, description = "Capital price first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:C_l1_star, NaN, description = "Consumption first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:avg_tax_rate_l1_star, NaN, description = "Average tax rate first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:τ_prog_l1_star, NaN, description = "Tax progressivity first lag (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Ygrowth_star, NaN, description = "Output growth (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Bgrowth_star, NaN, description = "Bond supply growth (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Igrowth_star, NaN, description = "Investment growth (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:wgrowth_star, NaN, description = "Wages growth (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Cgrowth_star, NaN, description = "Consumption growth (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Tgrowth_star, NaN, description = "Tax revenue growth (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:Ht_star, NaN, description = "Ht (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:retained_star, NaN,
+                              description = "Retained earnings of the monopolisticaly competitive intermediate" *
+                              " firm sector, shifted by 1.0 (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:firm_profits_star, NaN, description = "Firm profits (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:union_retained_star, NaN, description = "Retained earnings of the monopolistic union" *
+                              " sector, shifted by 1.0 (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:union_firm_profits_star, NaN, description = "Union profits (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:tot_retained_Y_star, NaN, description = "Exponential of the retained earnings to gdp ratio" *
+                              " (equal to zero) (steady-state)", tex_label = "")
+
+    # Scalar summary statistics about the idiosyncratic states (e.g. inequality measures)
+    # TODO: add descriptions to these parameters
+    m <= SteadyStateParameter(:share_borrower_star, NaN)
+    m <= SteadyStateParameter(:Gini_wealth_star, NaN)
+    m <= SteadyStateParameter(:P90_wealth_share_star, NaN)
+    m <= SteadyStateParameter(:P90_income_star, NaN)
+    m <= SteadyStateParameter(:P90_income_share_star, NaN)
+    m <= SteadyStateParameter(:Gini_income_star, NaN)
+    m <= SteadyStateParameter(:P90_minus_P10_income_star, NaN)
+    m <= SteadyStateParameter(:sd_log_income_star, NaN)
+    m <= SteadyStateParameter(:Gini_X_star, NaN)
+    m <= SteadyStateParameter(:sd_log_X_star, NaN)
+    m <= SteadyStateParameter(:P90_minus_P10_C_star, NaN)
+    m <= SteadyStateParameter(:Gini_C_star, NaN)
+    m <= SteadyStateParameter(:sd_log_C_star, NaN)
+    m <= SteadyStateParameter(:P10_C_star, NaN)
+    m <= SteadyStateParameter(:P50_C_star, NaN)
+    m <= SteadyStateParameter(:P90_C_star, NaN)
+
+    # Steady state grids for functional/distributional variables
     total_idio_states = get_setting(m, :nm) * get_setting(m, :nk) * get_setting(m, :ny)
     m <= SteadyStateParameterGrid(:distr_star, fill(1. / total_idio_states, # populate with a uniform guess
                                                     get_setting(m, :nm), get_setting(m, :nk), get_setting(m, :ny)),
                                   description = "Distribution over idiosyncratic states (steady-state)", tex_label = "D_*")
-    m <= SteadyStateParameterGrid(:marginal_pdf_m_star, fill(NaN, get_setting(m, :nm)),
-                                  description = "Steady-state expected discounted
-                                  marginal_pdf utility of consumption", tex_label = "l_*")
-    m <= SteadyStateParameterGrid(:marginal_pdf_k_star, fill(NaN, get_setting(m, :nm)),
-                                  description = "Steady-state expected discounted
-                                  marginal_pdf utility of consumption", tex_label = "l_*")
-    m <= SteadyStateParameterGrid(:marginal_pdf_y_star, fill(NaN, get_setting(m, :nm)),
-                                  description = "Steady-state expected discounted
-                                  marginal utility of consumption", tex_label = "l_*")
-    m <= SteadyStateParameterGrid(:Vm_star, fill(NaN, get_setting(m, :nm), get_setting(m, :nk), get_setting(m, :ny)),
+    m <= SteadyStateParameterGrid(:marginal_pdf_m_star, Vector{Float64}(undef, 0), # populated later, just need to have the right typing
+                                  description = "Marginal PDF of liquid bonds (steady-state)", tex_label = "D_{m, *}")
+    m <= SteadyStateParameterGrid(:marginal_pdf_k_star, Vector{Float64}(undef, 0),
+                                  description = "Marginal PDF of illiquid capital (steady-state)", tex_label = "D_{k, *}")
+    m <= SteadyStateParameterGrid(:marginal_pdf_y_star, Vector{Float64}(undef, 0),
+                                  description = "Marginal PDF of income (steady-state)", tex_label = "D_{y, *}")
+    m <= SteadyStateParameterGrid(:marginal_cdf_m_star, Vector{Float64}(undef, 0), # populated later, just need to have the right typing
+                                  description = "Marginal CDF of liquid bonds (steady-state)", tex_label = "D_{m, *}")
+    m <= SteadyStateParameterGrid(:marginal_cdf_k_star, Vector{Float64}(undef, 0),
+                                  description = "Marginal CDF of illiquid capital (steady-state)", tex_label = "D_{k, *}")
+    m <= SteadyStateParameterGrid(:marginal_cdf_y_star, Vector{Float64}(undef, 0),
+                                  description = "Marginal CDF of income (steady-state)", tex_label = "D_{y, *}")
+    m <= SteadyStateParameterGrid(:Vm_star, Array{Float64, 3}(undef, 0, 0, 0),
                                   description = "Marginal value of liquid bonds (steady-state)", tex_label = "V_{m, *}")
-    m <= SteadyStateParameterGrid(:Vk_star, fill(NaN, get_setting(m, :nm), get_setting(m, :nk), get_setting(m, :ny)),
+    m <= SteadyStateParameterGrid(:Vk_star, Array{Float64, 3}(undef, 0, 0, 0),
                                   description = "Marginal value of illiquid capital (steady-state)", tex_label = "V_{k, *}")
 
-    # Steady state grids for functional/distributional variables post-reduction
-    m <= SteadyStateParameterGrid(:marginal_cdf_m_star, fill(NaN, get_setting(m, :nm)),
-                                  description = "Steady-state expected discounted
-                                  marginal_cdf utility of consumption", tex_label = "l_*")
-    m <= SteadyStateParameterGrid(:marginal_cdf_k_star, fill(NaN, get_setting(m, :nm)),
-                                  description = "Steady-state expected discounted
-                                  marginal_cdf utility of consumption", tex_label = "l_*")
-    m <= SteadyStateParameterGrid(:marginal_cdf_y_star, fill(NaN, get_setting(m, :nm)),
-                                  description = "Steady-state expected discounted
-                                  marginal utility of consumption", tex_label = "l_*")
-    m <= SteadyStateParameterGrid(:copula_star, fill(NaN, get_setting(m, :nm)),
-                                  description = "Steady-state expected discounted
-                                  marginal utility of consumption", tex_label = "l_*")
+    # Steady state grids for reduction-related variables (indices for perturbation kept elsewhere) # TODO: document where indices are
+    m <= SteadyStateParameterGrid(:dct_Vm_star, Vector{Float64}(undef, 0),
+                                  description = "DCT coefficients of the marginal value of liquid bonds (steady-state)",
+                                  tex_label = "\\theta_{Vm, *}")
+    m <= SteadyStateParameterGrid(:dct_Vk_star, Vector{Float64}(undef, 0),
+                                  description = "DCT coefficients of the marginal value of illiquid capital (steady-state)",
+                                  tex_label = "\\theta_{Vk, *}")
+    m <= SteadyStateParameterGrid(:dct_copula_star, Vector{Float64}(undef, 0),
+                                  description = "DCT coefficients of the copula for distribution " *
+                                  "over idiosyncratic states (steady-state)",
+                                  tex_label = "\\theta_{D, *}")
 end
 
 """
@@ -607,64 +686,69 @@ functional/distributional steady state variable calculation
 """
 function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
 
-    # Create steady state values information
-    ss = OrderedDict{Symbol, Tuple{T, String, String}}() # use ordered dict to make sure values are entered sequentially
-    ss[:A] = (1., "Bond spread (steady-state)", "")
-    ss[:Z] = (1., "TFP (steady-state)", "")
-    ss[:Ψ] = (1., "MEI (steady-state)", "")
-    ss[:μ_p] = (get_untransformed_values(m[:μ_p]), "Price mark-up (steady-state)", "")
-    ss[:μ_w] = (get_untransformed_values(m[:μ_w]), "Wage mark-up (steady-state)", "")
-    ss[:τ_prog] = (get_untransformed_values(m[:τ_prog]), "Tax progressivity (steady-state)", "")
-    ss[:τ_level] = (get_untransformed_values(m[:τ_level]), "Tax level (steady-state)", "")
-    ss[:σ] = (1., "Idiosyncratic risk (steady-state)", "")
-    ss[:τ_prog_obs] = (1., "Observed tax progressivity (steady-state)", "")
-    ss[:G_sh] = (1., "Government spending shock (steady-state)", "")
-    ss[:R_sh] = (1., "MP shock (steady-state)", "")
-    ss[:P_sh] = (1., "Progressivity shock (steady-state)", "")
-    ss[:S_sh] = (1., "Idiosyncratic risk shock (steady-state)", "")
-    ss[:rk] = (1. + _bbl_interest(get_untransformed_values(m[:K_star]), 1. / m[:μ_p],
-                                  get_untransformed_values(m[:N_star]), m[:α], m[:δ_0]), "Rental rate on capital (steady-state)", "")
-    ss[:LP] = (1. + ss[:rk][1] - ss[:RB][1], "Liquidity premium (ex-post) (steady-state)", "")
-    ss[:LPXA] = (1. + ss[:rk][1] - ss[:RB][1], "Liquidity premium (ex-ante) (steady-state)", "")
-    ss[:π] = (1., "Inflation (steady-state)", "")
-    ss[:π_w] = (1., "Wage Inflation (steady-state)", "")
-    ss[:BD] = (-sum(m[:marginal_pdf_m_star] .* (m.grids[:m_grid].points .< 0.) .* m.grids[:m_grid].points), "Debt (steady-state)", "")
-    ss[:C] = (m[:Y_star] - m[:δ_0] * m[:K_star] - m[:G_star] - m[:Rbar] * ss[:BD][1], "Consumption (steady-state)", "")
-    ss[:q] = (1., "Capital price (steady-state)", "")
-    ss[:mc] = (1. / m[:μ_p], "Marginal cost (steady-state)", "")
-    ss[:mc_w] = (1. / m[:μ_w], "Wage marginal cost (steady-state)", "")
-    ss[:mc_w_w] = (m[:w_star] * ss[:mc_w][1], "Wage marginal cost (steady-state)", "")
-    ss[:u] = (1., "Capital utilization rate (steady-state)", "")
-    ss[:profits] = ((1. - ss[:mc][1]) * m[:Y_star], "Profits (steady-state)", "")
-    ss[:union_profits] = ((1. - ss[:mc_w][1]) * m[:w_star] * m[:N_star], "Union Profits (steady-state)", "")
-    ss[:BY] = (m[:B_star] / m[:Y_star], "Bond to output ratio (steady-state)", "")
-    ss[:TY] = (m[:T_star] / m[:Y_star], "Tax revenue to output ratio (steady-state)", "")
-    ss[:T_l1] = (get_untransformed_values(m[:T_star]), "Tax revenue first lag (steady-state)", "")
-    ss[:Y_l1] = (get_untransformed_values(m[:Y_star]), "Output first lag (steady-state)", "")
-    ss[:B_l1] = (get_untransformed_values(m[:B_star]), "Bond supply first lag (steady-state)", "")
-    ss[:G_l1] = (get_untransformed_values(m[:G_star]), "Government spending first lag (steady-state)", "")
-    ss[:I_l1] = (get_untransformed_values(m[:I_star]), "Investment first lag (steady-state)", "")
-    ss[:w_l1] = (get_untransformed_values(m[:w_star]), "Wages first lag (steady-state)", "")
-    ss[:q_l1] = (ss[:q][1], "Capital price first lag (steady-state)", "")
-    ss[:C_l1] = (ss[:C][1], "Consumption first lag (steady-state)", "")
-    ss[:avg_tax_rate_l1] = (get_untransformed_values(m[:avg_tax_rate_star]), "Average tax rate first lag (steady-state)", "")
-    ss[:τ_prog_l1] = (get_untransformed_values(m[:τ_prog]), "Tax progressivity first lag (steady-state)", "")
-    ss[:Ygrowth] = (1., "Output growth (steady-state)", "")
-    ss[:Bgrowth] = (1., "Bond supply growth (steady-state)", "")
-    ss[:Igrowth] = (1., "Investment growth (steady-state)", "")
-    ss[:wgrowth] = (1., "Wages growth (steady-state)", "")
-    ss[:Cgrowth] = (1., "Consumption growth (steady-state)", "")
-    ss[:Tgrowth] = (1., "Tax revenue growth (steady-state)", "")
-    ss[:Ht] = (1., "Ht (steady-state)", "")
-    ss[:retained] = (1., "Retained earnings of the monopolisticaly competitive intermediate firm sector, shifted by 1.0 (steady-state)", "")
-    ss[:firm_profits] = (ss[:profits][1], "Firm profits (steady-state)", "")
-    ss[:union_retained] = (1., "Retained earnings of the monopolistic union sector, shifted by 1.0 (steady-state)", "")
-    ss[:union_firm_profits] = (ss[:union_profits][1], "Union profits (steady-state)", "")
-    ss[:tot_retained_Y] = (1., "Exponential of the retained earnings to gdp ratio (equal to zero) (steady-state)", "")
+    # Unlog some steady state numbers
+    K_star = exp(m[:K_star])
+    N_star = exp(m[:N_star])
+    rk_star = exp(m[:rk_star])
+    Y_star = exp(m[:Y_star])
+    G_star = exp(m[:G_star])
+    T_star = exp(m[:T_star])
+    B_star = exp(m[:B_star])
+    I_star = exp(m[:I_star])
+    w_star = exp(m[:w_star])
 
-    for (k, v) in ss
-        m <= SteadyStateParameter(Symbol(k, :_star), v[1], description = v[2], tex_label = v[3])
-    end
+    # Create steady state values information. Note these are the LOG numbers
+    m[:A_star] = 0.
+    m[:Z_star] = 0.
+    m[:Ψ_star] = 0.
+    m[:μ_p_star] = log(m[:μ_p])
+    m[:μ_w_star] = log(m[:μ_w])
+    m[:τ_prog_star] = log(m[:τ_prog])
+    m[:τ_level_star] = log(m[:τ_level])
+    m[:σ_star] = 0.
+    m[:τ_prog_obs_star] = 0.
+    m[:G_sh_star] = 0.
+    m[:R_sh_star] = 0.
+    m[:P_sh_star] = 0.
+    m[:S_sh_star] = 0.
+    m[:rk_star] = log(1. + _bbl_interest(K_star, 1. / m[:μ_p], N_star, m[:α], m[:δ_0])) # TODO: can we calculate rk_star in prepare_linearization?
+    m[:LP_star] = log(1. + rk_star - m[:RB])
+    m[:LPXA_star] = log(1. + rk_star - m[:RB])
+    m[:π_star] = 0.
+    m[:π_w_star] = 0.
+    m[:BD_star] = log(-dot(m[:marginal_pdf_m_star], (get_gridpts(m, :m_grid) .< 0.) .* get_gridpts(m, :m_grid)))
+    m[:C_star] = log(Y_star - m[:δ_0] * K_star - G_star - m[:Rbar] * BD_star)
+    m[:q_star] = 0.
+    m[:mc_star] = -log(m[:μ_p])
+    m[:mc_w_star] = -log(m[:μ_w])
+    m[:mc_w_w_star] = log(w_star * exp(m[:mc_w_star]))
+    m[:u_star] = 0.
+    m[:profits_star] = log((1. - exp(m[:mc_star])) * Y_star)
+    m[:union_profits_star] = log((1. - exp(m[:mc_w])) * w_star * N_star)
+    m[:BY_star] = log(B_star / Y_star)
+    m[:TY_star] = log(T_star / Y_star)
+    m[:T_l1_star] = get_untransformed_values(m[:T_star])
+    m[:Y_l1_star] = get_untransformed_values(m[:Y_star])
+    m[:B_l1_star] = get_untransformed_values(m[:B_star])
+    m[:G_l1_star] = get_untransformed_values(m[:G_star])
+    m[:I_l1_star] = get_untransformed_values(m[:I_star])
+    m[:w_l1_star] = get_untransformed_values(m[:w_star])
+    m[:q_l1_star] = get_untransformed_values(m[:q_star])
+    m[:C_l1_star] = get_untransformed_values(m[:C_star])
+    m[:avg_tax_rate_l1_star] = get_untransformed_values(m[:avg_tax_rate_star])
+    m[:τ_prog_l1_star] = log(m[:τ_prog])
+    m[:Ygrowth_star] = 0.
+    m[:Bgrowth_star] = 0.
+    m[:Igrowth_star] = 0.
+    m[:wgrowth_star] = 0.
+    m[:Cgrowth_star] = 0.
+    m[:Tgrowth_star] = 0.
+    m[:Ht_star] = 0.
+    m[:retained_star] = 0.
+    m[:firm_profits_star] = get_untransformed_values(m[:profits_star])
+    m[:union_retained_star] = 0.
+    m[:union_firm_profits_star] = get_untransformed_values(m[:union_profits_star])
+    m[:tot_retained_Y_star] = 0.
 
     return m
 end
@@ -712,12 +796,14 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:kmax, 1500., "Maximum grid value for illiquid assets (capital) on refined grid")
 
     # Consumption policy iteration
-    m <= Setting(:max_value_function_iters, 1000, "Maximum number of fixed point iterations for the marginal value functions")
+    m <= Setting(:max_value_function_iters, 1000,
+                 "Maximum number of fixed point iterations for the marginal value functions")
 
     # Kolmogorov forward equation
     m <= Setting(:kfe_method, :krylov, "Method for solving Kolmogorov forward equation")
     m <= Setting(:n_direct_transition_iters, 10_000,
-                 "Number of iterations when approximating stationary distribution directly as a limit of the transition equation")
+                 "Number of iterations when approximating stationary distribution " *
+                 "directly as a limit of the transition equation")
 
     # Reduction settings for the following reduction strategy:
     # (1) Keep DCT coefficients of value functions that explain some fraction of total "energy"
@@ -731,6 +817,10 @@ function model_settings!(m::BayerBornLuetticke)
                  "distribution over idiosyncratic states to approximate a perturbation in the copula")
     m <= Setting(:remove_non_volatile_basis_functions, false, "Remove non-volatile basis functions for further compression")
 
+    # Initialize storages for settings/objects related to reduction
+    m <= Setting(:dct_compression_indices, Dict{Symbol, Vector{Int64}}(), "DCT compression indices")
+    m <= Setting(:copula, identity, "Steady-state copula")
+
     # Whether one wishes to re-compute the steady state
     m <= Setting(:recompute_steady_state, false, "Flag to avoid recomputing steady-state.")
 
@@ -740,14 +830,16 @@ function model_settings!(m::BayerBornLuetticke)
     #  which will also update the mappings from variable names to indices.
     m <= Setting(:n_scalar_jumps, 16, "Number of scalar jumps")
     m <= Setting(:n_scalar_states, 16, "Number of scalar states")
-    m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states), "Number of scalars (jumps and states)")
+    m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states),
+                 "Number of scalars (jumps and states)")
     m <= Setting(:n_idiosyncratic_states, get_setting(m, :ny) + get_setting(m, :nk) + get_setting(m, :nm),
                  "Number of idiosyncratic states")
     m <= Setting(:n_dct_variables, Dict(:Vm => 1, :Vk => 1, :copula => 1),
                   "Dictionary specifying the number of DCT coefficients for function-valued variables")
 
-    m <= Setting(:n_states, get_setting(m, :n_idiosyncratic_states) + get_setting(m, :n_scalar_states) - 3, # subtract 3 b/c remove degree of freedom
-                 "Total number of states after reduction steps")                           # for each dimension of copula (marginals integrate to 1)
+    m <= Setting(:n_states, get_setting(m, :n_idiosyncratic_states) +
+                 get_setting(m, :n_scalar_states) - 3,           # subtract 3 b/c remove degree of freedom
+                 "Total number of states after reduction steps") # for each dimension of copula (marginals integrate to 1)
     m <= Setting(:n_jumps, (sum(values(get_setting(m, :n_dct_variables))) - get_setting(m, :n_dct_variables)[:copula]) +
                  get_setting(m, :n_scalar_jumps), "Total number of jumps after reduction steps")
     m <= Setting(:nvars, get_setting(m, :n_states) + get_setting(m, :n_jumps), "Number of variables")

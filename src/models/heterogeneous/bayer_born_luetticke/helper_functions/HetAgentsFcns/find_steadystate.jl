@@ -9,7 +9,6 @@ Find the stationary equilibrium capital stock.
 - `KSS`: steady-state capital stock
 - `VmSS`, `VkSS`: marginal value functions
 - `distrSS::Array{Float64,3}`: steady-state distribution of idiosyncratic states, computed by [`Ksupply()`](@ref)
-- `n_par::NumericalParameters`,`m_par::ModelParameters`
 """
 function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                           skip_coarse_grid::Bool = false) where {T <: Real}
@@ -28,7 +27,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     DSGE.init_grids!(m; coarse = true)
 
     if verbose in [:low, :high]
-        println("Finding equilibrium capital stock for coarse income grid . . .")
+        println("Finding equilibrium capital stock for coarse income grid...")
     end
 
     # Capital stock guesses
@@ -54,7 +53,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     ## STEP 2: Find the stationary equilibrium for final grid
     # -------------------------------------------------------------------------------
     if verbose in [:low, :high]
-        println("Finding equilibrium capital stock for refined income grid . . .")
+        println("Finding equilibrium capital stock for refined income grid...")
     end
     DSGE.init_grids!(m)
 
