@@ -23,10 +23,10 @@ end
     return (length(d[k]) > 1 ? exp.((@view x[d[k]]) + nt[k]) : exp(x[d[k][1]] + nt[k]))
 end
 
-@inline function sslogdeviation2level_primekeys(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, UnitRange},
-                                                nt::NamedTuple, ::Val{k}) where {k}
-    k′ = Symbol(k, "′") # keys of nt are assumed to have primes on them, but we don't want to use prime keys for d
-    return (length(d[k]) > 1 ? exp.((@view x[d[k]]) + nt[k′]) : exp(x[d[k][1]] + nt[k′]))
+@inline function sslogdeviation2level_unprimekeys(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, UnitRange},
+                                                  nt::NamedTuple, ::Val{k}) where {k}
+    kunprime = unprime(k) # keys of nt are assumed to not have primes on them, but we still want to use prime keys for d
+    return (length(d[k]) > 1 ? exp.((@view x[d[k]]) + nt[kunprime]) : exp(x[d[k][1]] + nt[kunprime]))
 end
 
 @inline function sslogdeviation2log(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, UnitRange},
@@ -61,14 +61,14 @@ macro sslogdeviations2levels(args) # Based on @unpack from UnPack
     esc(expr)
 end
 
-macro sslogdeviations2levels_primekeys(args) # Based on @unpack from UnPack
+macro sslogdeviations2levels_unprimekeys(args) # Based on @unpack from UnPack
     varnames, x_idict_nt = args.args
     varnames = isa(varnames, Symbol) ? [varnames] : varnames.args
     x, idict, nt = x_idict_nt.args
     x_instance = gensym()
     idict_instance = gensym()
     nt_instance = gensym()
-    kd = [:( $key = $sslogdeviation2level_primekeys($x_instance, $idict_instance, $nt_instance, Val{$(Expr(:quote, key))}()) ) for key in varnames]
+    kd = [:( $key = $sslogdeviation2level_unprimekeys($x_instance, $idict_instance, $nt_instance, Val{$(Expr(:quote, key))}()) ) for key in varnames]
     kdblock = Expr(:block, kd...)
     expr = quote
         local $x_instance = $x # handles if x_instance is not a variable but an expression
@@ -147,4 +147,16 @@ macro get_deviations(args) # Based on @unpack from UnPack
         $kdblock
     end
     esc(expr)
+end
+
+"""
+```
+@include(filename::AbstractString)
+```
+mirrors the behavior of include but in a local scope.
+See the discussion https://discourse.julialang.org/t/how-to-include-into-local-scope/34634/10.
+"""
+macro include(filename::AbstractString)
+    path = joinpath(dirname(String(__source__.file)), filename)
+    return esc(Meta.parse("quote; " * read(path, String) * "; end").args[1])
 end
