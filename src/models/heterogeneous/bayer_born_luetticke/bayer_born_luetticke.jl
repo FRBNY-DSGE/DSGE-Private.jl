@@ -533,13 +533,6 @@ function init_parameters!(m::BayerBornLuetticke)
 
     # Steady-state parameters
 
-    # Parameters pertaining to idiosyncratic state space
-    m <= SteadyStateParameter(:H_star, NaN,  description = "Long-run average human capital " *
-                              "in stationary equilibrium", tex_label = "H")
-    m <= SteadyStateParameter(:HW_star, NaN, description =
-                              "Long-run fraction of workers in stationary equilibrium",
-                              tex_label = "HW") # there are workers and entrepreneurs in equilibrium
-
     # Aggregate scalars (just initialized here, these will be populated by the steadystate!)
     m <= SteadyStateParameter(:K_star, NaN, description = "Capital stock (steady-state)",
                               tex_label = "K_*")

@@ -1,4 +1,4 @@
-function _bbl_incomes(θ::NamedTuple, grids::OrderedDict, H::Real, HW::Real, KSS::Real, distrSS::Array{<: Real, 3})
+function _bbl_incomes(θ::NamedTuple, grids::OrderedDict, KSS::Real, distrSS::Array{<: Real, 3})
 
     NSS       = _bbl_employment(KSS, 1.0 / (θ[:μ_p] * θ[:μ_w]), θ[:α], θ[:τ_lev], θ[:τ_prog], θ[:γ])
     rkSS      = _bbl_interest(KSS, 1.0 / θ[:μ_p], NSS, θ[:α], θ[:δ_0])
@@ -11,6 +11,8 @@ function _bbl_incomes(θ::NamedTuple, grids::OrderedDict, H::Real, HW::Real, KSS
 
     neg_liq_r = RBSS + θ[:Rbar]
     eff_int   = [x <= 0. ? neg_liq_r : RBSS for x in grids[:m_ndgrid]] # effective rate depending on assets
+    H         = grids[:H]
+    HW        = grids[:HW]
 
     incgross = Array{Array{Float64, 3}}(undef, 5) # gross income
     inc = Array{Array{Float64, 3}}(undef, 6)      # net (of taxes) income
