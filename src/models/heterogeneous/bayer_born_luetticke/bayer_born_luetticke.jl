@@ -432,10 +432,10 @@ function init_parameters!(m::BayerBornLuetticke)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_A: AR(1) coefficient in the bond-spread process.",
                    tex_label = "\\rho_A")
-    m <= parameter(:ρ_z, 0.9, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
+    m <= parameter(:ρ_Z, 0.9, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
-                   description = "ρ_z: AR(1) coefficient in the technology process.",
-                   tex_label = "\\rho_z")
+                   description = "ρ_Z: AR(1) coefficient in the technology process.",
+                   tex_label = "\\rho_Z")
     m <= parameter(:ρ_Ψ, 0.9, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_Ψ: AR(1) coefficient in marginal efficiency of investment (MEI) process.",
@@ -476,10 +476,10 @@ function init_parameters!(m::BayerBornLuetticke)
                    RootInverseGamma(2, 0.10), fixed = false, # Note second tuple is parameterization for Exponential transform
                    description = "σ_A: standard dev. of the bond-spread process.",
                    tex_label = "\\sigma_{A}")
-    m <= parameter(:σ_z, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_Z, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
-                   description = "σ_z: standard dev. of the process describing the " *
-                   "stationary component of productivity.", tex_label = "\\sigma_z")
+                   description = "σ_Z: standard dev. of the process describing the " *
+                   "stationary component of productivity.", tex_label = "\\sigma_Z")
     m <= parameter(:σ_Ψ, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_Ψ: standard dev. of the exogenous marginal efficiency" *
