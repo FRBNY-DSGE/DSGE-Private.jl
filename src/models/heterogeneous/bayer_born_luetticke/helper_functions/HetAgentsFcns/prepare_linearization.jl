@@ -2,7 +2,8 @@
 ```
 prepare_linearization(m, KSS, VmSS, VkSS, distrSS)
 ```
-Compute a number of equilibrium objects needed for linearization.
+Compute a number of equilibrium objects needed for linearization
+and updates the steady state values and indices in `m`.
 
 # Arguments
 - `KSS`: steady-state capital stock
@@ -25,12 +26,10 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
         println("Running reduction step to prepare linearization")
     end
     θ  = parameters2namedtuple(m)
-    H  = get_untransformed_values(m[:H_star])
-    HW = get_untransformed_values(m[:HW_star])
     nm, nk, ny = DSGE.get_idiosyncratic_dims(m)
 
     # Calculate other equilibrium quantities
-    incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, avg_tax_rateSS, eff_int = _bbl_incomes(θ, m.grids, H, HW, KSS, distrSS)
+    incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, avg_tax_rateSS, eff_int = _bbl_incomes(θ, m.grids, KSS, distrSS)
 
     # obtain other steady state variables
     KSS, BSS, TransitionMatSS, TransitionMat_aSS, TransitionMat_nSS,
@@ -185,4 +184,43 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
             =# CDF_SS, CDF_m, CDF_k, CDF_y, distrSS=#
 
 m
+end
+
+# in case we ever just want the vector
+function construct_steadystate_vector(m::BayerBornLuetticke; only_aggregate::Bool = false)
+
+    if only_aggregate
+        keys = [unprime(k) for k in vcat(get_aggregate_state_variables(m), get_aggregate_jump_variables(m))]
+
+        return [get_untransformed_values(m[_bbl_parse_endogenous_states(k)]) for k in keys]
+    else
+        keys = vcat(:marginal_pdf_m_t, :marginal_pdf_k_t, :marginal_pdf_y_t, :distr_t, # TODO: are marginal_pdfs going to be state variables?
+                    [_bbl_parse_endogenous_states(unprime(k)) for
+                     k in vcat(get_aggregate_state_variables(m), m.jump_variables)])   # m.jump_variables = [Vm_t, Vk_t, aggregate scalars names...]
+
+        return [get_untransformed_values(m[_bbl_parse_endogenous_states(k)]) for k in keys]
+    end
+end
+
+function construct_steadystate_namedtuple(m::BayerBornLuetticke; only_aggregate::Bool = false)
+
+    # Create keys for steady-state variables
+    keys = if only_aggregate
+        ([unprime(k) for k in get_aggregate_state_variables(m)]...,
+         [unprime(k) for k in get_aggregate_jump_variables(m)]...)
+    else
+        (:marginal_pdf_m_t,
+         :marginal_pdf_k_t,
+         :marginal_pdf_y_t,
+         :distr_t,
+         [unprime(k) for
+          k in get_aggregate_state_variables(m)]..., # TODO: are marginal_pdfs going to be state variables?
+         [unprime(k) for k in m.jump_variables]...) # m.jump_variables = [Vm_t, Vk_t, aggregate scalars names...]
+    end
+
+    # Create NamedTuple by parsing key to obtain the implied steady-state value in m
+    nt = NamedTuple{keys}(get_untransformed_values(m[_bbl_parse_endogenous_states(k)]) for k in keys)
+
+
+    return nt
 end
