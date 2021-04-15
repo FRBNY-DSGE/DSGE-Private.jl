@@ -400,6 +400,7 @@ module DSGE
 
     # Heterogeneous Agent Models
     include("models/heterogeneous/util.jl")
+    include("models/heterogeneous/macros.jl")
     include("models/heterogeneous/steady_state_helpers/kolmogorov_forward.jl")
     include("models/heterogeneous/steady_state_helpers/ndgrid_evaluations.jl")
 
