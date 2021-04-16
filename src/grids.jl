@@ -96,10 +96,13 @@ end
 ####################
 # Grid-based utils
 ####################
+get_gridpts(grid::Grid, grid_name::Symbol) = grid[grid_name].points
+get_gridwts(grid::Grid, grid_name::Symbol) = grid[grid_name].weights
+get_gridscale(grid::Grid, grid_name::Symbol) = grid[grid_name].scale
 get_grid(m::AbstractDSGEModel, grid_name::Symbol) = m.grids[grid_name]
-get_gridpts(m::AbstractDSGEModel, grid_name::Symbol) = m.grids[grid_name].points
-get_gridwts(m::AbstractDSGEModel, grid_name::Symbol) = m.grids[grid_name].weights
-get_gridscale(m::AbstractDSGEModel, grid_name::Symbol) = m.grids[grid_name].scale
+get_gridpts(m::AbstractDSGEModel, grid_name::Symbol) = get_gridpts(m.grids, grid_name)
+get_gridwts(m::AbstractDSGEModel, grid_name::Symbol) = get_gridwts(m.grids, grid_name)
+get_gridscale(m::AbstractDSGEModel, grid_name::Symbol) = get_gridscale(m.grids, grid_name)
 
 function quadrature_sum(x::Vector{T}, grid::Grid) where {T<:Real}
     return sum(grid.weights .* x .* grid.points)
