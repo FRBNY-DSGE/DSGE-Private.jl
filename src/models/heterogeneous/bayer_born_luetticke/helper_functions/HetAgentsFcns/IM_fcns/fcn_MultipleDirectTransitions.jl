@@ -47,7 +47,7 @@ function MultipleDirectTransition(m_a_star::AbstractArray{T,3},
                 end
             end
         end
-        dist  = maximum(abs.(dPrime[:] - distr[:]))
+        dist  = maximum(abs.(vec(dPrime - distr)))
         distr = dPrime
         count = count+1
     end

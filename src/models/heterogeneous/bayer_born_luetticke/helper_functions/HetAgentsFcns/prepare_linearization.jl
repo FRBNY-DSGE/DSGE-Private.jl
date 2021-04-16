@@ -64,13 +64,13 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
 
     # Scalar summary statistics
     m[:share_borrower_star]       = log(share_borrowerSS)
-    m[:Gini_wealth_star]          = log(GiniWSS)
-    m[:P90_wealth_share_star]     = log(w90shareSS)
-    m[:P90_income_star]           = log(I90shareSS)
-    m[:P90_income_share_star]     = log(I90sharenetSS)
-    m[:Gini_income_star]          = log(GiniCSS)
+    m[:Gini_W_star]               = log(GiniWSS)
+    m[:W90_share_star]            = log(w90shareSS)
+    m[:I90_share_star]            = log(I90shareSS)
+    m[:I90_share_net_star]        = log(I90sharenetSS)
+    m[:Gini_C_star]               = log(GiniCSS)
     m[:P90_minus_P10_income_star] = log(P9010ISS)
-    m[:sd_log_income_star]        = log(sdlogySS)
+    m[:sd_log_y_star]             = log(sdlogySS)
     m[:Gini_X_star]               = log(GiniXSS) # TODO: figure out exactly what this X is
     m[:sd_log_X_star]             = log(sdlogxSS)
     m[:P90_minus_P10_C_star]      = log(P9010CSS)
@@ -93,8 +93,8 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
     # ------------------------------------------------------------------------------
     # 2 a.) Discrete cosine transformation of marginal value functions
     # ------------------------------------------------------------------------------
-    ThetaVm             = dct(VmSS)[:]                               # Discrete cosine transformation of marginal liquid asset value
-    ind                 = sortperm(abs.(ThetaVm[:]); rev = true)     # Indexes of coefficients sorted by their absolute size
+    ThetaVm             = vec(dct(VmSS))                             # Discrete cosine transformation of marginal liquid asset value
+    ind                 = sortperm(abs.(vec(ThetaVm)); rev = true)   # Indexes of coefficients sorted by their absolute size
     coeffs              = 1                                          # Container to store the number of retained coefficients
 
     # Find the important basis functions (discrete cosine) for VmSS (in L2 norm)
@@ -103,8 +103,8 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
     end
     compressionIndexesVm = ind[1:coeffs]                             # store indexes of retained coefficients
 
-    ThetaVk             = dct(VkSS)[:]                               # Discrete cosine transformation of marginal illiquid asset value
-    ind                 = sortperm(abs.(ThetaVk[:]); rev = true)     # Indexes of coefficients sorted by their absolute size
+    ThetaVk             = vec(dct(VkSS))                             # Discrete cosine transformation of marginal illiquid asset value
+    ind                 = sortperm(abs.(vec(ThetaVk)); rev = true)   # Indexes of coefficients sorted by their absolute size
     coeffs              = 1                                          # Container to store the number of retained coefficients
 
     # Find the important basis functions (discrete cosine) for VkSS
@@ -114,8 +114,8 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
     compressionIndexesVk = ind[1:coeffs]                             # store indexes of retained coefficients
 
     distr_LOL           = view(distrSS, 1:nm-1, 1:nk-1, 1:ny-1)      # Leave out last entry of histogramm (b/c it integrates to 1)
-    ThetaD              = dct(distr_LOL)[:]                          # Discrete cosine transformation of Copula
-    ind                 = sortperm(abs.(ThetaD[:]); rev = true)      # Indexes of coefficients sorted by their absolute size
+    ThetaD              = vec(dct(distr_LOL))                        # Discrete cosine transformation of Copula
+    ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
     n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
     compressionIndexesD = ind[2:2+n_copula_coefs]                    # leave out index no. 1 as this shifts the constant
 
@@ -142,14 +142,14 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
     # ------------------------------------------------------------------------------
     # TODO: use our general CDF and marginal CDF quadrature here rather than this implementation
     # CDF_SS              = zeros(nm + 1, nk + 1, ny + 1) # Produce CDF of asset-income distribution (container here)
-    CDF_SS                    = Array{Float64}(undef, nm + 1, nk + 1, ny + 1) # Produce CDF of asset-income distribution (container here)
+    CDF_SS                    = Array{Float64}(undef, nm + 1, nk + 1, ny + 1)        # Produce CDF of asset-income distribution (container here)
     CDF_SS[1, :, :]          .= 0.
     CDF_SS[:, 1, :]          .= 0.
     CDF_SS[:, :, 1]          .= 0.
     CDF_SS[2:end,2:end,2:end] = cumsum(cumsum(cumsum(distrSS,dims=1),dims=2),dims=3) # Calculate CDF from PDF
-    CDF_m                     = cumsum([0.0; distr_m_SS[:]])          # Marginal distribution (cdf) of liquid assets
-    CDF_k                     = cumsum([0.0; distr_k_SS[:]])          # Marginal distribution (cdf) of illiquid assets
-    CDF_y                     = cumsum([0.0; distr_y_SS[:]])          # Marginal distribution (cdf) of income
+    CDF_m                     = cumsum([0.0; vec(distr_m_SS)])                       # Marginal distribution (cdf) of liquid assets
+    CDF_k                     = cumsum([0.0; vec(distr_k_SS)])                       # Marginal distribution (cdf) of illiquid assets
+    CDF_y                     = cumsum([0.0; vec(distr_y_SS)])                       # Marginal distribution (cdf) of income
 
     # TODO: create notion of "steady-state function parameter" and store this function there b/c we will need it for MCMC/SMC
     Copula(x::Vector, y::Vector, z::Vector) =
@@ -209,12 +209,12 @@ function construct_steadystate_namedtuple(m::BayerBornLuetticke; only_aggregate:
         ([unprime(k) for k in get_aggregate_state_variables(m)]...,
          [unprime(k) for k in get_aggregate_jump_variables(m)]...)
     else
-        (:marginal_pdf_m_t,
-         :marginal_pdf_k_t,
+        (:marginal_pdf_m_t, # not just using m.state_variables b/c we will need
+         :marginal_pdf_k_t, # the entire distribution, not just the DCT coefficients
          :marginal_pdf_y_t,
          :distr_t,
          [unprime(k) for
-          k in get_aggregate_state_variables(m)]..., # TODO: are marginal_pdfs going to be state variables?
+          k in get_aggregate_state_variables(m)]...,
          [unprime(k) for k in m.jump_variables]...) # m.jump_variables = [Vm_t, Vk_t, aggregate scalars names...]
     end
 

@@ -61,9 +61,9 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     S                = [0.; cumsum(moneycapital_pdf .* mplusk)]
     giniwealth       = 1. - (dot(moneycapital_pdf, (S[1:end-1] + S[2:end])) / S[end])
 
-    distr_m = sum(distr, dims=(2,3))[:]
-    distr_k = sum(distr, dims=(1,3))[:]
-    distr_y = sum(distr, dims=(1,2))[:]
+    distr_m = vec(sum(distr, dims=(2,3)))
+    distr_k = vec(sum(distr, dims=(1,3)))
+    distr_y = vec(sum(distr, dims=(1,2)))
 
     share_borrower = loop_sum(distr_m[grids[:m_grid].points .< 0])
 
@@ -85,7 +85,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     distr_x[:, :, :, 1] = θ[:λ] .* distr
     distr_x[:, :, :, 2] = (1. - θ[:λ]) .* distr
 
-    IX                  = sortperm(x[:])
+    IX                  = sortperm(vec(x))
     x                   = x[IX]
     logx                = log.(x)
     x_pdf               = distr_x[IX]
@@ -93,7 +93,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     ginicompconsumption = 1. - (dot(x_pdf, (S[1:end-1] + S[2:end])) / S[end])
     sdlogx              = sqrt(dot(x_pdf, logx.^2) - dot(x_pdf, logx)^2)
 
-    IX              = sortperm(c[:])
+    IX              = sortperm(vec(c))
     c               = c[IX]
     logc            = log.(c)
     c_pdf           = distr_x[IX]
@@ -114,7 +114,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     sdlogc          = sqrt(dot(c_pdf, logc.^2) - dot(c_pdf, logc)^2)
 
     Yidio              = inc[6] + inc[2] + inc[3] - grids[:m_ndgrid]
-    IX                 = sortperm(Yidio[:])
+    IX                 = sortperm(vec(Yidio))
     Yidio              = Yidio[IX]
     Y_pdf              = distr[IX]
     Y_cdf              = cumsum(Y_pdf)
@@ -123,7 +123,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     I90sharenet        = 1.0 .- mylinearinterpolate(Y_cdf, FN_incomesharesnet, [0.9])[1]
 
     Yidio           = incgross[1] + incgross[2] + incgross[3] - grids[:m_ndgrid]
-    IX              = sortperm(Yidio[:])
+    IX              = sortperm(vec(Yidio))
     Yidio           = Yidio[IX]
     Y_pdf           = distr[IX]
     Y_cdf           = cumsum(Y_pdf)
@@ -136,7 +136,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     Yidio           = incgross[1]
     Yidio           = Yidio[:, :, 1:end-1]
     logYidio        = log.(Yidio)
-    IX              = sortperm(Yidio[:])
+    IX              = sortperm(vec(Yidio))
     Yidio           = Yidio[IX]
     distr_aux       = distr[:, :, 1:end-1]
     distr_aux       = distr_aux ./ loop_sum(distr_aux)

@@ -48,9 +48,9 @@ function MakeTransition(m_a_star::AbstractArray{T,3},
             end
         end
     end
-    S_a          = startindex[:]
-    T_a          = targetindex[:]
-    W_a          = weight[:]
+    S_a          = vec(startindex)
+    T_a          = vec(targetindex)
+    W_a          = vec(weight)
 
     # Non-Adjustment case
     weight2      = zeros(typeof(k_a_star[1]), 2,ny,nk* nm*ny)
@@ -76,9 +76,9 @@ function MakeTransition(m_a_star::AbstractArray{T,3},
             end
         end
     end
-    S_n        = startindex2[:]
-    T_n        = targetindex2[:]
-    W_n        = weight2[:]
+    S_n        = vec(startindex2)
+    T_n        = vec(targetindex2)
+    W_n        = vec(weight2)
 
     return S_a, T_a, W_a, S_n, T_n, W_n
 end

@@ -205,7 +205,7 @@ c_a_star            = Array{eltype(c_star_n),3}(undef, (n[1], n[2], n[3])) # The
 m_a_star            = Array{eltype(c_star_n),3}(undef, (n[1], n[2], n[3])) # HH can adjust their portfolios
 k_a_star            = Array{eltype(c_star_n),3}(undef, (n[1], n[2], n[3]))
 Resource_grid       = reshape(inc_IA + inc_LA + inc_rent, (n[1] * n[2], n[3])) # resources according to income
-labor_inc_grid      = inc_lab[1, 1, :][:] # reshape(inc_lab,(n[1]*n[2], n[3])) # TODO: check if this is correct b/c the reshape is not equivalent
+labor_inc_grid      = vec(inc_lab[1, 1, :]) # reshape(inc_lab,(n[1]*n[2], n[3])) # TODO: check if this is correct b/c the reshape is not equivalent
 # log_index2          = falses(n[1] * n[2]) # commented out b/c you recreate log_index2 every time, and reshape doesn't have an in-place option
 
 @views @inbounds begin

@@ -3,7 +3,7 @@ function Fastroot(xgrid::Vector,fx::AbstractArray)
     #(=one Newton step at largest negative function value)
     #   stripped down version of interp1 that accepts multiple inputs [max 3]
     #   that are interpolated over the same grids x & xi
-    xgrid=xgrid[:]
+    # xgrid=xgrid[:] # unnecessary b/c xgrid is a Vector already and we don't want to copy it
     fx = reshape(fx,length(xgrid),:)
     # Make use of the fact that the difference equation is monotonically
     # increasing in m, use sign for robustness.
