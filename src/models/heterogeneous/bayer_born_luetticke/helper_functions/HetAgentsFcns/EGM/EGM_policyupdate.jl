@@ -35,8 +35,8 @@ function EGM_policyupdate(EVm::Array,
     inc_LA     = inc[3]
     inc_IA     = inc[4]
     n          = size(EVm)
-    m_grid     = grids[:m_grid].points
-    k_grid     = grids[:k_grid].points
+    m_grid     = get_gridpts(grids, :m_grid)
+    k_grid     = get_gridpts(grids, :k_grid)
     mmax       = m_grid[end]
     kmax       = k_grid[end]
 

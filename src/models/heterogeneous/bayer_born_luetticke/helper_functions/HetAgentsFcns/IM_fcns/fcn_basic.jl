@@ -50,7 +50,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     mplusk = Vector{eltype(c_a_star)}(undef, nk * nm)
     @inbounds @simd for k = 1:nk
         for m = 1:nm
-            mplusk[m + (k - 1) * nm] = grids[:m_grid].points[m] + grids[:k_grid].points[k]
+            mplusk[m + (k - 1) * nm] = get_gridpts(grids, :m_grid)[m] + get_gridpts(grids, :k_grid)[k]
         end
     end
     IX               = sortperm(mplusk)
@@ -65,7 +65,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     distr_k = vec(sum(distr, dims=(1,3)))
     distr_y = vec(sum(distr, dims=(1,2)))
 
-    share_borrower = loop_sum(distr_m[grids[:m_grid].points .< 0])
+    share_borrower = loop_sum(distr_m[get_gridpts(grids, :m_grid) .< 0])
 
     p50             = findfirst(x -> x >= 0.5, moneycapital_cdf)
     p90             = findfirst(x -> x >= 0.9, moneycapital_cdf)
