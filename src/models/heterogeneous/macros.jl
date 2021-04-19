@@ -1,3 +1,4 @@
+# TODO: add docstrings for macros
 @inline function variable2index2value(x::AbstractVector{S}, d::AbstractDict, ::Val{k}) where {S <: Number, k}
     return length(d[k]) > 1 ? (@view x[d[k]]) : x[d[k][1]]
 end
@@ -148,6 +149,31 @@ macro get_deviations(args) # Based on @unpack from UnPack
     end
     esc(expr)
 end
+
+"""
+```
+@unpack_and_first
+```
+unpacks a dictionary and calls `first` on the unpacked value.
+The principle use of this macro is for unpacking a dictionary
+whose values are 1-length `UnitRange` instances.
+"""
+@inline unpack_and_first(x::AbstractDict{Symbol}, ::Val{k}) where {k} = first(x[k])
+macro unpack_and_first(args)
+    args.head!=:(=) && error("Expression needs to be of form `a, b = c`")
+    items, suitecase = args.args
+    items = isa(items, Symbol) ? [items] : items.args
+    suitecase_instance = gensym()
+    kd = [:( $key = $unpack_and_first($suitecase_instance, Val{$(Expr(:quote, key))}()) ) for key in items]
+    kdblock = Expr(:block, kd...)
+    expr = quote
+        $suitecase_instance = $suitecase # handles if suitecase is not a variable but an expression
+        $kdblock
+        $suitecase_instance # return RHS of `=` as standard in Julia
+    end
+    esc(expr)
+end
+
 
 """
 ```

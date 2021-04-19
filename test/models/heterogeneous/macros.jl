@@ -67,3 +67,10 @@ using Test, DSGE, Random, OrderedCollections
     @test a == (@view x[id[:a]])
     @test b == (x[id[:b][1]])
 end
+
+@testset "Macros for computing Jacobians of equilibrium conditions" begin
+    d = Dict{Symbol, UnitRange{Int64}}(:a => 1:1, :b => 2:2)
+    DSGE.@unpack_and_first a, b = d
+    @test a == 1
+    @test b == 2
+end
