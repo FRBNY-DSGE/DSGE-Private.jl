@@ -1,6 +1,11 @@
 # TODO: add docstrings for macros
-@inline function variable2index2value(x::AbstractVector{S}, d::AbstractDict, ::Val{k}) where {S <: Number, k}
+@inline function variable2index2value(x::AbstractVector{S}, d::AbstractDict{Symbol, <: UnitRange}, ::Val{k}) where {S <: Number, k}
     return length(d[k]) > 1 ? (@view x[d[k]]) : x[d[k][1]]
+end
+
+
+@inline function variable2index2value(x::AbstractVector{S}, d::AbstractDict{Symbol, Int}, ::Val{k}) where {S <: Number, k}
+    return x[d[k]]
 end
 
 macro variables2indices2values(args) # Based on @unpack from UnPack
@@ -19,29 +24,54 @@ macro variables2indices2values(args) # Based on @unpack from UnPack
     esc(expr)
 end
 
-@inline function sslogdeviation2level(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, UnitRange},
+@inline function sslogdeviation2level(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, <: UnitRange},
                                       nt::NamedTuple, ::Val{k}) where {k}
     return (length(d[k]) > 1 ? exp.((@view x[d[k]]) + nt[k]) : exp(x[d[k][1]] + nt[k]))
 end
 
-@inline function sslogdeviation2level_unprimekeys(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, UnitRange},
+@inline function sslogdeviation2level(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, Int},
+                                      nt::NamedTuple, ::Val{k}) where {k}
+    return exp(x[d[k]] + nt[k])
+end
+
+@inline function sslogdeviation2level_unprimekeys(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, <: UnitRange},
                                                   nt::NamedTuple, ::Val{k}) where {k}
     kunprime = unprime(k) # keys of nt are assumed to not have primes on them, but we still want to use prime keys for d
     return (length(d[k]) > 1 ? exp.((@view x[d[k]]) + nt[kunprime]) : exp(x[d[k][1]] + nt[kunprime]))
 end
 
-@inline function sslogdeviation2log(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, UnitRange},
+@inline function sslogdeviation2level_unprimekeys(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, Int},
+                                                  nt::NamedTuple, ::Val{k}) where {k}
+    kunprime = unprime(k) # keys of nt are assumed to not have primes on them, but we still want to use prime keys for d
+    return exp(x[d[k]] + nt[kunprime])
+end
+
+@inline function sslogdeviation2log(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, <: UnitRange},
                                     nt::NamedTuple, ::Val{k}) where {k}
     return (length(d[k]) > 1 ? (@view x[d[k]]) : x[d[k][1]]) + nt[k]
 end
 
-@inline function ssdeviation2level(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, UnitRange},
+@inline function sslogdeviation2log(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, Int},
+                                    nt::NamedTuple, ::Val{k}) where {k}
+    return x[d[k]] + nt[k]
+end
+
+@inline function ssdeviation2level(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, <: UnitRange},
                                    nt::NamedTuple, ::Val{k}) where {k}
     return (length(d[k]) > 1 ? (@view x[d[k]]) : x[d[k][1]]) + nt[k]
 end
 
-@inline function get_deviation(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, UnitRange}, ::Val{k}) where {k}
+@inline function ssdeviation2level(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, Int},
+                                   nt::NamedTuple, ::Val{k}) where {k}
+    return x[d[k]] + nt[k]
+end
+
+@inline function get_deviation(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, <: UnitRange}, ::Val{k}) where {k}
     return length(d[k]) > 1 ? (@view x[d[k]]) : x[d[k][1]]
+end
+
+@inline function get_deviation(x::AbstractVector{<: Real}, d::AbstractDict{Symbol, Int}, ::Val{k}) where {k}
+    return x[d[k]]
 end
 
 macro sslogdeviations2levels(args) # Based on @unpack from UnPack
