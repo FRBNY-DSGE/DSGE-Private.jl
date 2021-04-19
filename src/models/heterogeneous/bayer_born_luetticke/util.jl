@@ -1,9 +1,9 @@
 ## Access functions
 
 # aggregate variable names
-get_aggregate_state_variables(m::BayerBornLuetticke) = m.state_variables[5:end] # first 4 variables are marginals and DCT of distribution
-get_aggregate_jump_variables(m::BayerBornLuetticke) = m.jump_variables[3:end] # first 2 variables are DCT of value functions Vm_t and Vk_t
-
+get_aggregate_state_variables(m::BayerBornLuetticke) = m.aggregate_state_variables
+get_aggregate_jump_variables(m::BayerBornLuetticke) = m.aggregate_jump_variables
+get_aggregate_equilibrium_conditions(m::BayerBornLuetticke) = m.aggregate_equilibrium_conditions
 get_lagged_variables(m::BayerBornLuetticke) = m.state_variables[7:15] # 7 = Y′_tl1, 15 = τ_prog′_t1
 
 # Idiosyncratic grid settings
@@ -22,8 +22,8 @@ get_idiosyncratic_ndgrids(m::BayerBornLuetticke) = (m.grids[:m_ndgrid], m.grids[
 # Map lagged variable to steady state name
 @inline function _bbl_parse_endogenous_states(var::Symbol)
     strvar = string(var)
-    cutoff_i = if strvar[end - 2:end] == "_t1"
-        return Symbol(strvar[1:end - 2] * "_l1_star")
+    cutoff_i = if length(strvar) > 3 && strvar[end - 2:end] == "_t1"
+        return Symbol(strvar[1:end - 2] * "l1_star")
     else
         return Symbol(strvar[1:end - 1] * "star")
     end

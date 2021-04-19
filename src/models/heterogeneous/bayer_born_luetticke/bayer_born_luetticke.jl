@@ -82,16 +82,18 @@ mutable struct BayerBornLuetticke{T} <: AbstractHetModel{T}
 
     state_variables::Vector{Symbol}                  # Vector of symbols of the state variables
     jump_variables::Vector{Symbol}                   # Vector of symbols of the jump variables
+    aggregate_state_variables::Vector{Symbol}                  # Vector of symbols of the state variables
+    aggregate_jump_variables::Vector{Symbol}                   # Vector of symbols of the jump variables
 #=    normalized_model_states::Vector{Symbol}          # All of the distributional model
                                                      # state variables that need to be normalized=#
 
     # Vector of ranges corresponding to normalized (post Klein solution) indices
-    endogenous_states::OrderedDict{Symbol,UnitRange}
-
+    endogenous_states::OrderedDict{Symbol,UnitRange{Int}}
     exogenous_shocks::OrderedDict{Symbol,Int}
     expected_shocks::OrderedDict{Symbol,Int}
-    equilibrium_conditions::OrderedDict{Symbol,UnitRange}
-    endogenous_states_augmented::OrderedDict{Symbol, Int}
+    equilibrium_conditions::OrderedDict{Symbol,UnitRange{Int}}
+    aggregate_equilibrium_conditions::OrderedDict{Symbol,Int}
+    endogenous_states_augmented::OrderedDict{Symbol,Int}
     observables::OrderedDict{Symbol,Int}
     pseudo_observables::OrderedDict{Symbol,Int}
 
@@ -136,6 +138,8 @@ function init_model_indices!(m::BayerBornLuetticke)
                          :A′_t, :Z′_t, :Ψ′_t, :RB′_t, :μ_p′_t, :μ_w′_t, :σ′_t,
                          :G_sh′_t, :P_sh′_t, :R_sh′_t, :S_sh′_t]
 
+    m.aggregate_state_variables = m.state_variables[5:end]
+
     # Jumps
     # TODO: delete jump variables that should just be pseudo-observables
     m.jump_variables = [# Function-valued jumps
@@ -151,6 +155,8 @@ function init_model_indices!(m::BayerBornLuetticke)
                         :Tgrowth′_t, :LP′_t, :LP_XA′_t, :tot_retained_Y′_t,
                         :union_firm_profits′_t, :union_profits′_t, :firm_profits′_t,
                         :profits′_t]
+
+    m.aggregate_jump_variables = m.jump_variables[3:end]
 
     # Update number of scalar states and jumps
     m <= Setting(:n_scalar_states, length(get_aggregate_state_variables(m)))
@@ -210,16 +216,19 @@ function BayerBornLuetticke(subspec::String="ss0";
             # grids and keys
             OrderedDict{Symbol,Union{Grid, Array, Float64}}(), OrderedDict{Symbol,Int}(),
 
-            # state_variables, jump_variables
+            # state_variables, jump_variables,
+            Vector{Symbol}(), Vector{Symbol}(),
+
+            # aggregate_state_variables, aggregate_jump_variables
             Vector{Symbol}(), Vector{Symbol}(),
 
             # model indices
             # endogenous states
-            OrderedDict{Symbol,UnitRange}(),
-            OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
-            OrderedDict{Symbol,UnitRange}(), # OrderedOrderedDict{Symbol,UnitRange}(),
-            OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
-            OrderedDict{Symbol,Int}(),
+            OrderedDict{Symbol, UnitRange}(), # TODO: label these
+            OrderedDict{Symbol, Int}(), OrderedDict{Symbol, Int}(),
+            OrderedDict{Symbol, UnitRange}(), OrderedDict{Symbol, Int}(),
+            OrderedDict{Symbol, Int}(), OrderedDict{Symbol, Int}(),
+            OrderedDict{Symbol, Int}(),
 
             spec,
             subspec,
@@ -324,25 +333,25 @@ function init_parameters!(m::BayerBornLuetticke)
                    description = "Price markup", tex_label = "\\mu_p")
     m <= parameter(:μ_w, 1.1, fixed = true,
                    description = "Wage markup", tex_label = "\\mu_w")
-    m <= parameter(:π, 1.0 ^ 0.25, fixed = true, # THIS MIGHT BE SET AS A STEADY STATE PARAMETER RATHER THAN HERE
+    m <= parameter(:π, 1.0 ^ 0.25, fixed = true,
                    description = "Steady-state inflation", tex_label = "\\pi")
 
     # Monetary policy
-    m <= parameter(:RB, m[:π] * 1.0 ^ 0.25, fixed = true, # THIS MIGHT BE SET AS A STEADY STATE PARAMETER RATHER THAN HERE
+    m <= parameter(:RB, m[:π] * 1.0 ^ 0.25, fixed = true,
                    description = "Steady-state nominal interest rate", tex_label = "\\RB")
 
-    # Remaining steady-state parameters
+    # Remaining parameters affecting the steady-state
     m <= parameter(:ψ, 0.1, fixed = true,
                    description = "Steady-state bond to capital ratio", tex_label = "\\psi")
     m <= parameter(:τ_lev, 0.825, fixed = true,
                    description = "Steady-state income tax rate level", tex_label = "\\tau^L")
     m <= parameter(:τ_prog, 0.12, fixed = true,
                    description = "Steady-state income tax rate progressivity", tex_label = "\\tau^P")
-    m <= parameter(:R, 1.01, fixed = true, # THIS MIGHT BE SET AS A STEADY STATE PARAMETER RATHER THAN HERE
+    m <= parameter(:R, 1.01, fixed = true, # TODO: delete b/c unused
                    description = "Steady-state return of capital (unused)", tex_label = "R")
-    m <= parameter(:K, 40., fixed = true, # THIS MIGHT BE SET AS A STEADY STATE PARAMETER RATHER THAN HERE
+    m <= parameter(:K, 40., fixed = true, # TODO: delete b/c unused
                    description = "Steady-state quantity of capital (unused)", tex_label = "K")
-    m <= parameter(:Rbar, (m[:π] * 1.0675 ^ 0.25 - 1.), fixed = true, # THIS MIGHT BE SET AS A STEADY STATE PARAMETER RATHER THAN HERE
+    m <= parameter(:Rbar, (m[:π] * 1.0675 ^ 0.25 - 1.), fixed = true,
                    description = "Borrowing wedge in interest rate", tex_label = "\\bar{R}")
 
     #######################################################
@@ -560,6 +569,7 @@ function init_parameters!(m::BayerBornLuetticke)
     m <= SteadyStateParameter(:A_star, NaN, description = "Bond spread (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:Z_star, NaN, description = "TFP (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:Ψ_star, NaN, description = "MEI (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:RB_star, NaN, description = "MEI (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:μ_p_star, NaN, description = "Price mark-up (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:μ_w_star, NaN, description = "Wage mark-up (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:τ_prog_star, NaN, description = "Tax progressivity (steady-state)", tex_label = "")
@@ -685,7 +695,7 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     # Unlog some steady state numbers
     K_star = exp(m[:K_star])
     N_star = exp(m[:N_star])
-    rk_star = exp(m[:rk_star])
+    # rk_star = exp(m[:rk_star])
     Y_star = exp(m[:Y_star])
     G_star = exp(m[:G_star])
     T_star = exp(m[:T_star])
@@ -697,6 +707,7 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     m[:A_star] = 0.
     m[:Z_star] = 0.
     m[:Ψ_star] = 0.
+    m[:RB_star] = log(m[:RB])
     m[:μ_p_star] = log(m[:μ_p])
     m[:μ_w_star] = log(m[:μ_w])
     m[:τ_prog_star] = log(m[:τ_prog])
@@ -708,19 +719,20 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     m[:P_sh_star] = 0.
     m[:S_sh_star] = 0.
     m[:rk_star] = log(1. + _bbl_interest(K_star, 1. / m[:μ_p], N_star, m[:α], m[:δ_0])) # TODO: can we calculate rk_star in prepare_linearization?
+    rk_star = exp(m[:rk_star])
     m[:LP_star] = log(1. + rk_star - m[:RB])
     m[:LP_XA_star] = log(1. + rk_star - m[:RB])
-    m[:π_star] = 0.
+    m[:π_star] = log(m[:π])
     m[:π_w_star] = 0.
     m[:BD_star] = log(-dot(m[:marginal_pdf_m_star], (get_gridpts(m, :m_grid) .< 0.) .* get_gridpts(m, :m_grid)))
-    m[:C_star] = log(Y_star - m[:δ_0] * K_star - G_star - m[:Rbar] * BD_star)
+    m[:C_star] = log(Y_star - m[:δ_0] * K_star - G_star - m[:Rbar] * m[:BD_star])
     m[:q_star] = 0.
     m[:mc_star] = -log(m[:μ_p])
     m[:mc_w_star] = -log(m[:μ_w])
     m[:mc_w_w_star] = log(w_star * exp(m[:mc_w_star]))
     m[:u_star] = 0.
     m[:profits_star] = log((1. - exp(m[:mc_star])) * Y_star)
-    m[:union_profits_star] = log((1. - exp(m[:mc_w])) * w_star * N_star)
+    m[:union_profits_star] = log((1. - exp(m[:mc_w_star])) * w_star * N_star)
     m[:BY_star] = log(B_star / Y_star)
     m[:TY_star] = log(T_star / Y_star)
     m[:T_l1_star] = get_untransformed_values(m[:T_star])
@@ -814,7 +826,7 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:remove_non_volatile_basis_functions, false, "Remove non-volatile basis functions for further compression")
 
     # Initialize storages for settings/objects related to reduction
-    m <= Setting(:dct_compression_indices, Dict{Symbol, Vector{Int64}}(), "DCT compression indices")
+    m <= Setting(:dct_compression_indices, Dict{Symbol, Vector{Int}}(), "DCT compression indices")
     m <= Setting(:copula, identity, "Steady-state copula")
 
     # Whether one wishes to re-compute the steady state
@@ -897,6 +909,7 @@ function setup_indices!(m::BayerBornLuetticke)
     jump_vars = m.jump_variables
     endo = m.endogenous_states # note that these are the model states, so they include predetermined states and jumps
     eqconds = m.equilibrium_conditions
+    aggr_eqconds = m.aggregate_equilibrium_conditions
 
     # Compute size of idiosyncratic state space
     nm, nk, ny = get_idiosyncratic_dims(m)
@@ -909,7 +922,7 @@ function setup_indices!(m::BayerBornLuetticke)
     endo[:marginal_pdf_m′_t] = 1:(nm - 1)
     endo[:marginal_pdf_k′_t] = (1 + nm - 1):(nm + nk - 2)
     endo[:marginal_pdf_y′_t] = (1 + nm + nk - 2):n_idio_states
-    n_distr_states           = n_idio_states + get_setting(:n_copula_dct_coefficients)
+    n_distr_states           = n_idio_states + get_setting(m, :n_copula_dct_coefficients)
     endo[:copula′_t]         = (1 + n_idio_states):n_distr_states
     for (i, k) in enumerate(get_aggregate_state_variables(m))
         endo[k] = (n_distr_states + i):(n_distr_states + i)
@@ -937,23 +950,14 @@ function setup_indices!(m::BayerBornLuetticke)
     ## Populate equation indices
 
     # Function blocks which output a function
-    eqconds[:eq_marginal_distr_m] = endo[:marginal_pdf_m′_t] # note that since endo holds UnitRanges, this assignment results in a copy
-    eqconds[:eq_marginal_distr_k] = endo[:marginal_pdf_k′_t]
-    eqconds[:eq_marginal_distr_y] = endo[:marginal_pdf_y′_t]
-    eqconds[:eq_copula]           = endo[:copula′_t]
+    eqconds[:eq_marginal_pdf_m] = endo[:marginal_pdf_m′_t] # note that since endo holds UnitRanges, this assignment results in a copy
+    eqconds[:eq_marginal_pdf_k] = endo[:marginal_pdf_k′_t]
+    eqconds[:eq_marginal_pdf_y] = endo[:marginal_pdf_y′_t]
+    eqconds[:eq_copula]         = endo[:copula′_t]
     eqconds[:eq_marginal_value_bonds]   = endo[:Vm′_t] # TODO: maybe we'll move these values to the top of the implied Jacobian matrix?
     eqconds[:eq_marginal_value_capital] = endo[:Vk′_t] #       (instead of after the aggregate states)
 
-    # Function blocks which map functions to scalars
-    for (i, name) in enumerate([:eq_agg_capital, :eq_agg_bond, :eq_agg_hh_debt,
-                                :eq_τ_level, :eq_total_tax_revenue, :eq_Ht,
-                                :eq_GiniX, :eq_I90_share, :eq_I90_share_net,
-                                :eq_W90_share, :eq_sd_log_y, :eq_GiniC])
-        eqconds[name] = (n_distr_states + i):(n_distr_states + i)
-    end
-    n_eqconds += first(eqconds[:eq_GiniC]) # Increment this variable, so it now includes functional (function to scalar) blocks
-
-    # Scalar blocks (for aggregate variable)
+    # Aggregate blocks (for aggregate variable)
     for (i, name) in enumerate([# Endogenous model states (for the jumps)
                                 :eq_mp, :eq_tax_progressivity, :eq_tax_level,
                                 :eq_tax_revenue, :eq_avg_tax_rate,
@@ -961,14 +965,19 @@ function setup_indices!(m::BayerBornLuetticke)
                                 :eq_price_phillips_curve, :eq_wage_phillips_curve,
                                 :eq_wage_growth, :eq_capital_util, :eq_capital_return,
                                 :eq_received_wages, :eq_wages_firms_pay, :eq_union_firm_profits,
-                                :eq_firm_profits, :eq_profits_distr_to_hh,
+                                :eq_union_profits, :eq_union_retained,
+                                :eq_firm_profits, :eq_profits_distr_to_hh, :eq_retained,
                                 :eq_tobins_q, :eq_expost_liquidity_premium,
-                                :eq_exante_liquidity_premium,
-                                :eq_capital_accum, :eq_labor_supply, :eq_output,
-                                :eq_resource_constraint, :eq_capital_market_clear,
+                                :eq_exante_liquidity_premium, :eq_capital_accum,
+                                :eq_labor_supply, :eq_output, :eq_resource_constraint,
+
+                                # Blocks mapping functions to scalars
+                                :eq_capital_market_clear,
                                 :eq_debt_market_clear, :eq_bond_market_clear,
                                 :eq_bond_output_ratio, :eq_tax_output_ratio,
                                 :eq_retained_earnings_gdp_ratio, :eq_Ht,
+                                :eq_GiniX, :eq_I90_share, :eq_I90_share_net,
+                                :eq_W90_share, :eq_sd_log_y, :eq_GiniC,
 
                                 # Growth rates
                                 :eq_Ygrowth, :eq_Tgrowth, :eq_Bgrowth,
@@ -983,6 +992,7 @@ function setup_indices!(m::BayerBornLuetticke)
                                 :eq_A, :eq_Z, :eq_Ψ, :eq_μ_p, :eq_μ_w,
                                 :eq_σ, :eq_G, :eq_P, :eq_R, :eq_S])
         eqconds[name] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
+        aggr_eqconds[name] = i
     end
 end
 

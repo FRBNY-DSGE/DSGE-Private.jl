@@ -224,11 +224,23 @@ end
     return nt
 end
 
-@inline function construct_prime_and_noprime_indices(m::BayerBornLuetticke)
-    id = deepcopy(m.endogenous_states)
+@inline function construct_prime_and_noprime_indices(m::BayerBornLuetticke; only_aggregate::Bool = false)
 
-    for (k, v) in id
-        id[unprime(k)] = v
+    if only_aggregate
+        id = OrderedDict{Symbol, Int64}(k => i for (i, k) in enumerate(get_aggregate_state_variables(m)))
+        for (i, k) in enumerate(get_aggregate_jump_variables(m))
+            id[k] = i
+        end
+
+        for (k, v) in id
+            id[unprime(k)] = v
+        end
+    else
+        id = deepcopy(m.endogenous_states)
+
+        for (k, v) in id
+            id[unprime(k)] = v
+        end
     end
 
     return id
