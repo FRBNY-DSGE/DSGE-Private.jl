@@ -35,13 +35,19 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     brent_Kmin = 1.0  * ((m[:δ_0] - 0.0005 + (1.0 - m[:β]) / m[:β]) / m[:α])^(0.5 / (m[:α] - 1.0))
 
     # a.) Define excess demand function with coarse = true
-    d_coarse(  K,
+    init_distr_guess = get_untransformed_values(m[:distr_star])
+@inline function d_coarse(  K,
                initial::Bool=true,
                Vm_guess = zeros(1,1,1),
                Vk_guess = zeros(1,1,1),
-               distr_guess = get_untransformed_values(m[:distr_star])
-               )                   = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
-                                           verbose = verbose, coarse = true)
+               distr_guess = init_distr_guess
+               )
+    @time begin
+        out = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
+                    verbose = verbose, coarse = true)
+    end
+    return out
+end
 
     # b.) Find equilibrium capital stock (multigrid on y,m,k)
     KSS = CustomBrent(d_coarse, brent_Kmin, brent_Kmax)[1]
@@ -59,13 +65,25 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
 
     # Find stationary equilibrium for refined economy
     # a.) Define excess demand function with coarse = false
-    d(  K,
+@inline function d(  K,
+               initial::Bool=true,
+               Vm_guess = zeros(1,1,1),
+               Vk_guess = zeros(1,1,1),
+               distr_guess = init_distr_guess
+               )
+    @time begin
+        out = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
+                    verbose = verbose, coarse = false)
+    end
+    return out
+end
+#=    d(  K,
         initial::Bool=true,
         Vm_guess = zeros(1,1,1),
         Vk_guess = zeros(1,1,1),
-        distr_guess = get_untransformed_values(m[:distr_star]);
-        )                   = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
-                                           verbose = verbose, coarse = false)
+        distr_guess = init_distr_guess
+        )                              = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
+                                               verbose = verbose, coarse = false)=#
 
     # b.) Find equilibrium capital stock (multigrid on y,m,k) # TODO: isn't grid on (m, k, y)?
     BrentOut = CustomBrent(d, KSS*.95, KSS*1.05; tol = get_setting(m, :ϵ))

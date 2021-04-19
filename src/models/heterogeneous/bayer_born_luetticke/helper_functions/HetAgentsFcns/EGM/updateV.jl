@@ -2,10 +2,10 @@ function updateV(EVk::Array,
                  c_a_star::Array,
                  c_n_star::Array,
                  m_n_star::Array,
-                 r::Real, q::Real,
+                 rk::Real, q::Real,
                  θ::NamedTuple,
-                 m_grid::AbstractVector,
-                 Π::Array)
+                 m_grid::AbstractVector{T1},
+                 Π::Array) where {T1 <: Real}
 
     # Setup
     β::Float64 = θ[:β]
@@ -43,7 +43,7 @@ function updateV(EVk::Array,
     # Form expectations to get expected marginal utility at consumption policy (w &w/o adjustment)
     # Vk = r + Vm + (θ[:λ] * q) * mutil_c_a + (1 - θ[:λ]) * β * Vk
     Vk .*= (1. - θ[:λ]) * β # written this way to avoid allocations
-    Vk .+= r * Vm + (θ[:λ] * q) * mutil_c_a
+    Vk .+= rk * Vm + (θ[:λ] * q) * mutil_c_a
 
     return Vk, Vm
 end

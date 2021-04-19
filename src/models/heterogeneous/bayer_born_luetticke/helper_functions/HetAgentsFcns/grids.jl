@@ -51,7 +51,7 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
     ymin, ymax = y_grid_e[1], y_grid_e[end] # y_grid_e is ordered left to right
     m <= Setting(coarse ? :coarse_ymin : :ymin, ymin)
     m <= Setting(coarse ? :coarse_ymax : :ymax, ymax)
-    m <= Setting(coarse ? :coarse_y_bin_bounds : :y_bin_bounds, bounds)
+    grids[:y_bin_bounds] = bounds
 
     # Add entrepreneurs into the income transitions => total income states = ny
     Π      = [(Π .* (1. - m[:ζ])) fill(get_untransformed_values(m[:ζ]), ny_min1);

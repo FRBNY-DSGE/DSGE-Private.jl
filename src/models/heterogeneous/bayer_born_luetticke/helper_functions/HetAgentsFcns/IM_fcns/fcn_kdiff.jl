@@ -12,10 +12,21 @@ Requires global functions `employment(K,A,m_par)`, `interest(K,A,N,m_par)`,
 # Arguments
 - `K_guess::Float64`: capital stock guess
 """
-function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
+function Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
                initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),
                Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1);
-               verbose::Symbol = :none, coarse::Bool = false)
+               verbose::Symbol = :none, coarse::Bool = false) where {T1 <: Real}
+
+    # Some type declarations b/c grids is an OrderedDict
+    # => ensures type stability, or else unnecessary allocations are made
+    Π                   = m.grids[:Π]::Matrix{T1}
+    y_grid              = get_gridpts(m, :y_grid)::Vector{T1}
+    m_ndgrid            = m.grids[:m_ndgrid]::Array{T1, 3}
+    k_ndgrid            = m.grids[:k_ndgrid]::Array{T1, 3}
+    y_ndgrid            = m.grids[:y_ndgrid]::Array{T1, 3}
+    H                   = m.grids[:H]::T1
+    HW                  = m.grids[:HW]::T1
+
     # TODO: check if there's a notable speed up by only passing settings, grids,
     #       and parameters into this function as kwargs
     #----------------------------------------------------------------------------
@@ -28,7 +39,7 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
     profits     = (1.0 - 1.0 / m[:μ_p]) .* _bbl_output(K_guess, 1.0, N, m[:α])    # Profit income
     RB          = m[:RB] / m[:π]                                                  # Real return on liquid assets
     neg_liq_ret = RB + m[:Rbar]
-    eff_int     = [x <= 0. ? neg_liq_ret : RB for x in m.grids[:m_ndgrid]]        # effective rate depending on assets
+    eff_int     = [x <= 0. ? neg_liq_ret : RB for x in m_ndgrid]        # effective rate depending on assets
     GHHFA       = (m[:γ] + m[:τ_prog]) / (m[:γ] + 1.0)                            # transformation (scaling) for composite good
 
     #----------------------------------------------------------------------------
@@ -36,14 +47,14 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
     # inc[1] = labor income , inc[2] = rental income,
     # inc[3]= liquid assets income, inc[4] = capital liquidation income
     #----------------------------------------------------------------------------
-    Paux            = m.grids[:Paux]                                             # Grab ergodic income distribution from transitions
+    Paux            = m.grids[:Paux]::Matrix{T1}                                 # Grab ergodic income distribution from transitions
     distr_y         = Paux[1, :]                                                 # stationary income distribution
     inc             = Array{Array{Float64, 3}}(undef, 4)                         # container for income
     mcw             = 1.0 / m[:μ_w]                                              # wage markup
 
     # gross (labor) incomes
-    incgross        = get_gridpts(m, :y_grid) .* (mcw * w * N / m.grids[:H])      # gross income workers (wages)
-    incgross[end]   = get_gridpts(m, :y_grid)[end] * profits                     # gross income entrepreneurs (profits)
+    incgross        = y_grid .* (mcw * w * N / H)      # gross income workers (wages)
+    incgross[end]   = y_grid[end] * profits                     # gross income entrepreneurs (profits)
 
     # net (labor) incomes
     incnet          = m[:τ_lev] * incgross .^ (1.0 - m[:τ_prog])
@@ -53,33 +64,28 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke,
 
     # TODO: replace the y_ndgrid calculation with just repeating the incnet vector OR use list comprehension later on
     ny              = get_setting(m, coarse ? :coarse_ny : :ny)
-    inc[1]          = (GHHFA * m[:τ_lev]) .* (m.grids[:y_ndgrid] .* (mcw * w * N / m.grids[:H])) .^ (1.0 - m[:τ_prog]) .+
-        ((1.0 - mcw) * w * N * (1.0 - av_tax_rate) * m.grids[:HW])         # labor income net of taxes incl. union profits
-    inc[1][:,:,end] = m[:τ_lev] * (view(m.grids[:y_ndgrid], :, :, ny) * profits) .^ (1.0 - m[:τ_prog]) # profit income net of taxes
+    inc[1]          = (GHHFA * m[:τ_lev]) .* (y_ndgrid .* (mcw * w * N / H)) .^ (1.0 - m[:τ_prog]) .+
+        ((1.0 - mcw) * w * N * (1.0 - av_tax_rate) * HW)         # labor income net of taxes incl. union profits
+    inc[1][:,:,end] = m[:τ_lev] * (view(y_ndgrid, :, :, ny) * profits) .^ (1.0 - m[:τ_prog]) # profit income net of taxes
 
     # incomes out of wealth # TODO: replace these steps OR use list comprehension later on
-    inc[2]          = rk .* m.grids[:k_ndgrid]                                  # rental income
-    inc[3]          = eff_int .* m.grids[:m_ndgrid]                             # liquid asset income
-    inc[4]          = m.grids[:k_ndgrid]                                        # capital liquidation income (q=1 in steady state)
+    inc[2]          = rk .* k_ndgrid                                  # rental income
+    inc[3]          = eff_int .* m_ndgrid                             # liquid asset income
+    inc[4]          = k_ndgrid                                        # capital liquidation income (q=1 in steady state)
 
     #----------------------------------------------------------------------------
     # Initialize policy function (guess/stored values)
     #----------------------------------------------------------------------------
 
     # initial guess consumption and marginal values (if not set)
-    if initial # TODO: pass in m.grids[:m_ndgrid] .> 0. if that's already calculated elsewhere
-        # c_guess     = inc[1] .+ inc[2] .* (inc[2] .> 0) .+ inc[3] .* (m.grids[:m_ndgrid] .> 0.)
-        c_guess     = copy(inc[1])
-        pos_rental_income = inc[2] .> 0.
-        pos_liquid_assets = m.grids[:m_ndgrid] .> 0.
-        c_guess[pos_rental_income] .+= inc[2][pos_rental_income]
-        c_guess[pos_liquid_assets] .+= inc[3][pos_liquid_assets]
+    if initial # TODO: pass in m_ndgrid .> 0. if that's already calculated elsewhere
+        c_guess     = inc[1] .+ inc[2] .* (inc[2] .> 0) .+ inc[3] .* (m_ndgrid .> 0.)
         if any(x -> x < 0., c_guess)
             @warn "negative consumption guess"
         end
         Vm          = eff_int .* _bbl_mutil(c_guess, m[:ξ])
         Vk          = (rk + m[:λ]) .* _bbl_mutil(c_guess, m[:ξ])
-        distr       = get_untransformed_values(m[:distr_star])
+        distr       = get_untransformed_values(m[:distr_star])::Array{T1, 3}
     else
         Vm          = Vm_guess
         Vk          = Vk_guess

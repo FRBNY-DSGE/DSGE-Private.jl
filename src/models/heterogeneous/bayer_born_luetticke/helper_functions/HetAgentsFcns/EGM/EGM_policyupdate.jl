@@ -35,8 +35,9 @@ function EGM_policyupdate(EVm::Array,
     inc_LA     = inc[3]
     inc_IA     = inc[4]
     n          = size(EVm)
-    m_grid     = get_gridpts(grids, :m_grid)
-    k_grid     = get_gridpts(grids, :k_grid)
+    m_grid     = get_gridpts(grids, :m_grid)::Vector{Float64} # type declarations necessary b/c grids is an OrderedDict =>
+    k_grid     = get_gridpts(grids, :k_grid)::Vector{Float64} # ensures type stability, or else unnecessary allocations are made
+    m_ndgrid   = grids[:m_ndgrid]::Array{Float64, 3}
     mmax       = m_grid[end]
     kmax       = k_grid[end]
 
@@ -49,7 +50,7 @@ function EGM_policyupdate(EVm::Array,
     # Calculate assets consistent with choices being [m']
     # Calculate initial money position from the budget constraint
     # that leads to the optimal consumption choice
-    m_star_n    = c_star_n + grids[:m_ndgrid] - inc_lab - inc_rent
+    m_star_n    = c_star_n + m_ndgrid - inc_lab - inc_rent
 
     # Apply correct interest rate
     m_star_n   ./= ((RBminus .+ (borrwedge / πminus) * (m_star_n .< 0)))  # apply borrowing rate
@@ -81,7 +82,7 @@ function EGM_policyupdate(EVm::Array,
                 # Check for binding borrowing constraints, no extrapolation from grid
                 bcpol = m_star_n[1, kk, jj]
                 for mm = 1:n[1]
-                    if grids[:m_ndgrid][mm, kk, jj] < bcpol
+                    if m_ndgrid[mm, kk, jj] < bcpol
                         c_n_star[mm, kk, jj] = inc_lab[mm, kk, jj] + inc_rent[mm, kk, jj] + inc_LA[mm, kk, jj] - m_grid[1]
                         m_n_star[mm, kk, jj] = m_grid[1]
                     end
@@ -115,30 +116,30 @@ function EGM_policyupdate(EVm::Array,
     step            = diff(m_grid)                                  # Stepsize on grid()
 
     # Interpolate EMU[m",k',s'*h',M',K'] over m*_n[k"], m-dim is dropped # TODO: figure out exactly what EMU is. Are we using EVk = EVm or something like it?
-for j in eachindex(m_a_aux)
-    xi          = m_a_aux[j]
+    for j in eachindex(m_a_aux)
+        xi          = m_a_aux[j]
 
-    # find indexes on grid next smallest to optimal policy
-    if xi > m_grid[n[1] - 1]                                    # policy is larger than highest grid point
-        idx     = n[1] - 1
-    elseif xi <= m_grid[1]                                      # policy is smaller than lowest grid point
-        idx     = 1
-    else
-        idx     = locate(xi, m_grid)                            # use exponential search to find grid point closest to policy (next smallest)
+        # find indexes on grid next smallest to optimal policy
+        if xi > m_grid[n[1] - 1]                                    # policy is larger than highest grid point
+            idx     = n[1] - 1
+        elseif xi <= m_grid[1]                                      # policy is smaller than lowest grid point
+            idx     = 1
+        else
+            idx     = locate(xi, m_grid)                            # use exponential search to find grid point closest to policy (next smallest)
+        end
+
+        s           = (xi - m_grid[idx]) / step[idx]                # Distance of optimal policy to next grid point to get convex weights
+
+        EMU_star[j] = EMU[idx + aux_index[j]] * (1.0 - s) +         # linear interpolation to populate EMU using s as a convex weight
+        s * (EMU[idx + aux_index[j] + 1])
     end
-
-    s           = (xi - m_grid[idx]) / step[idx]                # Distance of optimal policy to next grid point to get convex weights
-
-    EMU_star[j] = EMU[idx + aux_index[j]] * (1.0 - s) +         # linear interpolation to populate EMU using s as a convex weight
-    s * (EMU[idx + aux_index[j] + 1])
-end
 
 c_a_aux         = _bbl_invmutil(EMU_star, θ[:ξ])
 
 # Resources that lead to capital choice
 # k'= c + m*(k") + k" - w*h*N
 # = value of todays cap and money holdings
-@views Resource = c_a_aux + m_a_aux + inc_IA[1, :, :] - inc_lab[1, :, :]
+Resource = c_a_aux + m_a_aux + inc_IA[1, :, :] - inc_lab[1, :, :]
 
 # Money constraint is not binding, but capital constraint is binding
 m_star_zero     = m_a_aux[1, :] # Money holdings that correspond to k'=0:  m*(k=0)
@@ -166,7 +167,7 @@ for j = 1:n[3] # Iterate over income states
         # => this step gets resources that lead to k"=0 and m'<m*(k"=0) when z = zⱼ
         res_list[j]  = m_grid[log_index] .+ c_k_cons .- aux_inc[j]
         mon_list[j]  = m_grid[log_index]
-        cap_list[j]  = zeros(eltype(EVm), count(log_index)) # a bunch of zeros b/c choosing zero capital
+        cap_list[j]  = zeros(eltype(EVm), sum(log_index)) # a bunch of zeros b/c choosing zero capital
     else
         # optimal m* choice is lowest gridpoint on m_grid => constrained in m too, so
         # we postpone handling this case until further down
