@@ -351,7 +351,7 @@ function init_parameters!(m::BayerBornLuetticke)
                    description = "Steady-state return of capital (unused)", tex_label = "R")
     m <= parameter(:K, 40., fixed = true, # TODO: delete b/c unused
                    description = "Steady-state quantity of capital (unused)", tex_label = "K")
-    m <= parameter(:Rbar, (m[:π] * 1.0675 ^ 0.25 - 1.), fixed = true,
+    m <= parameter(:Rbar, (m[:π] * (1.0675 ^ 0.25) - 1.), fixed = true,
                    description = "Borrowing wedge in interest rate", tex_label = "\\bar{R}")
 
     #######################################################
@@ -725,7 +725,7 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     m[:π_star] = log(m[:π])
     m[:π_w_star] = 0.
     m[:BD_star] = log(-dot(m[:marginal_pdf_m_star], (get_gridpts(m, :m_grid) .< 0.) .* get_gridpts(m, :m_grid)))
-    m[:C_star] = log(Y_star - m[:δ_0] * K_star - G_star - m[:Rbar] * m[:BD_star])
+    m[:C_star] = log(Y_star - m[:δ_0] * K_star - G_star - m[:Rbar] * exp(m[:BD_star]))
     m[:q_star] = 0.
     m[:mc_star] = -log(m[:μ_p])
     m[:mc_w_star] = -log(m[:μ_w])
