@@ -76,18 +76,17 @@ mutable struct BayerBornLuetticke{T} <: AbstractHetModel{T}
     # "grids" that are not necessarily quadrature
     # grids within the model
 # TODO: add field/type to hold reduction information e.g. DCT indices (but not coefficient values), copula info
-    grids::OrderedDict{Symbol,Union{Grid, Array}}
+    grids::OrderedDict{Symbol,Union{Grid, Array, T}}
     keys::OrderedDict{Symbol,Int}                    # Human-readable names for all the model
                                               # parameters and steady-states
 
     state_variables::Vector{Symbol}                  # Vector of symbols of the state variables
     jump_variables::Vector{Symbol}                   # Vector of symbols of the jump variables
-    normalized_model_states::Vector{Symbol}          # All of the distributional model
-                                                     # state variables that need to be normalized
+#=    normalized_model_states::Vector{Symbol}          # All of the distributional model
+                                                     # state variables that need to be normalized=#
 
     # Vector of ranges corresponding to normalized (post Klein solution) indices
     endogenous_states::OrderedDict{Symbol,UnitRange}
-    endogenous_states_unreduced::OrderedDict{Symbol,UnitRange} # full dense grid indices
 
     exogenous_shocks::OrderedDict{Symbol,Int}
     expected_shocks::OrderedDict{Symbol,Int}
@@ -126,7 +125,7 @@ function init_model_indices!(m::BayerBornLuetticke)
     # Predetermined states
     # TODO: delete states that should just be augmented states
     m.state_variables = [# Endogenous function-valued states
-                         :marginal_m′_t, :marginal_k′_t, :marginal_y′_t, :copula′_t,
+                         :marginal_pdf_m′_t, :marginal_pdf_k′_t, :marginal_pdf_y′_t, :copula′_t,
 
                          # Endogenous scalar-valued states (e.g. lags)
                          :union_retained′_t, :retained′_t,
@@ -149,9 +148,14 @@ function init_model_indices!(m::BayerBornLuetticke)
                         :Gini_C′_t, :Gini_X′_t, :sd_log_y′_t, :I90_share′_t,
                         :I90_share_net′_t, :W90_share′_t, :Ygrowth′_t,
                         :Bgrowth′_t, :Igrowth′_t, :wgrowth′_t, :Cgrowth′_t,
-                        :Tgrowth′_t, :LP′_t, :LP_X_A′_t, :tot_retained_Y′_t,
+                        :Tgrowth′_t, :LP′_t, :LP_XA′_t, :tot_retained_Y′_t,
                         :union_firm_profits′_t, :union_profits′_t, :firm_profits′_t,
                         :profits′_t]
+
+    # Update number of scalar states and jumps
+    m <= Setting(:n_scalar_states, length(get_aggregate_state_variables(m)))
+    m <= Setting(:n_scalar_jumps, length(get_aggregate_jump_variables(m)))
+    m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states))
 
     # Exogenous shocks
     exogenous_shocks = collect([:A_sh, :Z_sh, :Ψ_sh, :μ_p_sh, :μ_w_sh, :G_sh, :R_sh, :S_sh, :P_sh])
@@ -169,13 +173,12 @@ function init_model_indices!(m::BayerBornLuetticke)
 
     # Initialize indices for
     # reduced-form endogenous_states (from gensys notation) and equilibrium conditions
-    setup_indices!(m)
+    # setup_indices!(m) # TODO: This might have to be called AFTER steadystate! is called and leave entries empty otherwise
 
     # Create dict for unreduced endogenous_states
     # to facilitate repeated solutions of steady state
-    m.endogenous_states_unreduced = deepcopy(m.endogenous_states)
-    m <= Setting(:n_model_states_unreduced, length(m.endogenous_states),
-                 "Number of model states (incl. both predetermined states and jumps) before any state-space reduction")
+#=    m <= Setting(:n_model_states_unreduced, length(m.endogenous_states),
+                 "Number of model states (incl. both predetermined states and jumps) before any state-space reduction")=#
 
     # Additional states added after solving model, namely
     # lagged states and observables measurement error
@@ -205,14 +208,14 @@ function BayerBornLuetticke(subspec::String="ss0";
             # model parameters and steady state values
             Vector{AbstractParameter{Float64}}(), Vector{Float64}(),
             # grids and keys
-            OrderedDict{Symbol,Union{Grid, Array}}(), OrderedDict{Symbol,Int}(),
+            OrderedDict{Symbol,Union{Grid, Array, Float64}}(), OrderedDict{Symbol,Int}(),
 
-            # normalized_model_states, state_inds, jump_inds
-            Vector{Symbol}(), Vector{Symbol}(), Vector{Symbol}(),
+            # state_variables, jump_variables
+            Vector{Symbol}(), Vector{Symbol}(),
 
             # model indices
-            # endogenous states unnormalized, endogenous states normalized
-            OrderedDict{Symbol,UnitRange}(), OrderedDict{Symbol,UnitRange}(),
+            # endogenous states
+            OrderedDict{Symbol,UnitRange}(),
             OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
             OrderedDict{Symbol,UnitRange}(), # OrderedOrderedDict{Symbol,UnitRange}(),
             OrderedDict{Symbol,Int}(), OrderedDict{Symbol,Int}(),
@@ -569,7 +572,7 @@ function init_parameters!(m::BayerBornLuetticke)
     m <= SteadyStateParameter(:S_sh_star, NaN, description = "Idiosyncratic risk shock (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:rk_star, NaN, description = "Rental rate on capital (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:LP_star, NaN, description = "Liquidity premium (ex-post) (steady-state)", tex_label = "")
-    m <= SteadyStateParameter(:LPXA_star, NaN, description = "Liquidity premium (ex-ante) (steady-state)", tex_label = "")
+    m <= SteadyStateParameter(:LP_XA_star, NaN, description = "Liquidity premium (ex-ante) (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:π_star, NaN, description = "Inflation (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:π_w_star, NaN, description = "Wage Inflation (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:BD_star, NaN, description = "Debt (steady-state)", tex_label = "")
@@ -614,12 +617,12 @@ function init_parameters!(m::BayerBornLuetticke)
     # TODO: add descriptions to these parameters
     m <= SteadyStateParameter(:share_borrower_star, NaN)
     m <= SteadyStateParameter(:Gini_wealth_star, NaN)
-    m <= SteadyStateParameter(:P90_wealth_share_star, NaN)
-    m <= SteadyStateParameter(:P90_income_star, NaN)
-    m <= SteadyStateParameter(:P90_income_share_star, NaN)
+    m <= SteadyStateParameter(:W90_share_star, NaN)
+    m <= SteadyStateParameter(:I90_share_star, NaN)
+    m <= SteadyStateParameter(:I90_share_net_star, NaN)
     m <= SteadyStateParameter(:Gini_income_star, NaN)
     m <= SteadyStateParameter(:P90_minus_P10_income_star, NaN)
-    m <= SteadyStateParameter(:sd_log_income_star, NaN)
+    m <= SteadyStateParameter(:sd_log_y_star, NaN)
     m <= SteadyStateParameter(:Gini_X_star, NaN)
     m <= SteadyStateParameter(:sd_log_X_star, NaN)
     m <= SteadyStateParameter(:P90_minus_P10_C_star, NaN)
@@ -697,7 +700,7 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     m[:μ_p_star] = log(m[:μ_p])
     m[:μ_w_star] = log(m[:μ_w])
     m[:τ_prog_star] = log(m[:τ_prog])
-    m[:τ_level_star] = log(m[:τ_level])
+    m[:τ_level_star] = log(m[:τ_lev])
     m[:σ_star] = 0.
     m[:τ_prog_obs_star] = 0.
     m[:G_sh_star] = 0.
@@ -706,7 +709,7 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     m[:S_sh_star] = 0.
     m[:rk_star] = log(1. + _bbl_interest(K_star, 1. / m[:μ_p], N_star, m[:α], m[:δ_0])) # TODO: can we calculate rk_star in prepare_linearization?
     m[:LP_star] = log(1. + rk_star - m[:RB])
-    m[:LPXA_star] = log(1. + rk_star - m[:RB])
+    m[:LP_XA_star] = log(1. + rk_star - m[:RB])
     m[:π_star] = 0.
     m[:π_w_star] = 0.
     m[:BD_star] = log(-dot(m[:marginal_pdf_m_star], (get_gridpts(m, :m_grid) .< 0.) .* get_gridpts(m, :m_grid)))
@@ -806,7 +809,7 @@ function model_settings!(m::BayerBornLuetticke)
     #     in the copula while keeping the marginals fixed.
     # (4) Remove even more basis functions
     m <= Setting(:dct_energy_loss, 1e-5, "Lost fraction of 'energy' in the DCT compression of 'value functions'")
-    m <= Setting(:n_copula_dct_coefficients, 10, "Number of coefficients in the DCT compression of the " *
+    m <= Setting(:n_copula_dct_coefficients, 11, "Number of coefficients in the DCT compression of the " *
                  "distribution over idiosyncratic states to approximate a perturbation in the copula")
     m <= Setting(:remove_non_volatile_basis_functions, false, "Remove non-volatile basis functions for further compression")
 
@@ -821,20 +824,17 @@ function model_settings!(m::BayerBornLuetticke)
     #  We declare these settings here to initialize them. The numbers of indices
     #  will be updated during solution due to reduction steps by setup_indices!,
     #  which will also update the mappings from variable names to indices.
+
+    # Update number of scalar states and jumps
     m <= Setting(:n_scalar_jumps, 16, "Number of scalar jumps")
     m <= Setting(:n_scalar_states, 16, "Number of scalar states")
     m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states),
                  "Number of scalars (jumps and states)")
     m <= Setting(:n_idiosyncratic_states, get_setting(m, :ny) + get_setting(m, :nk) + get_setting(m, :nm),
-                 "Number of idiosyncratic states")
-    m <= Setting(:n_dct_variables, Dict(:Vm => 1, :Vk => 1, :copula => 1),
-                  "Dictionary specifying the number of DCT coefficients for function-valued variables")
+                 "Number of idiosyncratic states") # TODO: might delete
 
-    m <= Setting(:n_states, get_setting(m, :n_idiosyncratic_states) +
-                 get_setting(m, :n_scalar_states) - 3,           # subtract 3 b/c remove degree of freedom
-                 "Total number of states after reduction steps") # for each dimension of copula (marginals integrate to 1)
-    m <= Setting(:n_jumps, (sum(values(get_setting(m, :n_dct_variables))) - get_setting(m, :n_dct_variables)[:copula]) +
-                 get_setting(m, :n_scalar_jumps), "Total number of jumps after reduction steps")
+    m <= Setting(:n_states, 1, "Total number of states after reduction steps") # just initializing, will count later
+    m <= Setting(:n_jumps, 1, "Total number of jumps after reduction steps")
     m <= Setting(:nvars, get_setting(m, :n_states) + get_setting(m, :n_jumps), "Number of variables")
 
     # Number of states and jumps
@@ -887,70 +887,69 @@ setup_indices!(m::BayerBornLuetticke)
 sets up the indices of model states (predetermined states and jumps) and
 equilibrium conditions associated with states.
 
-This function is called during the model's initialization and
+This function is called during the model's initialization and # TODO maybe note initialization
 during reduction steps, which changes indices.
 """
 function setup_indices!(m::BayerBornLuetticke)
-# TODO: check if we need to ensure that this function doesn't normalize indices
+    # TODO: check if we need to ensure that this function doesn't normalize indices
     # Abbreviate some fields
     state_vars = m.state_variables
     jump_vars = m.jump_variables
     endo = m.endogenous_states # note that these are the model states, so they include predetermined states and jumps
     eqconds = m.equilibrium_conditions
 
-    # Update number of scalar states and jumps
-    m <= Setting(:n_scalar_states, length(get_aggregate_state_variables(m)))
-    m <= Setting(:n_scalar_jumps, length(get_aggregate_jump_variables(m)))
-
     # Compute size of idiosyncratic state space
-    n_idio_states = get_setting(m, :n_idiosyncratic_states)
-    n_dct_vars    = get_setting(m, :n_dct_variables)
-    nm, nk, ny    = get_setting(m, :nm), get_setting(m, :nk), get_setting(m, :ny)
+    nm, nk, ny = get_idiosyncratic_dims(m)
 
     ## Populate endo using "next-period" name (i.e., using ′) since
     #  it is easier to remove the ′ than to add it, a feature that
-    #  is used by normalize_state_indices!
-    endo[:marginal_m′_t] = 1:nm
-    endo[:marginal_k′_t] = (1 + nm):(nm + nk)
-    endo[:marginal_y′_t] = (1 + nm + nk):n_idio_states
-    n_distr_states       = n_idio_states + n_dct_vars[:copula] # number of distributional states: marginals + DCT of copula
-    endo[:copula′_t]     = (1 + n_idio_states):n_distr_states
-    for (i, k) in enumerate(state_vars[2:end])
+    #  is used by normalize_state_indices! # TODO: to figure out indices, just load them directly from HANKEstim and then check line by line
+    n_idio_states            = nm + nk + ny - 3 # subtract 3 for dof
+    dof_to_remove            = 3
+    endo[:marginal_pdf_m′_t] = 1:(nm - 1)
+    endo[:marginal_pdf_k′_t] = (1 + nm - 1):(nm + nk - 2)
+    endo[:marginal_pdf_y′_t] = (1 + nm + nk - 2):n_idio_states
+    n_distr_states           = n_idio_states + get_setting(:n_copula_dct_coefficients)
+    endo[:copula′_t]         = (1 + n_idio_states):n_distr_states
+    for (i, k) in enumerate(get_aggregate_state_variables(m))
         endo[k] = (n_distr_states + i):(n_distr_states + i)
     end
 
     # Update n_states to be consistent with the number of
     # idiosyncratic states and jumps after reduction
     n_states = first(endo[state_vars[end]])
-    m <= Setting(:n_states, n_states)
+    m       <= Setting(:n_states, n_states)
 
     # Now populate jump indices
-    n_idio_jumps = n_dct_vars[:Vm] + n_dct_vars[:Vk]
-    endo[:Vm′_t] = (n_states + 1):(n_states + n_dct_vars[:Vm])
-    endo[:Vk′_t] = (n_states + n_dct_vars[:Vm] + 1):(n_states + n_idio_jumps)
-    for (i, k) in enumerate(jump_vars[3:end])
-        endo[k] = (n_states + n_idio_jumps + i):(n_states + n_idio_jumps + i)
+    n_dct_Vm            = length(get_setting(m, :dct_compression_indices)[:Vm])
+    n_dct_Vk            = length(get_setting(m, :dct_compression_indices)[:Vk])
+    n_idio_jumps        = n_dct_Vm + n_dct_Vk
+    n_states_idio_jumps = n_states + n_idio_jumps
+
+    endo[:Vm′_t] = (n_states + 1):(n_states + n_dct_Vm)
+    endo[:Vk′_t] = (n_states + n_dct_Vm + 1):(n_states + n_idio_jumps)
+    for (i, k) in enumerate(get_aggregate_jump_variables(m))
+        endo[k] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
     end
-    n_jumps = first(endo[jump_vars[end]])
-    m <= Setting(:n_jumps, n_jumps)
+    m <= Setting(:n_vars, first(endo[jump_vars[end]]))
+    m <= Setting(:n_jumps, get_setting(m, :n_vars) - n_states)
 
     ## Populate equation indices
 
     # Function blocks which output a function
-    n_eqconds = n_distr_states + n_idio_jumps # number of function-valued equilibrium conditions
-    eqconds[:eq_marginal_distr_m] = endo[:marginal_m′_t] # note that since endo holds UnitRanges, this assignment results in a copy
-    eqconds[:eq_marginal_distr_k] = endo[:marginal_k′_t]
-    eqconds[:eq_marginal_distr_y] = endo[:marginal_y′_t]
+    eqconds[:eq_marginal_distr_m] = endo[:marginal_pdf_m′_t] # note that since endo holds UnitRanges, this assignment results in a copy
+    eqconds[:eq_marginal_distr_k] = endo[:marginal_pdf_k′_t]
+    eqconds[:eq_marginal_distr_y] = endo[:marginal_pdf_y′_t]
     eqconds[:eq_copula]           = endo[:copula′_t]
-    eqconds[:eq_marginal_value_bonds] = (1 + n_distr_states):(n_dct_vars[:Vm] + n_distr_states)
-    eqconds[:eq_marginal_value_capital] = (1 + n_distr_states + n_dct_vars[:Vk]):n_eqconds
+    eqconds[:eq_marginal_value_bonds]   = endo[:Vm′_t] # TODO: maybe we'll move these values to the top of the implied Jacobian matrix?
+    eqconds[:eq_marginal_value_capital] = endo[:Vk′_t] #       (instead of after the aggregate states)
 
     # Function blocks which map functions to scalars
     for (i, name) in enumerate([:eq_agg_capital, :eq_agg_bond, :eq_agg_hh_debt,
                                 :eq_τ_level, :eq_total_tax_revenue, :eq_Ht,
                                 :eq_GiniX, :eq_I90_share, :eq_I90_share_net,
                                 :eq_W90_share, :eq_sd_log_y, :eq_GiniC])
-        eqconds[name] = (n_eqconds + i):(n_eqconds + i)
+        eqconds[name] = (n_distr_states + i):(n_distr_states + i)
     end
     n_eqconds += first(eqconds[:eq_GiniC]) # Increment this variable, so it now includes functional (function to scalar) blocks
 
@@ -983,14 +982,14 @@ function setup_indices!(m::BayerBornLuetticke)
                                 # Exogenous shocks
                                 :eq_A, :eq_Z, :eq_Ψ, :eq_μ_p, :eq_μ_w,
                                 :eq_σ, :eq_G, :eq_P, :eq_R, :eq_S])
-        eqconds[name] = (n_eqconds + i):(n_eqconds + i)
+        eqconds[name] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
     end
 end
 
 # TODO: init_states_and_jumps! is not done. Its role appears to be prepping
 #       index info for Klein, but since we're using SGU, so maybe we don't need it
-function init_states_and_jumps!(m::AbstractModel, states::Vector{Symbol},
-                                jumps::Vector{Symbol}, states_only::Bool = false)
+function count_states_and_jumps!(m::AbstractModel, states::Vector{Symbol},
+                                 jumps::Vector{Symbol}, states_only::Bool = false)
 
     endo = m.endogenous_states
 
@@ -1063,34 +1062,4 @@ function init_states_and_jumps!(m::AbstractModel, states::Vector{Symbol},
                  "Number of 'states' in the state space model. Because backward and forward
                  looking variables need to be explicitly tracked for the Klein solution
                  method, we have n_states and n_jumps")
-end
-
-"""
-```
-reset_grids!(m::BayerBornLuetticke)
-```
-This is a very important function. ANy time you reduce the grid, you need to restore to the full grid before evaluating steadystate/jacobian/likelihood again. Otherwise, you'll keep redsucing and after just a few times, you'll be left with NOTHING. So PSA: reset your grid when you're done with whatever you need to do with the smaller grid!
-"""
-function reset_grids!(m::BayerBornLuetticke)
-    # TODO: reset_grids is not done, may need to update settings to have "default" values saved for the grid
-
-    m <= Setting(:nx1_state, 300)
-    m <= Setting(:nx2_state, 300)
-    m <= Setting(:nx1_jump,  300)
-    m <= Setting(:nx2_jump,  300)
-
-    setup_indices!(m)
-    init_states_and_jumps!(m, get_setting(m, :states), get_setting(m, :jumps))
-    init_grids!(m)
-
-    # So that the indices of m.endogenous_states reflect the normalization
-    normalize_model_state_indices!(m)
-
-    endogenous_states_augmented = [:C_t1]
-    for (i,k) in enumerate(endogenous_states_augmented)
-        m.endogenous_states_augmented[k] = i +
-            first(m.endogenous_states[get_setting(m, :jumps)[end]])
-    end
-    m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
-                 length(m.endogenous_states_augmented))
 end

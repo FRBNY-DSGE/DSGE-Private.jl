@@ -26,7 +26,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
         println("Running reduction step to prepare linearization")
     end
     θ  = parameters2namedtuple(m)
-    nm, nk, ny = DSGE.get_idiosyncratic_dims(m)
+    nm, nk, ny = get_idiosyncratic_dims(m)
 
     # Calculate other equilibrium quantities
     incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, avg_tax_rateSS, eff_int = _bbl_incomes(θ, m.grids, KSS, distrSS)
@@ -47,7 +47,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
     # Produce distributional summary statistics
     distr_m_SS, distr_k_SS, distr_y_SS, share_borrowerSS, GiniWSS, I90shareSS,I90sharenetSS, GiniXSS,
             sdlogxSS, P9010CSS, GiniCSS, sdlogCSS, P9010ISS, GiniISS, sdlogySS, w90shareSS, P10CSS, P50CSS, P90CSS =
-            distrSummaries(distrSS, c_a_starSS, c_n_starSS, incnet, incgross, θ, DSGE.get_idiosyncratic_dims(m), m.grids)
+            distrSummaries(distrSS, c_a_starSS, c_n_starSS, incnet, incgross, θ, get_idiosyncratic_dims(m), m.grids)
 
     ## Store quantities in m
 
@@ -64,7 +64,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
 
     # Scalar summary statistics
     m[:share_borrower_star]       = log(share_borrowerSS)
-    m[:Gini_W_star]               = log(GiniWSS)
+    m[:Gini_wealth_star]          = log(GiniWSS)
     m[:W90_share_star]            = log(w90shareSS)
     m[:I90_share_star]            = log(I90shareSS)
     m[:I90_share_net_star]        = log(I90sharenetSS)
@@ -117,7 +117,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
     ThetaD              = vec(dct(distr_LOL))                        # Discrete cosine transformation of Copula
     ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
     n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
-    compressionIndexesD = ind[2:2+n_copula_coefs]                    # leave out index no. 1 as this shifts the constant
+    compressionIndexesD = ind[2:1+n_copula_coefs]                    # leave out index no. 1 as this shifts the constant
 
     compressionIndexes  = Array{Array{Int, 1}, 1}(undef, 3)          # Container to store all retained coefficients in one array
     compressionIndexes[1] = compressionIndexesVm
@@ -129,8 +129,8 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
     m[:dct_Vk_star]     = ThetaVk
     m[:dct_copula_star] = ThetaD
 
-    DSGE.update_compression_indices!(m, [:Vm, :Vk, :copula],
-                                     compressionIndexesVm, compressionIndexesVk, compressionIndexesD)
+    update_compression_indices!(m, [:Vm, :Vk, :copula],
+                                compressionIndexesVm, compressionIndexesVk, compressionIndexesD)
 
     # TODO: move this step to the indices/dimensions update (setting is n_states)
     # add to no. of states the coefficients that perturb the copula
@@ -169,7 +169,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
 #    @writeXSS
 
     # produce indexes to access XSS etc.
-
+    setup_indices!(m)
     # TODO: check the contents of these indices and then create them
     # store compressionIndexes in some sort of object or Setting or field
     #= indexes               = produce_indexes(n_par, compressionIndexesVm, compressionIndexesVk, compressionIndexesD)
@@ -187,7 +187,7 @@ m
 end
 
 # in case we ever just want the vector
-function construct_steadystate_vector(m::BayerBornLuetticke; only_aggregate::Bool = false)
+@inline function construct_steadystate_vector(m::BayerBornLuetticke; only_aggregate::Bool = false)
 
     if only_aggregate
         keys = [unprime(k) for k in vcat(get_aggregate_state_variables(m), get_aggregate_jump_variables(m))]
@@ -202,7 +202,7 @@ function construct_steadystate_vector(m::BayerBornLuetticke; only_aggregate::Boo
     end
 end
 
-function construct_steadystate_namedtuple(m::BayerBornLuetticke; only_aggregate::Bool = false)
+@inline function construct_steadystate_namedtuple(m::BayerBornLuetticke; only_aggregate::Bool = false)
 
     # Create keys for steady-state variables
     keys = if only_aggregate
@@ -221,6 +221,15 @@ function construct_steadystate_namedtuple(m::BayerBornLuetticke; only_aggregate:
     # Create NamedTuple by parsing key to obtain the implied steady-state value in m
     nt = NamedTuple{keys}(get_untransformed_values(m[_bbl_parse_endogenous_states(k)]) for k in keys)
 
-
     return nt
+end
+
+@inline function construct_prime_and_noprime_indices(m::BayerBornLuetticke)
+    id = deepcopy(m.endogenous_states)
+
+    for (k, v) in id
+        id[unprime(k)] = v
+    end
+
+    return id
 end
