@@ -205,12 +205,7 @@ function (<=)(m::AbstractDSGEVARModel{T}, p::ModelConstructors.AbstractParameter
     dsge <= p
 end
 
-function (<=)(m::AbstractDSGEVARModel{T}, p::Union{ModelConstructors.SteadyStateParameter, ModelConstructors.SteadyStateParameterArray}) where {T}
-    dsge = get_dsge(m)
-    dsge <= p
-end
-
-function (<=)(m::AbstractDSGEVARModel{T}, p::ModelConstructors.SteadyStateParameterGrid) where {T}
+function (<=)(m::AbstractDSGEVARModel{T}, p::Union{ModelConstructors.SteadyStateParameter, ModelConstructors.SteadyStateParameterGrid}) where {T}
     dsge = get_dsge(m)
     dsge <= p
 end
