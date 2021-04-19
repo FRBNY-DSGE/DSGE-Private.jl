@@ -1,8 +1,8 @@
 # Constructor functions for grid
-function _construct_liquid_asset_grid_bbl(mmin::T, mmax::T, nm::Int64) where {T <: Real}
+function _construct_liquid_asset_grid_bbl(mmin::T, mmax::T, nm::Int) where {T <: Real}
     return exp.(range(0., stop = log(mmax - mmin + 1.), length = nm)) .+ (mmin - 1.)
 end
-function _construct_illiquid_asset_grid_bbl(kmin::T, kmax::T, nk::Int64) where {T <: Real}
+function _construct_illiquid_asset_grid_bbl(kmin::T, kmax::T, nk::Int) where {T <: Real}
     return exp.(range(log(kmin + 1.), stop = log(kmax + 1.), length = nk)) .- 1.
 end
 

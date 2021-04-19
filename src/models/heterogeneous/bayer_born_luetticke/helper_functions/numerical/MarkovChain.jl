@@ -17,7 +17,7 @@ Uses importance sampling: each bin has probability 1/N to realize
 - `P`: transition matrix
 - `bounds`: bin bounds
 """
-function tauchen86(ρ::T, N::Int64; σ::T = 1.0, μ_e::T = 0.0) where {T <: Real}
+function tauchen86(ρ::T, N::Int; σ::T = 1.0, μ_e::T = 0.0) where {T <: Real}
 #   Author: Christian Bayer, Uni Bonn, 03.05.2010
 #   Modified by William Chen, April 6, 2021.
 #   See https://github.com/BenjaminBorn/HANK_BusinessCycleAndInequality for original implementation as "Tauchen"
@@ -44,13 +44,13 @@ function tauchen86(ρ::T, N::Int64; σ::T = 1.0, μ_e::T = 0.0) where {T <: Real
 
     for j = 1:N
         p(x) = pr_ij(x,bounds[j], bounds[j+1], ρ, σ_e)
-        for i = 1:floor(Int64, (N-1)/2)+1 # Exploit Symmetrie to save running time
+        for i = 1:floor(Int, (N-1)/2)+1 # Exploit Symmetrie to save running time
             P[i, j] = _bbl_gauss_chebyshev_integrate(p, bounds[i], bounds[i+1]) # Evaluate Integral
         end
     end
 
     # Exploit Symmetrie Part II
-    P[floor(Int64, (N - 1) / 2) + 2:N, :] = P[(ceil(Int64, (N - 1) / 2):-1:1), end:-1:1]
+    P[floor(Int, (N - 1) / 2) + 2:N, :] = P[(ceil(Int, (N - 1) / 2):-1:1), end:-1:1]
 
     # Make sure P is a Probability Matrix
     P = P ./ sum(P, dims = 2)

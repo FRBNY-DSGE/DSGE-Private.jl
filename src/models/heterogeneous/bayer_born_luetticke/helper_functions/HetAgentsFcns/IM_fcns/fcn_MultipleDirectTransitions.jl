@@ -3,9 +3,9 @@ function MultipleDirectTransition(m_a_star::AbstractArray{T,3},
                                   k_a_star::AbstractArray{T,3},
                                   distr::AbstractArray{T,3},
                                   λ::T,
-                                  Π::AbstractArray{T,2}, dims::NTuple{3, Int64},
+                                  Π::AbstractArray{T,2}, dims::NTuple{3, Int},
                                   grids::NTuple{3, <: AbstractVector{T}}, ϵ::T;
-                                  iters::Int64 = 10000) where {T <: Real}
+                                  iters::Int = 10000) where {T <: Real}
 
     # unpack dims and grids
     nm,     nk,     ny     = dims

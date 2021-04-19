@@ -1,5 +1,5 @@
 function MakeWeights(xpol,grid)
-    idx         = Array{Int64}(undef, size(xpol))
+    idx         = Array{Int}(undef, size(xpol))
     weightright = Array{eltype(xpol)}(undef, size(xpol))
     weightleft  = Array{eltype(xpol)}(undef, size(xpol))
     dx          = diff(grid)
@@ -24,7 +24,7 @@ function MakeWeights(xpol,grid)
 end
 
 function MakeWeightsLight(xpol,grid)
-    idx         = Array{Int64}(undef, size(xpol))
+    idx         = Array{Int}(undef, size(xpol))
     weightright = Array{eltype(xpol)}(undef, size(xpol))
     dx          = diff(grid)
     @inbounds begin

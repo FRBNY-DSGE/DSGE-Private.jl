@@ -22,7 +22,7 @@ function produceCompMat(DC,compressionIndexes,dims)
     return CompMat, UnCompMat
 end
 
-function uncompress(compressionIndexes, XC, DC, IDC, grid_dims::NTuple{3, Int64})
+function uncompress(compressionIndexes, XC, DC, IDC, grid_dims::NTuple{3, Int})
     # POTENTIAL FOR SPEEDUP BY SPLITTING INTO DUAL AND REAL PART AND USE BLAS
     nm, nk, ny = grid_dims
     θ1 =zeros(eltype(XC),nm,nk,ny)
@@ -39,7 +39,7 @@ function uncompress(compressionIndexes, XC, DC, IDC, grid_dims::NTuple{3, Int64}
     return θ
 end
 
-function uncompressD(compressionIndexes, XC, DC,IDC, grid_dims::NTuple{3, Int64})
+function uncompressD(compressionIndexes, XC, DC,IDC, grid_dims::NTuple{3, Int})
     nm, nk, ny = grid_dims
     # POTENTIAL FOR SPEEDUP BY SPLITTING INTO DUAL AND REAL PART AND USE BLAS
     θ1 =zeros(eltype(XC),nm-1,nk-1,ny-1)
@@ -57,7 +57,7 @@ function uncompressD(compressionIndexes, XC, DC,IDC, grid_dims::NTuple{3, Int64}
 end
 
 function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
-                  DC::AbstractArray, IDC::AbstractArray, grid_dims::NTuple{3, Int64})
+                  DC::AbstractArray, IDC::AbstractArray, grid_dims::NTuple{3, Int})
     nm, nk, ny = grid_dims
     θ   = zeros(eltype(XU),length(compressionIndexes))
     XU2 = zeros(eltype(XU),size(XU))
@@ -102,7 +102,7 @@ function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
 end
 
 function compressD(compressionIndexes::AbstractArray, XU::AbstractArray,
-                   DC::AbstractArray, IDC::AbstractArray, grid_dims::NTuple{3, Int64})
+                   DC::AbstractArray, IDC::AbstractArray, grid_dims::NTuple{3, Int})
     nm, nk, ny = grid_dims
     θ   = zeros(eltype(XU),length(compressionIndexes))
     XU2 = zeros(eltype(XU),size(XU))
