@@ -135,7 +135,7 @@ F[eq_wage_phillips_curve]          = (log(π_w_t) - nt[:π_w_t]) - (κ_w * (mc_w
                             θ[:β] * ((log(π_w′_t) - nt[:π_w_t]) * Wagesum′ / Wagesum))
 # worker's wage = mcw * firm's wage
 # Wage Dynamics
-F[eq_wage_growth]           = log(w_t / w_t1) - log(π_w_t / π_t)                   # Definition of real wage inflation
+F[eq_real_wage_inflation]           = log(w_t / w_t1) - log(π_w_t / π_t)                   # Definition of real wage inflation
 
 # Capital utilisation
 F[eq_capital_util]            = MPKserv  -  q_t * (δ_1 + δ_2 * (u_t - 1.0))           # Optimality condition for utilization

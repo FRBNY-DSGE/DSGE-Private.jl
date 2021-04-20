@@ -847,7 +847,7 @@ function model_settings!(m::BayerBornLuetticke)
 
     m <= Setting(:n_states, 1, "Total number of states after reduction steps") # just initializing, will count later
     m <= Setting(:n_jumps, 1, "Total number of jumps after reduction steps")
-    m <= Setting(:nvars, get_setting(m, :n_states) + get_setting(m, :n_jumps), "Number of variables")
+    m <= Setting(:n_vars, get_setting(m, :n_states) + get_setting(m, :n_jumps), "Number of variables")
 
     # Number of states and jumps
     m <= Setting(:n_predetermined_variables, 0, "Number of predetermined variables after
@@ -950,34 +950,28 @@ function setup_indices!(m::BayerBornLuetticke)
     ## Populate equation indices
 
     # Function blocks which output a function
+    n_aggr_states               = n_states - n_distr_states
     eqconds[:eq_marginal_pdf_m] = endo[:marginal_pdf_m′_t] # note that since endo holds UnitRanges, this assignment results in a copy
     eqconds[:eq_marginal_pdf_k] = endo[:marginal_pdf_k′_t]
     eqconds[:eq_marginal_pdf_y] = endo[:marginal_pdf_y′_t]
     eqconds[:eq_copula]         = endo[:copula′_t]
-    eqconds[:eq_marginal_value_bonds]   = endo[:Vm′_t] # TODO: maybe we'll move these values to the top of the implied Jacobian matrix?
-    eqconds[:eq_marginal_value_capital] = endo[:Vk′_t] #       (instead of after the aggregate states)
+    eqconds[:eq_marginal_value_bonds]   = (first(endo[:Vm′_t]) - n_aggr_states):(last(endo[:Vm′_t]) - n_aggr_states)
+    eqconds[:eq_marginal_value_capital] = (first(endo[:Vk′_t]) - n_aggr_states):(last(endo[:Vk′_t]) - n_aggr_states)
 
-    # Aggregate blocks (for aggregate variable)
+    # Aggregate blocks
+    n_distr_states_idio_jumps = last(eqconds[:eq_marginal_value_capital])
     for (i, name) in enumerate([# Endogenous model states (for the jumps)
                                 :eq_mp, :eq_tax_progressivity, :eq_tax_level,
                                 :eq_tax_revenue, :eq_avg_tax_rate,
                                 :eq_deficit_rule, :eq_gov_budget_constraint,
                                 :eq_price_phillips_curve, :eq_wage_phillips_curve,
-                                :eq_wage_growth, :eq_capital_util, :eq_capital_return,
+                                :eq_real_wage_inflation, :eq_capital_util, :eq_capital_return,
                                 :eq_received_wages, :eq_wages_firms_pay, :eq_union_firm_profits,
                                 :eq_union_profits, :eq_union_retained,
                                 :eq_firm_profits, :eq_profits_distr_to_hh, :eq_retained,
                                 :eq_tobins_q, :eq_expost_liquidity_premium,
                                 :eq_exante_liquidity_premium, :eq_capital_accum,
                                 :eq_labor_supply, :eq_output, :eq_resource_constraint,
-
-                                # Blocks mapping functions to scalars
-                                :eq_capital_market_clear,
-                                :eq_debt_market_clear, :eq_bond_market_clear,
-                                :eq_bond_output_ratio, :eq_tax_output_ratio,
-                                :eq_retained_earnings_gdp_ratio, :eq_Ht,
-                                :eq_GiniX, :eq_I90_share, :eq_I90_share_net,
-                                :eq_W90_share, :eq_sd_log_y, :eq_GiniC,
 
                                 # Growth rates
                                 :eq_Ygrowth, :eq_Tgrowth, :eq_Bgrowth,
@@ -990,8 +984,16 @@ function setup_indices!(m::BayerBornLuetticke)
 
                                 # Exogenous shocks
                                 :eq_A, :eq_Z, :eq_Ψ, :eq_μ_p, :eq_μ_w,
-                                :eq_σ, :eq_G, :eq_P, :eq_R, :eq_S])
-        eqconds[name] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
+                                :eq_σ, :eq_G, :eq_P, :eq_R, :eq_S,
+
+                                # Blocks mapping functions to scalars
+                                :eq_capital_market_clear,
+                                :eq_debt_market_clear, :eq_bond_market_clear,
+                                :eq_bond_output_ratio, :eq_tax_output_ratio,
+                                :eq_retained_earnings_gdp_ratio, :eq_Ht,
+                                :eq_GiniX, :eq_I90_share, :eq_I90_share_net,
+                                :eq_W90_share, :eq_sd_log_y, :eq_GiniC])
+        eqconds[name] = (n_distr_states_idio_jumps + i):(n_distr_states_idio_jumps + i)
         aggr_eqconds[name] = i
     end
 end

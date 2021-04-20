@@ -71,7 +71,7 @@ function Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::AbstractAr
     DSGE.@unpack_and_first eq_mp, eq_tax_progressivity, eq_tax_level = eq
     DSGE.@unpack_and_first eq_tax_revenue, eq_avg_tax_rate, eq_deficit_rule = eq
     DSGE.@unpack_and_first eq_gov_budget_constraint, eq_price_phillips_curve = eq
-    DSGE.@unpack_and_first eq_wage_phillips_curve, eq_wage_growth, eq_capital_util = eq
+    DSGE.@unpack_and_first eq_wage_phillips_curve, eq_real_wage_inflation, eq_capital_util = eq
     DSGE.@unpack_and_first eq_capital_return, eq_received_wages, eq_wages_firms_pay = eq
     DSGE.@unpack_and_first eq_union_firm_profits, eq_union_profits, eq_union_retained = eq
     DSGE.@unpack_and_first eq_firm_profits, eq_profits_distr_to_hh, eq_retained = eq

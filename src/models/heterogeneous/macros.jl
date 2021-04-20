@@ -188,7 +188,8 @@ unpacks a dictionary and calls `first` on the unpacked value.
 The principle use of this macro is for unpacking a dictionary
 whose values are 1-length `UnitRange` instances.
 """
-@inline unpack_and_first(x::AbstractDict{Symbol}, ::Val{k}) where {k} = first(x[k])
+@inline unpack_and_first(x::AbstractDict{Symbol, UnitRange{Int}}, ::Val{k}) where {k} = first(x[k])
+@inline unpack_and_first(x::AbstractDict{Symbol, Int}, ::Val{k}) where {k} = x[k]
 macro unpack_and_first(args)
     args.head!=:(=) && error("Expression needs to be of form `a, b = c`")
     items, suitecase = args.args
