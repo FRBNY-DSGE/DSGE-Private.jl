@@ -62,10 +62,10 @@ Htact                   = dot(distr_y[1:end-1], (y_grid[1:end-1] ./ H).^((θ[:γ
 # Error Term on exogeneous States
 # Shock processes
 F[eq_G]       = log.(G_sh′_t)         - θ[:ρ_G] * log.(G_sh_t)     # primary deficit shock
-F[eq_P]   = log.(P_sh′_t)         - θ[:ρ_P] * log.(P_sh_t) # tax shock
+F[eq_P]   = log.(P_sh′_t)         - θ[:ρ_P_sh] * log.(P_sh_t) # tax shock
 
-F[eq_R]       = log.(R_sh′_t)         - θ[:ρ_R] * log.(R_sh_t)     # Taylor rule shock
-F[eq_S]       = log.(S_sh′_t)         - θ[:ρ_S] * log.(S_sh_t)     # uncertainty shock
+F[eq_R]       = log.(R_sh′_t)         - θ[:ρ_R_sh] * log.(R_sh_t)     # Taylor rule shock
+F[eq_S]       = log.(S_sh′_t)         - θ[:ρ_S_sh] * log.(S_sh_t)     # uncertainty shock
 
 # Stochastic states that can be directly moved (no feedback)
 F[eq_A]            = log.(A′_t)              - θ[:ρ_A] * log.(A_t)               # (unobserved) Private bond return fed-funds spread (produces goods out of nothing if negative)
@@ -106,8 +106,8 @@ F[eq_mp]           = log(RB′_t) - nt[:RB_t] -
 # Tax rule
 F[eq_tax_progressivity]        = log(τ_prog_t) - θ[:ρ_P] * log(τ_prog_t1)  - # TODO: find correct name of τ_prog_lag_t1
                          (1.0 - θ[:ρ_P]) * (nt[:τ_prog_t]) -
-                         (1.0 - θ[:ρ_P]) * θ[:γ_Y] * log(Y_t / Y_GAP) -
-                         (1.0 - θ[:ρ_P]) * θ[:γ_B] * (log(B_t)- nt[:B_t]) -
+                         (1.0 - θ[:ρ_P]) * θ[:γ_Y_P] * log(Y_t / Y_GAP) -
+                         (1.0 - θ[:ρ_P]) * θ[:γ_B_P] * (log(B_t)- nt[:B_t]) -
                          log(P_sh_t)
 
 F[eq_tax_level]         = avg_tax_rate_t - dot(nt[:distr_t], taxrev) / dot(nt[:distr_t], incgrossaux) # Union profits are taxed at average tax rate
