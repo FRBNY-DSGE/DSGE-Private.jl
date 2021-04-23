@@ -45,12 +45,15 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
                         dims::NTuple{3, Int}, grids::OrderedDict)
     # Set up
     nm, nk, ny = dims
+    m_grid = get_gridpts(grids, :m_grid)::Vector{Float64}
+    k_grid = get_gridpts(grids, :k_grid)::Vector{Float64}
+    m_ndgrid = grids[:m_ndgrid]::Array{Float64, 3}
 
     ## Distributional summaries
     mplusk = Vector{eltype(c_a_star)}(undef, nk * nm)
-    @inbounds @simd for k = 1:nk
+    @inbounds for k = 1:nk
         for m = 1:nm
-            mplusk[m + (k - 1) * nm] = get_gridpts(grids, :m_grid)[m] + get_gridpts(grids, :k_grid)[k]
+            mplusk[m + (k - 1) * nm] = m_grid[m] + k_grid[k]
         end
     end
     IX               = sortperm(mplusk)
@@ -59,18 +62,20 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     moneycapital_pdf = moneycapital_pdf[IX]
     moneycapital_cdf = cumsum(moneycapital_pdf)
     S                = [0.; cumsum(moneycapital_pdf .* mplusk)]
-    giniwealth       = 1. - (dot(moneycapital_pdf, (S[1:end-1] + S[2:end])) / S[end])
+    # giniwealth       = 1. - (dot(moneycapital_pdf, (S[1:end-1] + S[2:end])) ./ S[end])
+    giniwealth       = 1. - (sum(moneycapital_pdf .* (S[1:end-1] + S[2:end])) ./ S[end])
 
     distr_m = vec(sum(distr, dims=(2,3)))
     distr_k = vec(sum(distr, dims=(1,3)))
     distr_y = vec(sum(distr, dims=(1,2)))
 
-    share_borrower = loop_sum(distr_m[get_gridpts(grids, :m_grid) .< 0])
+    share_borrower = sum(distr_m[m_grid .< 0])
 
     p50             = findfirst(x -> x >= 0.5, moneycapital_cdf)
     p90             = findfirst(x -> x >= 0.9, moneycapital_cdf)
     w9050           = mplusk[p90] / mplusk[p50]
-    FN_wealthshares = cumsum(mplusk .* moneycapital_pdf) ./ dot(mplusk, moneycapital_pdf)
+    # FN_wealthshares = cumsum(mplusk .* moneycapital_pdf) ./ dot(mplusk, moneycapital_pdf)
+    FN_wealthshares = cumsum(mplusk .* moneycapital_pdf) ./ sum(mplusk .* moneycapital_pdf)
     w90share        = 1.0 - mylinearinterpolate(moneycapital_cdf, FN_wealthshares, [0.9])[1]
 
     x                   = Array{eltype(c_a_star)}(undef, nm, nk, ny, 2)
@@ -90,8 +95,10 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     logx                = log.(x)
     x_pdf               = distr_x[IX]
     S                   = vcat(0., cumsum(x_pdf .* x))
-    ginicompconsumption = 1. - (dot(x_pdf, (S[1:end-1] + S[2:end])) / S[end])
-    sdlogx              = sqrt(dot(x_pdf, logx.^2) - dot(x_pdf, logx)^2)
+    ginicompconsumption = 1. - (sum(x_pdf .* (S[1:end-1] + S[2:end])) ./ S[end])
+    # ginicompconsumption = 1. - (dot(x_pdf, (S[1:end-1] + S[2:end])) ./ S[end])
+    sdlogx              = sqrt(sum(x_pdf .* logx.^2) - sum(x_pdf .* logx)^2)
+    # sdlogx              = sqrt(dot(x_pdf, logx.^2) - dot(x_pdf, logx)^2)
 
     IX              = sortperm(vec(c))
     c               = c[IX]
@@ -110,28 +117,36 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     p50C            = c[p50]
     p90C            = c[p90]
 
-    giniconsumption = 1. - (dot(c_pdf, (S[1:end-1] + S[2:end])) / S[end])
-    sdlogc          = sqrt(dot(c_pdf, logc.^2) - dot(c_pdf, logc)^2)
+#=    giniconsumption = 1. - (dot(c_pdf, (S[1:end-1] + S[2:end])) / S[end])
+    sdlogc          = sqrt(dot(c_pdf, logc.^2) - dot(c_pdf, logc)^2)=#
+    giniconsumption = 1. - (sum(c_pdf .* (S[1:end-1] + S[2:end])) / S[end])
+    sdlogc          = sqrt(sum(c_pdf .* logc.^2) - sum(c_pdf .* logc)^2)
 
-    Yidio              = inc[6] + inc[2] + inc[3] - grids[:m_ndgrid]
-    IX                 = sortperm(vec(Yidio))
+    Yidio              = inc[6] + inc[2] + inc[3] - m_ndgrid
+    # IX                 = sortperm(vec(Yidio))
+    IX                 = sortperm(Yidio[:])
     Yidio              = Yidio[IX]
     Y_pdf              = distr[IX]
     Y_cdf              = cumsum(Y_pdf)
-    p10                = findfirst(x -> x >= 0.1, Y_cdf)
-    FN_incomesharesnet = cumsum(Yidio .* Y_pdf) ./ dot(Yidio, Y_pdf)
+    # p10                = findfirst(x -> x >= 0.1, Y_cdf)
+    p10 = count(Y_cdf .< 0.1) + 1
+    # FN_incomesharesnet = cumsum(Yidio .* Y_pdf) ./ dot(Yidio, Y_pdf)
+    FN_incomesharesnet = cumsum(Yidio .* Y_pdf) ./ sum(Yidio .* Y_pdf)
     I90sharenet        = 1.0 .- mylinearinterpolate(Y_cdf, FN_incomesharesnet, [0.9])[1]
 
-    Yidio           = incgross[1] + incgross[2] + incgross[3] - grids[:m_ndgrid]
-    IX              = sortperm(vec(Yidio))
+    Yidio           = incgross[1] + incgross[2] + incgross[3] - m_ndgrid
+    # IX              = sortperm(vec(Yidio))
+    IX              = sortperm(Yidio[:])
     Yidio           = Yidio[IX]
     Y_pdf           = distr[IX]
     Y_cdf           = cumsum(Y_pdf)
-    FN_incomeshares = cumsum(Yidio .* Y_pdf) ./ dot(Yidio, Y_pdf)
+    # FN_incomeshares = cumsum(Yidio .* Y_pdf) ./ dot(Yidio, Y_pdf)
+    FN_incomeshares = cumsum(Yidio .* Y_pdf) ./ sum(Yidio .* Y_pdf)
     I90share        = 1.0 .- mylinearinterpolate(Y_cdf, FN_incomeshares, [0.9])[1]
 
     S               = vcat(0., cumsum(Y_pdf .* Yidio))
-    giniincome      = 1. - (dot(Y_pdf, (S[1:end-1] + S[2:end])) / S[end])
+    # giniincome      = 1. - (dot(Y_pdf, (S[1:end-1] + S[2:end])) / S[end])
+    giniincome      = 1. - (sum(Y_pdf .* (S[1:end-1] + S[2:end])) / S[end])
 
     Yidio           = incgross[1]
     Yidio           = Yidio[:, :, 1:end-1]
@@ -139,15 +154,16 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     IX              = sortperm(vec(Yidio))
     Yidio           = Yidio[IX]
     distr_aux       = distr[:, :, 1:end-1]
-    distr_aux       = distr_aux ./ loop_sum(distr_aux)
+    distr_aux       = distr_aux ./ sum(distr_aux)
     Y_pdf           = distr_aux[IX]
     Y_cdf           = cumsum(Y_pdf)
     p10             = findfirst(x -> x >= 0.1, Y_cdf)
     p50             = findfirst(x -> x >= 0.5, Y_cdf)
     y5010           = Yidio[p50] ./ Yidio[p10]
 
-    sdlogy          = sqrt(dot(Y_pdf, logYidio.^2) - dot(Y_pdf, logYidio)^2)
+    # sdlogy          = sqrt(dot(Y_pdf, logYidio.^2) - dot(Y_pdf, logYidio)^2)
+sdlogy          = sqrt(vec(Y_pdf)' * log.(vec(Yidio)).^2 - (vec(Y_pdf)' * log.(vec(Yidio)))^2)
 
-    return distr_m, distr_k, distr_y, share_borrower, giniwealth, I90share,I90sharenet, ginicompconsumption, #= # comment used to split the
+    return distr_m, distr_k, distr_y, share_borrower, giniwealth, I90share, I90sharenet, ginicompconsumption, #= # comment used to split the
     =# sdlogx, c9010, giniconsumption, sdlogc, y5010, giniincome, sdlogy, w90share, p10C, p50C, p90C            # return output into two lines
 end

@@ -100,7 +100,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     if get_setting(m, :kfe_method) == :krylov
         # Calculate left-hand unit eigenvector (uses KrylovKit package)
         aux   = real.(eigsolve(TransitionMat', 1)[2][1])
-        distr = reshape(vec(aux) ./ loop_sum(aux), n) # use loop_sum here b/c scale and size of elements in aux => rounding error not a concern
+        distr = reshape(vec(aux) ./ sum(aux), n) # use loop_sum here b/c scale and size of elements in aux => rounding error not a concern
 
     elseif get_setting(m, :kfe_method) == :direct
         # Direct Transition
@@ -115,10 +115,10 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     #-----------------------------------------------------------------------------
     # Calculate capital stock
     #-----------------------------------------------------------------------------
-    #=K = sum(vec(distr) .* vec(m.grids[:k_ndgrid]))
-    B = sum(vec(distr) .* vec(m.grids[:m_ndgrid]))=#
-    K = dot(distr, k_ndgrid) # faster to use dot
-    B = dot(distr, m_ndgrid)
+    K = sum(vec(distr) .* vec(m.grids[:k_ndgrid]))
+    B = sum(vec(distr) .* vec(m.grids[:m_ndgrid]))
+#=    K = dot(distr, k_ndgrid) # faster to use dot
+    B = dot(distr, m_ndgrid)=#
 
     return K, B, TransitionMat, TransitionMat_a, TransitionMat_n, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star, Vm, Vk, distr
 end

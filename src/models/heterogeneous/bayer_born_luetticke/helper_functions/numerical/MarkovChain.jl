@@ -70,7 +70,7 @@ N = length(bounds)-1
         P=zeros(typeof(riskscale),N,N) # Initialize Transition Probability Matrix
 
         for i=1:floor(Int,(N-1)/2)+1
-            nodes, weights = my_qnwcheb(500, bounds[i], bounds[i+1])
+            nodes, weights = _bbl_qnwcheb(500, bounds[i], bounds[i+1])
             for j=1:N
             p(x) = pr_ij(x,bounds[j],bounds[j+1],rho,sigma_e)
              # Exploit Symmetrie to save running time

@@ -75,7 +75,7 @@ mutable struct BayerBornLuetticke{T} <: AbstractHetModel{T}
     # figure out a more flexible way to define
     # "grids" that are not necessarily quadrature
     # grids within the model
-# TODO: add field/type to hold reduction information e.g. DCT indices (but not coefficient values), copula info
+# TODO: maybe add field/type to hold reduction information e.g. DCT indices (but not coefficient values), copula info
     grids::OrderedDict{Symbol,Union{Grid, Array, T}}
     keys::OrderedDict{Symbol,Int}                    # Human-readable names for all the model
                                               # parameters and steady-states
@@ -126,7 +126,16 @@ function init_model_indices!(m::BayerBornLuetticke)
 
     # Predetermined states
     # TODO: delete states that should just be augmented states
-    m.state_variables = [# Endogenous function-valued states
+    m.state_variables = [:marginal_pdf_m′_t, :marginal_pdf_k′_t, :marginal_pdf_y′_t, :copula′_t,
+
+                         :A′_t, :Z′_t, :Ψ′_t, :RB′_t, :μ_p′_t, :μ_w′_t, :σ′_t,
+                         :union_retained′_t, :retained′_t,
+                         :Y′_t1, :B′_t1, :T′_t1, :I′_t1, :w′_t1, :q′_t1, :C′_t1,
+                         :avg_tax_rate′_t1, :τ_prog′_t1,
+
+                         :G_sh′_t, :P_sh′_t, :R_sh′_t, :S_sh′_t]
+
+#=    m.state_variables = [# Endogenous function-valued states
                          :marginal_pdf_m′_t, :marginal_pdf_k′_t, :marginal_pdf_y′_t, :copula′_t,
 
                          # Endogenous scalar-valued states (e.g. lags)
@@ -136,7 +145,7 @@ function init_model_indices!(m::BayerBornLuetticke)
 
                          # Exogenous scalar-valued states:
                          :A′_t, :Z′_t, :Ψ′_t, :RB′_t, :μ_p′_t, :μ_w′_t, :σ′_t,
-                         :G_sh′_t, :P_sh′_t, :R_sh′_t, :S_sh′_t]
+                         :G_sh′_t, :P_sh′_t, :R_sh′_t, :S_sh′_t]=#
 
     m.aggregate_state_variables = m.state_variables[5:end]
 
@@ -388,15 +397,15 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\kappa_w")
 
     # Monetary policy
-    m <= parameter(:ρ_R , 0.75, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(),
-                   BetaAlt(0.75, 0.10), fixed = false,
+    m <= parameter(:ρ_R , 0.9, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(),
+                   BetaAlt(0.5, 0.20), fixed = false,
                    description = "ρ: The degree of inertia in the monetary policy rule.",
                    tex_label="\\rho_R")
-    m <= parameter(:θ_π, 1.5, (1., 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
+    m <= parameter(:θ_π, 2., (1., 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
                    Normal(1.7, 0.3), fixed = false, # Note second tuple is parameterization for Exponential transform
                    description = "ψ1: Weight on inflation gap in monetary policy rule.",
                    tex_label = "\\theta_{\\pi}")
-    m <= parameter(:θ_Y, 0.5, (-5., 5.), (-5., 5.), SquareRoot(),
+    m <= parameter(:θ_Y, 0.125, (-5., 5.), (-5., 5.), SquareRoot(),
                    Normal(0.125, 0.05), fixed = false,
                    description = "ψy: Weight on output gap in monetary policy rule",
                    tex_label = "\\theta_y")
@@ -418,11 +427,11 @@ function init_parameters!(m::BayerBornLuetticke)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_τ: Persistence in tax level",
                    tex_label = "\\rho_{\\tau}")
-    m <= parameter(:γ_B_τ, 0.2, (-10., 10.), (10., 10.), SquareRoot(),
+    m <= parameter(:γ_B_τ, 0., (-10., 10.), (10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_B_τ: Reaction of tax level to debt",
                    tex_label = "\\gamma_{B, \\tau}")
-    m <= parameter(:γ_Y_τ, -1., (-10., 10.), (-10., 10.), SquareRoot(),
+    m <= parameter(:γ_Y_τ, 0., (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_Y_τ: Reaction of tax level to output",
                    tex_label = "\\gamma_{Y, \\tau}")
@@ -430,11 +439,11 @@ function init_parameters!(m::BayerBornLuetticke)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_P: Persistence in tax level",
                    tex_label = "\\rho_{P}")
-    m <= parameter(:γ_B_P, 0.2, (-10., 10.), (10., 10.), SquareRoot(),
+    m <= parameter(:γ_B_P, 0., (-10., 10.), (10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_B_P: Reaction of tax level to debt",
                    tex_label = "\\gamma_{B, P}")
-    m <= parameter(:γ_Y_P, -1., (-10., 10.), (-10., 10.), SquareRoot(),
+    m <= parameter(:γ_Y_P, 0., (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_Y_P: Reaction of tax level to output",
                    tex_label = "\\gamma_{Y, P}")
@@ -470,15 +479,15 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\rho_G")
 
     # Auxiliary exogenous processes - autocorrelations (fixed to a very small number in baseline specification)
-    m <= parameter(:ρ_R_ϵ, 1e-8, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_R_sh, 1e-8, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = true,
                    description = "ρ_R_ϵ: AR(1) coefficient in the monetary policy shock process.",
                    tex_label = "\\rho_{R, \\epsilon}")
-    m <= parameter(:ρ_P_ϵ, 1e-8, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_P_sh, 1e-8, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = true,
                    description = "ρ_P_ϵ: AR(1) coefficient in the tax progressivity shock process.",
                    tex_label = "\\rho_{P, \\epsilon}")
-    m <= parameter(:ρ_S_ϵ, 1e-8, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_S_sh, 1e-8, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = true,
                    description = "ρ_S_ϵ: AR(1) coefficient in shock process of the shock in the idiosyncatic income shock process.",
                    tex_label = "\\rho_{S, \\epsilon}")
@@ -955,10 +964,52 @@ function setup_indices!(m::BayerBornLuetticke)
     eqconds[:eq_marginal_pdf_k] = endo[:marginal_pdf_k′_t]
     eqconds[:eq_marginal_pdf_y] = endo[:marginal_pdf_y′_t]
     eqconds[:eq_copula]         = endo[:copula′_t]
-    eqconds[:eq_marginal_value_bonds]   = (first(endo[:Vm′_t]) - n_aggr_states):(last(endo[:Vm′_t]) - n_aggr_states)
-    eqconds[:eq_marginal_value_capital] = (first(endo[:Vk′_t]) - n_aggr_states):(last(endo[:Vk′_t]) - n_aggr_states)
+#=    eqconds[:eq_marginal_value_bonds]   = (first(endo[:Vm′_t]) - n_aggr_states):(last(endo[:Vm′_t]) - n_aggr_states)
+    eqconds[:eq_marginal_value_capital] = (first(endo[:Vk′_t]) - n_aggr_states):(last(endo[:Vk′_t]) - n_aggr_states)=#
+    eqconds[:eq_marginal_value_bonds]   = endo[:Vm′_t]
+    eqconds[:eq_marginal_value_capital] = endo[:Vk′_t]
 
     # Aggregate blocks
+    for (i, name) in enumerate([# Exogenous shocks
+                                :eq_A, :eq_Z, :eq_Ψ, :eq_mp, :eq_μ_p, :eq_μ_w,
+                                :eq_σ, :eq_union_retained, :eq_retained,
+
+                                :eq_LY, :eq_LB, :eq_LT, :eq_LI, :eq_Lw,
+                                :eq_Lq, :eq_LC, :eq_Lavg_tax_rate,
+                                :eq_Lτ_prog,
+
+                                :eq_G, :eq_P, :eq_R, :eq_S])
+        eqconds[name] = (n_distr_states + i):(n_distr_states + i)
+        aggr_eqconds[name] = i
+    end
+
+    n_aggr_states = length(aggr_eqconds)
+
+    for (i, name) in enumerate([# Endogenous model states (for the jumps)
+                                :eq_capital_return, :eq_wages_firms_pay, :eq_capital_market_clear,
+                                :eq_deficit_rule, :eq_real_wage_inflation,
+                                :eq_output, :eq_resource_constraint, :eq_tobins_q,
+                                :eq_labor_supply, :eq_price_phillips_curve, :eq_wage_phillips_curve,
+                                :eq_capital_util, :eq_Ht, :eq_avg_tax_rate,
+                                :eq_tax_revenue, :eq_capital_accum,
+                                :eq_bond_market_clear, :eq_debt_market_clear,
+                                :eq_bond_output_ratio, :eq_tax_output_ratio,
+                                :eq_received_wages, :eq_gov_budget_constraint,
+                                :eq_tax_level, :eq_tax_progressivity,
+                                :eq_Gini_C, :eq_Gini_X, :eq_sd_log_y, :eq_I90_share,
+                                :eq_I90_share_net, :eq_W90_share,
+                                :eq_Ygrowth, :eq_Bgrowth, :eq_Igrowth,
+                                :eq_wgrowth, :eq_Cgrowth, :eq_Tgrowth,
+                                :eq_expost_liquidity_premium,
+                                :eq_exante_liquidity_premium,
+                                :eq_retained_earnings_gdp_ratio,
+                                :eq_union_firm_profits, :eq_union_profits,
+                                :eq_firm_profits, :eq_profits_distr_to_hh])
+        eqconds[name] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
+        aggr_eqconds[name] = i + n_aggr_states
+    end
+
+#=    # Aggregate blocks
     n_distr_states_idio_jumps = last(eqconds[:eq_marginal_value_capital])
     for (i, name) in enumerate([# Endogenous model states (for the jumps)
                                 :eq_mp, :eq_tax_progressivity, :eq_tax_level,
@@ -995,7 +1046,7 @@ function setup_indices!(m::BayerBornLuetticke)
                                 :eq_W90_share, :eq_sd_log_y, :eq_GiniC])
         eqconds[name] = (n_distr_states_idio_jumps + i):(n_distr_states_idio_jumps + i)
         aggr_eqconds[name] = i
-    end
+    end=#
 end
 
 # TODO: init_states_and_jumps! is not done. Its role appears to be prepping

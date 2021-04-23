@@ -52,7 +52,8 @@ taxrev                  = incgross[1] .- inc[1]                                 
 incgrossaux             = incgross[1]
 # Summary for aggregate human capital
 distr_y                 = sum(nt[:distr_t], dims=(1,2)) # TODO: can we replace this with nt[:marginal_pdf_y_t]??
-Htact                   = dot(distr_y[1:end-1], (y_grid[1:end-1] ./ H).^((θ[:γ] + θ[:τ_prog]) / (θ[:γ] + τ_prog_t)))
+# Htact                   = dot(distr_y[1:end-1], (y_grid[1:end-1] ./ H).^((θ[:γ] + θ[:τ_prog]) / (θ[:γ] + τ_prog_t)))
+Htact                   = sum(distr_y[1:end-1] .* (y_grid[1:end-1] ./ H).^((θ[:γ] + θ[:τ_prog]) / (θ[:γ] + τ_prog_t)))
 
 ############################################################################
 #           Error term calculations (i.e. model starts here)          #
@@ -110,9 +111,12 @@ F[eq_tax_progressivity]        = log(τ_prog_t) - θ[:ρ_P] * log(τ_prog_t1)  -
                          (1.0 - θ[:ρ_P]) * θ[:γ_B_P] * (log(B_t)- nt[:B_t]) -
                          log(P_sh_t)
 
-F[eq_tax_level]         = avg_tax_rate_t - dot(nt[:distr_t], taxrev) / dot(nt[:distr_t], incgrossaux) # Union profits are taxed at average tax rate
+#=F[eq_tax_level]         = avg_tax_rate_t - dot(nt[:distr_t], taxrev) / dot(nt[:distr_t], incgrossaux) # Union profits are taxed at average tax rate
 
-F[eq_tax_revenue]            = log(T_t) - log(dot(nt[:distr_t], taxrev) + avg_tax_rate_t * union_profits_t)
+F[eq_tax_revenue]            = log(T_t) - log(dot(nt[:distr_t], taxrev) + avg_tax_rate_t * union_profits_t)=#
+F[eq_tax_level]         = avg_tax_rate_t - sum(nt[:distr_t] .* taxrev) / sum(nt[:distr_t] .* incgrossaux) # Union profits are taxed at average tax rate
+
+F[eq_tax_revenue]            = log(T_t) - log(sum(nt[:distr_t] .* taxrev) + avg_tax_rate_t * union_profits_t)
 
 F[eq_avg_tax_rate]  = log(avg_tax_rate_t) - θ[:ρ_τ] * log(avg_tax_rate_t1)  -
                             (1.0 - θ[:ρ_τ]) * nt[:avg_tax_rate_t] -

@@ -5,7 +5,7 @@ function DirectTransition(m_a_star::Array,
     λ,
     Π::Array,
     grid_dims::NTuple{3, Int},
-    k_grid::Vector, m_grid::Vector)
+    m_grid::Vector, k_grid::Vector)
 
     nm, nk, ny = grid_dims
 

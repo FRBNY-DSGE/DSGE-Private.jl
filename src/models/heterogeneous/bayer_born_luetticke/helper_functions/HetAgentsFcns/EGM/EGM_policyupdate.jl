@@ -27,7 +27,7 @@ function EGM_policyupdate(EVm::Array,
     # TODO: add more comments explaining how we figure out policies when households can and cannot adjust portfolios
     ################### Copy/read-out stuff#####################################
     β::Float64 = θ[:β]
-    borrwedge  = θ[:Rbar] * Tshock
+    borrwedge  = θ[:Rbar] .* Tshock
     # inc[1] = labor income , inc[2] = rental income,
     # inc[3]= liquid assets income, inc[4] = capital liquidation income
     inc_lab    = inc[1]
@@ -44,16 +44,17 @@ function EGM_policyupdate(EVm::Array,
     ############################################################################
     ## EGM Step 1: Find optimal liquid asset holdings in the constrained case ##
     ############################################################################
-    EMU         = EVm * β
+    EMU         = EVm .* β
     c_star_n    = _bbl_invmutil(EMU, θ[:ξ]) # 6% of time with rolled out power function
 
     # Calculate assets consistent with choices being [m']
     # Calculate initial money position from the budget constraint
     # that leads to the optimal consumption choice
-    m_star_n    = c_star_n + m_ndgrid - inc_lab - inc_rent
+    m_star_n    = c_star_n .+ m_ndgrid .- inc_lab .- inc_rent
 
     # Apply correct interest rate
-    m_star_n   ./= ((RBminus .+ (borrwedge / πminus) * (m_star_n .< 0)))  # apply borrowing rate
+    m_star_n .= m_star_n ./ ((RBminus .+ borrwedge .* (m_star_n .< 0)) ./ πminus)  # apply borrowing rate
+    # m_star_n   ./= ((RBminus .+ borrwedge .* (m_star_n .< 0)) ./ πminus)  # apply borrowing rate
 
     # Next step: Interpolate w_guess and c_guess from new k-grids
     # using c[s,h,m"], m(s,h,m")
@@ -82,11 +83,11 @@ function EGM_policyupdate(EVm::Array,
                 # Check for binding borrowing constraints, no extrapolation from grid
                 bcpol = m_star_n[1, kk, jj]
                 for mm = 1:n[1]
-                    if m_ndgrid[mm, kk, jj] < bcpol
-                        c_n_star[mm, kk, jj] = inc_lab[mm, kk, jj] + inc_rent[mm, kk, jj] + inc_LA[mm, kk, jj] - m_grid[1]
+                    if m_ndgrid[mm, kk, jj] .< bcpol
+                        c_n_star[mm, kk, jj] = inc_lab[mm, kk, jj] .+ inc_rent[mm, kk, jj] .+ inc_LA[mm, kk, jj] .- m_grid[1]
                         m_n_star[mm, kk, jj] = m_grid[1]
                     end
-                    if mmax < m_n_star[mm, kk, jj]
+                    if mmax .< m_n_star[mm, kk, jj]
                         m_n_star[mm, kk, jj] = mmax
                     end
                 end
@@ -102,7 +103,7 @@ function EGM_policyupdate(EVm::Array,
     # Find an m_a* for given k' that yield the same expected future marginal value
     # for liquid and illiquid assets:
     term1           = (β / Qminus) * EVk                    # expected marginal value of illiquid investment
-    E_return_diff   = term1 - EMU                           # difference conditional on future asset holdings on grid
+    E_return_diff   = term1 .- EMU                           # difference conditional on future asset holdings on grid
     m_a_aux1        = Fastroot(m_grid, E_return_diff)       # Find indifferent m by interpolation of two neighboring points a, b ∈ grid_m with: E_return_diff(a) < 0 < E_return_diff(b)
     # (Fastroot does not allow for extrapolation and uses non-negativity constraint and monotonicity)
     m_a_aux         = reshape(m_a_aux1, (n[2], n[3]))
@@ -120,18 +121,18 @@ function EGM_policyupdate(EVm::Array,
         xi          = m_a_aux[j]
 
         # find indexes on grid next smallest to optimal policy
-        if xi > m_grid[n[1] - 1]                                    # policy is larger than highest grid point
+        if xi .> m_grid[n[1] - 1]                                    # policy is larger than highest grid point
             idx     = n[1] - 1
-        elseif xi <= m_grid[1]                                      # policy is smaller than lowest grid point
+        elseif xi .<= m_grid[1]                                      # policy is smaller than lowest grid point
             idx     = 1
         else
             idx     = locate(xi, m_grid)                            # use exponential search to find grid point closest to policy (next smallest)
         end
 
-        s           = (xi - m_grid[idx]) / step[idx]                # Distance of optimal policy to next grid point to get convex weights
+        s           = (xi .- m_grid[idx]) ./ step[idx]                # Distance of optimal policy to next grid point to get convex weights
 
-        EMU_star[j] = EMU[idx + aux_index[j]] * (1.0 - s) +         # linear interpolation to populate EMU using s as a convex weight
-        s * (EMU[idx + aux_index[j] + 1])
+        EMU_star[j] = EMU[idx .+ aux_index[j]] .* (1.0 - s) +         # linear interpolation to populate EMU using s as a convex weight
+        s .* (EMU[idx .+ aux_index[j] .+ 1])
     end
 
 c_a_aux         = _bbl_invmutil(EMU_star, θ[:ξ])
@@ -139,7 +140,7 @@ c_a_aux         = _bbl_invmutil(EMU_star, θ[:ξ])
 # Resources that lead to capital choice
 # k'= c + m*(k") + k" - w*h*N
 # = value of todays cap and money holdings
-Resource = c_a_aux + m_a_aux + inc_IA[1, :, :] - inc_lab[1, :, :]
+Resource = c_a_aux .+ m_a_aux .+ inc_IA[1, :, :] .- inc_lab[1, :, :]
 
 # Money constraint is not binding, but capital constraint is binding
 m_star_zero     = m_a_aux[1, :] # Money holdings that correspond to k'=0:  m*(k=0)
@@ -155,7 +156,7 @@ cap_list        = Array{Array{eltype(c_star_n)}}(undef, n[3], 1) # capital choic
 for j = 1:n[3] # Iterate over income states
     # When choosing zero capital holdings, HHs might still want to choose money
     # holdings smaller than m*(k'=0)
-    if m_grid[1] < m_star_zero[j]
+    if m_star_zero[j] > m_grid[1]
         # Calculate consumption policies, when HHs chooses money holdings
         # lower than m*(k"=0) and capital holdings k"=0 and save them in cons_list
         log_index    = m_grid .< m_star_zero[j] # all indices of m grid points less than m*(k"=0)
@@ -202,12 +203,13 @@ end
 ####################################################################
 ## EGM Step 4: Interpolate back to fixed grid                     ##
 ####################################################################
-c_a_star            = Array{eltype(c_star_n),3}(undef, (n[1], n[2], n[3])) # These are chosen c, m, and k when
-m_a_star            = Array{eltype(c_star_n),3}(undef, (n[1], n[2], n[3])) # HH can adjust their portfolios
-k_a_star            = Array{eltype(c_star_n),3}(undef, (n[1], n[2], n[3]))
-Resource_grid       = reshape(inc_IA + inc_LA + inc_rent, (n[1] * n[2], n[3])) # resources according to income
-labor_inc_grid      = vec(inc_lab[1, 1, :]) # reshape(inc_lab,(n[1]*n[2], n[3])) # TODO: check if this is correct b/c the reshape is not equivalent
-# log_index2          = falses(n[1] * n[2]) # commented out b/c you recreate log_index2 every time, and reshape doesn't have an in-place option
+c_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # These are chosen c, m, and k when
+m_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # HH can adjust their portfolios
+k_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3]))
+Resource_grid       = reshape(inc_IA .+ inc_LA .+ inc_rent, (n[1] .* n[2], n[3])) # resources according to income
+# labor_inc_grid      = vec(inc_lab[1, 1, :]) # reshape(inc_lab,(n[1]*n[2], n[3])) # TODO: check if this is correct b/c the reshape is not equivalent
+labor_inc_grid      = inc_lab[1, 1, :][:] # reshape(inc_lab,(n[1]*n[2], n[3])) # TODO: check if this is correct b/c the reshape is not equivalent
+log_index2          = zeros(Bool, n[1] .* n[2]) # commented out b/c you recreate log_index2 every time, and reshape doesn't have an in-place option
 
 @views @inbounds begin
     for j = 1:n[3]
@@ -217,15 +219,17 @@ labor_inc_grid      = vec(inc_lab[1, 1, :]) # reshape(inc_lab,(n[1]*n[2], n[3]))
                 @warn "non monotone resource list encountered"
             end
         end
-        # cons_list[j], mon_list[j], cap_list[j] are vectors over res_list[j] -> form interpolation using res_list[j]
-        # and then evaluate over Resource_grid[:, j] using interpolation.
-        c_a_star1, m_a_star1, k_a_star1 = mylinearinterpolate_mult3(res_list[j], cons_list[j], mon_list[j], cap_list[j], Resource_grid[:, j])
 
         # Find when at most one constraint binds, which is when the required resources # log_index2 is supposed to be for at most 1 constraint
         # for the desired choice of (m, k), given zⱼ, exceeds implied income (see construction of Resource_grid) # but that doesn't seem to actually
         # log_index2 = reshape(Resource_grid[:, j], n[1] * n[2]) .< res_list[j][1] # be when it's used (see below), so . . . what's going on?
         # Note that res_list[j][1] corresponds to m_a"=0 and k_a"=0.
-        log_index2 = Resource_grid[:, j] .< res_list[j][1] # so this is when the available resources are below what you'd need to exactly choose m = k = 0 when unconstrained?
+        # log_index2[:] = Resource_grid[:, j] .< res_list[j][1] # so this is when the available resources are below what you'd need to exactly choose m = k = 0 when unconstrained?
+        log_index2[:] = reshape(Resource_grid[:, j], n[1] * n[2]) .< res_list[j][1] # so this is when the available resources are below what you'd need to exactly choose m = k = 0 when unconstrained?
+
+        # cons_list[j], mon_list[j], cap_list[j] are vectors over res_list[j] -> form interpolation using res_list[j]
+        # and then evaluate over Resource_grid[:, j] using interpolation.
+        c_a_star1, m_a_star1, k_a_star1 = mylinearinterpolate_mult3(res_list[j], cons_list[j], mon_list[j], cap_list[j], Resource_grid[:, j])
 
         # Any resources on grid smaller then res_list imply that HHs consume all
         # resources plus income => choose m = k = 0

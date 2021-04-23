@@ -1,4 +1,3 @@
-include("loop_sum.jl")
 include("BrentsMethod.jl")
 include("DCT.jl")
 include("FastRoot.jl")

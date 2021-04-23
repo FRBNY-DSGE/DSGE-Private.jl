@@ -228,8 +228,9 @@ end
 
     if only_aggregate
         id = OrderedDict{Symbol, Int64}(k => i for (i, k) in enumerate(get_aggregate_state_variables(m)))
+        n_aggr_states = length(id)
         for (i, k) in enumerate(get_aggregate_jump_variables(m))
-            id[k] = i
+            id[k] = i + n_aggr_states
         end
 
         for (k, v) in id

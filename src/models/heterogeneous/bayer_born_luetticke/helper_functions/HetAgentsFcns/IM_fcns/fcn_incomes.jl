@@ -50,8 +50,10 @@ function _bbl_incomes(θ::NamedTuple, grids::OrderedDict, KSS::Real, distrSS::Ar
     inc[6][:, :, end]        = inc[1][:, :, end]                                   # this copies b/c [:, :, end] allocates a new matrix
 
     taxrev        = incgross[5] - inc[6]
-    tot_taxrev    = dot(distrSS, taxrev) # if a DimensionMismatch error occurs, it may be because you are using the wrong coarseness
-    av_tax_rateSS = tot_taxrev / dot(distrSS, incgross[5]) # of the grid (e.g. you need to recall `DSGE.init_grids!(m; coarse = ...)`
+#=    tot_taxrev    = dot(distrSS, taxrev) # if a DimensionMismatch error occurs, it may be because you are using the wrong coarseness
+    av_tax_rateSS = tot_taxrev / dot(distrSS, incgross[5]) # of the grid (e.g. you need to recall `DSGE.init_grids!(m; coarse = ...)`=#
+    tot_taxrev    = sum(distrSS .* taxrev) # if a DimensionMismatch error occurs, it may be because you are using the wrong coarseness
+    av_tax_rateSS = tot_taxrev / sum(distrSS .* incgross[5]) # of the grid (e.g. you need to recall `DSGE.init_grids!(m; coarse = ...)`
 
     # apply taxes to union profits # TODO: inc[1] and inc[6] are closely related computations => can avoid further redundancies
     inc[1]             = (GHHFA .* θ[:τ_lev] .* (grids[:y_ndgrid] .* (1.0 ./ θ[:μ_w]) .*        # labor income
