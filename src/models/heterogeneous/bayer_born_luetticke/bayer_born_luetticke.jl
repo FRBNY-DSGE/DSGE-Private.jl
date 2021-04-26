@@ -653,8 +653,7 @@ function init_parameters!(m::BayerBornLuetticke)
 
     # Steady state grids for functional/distributional variables
     total_idio_states = get_setting(m, :nm) * get_setting(m, :nk) * get_setting(m, :ny)
-    m <= SteadyStateParameterGrid(:distr_star, fill(1. / total_idio_states, # populate with a uniform guess
-                                                    get_setting(m, :nm), get_setting(m, :nk), get_setting(m, :ny)),
+    m <= SteadyStateParameterGrid(:distr_star, Array{Float64, 3}(undef, 0, 0, 0), # populated by init_grids! to ensure it's consistent
                                   description = "Distribution over idiosyncratic states (steady-state)", tex_label = "D_*")
     m <= SteadyStateParameterGrid(:marginal_pdf_m_star, Vector{Float64}(undef, 0), # populated later, just need to have the right typing
                                   description = "Marginal PDF of liquid bonds (steady-state)", tex_label = "D_{m, *}")

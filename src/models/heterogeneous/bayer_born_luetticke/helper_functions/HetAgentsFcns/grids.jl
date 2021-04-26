@@ -75,5 +75,8 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
     grids[:m_ndgrid], grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
     grids[:weights_ndgrid] = eval_three_states((x, y, z) -> x * y * z, [get_gridwts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
 
+    # Create initial guess for distribution
+    m[:distr_star].value = fill(1. / (nm * nk * ny), nm, nk, ny)
+
     return m
 end
