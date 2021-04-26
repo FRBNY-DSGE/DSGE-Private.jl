@@ -56,7 +56,7 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
     # Add entrepreneurs into the income transitions => total income states = ny
     Π      = [(Π .* (1. - m[:ζ])) fill(get_untransformed_values(m[:ζ]), ny_min1);
               fill(m[:ι] / ny_min1, 1, ny_min1) (1. - m[:ι])]
-    y_grid = vcat(exp.(y_grid_e .* (m[:σ_h] / sqrt(1. - m[:ρ_h]^2))), (m[:ζ] + m[:ι]) / m[:ζ])
+    y_grid = vcat(exp.(y_grid_e .* m[:σ_h] ./ sqrt(1. - m[:ρ_h]^2)), (m[:ζ] + m[:ι]) / m[:ζ])
 
     # Update long-run average level of human capital (of the worker) to be consistent with income process
     Paux       = Π ^ 1000 # compute LR average implied by process

@@ -2,7 +2,7 @@ using DSGE, ModelConstructors, OrderedCollections, SparseArrays, ForwardDiff, Pl
 using KrylovKit, JLD2
 using FFTW: dct
 gr()
-inline("pdf")
+GR.inline("pdf")
 include("../LinearizationFunctions/FSYS_agg.jl")
 include("../LinearizationFunctions/FSYS.jl")
 include("../LinearizationFunctions/SolveDiffEq.jl")
@@ -35,12 +35,81 @@ if run_prep
 end
 
 m = BayerBornLuetticke()
-DSGE.init_grids!(m)
+DSGE.init_grids!(m; coarse = true)
+θ = parameters2namedtuple(m)
 # bblout = JLD2.jldopen("bbl_steadystate_out.jld2", "r")
 # DSGE.prepare_linearization(m, bblout["KSS"], bblout["VmSS"], bblout["VkSS"], bblout["distrSS"]; verbose = :high)
-out = JLD2.jldopen("steadystateout.jld2", "r")
-DSGE.prepare_linearization(m, out["KSS"], out["VmSS"], out["VkSS"], out["distrSS"]; verbose = :high)
+# out = JLD2.jldopen("steadystateout.jld2", "r")
+# DSGE.prepare_linearization(m, out["KSS"], out["VmSS"], out["VkSS"], out["distrSS"]; verbose = :high)
+count = 196
+input = JLD2.jldopen("ksupply_$(count)_input.jld2", "r")
 
+n = input["n"]
+EVk = reshape(reshape(input["Vk"], (n[1] * n[2], n[3])) * input["Pi"]', (n[1], n[2], n[3]))
+EVm = reshape((reshape(input["eff_int"], (n[1] * n[2], n[3])) .*
+               reshape(input["Vm"], (n[1] * n[2], n[3]))) * input["Pi"]', (n[1], n[2], n[3]))
+
+# Policy update step
+c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
+    DSGE.EGM_policyupdate(EVm, EVk, 1., m[:π].value, input["RB"], 1.0, input["inc"], θ, m.grids, false)
+
+# marginal value update step
+Vk_new, Vm_new  = DSGE.updateV(EVk, c_a_star, c_n_star, m_n_star, input["R"] - 1.0, 1., θ, get_gridpts(m, :m_grid), input["Pi"])
+
+output = JLD2.jldopen("ksupply_$(count)_output.jld2", "r")
+
+@show maximum(abs, output["c_a_star"] - c_a_star)
+@show maximum(abs, output["m_a_star"] - m_a_star)
+@show maximum(abs, output["k_a_star"] - k_a_star)
+@show maximum(abs, output["c_n_star"] - c_n_star)
+@show maximum(abs, output["m_n_star"] - m_n_star)
+@show maximum(abs, output["Vm_new"] - Vm_new)
+@show maximum(abs, output["Vk_new"] - Vk_new)
+
+K_guess = 4.835647750603774
+grids = m.grids
+    H                   = m.grids[:H]
+    HW                  = m.grids[:HW]
+    N           = DSGE._bbl_employment(K_guess, 1.0 / (m[:μ_p] * m[:μ_w]), m[:α],      # employment
+                                  m[:τ_lev], m[:τ_prog], m[:γ])
+    w           = DSGE._bbl_wage(K_guess, 1.0 / m[:μ_p], N, m[:α])                     # wages
+    rk          = DSGE._bbl_interest(K_guess, 1.0 / m[:μ_p], N, m[:α], m[:δ_0])        # Return on illiquid asset
+    profits     = (1.0 - 1.0 / m[:μ_p]) .* DSGE._bbl_output(K_guess, 1.0, N, m[:α])    # Profit income
+    RB          = m[:RB] / m[:π]                                                  # Real return on liquid assets
+    neg_liq_ret = RB + m[:Rbar]
+    eff_int     = [x <= 0. ? neg_liq_ret : RB for x in grids[:m_ndgrid]]        # effective rate depending on assets
+    GHHFA       = (m[:γ] + m[:τ_prog]) / (m[:γ] + 1.0)                            # transformation (scaling) for composite good
+    Paux            = m.grids[:Paux]                                 # Grab ergodic income distribution from transitions
+    distr_y         = Paux[1, :]                                                 # stationary income distribution
+    inc             = Array{Array{Float64, 3}}(undef, 4)                         # container for income
+    mcw             = 1.0 / m[:μ_w]                                              # wage markup
+    incgross        = grids[:y_grid].points .* mcw .* w .* N ./ H      # gross income workers (wages)
+    incgross[end]   = grids[:y_grid].points[end] * profits                     # gross income entrepreneurs (profits)
+    incnet          = m[:τ_lev] * incgross .^ (1.0 - m[:τ_prog])
+
+    # average tax rate
+    av_tax_rate     = dot((incgross - incnet), distr_y) / dot(incgross, distr_y)
+
+    # TODO: replace the y_ndgrid calculation with just repeating the incnet vector OR use list comprehension later on
+    ny              = get_setting(m, :coarse_ny)
+    av_tax_rate     = dot((incgross - incnet), distr_y) / dot(incgross, distr_y)
+
+    inc[1]          = GHHFA .* m[:τ_lev] .* (grids[:y_ndgrid] .* mcw .* w .* N ./ H) .^ (1.0 - m[:τ_prog]) .+
+        (1.0 .- mcw) .* w .* N * (1.0 .- av_tax_rate) .* HW         # labor income net of taxes incl. union profits
+    inc[1][:,:,end] = m[:τ_lev] .* (grids[:y_ndgrid][ :, :, end] * profits) .^ (1.0 - m[:τ_prog]) # profit income net of taxes
+
+    # incomes out of wealth # TODO: replace these steps OR use list comprehension later on
+    inc[2]          = rk .* grids[:k_ndgrid]                                  # rental income
+    inc[3]          = eff_int .* grids[:m_ndgrid]                             # liquid asset income
+    inc[4]          = grids[:k_ndgrid]                                        # capital liquidation income (q=1 in steady state)
+
+@show maximum(abs, inc[1] - input["inc"][1])
+@show maximum(abs, inc[2] - input["inc"][2])
+@show maximum(abs, inc[3] - input["inc"][3])
+@show maximum(abs, inc[4] - input["inc"][4])
+
+kdiff_init = JLD2.jldopen("kdiff_initial.jld2", "r")
+@assert false
 #=
 nt = DSGE.construct_steadystate_namedtuple(m)
 id = DSGE.construct_prime_and_noprime_indices(m; only_aggregate = true)
