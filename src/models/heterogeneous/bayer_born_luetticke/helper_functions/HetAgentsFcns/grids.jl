@@ -72,9 +72,7 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
     grids[:Paux]   = Paux # store approximate stationary distribution
 
     # Construct ndgrids (TODO: delete this and be Julian by never allocating these grids and using list comprehensions)
-    _, grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
-    # grids[:m_ndgrid], grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
-    grids[:m_ndgrid] = repeat(reshape(get_gridpts(grids, :m_grid), (nm, 1, 1)), outer = [1, nk, ny])
+    grids[:m_ndgrid], grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
     grids[:weights_ndgrid] = eval_three_states((x, y, z) -> x * y * z, [get_gridwts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
 
     return m
