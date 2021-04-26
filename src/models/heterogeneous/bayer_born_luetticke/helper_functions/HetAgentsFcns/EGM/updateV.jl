@@ -19,7 +19,7 @@ function updateV(EVk::Array,
 
     # Compute expected marginal utility at consumption policy (w &w/o adjustment)
     # Some special handling here to avoid an allocation that would be made if we did
-    Vm = θ[:λ] .* mutil_c_a .+ (1.0 .- θ[:λ]) .* mutil_c_n
+    Vm = θ[:λ] .* mutil_c_a .+ (1.0 - θ[:λ]) .* mutil_c_n
 #=    Vm  = mutil_c_n # Vm is just pointing to the same array as mutil_c_n now
     Vm .*= (1. - θ[:λ])
     Vm .+= θ[:λ] * mutil_c_a=#

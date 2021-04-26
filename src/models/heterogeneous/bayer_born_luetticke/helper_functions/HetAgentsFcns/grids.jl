@@ -1,6 +1,6 @@
 # Constructor functions for grid
 function _construct_liquid_asset_grid_bbl(mmin::T, mmax::T, nm::Int) where {T <: Real}
-    return exp.(range(0., stop = log(mmax - mmin + 1.), length = nm)) .+ (mmin - 1.)
+    return exp.(range(0, stop = log(mmax - mmin + 1.), length = nm)) .+ mmin .- 1.
 end
 function _construct_illiquid_asset_grid_bbl(kmin::T, kmax::T, nk::Int) where {T <: Real}
     return exp.(range(log(kmin + 1.), stop = log(kmax + 1.), length = nk)) .- 1.
@@ -33,7 +33,8 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
 
     # Liquid asset grid
     m_grid = _construct_liquid_asset_grid_bbl(mmin, mmax, nm)
-    m_grid[findlast(x -> x < 0, m_grid)] = 0.0 # Guarantee there is a zero is on the m grid (liquid asset)
+    # m_grid[findlast(x -> x < 0, m_grid)] = 0.0 # Guarantee there is a zero is on the m grid (liquid asset)
+    m_grid[sum(m_grid .< 0)] = 0.0 # Guarantee there is a zero is on the m grid (liquid asset)
     grids[:m_grid] = Grid(m_grid, uniform_quadrature(mmin, mmax, nm; scale = mmax - mmin)[2], mmax - mmin)
 
     # Illiquid asset grid
@@ -71,7 +72,9 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
     grids[:Paux]   = Paux # store approximate stationary distribution
 
     # Construct ndgrids (TODO: delete this and be Julian by never allocating these grids and using list comprehensions)
-    grids[:m_ndgrid], grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
+    _, grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
+    # grids[:m_ndgrid], grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
+    grids[:m_ndgrid] = repeat(reshape(get_gridpts(grids, :m_grid), (nm, 1, 1)), outer = [1, nk, ny])
     grids[:weights_ndgrid] = eval_three_states((x, y, z) -> x * y * z, [get_gridwts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
 
     return m

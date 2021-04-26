@@ -3,13 +3,13 @@ using KrylovKit, JLD2
 using FFTW: dct
 gr()
 GR.inline("pdf")
-include("../LinearizationFunctions/FSYS_agg.jl")
+#=include("../LinearizationFunctions/FSYS_agg.jl")
 include("../LinearizationFunctions/FSYS.jl")
 include("../LinearizationFunctions/SolveDiffEq.jl")
-include("../LinearizationFunctions/SGU.jl")
+include("../LinearizationFunctions/SGU.jl")=#
 
-run_prep = false
-run_ss = false
+run_prep = true
+run_ss = true
 
 if run_prep
     m = BayerBornLuetticke()
@@ -33,7 +33,7 @@ if run_prep
 
     @time DSGE.prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = :high)
 end
-
+@assert false
 m = BayerBornLuetticke()
 DSGE.init_grids!(m; coarse = true)
 θ = parameters2namedtuple(m)

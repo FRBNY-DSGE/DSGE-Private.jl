@@ -40,6 +40,12 @@ function EGM_policyupdate(EVm::Array,
     m_ndgrid   = grids[:m_ndgrid]::Array{Float64, 3}
     mmax       = m_grid[end]
     kmax       = k_grid[end]
+    if warnme
+        @show sum(inc_lab)
+        @show sum(inc_rent)
+        @show sum(inc_LA)
+        @show sum(inc_IA)
+    end
 
     ############################################################################
     ## EGM Step 1: Find optimal liquid asset holdings in the constrained case ##
@@ -95,6 +101,10 @@ function EGM_policyupdate(EVm::Array,
         end
     end
 
+    if warnme
+        @show sum(c_n_star)
+        @show sum(m_n_star)
+    end
     #-------------------------END OF STEP 1-----------------------------
 
     ############################################################################
@@ -107,6 +117,9 @@ function EGM_policyupdate(EVm::Array,
     m_a_aux1        = Fastroot(m_grid, E_return_diff)       # Find indifferent m by interpolation of two neighboring points a, b ∈ grid_m with: E_return_diff(a) < 0 < E_return_diff(b)
     # (Fastroot does not allow for extrapolation and uses non-negativity constraint and monotonicity)
     m_a_aux         = reshape(m_a_aux1, (n[2], n[3]))
+    if warnme
+        @show sum(m_a_aux)
+    end
 
     ###########################################################################
     ## EGM Step 3: Constraints for money and capital are not binding         ##
@@ -131,12 +144,15 @@ function EGM_policyupdate(EVm::Array,
 
         s           = (xi .- m_grid[idx]) ./ step[idx]                # Distance of optimal policy to next grid point to get convex weights
 
-        EMU_star[j] = EMU[idx .+ aux_index[j]] .* (1.0 - s) +         # linear interpolation to populate EMU using s as a convex weight
+        EMU_star[j] = EMU[idx .+ aux_index[j]] .* (1.0 -s) +         # linear interpolation to populate EMU using s as a convex weight
         s .* (EMU[idx .+ aux_index[j] .+ 1])
     end
 
 c_a_aux         = _bbl_invmutil(EMU_star, θ[:ξ])
-
+if warnme
+    @show sum(EMU_star)
+    @show sum(c_a_aux)
+end
 # Resources that lead to capital choice
 # k'= c + m*(k") + k" - w*h*N
 # = value of todays cap and money holdings
@@ -152,6 +168,13 @@ cons_list       = Array{Array{eltype(c_star_n)}}(undef, n[3], 1) # consumption
 res_list        = Array{Array{eltype(c_star_n)}}(undef, n[3], 1) # resources
 mon_list        = Array{Array{eltype(c_star_n)}}(undef, n[3], 1) # liquid asset choice
 cap_list        = Array{Array{eltype(c_star_n)}}(undef, n[3], 1) # capital choice
+if warnme
+    @show sum(Resource)
+    @show sum(m_star_zero)
+    @show sum(m_star_zero)
+    @show sum(aux_c)
+    @show sum(aux_inc)
+end
 
 for j = 1:n[3] # Iterate over income states
     # When choosing zero capital holdings, HHs might still want to choose money
@@ -210,12 +233,16 @@ Resource_grid       = reshape(inc_IA .+ inc_LA .+ inc_rent, (n[1] .* n[2], n[3])
 # labor_inc_grid      = vec(inc_lab[1, 1, :]) # reshape(inc_lab,(n[1]*n[2], n[3])) # TODO: check if this is correct b/c the reshape is not equivalent
 labor_inc_grid      = inc_lab[1, 1, :][:] # reshape(inc_lab,(n[1]*n[2], n[3])) # TODO: check if this is correct b/c the reshape is not equivalent
 log_index2          = zeros(Bool, n[1] .* n[2]) # commented out b/c you recreate log_index2 every time, and reshape doesn't have an in-place option
+if warnme
+    @show sum(Resource_grid)
+    @show sum(labor_inc_grid)
+end
 
 @views @inbounds begin
     for j = 1:n[3]
         # Check monotonicity of resources
         if warnme
-            if any(x -> x < 0, diff(res_list[j]))
+            if any(diff(res_list[j]).<0)# any(x -> x < 0, diff(res_list[j]))
                 @warn "non monotone resource list encountered"
             end
         end
@@ -230,6 +257,12 @@ log_index2          = zeros(Bool, n[1] .* n[2]) # commented out b/c you recreate
         # cons_list[j], mon_list[j], cap_list[j] are vectors over res_list[j] -> form interpolation using res_list[j]
         # and then evaluate over Resource_grid[:, j] using interpolation.
         c_a_star1, m_a_star1, k_a_star1 = mylinearinterpolate_mult3(res_list[j], cons_list[j], mon_list[j], cap_list[j], Resource_grid[:, j])
+if warnme
+    @show sum(log_index2)
+    @show sum(c_a_star1)
+    @show sum(m_a_star1)
+    @show sum(k_a_star1)
+end
 
         # Any resources on grid smaller then res_list imply that HHs consume all
         # resources plus income => choose m = k = 0
@@ -238,6 +271,11 @@ log_index2          = zeros(Bool, n[1] .* n[2]) # commented out b/c you recreate
         m_a_star1[log_index2] .= m_grid[1]
         k_a_star1[log_index2] .= 0.0
 
+        if warnme
+            @show sum(c_a_star1)
+            @show sum(m_a_star1)
+            @show sum(k_a_star1)
+        end
         # Update consumption policy to be back on grid and
         # check if policies go beyond largest grid points
         for kk = 1:n[2]
@@ -261,6 +299,10 @@ log_index2          = zeros(Bool, n[1] .* n[2]) # commented out b/c you recreate
         end
     end
 end
-
+if warnme
+@show sum(c_a_star)
+@show sum(m_a_star)
+    @show sum(k_a_star)
+end
     return c_a_star, m_a_star, k_a_star, c_n_star, m_n_star
 end

@@ -69,10 +69,12 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
         count          += 1
 
         # Take expectations for labor income change # TODO: is there a more efficient way to write this expectation w/out using reshape?
-        EVk             = reshape(reshape(Vk, (n[1] * n[2], n[3])) * Π', (n[1], n[2], n[3]))
+#=        EVk             = reshape(reshape(Vk, (n[1] * n[2], n[3])) * Π', (n[1], n[2], n[3]))
         EVm             = reshape((reshape(eff_int, (n[1] * n[2], n[3])) .*
-                                   reshape(Vm, (n[1] * n[2], n[3]))) * Π', (n[1], n[2], n[3]))
-
+                                   reshape(Vm, (n[1] * n[2], n[3]))) * Π', (n[1], n[2], n[3]))=#
+        EVk             = reshape(reshape(Vk, (n[1] .* n[2], n[3])) * Π', (n[1], n[2], n[3]))
+        EVm             = reshape((reshape(eff_int, (n[1] .* n[2], n[3])) .*
+                                   reshape(Vm, (n[1] .* n[2], n[3]))) * Π', (n[1], n[2], n[3]))
         # Policy update step
         c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
             EGM_policyupdate(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, θ, m.grids, false)
@@ -87,7 +89,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
         cn_old = c_n_star
         mn_old = m_n_star
         if count == 196 || count == 197
-            @show count, ca_dist, ma_dist, ka_dist
+            @show count, ca_dist, ma_dist, ka_dist # first difference is 197, ca_dist
             @show count, cn_dist, mn_dist
         end
 
@@ -95,13 +97,14 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
         Vk_new, Vm_new  = updateV(EVk, c_a_star, c_n_star, m_n_star, R_guess - 1.0, q, θ, m_grid, Π)
 
         # Calculate distance in updates
-        dist1           = maximum(abs, _bbl_invmutil(Vk_new, θ[:ξ]) - _bbl_invmutil(Vk, θ[:ξ]))
-        dist2           = maximum(abs, _bbl_invmutil(Vm_new, θ[:ξ]) - _bbl_invmutil(Vm, θ[:ξ]))
+#=        dist1           = maximum(abs, _bbl_invmutil(Vk_new, θ[:ξ]) - _bbl_invmutil(Vk, θ[:ξ]))
+        dist2           = maximum(abs, _bbl_invmutil(Vm_new, θ[:ξ]) - _bbl_invmutil(Vm, θ[:ξ]))=#
+        dist1           = maximum(abs, _bbl_invmutil(Vk_new, θ[:ξ]) .- _bbl_invmutil(Vk, θ[:ξ]))
+        dist2           = maximum(abs, _bbl_invmutil(Vm_new, θ[:ξ]) .- _bbl_invmutil(Vm, θ[:ξ]))
         dist            = max(dist1, dist2) # distance of old and new policy
         if count == 196 || count == 197
-            @show count, dist1, dist2
+            @show count, dist1, dist2 # 2nd Brent search, iteration 70, Vm's error is slightly different from original BBL code
         end
-
         # update policy guess/marginal values of liquid/illiquid assets
         Vm              = Vm_new
         Vk              = Vk_new
@@ -117,12 +120,15 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, DSGE.get_idiosyncratic_gridpts(m))
     TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n)) # TODO: faster way to construct this, e.g. BlockBanded?
     TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
-    TransitionMat                   = θ[:λ] * TransitionMat_a + (1.0 - θ[:λ]) * TransitionMat_n
+    # TransitionMat                   = θ[:λ] * TransitionMat_a + (1.0 - θ[:λ]) * TransitionMat_n
+    TransitionMat                   = θ[:λ] .* TransitionMat_a .+ (1.0 .- θ[:λ]) .* TransitionMat_n
 
     if get_setting(m, :kfe_method) == :krylov
         # Calculate left-hand unit eigenvector (uses KrylovKit package)
+#=        aux   = real.(eigsolve(TransitionMat', 1)[2][1])
+        distr = reshape(vec(aux) ./ sum(aux), n)=#
         aux   = real.(eigsolve(TransitionMat', 1)[2][1])
-        distr = reshape(vec(aux) ./ sum(aux), n) # use loop_sum here b/c scale and size of elements in aux => rounding error not a concern
+        distr = reshape(aux[:] ./ sum(aux[:]), n)
 
     elseif get_setting(m, :kfe_method) == :direct
         # Direct Transition
@@ -137,8 +143,8 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     #-----------------------------------------------------------------------------
     # Calculate capital stock
     #-----------------------------------------------------------------------------
-    K = sum(vec(distr) .* vec(m.grids[:k_ndgrid]))
-    B = sum(vec(distr) .* vec(m.grids[:m_ndgrid]))
+    K = sum(distr[:] .* k_ndgrid[:])
+    B = sum(distr[:] .* m_ndgrid[:])
 #=    K = dot(distr, k_ndgrid) # faster to use dot
     B = dot(distr, m_ndgrid)=#
 

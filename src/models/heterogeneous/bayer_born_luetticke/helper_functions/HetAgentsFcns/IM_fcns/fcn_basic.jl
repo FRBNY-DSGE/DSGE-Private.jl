@@ -9,7 +9,7 @@ _bbl_invmutil(mu::Array, ξ::Real) = 1.0 ./ (sqrt.(sqrt.(mu))) # mu.^(1.0./ξ), 
 _bbl_invmutil(mu::Array, ξ::AbstractParameter) = _bbl_invmutil(c, get_untransformed_values(ξ))=#
 
 # Incomes (K:capital, A: TFP): Interest rate = MPK.-δ, Wage = MPL, profits = Y-wL-(r+\delta)*K
-_bbl_interest(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}, δ_0::Union{Real, AbstractParameter}) = A * α * (K / N) ^(α - 1.0) - δ_0
+#=_bbl_interest(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}, δ_0::Union{Real, AbstractParameter}) = A * α * (K / N) ^(α - 1.0) - δ_0
 _bbl_wage(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}) = A * (1. - α) * (K/N) ^ α
 _bbl_output(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}) = A * K ^(α) * N ^(1 - α)
 @inline function _bbl_employment(K::Real, A::Real, α::Union{Real, AbstractParameter},
@@ -17,6 +17,15 @@ _bbl_output(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}) = A *
                                  γ::Union{Real, AbstractParameter})
     return (A * (1.0 - α) * (τ_lev * (1.0 - τ_prog))^(1.0 / (1.0 - τ_prog))
             * K ^(α))^((1.0 - τ_prog) / (γ + τ_prog + (α) * (1. - τ_prog)))
+end=#
+_bbl_interest(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}, δ_0::Union{Real, AbstractParameter}) = A .* α .* (K ./ N) .^(α - 1.0) .- δ_0
+_bbl_wage(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}) = A .* (1. - α) .* (K./N) .^ α
+_bbl_output(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}) = A .* K .^(α) .* N .^(1 - α)
+@inline function _bbl_employment(K::Real, A::Real, α::Union{Real, AbstractParameter},
+                                 τ_lev::Union{Real, AbstractParameter}, τ_prog::Union{Real, AbstractParameter},
+                                 γ::Union{Real, AbstractParameter})
+    return (A .* (1.0 - α) .* (τ_lev .* (1.0 - τ_prog)).^(1.0 / (1.0 - τ_prog))
+            .* K .^(α)).^((1.0 - τ_prog) ./ (γ + τ_prog + (α) .* (1. - τ_prog)))
 end
 
 """
