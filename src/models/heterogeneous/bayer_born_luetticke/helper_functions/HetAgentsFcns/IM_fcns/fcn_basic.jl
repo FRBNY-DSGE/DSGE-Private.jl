@@ -104,9 +104,9 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     logx                = log.(x)
     x_pdf               = distr_x[IX]
     S                   = vcat(0., cumsum(x_pdf .* x))
-    ginicompconsumption = 1. - (sum(x_pdf .* (S[1:end-1] + S[2:end])) ./ S[end])
+    ginicompconsumption = 1. - (sum(x_pdf .* (S[1:end-1] + S[2:end])) / S[end])
     # ginicompconsumption = 1. - (dot(x_pdf, (S[1:end-1] + S[2:end])) ./ S[end])
-    sdlogx              = sqrt(sum(x_pdf .* logx.^2) - sum(x_pdf .* logx)^2)
+    sdlogx              = sqrt(x_pdf[:]' * log.(x[:]).^2 - (x_pdf[:]' * log.(x[:]))^2) # off!
     # sdlogx              = sqrt(dot(x_pdf, logx.^2) - dot(x_pdf, logx)^2)
 
     IX              = sortperm(vec(c))
@@ -129,7 +129,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
 #=    giniconsumption = 1. - (dot(c_pdf, (S[1:end-1] + S[2:end])) / S[end])
     sdlogc          = sqrt(dot(c_pdf, logc.^2) - dot(c_pdf, logc)^2)=#
     giniconsumption = 1. - (sum(c_pdf .* (S[1:end-1] + S[2:end])) / S[end])
-    sdlogc          = sqrt(sum(c_pdf .* logc.^2) - sum(c_pdf .* logc)^2)
+    sdlogc          = sqrt(c_pdf[:]' * log.(c[:]).^2 - (c_pdf[:]' * log.(c[:]))^2) # off!
 
     Yidio              = inc[6] + inc[2] + inc[3] - m_ndgrid
     # IX                 = sortperm(vec(Yidio))
@@ -160,18 +160,22 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     Yidio           = incgross[1]
     Yidio           = Yidio[:, :, 1:end-1]
     logYidio        = log.(Yidio)
-    IX              = sortperm(vec(Yidio))
+    # IX              = sortperm(vec(Yidio))
+IX              = sortperm(Yidio[:])
     Yidio           = Yidio[IX]
     distr_aux       = distr[:, :, 1:end-1]
-    distr_aux       = distr_aux ./ sum(distr_aux)
+    # distr_aux       = distr_aux ./ sum(distr_aux)
+distr_aux       = distr_aux ./ sum(distr_aux[:])
     Y_pdf           = distr_aux[IX]
     Y_cdf           = cumsum(Y_pdf)
-    p10             = findfirst(x -> x >= 0.1, Y_cdf)
-    p50             = findfirst(x -> x >= 0.5, Y_cdf)
+    # p10             = findfirst(x -> x >= 0.1, Y_cdf)
+    # p50             = findfirst(x -> x >= 0.5, Y_cdf)
+p10 = count(Y_cdf .< 0.1) + 1
+p50 = count(Y_cdf .< 0.5) + 1
     y5010           = Yidio[p50] ./ Yidio[p10]
 
     # sdlogy          = sqrt(dot(Y_pdf, logYidio.^2) - dot(Y_pdf, logYidio)^2)
-sdlogy          = sqrt(vec(Y_pdf)' * log.(vec(Yidio)).^2 - (vec(Y_pdf)' * log.(vec(Yidio)))^2)
+sdlogy          = sqrt(Y_pdf[:]' * log.(Yidio[:]).^2 - (Y_pdf[:]' * log.(Yidio[:]))^2)
 
     return distr_m, distr_k, distr_y, share_borrower, giniwealth, I90share, I90sharenet, ginicompconsumption, #= # comment used to split the
     =# sdlogx, c9010, giniconsumption, sdlogc, y5010, giniincome, sdlogy, w90share, p10C, p50C, p90C            # return output into two lines

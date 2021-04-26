@@ -9,12 +9,13 @@ include("../LinearizationFunctions/SolveDiffEq.jl")
 include("../LinearizationFunctions/SGU.jl")=#
 
 run_prep = true
-run_ss = true
+run_ss = false
 
 if run_prep
     m = BayerBornLuetticke()
 
     if run_ss
+        Random.seed!(1793)
         @time KSS, VmSS, VkSS, distrSS = DSGE.find_steadystate(m; verbose = :high)
         JLD2.jldopen("steadystateout.jld2", true, true, true, IOStream) do file
             write(file, "KSS", KSS)
@@ -30,7 +31,37 @@ if run_prep
         distrSS = out["distrSS"]
         DSGE.init_grids!(m)
     end
+    θ = parameters2namedtuple(m)
+    incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, av_tax_rateSS, eff_int = DSGE._bbl_incomes(θ, m.grids, KSS, distrSS)
 
+    Random.seed!(1793)
+    KSS, BSS, TransitionMatSS, TransitionMat_aSS, TransitionMat_nSS,
+        c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
+                          DSGE.Ksupply(RBSS, 1.0 + rkSS, m, VmSS, VkSS, distrSS, incnet, eff_int)
+    JLD2.jldopen("my_ksupply_out.jld2", true, true, true, IOStream) do file
+        write(file, "KSS", KSS)
+        write(file, "VmSS", VmSS)
+        write(file, "VkSS", VkSS)
+        write(file, "distrSS", distrSS)
+        write(file, "incnet", incnet)
+        write(file, "eff_int", eff_int)
+        write(file, "c_a_starSS", c_a_starSS)
+        write(file, "m_a_starSS", m_a_starSS)
+        write(file, "k_a_starSS", k_a_starSS)
+        write(file, "c_n_starSS", c_n_starSS)
+        write(file, "m_n_starSS", m_n_starSS)
+    end
+    VmSS                = log.(VmSS)
+    VkSS                = log.(VkSS)
+    # Calculate taxes and government expenditures
+    TSS                 = (distrSS[:]' * taxrev[:] + av_tax_rateSS*((1.0 .- 1.0 ./ m[:μ_w]).*wSS.*NSS))
+    GSS                 = TSS - (m[:RB]./m[:π]-1.0)*BSS
+    Random.seed!(1793)
+    distr_m_SS, distr_k_SS, distr_y_SS, share_borrowerSS, GiniWSS, I90shareSS,I90sharenetSS, GiniXSS,
+            sdlogxSS, P9010CSS, GiniCSS, sdlogCSS, P9010ISS, GiniISS, sdlogySS, w90shareSS, P10CSS, P50CSS, P90CSS =
+            DSGE.distrSummaries(distrSS, c_a_starSS, c_n_starSS, incnet, incgross, θ, DSGE.get_idiosyncratic_dims(m), m.grids)
+    @show sdlogxSS, sdlogCSS, sdlogySS
+    @assert false
     @time DSGE.prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = :high)
 end
 @assert false

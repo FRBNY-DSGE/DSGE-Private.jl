@@ -59,11 +59,6 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     k_a_star            = Vector{T}(undef, 0)
     c_a_star            = Vector{T}(undef, 0)
     c_n_star            = Vector{T}(undef, 0)
-    ca_old = similar(Vm)
-    ma_old = similar(Vm)
-    ka_old = similar(Vm)
-    cn_old = similar(Vm)
-    mn_old = similar(Vm)
 
     while dist > ϵ && count < get_setting(m, :max_value_function_iters) # Iterate consumption policies until convergence
         count          += 1
@@ -78,20 +73,6 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
         # Policy update step
         c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
             EGM_policyupdate(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, θ, m.grids, false)
-        ca_dist = maximum(abs, c_a_star - ca_old)
-        ma_dist = maximum(abs, m_a_star - ma_old)
-        ka_dist = maximum(abs, k_a_star - ka_old)
-        cn_dist = maximum(abs, c_n_star - cn_old)
-        mn_dist = maximum(abs, m_n_star - mn_old)
-        ca_old = c_a_star
-        ma_old = m_a_star
-        ka_old = k_a_star
-        cn_old = c_n_star
-        mn_old = m_n_star
-        if count == 196 || count == 197
-            @show count, ca_dist, ma_dist, ka_dist # first difference is 197, ca_dist
-            @show count, cn_dist, mn_dist
-        end
 
         # marginal value update step
         Vk_new, Vm_new  = updateV(EVk, c_a_star, c_n_star, m_n_star, R_guess - 1.0, q, θ, m_grid, Π)
@@ -102,9 +83,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
         dist1           = maximum(abs, _bbl_invmutil(Vk_new, θ[:ξ]) .- _bbl_invmutil(Vk, θ[:ξ]))
         dist2           = maximum(abs, _bbl_invmutil(Vm_new, θ[:ξ]) .- _bbl_invmutil(Vm, θ[:ξ]))
         dist            = max(dist1, dist2) # distance of old and new policy
-        if count == 196 || count == 197
-            @show count, dist1, dist2 # 2nd Brent search, iteration 70, Vm's error is slightly different from original BBL code
-        end
+
         # update policy guess/marginal values of liquid/illiquid assets
         Vm              = Vm_new
         Vk              = Vk_new
@@ -128,8 +107,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
 #=        aux   = real.(eigsolve(TransitionMat', 1)[2][1])
         distr = reshape(vec(aux) ./ sum(aux), n)=#
         aux   = real.(eigsolve(TransitionMat', 1)[2][1])
-        distr = reshape(aux[:] ./ sum(aux[:]), n)
-
+        distr = reshape((aux[:]) ./ sum((aux[:])), n)
     elseif get_setting(m, :kfe_method) == :direct
         # Direct Transition
         distr = get_untransformed_values(m[:distr])::Array{T1, 3}
