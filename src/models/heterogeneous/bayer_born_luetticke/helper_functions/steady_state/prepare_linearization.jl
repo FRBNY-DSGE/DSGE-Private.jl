@@ -19,7 +19,8 @@ and updates the steady state values and indices in `m`.
 - `CDF_SS`, `CDF_m`, `CDF_k`, `CDF_y`: cumulative distribution functions (joint and marginals)
 - `distrSS::Array{Float64,3}`: steady state distribution of idiosyncratic states, computed by [`Ksupply()`](@ref)
 """
-function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; verbose::Symbol = :none)
+function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArray{T, 3}, VkSS::AbstractArray{T, 3},
+                               distrSS::AbstractArray{T, 3}; verbose::Symbol = :none) where {T <: Real}
 
     # Set up
     if verbose in [:low, :high]

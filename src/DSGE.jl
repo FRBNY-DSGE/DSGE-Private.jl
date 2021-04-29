@@ -466,7 +466,7 @@ module DSGE
     # include("models/heterogeneous/bayer_born_luetticke/measurement.jl")
     # include("models/heterogeneous/bayer_born_luetticke/augment_states.jl")
     include("models/heterogeneous/bayer_born_luetticke/helper_functions/numerical/bayer_born_luetticke_numerical.jl")
-    include("models/heterogeneous/bayer_born_luetticke/helper_functions/HetAgentsFcns/bayer_born_luetticke_HetAgentsFcns.jl")
+    include("models/heterogeneous/bayer_born_luetticke/helper_functions/steady_state/bayer_born_luetticke_steady_state.jl")
     include("models/heterogeneous/bayer_born_luetticke/helper_functions/LinearizationFunctions/bayer_born_luetticke_linearization.jl")
 
     include("models/representative/rep_dsge_gov_debt/rep_dsge_gov_debt.jl")
