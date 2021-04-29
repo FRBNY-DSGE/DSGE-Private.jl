@@ -9,6 +9,7 @@ module DSGE
     using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
+    using BandedMatrices: Zeros
     using DataStructures: SortedDict, insert!, ForwardOrdering
     using FFTW: dct
     using Roots: fzero, ConvergenceFailed
