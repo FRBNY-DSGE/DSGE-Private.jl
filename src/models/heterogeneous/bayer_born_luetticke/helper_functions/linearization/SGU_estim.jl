@@ -31,7 +31,7 @@ function SGU_estim(XSSaggr::Array, A::Array, B::Array,
     # Calculate dericatives of non-lineear difference equation
     ############################################################################
 
-    length_X0   = length(eqconds) # number of aggregate variables should equal number of equilibrium conditions
+    length_X0   = length(aggr_eqconds) # number of aggregate variables should equal number of aggregate equilibrium conditions
     BA          = ForwardDiff.jacobian(x -> Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ, grids, id, nt, eqconds),
                                        zeros(2 * length_X0))
     Aa          = BA[:, length_X0+1:end] # aggregate A
