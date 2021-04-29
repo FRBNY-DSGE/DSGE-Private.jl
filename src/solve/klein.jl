@@ -18,7 +18,8 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
     end
 
     # NK is number of predetermined variables
-    NK = get_setting(m, :n_predetermined_variables)
+    # NK = get_setting(m, :n_predetermined_variables)
+    NK = n_backward_looking_states(m)::Int
 
     ##################################################################################
     # Klein Solution Method---apply generalized Schur decomposition a la Klein (2000)
@@ -64,21 +65,23 @@ end
 # Need an additional transition_equation function to properly stack the
 # individual state and jump transition matrices/shock mapping matrices to
 # a single state space for all of the model_states
-function klein_transition_matrices(m::AbstractModel,
-                                   TTT_state::Matrix{Float64}, TTT_jump::Matrix{Float64})
-    TTT = zeros(n_model_states(m), n_model_states(m))
+function klein_transition_matrices(m::AbstractModel{T}, TTT_state::Matrix{T}, TTT_jump::Matrix{T}) where {T <: Real}
+
+    TTT = Matrix{T}(undef, n_model_states(m), n_model_states(m))
+
+    n_states = n_backward_looking_states(m)::Int
 
     # Loading mapping time t states to time t+1 states
-    TTT[1:n_backward_looking_states(m), 1:n_backward_looking_states(m)] = TTT_state
+    TTT[1:n_states, 1:n_states] = TTT_state
 
     # Loading mapping time t jumps to time t+1 states
-    TTT[1:n_backward_looking_states(m), n_backward_looking_states(m)+1:end] .= 0.
+    TTT[1:n_states, n_states+1:end] .= 0.
 
     # Loading mapping time t states to time t+1 jumps
-    TTT[n_backward_looking_states(m)+1:end, 1:n_backward_looking_states(m)] = TTT_jump*TTT_state
+    TTT[n_states+1:end, 1:n_states] = TTT_jump * TTT_state
 
     # Loading mapping time t jumps to time t+1 jumps
-    TTT[n_backward_looking_states(m)+1:end, n_backward_looking_states(m)+1:end] .= 0.
+    TTT[n_states+1:end, n_states+1:end] .= 0.
 
     RRR = shock_loading(m, TTT_jump)
 
