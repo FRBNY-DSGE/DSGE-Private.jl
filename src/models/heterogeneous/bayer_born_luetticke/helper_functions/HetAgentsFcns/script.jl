@@ -3,13 +3,13 @@ using KrylovKit, JLD2
 using FFTW: dct
 gr()
 GR.inline("pdf")
-#=include("../LinearizationFunctions/FSYS_agg.jl")
+include("../LinearizationFunctions/FSYS_agg.jl")
 include("../LinearizationFunctions/FSYS.jl")
 include("../LinearizationFunctions/SolveDiffEq.jl")
-include("../LinearizationFunctions/SGU.jl")=#
+include("../LinearizationFunctions/SGU.jl")
 
 run_prep = true
-run_ss = false
+run_ss = true
 
 if run_prep
     m = BayerBornLuetticke()
@@ -31,14 +31,14 @@ if run_prep
         distrSS = out["distrSS"]
         DSGE.init_grids!(m)
     end
-    θ = parameters2namedtuple(m)
-    incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, av_tax_rateSS, eff_int = DSGE._bbl_incomes(θ, m.grids, KSS, distrSS)
-
+#=    θ = parameters2namedtuple(m)
     Random.seed!(1793)
+    incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, avg_tax_rateSS, eff_int = DSGE._bbl_incomes(θ, m.grids, KSS, distrSS)
+
     KSS, BSS, TransitionMatSS, TransitionMat_aSS, TransitionMat_nSS,
         c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
                           DSGE.Ksupply(RBSS, 1.0 + rkSS, m, VmSS, VkSS, distrSS, incnet, eff_int)
-    JLD2.jldopen("my_ksupply_out.jld2", true, true, true, IOStream) do file
+#=    JLD2.jldopen("my_ksupply_out.jld2", true, true, true, IOStream) do file
         write(file, "KSS", KSS)
         write(file, "VmSS", VmSS)
         write(file, "VkSS", VkSS)
@@ -50,112 +50,77 @@ if run_prep
         write(file, "k_a_starSS", k_a_starSS)
         write(file, "c_n_starSS", c_n_starSS)
         write(file, "m_n_starSS", m_n_starSS)
-    end
+    end=#
     VmSS                = log.(VmSS)
     VkSS                = log.(VkSS)
     # Calculate taxes and government expenditures
-    TSS                 = (distrSS[:]' * taxrev[:] + av_tax_rateSS*((1.0 .- 1.0 ./ m[:μ_w]).*wSS.*NSS))
+    TSS                 = (distrSS[:]' * taxrev[:] + avg_tax_rateSS*((1.0 .- 1.0 ./ m[:μ_w]).*wSS.*NSS))
     GSS                 = TSS - (m[:RB]./m[:π]-1.0)*BSS
-    Random.seed!(1793)
+    # Random.seed!(1793)
     distr_m_SS, distr_k_SS, distr_y_SS, share_borrowerSS, GiniWSS, I90shareSS,I90sharenetSS, GiniXSS,
-            sdlogxSS, P9010CSS, GiniCSS, sdlogCSS, P9010ISS, GiniISS, sdlogySS, w90shareSS, P10CSS, P50CSS, P90CSS =
-            DSGE.distrSummaries(distrSS, c_a_starSS, c_n_starSS, incnet, incgross, θ, DSGE.get_idiosyncratic_dims(m), m.grids)
-    @show sdlogxSS, sdlogCSS, sdlogySS
-    @assert false
+    sdlogxSS, P9010CSS, GiniCSS, sdlogCSS, P9010ISS, GiniISS, sdlogySS, W90shareSS, P10CSS, P50CSS, P90CSS =
+        DSGE.distrSummaries(distrSS, c_a_starSS, c_n_starSS, incnet, incgross, θ, DSGE.get_idiosyncratic_dims(m), m.grids)
+    # @show sdlogxSS, sdlogCSS, sdlogySS
+
+    nm, nk, ny = size(distrSS)
+    ThetaVm             = vec(DSGE.dct(VmSS))                             # Discrete cosine transformation of marginal liquid asset value
+    ind                 = sortperm(abs.(vec(ThetaVm)); rev = true)   # Indexes of coefficients sorted by their absolute size
+    coeffs              = 1                                          # Container to store the number of retained coefficients
+
+    # Find the important basis functions (discrete cosine) for VmSS (in L2 norm)
+    while norm(view(ThetaVm, view(ind, 1:coeffs))) / norm(ThetaVm) < 1. - get_setting(m, :dct_energy_loss)
+            global coeffs     += 1                                          # add retained coefficients until only some share of energy is lost
+    end
+    compressionIndexesVm = ind[1:coeffs]                             # store indexes of retained coefficients
+
+    ThetaVk             = vec(DSGE.dct(VkSS))                             # Discrete cosine transformation of marginal illiquid asset value
+    ind                 = sortperm(abs.(vec(ThetaVk)); rev = true)   # Indexes of coefficients sorted by their absolute size
+    coeffs              = 1                                          # Container to store the number of retained coefficients
+
+    # Find the important basis functions (discrete cosine) for VkSS
+    while norm(view(ThetaVk, view(ind, 1:coeffs))) / norm(ThetaVk) < 1. - get_setting(m, :dct_energy_loss)
+            global coeffs     += 1                                          # add retained coefficients until only some share of energy is lost
+    end
+    compressionIndexesVk = ind[1:coeffs]                             # store indexes of retained coefficients
+
+    distr_LOL           = view(distrSS, 1:nm-1, 1:nk-1, 1:ny-1)      # Leave out last entry of histogramm (b/c it integrates to 1)
+    ThetaD              = vec(DSGE.dct(distr_LOL))                        # Discrete cosine transformation of Copula
+    ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
+    n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
+    compressionIndexesD = ind[2:1+n_copula_coefs]                    # leave out index no. 1 as this shifts the constant
+
+    compressionIndexes  = Array{Array{Int, 1}, 1}(undef, 3)          # Container to store all retained coefficients in one array
+    compressionIndexes[1] = compressionIndexesVm
+    compressionIndexes[2] = compressionIndexesVk
+    compressionIndexes[3] = compressionIndexesD
+
+    distr_m_SS          = sum(distrSS,dims=(2,3))[:]            # Marginal distribution (pdf) of liquid assets
+    distr_k_SS          = sum(distrSS,dims=(1,3))[:]            # Marginal distribution (pdf) of illiquid assets
+    distr_y_SS          = sum(distrSS,dims=(1,2))[:]            # Marginal distribution (pdf) of income
+
+    bbl = JLD2.jldopen("bbl_internals_prep_linearization_seed1793.jld2", "r")
+    for k in keys(bbl)
+        @show k
+        tmp = eval(Symbol(k))
+        if !isa(tmp, AbstractArray{Float64}) && !isa(tmp, Array{Int64})
+            for j in 1:length(tmp)
+                @show maximum(abs, tmp[j] - bbl[k][j])
+            end
+        else
+            @show maximum(abs, bbl[k] - tmp)
+        end
+    end
+    @assert false=#
     @time DSGE.prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = :high)
 end
-@assert false
-m = BayerBornLuetticke()
-DSGE.init_grids!(m; coarse = true)
-θ = parameters2namedtuple(m)
-# bblout = JLD2.jldopen("bbl_steadystate_out.jld2", "r")
-# DSGE.prepare_linearization(m, bblout["KSS"], bblout["VmSS"], bblout["VkSS"], bblout["distrSS"]; verbose = :high)
-# out = JLD2.jldopen("steadystateout.jld2", "r")
-# DSGE.prepare_linearization(m, out["KSS"], out["VmSS"], out["VkSS"], out["distrSS"]; verbose = :high)
-count = 196
-input = JLD2.jldopen("ksupply_$(count)_input.jld2", "r")
 
-n = input["n"]
-EVk = reshape(reshape(input["Vk"], (n[1] * n[2], n[3])) * input["Pi"]', (n[1], n[2], n[3]))
-EVm = reshape((reshape(input["eff_int"], (n[1] * n[2], n[3])) .*
-               reshape(input["Vm"], (n[1] * n[2], n[3]))) * input["Pi"]', (n[1], n[2], n[3]))
+include("compare_ss.jl")
 
-# Policy update step
-c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
-    DSGE.EGM_policyupdate(EVm, EVk, 1., m[:π].value, input["RB"], 1.0, input["inc"], θ, m.grids, false)
-
-# marginal value update step
-Vk_new, Vm_new  = DSGE.updateV(EVk, c_a_star, c_n_star, m_n_star, input["R"] - 1.0, 1., θ, get_gridpts(m, :m_grid), input["Pi"])
-
-output = JLD2.jldopen("ksupply_$(count)_output.jld2", "r")
-
-@show maximum(abs, output["c_a_star"] - c_a_star)
-@show maximum(abs, output["m_a_star"] - m_a_star)
-@show maximum(abs, output["k_a_star"] - k_a_star)
-@show maximum(abs, output["c_n_star"] - c_n_star)
-@show maximum(abs, output["m_n_star"] - m_n_star)
-@show maximum(abs, output["Vm_new"] - Vm_new)
-@show maximum(abs, output["Vk_new"] - Vk_new)
-
-K_guess = 4.835647750603774
-grids = m.grids
-    H                   = m.grids[:H]
-    HW                  = m.grids[:HW]
-    N           = DSGE._bbl_employment(K_guess, 1.0 / (m[:μ_p] * m[:μ_w]), m[:α],      # employment
-                                  m[:τ_lev], m[:τ_prog], m[:γ])
-    w           = DSGE._bbl_wage(K_guess, 1.0 / m[:μ_p], N, m[:α])                     # wages
-    rk          = DSGE._bbl_interest(K_guess, 1.0 / m[:μ_p], N, m[:α], m[:δ_0])        # Return on illiquid asset
-    profits     = (1.0 - 1.0 / m[:μ_p]) .* DSGE._bbl_output(K_guess, 1.0, N, m[:α])    # Profit income
-    RB          = m[:RB] / m[:π]                                                  # Real return on liquid assets
-    neg_liq_ret = RB + m[:Rbar]
-    eff_int     = [x <= 0. ? neg_liq_ret : RB for x in grids[:m_ndgrid]]        # effective rate depending on assets
-    GHHFA       = (m[:γ] + m[:τ_prog]) / (m[:γ] + 1.0)                            # transformation (scaling) for composite good
-    Paux            = m.grids[:Paux]                                 # Grab ergodic income distribution from transitions
-    distr_y         = Paux[1, :]                                                 # stationary income distribution
-    inc             = Array{Array{Float64, 3}}(undef, 4)                         # container for income
-    mcw             = 1.0 / m[:μ_w]                                              # wage markup
-    incgross        = grids[:y_grid].points .* mcw .* w .* N ./ H      # gross income workers (wages)
-    incgross[end]   = grids[:y_grid].points[end] * profits                     # gross income entrepreneurs (profits)
-    incnet          = m[:τ_lev] * incgross .^ (1.0 - m[:τ_prog])
-
-    # average tax rate
-    av_tax_rate     = dot((incgross - incnet), distr_y) / dot(incgross, distr_y)
-
-    # TODO: replace the y_ndgrid calculation with just repeating the incnet vector OR use list comprehension later on
-    ny              = get_setting(m, :coarse_ny)
-    av_tax_rate     = dot((incgross - incnet), distr_y) / dot(incgross, distr_y)
-
-    inc[1]          = GHHFA .* m[:τ_lev] .* (grids[:y_ndgrid] .* mcw .* w .* N ./ H) .^ (1.0 - m[:τ_prog]) .+
-        (1.0 .- mcw) .* w .* N * (1.0 .- av_tax_rate) .* HW         # labor income net of taxes incl. union profits
-    inc[1][:,:,end] = m[:τ_lev] .* (grids[:y_ndgrid][ :, :, end] * profits) .^ (1.0 - m[:τ_prog]) # profit income net of taxes
-
-    # incomes out of wealth # TODO: replace these steps OR use list comprehension later on
-    inc[2]          = rk .* grids[:k_ndgrid]                                  # rental income
-    inc[3]          = eff_int .* grids[:m_ndgrid]                             # liquid asset income
-    inc[4]          = grids[:k_ndgrid]                                        # capital liquidation income (q=1 in steady state)
-
-@show maximum(abs, inc[1] - input["inc"][1])
-@show maximum(abs, inc[2] - input["inc"][2])
-@show maximum(abs, inc[3] - input["inc"][3])
-@show maximum(abs, inc[4] - input["inc"][4])
-
-kdiff_init = JLD2.jldopen("kdiff_initial.jld2", "r")
-@assert false
-#=
-nt = DSGE.construct_steadystate_namedtuple(m)
-id = DSGE.construct_prime_and_noprime_indices(m; only_aggregate = true)
-x  = zeros(length(id) ÷ 2)
-x′ = zeros(size(x))
-θ = parameters2namedtuple(m)
-agg_out = Fsys_agg(x, x′, θ, m.grids, id, nt, DSGE.get_aggregate_equilibrium_conditions(m))
-length_X0   = length(id) ÷ 2
-aggr_eqconds = DSGE.get_aggregate_equilibrium_conditions(m)
-BA          = ForwardDiff.jacobian(x -> DSGE.Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ, m.grids, id, nt,
-                                                      aggr_eqconds), zeros(2*length_X0))
-Aa          = BA[:,length_X0+1:end]
-Ba          = BA[:,1:length_X0]
-bblBA = JLD2.jldopen("Fsys_agg_jac.jld2", "r")["BA"]
-=#
+# replace TY_star, BY_star, C_star, C_l1_star to make sure they don't differ b/c floating point differences
+m[:TY_star] = out["TY_star"]
+m[:BY_star] = out["BY_star"]
+m[:C_star] = out["C_star"]
+m[:C_l1_star] = out["C_l1_star"]
 nt = DSGE.construct_steadystate_namedtuple(m)
 id = DSGE.construct_prime_and_noprime_indices(m; only_aggregate = false)
 θ = parameters2namedtuple(m)
@@ -173,13 +138,13 @@ DCD[2]  = DSGE.mydctmx(nk-1)
 DCD[3]  = DSGE.mydctmx(ny-1)
 IDCD    = [DCD[1]', DCD[2]', DCD[3]']
 
-#=
+Random.seed!(1793)
 x  = zeros(get_setting(m, :n_vars))
 x′ = zeros(size(x))
 Fsys_out = Fsys(x, x′, θ, m.grids, id, nt, m.equilibrium_conditions,
            get_setting(m, :dct_compression_indices), Γ,
            DC, IDC, DCD, IDCD)
-=#
+
 n_vars = get_setting(m, :n_vars)
 A = zeros(n_vars, n_vars)
 B = zeros(n_vars, n_vars)
@@ -260,46 +225,29 @@ BA          = ForwardDiff.jacobian(obj_fnct, zeros(nxB+nxA))
         A[id[:marginal_pdf_y_t],i] = -Γ[3][1:end-1,count]
     end
 
-lr = JLD2.jldopen("Fsys_jac_lr.jld2", "r")
+gx, hx, _ = SolveDiffEq(m, A, B, estim)
+
+# lr = JLD2.jldopen("Fsys_jac_lr.jld2", "r")
+lr = JLD2.jldopen("linearize_full_model_output_seed1793.jld2", "r")
 A_err = A - lr["A"]
 B_err = B - lr["B"]
-println("Errors ignoring the distributional aggregate scalar equations")
-inds = vcat(1:876, 883:895)
-println("Columns 856 (price inflation π)")
-println(maximum(abs.(B_err[inds, 856])))
-println("Columns 191:855 (aggregate states, value functions, some jumps)")
-println(maximum(abs.(B_err[inds, 191:855])))
-println("Columns 857:end (remaining jumps)")
-println(maximum(abs.(B_err[inds, 857:end])))
-println("Columns 1:79 (marginal m)") # DEFINITELY STILL AN ERROR
-println(maximum(abs.(B_err[inds, 1:79])))
-println("Columns 80:158 (marginal k)")
-println(maximum(abs.(B_err[inds, 80:158])))
-println("Columns 159:179 (marginal y)")
-println(maximum(abs.(B_err[inds, 159:179])))
-println("Columns 180:190 (copula)")
-println(maximum(abs.(B_err[inds, 180:190])))
-
-inds = 877:882
-println("Errors for the distributional aggregate scalar equations")
-println("Columns 856 (price inflation π)")
-println(maximum(abs.(B_err[inds, 856])))
-println("Columns 191:855 (aggregate states, value functions, some jumps)")
-println(maximum(abs.(B_err[inds, 191:855])))
-println("Columns 857:end (remaining jumps)")
-println(maximum(abs.(B_err[inds, 857:end])))
-println("Columns 1:79 (marginal m)") # especially for these aggregate distributional scalars
-println(maximum(abs.(B_err[inds, 1:79])))
-println("Columns 80:158 (marginal k)")
-println(maximum(abs.(B_err[inds, 80:158])))
-println("Columns 159:179 (marginal y)")
-println(maximum(abs.(B_err[inds, 159:179])))
-println("Columns 180:190 (copula)")
-println(maximum(abs.(B_err[inds, 180:190])))
-
-#     gx, hx, _ = SolveDiffEq(m, A, outAB["B"], estim)
-    gx, hx, _ = SolveDiffEq(m, A, B, estim)
-
+# Fsys_errs = abs.(Fsys_out - lr["Fsys_out"])
+#=println("Difference in evaluation of Fsys at steady-state")
+diff_errs = findall(Fsys_errs .> eps())
+for i in vcat(191:212, 853:get_setting(m, :n_vars))
+    if i in diff_errs
+        println(i)
+    end
+end=#
+# difference errors: 855, 859, 867, 869, 875, 879 => K, C, T, B, τ_level, sd log_y
+# println("Difference in Fsys, A, B, gx, and hx")
+println("Difference in A, B, gx, and hx")
+# println(maximum(abs, lr["Fsys_out"] - Fsys_out)) # index 194 RB has a difference, 854-859, 867-869, 874-875, 877-881 as well
+println(maximum(abs, A_err))
+println(maximum(abs, B_err))
+println(maximum(abs, gx - lr["gx"]))
+println(maximum(abs, hx - lr["hx"]))
+@assert false
 TTT = zeros(get_setting(m, :n_vars), get_setting(m, :n_vars))
 TTT[1:get_setting(m, :n_states), 1:get_setting(m, :n_states)] = hx
 TTT[get_setting(m, :n_states)+1:end, 1:get_setting(m, :n_states)] = gx * hx

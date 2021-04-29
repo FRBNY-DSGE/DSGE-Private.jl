@@ -78,7 +78,7 @@ function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     distr_k = vec(sum(distr, dims=(1,3)))
     distr_y = vec(sum(distr, dims=(1,2)))
 
-    share_borrower = sum(distr_m[m_grid .< 0])
+    share_borrower = sum(distr_m .* (m_grid .< 0)) # sum(distr_m[m_grid .< 0])
 
     p50             = findfirst(x -> x >= 0.5, moneycapital_cdf)
     p90             = findfirst(x -> x >= 0.9, moneycapital_cdf)

@@ -41,7 +41,8 @@ function prepare_linearization(m::BayerBornLuetticke, KSS, VmSS, VkSS, distrSS; 
     VkSS                = log.(VkSS)
 
     # Calculate taxes and government expenditures
-    TSS                 = (tot_taxrev + avg_tax_rateSS * ((1.0 .- 1.0 ./ θ[:μ_w]) .* wSS .* NSS))
+    # TSS                 = (tot_taxrev + avg_tax_rateSS * ((1.0 .- 1.0 ./ θ[:μ_w]) .* wSS .* NSS))
+    TSS                 = (distrSS[:]' * taxrev[:] + avg_tax_rateSS * ((1. .- 1. ./ θ[:μ_w]) .* wSS .* NSS))
     GSS                 = TSS - (θ[:RB] ./ θ[:π] - 1.0) * BSS
 
     # Produce distributional summary statistics
