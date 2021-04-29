@@ -1,7 +1,7 @@
 ##########################################################
 # Matrix to remove one degree of freedom from distribution
 #---------------------------------------------------------
-function shuffleMatrix(distr)
+function shuffle_matrix(distr)
     nm, nk, ny = size(distr)
 
     distr_m = dropdims(sum(sum(distr,dims=3),dims=2)./sum(distr), dims = (2, 3)) # TODO: we can just use the marginals from m?
@@ -29,19 +29,8 @@ function shuffleMatrix(distr)
 
     return Γ
 end
-##########################################################
-# Schur Decomposition
-#---------------------------------------------------------
-function complex_schur(A, B)
-    F = LinearAlgebra.schur(complex(A), complex(B))
-    α::Vector{complex(promote_type(eltype(A), eltype(B)))} = F.alpha
-    λ = abs.(α) ./ abs.(F.beta)
-    select_ev = λ .>= 1.0
-    # select_ev = abs.(λ) .>= 1.0
-    nk  = sum(select_ev) # Number of state Variables based on Eigenvalues
-    return F, select_ev, nk, λ
-end
 
+# Helper functions for linearization
 function tot_dual(x::ForwardDiff.Dual)
     a = sum(ForwardDiff.partials(x,:))
     return a

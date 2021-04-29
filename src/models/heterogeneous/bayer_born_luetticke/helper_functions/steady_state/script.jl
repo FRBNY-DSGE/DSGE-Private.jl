@@ -3,10 +3,8 @@ using KrylovKit, JLD2
 using FFTW: dct
 gr()
 GR.inline("pdf")
-# include("../LinearizationFunctions/FSYS_agg.jl")
-# include("../LinearizationFunctions/FSYS.jl")
-include("../LinearizationFunctions/SolveDiffEq.jl")
-include("../LinearizationFunctions/SGU.jl")
+include("../linearization/SolveDiffEq.jl")
+include("../linearization/SGU.jl")
 
 run_prep = true
 run_ss = true
@@ -124,7 +122,7 @@ m[:C_l1_star] = out["C_l1_star"]
 nt = DSGE.construct_steadystate_namedtuple(m)
 id = DSGE.construct_prime_and_noprime_indices(m; only_aggregate = false)
 θ = parameters2namedtuple(m)
-Γ = DSGE.shuffleMatrix(m[:distr_star])
+Γ = DSGE.shuffle_matrix(m[:distr_star])
 nm, nk, ny = DSGE.get_idiosyncratic_dims(m)
 DC = Array{Array{Float64,2},1}(undef,3)
 DC[1]  = DSGE.mydctmx(nm)
