@@ -116,8 +116,8 @@ end
 
 include("compare_ss.jl")
 
-# replace TY_star, BY_star, C_star, C_l1_star to make sure they don't differ b/c floating point differences
-m[:TY_star] = out["TY_star"]
+# replace TY_star, BY_star, C_star, C_l1_star to make sure they don't differ b/c very small floating point differences,
+m[:TY_star] = out["TY_star"] # although the implied gx and hx are still very similar
 m[:BY_star] = out["BY_star"]
 m[:C_star] = out["C_star"]
 m[:C_l1_star] = out["C_l1_star"]
