@@ -207,6 +207,7 @@ function init_model_indices!(m::BayerBornLuetticke)
     m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
                  length(m.endogenous_states_augmented))=#
 end
+
 # TODO: maybe add coarse as a kwarg
 function BayerBornLuetticke(subspec::String="ss0";
                             custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
@@ -270,9 +271,6 @@ function BayerBornLuetticke(subspec::String="ss0";
 
     # Initialize parameters
     init_parameters!(m)
-
-    # Initialize aggregate steady state parameters (necessary for grid construction) # TODO: may not be necessary for grid
-    # aggregate_steadystate!(m)
 
     # Initialize grids
     init_grids!(m; coarse = true)
@@ -674,7 +672,7 @@ function init_parameters!(m::BayerBornLuetticke)
     m <= SteadyStateParameterGrid(:Vk_star, Array{Float64, 3}(undef, 0, 0, 0),
                                   description = "Marginal value of illiquid capital (steady-state)", tex_label = "V_{k, *}")
 
-    # Steady state grids for reduction-related variables (indices for perturbation kept elsewhere) # TODO: document where indices are
+    # Steady state grids for reduction-related variables (indices for perturbation kept elsewhere) # TODO: document where compression indices are
     m <= SteadyStateParameterGrid(:dct_Vm_star, Vector{Float64}(undef, 0),
                                   description = "DCT coefficients of the marginal value of liquid bonds (steady-state)",
                                   tex_label = "\\theta_{Vm, *}")
@@ -685,94 +683,6 @@ function init_parameters!(m::BayerBornLuetticke)
                                   description = "DCT coefficients of the copula for distribution " *
                                   "over idiosyncratic states (steady-state)",
                                   tex_label = "\\theta_{D, *}")
-end
-
-"""
-```
-aggregate_steadystate!(m::BayerBornLuetticke)
-```
-computes the steady state of aggregate scalar variables.
-
-This function breaks out the "analytic" steady-state solution here instead of in steadystate!
-since some of these parameters are required to construct the grids that are used in the
-functional/distributional steady state variable calculation
-(where init_grids! is called before steadystate! in model construction).
-
-# TODO: this may actually not be necessary to call before solving steady state
-"""
-function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
-
-    m_grid = get_gridpts(m, :m_grid)::Vector{T}
-
-    # Unlog some steady state numbers
-    K_star = exp(m[:K_star])
-    N_star = exp(m[:N_star])
-    # rk_star = exp(m[:rk_star])
-    Y_star = exp(m[:Y_star])
-    G_star = exp(m[:G_star])
-    T_star = exp(m[:T_star])
-    B_star = exp(m[:B_star])
-    I_star = exp(m[:I_star])
-    w_star = exp(m[:w_star])
-
-    # Create steady state values information. Note these are the LOG numbers
-    m[:A_star] = 0.
-    m[:Z_star] = 0.
-    m[:Ψ_star] = 0.
-    m[:RB_star] = log(m[:RB])
-    m[:μ_p_star] = log(m[:μ_p])
-    m[:μ_w_star] = log(m[:μ_w])
-    m[:τ_prog_star] = log(m[:τ_prog])
-    m[:τ_level_star] = log(m[:τ_lev])
-    m[:σ_star] = 0.
-    m[:τ_prog_obs_star] = 0.
-    m[:G_sh_star] = 0.
-    m[:R_sh_star] = 0.
-    m[:P_sh_star] = 0.
-    m[:S_sh_star] = 0.
-    m[:rk_star] = log(1. + _bbl_interest(K_star, 1. / m[:μ_p], N_star, m[:α], m[:δ_0])) # TODO: can we calculate rk_star in prepare_linearization?
-    rk_star = exp(m[:rk_star])
-    m[:LP_star] = log(1. + rk_star - m[:RB])
-    m[:LP_XA_star] = log(1. + rk_star - m[:RB])
-    m[:π_star] = log(m[:π])
-    m[:π_w_star] = 0.
-    # m[:BD_star] = log(-dot(m[:marginal_pdf_m_star], (m_grid .< 0.) .* m_grid))
-    m[:BD_star] = log(-sum(m[:marginal_pdf_m_star] .* (m_grid .< 0.) .* m_grid))
-    m[:C_star] = log(Y_star - m[:δ_0] * K_star - G_star - m[:Rbar] * exp(m[:BD_star]))
-    m[:q_star] = 0.
-    m[:mc_star] = log(1. ./ m[:μ_p])
-    m[:mc_w_star] = log(1. ./ m[:μ_w])
-    m[:mc_w_w_star] = log(w_star * exp(m[:mc_w_star]))
-    m[:u_star] = 0.
-    m[:profits_star] = log((1. - exp(m[:mc_star])) .* Y_star)
-    m[:union_profits_star] = log((1. - exp(m[:mc_w_star])) .* w_star .* N_star)
-    BY = B_star / Y_star # to try to match exactly the output from the BBL
-    m[:BY_star] = log(BY)
-    m[:TY_star] = log(T_star / Y_star)
-    m[:T_l1_star] = get_untransformed_values(m[:T_star])::T
-    m[:Y_l1_star] = get_untransformed_values(m[:Y_star])::T
-    m[:B_l1_star] = get_untransformed_values(m[:B_star])::T
-    m[:G_l1_star] = get_untransformed_values(m[:G_star])::T
-    m[:I_l1_star] = get_untransformed_values(m[:I_star])::T
-    m[:w_l1_star] = get_untransformed_values(m[:w_star])::T
-    m[:q_l1_star] = get_untransformed_values(m[:q_star])::T
-    m[:C_l1_star] = get_untransformed_values(m[:C_star])::T
-    m[:avg_tax_rate_l1_star] = get_untransformed_values(m[:avg_tax_rate_star])::T
-    m[:τ_prog_l1_star] = log(m[:τ_prog])
-    m[:Ygrowth_star] = 0.
-    m[:Bgrowth_star] = 0.
-    m[:Igrowth_star] = 0.
-    m[:wgrowth_star] = 0.
-    m[:Cgrowth_star] = 0.
-    m[:Tgrowth_star] = 0.
-    m[:Ht_star] = 0.
-    m[:retained_star] = 0.
-    m[:firm_profits_star] = get_untransformed_values(m[:profits_star])::T
-    m[:union_retained_star] = 0.
-    m[:union_firm_profits_star] = get_untransformed_values(m[:union_profits_star])::T
-    m[:tot_retained_Y_star] = 0.
-
-    return m
 end
 
 function model_settings!(m::BayerBornLuetticke)
@@ -856,8 +766,6 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:n_scalar_states, 16, "Number of scalar states")
     m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states),
                  "Number of scalars (jumps and states)")
-    m <= Setting(:n_idiosyncratic_states, get_setting(m, :ny) + get_setting(m, :nk) + get_setting(m, :nm),
-                 "Number of idiosyncratic states") # TODO: might delete
 
     m <= Setting(:n_states, 1, "Total number of states after reduction steps") # just initializing, will count later
     m <= Setting(:n_jumps, 1, "Total number of jumps after reduction steps")
@@ -869,38 +777,11 @@ function model_settings!(m::BayerBornLuetticke)
                  This setting is initialized at 0 as a default value because it will always be
                  overwritten once the Jacobian is calculated.")
 
-    # Function-valued variables include distributional variables
-    m <= Setting(:n_function_valued_backward_looking_states, 1, "Number of function-valued" *
-                 " backward looking state variables")
-    m <= Setting(:n_backward_looking_distributional_vars, 1,
-                 "Number of state variables that are distributional variables.")
-    m <= Setting(:n_function_valued_jumps, 1, "Number of function-valued jump variables")
-    m <= Setting(:n_jump_distributional_vars, 1,
-                 "Number of jump variables that are distributional variables.")
-
-    # The settings below specify how to remove extra degrees of freedom
-    # from the states representing the distribution.
-    # The n degrees of freedom removed depends on the distributions/dimensions
-    # of heterogeneity that we have discretized over, in this case,
-    # cash on hand and the skill distribution. In general the rule of
-    # thumb is, remove one degree of freedom for the first endogenous distribution (cash on
-    # hand), then one additional degree of freedom for each exogenous distribution (skill
-    # distribution). Multiple endogenous distributions only permit removing a single degree
-    # of freedom since it is then non-trivial to obtain the marginal distributions.
-    m <= Setting(:remove_extra_distribution_states, true, "Whether or not to perform the" *
-                 "remove distributional states before the Klein solution step. " *
-                 "This removal is necessary to apply the Klein algorithm, or else indeterminacy will occur. Intuitively, " *
-                 "some grid points in a histogram representation of the distribution cannot be freely perturbed because " *
-                 "they are needed to ensure that the the sum of the distribution of weights equals one. " *
-                 "These grid points need to be removed prior to linearization.")
-    m <= Setting(:n_degrees_of_freedom_removed_state, 2,
-                 "Number of degrees of freedom from the distributional variables to remove.")
-    m <= Setting(:n_degrees_of_freedom_removed_jump, 0,
-                 "Number of degrees of freedom from the distributional variables to remove.")
-
     ## Linearization method
-    m <= Setting(:solution_method, :schmitt_grohe_uribe, false, "",
+    m <= Setting(:solution_method, :klein, false, "",
                  "Solution method for obtaining a reduced-form state space representation from equilibrium conditions")
+    m <= Setting(:klein_inversion_method, :minimum_norm, false, "",
+                 "Inversion method to obtain gx and hx during Kleina")
 
     ## Estimation Settings
     #  Just using defaults for now . . .
@@ -917,7 +798,6 @@ This function is called during the model's initialization and # TODO maybe note 
 during reduction steps, which changes indices.
 """
 function setup_indices!(m::BayerBornLuetticke)
-    # TODO: check if we need to ensure that this function doesn't normalize indices
     # Abbreviate some fields
     state_vars = m.state_variables
     jump_vars = m.jump_variables
@@ -930,8 +810,7 @@ function setup_indices!(m::BayerBornLuetticke)
     nm, nk, ny = get_idiosyncratic_dims(m)
 
     ## Populate endo using "next-period" name (i.e., using ′) since
-    #  it is easier to remove the ′ than to add it, a feature that
-    #  is used by normalize_state_indices! # TODO: to figure out indices, just load them directly from HANKEstim and then check line by line
+    #  it is easier to remove the ′ than to add it
     n_idio_states            = nm + nk + ny - 3 # subtract 3 for dof
     dof_to_remove            = 3
     endo[:marginal_pdf_m′_t] = 1:(nm - 1)
@@ -1055,82 +934,4 @@ function setup_indices!(m::BayerBornLuetticke)
         eqconds[name] = (n_distr_states_idio_jumps + i):(n_distr_states_idio_jumps + i)
         aggr_eqconds[name] = i
     end=#
-end
-
-# TODO: init_states_and_jumps! is not done. Its role appears to be prepping
-#       index info for Klein, but since we're using SGU, so maybe we don't need it
-function count_states_and_jumps!(m::AbstractModel, states::Vector{Symbol},
-                                 jumps::Vector{Symbol}, states_only::Bool = false)
-
-    endo = m.endogenous_states
-
-    m <= Setting(:states, states)
-    m <= Setting(:jumps,  jumps)
-
-    state_indices = stack_indices(endo, states)
-    jump_indices  = stack_indices(endo, jumps)
-
-    m <= Setting(:state_indices, state_indices, "Indices of m.endogenous_states " *
-                 "corresponding to backward-looking state variables")
-    m <= Setting(:jump_indices, jump_indices, "Indices of m.endogenous_states " *
-                 "corresponding to jump
-                 variables")
-
-    n_dof_removed_state = get_setting(m, :n_degrees_of_freedom_removed_state)
-    n_dof_removed_jump  = get_setting(m, :n_degrees_of_freedom_removed_jump)
-
-
-    ####################################################
-    # Calculating the number of backward-looking states
-    ####################################################
-    n_backward_looking_distr_vars = get_setting(m, :n_backward_looking_distributional_vars)
-    m <= Setting(:backward_looking_states_normalization_factor,
-                 n_dof_removed_state*n_backward_looking_distr_vars,
-                 "Number of dimensions removed from the backward looking state variables
-                  for the normalization.")
-
-    nxns_state = (get_setting(m, :nx1_state) + get_setting(m, :nx2_state))* get_setting(m, :ns)
-    nxns_jump  = (get_setting(m, :nx1_jump)  + get_setting(m, :nx2_jump)) * get_setting(m, :ns)
-    nx1_state  = get_setting(m, :nx1_state)
-    nx2_state  = get_setting(m, :nx2_state)
-    nx1_jump   = get_setting(m, :nx1_jump)
-    nx2_jump   = get_setting(m, :nx2_jump)
-
-    n_backward_looking_vars = length(get_setting(m, :state_indices))
-    n_backward_looking_function_valued_vars = get_setting(m,
-                                               :n_function_valued_backward_looking_states)
-    n_backward_looking_scalar_vars = get_setting(m, :nxscalars)
-
-    m <= Setting(:n_backward_looking_states, (nx1_state + nx2_state) *
-                 n_backward_looking_distr_vars +
-                 n_backward_looking_scalar_vars -
-                 get_setting(m, :backward_looking_states_normalization_factor),
-                 "Number of state variables, in the true sense (fully
-                  backward looking) accounting for the discretization across the grid
-                  of function-valued variables and the normalization of
-                  distributional variables.")
-
-    ##################################
-    # Calculating the number of jumps
-    ##################################
-    n_jump_distr_vars = get_setting(m, :n_jump_distributional_vars)
-    m <= Setting(:jumps_normalization_factor,
-                 n_dof_removed_jump*n_jump_distr_vars, "number of dimensions removed from" *
-                 " the jump variables for the normalization.")
-
-    n_jump_vars = length(get_setting(m, :jump_indices))
-    n_jump_function_valued_vars = get_setting(m, :n_function_valued_jumps)
-    n_jump_scalar_vars = get_setting(m, :nyscalars) #n_jump_vars - (nx1+nx2)*n_jump_function_valued_vars
-
-    m <= Setting(:n_jumps, (nx1_jump+nx2_jump)*n_jump_function_valued_vars +
-                 n_jump_scalar_vars - get_setting(m, :jumps_normalization_factor),
-                 "Number of jump variables (forward looking) accounting for
-                  the discretization across the grid of function-valued variables and the
-                  normalization of distributional variables.")
-
-    m <= Setting(:n_model_states, get_setting(m, :n_backward_looking_states) +
-                 get_setting(m, :n_jumps),
-                 "Number of 'states' in the state space model. Because backward and forward
-                 looking variables need to be explicitly tracked for the Klein solution
-                 method, we have n_states and n_jumps")
 end
