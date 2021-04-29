@@ -136,14 +136,14 @@ DCD[2]  = DSGE.mydctmx(nk-1)
 DCD[3]  = DSGE.mydctmx(ny-1)
 IDCD    = [DCD[1]', DCD[2]', DCD[3]']
 
-n_vars = get_setting(m, :n_vars)
+n_vars = get_setting(m, :n_model_states)
 A = zeros(n_vars, n_vars)
 B = zeros(n_vars, n_vars)
 
     n_dct_Vm    = length(get_setting(m, :dct_compression_indices)[:Vm])
     n_dct_Vk    = length(get_setting(m, :dct_compression_indices)[:Vk])
 
-length_X0 = get_setting(m, :n_vars)
+length_X0 = get_setting(m, :n_model_states)
     nxB         = length_X0 - n_dct_Vm - n_dct_Vk
     nxA         = length_X0 - length(id[:marginal_pdf_y_t]) - length(id[:marginal_pdf_m_t]) - length(id[:marginal_pdf_k_t])
 
@@ -192,11 +192,11 @@ println(maximum(abs, gx - lr["gx"]))
 println(maximum(abs, hx - lr["hx"]))
 
 #=@assert false
-TTT = zeros(get_setting(m, :n_vars), get_setting(m, :n_vars))
+TTT = zeros(get_setting(m, :n_model_states), get_setting(m, :n_model_states))
 TTT[1:get_setting(m, :n_states), 1:get_setting(m, :n_states)] = hx
 TTT[get_setting(m, :n_states)+1:end, 1:get_setting(m, :n_states)] = gx * hx
 
-TTT_bbl = zeros(get_setting(m, :n_vars), get_setting(m, :n_vars))
+TTT_bbl = zeros(get_setting(m, :n_model_states), get_setting(m, :n_model_states))
 TTT_bbl[1:get_setting(m, :n_states), 1:get_setting(m, :n_states)] = lr["hx"]
 TTT_bbl[get_setting(m, :n_states)+1:end, 1:get_setting(m, :n_states)] = lr["gx"] * lr["hx"]
 
@@ -205,11 +205,11 @@ max_errs = Dict()
 argmax_errs = Dict()
 for shock in [:A′_t, :Z′_t, :Ψ′_t, :μ_p′_t, :μ_w′_t, :G_sh′_t, :P_sh′_t, :R_sh′_t, :S_sh′_t]
     shock_name = string(DSGE.detexify(shock))[1:end - 3]
-    x0 = zeros(get_setting(m, :n_vars))
+    x0 = zeros(get_setting(m, :n_model_states))
     x0[first(m.endogenous_states[shock])] = 100. * .01
     T = 40
-    myirfs = zeros(get_setting(m, :n_vars), T)
-    bblirfs = zeros(get_setting(m, :n_vars), T)
+    myirfs = zeros(get_setting(m, :n_model_states), T)
+    bblirfs = zeros(get_setting(m, :n_model_states), T)
     myirfs[:, 1] = x0
     bblirfs[:, 1] = x0
     @views for t in 2:T

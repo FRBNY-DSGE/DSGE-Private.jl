@@ -683,6 +683,12 @@ function init_parameters!(m::BayerBornLuetticke)
                                   description = "DCT coefficients of the copula for distribution " *
                                   "over idiosyncratic states (steady-state)",
                                   tex_label = "\\theta_{D, *}")
+
+    # Jacobians to be updated
+    m <= SteadyStateParameterGrid(:A, Matrix{Float64}(undef, 0, 0),
+                                  description = "The A matrix computed by jacobian(m)")
+    m <= SteadyStateParameterGrid(:B, Matrix{Float64}(undef, 0, 0),
+                                  description = "The B matrix computed by jacobian(m)")
 end
 
 function model_settings!(m::BayerBornLuetticke)
@@ -769,7 +775,8 @@ function model_settings!(m::BayerBornLuetticke)
 
     m <= Setting(:n_states, 1, "Total number of states after reduction steps") # just initializing, will count later
     m <= Setting(:n_jumps, 1, "Total number of jumps after reduction steps")
-    m <= Setting(:n_vars, get_setting(m, :n_states) + get_setting(m, :n_jumps), "Number of variables")
+    m <= Setting(:n_model_states, get_setting(m, :n_states) + get_setting(m, :n_jumps),
+                 "Number of model states (predetermined states and jump variables)")
 
     # Number of states and jumps
     m <= Setting(:n_predetermined_variables, 0, "Number of predetermined variables after
@@ -777,13 +784,15 @@ function model_settings!(m::BayerBornLuetticke)
                  This setting is initialized at 0 as a default value because it will always be
                  overwritten once the Jacobian is calculated.")
 
-    ## Linearization method
+    ## Linearization settings
+    m <= Setting(:linearize_heterogeneous_blocks, true, false, "", "Boolean for whether the " *
+                 "heterogeneous blocks of the Jacobians should be linearized")
     m <= Setting(:solution_method, :klein, false, "",
                  "Solution method for obtaining a reduced-form state space representation from equilibrium conditions")
     m <= Setting(:klein_inversion_method, :minimum_norm, false, "",
-                 "Inversion method to obtain gx and hx during Kleina")
+                 "Inversion method to obtain gx and hx during the Klein algorithm")
 
-    ## Estimation Settings
+    ## Estimation settings
     #  Just using defaults for now . . .
 end
 
@@ -841,8 +850,8 @@ function setup_indices!(m::BayerBornLuetticke)
         endo[k] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
         aggr_endo[k] = i + n_aggr_states
     end
-    m <= Setting(:n_vars, first(endo[jump_vars[end]]))
-    m <= Setting(:n_jumps, get_setting(m, :n_vars) - n_states)
+    m <= Setting(:n_model_states, first(endo[jump_vars[end]]))
+    m <= Setting(:n_jumps, get_setting(m, :n_model_states) - n_states)
 
     ## Populate equation indices
 
