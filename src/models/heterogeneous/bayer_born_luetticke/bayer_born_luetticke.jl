@@ -88,6 +88,7 @@ mutable struct BayerBornLuetticke{T} <: AbstractHetModel{T}
                                                      # state variables that need to be normalized=#
 
     # Vector of ranges corresponding to normalized (post Klein solution) indices
+    aggregate_endogenous_states::OrderedDict{Symbol,Int}
     endogenous_states::OrderedDict{Symbol,UnitRange{Int}}
     exogenous_shocks::OrderedDict{Symbol,Int}
     expected_shocks::OrderedDict{Symbol,Int}
@@ -233,9 +234,10 @@ function BayerBornLuetticke(subspec::String="ss0";
 
             # model indices
             # endogenous states
-            OrderedDict{Symbol, UnitRange}(), # TODO: label these
+            OrderedDict{Symbol, Int}(), # TODO: label these
+            OrderedDict{Symbol, UnitRange{Int}}(), # TODO: label these
             OrderedDict{Symbol, Int}(), OrderedDict{Symbol, Int}(),
-            OrderedDict{Symbol, UnitRange}(), OrderedDict{Symbol, Int}(),
+            OrderedDict{Symbol, UnitRange{Int}}(), OrderedDict{Symbol, Int}(),
             OrderedDict{Symbol, Int}(), OrderedDict{Symbol, Int}(),
             OrderedDict{Symbol, Int}(),
 
@@ -920,6 +922,7 @@ function setup_indices!(m::BayerBornLuetticke)
     state_vars = m.state_variables
     jump_vars = m.jump_variables
     endo = m.endogenous_states # note that these are the model states, so they include predetermined states and jumps
+    aggr_endo = m.aggregate_endogenous_states # note that these are the model states, so they include predetermined states and jumps
     eqconds = m.equilibrium_conditions
     aggr_eqconds = m.aggregate_equilibrium_conditions
 
@@ -938,12 +941,14 @@ function setup_indices!(m::BayerBornLuetticke)
     endo[:copula′_t]         = (1 + n_idio_states):n_distr_states
     for (i, k) in enumerate(get_aggregate_state_variables(m))
         endo[k] = (n_distr_states + i):(n_distr_states + i)
+        aggr_endo[k] = i
     end
 
     # Update n_states to be consistent with the number of
     # idiosyncratic states and jumps after reduction
-    n_states = first(endo[state_vars[end]])
-    m       <= Setting(:n_states, n_states)
+    n_states      = first(endo[state_vars[end]])
+    n_aggr_states = n_states - n_distr_states
+    m            <= Setting(:n_states, n_states)
 
     # Now populate jump indices
     n_dct_Vm            = length(get_setting(m, :dct_compression_indices)[:Vm])
@@ -955,6 +960,7 @@ function setup_indices!(m::BayerBornLuetticke)
     endo[:Vk′_t] = (n_states + n_dct_Vm + 1):(n_states + n_idio_jumps)
     for (i, k) in enumerate(get_aggregate_jump_variables(m))
         endo[k] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
+        aggr_endo[k] = i + n_aggr_states
     end
     m <= Setting(:n_vars, first(endo[jump_vars[end]]))
     m <= Setting(:n_jumps, get_setting(m, :n_vars) - n_states)
@@ -962,7 +968,6 @@ function setup_indices!(m::BayerBornLuetticke)
     ## Populate equation indices
 
     # Function blocks which output a function
-    n_aggr_states               = n_states - n_distr_states
     eqconds[:eq_marginal_pdf_m] = endo[:marginal_pdf_m′_t] # note that since endo holds UnitRanges, this assignment results in a copy
     eqconds[:eq_marginal_pdf_k] = endo[:marginal_pdf_k′_t]
     eqconds[:eq_marginal_pdf_y] = endo[:marginal_pdf_y′_t]

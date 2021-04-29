@@ -3,6 +3,7 @@
 # aggregate variable names
 get_aggregate_state_variables(m::BayerBornLuetticke) = m.aggregate_state_variables
 get_aggregate_jump_variables(m::BayerBornLuetticke) = m.aggregate_jump_variables
+get_aggregate_endogenous_states(m::BayerBornLuetticke) = m.aggregate_endogenous_states
 get_aggregate_equilibrium_conditions(m::BayerBornLuetticke) = m.aggregate_equilibrium_conditions
 get_lagged_variables(m::BayerBornLuetticke) = m.state_variables[7:15] # 7 = Y′_tl1, 15 = τ_prog′_t1
 
