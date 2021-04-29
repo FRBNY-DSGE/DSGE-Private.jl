@@ -193,12 +193,12 @@ println(maximum(abs, hx - lr["hx"]))
 
 #=@assert false
 TTT = zeros(get_setting(m, :n_model_states), get_setting(m, :n_model_states))
-TTT[1:get_setting(m, :n_states), 1:get_setting(m, :n_states)] = hx
-TTT[get_setting(m, :n_states)+1:end, 1:get_setting(m, :n_states)] = gx * hx
+TTT[1:get_setting(m, :n_backward_looking_states), 1:get_setting(m, :n_backward_looking_states)] = hx
+TTT[get_setting(m, :n_backward_looking_states)+1:end, 1:get_setting(m, :n_backward_looking_states)] = gx * hx
 
 TTT_bbl = zeros(get_setting(m, :n_model_states), get_setting(m, :n_model_states))
-TTT_bbl[1:get_setting(m, :n_states), 1:get_setting(m, :n_states)] = lr["hx"]
-TTT_bbl[get_setting(m, :n_states)+1:end, 1:get_setting(m, :n_states)] = lr["gx"] * lr["hx"]
+TTT_bbl[1:get_setting(m, :n_backward_looking_states), 1:get_setting(m, :n_backward_looking_states)] = lr["hx"]
+TTT_bbl[get_setting(m, :n_backward_looking_states)+1:end, 1:get_setting(m, :n_backward_looking_states)] = lr["gx"] * lr["hx"]
 
 errs = Dict()
 max_errs = Dict()

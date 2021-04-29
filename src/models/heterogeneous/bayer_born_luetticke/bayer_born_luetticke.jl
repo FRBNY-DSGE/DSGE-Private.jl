@@ -773,9 +773,9 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states),
                  "Number of scalars (jumps and states)")
 
-    m <= Setting(:n_states, 1, "Total number of states after reduction steps") # just initializing, will count later
+    m <= Setting(:n_backward_looking_states, 1, "Total number of states after reduction steps") # just initializing, will count later
     m <= Setting(:n_jumps, 1, "Total number of jumps after reduction steps")
-    m <= Setting(:n_model_states, get_setting(m, :n_states) + get_setting(m, :n_jumps),
+    m <= Setting(:n_model_states, get_setting(m, :n_backward_looking_states) + get_setting(m, :n_jumps),
                  "Number of model states (predetermined states and jump variables)")
 
     # Number of states and jumps
@@ -836,7 +836,7 @@ function setup_indices!(m::BayerBornLuetticke)
     # idiosyncratic states and jumps after reduction
     n_states      = first(endo[state_vars[end]])
     n_aggr_states = n_states - n_distr_states
-    m            <= Setting(:n_states, n_states)
+    m            <= Setting(:n_backward_looking_states, n_states)
 
     # Now populate jump indices
     n_dct_Vm            = length(get_setting(m, :dct_compression_indices)[:Vm])

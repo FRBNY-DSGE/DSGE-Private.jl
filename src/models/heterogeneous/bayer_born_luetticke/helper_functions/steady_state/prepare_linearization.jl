@@ -134,7 +134,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     update_compression_indices!(m, [:Vm, :Vk, :copula],
                                 compressionIndexesVm, compressionIndexesVk, compressionIndexesD)
 
-    # TODO: move this step to the indices/dimensions update (setting is n_states)
+    # TODO: move this step to the indices/dimensions update (setting is n_backward_looking_states)
     # add to no. of states the coefficients that perturb the copula
     # @set! n_par.nstates = n_par.ny + n_par.nk + n_par.nm + n_par.naggrstates - 3 + length(compressionIndexes[3])
 
