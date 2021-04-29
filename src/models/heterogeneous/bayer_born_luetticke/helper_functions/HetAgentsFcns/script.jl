@@ -3,8 +3,8 @@ using KrylovKit, JLD2
 using FFTW: dct
 gr()
 GR.inline("pdf")
-include("../LinearizationFunctions/FSYS_agg.jl")
-include("../LinearizationFunctions/FSYS.jl")
+# include("../LinearizationFunctions/FSYS_agg.jl")
+# include("../LinearizationFunctions/FSYS.jl")
 include("../LinearizationFunctions/SolveDiffEq.jl")
 include("../LinearizationFunctions/SGU.jl")
 
@@ -138,13 +138,6 @@ DCD[2]  = DSGE.mydctmx(nk-1)
 DCD[3]  = DSGE.mydctmx(ny-1)
 IDCD    = [DCD[1]', DCD[2]', DCD[3]']
 
-Random.seed!(1793)
-x  = zeros(get_setting(m, :n_vars))
-x′ = zeros(size(x))
-Fsys_out = Fsys(x, x′, θ, m.grids, id, nt, m.equilibrium_conditions,
-           get_setting(m, :dct_compression_indices), Γ,
-           DC, IDC, DCD, IDCD)
-
 n_vars = get_setting(m, :n_vars)
 A = zeros(n_vars, n_vars)
 B = zeros(n_vars, n_vars)
@@ -156,50 +149,14 @@ length_X0 = get_setting(m, :n_vars)
     nxB         = length_X0 - n_dct_Vm - n_dct_Vk
     nxA         = length_X0 - length(id[:marginal_pdf_y_t]) - length(id[:marginal_pdf_m_t]) - length(id[:marginal_pdf_k_t])
 
-#=length_X0 = get_setting(m, :n_vars) - length(id[:marginal_pdf_y_t]) - length(id[:marginal_pdf_m_t]) -
-    length(id[:marginal_pdf_k_t]) - length(id[:copula_t])
-    nxB         = length_X0 - n_dct_Vm - n_dct_Vk
-    nxA         = length_X0 - n_dct_Vm - n_dct_Vk=#
-
 estim = false
-Random.seed!(1793)
-#=obj_fnct    = x -> Fsys([zeros(length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) +
-                               length(id[:marginal_pdf_k_t]) + length(id[:copula_t])); x[1:22];
-                         zeros(n_dct_Vm + n_dct_Vk); x[22+1:nxB]],
-                        [zeros(length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) +
-                               length(id[:marginal_pdf_k_t]) + length(id[:copula_t]));
-                         x[nxB+1:nxB+22]; zeros(n_dct_Vm + n_dct_Vk); x[nxB+22+1:end]],
-                        θ, m.grids, id, nt, m.equilibrium_conditions,
-                        get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)=#
 
-#=obj_fnct    = x -> Fsys([zeros(length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) +
-                               length(id[:marginal_pdf_k_t]) + length(id[:copula_t])); zero(1);
-                         x[1:2]; zero(1); x[3:22-2]; zeros(n_dct_Vm + n_dct_Vk);
-                         zero(1); x[22-2+1:22-2+2]; zero(1); x[22-2+3:nxB]],
-                        [zeros(length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) +
-                               length(id[:marginal_pdf_k_t]) + length(id[:copula_t])); zero(1);
-                         x[nxB+1:nxB+2]; zero(1); x[nxB+3:nxB+22-2]; zeros(n_dct_Vm + n_dct_Vk);
-                         zero(1); x[nxB+22-2+1:nxB+22-2+2]; zero(1); x[nxB+22-2+3:end]],
-                        θ, m.grids, id, nt, m.equilibrium_conditions,
-                        get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)=#
-
-obj_fnct    = x -> Fsys([x[1:id[:Vm_t][1]-1]; zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
-                        [zeros(length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) +
-                               length(id[:marginal_pdf_k_t])); x[nxB+1:end]],
-                        θ, m.grids, id, nt, m.equilibrium_conditions,
-                        get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
+obj_fnct    = x -> DSGE.Fsys([x[1:id[:Vm_t][1]-1]; zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
+                             [zeros(length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) +
+                                    length(id[:marginal_pdf_k_t])); x[nxB+1:end]],
+                             θ, m.grids, id, nt, m.equilibrium_conditions,
+                             get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
 BA          = ForwardDiff.jacobian(obj_fnct, zeros(nxB+nxA))
-# bblout = JLD2.jldopen("Fsys_jac_nodistr.jld2", "r")
-# bblout = JLD2.jldopen("Fsys_jac_nodistr_skipbadscalars.jld2", "r")
-#=err = abs.(BA - bblout["BA"])
-@show maximum(err[:, 1])
-@show maximum(err[:, 4])
-@show maximum(err[:, 23])
-@show maximum(err[:, 26])=#
-# big errors are at index 1, 4, 23, 26 => A, RB, rk, π (maybe rk, not sure)
-# for A, RB, and π, the error is in I90 share and I90 share net
-# for rk (maybe), it's the Vm marginal value
-# @assert false
 
     B[:,1:id[:Vm_t][1]-1]                 = BA[:,1:id[:Vm_t][1]-1]
     B[:,id[:Vk_t][end]+1:end]             = BA[:,id[:Vm_t][1]:nxB]
@@ -227,27 +184,16 @@ BA          = ForwardDiff.jacobian(obj_fnct, zeros(nxB+nxA))
 
 gx, hx, _ = SolveDiffEq(m, A, B, estim)
 
-# lr = JLD2.jldopen("Fsys_jac_lr.jld2", "r")
 lr = JLD2.jldopen("linearize_full_model_output_seed1793.jld2", "r")
 A_err = A - lr["A"]
 B_err = B - lr["B"]
-# Fsys_errs = abs.(Fsys_out - lr["Fsys_out"])
-#=println("Difference in evaluation of Fsys at steady-state")
-diff_errs = findall(Fsys_errs .> eps())
-for i in vcat(191:212, 853:get_setting(m, :n_vars))
-    if i in diff_errs
-        println(i)
-    end
-end=#
-# difference errors: 855, 859, 867, 869, 875, 879 => K, C, T, B, τ_level, sd log_y
-# println("Difference in Fsys, A, B, gx, and hx")
 println("Difference in A, B, gx, and hx")
-# println(maximum(abs, lr["Fsys_out"] - Fsys_out)) # index 194 RB has a difference, 854-859, 867-869, 874-875, 877-881 as well
 println(maximum(abs, A_err))
 println(maximum(abs, B_err))
 println(maximum(abs, gx - lr["gx"]))
 println(maximum(abs, hx - lr["hx"]))
-@assert false
+
+#=@assert false
 TTT = zeros(get_setting(m, :n_vars), get_setting(m, :n_vars))
 TTT[1:get_setting(m, :n_states), 1:get_setting(m, :n_states)] = hx
 TTT[get_setting(m, :n_states)+1:end, 1:get_setting(m, :n_states)] = gx * hx
@@ -308,3 +254,4 @@ end
 # IRFs to all aggregate dynamics. If the aggregate dynamics look the same, then maybe differences are fine in the end
 # and can be attributed to numerical differences arising from differences in my solution code.
 # @time out = SGU(m, A, B; estim = false)
+=#
