@@ -7,14 +7,18 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
 
     # Get A and B matrices for Klein
     if isa(jac_out, Tuple)
-        A::Matrix{T}, B::Matrix{T} = jac_out # Need to get dense matrices out for schur
+        # If jac_out is a Tuple, it is assumed that it is a 2-length tuple.
+        # The first element is the A matrix, the second element is the B matrix,
+        # and we will take the generalized Schur decomposition of A and -B.
+        A = jac_out[1]::Matrix{T} # Need to get dense matrices out for schur
+        B = -jac_out[2]::Matrix{T}
 
         # n is total number of variables (predet + jump)
 	    n = size(A, 1)
     else
-        Jac1         = jacobian(m)
-	    A::Matrix{T} = Jac1[:, 1:n]
-	    B::Matrix{T} = -Jac1[:, n+1:2*n]
+        Jac1 = jacobian(m)
+	    A    = Jac1[:, 1:n]::Matrix{T}
+	    B    = -Jac1[:, n+1:2*n]::Matrix{T}
     end
 
     # NK is number of predetermined variables
@@ -50,7 +54,7 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
 
     if inv_method == :minimum_norm
         gx_coef, hx_coef = klein_minimum_norm_inversion(QZ, n, NK; tol = minimum_inversion_tol)
-    elseif
+    elseif inv_method == :direct
         gx_coef, hx_coef = klein_direct_inversion(QZ, n, NK)
     else
         throw(ArgumentError("Inversion method $(inv_method) is not recognized. Available ones are [:minimum_norm, :direct]"))
