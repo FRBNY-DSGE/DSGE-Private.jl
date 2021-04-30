@@ -17,7 +17,7 @@ are updated in place.
     `XPrime` [`A`]
 """
 @inline function jacobian(m::BayerBornLuetticke{T}) where {T <: Real}
-    if get_setting(m, :differentiate_heterogeneous_blocks)::Bool
+    if get_setting(m, :linearize_heterogeneous_blocks)::Bool
         # Compute the Jacobian from scratch (assumes steadystate!(m) has already been called)
         return _jacobian!(m)
     else
@@ -40,7 +40,7 @@ function _jacobian!(m::BayerBornLuetticke)
     # Prepare elements used for uncompression
     ############################################################################
     # Matrices to take care of reduced degree of freedom in marginal distributions
-    Γ  = shuffleMatrix(m[:distr_star])
+    Γ  = shuffle_matrix(m[:distr_star])
 
     # Matrices for discrete cosine transforms
     DC = Vector{Array{Float64, 2}}(undef, 3)
@@ -59,7 +59,7 @@ function _jacobian!(m::BayerBornLuetticke)
     # Check whether steady state solves the difference equation
     # (left here in case the user ever wants to check)
     ############################################################################
-    # X0 = zeros(get_setting(m, :n_vars)) .+ ForwardDiff.Dual(0.0,tuple(zeros(5)...))
+    # X0 = zeros(get_setting(m, :n_model_states)) .+ ForwardDiff.Dual(0.0,tuple(zeros(5)...))
     # F  = Fsys(X0, X0, θ, m.grids, id, nt, m.equilibrium_conditions,
     #           get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
     # if maximum(abs.(F)) / 10 > get_setting(m, :ϵ)
@@ -69,11 +69,12 @@ function _jacobian!(m::BayerBornLuetticke)
     ############################################################################
     # Calculate Jacobians of the Difference equation F
     ############################################################################
-    length_X0   = get_setting(m, :n_vars)::Int
+    length_X0   = get_setting(m, :n_model_states)::Int
     n_dct_Vm    = length(get_setting(m, :dct_compression_indices)[:Vm]::Vector{Int})
     n_dct_Vk    = length(get_setting(m, :dct_compression_indices)[:Vk]::Vector{Int})
+    n_marginals = length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) + length(id[:marginal_pdf_k_t])
     nxB         = length_X0 - n_dct_Vm - n_dct_Vk
-    nxA         = length_X0 - length(id[:marginal_pdf_y_t]) - length(id[:marginal_pdf_m_t]) - length(id[:marginal_pdf_k_t])
+    nxA         = length_X0 - n_marginals
 
     # The objective function omits the Vm, Vk in the X vector, but we left off at index id[:Vm_t][1] - 1,
     # so after we use zeros for the Vm, Vk parts of X, we need to start from id[:Vm_t][1]. We then go
@@ -81,7 +82,7 @@ function _jacobian!(m::BayerBornLuetticke)
     # For XPrime, we ignore the marginal perturbations and then have to start at nxB + 1 since
     # x is a vector of length nxB + nxA.
     obj_fnct    = x -> Fsys([x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
-                            [Zeros(nm + nk + ny - 1); x[nxB+1:end]],
+                            [Zeros(n_marginals); x[nxB+1:end]],
                             θ, m.grids, id, nt, m.equilibrium_conditions,
                             get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
 
@@ -89,6 +90,10 @@ function _jacobian!(m::BayerBornLuetticke)
     # Relatedly, could we use a sparsity pattern to do the autodiffing so we don't need to do a bunch of copying
     # for SGU_estim and can just directly differentiate into the Jacobian by using the correct sparsity matrix?
     BA          = ForwardDiff.jacobian(obj_fnct, zeros(nxB+nxA))
+
+    n_vars = n_model_states(m)
+    A      = zeros(n_vars, n_vars)
+    B      = zeros(n_vars, n_vars)
 
     B[:,1:id[:Vm_t][1]-1]                 = BA[:,1:id[:Vm_t][1]-1]
     B[:,id[:Vk_t][end]+1:end]             = BA[:,id[:Vm_t][1]:nxB]
@@ -99,22 +104,19 @@ function _jacobian!(m::BayerBornLuetticke)
     for (i, j) in zip(m.equilibrium_conditions[:eq_marginal_value_bonds], id[:Vm_t])
         B[i, j] = 1.0
     end
-    for i in zip(m.equilibrium_conditions[:eq_marginal_value_capital], id[:Vk_t])
+    for (i, j) in zip(m.equilibrium_conditions[:eq_marginal_value_capital], id[:Vk_t])
         B[i, j] = 1.0
     end
 
     # Make use of the fact that future distribution has no influence on any variable in
     # the system, thus derivative is Γ
-    for count = 1:nm-1 #in eachcol(A)
-        i = id[:marginal_pdf_m_t][count]
+    for (count, i) in enumerate(id[:marginal_pdf_m_t])
         A[id[:marginal_pdf_m_t],i] = -Γ[1][1:end-1,count]
     end
-    for count = 1:nk-1 #in eachcol(A)
-        i = id[:marginal_pdf_k_t][count]
+    for (count, i) in enumerate(id[:marginal_pdf_k_t])
         A[id[:marginal_pdf_k_t],i] = -Γ[2][1:end-1,count]
     end
-    for count = 1:ny-1 #in eachcol(A)
-        i = id[:marginal_pdf_y_t][count]
+    for (count, i) in enumerate(id[:marginal_pdf_y_t])
         A[id[:marginal_pdf_y_t],i] = -Γ[3][1:end-1,count]
     end
 
@@ -125,15 +127,15 @@ function _jacobian!(m::BayerBornLuetticke)
     return A, B
 end
 
-function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::Matrix{T})
+function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::Matrix{T}) where {T <: Real}
 
     # Information needed from m for set up
     θ = parameters2namedtuple(m)
     nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    id = construct_prime_and_noprime_indices(m; only_aggregate = false)
+    id = construct_prime_and_noprime_indices(m; only_aggregate = true)
 
     eqconds          = m.equilibrium_conditions
-    enod_states      = m.endogenous_states
+    endo_states      = m.endogenous_states
     aggr_eqconds     = get_aggregate_equilibrium_conditions(m)
     aggr_endo_states = get_aggregate_endogenous_states(m)
 
@@ -141,13 +143,14 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     # Calculate derivatives of non-lineear difference equation
     ############################################################################
 
-    length_X0   = length(aggr_eqconds) # number of aggregate variables should equal number of equilibrium conditions
-    BA          = ForwardDiff.jacobian(x -> Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ, grids, id, nt, eqconds),
+    length_X0   = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
+    BA          = ForwardDiff.jacobian(x -> Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ,
+                                                     m.grids, id, nt, aggr_eqconds),
                                        zeros(2 * length_X0))
     Aa          = BA[:, length_X0+1:end] # aggregate A
     Ba          = BA[:, 1:length_X0]     # aggregate B
 
-    @inbounds for (aggr_endo_state_name, aggr_endo_state_i) in aggr_endo_states # endo states are the columns
+    for (aggr_endo_state_name, aggr_endo_state_i) in aggr_endo_states # endo states are the columns
         for (aggr_eqcond_name, aggr_eqcond_i) in aggr_eqconds # eqconds are the rows
             # So the following line populates A in column major order
             A[first(eqconds[aggr_eqcond_name]), first(endo_states[aggr_endo_state_name])] = Aa[aggr_eqcond_i, aggr_endo_state_i]
