@@ -89,7 +89,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
         Vk              = Vk_new
     end
     if verbose == :high
-        println("The maximum absolute error in the marginal value functions is $(dist)")
+        println("Maximum absolute error after completing EGM iterations is $(dist)")
     end
 
     #------------------------------------------------------
