@@ -1,7 +1,19 @@
 using DSGE, ModelConstructors, Test, JLD2, Random
 
-# regen output only when you don't want to match the original output
-regenerate_output = true
+# You should set regenerate_output = true only when you don't want to match the output
+# from the original implemenation by Bayer, Born, and Luetticke.
+# If you want to regenerate the output from Bayer, Born, and Luetticke's implementation,
+# see the script regen_bbl_output. Note that the seed used in this script
+# and regen_bbl_output should match, or else the computed steady state
+# will not be the same (at least when the distribution over idiosyncratic states
+# is computed using KrylovKit).
+#
+# You can set regenerate_find_steadystate to true
+# if you want to regenerate the output of find_steadystate.
+# It requires regenerate_output = true b/c it affects other output,
+# so some tests may fail unless all output is regenerated.
+regenerate_output = false
+regenerate_find_steadystate = false
 match_original_output = false
 if regenerate_output
     assert_str =  "regenerate_output and match_original_output cannot both be true b/c " *
@@ -13,28 +25,46 @@ if regenerate_output
         "the steady state takes several minutes to compute."
     @assert !match_original_output assert_str
 end
+if regenerate_find_steadystate
+    assert_str =  "regenerate_find_steadystate and regenerate_output must both be true b/c " *
+        "the output from find_steadystate is used by the rest of the script. Thus, " *
+        "some tests may fail if other output is not also regenerated"
+    @assert regenerate_output assert_str
+
+end
+
 refpath = joinpath("..", "..", "..", "reference")
 
 # Set up model
 m = BayerBornLuetticke()
-if match_original_output
-    Random.seed!(1793)
+
+# Compute steady state
+Random.seed!(1793)
+if match_original_output # run a check that the steady state is correct
     steadystate!(m; verbose = :high)
     include("compare_ss.jl")
     m[:TY_star] = out["TY_star"] # out is defined in compare_ss.jl
     m[:BY_star] = out["BY_star"]
     m[:C_star] = out["C_star"]
     m[:C_l1_star] = out["C_l1_star"]
-else
-    DSGE.init_grids!(m)
+else # otherwise, just compute steady state quantities implied by KSS, VmSS, VkSS, and distrSS
+   if regenerate_find_steadystate
+       KSS, VmSS, VkSS, distrSS = DSGE.find_steadystate(m; verbose = :high)
+       JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_find_steadystate_output.jld2"), true, true, true, IOStream) do file
+           write(file, "KSS", KSS)
+           write(file, "VmSS", VmSS)
+           write(file, "VkSS", VkSS)
+           write(file, "distrSS", distrSS)
+       end
+   else
+       DSGE.init_grids!(m)
+   end
     input = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_find_steadystate_output.jld2"), "r")
     DSGE.prepare_linearization(m, input["KSS"], input["VmSS"], input["VkSS"], input["distrSS"]; verbose = :none)
 end
 
-# TODO: Add the compare_ss.jl script as well as code to regenerate its output
-
-
-# Apply Klein to m
+# Differentiate all aggregate and heterogeneous equilibrium conditions,
+# and apply Klein to the Jacobians
 m <= Setting(:linearize_heterogeneous_blocks, true)
 if match_original_output
     m <= Setting(:klein_inversion_method, :direct)
@@ -55,7 +85,7 @@ if match_original_output
 
     @testset "Linearization compared against saved output from original code implemented by Bayer, Born, and Luetticke" begin
         @test maximum(abs, m[:A].value - linout["A"]) == 0.
-        @test maximum(abs, m[:B].value - linout["B"]) == 0.
+        @test maximum(abs, m[:B].value - linout["B"]) < 1e-14
         @test maximum(abs, gx - linout["gx"])          < 1e-5
         @test maximum(abs, hx - linout["hx"])          < 1e-5
     end
@@ -70,9 +100,19 @@ else
     end
 end
 
-# TODO: need to save a linearization where we only call SGU_estim
-# and add a test here for that, too, so we know our implementation
-# of the aggregate only update is correct.
+if match_original_output # Extra check here that the aggregate block only update to Jacobians works correctly
+    m <= Setting(:linearize_heterogeneous_blocks, false)
+    gx, hx, _ = DSGE.klein(m)
+
+    linout = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_original_linearize_aggr_update_seed1793.jld2"), "r")
+
+    @testset "Linearization compared against saved output from original code implemented by Bayer, Born, and Luetticke" begin
+        @test maximum(abs, m[:A].value - linout["A"]) == 0.
+        @test maximum(abs, m[:B].value - linout["B"]) == 0.
+        @test maximum(abs, gx - linout["gx"])          < 1e-5
+        @test maximum(abs, hx - linout["hx"])          < 1e-5
+    end
+end
 
 # Solve the model from start to finish,
 # avoid costly linearization of heterogeneous blocks,
@@ -90,9 +130,11 @@ if regenerate_output && !match_original_output
         write(file, "CCC", CCC)
     end
 end
-ssm_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_statespace.jld2"), "r")
-@testset begin
-    @test TTT ≈ ssm_out["TTT"]
-    @test RRR ≈ ssm_out["RRR"]
-    @test CCC ≈ ssm_out["CCC"]
+if !match_original_output
+    ssm_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_statespace.jld2"), "r")
+    @testset begin
+        @test TTT ≈ ssm_out["TTT"]
+        @test RRR ≈ ssm_out["RRR"]
+        @test CCC ≈ ssm_out["CCC"]
+    end
 end

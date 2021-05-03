@@ -134,13 +134,25 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
     id = construct_prime_and_noprime_indices(m; only_aggregate = true)
 
+    # Get index info
     eqconds          = m.equilibrium_conditions
     endo_states      = m.endogenous_states
     aggr_eqconds     = get_aggregate_equilibrium_conditions(m)
     aggr_endo_states = get_aggregate_endogenous_states(m)
 
+    # We want to exclude aggregate equilibrium conditions/states that
+    # are still distributional, e.g. Gini Coefficients
+    aggr_eqconds_excl_distr     = deepcopy(aggr_eqconds)
+    aggr_endo_states_excl_distr = deepcopy(aggr_endo_states)
+    for k in [:eq_Gini_C, :eq_Gini_X, :eq_sd_log_y, :eq_I90_share, :eq_I90_share_net, :eq_W90_share]
+        pop!(aggr_eqconds_excl_distr, k)
+    end
+    for k in [:Gini_C′_t, :Gini_X′_t, :sd_log_y′_t, :I90_share′_t, :I90_share_net′_t, :W90_share′_t]
+        pop!(aggr_endo_states_excl_distr, k)
+    end
+
     ############################################################################
-    # Calculate derivatives of non-lineear difference equation
+    # Calculate derivatives of non-linear difference equation
     ############################################################################
 
     length_X0   = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
@@ -150,10 +162,15 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     Aa          = BA[:, length_X0+1:end] # aggregate A
     Ba          = BA[:, 1:length_X0]     # aggregate B
 
-    for (aggr_endo_state_name, aggr_endo_state_i) in aggr_endo_states # endo states are the columns
-        for (aggr_eqcond_name, aggr_eqcond_i) in aggr_eqconds # eqconds are the rows
+    # Update Jacobians of equilibrium conditions w.r.t. aggregate variables,
+    # excluding aggregates that are distributional in nature (e.g. Gini coefficients)
+    for (aggr_endo_state_name, j) in aggr_endo_states_excl_distr # endo states are the columns
+        _j = first(endo_states[aggr_endo_state_name])
+        for (aggr_eqcond_name, i) in aggr_eqconds_excl_distr # eqconds are the rows
             # So the following line populates A in column major order
-            A[first(eqconds[aggr_eqcond_name]), first(endo_states[aggr_endo_state_name])] = Aa[aggr_eqcond_i, aggr_endo_state_i]
+            _i = first(eqconds[aggr_eqcond_name])
+            A[_i, _j] = Aa[i, j]
+            B[_i, _j] = Ba[i, j]
         end
     end
 
