@@ -129,7 +129,7 @@ function init_model_indices!(m::BayerBornLuetticke)
     # TODO: delete states that should just be augmented states
     m.state_variables = [:marginal_pdf_m′_t, :marginal_pdf_k′_t, :marginal_pdf_y′_t, :copula′_t,
 
-                         :A′_t, :Z′_t, :Ψ′_t, :RB′_t, :μ_p′_t, :μ_w′_t, :σ′_t,
+                         :A′_t, :Z′_t, :Ψ′_t, :RB′_t, :μ_p′_t, :μ_w′_t, :σ′_t, # TODO: rename σ′_t to σ_sq′_t to make it clear it's the variance
                          :union_retained′_t, :retained′_t,
                          :Y′_t1, :B′_t1, :T′_t1, :I′_t1, :w′_t1, :q′_t1, :C′_t1,
                          :avg_tax_rate′_t1, :τ_prog′_t1,
@@ -535,19 +535,19 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\sigma_{P}")
 
     # Measurement error
-    m <= parameter(:σ_W90_share, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_W90_share, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_W90_share: standard dev. of measurement error for 90th percentile of wealth distribution",
                    tex_label = "\\sigma_{W^{(90)}}")
-    m <= parameter(:σ_I90_share, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_I90_share, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_I90_share: standard dev. of measurement error for 90th percentile of income distribution",
                    tex_label = "\\sigma_{I^{(90)}}")
-    m <= parameter(:σ_P_me, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_τ_prog, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_P_me: standard dev. of measurement error for tax progressivity",
                    tex_label = "\\sigma_{P, me}")
-    m <= parameter(:σ_S_me, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_σ, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_S_me: standard dev. of measurement error for idiosyncratic income risk",
                    tex_label = "\\sigma_{S, me}")
@@ -792,8 +792,23 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:klein_inversion_method, :minimum_norm, false, "",
                  "Inversion method to obtain gx and hx during the Klein algorithm")
 
-    ## Estimation settings
-    #  Just using defaults for now . . .
+    ## Dates
+    m <= Setting(:data_vintage, "210504")
+    m <= Setting(:cond_vintage, "210504")
+    m <= Setting(:data_id, 1793)
+    m <= Setting(:cond_id, 1793)
+    m <= Setting(:date_zlb_start, quartertodate("2009-Q1")) # ZLB measured using Wu and Xia (2016) shadow FFR, which starts in 2009:Q1
+    m <= Setting(:date_mainsample_start, quartertodate("1954-Q4"))
+    m <= Setting(:date_presample_start, quartertodate("1954-Q4"))
+    m <= Setting(:date_forecast_start, quartertodate("2020-Q1"))
+    m <= Setting(:date_conditional_end, quartertodate("2020-Q1"))
+
+    ## Monetary Policy
+    m <= Setting(:n_mon_anticipated_shocks_padding, 0) # anticipated shocks are not used
+    m <= Setting(:monetary_policy_shock, :R_sh)
+
+    ## Estimation and Forecasting settings
+    # defaults for now
 end
 
 """
@@ -904,6 +919,9 @@ function setup_indices!(m::BayerBornLuetticke)
         eqconds[name] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
         aggr_eqconds[name] = i + n_aggr_states
     end
+
+    # Augmented states
+    m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states))
 
 #=    # Aggregate blocks
     n_distr_states_idio_jumps = last(eqconds[:eq_marginal_value_capital])
