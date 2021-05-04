@@ -196,17 +196,15 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verb
 
         elseif solution_method == :klein
             # Unpacking the method from solve to hang on to TTT_jump
-            if m.spec == "het_dsge"
-                TTT_jump, TTT_state, eu = klein(m)
-            else
-                TTT_jump, TTT_state, eu = klein(m)
-            end
-            if eu==-1
-                throw(KleinError())
+            TTT_jump, TTT_state, eu = klein(m)
+            if eu == -1
+                throw(KleinError("Equilibrium is locally indeterminate."))
+            elseif eu == -2
+                throw(KleinError("No local equilibrium exists."))
             end
 
             TTT, RRR = klein_transition_matrices(m, TTT_state, TTT_jump)
-            CCC = zeros(n_model_states(m))
+            CCC      = zeros(size(TTT, 1))
 
             if m.spec == "real_bond_mkup"
                 GDPeqn = construct_GDPeqn(m, TTT_jump)

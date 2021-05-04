@@ -1,3 +1,18 @@
+"""
+```
+klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbose::Symbol = :none) where {T <: Real}
+```
+solves a first-order linear stochastic difference equation using the
+Klein (2004) algorithm.
+
+### Output
+- `gx::Matrix{T}`: mapping from states to jumps, i.e. `jumps = gx * states`
+- `hx::Matrix{T}`: transition equations for state variables, i.e. `states′_t = hx * states_t`
+- `eu::Int`: return code specifying existence and uniqueness of solution
+    * 1: exists and is unique
+    * -1: local indeterminacy
+    * -2: local non-existence
+"""
 function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbose::Symbol = :none) where {T <: Real}
 
     #################
@@ -43,10 +58,14 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
 
     # Check that number of stable eigenvalues equals the number of predetermined state variables
 	nk = sum(eigselect)
-	if nk>NK
-	    @warn "Equilibrium is locally indeterminate"
-	elseif nk<NK
-	    @warn "No local equilibrium exists"
+	eu = if nk > NK
+        # Equilibrium is locally indeterminate
+        -1
+	elseif nk < NK
+	    # No local equilibrium exists
+        -2
+    else
+        1
 	end
 
     inv_method = haskey(get_settings(m), :klein_inversion_method) ?
