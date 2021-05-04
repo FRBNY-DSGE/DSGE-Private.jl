@@ -76,7 +76,7 @@ F[eq_Ψ]           = log.(Ψ′_t)              - θ[:ρ_Ψ] * log.(Ψ_t)       
 F[eq_μ_p]            = log(μ_p′_t / θ[:μ_p])   - θ[:ρ_μ_p] * log(μ_p_t / θ[:μ_p])      # Process for markup target
 F[eq_μ_w]           = log(μ_w′_t / θ[:μ_w])   - θ[:ρ_μ_w] * log(μ_w_t / θ[:μ_w])   # Process for w-markup target
 
-# Endogeneous States (including Lags) # check ρ_s
+# Endogeneous States (including Lags)
 F[eq_σ]            = log(σ′_t)              - (θ[:ρ_S] * log(σ_t) + (1.0 - θ[:ρ_S]) *
                                                     θ[:Σ_n] * log(Ygrowth_t) + log(S_sh_t)) # Idiosyncratic income risk (contemporaneous reaction to business cycle)
 
