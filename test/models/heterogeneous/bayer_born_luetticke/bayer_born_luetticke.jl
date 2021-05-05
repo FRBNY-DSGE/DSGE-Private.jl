@@ -36,7 +36,9 @@ end
 refpath = joinpath("..", "..", "..", "reference")
 
 # Set up model
-m = BayerBornLuetticke()
+m = BayerBornLuetticke(; custom_settings =
+                       Dict{Symbol, Setting}(:save_steadystate => Setting(:save_steadystate, false),
+                                             :save_jacobian    => Setting(:save_jacobian, false)))
 
 # Compute steady state
 Random.seed!(1793)

@@ -211,6 +211,7 @@ end
 # TODO: maybe add coarse as a kwarg
 function BayerBornLuetticke(subspec::String="ss0";
                             custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+                            load_steadystate::Bool = false, load_jacobian::Bool = false,
                             testing = false)
 
     # Model-specific specifications
@@ -273,15 +274,24 @@ function BayerBornLuetticke(subspec::String="ss0";
     init_parameters!(m)
 
     # Initialize grids
-    init_grids!(m; coarse = true)
+    init_grids!(m; coarse = !load_steadystate) # if steady state has not been computed, we start from a coarse grid
 
-    # Solve for the steady state
+    # Load the steady state if it has already been computed
+    # from the filepath get_setting(m, :steadystate_output_file)
+    if load_steadystate
+        load_steadystate!(m)
+    end
     # steadystate!(m)
 
     # So that the indices of m.endogenous_states reflect the normalization
     # normalize_model_state_indices!(m)
 
     init_subspec!(m)
+
+    # Load Jacobian if it has already been computed
+    if load_jacobian
+        load_jacobian!(m)
+    end
 
     return m
 end
@@ -785,12 +795,21 @@ function model_settings!(m::BayerBornLuetticke)
                  overwritten once the Jacobian is calculated.")
 
     ## Linearization settings
-    m <= Setting(:linearize_heterogeneous_blocks, true, false, "", "Boolean for whether the " *
-                 "heterogeneous blocks of the Jacobians should be linearized")
+    m <= Setting(:linearize_heterogeneous_block, true, false, "", "Boolean for whether the " *
+                 "heterogeneous block of the Jacobians should be linearized")
     m <= Setting(:solution_method, :klein, false, "",
                  "Solution method for obtaining a reduced-form state space representation from equilibrium conditions")
     m <= Setting(:klein_inversion_method, :minimum_norm, false, "",
                  "Inversion method to obtain gx and hx during the Klein algorithm")
+
+    ## Saving and loading steady state output and Jacobians
+    m <= Setting(:save_steadystate, true)
+    m <= Setting(:save_jacobian, true)
+    if !ispath(rawpath(m, "estimate"))
+        mkpath(rawpath(m, "estimate"))
+    end
+    m <= Setting(:steadystate_output_file, rawpath(m, "estimate", "steadystate.jld2"))
+    m <= Setting(:jacobian_output_file, rawpath(m, "estimate", "jacobian.jld2"))
 
     ## Dates
     m <= Setting(:data_vintage, "210504")

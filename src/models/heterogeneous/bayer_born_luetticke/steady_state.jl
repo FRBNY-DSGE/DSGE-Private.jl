@@ -7,10 +7,14 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
                                                 skip_coarse_grid = haskey(get_settings(m), :skip_coarse_grid) &&
                                                 get_setting(m, :skip_coarse_grid))
 
+    if get_setting(m, :save_steadystate)
+        save_steadystate(m, KSS, VmSS, VkSS, distrSS)
+    end
+
     # Update steady-state parameters, reduce state space, and update indices
     prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
 
-    m
+    return m
 end
 
 """

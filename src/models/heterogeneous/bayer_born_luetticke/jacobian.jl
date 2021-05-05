@@ -6,9 +6,9 @@ jacobian(m::BayerBornLuetticke)
 compute the Jacobians of the non-linear difference equations defined
 by the functions `Fsys` and `Fsys_agg` using the package `ForwardDiff`.
 
-If the user only wants to update the aggregate blocks of the Jacobians
-without changing the heterogeneous blocks, then the user
-should set `m <= Setting(:differentiate_heterogeneous_blocks, false)`.
+If the user only wants to update the aggregate block of the Jacobians
+without changing the heterogeneous block, then the user
+should set `m <= Setting(:linearize_heterogeneous_block, false)`.
 In this case, the Jacobians are already stored in `m` and
 are updated in place.
 
@@ -17,7 +17,7 @@ are updated in place.
     `XPrime` [`A`]
 """
 @inline function jacobian(m::BayerBornLuetticke{T}) where {T <: Real}
-    if get_setting(m, :linearize_heterogeneous_blocks)::Bool
+    if get_setting(m, :linearize_heterogeneous_block)::Bool
         # Compute the Jacobian from scratch (assumes steadystate!(m) has already been called)
         return _jacobian!(m)
     else
@@ -123,6 +123,10 @@ function _jacobian!(m::BayerBornLuetticke)
     # Store A and B Jacobians
     m[:A] = A
     m[:B] = B
+
+    if get_setting(m, :save_jacobian)
+        save_jacobian(m)
+    end
 
     return A, B
 end

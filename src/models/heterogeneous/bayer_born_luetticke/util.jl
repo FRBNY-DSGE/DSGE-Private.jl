@@ -29,3 +29,47 @@ get_idiosyncratic_ndgrids(m::BayerBornLuetticke) = (m.grids[:m_ndgrid], m.grids[
         return Symbol(strvar[1:end - 1] * "star")
     end
 end
+
+## Saving and loading output from steady state and Jacobian
+@inline function save_steadystate(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArray{T, 3},
+                                  VkSS::AbstractArray{T, 3}, distrSS::AbstractArray{T, 3}) where {T <: Real}
+    fp = get_setting(m, :steadystate_output_file)
+    if !ispath(dirname(fp))
+        mkpath(dirname(fp))
+    end
+    JLD2.jldopen(fp, true, true, true, IOStream) do file
+        write(file, "KSS", KSS)
+        write(file, "VmSS", VmSS)
+        write(file, "VkSS", VkSS)
+        write(file, "distrSS", distrSS)
+    end
+    nothing
+end
+
+@inline function save_jacobian(m::BayerBornLuetticke{T}) where {T <: Real}
+    fp = get_setting(m, :jacobian_output_file)
+    if !ispath(dirname(fp))
+        mkpath(dirname(fp))
+    end
+    JLD2.jldopen(fp, true, true, true, IOStream) do file
+        write(file, "A", get_untransformed_values(m[:A])::Matrix{T})
+        write(file, "B", get_untransformed_values(m[:B])::Matrix{T})
+    end
+    nothing
+end
+
+@inline function load_steadystate!(m::BayerBornLuetticke)
+    out = JLD2.jldopen(get_setting(m, :steadystate_output_file), "r")
+    prepare_linearization(m, out["KSS"], out["VmSS"], out["VkSS"], out["distrSS"]; verbose = :none)
+    m
+end
+
+@inline function load_jacobian!(m::BayerBornLuetticke)
+    # loading in a pre-computed Jacobian, so it is assumed
+    # we don't need to linearize the heterogeneous block
+    m <= Setting(:linearize_heterogeneous_block, false)
+    out = JLD2.jldopen(get_setting(m, :jacobian_output_file), "r")
+    m[:A] = out["A"]
+    m[:B] = out["B"]
+    m
+end
