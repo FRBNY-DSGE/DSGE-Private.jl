@@ -1,9 +1,10 @@
 """
 ```
-measurement(m::SmetsWouters{T}, TTT::Matrix{T}, RRR::Matrix{T},
-            CCC::Vector{T}) where {T<:AbstractFloat}
+measurement(m::BayerBornLuetticke{T},
+            TTT::AbstractMatrix{T},
+            RRR::AbstractMatrix{T},
+            CCC::AbstractVector{T}) where {T<:Real}
 ```
-
 Assign measurement equation
 
 ```
@@ -19,7 +20,7 @@ Cov(ϵ_t, u_t) = 0
 ```
 """
 function measurement(m::BayerBornLuetticke{T},
-                     TTT::AbstratMatrix{T},
+                     TTT::AbstractMatrix{T},
                      RRR::AbstractMatrix{T},
                      CCC::AbstractVector{T}) where {T<:Real}
 
@@ -27,8 +28,7 @@ function measurement(m::BayerBornLuetticke{T},
 #       the loaded data has already been demeaned by the
 #       average across time, hence we set DD = 0 in this function
 
-    # endo      = m.endogenous_states
-    endo      = get_aggregate_endogenous_states(m)
+    endo      = m.endogenous_states
     # endo_new  = m.endogenous_states_augmented
     exo       = m.exogenous_shocks
     obs       = m.observables
@@ -48,37 +48,37 @@ function measurement(m::BayerBornLuetticke{T},
     ## Measurement equation: states to observables
 
     # GDP growth per capita
-    ZZ[obs[:obs_gdp], endo[:Ygrowth′_t]] = 1.0
+    ZZ[obs[:obs_gdp], first(endo[:Ygrowth′_t])] = 1.0
 
     # Consumption growth per capita
-    ZZ[obs[:obs_consumption], endo[:Cgrowth′_t]] = 1.0
+    ZZ[obs[:obs_consumption], first(endo[:Cgrowth′_t])] = 1.0
 
     # Investment growth per capita
-    ZZ[obs[:obs_investment], [:Igrowth′_t]] = 1.0
+    ZZ[obs[:obs_investment], first(endo[:Igrowth′_t])] = 1.0
 
     # Wage growth
-    ZZ[obs[:obs_wages], endo[:wgrowth′_t]] = 1.0
+    ZZ[obs[:obs_wages], first(endo[:wgrowth′_t])] = 1.0
 
     # Hours
-    ZZ[obs[:obs_hours], endo[:N′_t]] = 1.0
+    ZZ[obs[:obs_hours], first(endo[:N′_t])] = 1.0
 
     # GDP Deflator inflation
-    ZZ[obs[:obs_gdpdeflator], endo[:π′_t]] = 1.0
+    ZZ[obs[:obs_gdpdeflator], first(endo[:π′_t])] = 1.0
 
     # Nominal interest rate
-    ZZ[obs[:obs_nominalrate], endo[:RB′_t]] = 1.0
+    ZZ[obs[:obs_nominalrate], first(endo[:RB′_t])] = 1.0
 
     # Wealth inequality
-    ZZ[obs[:obs_W90share], endo[:W90_share′_t]] = 1.0
+    ZZ[obs[:obs_W90share], first(endo[:W90_share′_t])] = 1.0
 
     # Income inequality
-    ZZ[obs[:obs_I90share], endo[:I90_share′_t]] = 1.0
+    ZZ[obs[:obs_I90share], first(endo[:I90_share′_t])] = 1.0
 
     # Idiosyncratic income risk
-    ZZ[obs[:obs_sigmasq], endo[:σ′_t]] = 1.0
+    ZZ[obs[:obs_sigmasq], first(endo[:σ′_t])] = 1.0
 
     # Idiosyncratic income risk
-    ZZ[obs[:obs_taxprogressivity], endo[:τ_prog′_t]] = 1.0
+    ZZ[obs[:obs_taxprogressivity], first(endo[:τ_prog′_t])] = 1.0
 
     ## Measurement error
     EE[obs[:obs_W90share], obs[:obs_W90share]] = m[:e_W90_share]^2
@@ -94,7 +94,7 @@ function measurement(m::BayerBornLuetticke{T},
     QQ[exo[:μ_w_sh], exo[:μ_w_sh]] = m[:σ_μ_w]^2
     QQ[exo[:G_sh], exo[:G_sh]]     = m[:σ_G]^2
     QQ[exo[:R_sh], exo[:R_sh]]     = m[:σ_R]^2
-    QQ[exo[:S_sh], exo[:S_sh]]     = m[:σ_G]^2
+    QQ[exo[:S_sh], exo[:S_sh]]     = m[:σ_S]^2
     QQ[exo[:P_sh], exo[:P_sh]]     = m[:σ_P]^2
 
   #=  # These lines set the standard deviations for the anticipated

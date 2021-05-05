@@ -535,19 +535,19 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\sigma_{P}")
 
     # Measurement error
-    m <= parameter(:e_W90_share, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_W90_share, 0.2, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_W90_share: standard dev. of measurement error for 90th percentile of wealth distribution",
                    tex_label = "\\sigma_{W^{(90)}}")
-    m <= parameter(:e_I90_share, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_I90_share, 0.2, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_I90_share: standard dev. of measurement error for 90th percentile of income distribution",
                    tex_label = "\\sigma_{I^{(90)}}")
-    m <= parameter(:e_τ_prog, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_τ_prog, 0.2, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_P_me: standard dev. of measurement error for tax progressivity",
                    tex_label = "\\sigma_{P, me}")
-    m <= parameter(:e_σ, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_σ, 0.2, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_S_me: standard dev. of measurement error for idiosyncratic income risk",
                    tex_label = "\\sigma_{S, me}")

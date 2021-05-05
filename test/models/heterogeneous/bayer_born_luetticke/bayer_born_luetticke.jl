@@ -12,7 +12,7 @@ using DSGE, ModelConstructors, Test, JLD2, Random
 # if you want to regenerate the output of find_steadystate.
 # It requires regenerate_output = true b/c it affects other output,
 # so some tests may fail unless all output is regenerated.
-regenerate_output = false
+regenerate_output = true
 regenerate_find_steadystate = false
 match_original_output = false
 if regenerate_output
@@ -65,7 +65,7 @@ end
 
 # Differentiate all aggregate and heterogeneous equilibrium conditions,
 # and apply Klein to the Jacobians
-m <= Setting(:linearize_heterogeneous_blocks, true)
+m <= Setting(:linearize_heterogeneous_block, true)
 if match_original_output
     m <= Setting(:klein_inversion_method, :direct)
 end
@@ -101,40 +101,72 @@ else
 end
 
 if match_original_output # Extra check here that the aggregate block only update to Jacobians works correctly
-    m <= Setting(:linearize_heterogeneous_blocks, false)
+    m <= Setting(:linearize_heterogeneous_block, false)
     gx, hx, _ = DSGE.klein(m)
 
     linout = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_original_linearize_aggr_update_seed1793.jld2"), "r")
 
     @testset "Linearization compared against saved output from original code implemented by Bayer, Born, and Luetticke" begin
         @test maximum(abs, m[:A].value - linout["A"]) == 0.
-        @test maximum(abs, m[:B].value - linout["B"]) == 0.
-        @test maximum(abs, gx - linout["gx"])          < 1e-5
-        @test maximum(abs, hx - linout["hx"])          < 1e-5
+        @test maximum(abs, m[:B].value - linout["B"]) < 1e-14
+        @test maximum(abs, gx - linout["gx"])         < 1e-5
+        @test maximum(abs, hx - linout["hx"])         < 1e-5
     end
 end
 
 # Solve the model from start to finish,
-# avoid costly linearization of heterogeneous blocks,
+# avoid costly linearization of heterogeneous block,
 # test the aggregate block linearization only option,
 # and check using direct inversion instead of the
 # minimum norm method.
-m <= Setting(:linearize_heterogeneous_blocks, false)
+m <= Setting(:linearize_heterogeneous_block, false)
 m <= Setting(:klein_inversion_method, :direct)
 TTT, RRR, CCC = solve(m; verbose = :none)
 # TTT2, RRR2 = DSGE.klein_transition_matrices(m, hx, gx)
 if regenerate_output && !match_original_output
-    JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_statespace.jld2"), true, true, true, IOStream) do file
+    JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_state_transition.jld2"), true, true, true, IOStream) do file
         write(file, "TTT", TTT)
         write(file, "RRR", RRR)
         write(file, "CCC", CCC)
     end
 end
 if !match_original_output
-    ssm_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_statespace.jld2"), "r")
-    @testset begin
-        @test TTT ≈ ssm_out["TTT"]
-        @test RRR ≈ ssm_out["RRR"]
-        @test CCC ≈ ssm_out["CCC"]
+    st_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_state_transition.jld2"), "r")
+    @testset "State transition equations for BayerBornLuetticke" begin
+        @test TTT ≈ st_out["TTT"]
+        @test RRR ≈ st_out["RRR"]
+        @test CCC ≈ st_out["CCC"]
+    end
+end
+
+# Update shock values as follows just for the purpose of testing
+for (i, k) in enumerate([:σ_A, :σ_Z, :σ_Ψ, :σ_μ_p, :σ_μ_w, :σ_G, :σ_R, :σ_S, :σ_P])
+    m[k] = i * .01
+end
+meas = DSGE.measurement(m, TTT, RRR, CCC)
+if regenerate_output && !match_original_output
+    JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_measurement.jld2"), true, true, true, IOStream) do file
+        write(file, "ZZ", meas[:ZZ])
+        write(file, "DD", meas[:DD])
+        write(file, "QQ", meas[:QQ])
+        write(file, "EE", meas[:EE])
+    end
+end
+if match_original_output
+    meas_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_original_measurement.jld2"), "r")
+    RQR = RRR * meas[:QQ] * RRR'
+    @testset "Measurement equations compared to the original implementation by Bayer, Born, and Luetticke" begin
+        reshaped_ZZ = meas[:ZZ][[1, 3, 2, 5, 4, 7, 6, 8, 9, 11, 10], :] # need to re-order measurement equation to match original code
+        @test reshaped_ZZ ≈ meas_out["H_sel"]
+        @test RQR[1:DSGE.n_backward_looking_states(m), 1:DSGE.n_backward_looking_states(m)] ≈ meas_out["SCov"]
+        @test meas[:DD] ≈ zeros(size(meas[:DD]))
+    end
+else
+    meas_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_measurement.jld2"), "r")
+    @testset "Measurement equations for BayerBornLuetticke" begin
+        @test meas[:ZZ] ≈ meas_out["ZZ"]
+        @test meas[:DD] ≈ meas_out["DD"]
+        @test meas[:QQ] ≈ meas_out["QQ"]
+        @test meas[:EE] ≈ meas_out["EE"]
     end
 end

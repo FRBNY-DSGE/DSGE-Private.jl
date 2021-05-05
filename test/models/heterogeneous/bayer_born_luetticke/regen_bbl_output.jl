@@ -30,3 +30,23 @@ JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_original_linearize_aggr_upd
     write(file, "A", A_aggr)
     write(file, "B", B_aggr)
 end
+
+# Finally, compute the selection matrix and shock variance-covariance matrix
+include(joinpath(hankestim_path, "src/3_Model/input_aggregate_names.jl"))
+e_set = EstimationSettings(mode_start_file = joinpath(hankestim_path, "src", "7_Saves", "HANKXplus_postmean.jld2"))
+observed_vars = [e_set.observed_vars_input[e_set.growth_rate_select]; e_set.observed_vars_input[.!e_set.growth_rate_select]]
+nobservables = length(observed_vars)
+H_sel = zeros(nobservables, sr.n_par.nstates + sr.n_par.ncontrols)
+for i in eachindex(observed_vars)
+    H_sel[i,   getfield(sr.indexes, (observed_vars[i]))]  = 1.0
+end
+
+SCov = zeros(sr.n_par.nstates, sr.n_par.nstates)
+σ_vals = [i * .01 for i in 1:9]
+for (j, i) in enumerate(e_set.shock_names)
+    SCov[getfield(sr.indexes, i), getfield(sr.indexes, i)] = σ_vals[j]^2
+end
+JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_original_measurement.jld2"), true, true, true, IOStream) do file
+    write(file, "SCov", SCov)
+    write(file, "H_sel", H_sel)
+end
