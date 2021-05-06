@@ -138,6 +138,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     #      and its marginals
     # ------------------------------------------------------------------------------
     # TODO: use our general CDF and marginal CDF quadrature here rather than this implementation
+    #      (see src/solve/discrete_time_reduction/copula.jl, marginal_cdf_quadrature, specifically
     # CDF_SS              = zeros(nm + 1, nk + 1, ny + 1) # Produce CDF of asset-income distribution (container here)
     CDF_SS                    = Array{Float64}(undef, nm + 1, nk + 1, ny + 1)        # Produce CDF of asset-income distribution (container here)
     CDF_SS[1, :, :]          .= 0.

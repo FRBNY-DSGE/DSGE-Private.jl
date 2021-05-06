@@ -92,9 +92,9 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     #------------------------------------------------------
     # Find stationary distribution (Is direct transition better for large model?) (TODO: investigate this question)
     #------------------------------------------------------
-    # Define transition matrix
+    # Define transition matrix  # TODO: faster way to construct this (inspect MakeTransition, also sparse calls), e.g. BlockBandedMatrices
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, DSGE.get_idiosyncratic_gridpts(m))
-    TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n)) # TODO: faster way to construct this, e.g. BlockBandedMatrix?
+    TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
     TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
     TransitionMat                   = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
 

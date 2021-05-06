@@ -26,6 +26,12 @@ function Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::AbstractAr
     # rPrime  = exp.(Xss[indexes.rSS] .+ XPrime[indexes.r])
     ############################################################################
 
+    # X => vector of steady state deviations
+    # id => Dictionary mapping variable names (e.g. :union_retained_t) to indices (of X)
+    # nt => NamedTuple mapping variable names (e.g. :union_retained_t) to steady state level
+    #       i.e. nt[:union_retained_t] returns the steady state level of :union_retained_t
+    # sslogdeviations2levels takes a log deviation and returns the level of the variable
+
     # Today
     DSGE.@sslogdeviations2levels union_retained_t, retained_t = X, id, nt
     DSGE.@sslogdeviations2levels Y_t1, B_t1, T_t1, I_t1, w_t1, q_t1 = X, id, nt
@@ -45,6 +51,8 @@ function Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::AbstractAr
     DSGE.@sslogdeviations2levels union_profits_t, firm_profits_t, profits_t = X, id, nt
 
     # Tomorrow # NOTE that we use XPrime, so id[:C_t] and id[:C_t] should point to the same indices
+    # sslogdeviatiosn2levels_unprimekeys uses the fact that today's steady state parameter
+    # equals tomorrow's steady state parameter to avoid extra allocations
     DSGE.@sslogdeviations2levels_unprimekeys union_retained′_t, retained′_t = XPrime, id, nt
     DSGE.@sslogdeviations2levels_unprimekeys Y′_t1, B′_t1, T′_t1, I′_t1, w′_t1, q′_t1 = XPrime, id, nt
     DSGE.@sslogdeviations2levels_unprimekeys C′_t1, avg_tax_rate′_t1, τ_prog′_t1 = XPrime, id, nt
@@ -68,6 +76,7 @@ function Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::AbstractAr
     H        = grids[:H]::Float64
 
     # Read out equation scalar indices
+    # @unpack from UnPack.jl allows you to write @unpack v = dictionary => v == dictionary[:v]
     DSGE.@unpack_and_first eq_mp, eq_tax_progressivity, eq_tax_level = eq
     DSGE.@unpack_and_first eq_tax_revenue, eq_avg_tax_rate, eq_deficit_rule = eq
     DSGE.@unpack_and_first eq_gov_budget_constraint, eq_price_phillips_curve = eq

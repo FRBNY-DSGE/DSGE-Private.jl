@@ -172,8 +172,8 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     length_X0   = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
     BA          = ForwardDiff.jacobian(x -> Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ,
                                                      m.grids, id, nt, aggr_eqconds),
-                                       zeros(2 * length_X0))
-    Aa          = BA[:, length_X0+1:end] # aggregate A
+                                       zeros(2 * length_X0)) # TODO: use SparseDiffTools.jl and also write a function
+    Aa          = BA[:, length_X0+1:end] # aggregate A       # to create the required Jacobian sparsity pattern
     Ba          = BA[:, 1:length_X0]     # aggregate B
 
     # Update Jacobians of equilibrium conditions w.r.t. aggregate variables,
