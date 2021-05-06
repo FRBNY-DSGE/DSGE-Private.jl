@@ -503,27 +503,27 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\rho_{S, \\epsilon}")
 
     # Exogenous processes - standard deviations
-    m <= parameter(:σ_A, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_A, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false, # Note second tuple is parameterization for Exponential transform
                    description = "σ_A: standard dev. of the bond-spread process.",
                    tex_label = "\\sigma_{A}")
-    m <= parameter(:σ_Z, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_Z, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_Z: standard dev. of the process describing the " *
                    "stationary component of productivity.", tex_label = "\\sigma_Z")
-    m <= parameter(:σ_Ψ, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_Ψ, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_Ψ: standard dev. of the exogenous marginal efficiency" *
                    " of investment shock process.", tex_label = "\\sigma_{\\Psi}")
-    m <= parameter(:σ_μ_p, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_μ_p, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_μ_p: standard dev. of the price mark-up shock process",
                    tex_label = "\\sigma_{\\mu_p}")
-    m <= parameter(:σ_μ_w, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_μ_w, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_μ_w: : standard dev. of the wage mark-up shock process",
                    tex_label = "\\sigma_{\\mu_w}")
-    m <= parameter(:σ_S, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_S, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.65, 0.3), fixed = false,
                    description = "σ_S: standard dev. of the idiosyncratic income risk shock process",
                    tex_label = "\\sigma_{S}")
@@ -531,15 +531,15 @@ function init_parameters!(m::BayerBornLuetticke)
                    Normal(0., 100.), fixed = false,
                    description = "Σ_n: reaction of income risk to employment status",
                    tex_label = "\\Sigma_{n}")
-    m <= parameter(:σ_R, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_R, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_R_ϵ: standard dev. of the monetary policy shock process",
                    tex_label = "\\sigma_{R, \\epsilon}")
-    m <= parameter(:σ_G, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_G, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.65, 0.3), fixed = false,
                    description = "σ_G: standard dev. of the structural deficit shock process",
                    tex_label = "\\sigma_{G}")
-    m <= parameter(:σ_P, 0., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_P, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_P: standard dev. of the tax progressivity shock process",
                    tex_label = "\\sigma_{P}")
@@ -770,7 +770,7 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:copula, identity, "Steady-state copula")
 
     # Whether one wishes to re-compute the steady state
-    m <= Setting(:recompute_steady_state, false, "Flag to avoid recomputing steady-state.")
+    m <= Setting(:compute_full_steadystate, true, "Flag to avoid re-computing the full steady-state.")
 
     ## Numbers of indices
     #  We declare these settings here to initialize them. The numbers of indices

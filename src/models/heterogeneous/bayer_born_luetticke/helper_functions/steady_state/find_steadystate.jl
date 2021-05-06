@@ -42,10 +42,8 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                Vk_guess = zeros(1,1,1),
                distr_guess = init_distr_guess
                )
-    @time begin
         out = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
                     verbose = verbose, coarse = true)
-    end
     return out
 end
 
@@ -71,10 +69,8 @@ end
                Vk_guess = zeros(1,1,1),
                distr_guess = init_distr_guess
                )
-    @time begin
         out = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
                     verbose = verbose, coarse = false)
-    end
     return out
 end
 #=    d(  K,
