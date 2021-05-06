@@ -79,7 +79,11 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
                 TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
             end
         elseif get_setting(m, :solution_method) == :klein
-            TTT_jump, TTT_state = klein(m)
+            TTT_jump, TTT_state, eu = klein(m)
+
+            if eu != 1
+                throw(KleinError())
+            end
 
             # Transition
             TTT, RRR = klein_transition_matrices(m, TTT_state, TTT_jump)
