@@ -42,9 +42,8 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     VkSS                = log.(VkSS)
 
     # Calculate taxes and government expenditures
-    # TSS                 = (tot_taxrev + avg_tax_rateSS * ((1.0 .- 1.0 ./ θ[:μ_w]) .* wSS .* NSS))
-    TSS                 = (distrSS[:]' * taxrev[:] + avg_tax_rateSS * ((1. .- 1. ./ θ[:μ_w]) .* wSS .* NSS))
-    GSS                 = TSS - (θ[:RB] ./ θ[:π] - 1.0) * BSS
+    TSS                 = (tot_taxrev + avg_tax_rateSS * ((1.0 - 1.0 / θ[:μ_w]) * wSS * NSS))
+    GSS                 = TSS - (θ[:RB] / θ[:π] - 1.0) * BSS
 
     # Produce distributional summary statistics
     distr_m_SS, distr_k_SS, distr_y_SS, share_borrowerSS, GiniWSS, I90shareSS,I90sharenetSS, GiniXSS,
@@ -134,10 +133,6 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     update_compression_indices!(m, [:Vm, :Vk, :copula],
                                 compressionIndexesVm, compressionIndexesVk, compressionIndexesD)
 
-    # TODO: move this step to the indices/dimensions update (setting is n_backward_looking_states)
-    # add to no. of states the coefficients that perturb the copula
-    # @set! n_par.nstates = n_par.ny + n_par.nk + n_par.nm + n_par.naggrstates - 3 + length(compressionIndexes[3])
-
     # ------------------------------------------------------------------------------
     # 2b.) Produce the Copula as an interpolant on the distribution function
     #      and its marginals
@@ -165,27 +160,9 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     m <= Setting(:copula, Copula)
     # ------------------------------------------------------------------------------
 
-#     @include "../3_Model/input_aggregate_steady_state.jl"
     aggregate_steadystate!(m)
-    # write to XSS vector
-#    @writeXSS
 
-    # produce indexes to access XSS etc.
-    setup_indices!(m)
-    # TODO: check the contents of these indices and then create them
-    # store compressionIndexes in some sort of object or Setting or field
-    #= indexes               = produce_indexes(n_par, compressionIndexesVm, compressionIndexesVk, compressionIndexesD)
-    indexes_aggr          = produce_indexes_aggr(n_par)
-    ntotal                = indexes.profits # Convention: profits is the last control in the list of control variables
-    @set! n_par.ntotal    = ntotal
-    @set! n_par.ncontrols = length(compressionIndexes[1]) + length(compressionIndexes[2]) + n_par.naggrcontrols
-    @set! n_par.LOMstate_save = zeros(n_par.nstates, n_par.nstates)
-    @set! n_par.State2Control_save = zeros(n_par.ncontrols, n_par.nstates)=#
-
-#=    return XSS, XSSaggr, indexes, indexes_aggr, compressionIndexes, Copula, #=
-            =# CDF_SS, CDF_m, CDF_k, CDF_y, distrSS=#
-
-m
+    m
 end
 
 # in case we ever just want the vector

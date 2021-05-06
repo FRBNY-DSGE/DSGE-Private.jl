@@ -19,10 +19,9 @@ function updateV(EVk::Array,
 
     # Compute expected marginal utility at consumption policy (w &w/o adjustment)
     # Some special handling here to avoid an allocation that would be made if we did
-    Vm = θ[:λ] .* mutil_c_a .+ (1.0 - θ[:λ]) .* mutil_c_n
-#=    Vm  = mutil_c_n # Vm is just pointing to the same array as mutil_c_n now
+    Vm  = mutil_c_n # Vm is just pointing to the same array as mutil_c_n now
     Vm .*= (1. - θ[:λ])
-    Vm .+= θ[:λ] * mutil_c_a=#
+    Vm .+= θ[:λ] * mutil_c_a
 
     #----------------------------------------------------------------------------
     ## Update marginal Value of Capital
@@ -41,9 +40,8 @@ function updateV(EVk::Array,
     end
 
     # Form expectations to get expected marginal utility at consumption policy (w &w/o adjustment)
-    Vk = rk .* Vm .+ θ[:λ] .* q .* mutil_c_a .+ (1 .- θ[:λ]) .* β .* Vk
-#=    Vk .*= (1. - θ[:λ]) * β # written this way to avoid allocations
-    Vk .+= rk * Vm + (θ[:λ] * q) * mutil_c_a=#
+    Vk .*= (1. - θ[:λ]) * β # written this way to avoid allocations
+    Vk .+= rk * Vm + (θ[:λ] * q) * mutil_c_a
 
     return Vk, Vm
 end

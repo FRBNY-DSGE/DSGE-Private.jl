@@ -1,7 +1,7 @@
 function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
     # See helper_functions/HetAgentDSGE
 
-    # TODO: add ability to pass initial guesses very robustly
+    # TODO: add ability to pass initial guesses for VmSS, VkSS more robustly (currently, find_steadystate makes a guess itself)
     if get_setting(m, :replicate_original_output)
         # Thi block replicates the output from the original implementation by Bayer, Born, and Luetticke
         KSS, VmSS, VkSS, distrSS = original_find_steadystate(m; verbose = verbose,
@@ -49,7 +49,6 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     # Unlog some steady state numbers
     K_star = exp(m[:K_star])
     N_star = exp(m[:N_star])
-    # rk_star = exp(m[:rk_star])
     Y_star = exp(m[:Y_star])
     G_star = exp(m[:G_star])
     T_star = exp(m[:T_star])
@@ -72,14 +71,13 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     m[:R_sh_star] = 0.
     m[:P_sh_star] = 0.
     m[:S_sh_star] = 0.
-    m[:rk_star] = log(1. + _bbl_interest(K_star, 1. / m[:μ_p], N_star, m[:α], m[:δ_0])) # TODO: can we calculate rk_star in prepare_linearization?
+    m[:rk_star] = log(1. + _bbl_interest(K_star, 1. / m[:μ_p], N_star, m[:α], m[:δ_0])) # need to recalculate b/c there are estimated parameters
     rk_star = exp(m[:rk_star])
     m[:LP_star] = log(1. + rk_star - m[:RB])
     m[:LP_XA_star] = log(1. + rk_star - m[:RB])
     m[:π_star] = log(m[:π])
     m[:π_w_star] = 0.
-    # m[:BD_star] = log(-dot(m[:marginal_pdf_m_star], (m_grid .< 0.) .* m_grid))
-    m[:BD_star] = log(-sum(m[:marginal_pdf_m_star] .* (m_grid .< 0.) .* m_grid))
+    m[:BD_star] = log(-dot(m[:marginal_pdf_m_star], (m_grid .< 0.) .* m_grid))
     m[:C_star] = log(Y_star - m[:δ_0] * K_star - G_star - m[:Rbar] * exp(m[:BD_star]))
     m[:q_star] = 0.
     m[:mc_star] = log(1. ./ m[:μ_p])
@@ -88,8 +86,7 @@ function aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: Real}
     m[:u_star] = 0.
     m[:profits_star] = log((1. - exp(m[:mc_star])) .* Y_star)
     m[:union_profits_star] = log((1. - exp(m[:mc_w_star])) .* w_star .* N_star)
-    BY = B_star / Y_star # to try to match exactly the output from the BBL
-    m[:BY_star] = log(BY)
+    m[:BY_star] = log(B_star / Y_star)
     m[:TY_star] = log(T_star / Y_star)
     m[:T_l1_star] = get_untransformed_values(m[:T_star])::T
     m[:Y_l1_star] = get_untransformed_values(m[:Y_star])::T

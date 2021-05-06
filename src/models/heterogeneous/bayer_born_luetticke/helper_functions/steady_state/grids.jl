@@ -33,8 +33,7 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
 
     # Liquid asset grid
     m_grid = _construct_liquid_asset_grid_bbl(mmin, mmax, nm)
-    # m_grid[findlast(x -> x < 0, m_grid)] = 0.0 # Guarantee there is a zero is on the m grid (liquid asset)
-    m_grid[sum(m_grid .< 0)] = 0.0 # Guarantee there is a zero is on the m grid (liquid asset)
+    m_grid[findlast(x -> x < 0, m_grid)] = 0.0 # Guarantee there is a zero is on the m grid (liquid asset)
     grids[:m_grid] = Grid(m_grid, uniform_quadrature(mmin, mmax, nm; scale = mmax - mmin)[2], mmax - mmin)
 
     # Illiquid asset grid
@@ -71,7 +70,7 @@ function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <:
     grids[:Π]      = Π
     grids[:Paux]   = Paux # store approximate stationary distribution
 
-    # Construct ndgrids (TODO: delete this and be Julian by never allocating these grids and using list comprehensions)
+    # Construct ndgrids (TODO: delete this and be Julian by never allocating these grids and using list comprehensions, IF this is feasible)
     grids[:m_ndgrid], grids[:k_ndgrid], grids[:y_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
     grids[:weights_ndgrid] = eval_three_states((x, y, z) -> x * y * z, [get_gridwts(m, x) for x in [:m_grid, :k_grid, :y_grid]]...)
 
