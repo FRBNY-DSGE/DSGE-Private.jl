@@ -161,6 +161,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     # ------------------------------------------------------------------------------
 
     aggregate_steadystate!(m)
+    setup_indices!(m)
 
     m
 end

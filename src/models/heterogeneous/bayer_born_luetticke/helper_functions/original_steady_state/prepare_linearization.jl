@@ -144,7 +144,8 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     m <= Setting(:copula, Copula)
     # ------------------------------------------------------------------------------
 
-    aggregate_steadystate!(m)
+    original_aggregate_steadystate!(m)
+    setup_indices!(m)
 
-m
+    m
 end
