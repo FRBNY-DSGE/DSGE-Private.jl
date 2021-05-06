@@ -802,6 +802,10 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:klein_inversion_method, :minimum_norm, false, "",
                  "Inversion method to obtain gx and hx during the Klein algorithm")
 
+    ## Replication-related settings
+    m <= Setting(:replicate_original_output, false, "Use steady state and linearization functions that exactly " *
+                 "replicate output from the original implementation by Bayer, Born, and Luetticke.")
+
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)
     m <= Setting(:save_jacobian, true)

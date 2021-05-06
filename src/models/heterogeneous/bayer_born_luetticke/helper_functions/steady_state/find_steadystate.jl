@@ -24,7 +24,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     #-------------------------------------------------------
 
     # Construct coarse grid based on information from settings
-    DSGE.init_grids!(m; coarse = true)
+    init_grids!(m; coarse = true)
 
     if verbose in [:low, :high]
         println("Finding equilibrium capital stock for coarse income grid...")
@@ -59,7 +59,7 @@ end
     if verbose in [:low, :high]
         println("Finding equilibrium capital stock for refined income grid...")
     end
-    DSGE.init_grids!(m)
+    init_grids!(m)
 
     # Find stationary equilibrium for refined economy
     # a.) Define excess demand function with coarse = false

@@ -2,22 +2,30 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
     # See helper_functions/HetAgentDSGE
 
     # TODO: add ability to pass initial guesses very robustly
-    if get_setting(m, :compute_full_steadystate)
-        # Compute steady state
-        KSS, VmSS, VkSS, distrSS = find_steadystate(m; verbose = verbose,
-                                                    skip_coarse_grid = haskey(get_settings(m), :skip_coarse_grid) &&
-                                                    get_setting(m, :skip_coarse_grid))
-
-        if get_setting(m, :save_steadystate)
-            save_steadystate(m, KSS, VmSS, VkSS, distrSS)
-        end
-
-        # Update steady-state parameters, reduce state space, and update indices
-        prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
-
-        m <= Setting(:compute_full_steadystate, false)
+    if get_setting(m, :replicate_original_output)
+        # Thi block replicates the output from the original implementation by Bayer, Born, and Luetticke
+        KSS, VmSS, VkSS, distrSS = original_find_steadystate(m; verbose = verbose,
+                                                             skip_coarse_grid = haskey(get_settings(m), :skip_coarse_grid) &&
+                                                             get_setting(m, :skip_coarse_grid))
+        original_prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
     else
-        aggregate_steadystate!(m)
+        if get_setting(m, :compute_full_steadystate)
+            # Compute steady state
+            KSS, VmSS, VkSS, distrSS = find_steadystate(m; verbose = verbose,
+                                                        skip_coarse_grid = haskey(get_settings(m), :skip_coarse_grid) &&
+                                                        get_setting(m, :skip_coarse_grid))
+
+            if get_setting(m, :save_steadystate)
+                save_steadystate(m, KSS, VmSS, VkSS, distrSS)
+            end
+
+            # Update steady-state parameters, reduce state space, and update indices
+            prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
+
+            m <= Setting(:compute_full_steadystate, false)
+        else
+            aggregate_steadystate!(m)
+        end
     end
 
     return m
