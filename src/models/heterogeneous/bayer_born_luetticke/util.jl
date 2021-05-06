@@ -61,6 +61,7 @@ end
 @inline function load_steadystate!(m::BayerBornLuetticke)
     out = JLD2.jldopen(get_setting(m, :steadystate_output_file), "r")
     prepare_linearization(m, out["KSS"], out["VmSS"], out["VkSS"], out["distrSS"]; verbose = :none)
+    m <= Setting(:compute_full_steadystate, false) # set to false to avoid re-computing full steadystate
     m
 end
 
