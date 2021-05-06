@@ -87,7 +87,7 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
 	# next, want to represent policy functions in terms of meaningful things
 	# gx_fval = Qy'*gx_coef*Qx
 	# hx_fval = Qx'*hx_coef*Qx
-    return gx_coef, hx_coef, 0 # TODO: return an actual eu variable with info, like in gensys
+    return gx_coef, hx_coef, eu
 end
 
 # Need an additional transition_equation function to properly stack the

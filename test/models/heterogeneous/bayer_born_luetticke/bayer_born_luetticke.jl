@@ -12,7 +12,7 @@ using DSGE, ModelConstructors, Test, JLD2, Random
 # if you want to regenerate the output of find_steadystate.
 # It requires regenerate_output = true b/c it affects other output,
 # so some tests may fail unless all output is regenerated.
-regenerate_output = true
+regenerate_output = false
 regenerate_find_steadystate = false
 match_original_output = false
 if regenerate_output
