@@ -157,7 +157,7 @@ for j = 1:n[3] # Iterate over income states
     if m_star_zero[j] > m_grid[1]
         # Calculate consumption policies, when HHs chooses money holdings
         # lower than m*(k"=0) and capital holdings k"=0 and save them in cons_list
-        log_index    = m_grid < m_star_zero[j] # all indices of m grid points less than m*(k"=0)
+        log_index    = m_grid .< m_star_zero[j] # all indices of m grid points less than m*(k"=0)
         # aux_c is the consumption policy under no cap. adj. (fix k=0), for m<m_a*(k'=0)
         c_k_cons     = aux_c[log_index, j]
         cons_list[j] = c_k_cons # Consumption at k"=0, for all m"<m_a*(0), and income state zⱼ

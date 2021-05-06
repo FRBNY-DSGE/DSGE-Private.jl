@@ -37,9 +37,9 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     w           = _bbl_wage(K_guess, 1.0 / m[:μ_p], N, m[:α])                     # wages
     rk          = _bbl_interest(K_guess, 1.0 / m[:μ_p], N, m[:α], m[:δ_0])        # Return on illiquid asset
     profits     = (1.0 - 1.0 / m[:μ_p]) .* _bbl_output(K_guess, 1.0, N, m[:α])    # Profit income
+    RB          = m[:RB] / m[:π]                                                  # Real return on liquid assets
     neg_liq_ret = RB + m[:Rbar]
     eff_int     = [x <= 0. ? neg_liq_ret : RB for x in m_ndgrid]        # effective rate depending on assets
-    RB          = m[:RB] / m[:π]                                                  # Real return on liquid assets
     GHHFA       = (m[:γ] + m[:τ_prog]) / (m[:γ] + 1.0)                            # transformation (scaling) for composite good
 
     #----------------------------------------------------------------------------
