@@ -263,6 +263,10 @@ function BayerBornLuetticke(subspec::String="ss0";
         m <= custom_setting
     end
 
+    if get_setting(m, :original_dataset)
+        _init_original_observable_mappings!(m, m.observables)
+    end
+
     # Initialize model indices
     init_model_indices!(m)
 
@@ -805,6 +809,7 @@ function model_settings!(m::BayerBornLuetticke)
     ## Replication-related settings
     m <= Setting(:replicate_original_output, false, "Use steady state and linearization functions that exactly " *
                  "replicate output from the original implementation by Bayer, Born, and Luetticke.")
+    m <= Setting(:original_dataset, false, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
 
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)
