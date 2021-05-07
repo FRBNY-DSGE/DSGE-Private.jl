@@ -2,11 +2,15 @@
 # Matrix to remove one degree of freedom from distribution
 #---------------------------------------------------------
 function shuffle_matrix(distr)
-    nm, nk, ny = size(distr)
-
-    distr_m = dropdims(sum(sum(distr,dims=3),dims=2)./sum(distr), dims = (2, 3)) # TODO: we can just use the marginals from m?
+    distr_m = dropdims(sum(sum(distr,dims=3),dims=2)./sum(distr), dims = (2, 3))
     distr_k = dropdims(sum(sum(distr,dims=3),dims=1)./sum(distr), dims = (1, 3))
     distr_y = dropdims(sum(sum(distr,dims=2),dims=1)./sum(distr), dims = (1, 2))
+
+    return shuffle_matrix(distr, distr_m, distr_k, distr_y)
+end
+function shuffle_matrix(distr, distr_m, distr_k, distr_y)
+    nm, nk, ny = size(distr)
+
     Γ    = Array{Array{Float64,2},1}(undef,3)
     Γ[1] = zeros(Float64,(nm,nm-1))
     Γ[2] = zeros(Float64,(nk,nk-1))
