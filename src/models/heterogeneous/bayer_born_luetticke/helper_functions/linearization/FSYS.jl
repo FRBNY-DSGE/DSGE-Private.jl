@@ -61,47 +61,47 @@ function Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, grids::Or
     ############################################################################
 
     # Today
-    DSGE.@sslogdeviations2levels union_retained_t, retained_t = X, id, nt
-    DSGE.@sslogdeviations2levels Y_t1, B_t1, T_t1, I_t1, w_t1, q_t1 = X, id, nt
-    DSGE.@sslogdeviations2levels C_t1, avg_tax_rate_t1, τ_prog_t1 = X, id, nt
-    DSGE.@sslogdeviations2levels A_t, Z_t, Ψ_t, RB_t, μ_p_t, μ_w_t = X, id, nt
-    DSGE.@sslogdeviations2levels σ_t, G_sh_t, P_sh_t, R_sh_t, S_sh_t = X, id, nt
-    DSGE.@sslogdeviations2levels rk_t, w_t, K_t, π_t, π_w_t = X, id, nt
-    DSGE.@sslogdeviations2levels Y_t, C_t, q_t, N_t, mc_t, mc_w_t = X, id, nt
-    DSGE.@sslogdeviations2levels u_t, Ht_t, avg_tax_rate_t, T_t, I_t = X, id, nt
-    DSGE.@sslogdeviations2levels B_t, BD_t, BY_t, TY_t, mc_w_w_t = X, id, nt
-    DSGE.@sslogdeviations2levels G_t, τ_level_t, τ_prog_t = X, id, nt
-    DSGE.@sslogdeviations2levels Gini_C_t, Gini_X_t, sd_log_y_t = X, id, nt
-    DSGE.@sslogdeviations2levels I90_share_t, I90_share_net_t, W90_share_t = X, id, nt
-    DSGE.@sslogdeviations2levels Ygrowth_t, Bgrowth_t, Igrowth_t, wgrowth_t = X, id, nt
-    DSGE.@sslogdeviations2levels Cgrowth_t, Tgrowth_t, LP_t, LP_XA_t = X, id, nt
-    DSGE.@sslogdeviations2levels tot_retained_Y_t, union_firm_profits_t = X, id, nt
-    DSGE.@sslogdeviations2levels union_profits_t, firm_profits_t, profits_t = X, id, nt
+    @sslogdeviations2levels union_retained_t, retained_t = X, id, nt
+    @sslogdeviations2levels Y_t1, B_t1, T_t1, I_t1, w_t1, q_t1 = X, id, nt
+    @sslogdeviations2levels C_t1, avg_tax_rate_t1, τ_prog_t1 = X, id, nt
+    @sslogdeviations2levels A_t, Z_t, Ψ_t, RB_t, μ_p_t, μ_w_t = X, id, nt
+    @sslogdeviations2levels σ_t, G_sh_t, P_sh_t, R_sh_t, S_sh_t = X, id, nt
+    @sslogdeviations2levels rk_t, w_t, K_t, π_t, π_w_t = X, id, nt
+    @sslogdeviations2levels Y_t, C_t, q_t, N_t, mc_t, mc_w_t = X, id, nt
+    @sslogdeviations2levels u_t, Ht_t, avg_tax_rate_t, T_t, I_t = X, id, nt
+    @sslogdeviations2levels B_t, BD_t, BY_t, TY_t, mc_w_w_t = X, id, nt
+    @sslogdeviations2levels G_t, τ_level_t, τ_prog_t = X, id, nt
+    @sslogdeviations2levels Gini_C_t, Gini_X_t, sd_log_y_t = X, id, nt
+    @sslogdeviations2levels I90_share_t, I90_share_net_t, W90_share_t = X, id, nt
+    @sslogdeviations2levels Ygrowth_t, Bgrowth_t, Igrowth_t, wgrowth_t = X, id, nt
+    @sslogdeviations2levels Cgrowth_t, Tgrowth_t, LP_t, LP_XA_t = X, id, nt
+    @sslogdeviations2levels tot_retained_Y_t, union_firm_profits_t = X, id, nt
+    @sslogdeviations2levels union_profits_t, firm_profits_t, profits_t = X, id, nt
 
     # Tomorrow # NOTE that we use XPrime, so id[:C_t] and id[:C′_t] should point to the same indices
-    DSGE.@sslogdeviations2levels_unprimekeys union_retained′_t, retained′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys Y′_t1, B′_t1, T′_t1, I′_t1, w′_t1, q′_t1 = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys C′_t1, avg_tax_rate′_t1, τ_prog′_t1 = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys A′_t, Z′_t, Ψ′_t, RB′_t, μ_p′_t, μ_w′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys σ′_t, G_sh′_t, P_sh′_t, R_sh′_t, S_sh′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys rk′_t, w′_t, K′_t, π′_t, π_w′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys Y′_t, C′_t, q′_t, N′_t, mc′_t, mc_w′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys u′_t, Ht′_t, avg_tax_rate′_t, T′_t, I′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys B′_t, BD′_t, BY′_t, TY′_t, mc_w_w′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys G′_t, τ_level′_t, τ_prog′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys Gini_C′_t, Gini_X′_t, sd_log_y′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys I90_share′_t, I90_share_net′_t, W90_share′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys Ygrowth′_t, Bgrowth′_t, Igrowth′_t, wgrowth′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys Cgrowth′_t, Tgrowth′_t, LP′_t, LP_XA′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys tot_retained_Y′_t, union_firm_profits′_t = XPrime, id, nt
-    DSGE.@sslogdeviations2levels_unprimekeys union_profits′_t, firm_profits′_t, profits′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys union_retained′_t, retained′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys Y′_t1, B′_t1, T′_t1, I′_t1, w′_t1, q′_t1 = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys C′_t1, avg_tax_rate′_t1, τ_prog′_t1 = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys A′_t, Z′_t, Ψ′_t, RB′_t, μ_p′_t, μ_w′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys σ′_t, G_sh′_t, P_sh′_t, R_sh′_t, S_sh′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys rk′_t, w′_t, K′_t, π′_t, π_w′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys Y′_t, C′_t, q′_t, N′_t, mc′_t, mc_w′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys u′_t, Ht′_t, avg_tax_rate′_t, T′_t, I′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys B′_t, BD′_t, BY′_t, TY′_t, mc_w_w′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys G′_t, τ_level′_t, τ_prog′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys Gini_C′_t, Gini_X′_t, sd_log_y′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys I90_share′_t, I90_share_net′_t, W90_share′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys Ygrowth′_t, Bgrowth′_t, Igrowth′_t, wgrowth′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys Cgrowth′_t, Tgrowth′_t, LP′_t, LP_XA′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys tot_retained_Y′_t, union_firm_profits′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys union_profits′_t, firm_profits′_t, profits′_t = XPrime, id, nt
 
     ############################################################################
     # I.2. Distributions (Γ-multiplying makes sure that they are distributions)
     ############################################################################
 
     # Get perturbation to distribution implied by perturbation to DCT coefs
-    θD      = DSGE.uncompressD(dct_compression_indices[:copula], X[id[:copula_t]], DCD, IDCD, (nm, nk, ny))
+    θD      = uncompressD(dct_compression_indices[:copula], X[id[:copula_t]], DCD, IDCD, (nm, nk, ny))
 
     # Adjust distribution perturbation to ensure the distribution sums to one # TODO: check if we canuse view
     DISTRAUX = zeros(eltype(θD), nm, nk, ny)      # Use [nm, 1:end-1, 1:end-1], [:, nk, 1:end-1], [:, :, ny] to guarantee
@@ -111,14 +111,9 @@ function Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, grids::Or
     DISTRAUX[:,end,1:end-1] = -sum(DISTRAUX[:, :, 1:end-1], dims=(2)) # e.g. -sum(DISTRAUX[:, :, 1:end-1], dims=2) accounts
     DISTRAUX[:,:,end] = -sum(DISTRAUX, dims=(3)) # for the -sum(θDaux, dims=1) adjustment to avoid double-counting
 
-    # DISTR = Xss[indexes.DSS] + vec(DISTRAUX) # DISTRAUX describes the perturbation to the copula implied by perturbations to DCT coefs
-    # DISTR = reshape(DISTR, (nm, nk, ny))   # while ensuring the distribution sums to one
-    # DISTR = nt[:distr_t] + DISTRAUX # DISTRAUX describes the perturbation to the copula implied by perturbations to DCT coefs
-DISTR = vec(nt[:distr_t]) + DISTRAUX[:] # DISTRAUX describes the perturbation to the copula implied by perturbations to DCT coefs
-DISTR = reshape(DISTR, (nm, nk, ny))   # while ensuring the distribution sums to one
-    DISTR = max.(DISTR, 1e-16)
-    # DISTR = DISTR ./ sum(DISTR) # renormalize
-DISTR = DISTR ./ sum(DISTR[:]) # renormalize
+    DISTR = nt[:distr_t] + DISTRAUX # DISTRAUX describes the perturbation to the copula implied by perturbations to DCT coefs
+    DISTR = max.(DISTR, 1e-16)      # while ensuring the distribution sums to one
+    DISTR = DISTR ./ sum(DISTR) # renormalize
     DISTR = cumsum(cumsum(cumsum(DISTR;dims=3);dims=2);dims=1) # compute CDF
 
     # Perturb the marginal PDFs, while using Γ to ensure marginals sum to one
@@ -130,41 +125,37 @@ DISTR = DISTR ./ sum(DISTR[:]) # renormalize
     distr_y_Prime = nt[:marginal_pdf_y_t] .+ Γ[3] * XPrime[id[:marginal_pdf_y′_t]]
 
     # Joint distributions (uncompressing), needed to use the copula
-#=    CDF_m         = cumsum([0.0; vec(distr_m)])
+    CDF_m         = cumsum([0.0; vec(distr_m)])
     CDF_k         = cumsum([0.0; vec(distr_k)])
-    CDF_y         = cumsum([0.0; vec(distr_y)])=#
-    CDF_m         = cumsum([0.0; (distr_m[:])])
-    CDF_k         = cumsum([0.0; (distr_k[:])])
-    CDF_y         = cumsum([0.0; (distr_y[:])])
+    CDF_y         = cumsum([0.0; vec(distr_y)])
 
     # Construct the copula from the perturbed distribution => perturbed copula
     cum_zero = zeros(eltype(θD), nm + 1, nk + 1, ny + 1)
     cum_zero[2:end,2:end,2:end] = DISTR # add the CDF
     Copula1(x::AbstractVector,y::AbstractVector,z::AbstractVector) =
-        DSGE.mylinearinterpolate3(cum_zero[:,end,end], cum_zero[end,:,end], cum_zero[end,end,:], cum_zero, x, y, z) # TODO: check if I can use view
+        mylinearinterpolate3(cum_zero[:,end,end], cum_zero[end,:,end], cum_zero[end,end,:], cum_zero, x, y, z) # TODO: check if I can use view
     #Copula1 = LinearInterpolation((cum_zero[:,end,end],cum_zero[end,:,end],cum_zero[end,end,:]),cum_zero,extrapolation_bc=Line())
 
     # Compute the distribution implied by the perturbed marginals and copula
-    # CDF_joint     = Copula1(vec(CDF_m), vec(CDF_k), vec(CDF_y)) # roughly 5% of time
-    CDF_joint     = Copula1(CDF_m[:], CDF_k[:], CDF_y[:]) # roughly 5% of time
+    CDF_joint     = Copula1(vec(CDF_m), vec(CDF_k), vec(CDF_y)) # roughly 5% of time
     distr         = diff(diff(diff(CDF_joint; dims=3);dims=2);dims=1)
 
     ############################################################################
     # I.3 uncompressing policies/value functions
     ###########################################################################
-    if any((DSGE.tot_dual.(XPrime[id[:Vm′_t]]) + DSGE.realpart.(XPrime[id[:Vm′_t]])) .!= 0.0)
-        θm      = DSGE.uncompress(dct_compression_indices[:Vm], XPrime[id[:Vm′_t]], DC, IDC, (nm, nk, ny))
+    if any((tot_dual.(XPrime[id[:Vm′_t]]) + realpart.(XPrime[id[:Vm′_t]])) .!= 0.0)
+        θm      = uncompress(dct_compression_indices[:Vm], XPrime[id[:Vm′_t]], DC, IDC, (nm, nk, ny))
         VmPrime = vec(nt[:Vm_t]) + θm
     else
-         VmPrime = vec(nt[:Vm_t]) .+ zeros(eltype(X),1)[1]# zero(eltype(X))
+         VmPrime = vec(nt[:Vm_t]) .+ zero(eltype(X))
     end
     VmPrime .= (exp.(VmPrime))
 
-     if any((DSGE.tot_dual.(XPrime[id[:Vk′_t]]) + DSGE.realpart.(XPrime[id[:Vk′_t]])) .!= 0.0)
-        θk      = DSGE.uncompress(dct_compression_indices[:Vk], XPrime[id[:Vk′_t]], DC, IDC, (nm, nk, ny))
+     if any((tot_dual.(XPrime[id[:Vk′_t]]) + realpart.(XPrime[id[:Vk′_t]])) .!= 0.0)
+        θk      = uncompress(dct_compression_indices[:Vk], XPrime[id[:Vk′_t]], DC, IDC, (nm, nk, ny))
         VkPrime = vec(nt[:Vk_t]) + θk
      else
-         VkPrime = vec(nt[:Vk_t]) .+ zeros(eltype(X),1)[1]# zero(eltype(X))
+         VkPrime = vec(nt[:Vk_t]) .+ zero(eltype(X))
      end
     VkPrime .= (exp.(VkPrime))
 
@@ -172,17 +163,17 @@ DISTR = DISTR ./ sum(DISTR[:]) # renormalize
     #           II. Auxiliary Variables                                        #
     ############################################################################
     # Transition Matrix Productivity
-    if DSGE.tot_dual.(σ_t .+ zeros(eltype(X),1)[1]) == 0.0 # DSGE.tot_dual.(σ_t .+ zero(eltype(X))) == 0.0
+    if tot_dual.(σ_t .+ zero(eltype(X))) == 0.0
         if σ_t == 1.0
-            Π                  = Π .+ zeros(eltype(X),1)[1] # zero(eltype(X))
+            Π                  = Π .+ zero(eltype(X))
         else
             Π                  = Π
-            PP                 = DSGE.ExTransition(θ[:ρ_h], y_bin_bounds, sqrt(σ_t))
+            PP                 = ExTransition(θ[:ρ_h], y_bin_bounds, sqrt(σ_t))
             Π[1:end-1,1:end-1] = PP.*(1.0 - θ[:ζ])
         end
     else
-        Π                  = Π .+ zeros(eltype(X),1)[1] # zero(eltype(X))
-        PP                 = DSGE.ExTransition(θ[:ρ_h], y_bin_bounds, sqrt(σ_t))
+        Π                  = Π .+ zero(eltype(X))
+        PP                 = ExTransition(θ[:ρ_h], y_bin_bounds, sqrt(σ_t))
         Π[1:end-1,1:end-1] = PP.*(1.0 - θ[:ζ])
     end
 
@@ -193,93 +184,63 @@ DISTR = DISTR ./ sum(DISTR[:]) # renormalize
     ############################################################################
     #           III. 1. Aggregate Part #
     ############################################################################
-    F            = Fsys_agg(X, XPrime, θ, grids, id, nt, eqconds) # DSGE.Fsys_agg(X, XPrime, θ, grids, id, nt, eqconds)
+    F            = Fsys_agg(X, XPrime, θ, grids, id, nt, eqconds) # Fsys_agg(X, XPrime, θ, grids, id, nt, eqconds)
 
     # Error Term on prices/aggregate summary vars (logarithmic, controls)
-    # KP           = dot(k_grid, distr_k)
-KP           = dot(k_grid, distr_k[:])
+    KP           = dot(k_grid, distr_k)
     F[first(eqconds[:eq_capital_market_clear])] = log.(K_t)     - log.(KP)
-    # BP           = dot(m_grid, distr_m)
-    BP           = dot(m_grid, distr_m[:])
+    BP           = dot(m_grid, distr_m)
     F[first(eqconds[:eq_bond_market_clear])] = log.(B_t)     - log.(BP)
 
-    # BDact = -dot(distr_m, (m_grid .< 0.) .* m_grid)
-BDact = -sum(distr_m .* (m_grid .< 0.) .* m_grid)
+    BDact = -dot(distr_m, (m_grid .< 0.) .* m_grid)
 
     F[first(eqconds[:eq_debt_market_clear])] = log.(BD_t)  - log.(BDact)
 
     # Average Human Capital =
-    # average productivity (at the productivit grid, used to normalize to 0)
-    # H       = dot(view(distr_y, 1:ny-1), view(y_grid, 1:ny-1))
-H       = dot(distr_y[1:end-1], y_grid[1:end-1])
+    # average productivity (at the productivity grid, used to normalize to 0)
+    H       = dot(view(distr_y, 1:ny-1), view(y_grid, 1:ny-1))
 
     ############################################################################
     #               III. 2. Heterogeneous Agent Part                           #
     ############################################################################
     # Incomes
-    eff_int      = ((RB_t .* A_t) .+ (θ[:Rbar] .* (m_ndgrid .<= 0.))) ./ π_t # effective rate (need to check timing below and inflation)
-    eff_intPrime = (RB′_t .* A′_t .+ (θ[:Rbar] .* (m_ndgrid .<= 0.))) ./ π′_t
-
-#=    nonpos_ret   = θ[:Rbar] .* (m_ndgrid .<= 0.0)
-    eff_int      = ((RB_t .* A_t) .+ nonpos_ret) ./ π_t # effective rate (need to check timing below and inflation)
-    eff_intPrime = (RB′_t .* A′_t .+ nonpos_ret) ./ π′_t=#
+    nonpos_ret   = θ[:Rbar] .* (m_ndgrid .<= 0.0)
+    eff_int      = ((RB_t * A_t) .+ nonpos_ret) ./ π_t # effective rate (need to check timing below and inflation)
+    eff_intPrime = ((RB′_t * A′_t) .+ nonpos_ret) ./ π′_t
 
     GHHFA                    = ((θ[:γ] + τ_prog_t) / (θ[:γ] + 1.)) # transformation (scaling) for composite good
     tax_prog_scale           = (θ[:γ] + θ[:τ_prog]) / ((θ[:γ] + τ_prog_t))
-#=    y_ndgrid_rel_H           = y_ndgrid ./ H
+    y_ndgrid_rel_H           = y_ndgrid ./ H
     entrep_profits           = view(y_ndgrid, :, :, ny) .* profits_t
-    entrep_profits_net_taxes = τ_level_t .* entrep_profits.^(1.0 - τ_prog_t) # profit income net of taxes=#
-#=    inc = [  GHHFA .* τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)) .^ (1.0 - τ_prog_t) .+
+    entrep_profits_net_taxes = τ_level_t .* entrep_profits.^(1.0 - τ_prog_t) # profit income net of taxes
+    inc = [  GHHFA .* τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)) .^ (1.0 - τ_prog_t) .+
              (union_profits_t) .* (1.0 - avg_tax_rate_t) .* HW, # labor income (NEW)
              (rk_t - 1.0) .* k_ndgrid, # rental income
              eff_int .* m_ndgrid, # liquid asset Income
              k_ndgrid .* q_t,
              τ_level_t .* (mc_w_t .* w_t .* N_t .* y_ndgrid_rel_H).^(1.0 - τ_prog_t) .* ((1.0 - τ_prog_t) / (θ[:γ] + 1)),
-             τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)).^(1.0 - τ_prog_t)] # capital liquidation Income (q=1 in steady state)=#
-    inc = [  GHHFA .* τ_level_t .* ((y_ndgrid/H).^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)) .^ (1.0 - τ_prog_t) .+
-             (union_profits_t) .* (1.0 .- avg_tax_rate_t) .* HW, # labor income (NEW)
-             (rk_t .- 1.0) .* k_ndgrid, # rental income
-             eff_int .* m_ndgrid, # liquid asset Income
-             k_ndgrid .* q_t,
-             τ_level_t .* (mc_w_t .* w_t .* N_t .* y_ndgrid ./ H).^(1.0 - τ_prog_t) .* ((1.0 - τ_prog_t) / (θ[:γ] + 1)),
-             τ_level_t .* ((y_ndgrid/H).^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)).^(1.0 - τ_prog_t)]
-#=    inc[1][:,:,end] .= entrep_profits_net_taxes
+             τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)).^(1.0 - τ_prog_t)] # capital liquidation Income (q=1 in steady state)
+    inc[1][:,:,end] .= entrep_profits_net_taxes
     inc[5][:,:,end] .= 0.0
-    inc[6][:,:,end] .= entrep_profits_net_taxes=#
-    inc[1][:,:,end] .= τ_level_t .* (y_ndgrid[:, :, end] .* profits_t) .^ (1. - τ_prog_t)
-    inc[5][:,:,end] .= 0.0
-    inc[6][:,:,end] .= τ_level_t .* (y_ndgrid[:, :, end] .* profits_t) .^ (1. - τ_prog_t)
+    inc[6][:,:,end] .= entrep_profits_net_taxes
 
-    incgross =[  ((y_ndgrid/H).^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)) .+ (union_profits_t),
-                 (rk_t .- 1.0) .* k_ndgrid,                                      # rental income # TODO: can we copy from inc?
-                 eff_int .* m_ndgrid,                                        # liquid asset Income
-                 k_ndgrid .* q_t,
-                 ((y_ndgrid/H).^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t))]           # capital liquidation Income (q=1 in steady state)
-    incgross[1][:,:,end] .= y_ndgrid[:, :, end] .* profits_t
-    incgross[5][:,:,end] .= y_ndgrid[:, :, end] .* profits_t
-#=    incgross =[  (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)) .+ (union_profits_t),
+    incgross =[  (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)) .+ (union_profits_t),
                  (rk_t .- 1.0) .* k_ndgrid,                                      # rental income # TODO: can we copy from inc?
                  eff_int .* m_ndgrid,                                        # liquid asset Income
                  k_ndgrid .* q_t,
                  (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t))]           # capital liquidation Income (q=1 in steady state)
     incgross[1][:,:,end] .= entrep_profits
-    incgross[5][:,:,end] .= entrep_profits=#
+    incgross[5][:,:,end] .= entrep_profits
 
     taxrev      = incgross[5]-inc[6] # tax revenues w/o tax on union profits
     incgrossaux = incgross[5]
-    # tot_taxrev  = dot(distr, taxrev)
-# tot_taxrev  = sum(distr .* taxrev)
-tot_taxrev  = distr[:]' * taxrev[:]
-    F[first(eqconds[:eq_tax_level])] = avg_tax_rate_t - tot_taxrev ./ (distr[:]' * incgrossaux[:])
-#    F[first(eqconds[:eq_tax_level])] = avg_tax_rate_t - tot_taxrev / dot(distr, incgrossaux)
+    tot_taxrev  = dot(distr, taxrev)
+    F[first(eqconds[:eq_tax_level])] = avg_tax_rate_t - tot_taxrev / dot(distr, incgrossaux)
     F[first(eqconds[:eq_tax_revenue])]    = log(T_t) - log(tot_taxrev + avg_tax_rate_t * (union_profits_t))
 
-    inc[6] = τ_level_t .* ((y_ndgrid/H).^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)).^(1.0 - τ_prog_t) .+
+    inc[6] = τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)).^(1.0 - τ_prog_t) .+
         ((1.0 .- mc_w_t) .* w_t .* N_t) .* (1.0 .- avg_tax_rate_t)
-    inc[6][:,:,end] .= τ_level_t .* (y_ndgrid[:, :, end] .* profits_t) .^ (1. - τ_prog_t)
-#=    inc[6] = τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)).^(1.0 - τ_prog_t) .+
-        ((1.0 .- mc_w_t) .* w_t .* N_t) .* (1.0 .- avg_tax_rate_t)
-    inc[6][:,:,end] .= entrep_profits_net_taxes=#
+    inc[6][:,:,end] .= entrep_profits_net_taxes
 
     # Calculate optimal policies
     # expected marginal values
@@ -293,44 +254,39 @@ tot_taxrev  = distr[:]' * taxrev[:]
         end
     end
     c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
-                    DSGE.EGM_policyupdate(EVmPrime, EVkPrime, q_t, π_t, RB_t .* A_t, 1.0, inc, θ, grids, false) # policy iteration
+                    EGM_policyupdate(EVmPrime, EVkPrime, q_t, π_t, RB_t .* A_t, 1.0, inc, θ, grids, false) # policy iteration
 
     # Update marginal values
-    Vk_new, Vm_new = DSGE.updateV(EVkPrime, c_a_star, c_n_star, m_n_star, rk_t - 1.0, q_t, θ, m_grid, Π) # update expected marginal values time t
+    Vk_new, Vm_new = updateV(EVkPrime, c_a_star, c_n_star, m_n_star, rk_t - 1.0, q_t, θ, m_grid, Π) # update expected marginal values time t
 
     # Calculate error terms on marginal values
-    # Vm_err        = log.((Vm_new)) - nt[:Vm_t]
-Vm_err        = log.((Vm_new)) - reshape(nt[:Vm_t], (nm, nk, ny))
-    Vm_thet       = DSGE.compress(dct_compression_indices[:Vm], Vm_err, DC, IDC, (nm, nk, ny))
+    Vm_err        = log.((Vm_new)) - nt[:Vm_t]
+    Vm_thet       = compress(dct_compression_indices[:Vm], Vm_err, DC, IDC, (nm, nk, ny))
     F[eqconds[:eq_marginal_value_bonds]] = X[id[:Vm_t]] .- Vm_thet
 
-    # Vk_err        = log.((Vk_new)) - nt[:Vk_t]
-    Vk_err        = log.((Vk_new)) - reshape(nt[:Vk_t], (nm, nk, ny))
-    Vk_thet       = DSGE.compress(dct_compression_indices[:Vk], Vk_err, DC, IDC, (nm, nk, ny))
+    Vk_err        = log.((Vk_new)) - nt[:Vk_t]
+    Vk_thet       = compress(dct_compression_indices[:Vk], Vk_err, DC, IDC, (nm, nk, ny))
     F[eqconds[:eq_marginal_value_capital]] = X[id[:Vk_t]] .- Vk_thet
 
     # Error Term on distribution (in levels, states)
-    dPrime        = DSGE.DirectTransition(m_a_star,  m_n_star, k_a_star, distr, θ[:λ],
+    dPrime        = DirectTransition(m_a_star,  m_n_star, k_a_star, distr, θ[:λ],
                                           Π, (nm, nk, ny), m_grid, k_grid)
     dPrs          = reshape(dPrime, nm, nk, ny)
     temp          = dropdims(sum(dPrs,dims=(2,3)),dims=(2,3))
     cum_m         = cumsum(temp)
-    # F[eqconds[:eq_marginal_pdf_m]] = view(temp, 1:nm-1) - view(distr_m_Prime, 1:nm-1)
-F[eqconds[:eq_marginal_pdf_m]] = temp[1:end - 1] - distr_m_Prime[1:end-1]
+    F[eqconds[:eq_marginal_pdf_m]] = view(temp, 1:nm-1) - view(distr_m_Prime, 1:nm-1)
     temp          = dropdims(sum(dPrs,dims=(1,3)),dims=(1,3))
     cum_k         = cumsum(temp)
-    # F[eqconds[:eq_marginal_pdf_k]] = view(temp, 1:nk-1) - view(distr_k_Prime, 1:nk-1)
-F[eqconds[:eq_marginal_pdf_k]] = temp[1:end - 1] - distr_k_Prime[1:end-1]
+    F[eqconds[:eq_marginal_pdf_k]] = view(temp, 1:nk-1) - view(distr_k_Prime, 1:nk-1)
     temp          = distr_y' * Π # dropdims(sum(dPrs,dims=(1,2)),dims=(1,2))
     cum_h         = cumsum(temp')
-    # F[eqconds[:eq_marginal_pdf_y]] = view(temp, 1:ny-1) - view(distr_y_Prime, 1:ny-1)
-F[eqconds[:eq_marginal_pdf_y]] = temp[1:end - 1] - distr_y_Prime[1:end-1]
+    F[eqconds[:eq_marginal_pdf_y]] = view(temp, 1:ny-1) - view(distr_y_Prime, 1:ny-1)
 
     # Construct new copula of the distribution after accounting for effects of the initial perturbations
     cum_zero = zeros(eltype(θD), nm + 1, nk + 1, ny + 1)
     cum_dist_new = cumsum(cumsum(cumsum(dPrs; dims=3);dims=2);dims=1)
     cum_zero[2:end,2:end,2:end] = cum_dist_new
-    Copula2(x::AbstractVector, y::AbstractVector, z::AbstractVector) = DSGE.mylinearinterpolate3([0; cum_m], [0; cum_k], [0; cum_h],
+    Copula2(x::AbstractVector, y::AbstractVector, z::AbstractVector) = mylinearinterpolate3([0; cum_m], [0; cum_k], [0; cum_h],
                                                                                                  cum_zero, x, y, z)
     # Compute implied CDF # TODO: add marginal cdfs to the named tuple so we don't need to do this calculation all the time
     CDF_joint     = Copula2([0.0; cumsum(nt[:marginal_pdf_m_t])] + zeros(eltype(θD), nm + 1),
@@ -342,16 +298,15 @@ F[eqconds[:eq_marginal_pdf_y]] = temp[1:end - 1] - distr_y_Prime[1:end-1]
     distr_err        = ((distr_up)) .- reshape(nt[:distr_t], (nm, nk, ny))
 
     # Compute the DCT using the steady-state basis and calculate the change in free DCT coefficients
-    D_thet       = DSGE.compressD(dct_compression_indices[:copula], distr_err[1:end-1, 1:end-1, 1:end-1], DCD, IDCD, (nm, nk, ny))
+    D_thet       = compressD(dct_compression_indices[:copula], distr_err[1:end-1, 1:end-1, 1:end-1], DCD, IDCD, (nm, nk, ny))
     F[eqconds[:eq_copula]] =  D_thet .- XPrime[id[:copula_t]]
 
     # Compute distributional variables
     distr_m_act, distr_k_act, distr_y_act, share_borroweract, GiniWact, I90shareact, I90sharenetact, GiniXact, #=
         =# sdlogxact, P9010Cact, GiniCact, sdlgCact, P9010Iact, GiniIact, sdlogyact, w90shareact, P10Cact, P50Cact, P90Cact =
-        DSGE.distrSummaries(distr, c_a_star, c_n_star, inc, incgross, θ, (nm, nk, ny), grids)
+        distrSummaries(distr, c_a_star, c_n_star, inc, incgross, θ, (nm, nk, ny), grids)
 
-    # Htact                   = dot(view(distr_y, 1:ny-1), (view(y_grid, 1:ny-1) ./ H) .^ (tax_prog_scale))
-Htact                   = dot(distr_y[1:end-1], (y_grid[1:end-1] / H) .^ (tax_prog_scale))
+    Htact                   = dot(view(distr_y, 1:ny-1), (view(y_grid, 1:ny-1) ./ H) .^ (tax_prog_scale))
     F[first(eqconds[:eq_Ht])]           = log.(Ht_t)            - log.(Htact)
     F[first(eqconds[:eq_Gini_X])]        = log.(Gini_X_t)         - log.(GiniXact)
     F[first(eqconds[:eq_I90_share])]     = log.(I90_share_t)     - log.(I90shareact)

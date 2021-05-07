@@ -34,7 +34,9 @@ depr                    = θ[:δ_0] + δ_1 * (u_t - 1.0) + δ_2 / 2.0 * (u_t - 1
 Wagesum                 = N_t * w_t                                         # Total wages in economy t
 Wagesum′            = N′_t * w′_t                               # Total wages in economy t+1
 
-# Eficient ouput and employment
+# Efficient ouput and employment
+# Note, need the DSGE tag at the beginning b/c aggregate_equations is not included
+# as part of DSGE.jl but called via @include
 N_GAP                   = DSGE._bbl_employment(K_t, Z_t ./ (θ[:μ_p] * θ[:μ_w]), θ[:α], θ[:τ_lev], θ[:τ_prog], θ[:γ])
 Y_GAP                   = DSGE._bbl_output(K_t, Z_t, N_GAP, θ[:α])
 
@@ -51,9 +53,10 @@ incgross[1][:,:,end]   .= (y_ndgrid[:, :, end] .* profits_t)                    
 taxrev                  = incgross[1] .- inc[1]                                                 # tax revenues
 incgrossaux             = incgross[1]
 # Summary for aggregate human capital
-distr_y                 = sum(nt[:distr_t], dims=(1,2)) # TODO: can we replace this with nt[:marginal_pdf_y_t]??
-# Htact                   = dot(distr_y[1:end-1], (y_grid[1:end-1] ./ H).^((θ[:γ] + θ[:τ_prog]) / (θ[:γ] + τ_prog_t)))
-Htact                   = sum(distr_y[1:end-1] .* (y_grid[1:end-1] ./ H).^((θ[:γ] + θ[:τ_prog]) / (θ[:γ] + τ_prog_t)))
+# distr_y                 = sum(nt[:distr_t], dims=(1,2)) # TODO: can we replace this with nt[:marginal_pdf_y_t]??
+distr_y                 = nt[:marginal_pdf_y_t]
+Htact                   = dot(distr_y[1:end-1], (y_grid[1:end-1] ./ H).^((θ[:γ] + θ[:τ_prog]) / (θ[:γ] + τ_prog_t)))
+# Htact                   = sum(distr_y[1:end-1] .* (y_grid[1:end-1] ./ H).^((θ[:γ] + θ[:τ_prog]) / (θ[:γ] + τ_prog_t)))
 
 ############################################################################
 #           Error term calculations (i.e. model starts here)          #
@@ -62,16 +65,16 @@ Htact                   = sum(distr_y[1:end-1] .* (y_grid[1:end-1] ./ H).^((θ[:
 #-------- States -----------#
 # Error Term on exogeneous States
 # Shock processes
-F[eq_G]       = log.(G_sh′_t)         - θ[:ρ_G] * log.(G_sh_t)     # primary deficit shock
-F[eq_P]   = log.(P_sh′_t)         - θ[:ρ_P_sh] * log.(P_sh_t) # tax shock
+F[eq_G]       = log(G_sh′_t)         - θ[:ρ_G] * log(G_sh_t)     # primary deficit shock
+F[eq_P]   = log(P_sh′_t)         - θ[:ρ_P_sh] * log(P_sh_t) # tax shock
 
-F[eq_R]       = log.(R_sh′_t)         - θ[:ρ_R_sh] * log.(R_sh_t)     # Taylor rule shock
-F[eq_S]       = log.(S_sh′_t)         - θ[:ρ_S_sh] * log.(S_sh_t)     # uncertainty shock
+F[eq_R]       = log(R_sh′_t)         - θ[:ρ_R_sh] * log(R_sh_t)     # Taylor rule shock
+F[eq_S]       = log(S_sh′_t)         - θ[:ρ_S_sh] * log(S_sh_t)     # uncertainty shock
 
 # Stochastic states that can be directly moved (no feedback)
-F[eq_A]            = log.(A′_t)              - θ[:ρ_A] * log.(A_t)               # (unobserved) Private bond return fed-funds spread (produces goods out of nothing if negative)
-F[eq_Z]            = log.(Z′_t)              - θ[:ρ_Z] * log.(Z_t)               # TFP
-F[eq_Ψ]           = log.(Ψ′_t)              - θ[:ρ_Ψ] * log.(Ψ_t)             # Investment-good productivity
+F[eq_A]            = log(A′_t)              - θ[:ρ_A] * log(A_t)               # (unobserved) Private bond return fed-funds spread (produces goods out of nothing if negative)
+F[eq_Z]            = log(Z′_t)              - θ[:ρ_Z] * log(Z_t)               # TFP
+F[eq_Ψ]           = log(Ψ′_t)              - θ[:ρ_Ψ] * log(Ψ_t)             # Investment-good productivity
 
 F[eq_μ_p]            = log(μ_p′_t / θ[:μ_p])   - θ[:ρ_μ_p] * log(μ_p_t / θ[:μ_p])      # Process for markup target
 F[eq_μ_w]           = log(μ_w′_t / θ[:μ_w])   - θ[:ρ_μ_w] * log(μ_w_t / θ[:μ_w])   # Process for w-markup target
@@ -111,12 +114,12 @@ F[eq_tax_progressivity]        = log(τ_prog_t) - θ[:ρ_P] * log(τ_prog_t1)  -
                          (1.0 - θ[:ρ_P]) * θ[:γ_B_P] * (log(B_t)- nt[:B_t]) -
                          log(P_sh_t)
 
-#=F[eq_tax_level]         = avg_tax_rate_t - dot(nt[:distr_t], taxrev) / dot(nt[:distr_t], incgrossaux) # Union profits are taxed at average tax rate
+F[eq_tax_level]         = avg_tax_rate_t - dot(nt[:distr_t], taxrev) / dot(nt[:distr_t], incgrossaux) # Union profits are taxed at average tax rate
 
-F[eq_tax_revenue]            = log(T_t) - log(dot(nt[:distr_t], taxrev) + avg_tax_rate_t * union_profits_t)=#
-F[eq_tax_level]         = avg_tax_rate_t - sum(nt[:distr_t] .* taxrev) / sum(nt[:distr_t] .* incgrossaux) # Union profits are taxed at average tax rate
+F[eq_tax_revenue]            = log(T_t) - log(dot(nt[:distr_t], taxrev) + avg_tax_rate_t * union_profits_t)
+#=F[eq_tax_level]         = avg_tax_rate_t - sum(nt[:distr_t] .* taxrev) / sum(nt[:distr_t] .* incgrossaux) # Union profits are taxed at average tax rate
 
-F[eq_tax_revenue]            = log(T_t) - log(sum(nt[:distr_t] .* taxrev) + avg_tax_rate_t * union_profits_t)
+F[eq_tax_revenue]            = log(T_t) - log(sum(nt[:distr_t] .* taxrev) + avg_tax_rate_t * union_profits_t)=#
 
 F[eq_avg_tax_rate]  = log(avg_tax_rate_t) - θ[:ρ_τ] * log(avg_tax_rate_t1)  -
                             (1.0 - θ[:ρ_τ]) * nt[:avg_tax_rate_t] -
