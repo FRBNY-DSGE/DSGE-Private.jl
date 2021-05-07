@@ -50,7 +50,6 @@ function _jacobian!(m::BayerBornLuetticke)
     # Prepare elements used for uncompression
     ############################################################################
     # Matrices to take care of reduced degree of freedom in marginal distributions
-    # Γ  = shuffle_matrix(m[:distr_star], m[:marginal_pdf_m_t], m[:marginal_pdf_k_t], m[:marginal_pdf_y_t])
     Γ  = shuffle_matrix(m[:distr_star])
 
     # Matrices for discrete cosine transforms
