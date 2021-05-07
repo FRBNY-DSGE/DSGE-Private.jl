@@ -211,24 +211,27 @@ function Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, grids::Or
     GHHFA                    = ((θ[:γ] + τ_prog_t) / (θ[:γ] + 1.)) # transformation (scaling) for composite good
     tax_prog_scale           = (θ[:γ] + θ[:τ_prog]) / ((θ[:γ] + τ_prog_t))
     y_ndgrid_rel_H           = y_ndgrid ./ H
+    wages_times_labor        = mc_w_t * w_t * N_t
+    gross_labor_income       = (y_ndgrid_rel_H .^ tax_prog_scale) .* wages_times_labor
+    gross_labor_income_rel_Ht       = gross_labor_income ./ Ht_t
+    labor_income_rel_Ht = τ_level_t .* (gross_labor_income_rel_Ht) .^ (1. - τ_prog_t)
     entrep_profits           = view(y_ndgrid, :, :, ny) .* profits_t
     entrep_profits_net_taxes = τ_level_t .* entrep_profits.^(1.0 - τ_prog_t) # profit income net of taxes
-    inc = [  GHHFA .* τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)) .^ (1.0 - τ_prog_t) .+
-             (union_profits_t) .* (1.0 - avg_tax_rate_t) .* HW, # labor income (NEW)
+    inc = [  GHHFA .* labor_income_rel_Ht .+ (union_profits_t) .* (1.0 - avg_tax_rate_t) .* HW, # labor income (NEW)
              (rk_t - 1.0) .* k_ndgrid, # rental income
              eff_int .* m_ndgrid, # liquid asset Income
              k_ndgrid .* q_t,
-             τ_level_t .* (mc_w_t .* w_t .* N_t .* y_ndgrid_rel_H).^(1.0 - τ_prog_t) .* ((1.0 - τ_prog_t) / (θ[:γ] + 1)),
-             τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)).^(1.0 - τ_prog_t)] # capital liquidation Income (q=1 in steady state)
+             τ_level_t .* (wages_times_labor .* y_ndgrid_rel_H).^(1.0 - τ_prog_t) .* ((1.0 - τ_prog_t) / (θ[:γ] + 1)),
+             labor_income_rel_Ht] # capital liquidation Income (q=1 in steady state)
     inc[1][:,:,end] .= entrep_profits_net_taxes
     inc[5][:,:,end] .= 0.0
     inc[6][:,:,end] .= entrep_profits_net_taxes
 
-    incgross =[  (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)) .+ (union_profits_t),
+    incgross =[  gross_labor_income_rel_Ht .+ union_profits_t,
                  (rk_t .- 1.0) .* k_ndgrid,                                      # rental income # TODO: can we copy from inc?
                  eff_int .* m_ndgrid,                                        # liquid asset Income
                  k_ndgrid .* q_t,
-                 (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t))]           # capital liquidation Income (q=1 in steady state)
+                 gross_labor_income_rel_Ht]           # capital liquidation Income (q=1 in steady state)
     incgross[1][:,:,end] .= entrep_profits
     incgross[5][:,:,end] .= entrep_profits
 
@@ -238,8 +241,7 @@ function Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, grids::Or
     F[first(eqconds[:eq_tax_level])] = avg_tax_rate_t - tot_taxrev / dot(distr, incgrossaux)
     F[first(eqconds[:eq_tax_revenue])]    = log(T_t) - log(tot_taxrev + avg_tax_rate_t * (union_profits_t))
 
-    inc[6] = τ_level_t .* (y_ndgrid_rel_H.^tax_prog_scale .* mc_w_t .* w_t .* N_t ./ (Ht_t)).^(1.0 - τ_prog_t) .+
-        ((1.0 .- mc_w_t) .* w_t .* N_t) .* (1.0 .- avg_tax_rate_t)
+    inc[6] = labor_income_rel_Ht .+ ((1.0 .- mc_w_t) .* w_t .* N_t) .* (1.0 .- avg_tax_rate_t)
     inc[6][:,:,end] .= entrep_profits_net_taxes
 
     # Calculate optimal policies
@@ -254,7 +256,7 @@ function Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, grids::Or
         end
     end
     c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
-                    EGM_policyupdate(EVmPrime, EVkPrime, q_t, π_t, RB_t .* A_t, 1.0, inc, θ, grids, false) # policy iteration
+                    EGM_policyupdate(EVmPrime, EVkPrime, q_t, π_t, RB_t * A_t, 1.0, inc, θ, grids, false) # policy iteration
 
     # Update marginal values
     Vk_new, Vm_new = updateV(EVkPrime, c_a_star, c_n_star, m_n_star, rk_t - 1.0, q_t, θ, m_grid, Π) # update expected marginal values time t
@@ -262,15 +264,15 @@ function Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, grids::Or
     # Calculate error terms on marginal values
     Vm_err        = log.((Vm_new)) - nt[:Vm_t]
     Vm_thet       = compress(dct_compression_indices[:Vm], Vm_err, DC, IDC, (nm, nk, ny))
-    F[eqconds[:eq_marginal_value_bonds]] = X[id[:Vm_t]] .- Vm_thet
+    F[eqconds[:eq_marginal_value_bonds]] = X[id[:Vm_t]] - Vm_thet
 
     Vk_err        = log.((Vk_new)) - nt[:Vk_t]
     Vk_thet       = compress(dct_compression_indices[:Vk], Vk_err, DC, IDC, (nm, nk, ny))
-    F[eqconds[:eq_marginal_value_capital]] = X[id[:Vk_t]] .- Vk_thet
+    F[eqconds[:eq_marginal_value_capital]] = X[id[:Vk_t]] - Vk_thet
 
     # Error Term on distribution (in levels, states)
     dPrime        = DirectTransition(m_a_star,  m_n_star, k_a_star, distr, θ[:λ],
-                                          Π, (nm, nk, ny), m_grid, k_grid)
+                                     Π, (nm, nk, ny), m_grid, k_grid)
     dPrs          = reshape(dPrime, nm, nk, ny)
     temp          = dropdims(sum(dPrs,dims=(2,3)),dims=(2,3))
     cum_m         = cumsum(temp)
@@ -289,17 +291,17 @@ function Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, grids::Or
     Copula2(x::AbstractVector, y::AbstractVector, z::AbstractVector) = mylinearinterpolate3([0; cum_m], [0; cum_k], [0; cum_h],
                                                                                                  cum_zero, x, y, z)
     # Compute implied CDF # TODO: add marginal cdfs to the named tuple so we don't need to do this calculation all the time
-    CDF_joint     = Copula2([0.0; cumsum(nt[:marginal_pdf_m_t])] + zeros(eltype(θD), nm + 1),
-                            [0.0; cumsum(nt[:marginal_pdf_k_t])] + zeros(eltype(θD), nk + 1),
-                            [0.0; cumsum(nt[:marginal_pdf_y_t])] + zeros(eltype(θD), ny + 1)) # roughly 5% of time
+    CDF_joint     = Copula2([0.0; cumsum(nt[:marginal_pdf_m_t])] .+ zero(eltype(θD)),
+                            [0.0; cumsum(nt[:marginal_pdf_k_t])] .+ zero(eltype(θD)),
+                            [0.0; cumsum(nt[:marginal_pdf_y_t])] .+ zero(eltype(θD))) # roughly 5% of time
 
     # Get implied distribution and compute the error relative to steady state
     distr_up         = diff(diff(diff(CDF_joint; dims=3);dims=2);dims=1)
-    distr_err        = ((distr_up)) .- reshape(nt[:distr_t], (nm, nk, ny))
+    distr_err        = distr_up - nt[:distr_t]
 
     # Compute the DCT using the steady-state basis and calculate the change in free DCT coefficients
     D_thet       = compressD(dct_compression_indices[:copula], distr_err[1:end-1, 1:end-1, 1:end-1], DCD, IDCD, (nm, nk, ny))
-    F[eqconds[:eq_copula]] =  D_thet .- XPrime[id[:copula_t]]
+    F[eqconds[:eq_copula]] =  D_thet - XPrime[id[:copula_t]]
 
     # Compute distributional variables
     distr_m_act, distr_k_act, distr_y_act, share_borroweract, GiniWact, I90shareact, I90sharenetact, GiniXact, #=
@@ -307,14 +309,14 @@ function Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, grids::Or
         distrSummaries(distr, c_a_star, c_n_star, inc, incgross, θ, (nm, nk, ny), grids)
 
     Htact                   = dot(view(distr_y, 1:ny-1), (view(y_grid, 1:ny-1) ./ H) .^ (tax_prog_scale))
-    F[first(eqconds[:eq_Ht])]           = log.(Ht_t)            - log.(Htact)
-    F[first(eqconds[:eq_Gini_X])]        = log.(Gini_X_t)         - log.(GiniXact)
-    F[first(eqconds[:eq_I90_share])]     = log.(I90_share_t)     - log.(I90shareact)
-    F[first(eqconds[:eq_I90_share_net])]  = log.(I90_share_net_t) - log.(I90sharenetact)
+    F[first(eqconds[:eq_Ht])]           = log(Ht_t)            - log(Htact)
+    F[first(eqconds[:eq_Gini_X])]        = log(Gini_X_t)         - log(GiniXact)
+    F[first(eqconds[:eq_I90_share])]     = log(I90_share_t)     - log(I90shareact)
+    F[first(eqconds[:eq_I90_share_net])]  = log(I90_share_net_t) - log(I90sharenetact)
 
-    F[first(eqconds[:eq_W90_share])]     = log.(W90_share_t)     - log.(w90shareact)
-    F[first(eqconds[:eq_sd_log_y])]       = log.(sd_log_y_t)      - log.(sdlogyact)
-    F[first(eqconds[:eq_Gini_C])]        = log.(Gini_C_t)        - log.(GiniCact)
+    F[first(eqconds[:eq_W90_share])]     = log(W90_share_t)     - log(w90shareact)
+    F[first(eqconds[:eq_sd_log_y])]       = log(sd_log_y_t)      - log(sdlogyact)
+    F[first(eqconds[:eq_Gini_C])]        = log(Gini_C_t)        - log(GiniCact)
 
     return F
 end
