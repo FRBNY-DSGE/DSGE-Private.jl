@@ -1,14 +1,17 @@
 """
 ```
-find_steadystate(m::BayerBornLuetticke)
+find_steadystate(m::BayerBornLuetticke; verbose::Symbol = :none, skip_coarse_grid::Bool = false)
 ```
-
 Find the stationary equilibrium capital stock.
 
-# Returns
-- `KSS`: steady-state capital stock
-- `VmSS`, `VkSS`: marginal value functions
-- `distrSS::Array{Float64,3}`: steady-state distribution of idiosyncratic states, computed by [`Ksupply()`](@ref)
+### Keyword Arguments
+- `verbose`: verbosity of print statements at 3 different levels `[:none, :low, :high]`
+- `skip_coarse_grid`: skip using a coarse grid to get close to the steady-state capital stock
+
+### Outputs
+- `KSS::Float64`: steady-state capital stock
+- `VmSS::Array{Float64,3}`, `VkSS::Array{Float64,3}`: marginal value functions
+- `distrSS::Array{Float64,3}`: steady-state distribution of idiosyncratic states, computed by `Ksupply`
 """
 function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                           skip_coarse_grid::Bool = false) where {T <: Real}

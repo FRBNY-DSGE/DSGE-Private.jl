@@ -23,22 +23,26 @@ Compute distributional summary statistics, e.g. Gini indexes, top-10%
 income and wealth shares, and 10%, 50%, and 90%-consumption quantiles.
 
 ### Arguments
-- `distr`: joint distribution over bonds, capital and income ``(m \\times k \\times y)``
-- `c_a_star`,`c_n_star`: optimal consumption policies with [`a`] or without [`n`]
+- `distr::AbstractArray`: joint distribution over bonds, capital and income ``(m \\times k \\times y)``
+- `c_a_star::AbstractArray`,`c_n_star::AbstractArray`: optimal consumption policies with [`a`] or without [`n`]
     capital adjustment
-- `inc`: vector of (on grid-)incomes, consisting of labor income (scaled by ``\\frac{\\gamma-\\tau^P}{1+\\gamma}``, plus labor union-profits),
+- `inc::AbstractVector`: vector of (on grid-)incomes, consisting of
+    labor income (scaled by ``\\frac{\\gamma-\\tau^P}{1+\\gamma}``, plus labor union-profits),
     rental income, liquid asset income, capital liquidation income,
     labor income (scaled by ``\\frac{1-\\tau^P}{1+\\gamma}``, without labor union-profits),
     and labor income (without scaling or labor union-profits)
-- `incgross`: vector of (on grid-) *pre-tax* incomes, consisting of
+- `incgross::AbstractVector`: vector of (on grid-) *pre-tax* incomes, consisting of
     labor income (without scaling, plus labor union-profits), rental income,
     liquid asset income, capital liquidation income,
     labor income (without scaling or labor union-profits)
+- `θ::NamedTuple`: map names of economic parameters to values
+- `dims::NTuple{3,Int}`: dimension of idiosyncratic state space
+- `grids::OrderedDict`: maps names of quantities related to the idiosyncratic state space to their values (e.g. `m_grid`)
 """
-function distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
-                        c_n_star::AbstractArray, inc::AbstractArray,
-                        incgross::AbstractArray, θ::NamedTuple,
-                        dims::NTuple{3, Int}, grids::OrderedDict)
+function distrSummaries(distr::AbstractArray{T, 3}, c_a_star::AbstractArray,
+                        c_n_star::AbstractArray, inc::AbstractVector,
+                        incgross::AbstractVector, θ::NamedTuple,
+                        dims::NTuple{3, Int}, grids::OrderedDict) where {T <: Real}
     # Set up
     nm, nk, ny = dims
     m_grid = get_gridpts(grids, :m_grid)::Vector{Float64}

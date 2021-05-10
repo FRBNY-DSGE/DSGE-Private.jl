@@ -8,25 +8,31 @@ Calculate the aggregate savings when households face idiosyncratic income risk.
 Idiosyncratic state is tuple ``(m,k,y)``, where
 ``m``: liquid assets, ``k``: illiquid assets, ``y``: labor income
 
-# Arguments
-- `R_guess`: real interest rate illiquid assets
-- `RB_guess`: nominal rate on liquid assets
-- `m`: DSGE model object
-- `Vm`: guess for marginal value function to liquid assets
-- `Vk`: guess for marginal value function to illiquid assets
-- `distr`: guess for distribution over idiosyncratic states
-- `inc`: Vector of different types of income in every idiosyncratic state
-- `eff_int`: effective interest rate on liquid assets
+### Inputs
+- `R_guess::T`: real interest rate illiquid assets
+- `RB_guess::T`: nominal rate on liquid assets
+- `m::BayerBornLuetticke`: DSGE model object
+- `Vm::AbstractArray`: guess for marginal value function to liquid assets
+- `Vk::AbstractArray`: guess for marginal value function to illiquid assets
+- `distr::AbstractArray`: guess for distribution over idiosyncratic states
+- `inc::AbstractArray`: Vector of different types of income in every idiosyncratic state
+- `eff_int::AbstractArray`: effective interest rate on liquid assets
 
-# Returns
-- `K`,`B`: aggregate saving in illiquid (`K`) and liquid (`B`) assets
+where `T <: Real`
+
+### Keyword Arguments
+- `verbose::Symbol = :none`: verbosity of print statements with values allowed among `[:none, :low, :high]`.
+- `coarse::Bool = false`: use a coarse grid when true.
+
+### Outputs
+- `K::T`,`B::T`: aggregate saving in illiquid (`K`) and liquid (`B`) assets
 -  `TransitionMat`,`TransitionMat_a`,`TransitionMat_n`: `sparse` transition matrices
     (average, with [`a`] or without [`n`] adjustment of illiquid asset)
-- `distr`: ergodic steady state of `TransitionMat`
+- `distr::Array{Float64,3}`: ergodic steady state of `TransitionMat`
 - `c_a_star`,`m_a_star`,`k_a_star`,`c_n_star`,`m_n_star`: optimal policies for
     consumption [`c`], liquid [`m`] and illiquid [`k`] asset, with [`a`] or
-    without [`n`] adjustment of illiquid asset
-- `V_m`,`V_k`: marginal value functions
+    without [`n`] adjustment of illiquid asset. All policies have type `Array{Float64,3}
+- `V_m::Array{Float64,3}`,`V_kArray{Float64,3}`: marginal value functions
 """
 function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::AbstractArray, Vk::AbstractArray, distr_guess::AbstractArray,
                  inc::AbstractArray, eff_int::AbstractArray; verbose::Symbol = :none, coarse::Bool = false) where {T <: Real, T1 <: Real}

@@ -1,3 +1,22 @@
+"""
+```
+updateV(EVk::Array,
+        c_a_star::Array,
+        c_n_star::Array,
+        m_n_star::Array,
+        rk::Real, q::Real,
+        θ::NamedTuple,
+        m_grid::AbstractVector{T1},
+        Π::Array) where {T1 <: Real}
+```
+updates value functions after running `EGM_policyupdate`
+to compute consumption and savings policies (`c_a_star`, `c_n_star`, `m_n_star`)
+implied by expected continuation values (`EVk` and `EVm`),
+given today's return (`rk`) on and price (`q`) of illiquid capital.
+The input `θ` maps the names of economic parameters to values, `m_grid` is
+the liquid asset grid, and `Π` is the
+transition matrix over idiosyncratic income states.
+"""
 function updateV(EVk::Array,
                  c_a_star::Array,
                  c_n_star::Array,

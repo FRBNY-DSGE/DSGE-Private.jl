@@ -1,16 +1,24 @@
 """
 ```
-Kdiff(K_guess,n_par,m_par)
+Kdiff(K_guess, m, initial = true,
+      Vm_guess = [], Vk_guess = [], distr_guess = [];
+      verbose = :none, coarse = false)
 ```
 Calculate the difference between the capital stock that is assumed and the capital
 stock that prevails under that guessed capital stock's implied prices when
 households face idiosyncratic income risk (Aiyagari model).
 
-Requires global functions `employment(K,A,m_par)`, `interest(K,A,N,m_par)`,
-`wage(K,A,N,m_par)`, `output(K,TFP,N,m_par)`, and [`Ksupply()`](@ref).
-
-# Arguments
+### Inputs
 - `K_guess::Float64`: capital stock guess
+- `m::BayerBornLuetticke`: model object representing the heterogeneous agent DSGE of Bayer, Born, and Luetticke
+- `initial::Bool`: is `K_guess` the initial guess?
+- `Vm_guess::AbstractArray`, `Vk_guess::AbstractArray`, `distr_guess::AbstractArray`: guesses
+    for marginal value functions and distributions
+
+### Keyword Arguments
+- `verbose::Symbol = :none`: verbosity of print statements with values allowed among `[:none, :low, :high]`.
+- `coarse::Bool = false`: use a coarse grid when true.
+
 """
 function Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
                initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),

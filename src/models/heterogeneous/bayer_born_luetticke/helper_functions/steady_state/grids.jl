@@ -8,10 +8,12 @@ end
 
 """
 ```
-init_grids!(m::BayerBornLuetticke)
+init_grids!(m::BayerBornLuetticke; coarse::Bool = false)
 ```
-This function constructs the grids used for distribution/functional states
-and stores them in m.grids
+constructs the grids used for distribution/functional states
+and stores them in m.grids. If `coarse = true`, then the
+constructed grid constructed has a smaller dimension
+and is thus "coarse".
 """
 function init_grids!(m::BayerBornLuetticke{T}; coarse::Bool = false) where {T <: Real}
 

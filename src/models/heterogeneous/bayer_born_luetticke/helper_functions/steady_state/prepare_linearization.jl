@@ -1,23 +1,19 @@
 """
 ```
-prepare_linearization(m, KSS, VmSS, VkSS, distrSS)
+prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose::Symbol = :none)
 ```
 Compute a number of equilibrium objects needed for linearization
 and updates the steady state values and indices in `m`.
 
-# Arguments
-- `KSS`: steady-state capital stock
-- `VmSS`, `VkSS`: marginal value functions
-- `distrSS::Array{Float64,3}`: steady-state distribution of idiosyncratic states, computed by [`Ksupply()`](@ref)
+### Inputs
+- `KSS::T`: steady-state capital stock
+- `VmSS::AbstractArray{T,3}`, `VkSS::AbstractArray{T,3}`: marginal value functions
+- `distrSS::AbstractArray{T,3}`: steady-state distribution of idiosyncratic states, computed by [`Ksupply()`](@ref)
 
-# Returns
-- `XSS::Array{Float64,1}`, `XSSaggr::Array{Float64,1}`: steady state vectors produced
-- `indexes`, `indexes_aggr`: `struct`s for accessing `XSS`,`XSSaggr` by variable names
-- `compressionIndexes::Array{Array{Int,1},1}`: indexes for compressed marginal value functions (``V_m`` and ``V_k``)
-- `Copula(x,y,z)`: function that maps marginals `x`,`y`,`z` to approximated joint distribution, produced by
-        [`mylinearinterpolate3()`](@ref)
-- `CDF_SS`, `CDF_m`, `CDF_k`, `CDF_y`: cumulative distribution functions (joint and marginals)
-- `distrSS::Array{Float64,3}`: steady state distribution of idiosyncratic states, computed by [`Ksupply()`](@ref)
+ where T <: Real
+
+### Keyword Arguments
+- `verbose`: verbosity of print statements at 3 different levels `[:none, :low, :high]`
 """
 function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArray{T, 3}, VkSS::AbstractArray{T, 3},
                                distrSS::AbstractArray{T, 3}; verbose::Symbol = :none) where {T <: Real}

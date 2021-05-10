@@ -1,15 +1,19 @@
 """
 ```
-EGM_policyupdate(EVm, EVk, Qminus, πminus, RBminus, Tshock, inc, m, warnme)
+EGM_policyupdate(EVm::Array, EVk::Array, Qminus::Real, πminus::Real,
+                 RBminus::Real, Tshock::Real, inc::Array,
+                 θ::NamedTuple, grids::OrderedDict, warnme::Bool)
 ```
 Find optimal policies, given marginal continuation values `EVm`, `EVk`, today's
 prices [`Qminus`, `πminus`,`RBminus`], and income [`inc`], using the
-Endogenous Grid Method.
+Endogenous Grid Method. The inputs `θ` and `grids` map
+the names of economic parameters and quantities related
+to the idiosyncratic state space to their values, respectively.
 
 Optimal policies are defined on the fixed grid, but optimal asset choices (`m` and `k`)
 are off-grid values.
 
-# Returns
+### Returns
 - `c_a_star`,`m_a_star`,`k_a_star`,`c_n_star`,`m_n_star`: optimal (on-grid) policies for
     consumption [`c`], liquid [`m`] and illiquid [`k`] asset, with [`a`] or
     without [`n`] adjustment of illiquid asset
