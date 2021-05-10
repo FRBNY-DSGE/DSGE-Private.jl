@@ -85,23 +85,32 @@ function _jacobian!(m::BayerBornLuetticke)
     n_marginals = length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) + length(id[:marginal_pdf_k_t])
     nxB         = length_X0 - n_dct_Vm - n_dct_Vk
     nxA         = length_X0 - n_marginals
+    n_vars      = n_model_states(m)
 
     # The objective function omits the Vm, Vk in the X vector, but we left off at index id[:Vm_t][1] - 1,
     # so after we use zeros for the Vm, Vk parts of X, we need to start from id[:Vm_t][1]. We then go
     # to nxB since that is the total number of X elements we want to perturb.
     # For XPrime, we ignore the marginal perturbations and then have to start at nxB + 1 since
     # x is a vector of length nxB + nxA.
-    obj_fnct    = x -> Fsys([x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
-                            [Zeros(n_marginals); x[nxB+1:end]],
-                            θ, m.grids, id, nt, m.equilibrium_conditions,
-                            get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
+    if haskey(get_settings(m), :inplace_jacobian) && get_setting(m, :inplace_jacobian)
+        BA = zeros(n_vars, nxB + nxA)
+        obj_fnct    = (F, x) -> Fsys(F, [x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
+                                     [Zeros(n_marginals); x[nxB+1:end]],
+                                     θ, m.grids, id, nt, m.equilibrium_conditions,
+                                     get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
+        ForwardDiff.jacobian!(BA, obj_fnct, zeros(n_vars), zeros(nxB+nxA)) # todo move the y vector to be pre-allocated?
+    else
+        obj_fnct    = x -> Fsys([x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
+                                [Zeros(n_marginals); x[nxB+1:end]],
+                                θ, m.grids, id, nt, m.equilibrium_conditions,
+                                get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
 
-    # TODO: make Fsys in place? Would it make sense to make Fsys in place in general, particularly w.r.t Fsys_agg?
-    # Relatedly, could we use a sparsity pattern to do the autodiffing so we don't need to do a bunch of copying
-    # for SGU_estim and can just directly differentiate into the Jacobian by using the correct sparsity matrix?
-    BA          = ForwardDiff.jacobian(obj_fnct, zeros(nxB+nxA))
+        # TODO: make Fsys in place? Would it make sense to make Fsys in place in general, particularly w.r.t Fsys_agg?
+        # Relatedly, could we use a sparsity pattern to do the autodiffing so we don't need to do a bunch of copying
+        # for SGU_estim and can just directly differentiate into the Jacobian by using the correct sparsity matrix?
+        BA          = ForwardDiff.jacobian(obj_fnct, zeros(nxB+nxA))
+    end
 
-    n_vars = n_model_states(m)
     A      = zeros(n_vars, n_vars)
     B      = zeros(n_vars, n_vars)
 
@@ -170,9 +179,16 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     ############################################################################
 
     length_X0   = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
-    BA          = ForwardDiff.jacobian(x -> Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ,
+    if haskey(get_settings(m), :inplace_jacobian) && get_setting(m, :inplace_jacobian)
+        BA = zeros(length_X0, 2 * length_X0) # STORE THIS SOMEWHERE, maybe as a setting
+        ForwardDiff.jacobian!(BA, (F, x) -> Fsys_agg(F, nx[1:length_X0], x[length_X0+1:end], θ,
                                                      m.grids, id, nt, aggr_eqconds),
-                                       zeros(2 * length_X0)) # TODO: use SparseDiffTools.jl and also write a function
+                              zeros(2 * length_X0)) # STORE THE ZEROS as a setting somewhere too
+    else
+        BA          = ForwardDiff.jacobian(x -> Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ,
+                                                         m.grids, id, nt, aggr_eqconds),
+                                           zeros(2 * length_X0)) # TODO: use SparseDiffTools.jl and also write a function
+    end
     Aa          = BA[:, length_X0+1:end] # aggregate A       # to create the required Jacobian sparsity pattern
     Ba          = BA[:, 1:length_X0]     # aggregate B
 
