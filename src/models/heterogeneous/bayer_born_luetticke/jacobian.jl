@@ -12,8 +12,8 @@ should set `m <= Setting(:linearize_heterogeneous_block, false)`.
 In this case, the Jacobians are already stored in `m` and
 are updated in place.
 
-# Returns
-- `A`,`B`: first derivatives of `Fsys` with respect to arguments `X` [`B`] and
+### Outputs
+- `A::Matrix`,`B::Matrix`: first derivatives of `Fsys` with respect to arguments `X` [`B`] and
     `XPrime` [`A`]
 """
 @inline function jacobian(m::BayerBornLuetticke{T}) where {T <: Real}
@@ -92,24 +92,12 @@ function _jacobian!(m::BayerBornLuetticke)
     # to nxB since that is the total number of X elements we want to perturb.
     # For XPrime, we ignore the marginal perturbations and then have to start at nxB + 1 since
     # x is a vector of length nxB + nxA.
-    if haskey(get_settings(m), :inplace_jacobian) && get_setting(m, :inplace_jacobian)
-        BA = zeros(n_vars, nxB + nxA)
-        obj_fnct    = (F, x) -> Fsys(F, [x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
-                                     [Zeros(n_marginals); x[nxB+1:end]],
-                                     θ, m.grids, id, nt, m.equilibrium_conditions,
-                                     get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
-        ForwardDiff.jacobian!(BA, obj_fnct, zeros(n_vars), zeros(nxB+nxA)) # todo move the y vector to be pre-allocated?
-    else
-        obj_fnct    = x -> Fsys([x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
-                                [Zeros(n_marginals); x[nxB+1:end]],
-                                θ, m.grids, id, nt, m.equilibrium_conditions,
-                                get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
-
-        # TODO: make Fsys in place? Would it make sense to make Fsys in place in general, particularly w.r.t Fsys_agg?
-        # Relatedly, could we use a sparsity pattern to do the autodiffing so we don't need to do a bunch of copying
-        # for SGU_estim and can just directly differentiate into the Jacobian by using the correct sparsity matrix?
-        BA          = ForwardDiff.jacobian(obj_fnct, zeros(nxB+nxA))
-    end
+    BA = zeros(n_vars, nxB + nxA)
+    obj_fnct    = (F, x) -> Fsys(F, [x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
+                                 [Zeros(n_marginals); x[nxB+1:end]],
+                                 θ, m.grids, id, nt, m.equilibrium_conditions,
+                                 get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
+    ForwardDiff.jacobian!(BA, obj_fnct, zeros(n_vars), zeros(nxB+nxA))
 
     A      = zeros(n_vars, n_vars)
     B      = zeros(n_vars, n_vars)
@@ -179,16 +167,17 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     ############################################################################
 
     length_X0   = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
-    if haskey(get_settings(m), :inplace_jacobian) && get_setting(m, :inplace_jacobian)
-        BA = zeros(length_X0, 2 * length_X0) # STORE THIS SOMEWHERE, maybe as a setting
-        ForwardDiff.jacobian!(BA, (F, x) -> Fsys_agg(F, nx[1:length_X0], x[length_X0+1:end], θ,
-                                                     m.grids, id, nt, aggr_eqconds),
-                              zeros(2 * length_X0)) # STORE THE ZEROS as a setting somewhere too
+    if haskey(get_settings(m), :aggregate_block_jacobian)
+        BA = get_setting(m, :aggregate_block_jacobian)::Matrix{T}
+        eval_vec = get_setting(m, :aggregate_block_eval_vec)::Vector{T}
     else
-        BA          = ForwardDiff.jacobian(x -> Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ,
-                                                         m.grids, id, nt, aggr_eqconds),
-                                           zeros(2 * length_X0)) # TODO: use SparseDiffTools.jl and also write a function
+        BA = zeros(T, length_X0, 2 * length_X0)
+        eval_vec = zeros(T, 2 * length_X0)
+        m <= Setting(:aggregate_block_jacobian, BA)
+        m <= Setting(:aggregate_block_eval_vec, eval_vec)
     end
+    ForwardDiff.jacobian!(BA, (F, x) -> Fsys_agg(F, nx[1:length_X0], x[length_X0+1:end], θ,
+                                                 m.grids, id, nt, aggr_eqconds), eval_vec)
     Aa          = BA[:, length_X0+1:end] # aggregate A       # to create the required Jacobian sparsity pattern
     Ba          = BA[:, 1:length_X0]     # aggregate B
 

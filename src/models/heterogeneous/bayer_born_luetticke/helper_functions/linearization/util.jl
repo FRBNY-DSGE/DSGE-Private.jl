@@ -1,6 +1,11 @@
-##########################################################
-# Matrix to remove one degree of freedom from distribution
-#---------------------------------------------------------
+"""
+```
+shuffle_matrix(distr)
+```
+computes a matrix (linear transformation)
+which removes one degree of freedom from a distribution over
+3 idiosyncratic states
+"""
 function shuffle_matrix(distr)
     nm, nk, ny = size(distr)
 
@@ -38,6 +43,7 @@ function tot_dual(x::ForwardDiff.Dual)
     return a
 end
 tot_dual(x::T) where {T <: Real} = zero(T)
+
 function realpart(x::ForwardDiff.Dual)
     a = ForwardDiff.value(x)
     return a
