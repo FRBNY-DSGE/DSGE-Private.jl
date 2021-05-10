@@ -909,20 +909,21 @@ function setup_indices!(m::BayerBornLuetticke)
     eqconds[:eq_marginal_value_capital] = endo[:Vk′_t]
 
     # Aggregate blocks
-    for (i, name) in enumerate([# Exogenous shocks
-                                :eq_A, :eq_Z, :eq_Ψ, :eq_mp, :eq_μ_p, :eq_μ_w,
-                                :eq_σ, :eq_union_retained, :eq_retained,
+    aggr_eqn_names = [# Exogenous shocks
+                      :eq_A, :eq_Z, :eq_Ψ, :eq_mp, :eq_μ_p, :eq_μ_w,
+                      :eq_σ, :eq_union_retained, :eq_retained,
 
-                                :eq_LY, :eq_LB, :eq_LT, :eq_LI, :eq_Lw,
-                                :eq_Lq, :eq_LC, :eq_Lavg_tax_rate,
-                                :eq_Lτ_prog,
+                      :eq_LY, :eq_LB, :eq_LT, :eq_LI, :eq_Lw,
+                      :eq_Lq, :eq_LC, :eq_Lavg_tax_rate,
+                      :eq_Lτ_prog,
 
-                                :eq_G, :eq_P, :eq_R, :eq_S])
+                      :eq_G, :eq_P, :eq_R, :eq_S]
+    for (i, name) in enumerate(aggr_eqn_names)
         eqconds[name] = (n_distr_states + i):(n_distr_states + i)
         aggr_eqconds[name] = i
     end
 
-    n_aggr_states = length(aggr_eqconds)
+    n_aggr_states = length(aggr_eqn_names)
 
     for (i, name) in enumerate([# Endogenous model states (for the jumps)
                                 :eq_capital_return, :eq_wages_firms_pay, :eq_capital_market_clear,
