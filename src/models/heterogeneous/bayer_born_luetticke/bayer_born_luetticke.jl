@@ -264,7 +264,7 @@ function BayerBornLuetticke(subspec::String="ss0";
     end
 
     if get_setting(m, :original_dataset)
-        _init_original_observable_mappings!(m, m.observables)
+        _init_original_observable_mappings!(m, m.observable_mappings)
     end
 
     # Initialize model indices
