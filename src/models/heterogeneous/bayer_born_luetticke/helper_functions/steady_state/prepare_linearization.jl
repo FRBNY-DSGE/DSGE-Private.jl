@@ -157,8 +157,15 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     m <= Setting(:copula, Copula)
     # ------------------------------------------------------------------------------
 
+    # Aggregate steady state
     aggregate_steadystate!(m)
+
+    # Compute all indices, and construct OrderedDicts for jacobian
     setup_indices!(m)
+    id      = construct_prime_and_noprime_indices(m; only_aggregate = false)
+    aggr_id = construct_prime_and_noprime_indices(m; only_aggregate = true)
+    m <= Setting(:prime_and_noprime_indices, id)
+    m <= Setting(:prime_and_noprime_aggregate_indices, aggr_id)
 
     m
 end

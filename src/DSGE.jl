@@ -6,7 +6,8 @@ module DSGE
     using ArnoldiMethod, BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff
     using FieldMetadata, LaTeXStrings, Flatten, Setfield, Parameters # TODO: delete these lines
     using HDF5, Interpolations, JLD2, KrylovKit, LinearAlgebra
-    using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
+    using Missings, Nullables, Optim, Printf, Random, RecipesBase
+    using SparseArrays, SparseDiffTools, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
     using CSV, DataFrames, DataStructures, OrderedCollections
     using BandedMatrices: Zeros

@@ -43,7 +43,8 @@ function _jacobian!(m::BayerBornLuetticke)
     # Information needed from m for set up
     θ = parameters2namedtuple(m)
     nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    id = construct_prime_and_noprime_indices(m; only_aggregate = false)
+    # id = construct_prime_and_noprime_indices(m; only_aggregate = false)
+    id = get_setting(m, :prime_and_noprime_indices)::OrderedDict{Symbol, UnitRange{Int}}
     nm, nk, ny = get_idiosyncratic_dims(m)
 
     ############################################################################
@@ -143,7 +144,10 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     # Information needed from m for set up
     θ = parameters2namedtuple(m)
     nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    id = construct_prime_and_noprime_indices(m; only_aggregate = true)
+    # id = construct_prime_and_noprime_indices(m; only_aggregate = true)
+    # θ  = get_setting(m, :parameters_namedtuple)::NamedTuple
+    # nt = get_setting(m, :steadystate_namedtuple)::NamedTuple
+    id = get_setting(m, :prime_and_noprime_aggregate_indices)::OrderedDict{Symbol, Int}
 
     # Get index info
     eqconds          = m.equilibrium_conditions
@@ -166,18 +170,56 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     # Calculate derivatives of non-linear difference equation
     ############################################################################
 
-    length_X0   = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
-    if haskey(get_settings(m), :aggregate_block_jacobian)
-        BA = get_setting(m, :aggregate_block_jacobian)::Matrix{T}
-        eval_vec = get_setting(m, :aggregate_block_eval_vec)::Vector{T}
+    length_X0                  = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
+
+    # Sparsity differentiation settings
+    use_sparse_jac             = haskey(get_settings(m), :use_sparse_jacobian) && get_setting(m, :use_sparse_jacobian)
+    has_sparsity_pattern       = haskey(get_settings(m), :sparsity_pattern)
+
+    obj_fnct = (F, x) -> Fsys_agg(F, x[1:length_X0], x[length_X0+1:end], θ,
+                                  m.grids, id, nt, aggr_eqconds)
+
+    if use_sparse_jac && has_sparsity_pattern
+        sparsity_pattern = get_setting(m, :sparsity_pattern)::SparseMatrixCSC{T,Int}
+        colorvec = haskey(get_settings(m), :colorvec) ? get_setting(m, :colorvec)::Vector{Int} : matrix_colors(sparsity_pattern)
+
+        if haskey(get_settings(m), :sparse_aggregate_block_jacobian)
+            BA = get_setting(m, :sparse_aggregate_block_jacobian)::SparseMatrixCSC{T,Int}
+            input = get_setting(m, :aggregate_block_jacobian_input)::Vector{T}
+            output = get_setting(m, :aggregate_block_jacobian_output)::Vector{T}
+        else
+            BA = similar(sparsity_pattern)
+            input = zeros(T, 2 * length_X0)
+            output = similar(input, length_X0)
+            m <= Setting(:sparse_aggregate_block_jacobian, BA)
+            m <= Setting(:aggregate_block_jacobian_input, input)
+            m <= Setting(:aggregate_block_jacobian_output, output)
+        end
+
+        forwarddiff_color_jacobian!(BA, obj_fnct, input; dx = output,
+                                    colorvec = colorvec, sparsity = sparsity_pattern)
     else
-        BA = zeros(T, length_X0, 2 * length_X0)
-        eval_vec = zeros(T, 2 * length_X0)
-        m <= Setting(:aggregate_block_jacobian, BA)
-        m <= Setting(:aggregate_block_eval_vec, eval_vec)
+        if use_sparse_jac
+            warn_str = "No sparsity pattern provided, so a dense Jacobian will be computed via ForwardDiff" *
+                " instead of a sparse Jacobian via SparseDiffTools"
+            @warn warn_str
+        end
+
+        if haskey(get_settings(m), :aggregate_block_jacobian)
+            BA = get_setting(m, :aggregate_block_jacobian)::Matrix{T}
+            input = get_setting(m, :aggregate_block_jacobian_input)::Vector{T}
+            output = get_setting(m, :aggregate_block_jacobian_output)::Vector{T}
+        else
+            BA = Matrix{T}(undef, length_X0, 2 * length_X0)
+            input = zeros(T, 2 * length_X0)
+            output = similar(input, length_X0)
+            m <= Setting(:aggregate_block_jacobian, BA)
+            m <= Setting(:aggregate_block_jacobian_input, input)
+            m <= Setting(:aggregate_block_jacobian_output, output)
+        end
+        ForwardDiff.jacobian!(BA, obj_fnct, output, input)
     end
-    ForwardDiff.jacobian!(BA, (F, x) -> Fsys_agg(F, nx[1:length_X0], x[length_X0+1:end], θ,
-                                                 m.grids, id, nt, aggr_eqconds), eval_vec)
+
     Aa          = BA[:, length_X0+1:end] # aggregate A       # to create the required Jacobian sparsity pattern
     Ba          = BA[:, 1:length_X0]     # aggregate B
 

@@ -441,7 +441,7 @@ function init_parameters!(m::BayerBornLuetticke)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_τ: Persistence in tax level",
                    tex_label = "\\rho_{\\tau}")
-    m <= parameter(:γ_B_τ, 0., (-10., 10.), (10., 10.), SquareRoot(),
+    m <= parameter(:γ_B_τ, 0., (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_B_τ: Reaction of tax level to debt",
                    tex_label = "\\gamma_{B, \\tau}")
@@ -453,7 +453,7 @@ function init_parameters!(m::BayerBornLuetticke)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_P: Persistence in tax level",
                    tex_label = "\\rho_{P}")
-    m <= parameter(:γ_B_P, 0., (-10., 10.), (10., 10.), SquareRoot(),
+    m <= parameter(:γ_B_P, 0., (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_B_P: Reaction of tax level to debt",
                    tex_label = "\\gamma_{B, P}")
