@@ -95,8 +95,8 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
             if haskey(get_settings(m), :klein_track_backward_looking_states_only) &&
                 get_setting(m, :klein_track_backward_looking_states_only)
                 # jump variables are not added as model states to reduce dimensionality
-                RRR = shock_loading(m, TTT_jump)
-                CCC = zeros(n_model_states(m))
+                RRR = shock_loading(m)
+                CCC = zeros(n_backward_looking_states(m))
             else
                 # addd jump variables to model states
                 TTT, RRR = klein_transition_matrices(m, TTT, TTT_jump)
