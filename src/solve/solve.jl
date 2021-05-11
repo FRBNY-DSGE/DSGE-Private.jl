@@ -78,19 +78,33 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
                 # Augment states
                 TTT, RRR, CCC = augment_states(m, TTT_gensys, RRR_gensys, CCC_gensys)
             end
-        elseif get_setting(m, :solution_method) == :klein
-            TTT_jump, TTT_state, eu = klein(m)
 
-            if eu != 1
-                throw(KleinError())
+            return TTT, RRR, CCC
+        elseif get_setting(m, :solution_method) == :klein
+            TTT_jump, TTT, eu = klein(m)
+
+            if eu == -1
+                throw(KleinError("Equilibrium is locally indeterminate"))
+            elseif eu == -2
+                throw(KleinError("No local equilibrium exists"))
+            elseif eu == -3
+                throw(KleinError("Numerical error encountered during matrix inversions"))
             end
 
             # Transition
-            TTT, RRR = klein_transition_matrices(m, TTT_state, TTT_jump)
-            CCC = zeros(n_model_states(m))
-        end
+            if haskey(get_settings(m), :klein_track_backward_looking_states_only) &&
+                get_setting(m, :klein_track_backward_looking_states_only)
+                # jump variables are not added as model states to reduce dimensionality
+                RRR = shock_loading(m, TTT_jump)
+                CCC = zeros(n_model_states(m))
+            else
+                # addd jump variables to model states
+                TTT, RRR = klein_transition_matrices(m, TTT, TTT_jump)
+                CCC = zeros(n_model_states(m))
+            end
 
-        return TTT, RRR, CCC
+            return TTT, TTT_jump, RRR, CCC
+        end
     end
 end
 

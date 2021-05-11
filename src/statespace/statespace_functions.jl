@@ -195,16 +195,7 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verb
             measurement_equation = measurement(m, TTT, RRR, CCC)
 
         elseif solution_method == :klein
-            # Unpacking the method from solve to hang on to TTT_jump
-            TTT_jump, TTT_state, eu = klein(m)
-            if eu == -1
-                throw(KleinError("Equilibrium is locally indeterminate."))
-            elseif eu == -2
-                throw(KleinError("No local equilibrium exists."))
-            end
-
-            TTT, RRR = klein_transition_matrices(m, TTT_state, TTT_jump)
-            CCC      = zeros(size(TTT, 1))
+            TTT, TTT_jump, RRR, CCC = solve(m; verbose = verbose)
 
             if m.spec == "real_bond_mkup"
                 GDPeqn = construct_GDPeqn(m, TTT_jump)
@@ -214,13 +205,15 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verb
             elseif m.spec == "het_dsge" || m.spec == "rep_dsge"
                 TTT, RRR, CCC = augment_states(m, TTT, RRR, CCC)
                 measurement_equation = measurement(m, TTT, RRR, CCC)
+            elseif hasmethod(measurement, (typeof(m), typeof(TTT), typeof(TTT_jump), typeof(RRR), typeof(CCC)))
+                TTT, TTT_jump, RRR, CCC = augment_states(m, TTT, TTT_jump, RRR, CCC)
+                measurement_equation    = measurement(m, TTT, TTT_jump, RRR, CCC)
             else
                 TTT, RRR, CCC        = augment_states(m, TTT, RRR, CCC)
                 measurement_equation = measurement(m, TTT, RRR, CCC)
             end
 
             transition_equation = Transition(TTT, RRR, CCC)
-
         else
             throw("solution_method provided does not exist.")
         end

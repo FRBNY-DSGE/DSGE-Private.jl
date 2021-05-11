@@ -12,7 +12,7 @@ Klein (2004) algorithm.
     * 1: exists and is unique
     * -1: local indeterminacy
     * -2: local non-existence
-    * -3: numerical error during inversion steps
+    * -3: numerical error during matrix inversions
 """
 function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbose::Symbol = :none) where {T <: Real}
 
