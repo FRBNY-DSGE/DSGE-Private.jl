@@ -190,10 +190,17 @@ end
 if !replicate_original_output
     st_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_state_transition_states_only.jld2"), "r")
     @testset "State transition equations for BayerBornLuetticke" begin
+        _n_states = DSGE.n_backward_looking_states(m)
+        _n_jumps  = DSGE.n_jumps(m)
+        _n_exo    = DSGE.n_shocks_exogenous(m)
         @test TTT ≈ st_out["TTT"]
         @test TTT_jump ≈ st_out["TTT_jump"]
         @test RRR ≈ st_out["RRR"]
         @test CCC ≈ st_out["CCC"]
+        @test length(CCC) == _n_states
+        @test size(TTT) == (_n_states, _n_states)
+        @test size(TTT_jump) == (_n_jumps, _n_states)
+        @test size(RRR) == (_n_states, _n_exo)
     end
 end
 
@@ -212,11 +219,36 @@ end
 if !replicate_original_output
     meas_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_measurement_states_only.jld2"), "r")
     @testset "Measurement equations for BayerBornLuetticke" begin
+        _n_states = DSGE.n_backward_looking_states(m)
         @test meas[:ZZ] ≈ meas_out["ZZ"]
         @test meas[:DD] ≈ meas_out["DD"]
         @test meas[:QQ] ≈ meas_out["QQ"]
         @test meas[:EE] ≈ meas_out["EE"]
+        @test size(meas[:ZZ]) == (n_observables(m), _n_states)
     end
+end
+
+m1 = BayerBornLuetticke("ss1"; load_steadystate = true, load_jacobian = true,
+                        custom_settings =
+                       Dict{Symbol, Setting}(:save_steadystate => Setting(:save_steadystate, false),
+                                             :save_jacobian    => Setting(:save_jacobian, false),
+                                             :replicate_original_output =>
+                                             Setting(:replicate_original_output, replicate_original_output),
+                                             :steadystate_output_file =>
+                                             Setting(:steadystate_output_file,
+                                                     joinpath(refpath, "bayer_born_luetticke_steadystate_output.jld2")),
+                                             :jacobian_output_file =>
+                                             Setting(:jacobian_output_file,
+                                                     joinpath(refpath, "bayer_born_luetticke_jacobian_output.jld2"))))
+m1 <= Setting(:klein_inversion_method, :direct)
+TTT1, TTT_jump1, RRR1, CCC1 = solve(m1; verbose = :none)
+@testset "Check subspec 1 of BayerBornLuetticke" begin
+    @test size(TTT1, 1) == size(RRR1, 1)
+    @test size(TTT_jump1) == (DSGE.n_jumps(m1), DSGE.n_backward_looking_states(m1))
+    @test size(CCC1) == (size(TTT1, 1), )
+
+    m1 <= Setting(:klein_inversion_method, :minimum_norm)
+    @test_throws DSGE.KleinError solve(m1; verbose = :none)
 end
 
 # Check sparse jacobian
