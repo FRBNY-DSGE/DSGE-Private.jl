@@ -43,7 +43,7 @@ equilibrium conditions.
   here for filepath computation.
 
 * `subspec::String`: The model subspecification number, indicating that some
-  parameters from the original model spec (\"ss0\") are initialized
+  parameters from the original model spec (\"ss1\") are initialized
   differently. Cached here for filepath computation.
 
 * `settings::Dict{Symbol,Setting}`: Settings/flags that affect computation
@@ -98,8 +98,8 @@ mutable struct BayerBornLuetticke{T} <: AbstractHetModel{T}
     observables::OrderedDict{Symbol,Int}
     pseudo_observables::OrderedDict{Symbol,Int}
 
-    spec::String                                     # Model specification number (eg "m990")
-    subspec::String                                  # Model subspecification (eg "ss0")
+    spec::String                                     # Model specification (eg "bayer_born_luetticke")
+    subspec::String                                  # Model subspecification (eg "ss1")
     settings::Dict{Symbol,Setting}                   # Settings/flags for computation
     test_settings::Dict{Symbol,Setting}              # Settings/flags for testing mode
     rng::MersenneTwister                             # Random number generator
@@ -209,7 +209,7 @@ function init_model_indices!(m::BayerBornLuetticke)
 end
 
 # TODO: maybe add coarse as a kwarg
-function BayerBornLuetticke(subspec::String="ss0";
+function BayerBornLuetticke(subspec::String="ss1";
                             custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
                             load_steadystate::Bool = false, load_jacobian::Bool = false,
                             testing = false)
@@ -370,10 +370,6 @@ function init_parameters!(m::BayerBornLuetticke)
                    description = "Steady-state income tax rate level", tex_label = "\\tau^L")
     m <= parameter(:τ_prog, 0.12, fixed = true,
                    description = "Steady-state income tax rate progressivity", tex_label = "\\tau^P")
-    m <= parameter(:R, 1.01, fixed = true, # TODO: delete b/c unused
-                   description = "Steady-state return of capital (unused)", tex_label = "R")
-    m <= parameter(:K, 40., fixed = true, # TODO: delete b/c unused
-                   description = "Steady-state quantity of capital (unused)", tex_label = "K")
     m <= parameter(:Rbar, (m[:π] * (1.0675 ^ 0.25) - 1.), fixed = true,
                    description = "Borrowing wedge in interest rate", tex_label = "\\bar{R}")
 

@@ -36,7 +36,7 @@ end
 refpath = joinpath("..", "..", "..", "reference")
 
 # Set up model
-m = BayerBornLuetticke(; custom_settings =
+m = BayerBornLuetticke("ss0"; custom_settings =
                        Dict{Symbol, Setting}(:save_steadystate => Setting(:save_steadystate, false),
                                              :save_jacobian    => Setting(:save_jacobian, false),
                                              :replicate_original_output =>
