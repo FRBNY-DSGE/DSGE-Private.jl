@@ -3,8 +3,7 @@ isdefined(Base, :__precompile__) && __precompile__(false)
 module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
-    using ArnoldiMethod, BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff
-    using FieldMetadata, LaTeXStrings, Flatten, Setfield, Parameters # TODO: delete these lines
+    using ArnoldiMethod, BasisMatrices, BandedMatrices, BlockArrays, Distributed, Distributions, FileIO, FredData, ForwardDiff
     using HDF5, Interpolations, JLD2, KrylovKit, LinearAlgebra
     using Missings, Nullables, Optim, Printf, Random, RecipesBase
     using SparseArrays, SparseDiffTools, SpecialFunctions
