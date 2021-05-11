@@ -14,6 +14,7 @@ function shock_loading(m::BayerBornLuetticke{T}, TTT_jump::Matrix{T}) where {T <
     RRR      = Matrix{T}(undef, n_model_states(m)::Int, n_exo_sh)
 
     # Populate RRR in place
+    RRR[1:n_states, :] .= 0. # only a few entries are nonzero
     _shock_loading!(m, view(RRR, 1:n_states, :))
 
     # Map shocks to jumps

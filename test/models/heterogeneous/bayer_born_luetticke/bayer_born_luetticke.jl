@@ -1,4 +1,4 @@
-using DSGE, ModelConstructors, Test, JLD2, Random
+using DSGE, ModelConstructors, Test, JLD2, Random, SparseArrays
 
 # You should set regenerate_output = true only when you don't want to match the output
 # from the original implemenation by Bayer, Born, and Luetticke.
@@ -125,11 +125,11 @@ end
 # minimum norm method.
 m <= Setting(:linearize_heterogeneous_block, false)
 m <= Setting(:klein_inversion_method, :direct)
-TTT, RRR, CCC = solve(m; verbose = :none)
-# TTT2, RRR2 = DSGE.klein_transition_matrices(m, hx, gx)
+TTT, TTT_jump, RRR, CCC = solve(m; verbose = :none)
 if regenerate_output && !replicate_original_output
     JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_state_transition.jld2"), true, true, true, IOStream) do file
         write(file, "TTT", TTT)
+        write(file, "TTT_jump", TTT_jump)
         write(file, "RRR", RRR)
         write(file, "CCC", CCC)
     end
@@ -138,6 +138,7 @@ if !replicate_original_output
     st_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_state_transition.jld2"), "r")
     @testset "State transition equations for BayerBornLuetticke" begin
         @test TTT ≈ st_out["TTT"]
+        @test TTT_jump ≈ st_out["TTT_jump"]
         @test RRR ≈ st_out["RRR"]
         @test CCC ≈ st_out["CCC"]
     end
@@ -147,7 +148,7 @@ end
 for (i, k) in enumerate([:σ_A, :σ_Z, :σ_Ψ, :σ_μ_p, :σ_μ_w, :σ_G, :σ_R, :σ_S, :σ_P])
     m[k] = i * .01
 end
-meas = DSGE.measurement(m, TTT, RRR, CCC)
+meas = DSGE.measurement(m, TTT, TTT_jump, RRR, CCC)
 if regenerate_output && !replicate_original_output
     JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_measurement.jld2"), true, true, true, IOStream) do file
         write(file, "ZZ", meas[:ZZ])
@@ -173,4 +174,58 @@ else
         @test meas[:QQ] ≈ meas_out["QQ"]
         @test meas[:EE] ≈ meas_out["EE"]
     end
+end
+
+# Now test solve and measurement w/out tracking jumps as model states
+m <= Setting(:klein_track_backward_looking_states_only, true)
+TTT, TTT_jump, RRR, CCC = solve(m; verbose = :none)
+if regenerate_output && !replicate_original_output
+    JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_state_transition_states_only.jld2"), true, true, true, IOStream) do file
+        write(file, "TTT", TTT)
+        write(file, "TTT_jump", TTT_jump)
+        write(file, "RRR", RRR)
+        write(file, "CCC", CCC)
+    end
+end
+if !replicate_original_output
+    st_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_state_transition_states_only.jld2"), "r")
+    @testset "State transition equations for BayerBornLuetticke" begin
+        @test TTT ≈ st_out["TTT"]
+        @test TTT_jump ≈ st_out["TTT_jump"]
+        @test RRR ≈ st_out["RRR"]
+        @test CCC ≈ st_out["CCC"]
+    end
+end
+
+for (i, k) in enumerate([:σ_A, :σ_Z, :σ_Ψ, :σ_μ_p, :σ_μ_w, :σ_G, :σ_R, :σ_S, :σ_P])
+    m[k] = i * .01
+end
+meas = DSGE.measurement(m, TTT, TTT_jump, RRR, CCC)
+if regenerate_output && !replicate_original_output
+    JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_measurement_states_only.jld2"), true, true, true, IOStream) do file
+        write(file, "ZZ", meas[:ZZ])
+        write(file, "DD", meas[:DD])
+        write(file, "QQ", meas[:QQ])
+        write(file, "EE", meas[:EE])
+    end
+end
+if !replicate_original_output
+    meas_out = JLD2.jldopen(joinpath(refpath, "bayer_born_luetticke_measurement_states_only.jld2"), "r")
+    @testset "Measurement equations for BayerBornLuetticke" begin
+        @test meas[:ZZ] ≈ meas_out["ZZ"]
+        @test meas[:DD] ≈ meas_out["DD"]
+        @test meas[:QQ] ≈ meas_out["QQ"]
+        @test meas[:EE] ≈ meas_out["EE"]
+    end
+end
+
+# Check sparse jacobian
+m <= Setting(:use_sparse_jacobian, true)
+m <= Setting(:sparsity_pattern, sparse(get_setting(m, :aggregate_block_jacobian)))
+dense_A = copy(m[:A].value)
+dense_B = copy(m[:B].value)
+DSGE.jacobian(m)
+@testset "Sparse differentiation for Jacobian" begin
+    @test dense_A ≈ m[:A].value
+    @test dense_B ≈ m[:B].value
 end

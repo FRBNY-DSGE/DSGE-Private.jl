@@ -2,6 +2,7 @@
 ```
 measurement(m::BayerBornLuetticke{T},
             TTT::AbstractMatrix{T},
+            TTT_jump::AbstractMatrix{T},
             RRR::AbstractMatrix{T},
             CCC::AbstractVector{T}) where {T<:Real}
 ```
@@ -21,6 +22,7 @@ Cov(ϵ_t, u_t) = 0
 """
 function measurement(m::BayerBornLuetticke{T},
                      TTT::AbstractMatrix{T},
+                     TTT_jump::AbstractMatrix{T},
                      RRR::AbstractMatrix{T},
                      CCC::AbstractVector{T}) where {T<:Real}
 
@@ -40,45 +42,59 @@ function measurement(m::BayerBornLuetticke{T},
     _n_observables = n_observables(m)
     _n_shocks_exogenous = n_shocks_exogenous(m)
 
-    ZZ = zeros(_n_observables, _n_model_states)
-    DD = zeros(_n_observables)
-    EE = zeros(_n_observables, _n_observables)
-    QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
+    track_states_only = haskey(get_settings(m), :klein_track_backward_looking_states_only) &&
+        get_setting(m, :klein_track_backward_looking_states_only)
+    _ZZ = track_states_only ? spzeros(_n_observables, _n_model_states) : zeros(_n_observables, _n_model_states) # _ZZ is a selection matrix
+    DD  = zeros(_n_observables)
+    EE  = zeros(_n_observables, _n_observables)
+    QQ  = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
 
     ## Measurement equation: states to observables
 
     # GDP growth per capita
-    ZZ[obs[:obs_gdp], first(endo[:Ygrowth′_t])] = 1.0
+    _ZZ[obs[:obs_gdp], first(endo[:Ygrowth′_t])] = 1.0
 
     # Consumption growth per capita
-    ZZ[obs[:obs_consumption], first(endo[:Cgrowth′_t])] = 1.0
+    _ZZ[obs[:obs_consumption], first(endo[:Cgrowth′_t])] = 1.0
 
     # Investment growth per capita
-    ZZ[obs[:obs_investment], first(endo[:Igrowth′_t])] = 1.0
+    _ZZ[obs[:obs_investment], first(endo[:Igrowth′_t])] = 1.0
 
     # Wage growth
-    ZZ[obs[:obs_wages], first(endo[:wgrowth′_t])] = 1.0
+    _ZZ[obs[:obs_wages], first(endo[:wgrowth′_t])] = 1.0
 
     # Hours
-    ZZ[obs[:obs_hours], first(endo[:N′_t])] = 1.0
+    _ZZ[obs[:obs_hours], first(endo[:N′_t])] = 1.0
 
     # GDP Deflator inflation
-    ZZ[obs[:obs_gdpdeflator], first(endo[:π′_t])] = 1.0
+    _ZZ[obs[:obs_gdpdeflator], first(endo[:π′_t])] = 1.0
 
     # Nominal interest rate
-    ZZ[obs[:obs_nominalrate], first(endo[:RB′_t])] = 1.0
+    _ZZ[obs[:obs_nominalrate], first(endo[:RB′_t])] = 1.0
 
     # Wealth inequality
-    ZZ[obs[:obs_W90share], first(endo[:W90_share′_t])] = 1.0
+    _ZZ[obs[:obs_W90share], first(endo[:W90_share′_t])] = 1.0
 
     # Income inequality
-    ZZ[obs[:obs_I90share], first(endo[:I90_share′_t])] = 1.0
+    _ZZ[obs[:obs_I90share], first(endo[:I90_share′_t])] = 1.0
 
     # Idiosyncratic income risk
-    ZZ[obs[:obs_sigmasq], first(endo[:σ′_t])] = 1.0
+    _ZZ[obs[:obs_sigmasq], first(endo[:σ′_t])] = 1.0
 
     # Idiosyncratic income risk
-    ZZ[obs[:obs_taxprogressivity], first(endo[:τ_prog′_t])] = 1.0
+    _ZZ[obs[:obs_taxprogressivity], first(endo[:τ_prog′_t])] = 1.0
+
+    ZZ = if track_states_only
+        # Construct measurement matrix from selection matrix, using
+        # BlockArrays.jl and BandedMatrices.jl to efficiently construct
+        # vcat(I, TTT_jump), so that y = _ZZ * [I; TTT_jump] * states
+        MX = PseudoBlockArray{T}(undef, [_n_states, size(TTT_jump, 1)], [_n_states]) # use Pseudo b/c multiplication is faster
+        setblock!(MX, Diagonal(Ones(_n_states)), 1, 1)
+        setblock!(MX, TTT_jump, 2, 1)
+        Array(_ZZ * MX)
+    else
+        _ZZ # ZZ is the selection matrix when we treat both states and jumps as model states
+    end
 
     ## Measurement error
     EE[obs[:obs_W90share], obs[:obs_W90share]] = m[:e_W90_share]^2
