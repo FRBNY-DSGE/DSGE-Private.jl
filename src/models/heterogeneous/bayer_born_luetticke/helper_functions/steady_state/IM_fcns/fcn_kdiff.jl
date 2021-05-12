@@ -60,10 +60,10 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     inc             = Array{Array{Float64, 3}}(undef, 4)                         # container for income
     mcw             = 1.0 / m[:μ_w]                                              # wage markup
 
-    # TODO: avoid redundant calculations in this step e.g. incgross could be reused
     # gross (labor) incomes
-    incgross        = y_grid .* (mcw * w * N / H)      # gross income workers (wages)
-    incgross[end]   = y_grid[end] * profits                     # gross income entrepreneurs (profits)
+    eff_unit_inc    = mcw * w * N / H         # gross labor income per efficiency unit
+    incgross        = y_grid .* eff_unit_wage # gross income workers (wages)
+    incgross[end]   = y_grid[end] * profits   # gross income entrepreneurs (profits)
 
     # net (labor) incomes
     incnet          = m[:τ_lev] * incgross .^ (1.0 - m[:τ_prog])
@@ -72,7 +72,7 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     # average tax rate
     av_tax_rate     = dot((incgross - incnet), distr_y) / dot(incgross, distr_y)
     ny              = get_setting(m, coarse ? :coarse_ny : :ny)
-    inc[1]          = (GHHFA * m[:τ_lev]) .* (y_ndgrid .* (mcw * w * N / H)) .^ (1.0 - m[:τ_prog]) .+
+    inc[1]          = (GHHFA * m[:τ_lev]) .* (y_ndgrid .* eff_unit_inc) .^ (1.0 - m[:τ_prog]) .+
         ((1.0 - mcw) * w * N * (1.0 - av_tax_rate) * HW)         # labor income net of taxes incl. union profits
     inc[1][:,:,end] = m[:τ_lev] * (view(y_ndgrid, :, :, ny) * profits) .^ (1.0 - m[:τ_prog]) # profit income net of taxes
 
