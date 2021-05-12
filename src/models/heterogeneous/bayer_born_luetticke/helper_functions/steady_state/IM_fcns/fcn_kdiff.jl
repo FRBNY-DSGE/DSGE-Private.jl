@@ -2,7 +2,8 @@
 ```
 Kdiff(K_guess, m, initial = true,
       Vm_guess = [], Vk_guess = [], distr_guess = [];
-      verbose = :none, coarse = false)
+      verbose = :none, coarse = false,
+      parallel = false)
 ```
 Calculate the difference between the capital stock that is assumed and the capital
 stock that prevails under that guessed capital stock's implied prices when
@@ -23,7 +24,8 @@ households face idiosyncratic income risk (Aiyagari model).
 function Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
                initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),
                Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1);
-               verbose::Symbol = :none, coarse::Bool = false) where {T1 <: Real}
+               verbose::Symbol = :none, coarse::Bool = false,
+               parallel::Bool = false) where {T1 <: Real}
 
     # Some type declarations b/c grids is an OrderedDict
     # => ensures type stability, or else unnecessary allocations are made
@@ -104,7 +106,8 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     # Calculate supply of funds for given prices
     #----------------------------------------------------------------------------
     KS              = Ksupply(RB, 1.0 + rk, m, Vm, Vk, distr,
-                              inc, eff_int; verbose = verbose, coarse = coarse)
+                              inc, eff_int; verbose = verbose,
+                              coarse = coarse, parallel = parallel)
     K               = KS[1]                                                     # capital
     Vm              = KS[end-2]                                                 # marginal value of liquid assets
     Vk              = KS[end-1]                                                 # marginal value of illiquid assets

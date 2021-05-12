@@ -1,6 +1,6 @@
 """
 ```
-prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose::Symbol = :none)
+prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose::Symbol = :none, parallel::Bool = false)
 ```
 Compute a number of equilibrium objects needed for linearization
 and updates the steady state values and indices in `m`.
@@ -16,7 +16,8 @@ and updates the steady state values and indices in `m`.
 - `verbose`: verbosity of print statements at 3 different levels `[:none, :low, :high]`
 """
 function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArray{T, 3}, VkSS::AbstractArray{T, 3},
-                               distrSS::AbstractArray{T, 3}; verbose::Symbol = :none) where {T <: Real}
+                               distrSS::AbstractArray{T, 3}; verbose::Symbol = :none,
+                               parallel::Bool = false) where {T <: Real}
 
     # Set up
     if verbose in [:low, :high]

@@ -7,7 +7,8 @@ updateV(EVk::Array,
         rk::Real, q::Real,
         θ::NamedTuple,
         m_grid::AbstractVector{T1},
-        Π::Array) where {T1 <: Real}
+        Π::Array;
+        parallel::Bool = false) where {T1 <: Real}
 ```
 updates value functions after running `EGM_policyupdate`
 to compute consumption and savings policies (`c_a_star`, `c_n_star`, `m_n_star`)
@@ -24,7 +25,8 @@ function updateV(EVk::Array,
                  rk::Real, q::Real,
                  θ::NamedTuple,
                  m_grid::AbstractVector{T1},
-                 Π::Array) where {T1 <: Real}
+                 Π::Array;
+                 parallel::Bool = false) where {T1 <: Real}
 
     # Setup
     β::Float64 = θ[:β]
@@ -50,10 +52,19 @@ function updateV(EVk::Array,
 
     # Use savings policy implied by m_n_star
     Vk = Array{eltype(EVk), 3}(undef, n)                       # Initialize Vk-container
-    @inbounds @views begin
-        for j::Int = 1:n[3]
-            for k::Int = 1:n[2]
+    if parallel # multi-threading b/c this loop is quick, and we don't expect to use too many threads
+        @inbounds @views begin
+            Threads.@threads for kj in CartesianIndices((n[2], n[3]))
+                k, j        = kj[1], kj[2]
                 Vk[:, k, j] = mylinearinterpolate(m_grid, EVk[:, k, j], m_n_star[:, k, j]) # evaluate marginal value at policy
+            end
+        end
+    else
+        @inbounds @views begin
+            for j::Int = 1:n[3]
+                for k::Int = 1:n[2]
+                    Vk[:, k, j] = mylinearinterpolate(m_grid, EVk[:, k, j], m_n_star[:, k, j]) # evaluate marginal value at policy
+                end
             end
         end
     end
