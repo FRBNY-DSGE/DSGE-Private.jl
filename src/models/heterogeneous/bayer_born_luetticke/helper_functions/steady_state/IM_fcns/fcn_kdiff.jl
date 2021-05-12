@@ -64,7 +64,7 @@ function Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
 
     # gross (labor) incomes
     eff_unit_inc    = mcw * w * N / H         # gross labor income per efficiency unit
-    incgross        = y_grid .* eff_unit_wage # gross income workers (wages)
+    incgross        = y_grid .* eff_unit_inc  # gross income workers (wages)
     incgross[end]   = y_grid[end] * profits   # gross income entrepreneurs (profits)
 
     # net (labor) incomes
