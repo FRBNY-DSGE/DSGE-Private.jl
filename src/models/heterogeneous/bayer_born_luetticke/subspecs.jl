@@ -15,9 +15,14 @@ function init_subspec!(m::BayerBornLuetticke)
     end
 end
 
+"""
+```
+ss1!(m::BayerBornLuetticke)
+```
+sets parameters initialized at zero to eps() so inference
+of the Jacobian's sparsity pattern is correct.
+"""
 function ss1!(m::BayerBornLuetticke)
-    # Set parameters initialized at zero to eps() so inference
-    # of the Jacobian's sparsity pattern is correct
     m <= parameter(:γ_B_τ, eps(), (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_B_τ: Reaction of tax level to debt",
