@@ -97,6 +97,7 @@ function _parallel_MakeTransition(m_a_star::AbstractArray{T,3},
     # unpack dims and grids
     nm,     nk,     ny     = dims
     m_grid, k_grid, y_grid = grids
+    mky_CI                 = collect(enumerate(CartesianIndices((nm, nk, ny)))) # have to write it this way to make threads work
 
     # create linear interpolation weights from policy functions
     idk_a, weightright_k_a, weightleft_k_a = MakeWeights(k_a_star,k_grid)
@@ -108,37 +109,29 @@ function _parallel_MakeTransition(m_a_star::AbstractArray{T,3},
     targetindex = zeros(Int,4,ny,nk* nm*ny)
     startindex  = zeros(Int,4,ny,nk* nm*ny)
     blockindex  = (0:ny-1)*nk*nm
-    runindex    = 0
 
-    @inbounds begin
-        Threads.@threads for mmkkzz in CartesianIndices((nm, nk, ny))
-            # Loop over all current income states (zz),
-            #           all current illiquid asset states (kk), and
-            #           all current liquid asset states
-            mm, kk, zz = mmkkzz[1], mmkkzz[2], mmkkzz[3]
-
-            runindex = runindex+1
-            WLL      = weightleft_m_a[mm,kk,zz] .* weightleft_k_a[mm,kk,zz]
-            WRL      = weightright_m_a[mm,kk,zz].* weightleft_k_a[mm,kk,zz]
-            WLR      = weightleft_m_a[mm,kk,zz] .* weightright_k_a[mm,kk,zz]
-            WRR      = weightright_m_a[mm,kk,zz].* weightright_k_a[mm,kk,zz]
-            IDD      = idm_a[mm,kk,zz].+(idk_a[mm,kk,zz]-1).*nm
-            for jj = 1:ny
-                pp                         = Π[zz,jj]
-                bb                         = blockindex[jj]
-                weight[1,jj,runindex]      = WLL .* pp
-                weight[2,jj,runindex]      = WRL .* pp
-                weight[3,jj,runindex]      = WLR .* pp
-                weight[4,jj,runindex]      = WRR .* pp
-                targetindex[1,jj,runindex] = IDD .+ bb
-                targetindex[2,jj,runindex] = IDD + 1 .+ bb
-                targetindex[3,jj,runindex] = IDD + nm .+ bb
-                targetindex[4,jj,runindex] = IDD + nm + 1 .+ bb
-                startindex[1,jj,runindex]  = runindex
-                startindex[2,jj,runindex]  = runindex
-                startindex[3,jj,runindex]  = runindex
-                startindex[4,jj,runindex]  = runindex
-            end
+    Threads.@threads for (runindex, mmkkzz) in mky_CI
+        mm, kk, zz = mmkkzz[1], mmkkzz[2], mmkkzz[3]
+        WLL      = weightleft_m_a[mm,kk,zz] .* weightleft_k_a[mm,kk,zz]
+        WRL      = weightright_m_a[mm,kk,zz].* weightleft_k_a[mm,kk,zz]
+        WLR      = weightleft_m_a[mm,kk,zz] .* weightright_k_a[mm,kk,zz]
+        WRR      = weightright_m_a[mm,kk,zz].* weightright_k_a[mm,kk,zz]
+        IDD      = idm_a[mm,kk,zz].+(idk_a[mm,kk,zz]-1).*nm
+        for jj = 1:ny
+            pp                         = Π[zz,jj]
+            bb                         = blockindex[jj]
+            weight[1,jj,runindex]      = WLL .* pp
+            weight[2,jj,runindex]      = WRL .* pp
+            weight[3,jj,runindex]      = WLR .* pp
+            weight[4,jj,runindex]      = WRR .* pp
+            targetindex[1,jj,runindex] = IDD .+ bb
+            targetindex[2,jj,runindex] = IDD + 1 .+ bb
+            targetindex[3,jj,runindex] = IDD + nm .+ bb
+            targetindex[4,jj,runindex] = IDD + nm + 1 .+ bb
+            startindex[1,jj,runindex]  = runindex
+            startindex[2,jj,runindex]  = runindex
+            startindex[3,jj,runindex]  = runindex
+            startindex[4,jj,runindex]  = runindex
         end
     end
     S_a          = vec(startindex)
@@ -149,27 +142,19 @@ function _parallel_MakeTransition(m_a_star::AbstractArray{T,3},
     weight2      = zeros(typeof(k_a_star[1]), 2,ny,nk* nm*ny)
     targetindex2 = zeros(Int, 2,ny,nk* nm*ny)
     startindex2  = zeros(Int,2,ny,nk* nm*ny)
-    runindex     = 0
-    @inbounds begin
-        Threads.@threads for mmkkzz in CartesianIndices((nm, nk, ny))
-            # Loop over all current income states (zz),
-            #           all current illiquid asset states (kk), and
-            #           all current liquid asset states
-            mm, kk, zz = mmkkzz[1], mmkkzz[2], mmkkzz[3]
-
-            runindex = runindex+1
-            WL       = weightleft_m_n[mm,kk,zz]
-            WR       = weightright_m_n[mm,kk,zz]
-            CI       = idm_n[mm,kk,zz].+(kk-1).*nm
-            for jj = 1:ny
-                pp                          = Π[zz,jj]
-                weight2[1,jj,runindex]      = WL .* pp
-                weight2[2,jj,runindex]      = WR .* pp
-                targetindex2[1,jj,runindex] = CI .+ blockindex[jj]
-                targetindex2[2,jj,runindex] = CI .+ 1 .+blockindex[jj]
-                startindex2[1,jj,runindex]  = runindex
-                startindex2[2,jj,runindex]  = runindex
-            end
+    Threads.@threads for (runindex, mmkkzz) in mky_CI
+        mm, kk, zz = mmkkzz[1], mmkkzz[2], mmkkzz[3]
+        WL       = weightleft_m_n[mm,kk,zz]
+        WR       = weightright_m_n[mm,kk,zz]
+        CI       = idm_n[mm,kk,zz].+(kk-1).*nm
+        for jj = 1:ny
+            pp                          = Π[zz,jj]
+            weight2[1,jj,runindex]      = WL .* pp
+            weight2[2,jj,runindex]      = WR .* pp
+            targetindex2[1,jj,runindex] = CI .+ blockindex[jj]
+            targetindex2[2,jj,runindex] = CI .+ 1 .+blockindex[jj]
+            startindex2[1,jj,runindex]  = runindex
+            startindex2[2,jj,runindex]  = runindex
         end
     end
     S_n        = vec(startindex2)
