@@ -4,6 +4,14 @@
 _bbl_mutil(c::Array, ξ::Union{Real, AbstractParameter})     = 1.0 ./ ((c.*c).*(c.*c)) # c.^ξ, and ξ = 4.
 _bbl_invmutil(mu::Array, ξ::Union{Real, AbstractParameter}) = 1.0 ./ (sqrt.(sqrt.(mu))) # mu.^(1.0./ξ), and ξ = 4.
 
+function _bbl_mutil!(F::Array, c::Array, ξ::Union{Real, AbstractParameter})
+    for i in eachindex(c)
+        cᵢ   = c[i]
+        F[i] = 1.0 ./ ((cᵢ * cᵢ) * (cᵢ * cᵢ)) # c.^ξ, and ξ = 4.
+    end
+    return F
+end
+
 # Incomes (K:capital, A: TFP): Interest rate = MPK.-δ, Wage = MPL, profits = Y-wL-(r+\delta)*K
 _bbl_interest(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}, δ_0::Union{Real, AbstractParameter}) = A * α * (K / N) ^(α - 1.0) - δ_0
 _bbl_wage(K::Real, A::Real, N::Real, α::Union{Real, AbstractParameter}) = A * (1. - α) * (K/N) ^ α

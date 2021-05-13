@@ -62,27 +62,32 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     ϵ                   = get_setting(m, coarse ? :coarse_ϵ : :ϵ) # TODO: pass this as a setting
 
     # containers for policies, initialized here
-    # so we have access to them outside the while loop below
-    m_n_star            = Vector{T}(undef, 0) # just need to make sure these have the right types
-    m_a_star            = Vector{T}(undef, 0)
-    k_a_star            = Vector{T}(undef, 0)
-    c_a_star            = Vector{T}(undef, 0)
-    c_n_star            = Vector{T}(undef, 0)
+    Vm_new              = Array{T,3}(undef, n)
+    Vk_new              = Array{T,3}(undef, n)
+    m_n_star            = Array{T,3}(undef, n)
+    m_a_star            = Array{T,3}(undef, n)
+    k_a_star            = Array{T,3}(undef, n)
+    c_a_star            = Array{T,3}(undef, n)
+    c_n_star            = Array{T,3}(undef, n)
 
     while dist > ϵ && count < get_setting(m, :max_value_function_iters) # Iterate consumption policies until convergence
         count          += 1
 
-        # Take expectations for labor income change # TODO: is there a more efficient way to write this expectation w/out using reshape?
-        EVk             = reshape(reshape(Vk, (n[1] * n[2], n[3])) * Π', (n[1], n[2], n[3]))
-        EVm             = reshape((reshape(eff_int, (n[1] * n[2], n[3])) .*
-                                   reshape(Vm, (n[1] * n[2], n[3]))) * Π', (n[1], n[2], n[3]))
+        # Take expectations for labor income change
+        joined_mk_dims  = (n[1] * n[2], n[3])
+        EVm             = reshape((reshape(eff_int, joined_mk_dims) .*   # Note that this allocates a new matrix,
+                                   reshape(Vm, joined_mk_dims)) * Π', n) # so EVm and EVk are separate from Vm and Vk
+        EVk             = reshape(reshape(Vk, joined_mk_dims) * Π', n)   # Also note, Π has dims (n[3], n[3]), hence the reshapes
 
-        # Policy update step
-        c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
-            EGM_policyupdate(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, θ, m.grids, false; parallel = parallel)
+        # Policy update step: changes EVm, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star
+        # Note that EVm is not used in the remainder of the loop, so we overwrite it
+        # to stop some calculations from making extra allocations
+        EGM_policyupdate!(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, θ, m.grids, false,
+                          c_a_star, m_a_star, k_a_star, c_n_star, m_n_star; parallel = parallel)
 
-        # marginal value update step
-        Vk_new, Vm_new  = updateV(EVk, c_a_star, c_n_star, m_n_star, R_guess - 1.0, q, θ, m_grid, Π; parallel = parallel)
+        # marginal value update step: updates Vm_new and Vk_new
+        updateV!(Vm_new, Vk_new, EVk, c_a_star, c_n_star, m_n_star,
+                 R_guess - 1.0, q, θ, m_grid, Π; parallel = parallel)
 
         # Calculate distance in updates
         dist1           = maximum(abs, _bbl_invmutil(Vk_new, θ[:ξ]) - _bbl_invmutil(Vk, θ[:ξ]))
@@ -90,8 +95,12 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
         dist            = max(dist1, dist2) # distance of old and new policy
 
         # update policy guess/marginal values of liquid/illiquid assets
-        Vm              = Vm_new
-        Vk              = Vk_new
+        # We use .= to overwrite Vm and Vk. Since Vm_new and Vk_new are overwritten by updateV!,
+        # we need to copy them, but so Vm = Vm_new won't work. It's also slower to do
+        # Vm = copy(Vm_new) since this creates a new allocation. Running Vm .= Vm_new
+        # avoids allocating a new array for Vm.
+        Vm             .= Vm_new
+        Vk             .= Vk_new
     end
 
     if verbose == :high

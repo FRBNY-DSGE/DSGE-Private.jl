@@ -18,15 +18,17 @@ The input `θ` maps the names of economic parameters to values, `m_grid` is
 the liquid asset grid, and `Π` is the
 transition matrix over idiosyncratic income states.
 """
-function updateV(EVk::Array,
-                 c_a_star::Array,
-                 c_n_star::Array,
-                 m_n_star::Array,
-                 rk::Real, q::Real,
-                 θ::NamedTuple,
-                 m_grid::AbstractVector{T1},
-                 Π::Array;
-                 parallel::Bool = false) where {T1 <: Real}
+function updateV!(Vm::Array,
+                  Vk::Array,
+                  EVk::Array,
+                  c_a_star::Array,
+                  c_n_star::Array,
+                  m_n_star::Array,
+                  rk::Real, q::Real,
+                  θ::NamedTuple,
+                  m_grid::AbstractVector{T1},
+                  Π::Array;
+                  parallel::Bool = false) where {T1 <: Real}
 
     # Setup
     β::Float64 = θ[:β]
@@ -35,12 +37,12 @@ function updateV(EVk::Array,
     #----------------------------------------------------------------------------
     ## Update Marginal Value Bonds
     #----------------------------------------------------------------------------
-    mutil_c_n = _bbl_mutil(c_n_star, θ[:ξ])                         # marginal utility at consumption policy no adjustment
-    mutil_c_a = _bbl_mutil(c_a_star, θ[:ξ])                         # marginal utility at consumption policy adjustment
+    _bbl_mutil!(Vm, c_n_star, θ[:ξ])        # marginal utility at consumption policy no adjustment
+    mutil_c_a = _bbl_mutil(c_a_star, θ[:ξ]) # marginal utility at consumption policy adjustment
 
-    # Compute expected marginal utility at consumption policy (w &w/o adjustment)
-    # Some special handling here to avoid an allocation that would be made if we did
-    Vm  = mutil_c_n # Vm is just pointing to the same array as mutil_c_n now
+    # Compute expected marginal utility at consumption policy (w & w/o adjustment)
+    # Since Vm = (1 - λ) * mutil_n + λ * mutil_a
+    # => we directly write mutil_n into Vm and update Vm directly
     Vm .*= (1. - θ[:λ])
     Vm .+= θ[:λ] * mutil_c_a
 
@@ -51,7 +53,7 @@ function updateV(EVk::Array,
     #----------------------------------------------------------------------------
 
     # Use savings policy implied by m_n_star
-    Vk = Array{eltype(EVk), 3}(undef, n)                       # Initialize Vk-container
+    # Vk = Array{eltype(EVk), 3}(undef, n)                       # Initialize Vk-container
     if parallel # multi-threading b/c this loop is quick, and we don't expect to use too many threads
         @inbounds @views begin
             Threads.@threads for kj in CartesianIndices((n[2], n[3]))

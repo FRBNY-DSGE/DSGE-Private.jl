@@ -240,21 +240,30 @@ function Fsys(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray, θ::Na
     inc[6][:,:,end] .= entrep_profits_net_taxes
 
     # Calculate optimal policies
+    # make allocations to populate later
+    Vm_new   = Array{eltype(X),3}(undef, nm, nk, ny)
+    Vk_new   = similar(Vm_new)
+    c_a_star = similar(Vm_new)
+    m_a_star = similar(Vm_new)
+    k_a_star = similar(Vm_new)
+    c_n_star = similar(Vm_new)
+    m_n_star = similar(Vm_new)
+
     # expected marginal values
+    joined_mk_dims = (nm * nk, ny)
     EVkPrime = reshape(VkPrime, (nm, nk, ny))
     EVmPrime = reshape(VmPrime, (nm, nk, ny))
+    EVmPrime = reshape((reshape(eff_intPrime, joined_mk_dims) .*
+                        reshape(EVmPrime, joined_mk_dims)) * Π', (nm, nk, ny))
+    EVkPrime = reshape(reshape(EVkPrime, joined_mk_dims) * Π', (nm, nk, ny))
 
-    @views @inbounds begin
-        for mm = 1:nm
-            EVkPrime[mm,:,:] .= EVkPrime[mm,:,:]*Π' # TODO: get rid of broadcasting, I believe it makes an unnecessary allocation relative to =
-            EVmPrime[mm,:,:] .= eff_intPrime[mm,:,:].*(EVmPrime[mm,:,:]*Π')
-        end
-    end
-    c_a_star, m_a_star, k_a_star, c_n_star, m_n_star =
-                    EGM_policyupdate(EVmPrime, EVkPrime, q_t, π_t, RB_t * A_t, 1.0, inc, θ, grids, false) # policy iteration
+    # policy iteration
+    EGM_policyupdate!(EVmPrime, EVkPrime, q_t, π_t, RB_t * A_t, 1.0, inc, θ, grids, false,
+                      c_a_star, m_a_star, k_a_star, c_n_star, m_n_star)
 
     # Update marginal values
-    Vk_new, Vm_new = updateV(EVkPrime, c_a_star, c_n_star, m_n_star, rk_t - 1.0, q_t, θ, m_grid, Π) # update expected marginal values time t
+    updateV!(Vm_new, Vk_new, EVkPrime, c_a_star, c_n_star, m_n_star,
+             rk_t - 1.0, q_t, θ, m_grid, Π) # update expected marginal values time t
 
     # Calculate error terms on marginal values
     Vm_err        = log.((Vm_new)) - nt[:Vm_t]
