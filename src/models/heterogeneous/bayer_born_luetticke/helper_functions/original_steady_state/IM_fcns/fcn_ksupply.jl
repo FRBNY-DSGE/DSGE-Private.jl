@@ -82,8 +82,9 @@ function original_Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm
     elseif get_setting(m, :kfe_method) == :direct
         # Direct Transition
         distr = get_untransformed_values(m[:distr])::Array{T1, 3}
-        distr, dist, count = MultipleDirectTransition(m_a_star, m_n_star, k_a_star, distr, θ[:λ], Π,
-                                                      n, DSGE.get_idiosyncratic_gridpts(m), ϵ; iters = get_setting(m, :n_direct_transition_iters))
+        distr, dist, count = original_MultipleDirectTransition(m_a_star, m_n_star, k_a_star, distr, θ[:λ], Π,
+                                                               n, DSGE.get_idiosyncratic_gridpts(m), ϵ;
+                                                               iters = get_setting(m, :n_direct_transition_iters))
     else
         error("Solution method for Kolmogorov forward equation $(get_setting(m, :kfe_method)) is not recognized. " *
               "Available methods are [:krylov, :direct]")
