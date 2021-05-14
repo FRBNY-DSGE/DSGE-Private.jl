@@ -122,10 +122,12 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
         aux   = real.(eigsolve(TransitionMat', 1)[2][1])
         distr = reshape(vec(aux) ./ sum(aux), n)
     elseif get_setting(m, :kfe_method) == :direct # TODO: add n_direct_transition_iters kwarg
-        # Direct Transition
-        distr = get_untransformed_values(m[:distr])::Array{T1, 3}
-        distr, dist, count = MultipleDirectTransition(m_a_star, m_n_star, k_a_star, distr, θ[:λ], Π,
-                                                      n, DSGE.get_idiosyncratic_gridpts(m), ϵ; iters = get_setting(m, :n_direct_transition_iters))
+        # Direct Transition. `distr_guess` will be over-written to avoid allocations
+        distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
+        distr, dist, count = MultipleDirectTransition!(m_a_star, m_n_star, k_a_star, distr_guess, θ[:λ], Π,
+                                                       n, DSGE.get_idiosyncratic_gridpts(m), ϵ;
+                                                       iters = get_setting(m, :n_direct_transition_iters),
+                                                       parallel = parallel)
     else
         error("Solution method for Kolmogorov forward equation $(get_setting(m, :kfe_method)) is not recognized. " *
               "Available methods are [:krylov, :direct]")
