@@ -45,7 +45,7 @@ function MultipleDirectTransition!(m_a_star::AbstractArray{T,3},
                         for yy = 1:ny
                             id_a = IDD_a + blockindex[yy]
                             id_n = IDD_n + blockindex[yy]
-                            fac = λ .* pp[y]
+                            fac = λ .* pp[yy]
                             dPrime[id_a]            += fac .* DLL_a
                             dPrime[id_a+1]          += fac .* DLR_a
                             dPrime[id_a+nm]         += fac .* DRL_a
