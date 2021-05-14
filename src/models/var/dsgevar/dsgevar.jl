@@ -10,7 +10,17 @@ We recommend the first two papers as initial introductions to DSGE-VARs.
 
 The recommended constructor requires the user to provide
 (1) an `AbstractDSGEModel` object, (2) which structural shocks from
-the DSGE to use, and (3) the subspec (optional, defaults to "ss0").
+the DSGE to use, and (3) the subspec (optional, defaults to "ss0"), as follows:
+```
+DSGEVAR(dsge::AbstractDSGEModel{T}, shocks::Vector{Symbol}, subspec::String = "ss0";
+        custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+        copy_dsge::Bool = false, testing = false) where {T<:Real}
+```
+Additional keyword arguments include the standard `custom_settings` to
+change the settings during instantiation and `testing`. The kwarg
+`copy_dsge` allows you to guarantee that the DSGE model you pass into
+the constructor is not affected when you use the created `DSGEVAR` instance.
+
 If the subspec "ss0" is used, then the result is a `DSGEVAR`
 whose VAR component is "empty" in that the
 observables, lags, and λ weight are not specified. The reason why
