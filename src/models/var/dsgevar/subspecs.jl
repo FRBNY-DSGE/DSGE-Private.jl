@@ -23,6 +23,8 @@ function init_subspec!(m::DSGEVAR)
         ss12!(m)
     elseif subspec(m) == "ss13"
         ss13!(m)
+    elseif subspec(m) == "ss20"
+        ss20!(m)
     else
         error("DSGEVAR subspec $(subspec(m)) is not defined.")
     end
@@ -76,5 +78,12 @@ function ss13!(m::DSGEVAR)
     observables = [:obs_spread, :obs_hours, :π_t, :laborshare_t, :NominalWageGrowth, :Epi_t]
     lags        = 4
     λ           = .5
+    update!(m; observables = observables, lags = lags, λ = λ)
+end
+
+function ss20!(m::DSGEVAR)
+    observables = [:obs_gdp, :obs_consumption, :obs_investment, :obs_wages, :obs_hours, :obs_gdpdeflator, :obs_nominalrate]
+    lags        = 4
+    λ           = 1.
     update!(m; observables = observables, lags = lags, λ = λ)
 end
