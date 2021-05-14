@@ -3,6 +3,10 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     observables = OrderedDict{Symbol,Observable}()
     population_mnemonic = get(get_setting(m, :population_mnemonic))
 
+    iden_fwd_transform = function (levels, name)
+        return levels[!, name]
+    end
+
     ############################################################################
     ## 1. GDP growth per capita
     ############################################################################

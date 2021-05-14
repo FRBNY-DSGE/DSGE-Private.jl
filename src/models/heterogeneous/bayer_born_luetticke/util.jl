@@ -18,6 +18,11 @@ end
 get_idiosyncratic_gridpts(m::BayerBornLuetticke) = (m.grids[:m_grid].points, m.grids[:k_grid].points, m.grids[:y_grid].points)
 get_idiosyncratic_ndgrids(m::BayerBornLuetticke) = (m.grids[:m_ndgrid], m.grids[:k_ndgrid], m.grids[:y_ndgrid])
 
+# Numbers of states when only tracking backward-looking states
+n_states(m::BayerBornLuetticke) = haskey(get_settings(m), :klein_track_backward_looking_states_only) &&
+    get_setting(m, :klein_track_backward_looking_states_only) ? n_backward_looking_states(m)::Int :
+    sum(map(i -> length(collect(m.endogenous_states)[i][2]), 1:length(keys(m.endogenous_states))))
+
 ## Parsing functions
 
 # Map lagged variable to steady state name
