@@ -186,7 +186,6 @@ function klein_direct_inversion(Schur_decomp::GeneralizedSchur, n::Int, nk::Int)
     t11 = view(Schur_decomp.T, 1:nk, 1:nk)
 
     if rank(z11) < nk
-        @warn "invertibility condition violated"
         hx = Array{Float64}(undef, nk, nk) # change: original code use n_states, but nk = n_states when saddle-path stability satisfied
         gx = Array{Float64}(undef, n-nk, nk) # change: original code uses n_jumps, but n_jumps = n-nk when saddle-path stability satisfied
         return gx, hx, -1
