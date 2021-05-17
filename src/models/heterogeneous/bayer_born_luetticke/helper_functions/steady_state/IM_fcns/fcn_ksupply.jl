@@ -37,23 +37,24 @@ where `T <: Real`
 """
 
 function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm::AbstractArray, Vk::AbstractArray,
-                 distr_guess::AbstractArray, inc::AbstractArray, eff_int::AbstractArray;
+                 distr_guess::AbstractArray, inc::AbstractArray, eff_int::AbstractArray,
+                 TransitionMat_a::SparseMatrixCSC{T, Int} = spzeros(0, 0),
+                 Transitionmat_n::SparseMatrixCSC{T, Int} = spzeros(0, 0);
                  verbose::Symbol = :none, coarse::Bool = false, parallel::Bool = false,
-                 ϵ::Float64 = 1e-5, max_value_function_iters::Int64 = 1000, n_direct_transition_iters::Int64 = 10000,
-                 kfe_method::Symbol = :krylov) where {T <: Real, T1 <: Real}
-    # TODO: replace `m` with θ, grids, and kwargs for settings
+                 ϵ::Float64 = 1e-5, max_value_function_iters::Int = 1000, n_direct_transition_iters::Int = 10000,
+                 kfe_method::Symbol = :krylov) where {T <: Real}
 
     ## Set up
     # initialize distance variables
     dist                = 9999.0
     dist1               = dist
     dist2               = dist
-    Π                   = grids[:Π]::Matrix{T1}             # type declarations necessary b/c grids is an OrderedDict =>
-    m_grid              = get_gridpts(grids, :m_grid)::Vector{T1} # ensures type stability, or else unnecessary allocations are made
-    k_grid              = get_gridpts(grids, :k_grid)::Vector{T1} # ensures type stability, or else unnecessary allocations are made
-    y_grid              = get_gridpts(grids, :y_grid)::Vector{T1} # ensures type stability, or else unnecessary allocations are made
-    m_ndgrid            = grids[:m_ndgrid]::Array{T1, 3}    # TODO: pass grids directly
-    k_ndgrid            = grids[:k_ndgrid]::Array{T1, 3}
+    Π                   = grids[:Π]::Matrix{T}                   # type declarations necessary b/c grids is an OrderedDict =>
+    m_grid              = get_gridpts(grids, :m_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
+    k_grid              = get_gridpts(grids, :k_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
+    y_grid              = get_gridpts(grids, :y_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
+    m_ndgrid            = grids[:m_ndgrid]::Array{T, 3}          # TODO: pass grids directly
+    k_ndgrid            = grids[:k_ndgrid]::Array{T, 3}
     q                   = 1.0       # price of Capital
 
     # Map parameter values to NamedTuple
@@ -118,8 +119,14 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     # Define transition matrix  # TODO: faster way to construct this (inspect MakeTransition, also sparse calls), e.g. BlockBandedMatrices
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
                                                      parallel = parallel)
-    TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
-    TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
+    if isempty(TransitionMat_a)
+        TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
+    else
+    end
+    if isempty(TransitionMat_n)
+        TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
+    else
+    end
     TransitionMat                   = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
 
     if kfe_method == :krylov # TODO: add this as kwarg
@@ -128,7 +135,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
         distr = reshape(vec(aux) ./ sum(aux), n)
     elseif kfe_method == :direct # TODO: add n_direct_transition_iters kwarg
         # Direct Transition
-        #=distr = get_untransformed_values(m[:distr])::Array{T1, 3}
+        #=distr = get_untransformed_values(m[:distr])::Array{T, 3}
         distr, dist, count = MultipleDirectTransition(m_a_star, m_n_star, k_a_star, distr, θ[:λ], Π,
                                                       n, DSGE.get_idiosyncratic_gridpts(m), ϵ; iters = n_direct_transition_iters)=#
     else
@@ -223,7 +230,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     #------------------------------------------------------
     # Define transition matrix  # TODO: faster way to construct this (inspect MakeTransition, also sparse calls), e.g. BlockBandedMatrices
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
-                                                     parallel = parallel)
+                                                     parallel = parallel) # TODO: pass TransitionMat_a and TransitionMat_n as already created and update in place. Set TransitionMat to reference TransitionMat_a and then update in-place from there
     TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
     TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
     TransitionMat                   = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n

@@ -23,7 +23,9 @@ households face idiosyncratic income risk (Aiyagari model).
 """
 function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::NamedTuple, param_dict::Dict,
                initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),
-               Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1);
+               Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1),
+               TransitionMat_a::SparseMatrixCSC{T1, Int} = spzeros(0, 0),
+               Transitionmat_n::SparseMatrixCSC{T1, Int} = spzeros(0, 0);
                verbose::Symbol = :none, coarse::Bool = false,
                parallel::Bool = false, ϵ::Float64 = 1e-5,
                max_value_function_iters::Int64 = 1000,
@@ -109,7 +111,8 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::Nam
     # Calculate supply of funds for given prices
     #----------------------------------------------------------------------------
     #θ               = parameters2namedtuple(m)
-    KS              = Ksupply(RB, 1.0 + rk, grids, θ, Vm, Vk, distr, inc, eff_int;
+    KS              = Ksupply(RB, 1.0 + rk, grids, θ, Vm, Vk, distr, inc, eff_int,
+                              TransitionMat_a, TransitionMat_n;
                               verbose = verbose, coarse = coarse, parallel = parallel,
                               ϵ = ϵ, max_value_function_iters = max_value_function_iters,
                               n_direct_transition_iters = n_direct_transition_iters,
