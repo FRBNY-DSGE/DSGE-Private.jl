@@ -21,7 +21,7 @@ households face idiosyncratic income risk (Aiyagari model).
 - `coarse::Bool = false`: use a coarse grid when true.
 
 """
-function Kdiff(K_guess::Float64, grids::OrderedDict, idiosyncratic_gridpts::Tuple{Array{T1,1}, Array{T1,1}, Array{T1,1}}, distr::Array{T1,3}, θ::NamedTuple, param_dict::Dict,
+function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::NamedTuple, param_dict::Dict,
                initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),
                Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1);
                verbose::Symbol = :none, coarse::Bool = false,
@@ -109,11 +109,11 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, idiosyncratic_gridpts::Tupl
     # Calculate supply of funds for given prices
     #----------------------------------------------------------------------------
     #θ               = parameters2namedtuple(m)
-    KS              = Ksupply(RB, 1.0 + rk, grids, idiosyncratic_gridpts, θ, Vm, Vk, distr, inc, eff_int;
+    KS              = Ksupply(RB, 1.0 + rk, grids, θ, Vm, Vk, distr, inc, eff_int;
                               verbose = verbose, coarse = coarse, parallel = parallel,
-                              ϵ=ϵ, max_value_function_iters=max_value_function_iters,
-                              n_direct_transition_iters=n_direct_transition_iters,
-                              kfe_method=kfe_method)
+                              ϵ = ϵ, max_value_function_iters = max_value_function_iters,
+                              n_direct_transition_iters = n_direct_transition_iters,
+                              kfe_method = kfe_method)
     K               = KS[1]                                                     # capital
     Vm              = KS[end-2]                                                 # marginal value of liquid assets
     Vk              = KS[end-1]                                                 # marginal value of illiquid assets

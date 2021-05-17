@@ -43,7 +43,6 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
         # a.) Define excess demand function with coarse = true
         init_distr_guess = get_untransformed_values(m[:distr_star])
 
-        idiosyncratic_gridpts = DSGE.get_idiosyncratic_gridpts(m)
         θ = parameters2namedtuple(m)
         ϵ = get_setting(m, :coarse_ϵ)
         max_value_function_iters = get_setting(m, :max_value_function_iters)
@@ -61,7 +60,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                                     distr_guess = init_distr_guess
                                     )
             distr = initial ? get_untransformed_values(m[:distr_star])::Array{T,3} : distr_guess
-            out = Kdiff(K, m.grids, idiosyncratic_gridpts, distr, θ, param_dict,
+            out = Kdiff(K, m.grids, distr, θ, param_dict,
                         initial, Vm_guess, Vk_guess, distr_guess;
                         verbose = verbose, coarse = true, parallel = parallel,
                         ϵ, max_value_function_iters, n_direct_transition_iters,
@@ -94,7 +93,6 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     ny_fine = get_setting(m, :ny)
     ϵ_fine = get_setting(m, :ϵ)
 
-    idiosyncratic_gridpts = DSGE.get_idiosyncratic_gridpts(m)
     θ = parameters2namedtuple(m)
     max_value_function_iters = get_setting(m, :max_value_function_iters)
     n_direct_transition_iters = get_setting(m, :n_direct_transition_iters)
@@ -109,7 +107,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                          distr_guess = init_distr_guess
                          )
         distr = initial ? get_untransformed_values(m[:distr_star])::Array{T,3} : distr_guess
-            out = Kdiff(K, m.grids, idiosyncratic_gridpts, distr, θ, param_dict,
+            out = Kdiff(K, m.grids, distr, θ, param_dict,
                         initial, Vm_guess, Vk_guess, distr_guess;
                         verbose = verbose, coarse = false, parallel = parallel,
                         ϵ = ϵ_fine, max_value_function_iters, n_direct_transition_iters,

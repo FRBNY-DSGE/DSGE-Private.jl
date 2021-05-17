@@ -2,16 +2,15 @@ function MakeTransition(m_a_star::AbstractArray{T,3},
                         m_n_star::AbstractArray{T,3},
                         k_a_star::AbstractArray{T,3},
                         Π::AbstractArray{T,2}, dims::NTuple{3, Int64},
-                        grids::NTuple{3, <: AbstractVector{T}};
-                        parallel::Bool = false) where {T <: Real}
+                        m_grid::AbstractVector{T}, k_grid::AbstractVector{T},
+                        y_grid::AbstractVector{T}, parallel::Bool = false) where {T <: Real}
 
     if parallel
-        return _parallel_MakeTransition(m_a_star, m_n_star, k_a_star, Π, dims, grids)
+        return _parallel_MakeTransition(m_a_star, m_n_star, k_a_star, Π, dims, m_grid, k_grid, y_grid)
     end
 
-    # unpack dims and grids
-    nm,     nk,     ny     = dims
-    m_grid, k_grid, y_grid = grids
+    # unpack dims
+    nm, nk, ny = dims
 
     # create linear interpolation weights from policy functions
     idk_a, weightright_k_a, weightleft_k_a = MakeWeights(k_a_star,k_grid)
@@ -89,15 +88,15 @@ function MakeTransition(m_a_star::AbstractArray{T,3},
 end
 
 function _parallel_MakeTransition(m_a_star::AbstractArray{T,3},
-                        m_n_star::AbstractArray{T,3},
-                        k_a_star::AbstractArray{T,3},
-                        Π::AbstractArray{T,2}, dims::NTuple{3, Int64},
-                        grids::NTuple{3, <: AbstractVector{T}}) where {T <: Real}
+                                  m_n_star::AbstractArray{T,3},
+                                  k_a_star::AbstractArray{T,3},
+                                  Π::AbstractArray{T,2}, dims::NTuple{3, Int64},
+                                  m_grid::AbstractVector{T}, k_grid::AbstractVector{T},
+                                  y_grid::AbstractVector{T}) where {T <: Real}
 
     # unpack dims and grids
-    nm,     nk,     ny     = dims
-    m_grid, k_grid, y_grid = grids
-    mky_CI                 = collect(enumerate(CartesianIndices((nm, nk, ny)))) # have to write it this way to make threads work
+    nm, nk, ny = dims
+    mky_CI     = collect(enumerate(CartesianIndices((nm, nk, ny)))) # have to write it this way to make threads work
 
     # create linear interpolation weights from policy functions
     idk_a, weightright_k_a, weightleft_k_a = MakeWeights(k_a_star,k_grid)

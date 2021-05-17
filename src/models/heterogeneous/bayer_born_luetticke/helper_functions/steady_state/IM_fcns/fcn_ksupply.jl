@@ -36,9 +36,11 @@ where `T <: Real`
 - `V_m::Array{Float64,3}`,`V_kArray{Float64,3}`: marginal value functions
 """
 
-function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, idiosyncratic_gridpts::Tuple{Array{T1,1},Array{T1,1},Array{T1,1}}, θ::NamedTuple, Vm::AbstractArray, Vk::AbstractArray, distr_guess::AbstractArray, inc::AbstractArray, eff_int::AbstractArray;
+function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm::AbstractArray, Vk::AbstractArray,
+                 distr_guess::AbstractArray, inc::AbstractArray, eff_int::AbstractArray;
                  verbose::Symbol = :none, coarse::Bool = false, parallel::Bool = false,
-                 ϵ::Float64 = 1e-5, max_value_function_iters::Int64 = 1000, n_direct_transition_iters::Int64 = 10000, kfe_method::Symbol = :krylov) where {T <: Real, T1 <: Real}
+                 ϵ::Float64 = 1e-5, max_value_function_iters::Int64 = 1000, n_direct_transition_iters::Int64 = 10000,
+                 kfe_method::Symbol = :krylov) where {T <: Real, T1 <: Real}
     # TODO: replace `m` with θ, grids, and kwargs for settings
 
     ## Set up
@@ -48,6 +50,8 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, idiosyncratic_grid
     dist2               = dist
     Π                   = grids[:Π]::Matrix{T1}             # type declarations necessary b/c grids is an OrderedDict =>
     m_grid              = get_gridpts(grids, :m_grid)::Vector{T1} # ensures type stability, or else unnecessary allocations are made
+    k_grid              = get_gridpts(grids, :k_grid)::Vector{T1} # ensures type stability, or else unnecessary allocations are made
+    y_grid              = get_gridpts(grids, :y_grid)::Vector{T1} # ensures type stability, or else unnecessary allocations are made
     m_ndgrid            = grids[:m_ndgrid]::Array{T1, 3}    # TODO: pass grids directly
     k_ndgrid            = grids[:k_ndgrid]::Array{T1, 3}
     q                   = 1.0       # price of Capital
@@ -112,7 +116,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, idiosyncratic_grid
     # Find stationary distribution (Is direct transition better for large model?) (TODO: investigate this question)
     #------------------------------------------------------
     # Define transition matrix  # TODO: faster way to construct this (inspect MakeTransition, also sparse calls), e.g. BlockBandedMatrices
-    S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n,idiosyncratic_gridpts;
+    S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
                                                      parallel = parallel)
     TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
     TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
@@ -141,6 +145,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, idiosyncratic_grid
     return K, B, TransitionMat, TransitionMat_a, TransitionMat_n, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star, Vm, Vk, distr
 end
 
+# TODO: delete this version of Ksupply when it's no longer needed
 function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::AbstractArray, Vk::AbstractArray, distr_guess::AbstractArray,
                  inc::AbstractArray, eff_int::AbstractArray; verbose::Symbol = :none, coarse::Bool = false,
                  parallel::Bool = false) where {T <: Real, T1 <: Real}
@@ -217,7 +222,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     # Find stationary distribution (Is direct transition better for large model?) (TODO: investigate this question)
     #------------------------------------------------------
     # Define transition matrix  # TODO: faster way to construct this (inspect MakeTransition, also sparse calls), e.g. BlockBandedMatrices
-    S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, DSGE.get_idiosyncratic_gridpts(m);
+    S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
                                                      parallel = parallel)
     TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
     TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
