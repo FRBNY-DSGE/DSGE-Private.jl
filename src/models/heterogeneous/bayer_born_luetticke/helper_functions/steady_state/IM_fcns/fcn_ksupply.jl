@@ -37,9 +37,7 @@ where `T <: Real`
 """
 
 function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm::AbstractArray, Vk::AbstractArray,
-                 distr_guess::AbstractArray, inc::AbstractArray, eff_int::AbstractArray,
-                 TransitionMat_a::SparseMatrixCSC{T, Int} = spzeros(0, 0),
-                 Transitionmat_n::SparseMatrixCSC{T, Int} = spzeros(0, 0);
+                 distr_guess::AbstractArray, inc::AbstractArray, eff_int::AbstractArray;
                  verbose::Symbol = :none, coarse::Bool = false, parallel::Bool = false,
                  ϵ::Float64 = 1e-5, max_value_function_iters::Int = 1000, n_direct_transition_iters::Int = 10000,
                  kfe_method::Symbol = :krylov) where {T <: Real}
@@ -53,19 +51,15 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     m_grid              = get_gridpts(grids, :m_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
     k_grid              = get_gridpts(grids, :k_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
     y_grid              = get_gridpts(grids, :y_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
-    m_ndgrid            = grids[:m_ndgrid]::Array{T, 3}          # TODO: pass grids directly
+    m_ndgrid            = grids[:m_ndgrid]::Array{T, 3}
     k_ndgrid            = grids[:k_ndgrid]::Array{T, 3}
     q                   = 1.0       # price of Capital
-
-    # Map parameter values to NamedTuple
-    # θ                   = parameters2namedtuple(m) # and pass parameters as a NamedTuple # TODO: pass in the parameters as a NamedTuple
 
     #----------------------------------------------------------------------------
     # Iterate over consumption policies
     #----------------------------------------------------------------------------
     count               = 0
     n                   = size(Vm)
-    # ϵ                   = get_setting(m, coarse ? :coarse_ϵ : :ϵ) # TODO: pass this as a setting
 
     # containers for policies, initialized here
     Vm_new              = Array{T,3}(undef, n)
@@ -116,28 +110,23 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     #------------------------------------------------------
     # Find stationary distribution (Is direct transition better for large model?) (TODO: investigate this question)
     #------------------------------------------------------
-    # Define transition matrix  # TODO: faster way to construct this (inspect MakeTransition, also sparse calls), e.g. BlockBandedMatrices
+    # Define transition matrix
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
                                                      parallel = parallel)
-    if isempty(TransitionMat_a)
-        TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
-    else
-    end
-    if isempty(TransitionMat_n)
-        TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
-    else
-    end
+    TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
+    TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
     TransitionMat                   = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
 
-    if kfe_method == :krylov # TODO: add this as kwarg
+    if kfe_method == :krylov
         # Calculate left-hand unit eigenvector (uses KrylovKit package)
         aux   = real.(eigsolve(TransitionMat', 1)[2][1])
         distr = reshape(vec(aux) ./ sum(aux), n)
-    elseif kfe_method == :direct # TODO: add n_direct_transition_iters kwarg
+    elseif kfe_method == :direct
         # Direct Transition
-        #=distr = get_untransformed_values(m[:distr])::Array{T, 3}
-        distr, dist, count = MultipleDirectTransition(m_a_star, m_n_star, k_a_star, distr, θ[:λ], Π,
-                                                      n, DSGE.get_idiosyncratic_gridpts(m), ϵ; iters = n_direct_transition_iters)=#
+        distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
+        distr, dist, count = MultipleDirectTransition!(m_a_star, m_n_star, k_a_star, distr_guess, θ[:λ], Π,
+                                                       n, m_grid, k_grid, y_grid, ϵ;
+                                                       iters = n_direct_transition_iters)
     else
         error("Solution method for Kolmogorov forward equation $(kfe_method) is not recognized. " *
               "Available methods are [:krylov, :direct]")
@@ -230,7 +219,7 @@ function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::Abstrac
     #------------------------------------------------------
     # Define transition matrix  # TODO: faster way to construct this (inspect MakeTransition, also sparse calls), e.g. BlockBandedMatrices
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
-                                                     parallel = parallel) # TODO: pass TransitionMat_a and TransitionMat_n as already created and update in place. Set TransitionMat to reference TransitionMat_a and then update in-place from there
+                                                     parallel = parallel)
     TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
     TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
     TransitionMat                   = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n

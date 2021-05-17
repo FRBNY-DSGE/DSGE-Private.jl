@@ -21,11 +21,9 @@ households face idiosyncratic income risk (Aiyagari model).
 - `coarse::Bool = false`: use a coarse grid when true.
 
 """
-function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::NamedTuple, param_dict::Dict,
+function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::NamedTuple,
                initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),
-               Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1),
-               TransitionMat_a::SparseMatrixCSC{T1, Int} = spzeros(0, 0),
-               Transitionmat_n::SparseMatrixCSC{T1, Int} = spzeros(0, 0);
+               Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1);
                verbose::Symbol = :none, coarse::Bool = false,
                parallel::Bool = false, ϵ::Float64 = 1e-5,
                max_value_function_iters::Int64 = 1000,
@@ -42,20 +40,18 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::Nam
     H                   = grids[:H]::T1
     HW                  = grids[:HW]::T1
 
-    # TODO: check if there's a notable speed up by only passing settings, grids,
-    #       and parameters into this function as kwargs
     #----------------------------------------------------------------------------
     # Calculate other prices from capital stock
     #----------------------------------------------------------------------------
-    N           = _bbl_employment(K_guess, 1.0 / (param_dict[:μ_p] * param_dict[:μ_w]), param_dict[:α],      # employment
-                                  param_dict[:τ_lev], param_dict[:τ_prog], param_dict[:γ])
-    w           = _bbl_wage(K_guess, 1.0 / param_dict[:μ_p], N, param_dict[:α])                     # wages
-    rk          = _bbl_interest(K_guess, 1.0 / param_dict[:μ_p], N, param_dict[:α], param_dict[:δ_0])        # Return on illiquid asset
-    profits     = (1.0 - 1.0 / param_dict[:μ_p]) .* _bbl_output(K_guess, 1.0, N, param_dict[:α])    # Profit income
-    RB          = param_dict[:RB] / param_dict[:π]                                                  # Real return on liquid assets
-    neg_liq_ret = RB + param_dict[:Rbar]
+    N           = _bbl_employment(K_guess, 1.0 / (θ[:μ_p] * θ[:μ_w]), θ[:α],      # employment
+                                  θ[:τ_lev], θ[:τ_prog], θ[:γ])
+    w           = _bbl_wage(K_guess, 1.0 / θ[:μ_p], N, θ[:α])                     # wages
+    rk          = _bbl_interest(K_guess, 1.0 / θ[:μ_p], N, θ[:α], θ[:δ_0])        # Return on illiquid asset
+    profits     = (1.0 - 1.0 / θ[:μ_p]) .* _bbl_output(K_guess, 1.0, N, θ[:α])    # Profit income
+    RB          = θ[:RB] / θ[:π]                                                  # Real return on liquid assets
+    neg_liq_ret = RB + θ[:Rbar]
     eff_int     = [x <= 0. ? neg_liq_ret : RB for x in m_ndgrid]        # effective rate depending on assets
-    GHHFA       = (param_dict[:γ] + param_dict[:τ_prog]) / (param_dict[:γ] + 1.0)                            # transformation (scaling) for composite good
+    GHHFA       = (θ[:γ] + θ[:τ_prog]) / (θ[:γ] + 1.0)                            # transformation (scaling) for composite good
 
     #----------------------------------------------------------------------------
     # Array (inc) to store incomes
@@ -65,7 +61,7 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::Nam
     Paux            = grids[:Paux]::Matrix{T1}                                 # Grab ergodic income distribution from transitions
     distr_y         = Paux[1, :]                                                 # stationary income distribution
     inc             = Array{Array{Float64, 3}}(undef, 4)                         # container for income
-    mcw             = 1.0 / param_dict[:μ_w]                                              # wage markup
+    mcw             = 1.0 / θ[:μ_w]                                              # wage markup
 
     # gross (labor) incomes
     eff_unit_inc    = mcw * w * N / H         # gross labor income per efficiency unit
@@ -73,17 +69,17 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::Nam
     incgross[end]   = y_grid[end] * profits   # gross income entrepreneurs (profits)
 
     # net (labor) incomes
-    incnet          = param_dict[:τ_lev] * incgross .^ (1.0 - param_dict[:τ_prog])
-    incnet[end]     = param_dict[:τ_lev] .* (y_grid[end] .* profits).^(1. - param_dict[:τ_prog])
+    incnet          = θ[:τ_lev] * incgross .^ (1.0 - θ[:τ_prog])
+    incnet[end]     = θ[:τ_lev] .* (y_grid[end] .* profits).^(1. - θ[:τ_prog])
 
     # average tax rate
     av_tax_rate     = dot((incgross - incnet), distr_y) / dot(incgross, distr_y)
     # ny              = get_setting(m, coarse ? :coarse_ny : :ny)
-    inc[1]          = (GHHFA * param_dict[:τ_lev]) .* (y_ndgrid .* eff_unit_inc) .^ (1.0 - param_dict[:τ_prog]) .+
+    inc[1]          = (GHHFA * θ[:τ_lev]) .* (y_ndgrid .* eff_unit_inc) .^ (1.0 - θ[:τ_prog]) .+
         ((1.0 - mcw) * w * N * (1.0 - av_tax_rate) * HW)         # labor income net of taxes incl. union profits
-    inc[1][:,:,end] = param_dict[:τ_lev] * (view(y_ndgrid, :, :, ny) * profits) .^ (1.0 - param_dict[:τ_prog]) # profit income net of taxes
+    inc[1][:,:,end] = θ[:τ_lev] * (view(y_ndgrid, :, :, ny) * profits) .^ (1.0 - θ[:τ_prog]) # profit income net of taxes
 
-    # incomes out of wealth # TODO: replace these steps OR use list comprehension later on
+    # incomes out of wealth # TODO: replace these steps OR use list comprehension later on (if it is convenient)
     inc[2]          = rk .* k_ndgrid                                  # rental income
     inc[3]          = eff_int .* m_ndgrid                             # liquid asset income
     inc[4]          = k_ndgrid                                        # capital liquidation income (q=1 in steady state)
@@ -98,8 +94,8 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::Nam
         if any(x -> x < 0., c_guess)
             @warn "negative consumption guess"
         end
-        Vm          = eff_int .* _bbl_mutil(c_guess, param_dict[:ξ])
-        Vk          = (rk + param_dict[:λ]) .* _bbl_mutil(c_guess, param_dict[:ξ])
+        Vm          = eff_int .* _bbl_mutil(c_guess, θ[:ξ])
+        Vk          = (rk + θ[:λ]) .* _bbl_mutil(c_guess, θ[:ξ])
         #distr       = get_untransformed_values(m[:distr_star])::Array{T1, 3}
     else
         Vm          = Vm_guess
@@ -112,7 +108,6 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::Nam
     #----------------------------------------------------------------------------
     #θ               = parameters2namedtuple(m)
     KS              = Ksupply(RB, 1.0 + rk, grids, θ, Vm, Vk, distr, inc, eff_int,
-                              TransitionMat_a, TransitionMat_n;
                               verbose = verbose, coarse = coarse, parallel = parallel,
                               ϵ = ϵ, max_value_function_iters = max_value_function_iters,
                               n_direct_transition_iters = n_direct_transition_iters,

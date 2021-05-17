@@ -50,8 +50,6 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
         kfe_method = get_setting(m, :kfe_method)
 
         ny = get_setting(m, :coarse_ny)
-        param_key = [m.parameters[i].key for i in 1:length(m.parameters)]
-        param_dict = Dict(param_key .=> m.parameters)
 
         @inline function d_coarse(  K,
                                     initial::Bool=true,
@@ -60,13 +58,11 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                                     distr_guess = init_distr_guess
                                     )
             distr = initial ? get_untransformed_values(m[:distr_star])::Array{T,3} : distr_guess
-            out = Kdiff(K, m.grids, distr, θ, param_dict,
+            out = Kdiff(K, m.grids, distr, θ,
                         initial, Vm_guess, Vk_guess, distr_guess;
                         verbose = verbose, coarse = true, parallel = parallel,
                         ϵ, max_value_function_iters, n_direct_transition_iters,
                         kfe_method, ny)
-            #out = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
-            #            verbose = verbose, coarse = true, parallel = parallel)
             return out
         end
         # TODO: directly write d_coarse as an inline function e.g. d_coarse(...) = ... instead of @inline function d_coarse(...)
@@ -98,8 +94,6 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     n_direct_transition_iters = get_setting(m, :n_direct_transition_iters)
     kfe_method = get_setting(m, :kfe_method)
 
-    param_key = [m.parameters[i].key for i in 1:length(m.parameters)]
-    param_dict = Dict(param_key .=> m.parameters)
     @inline function d(  K,
                          initial::Bool=true,
                          Vm_guess = zeros(1,1,1),
@@ -107,7 +101,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                          distr_guess = init_distr_guess
                          )
         distr = initial ? get_untransformed_values(m[:distr_star])::Array{T,3} : distr_guess
-            out = Kdiff(K, m.grids, distr, θ, param_dict,
+            out = Kdiff(K, m.grids, distr, θ,
                         initial, Vm_guess, Vk_guess, distr_guess;
                         verbose = verbose, coarse = false, parallel = parallel,
                         ϵ = ϵ_fine, max_value_function_iters, n_direct_transition_iters,

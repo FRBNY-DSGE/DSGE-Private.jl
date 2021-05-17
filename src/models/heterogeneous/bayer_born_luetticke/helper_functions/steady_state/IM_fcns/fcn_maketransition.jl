@@ -3,7 +3,7 @@ function MakeTransition(m_a_star::AbstractArray{T,3},
                         k_a_star::AbstractArray{T,3},
                         Π::AbstractArray{T,2}, dims::NTuple{3, Int64},
                         m_grid::AbstractVector{T}, k_grid::AbstractVector{T},
-                        y_grid::AbstractVector{T}, parallel::Bool = false) where {T <: Real}
+                        y_grid::AbstractVector{T}; parallel::Bool = false) where {T <: Real}
 
     if parallel
         return _parallel_MakeTransition(m_a_star, m_n_star, k_a_star, Π, dims, m_grid, k_grid, y_grid)

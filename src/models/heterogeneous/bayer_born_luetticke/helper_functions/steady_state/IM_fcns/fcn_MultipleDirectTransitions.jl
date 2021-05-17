@@ -2,20 +2,18 @@ function MultipleDirectTransition!(m_a_star::AbstractArray{T,3},
                                    m_n_star::AbstractArray{T,3},
                                    k_a_star::AbstractArray{T,3},
                                    distr::AbstractArray{T,3},
-                                   λ::T,
-                                   Π::AbstractArray{T,2}, dims::NTuple{3, Int},
-                                   grids::NTuple{3, <: AbstractVector{T}}, ϵ::T;
-                                   iters::Int = 10000,
-                                   parallel::Bool = false) where {T <: Real}
+                                   λ::T, Π::AbstractArray{T,2}, dims::NTuple{3, Int},
+                                   m_grid::AbstractVector{T}, k_grid::AbstractVector{T},
+                                   y_grid::AbstractVector{T}, ϵ::T;
+                                   iters::Int = 10000) where {T <: Real}
 
-    if parallel
+    #=if parallel
         # Cannot use multi-threading b/c the loop is not thread-safe.
         # For example, dPrime[id_a] and dPrime[id_a+1] will interact across different loops
-    end
+    end=#
 
     # unpack dims and grids
-    nm,     nk,     ny     = dims
-    m_grid, k_grid, y_grid = grids
+    nm, nk, ny = dims
 
     # Make linear interpolation weights
     idk_a, wR_k_a, wL_k_a = MakeWeights(k_a_star,k_grid)
