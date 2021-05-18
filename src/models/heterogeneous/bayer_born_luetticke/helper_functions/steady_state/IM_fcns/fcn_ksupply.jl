@@ -102,7 +102,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     end
 
     #------------------------------------------------------
-    # Find stationary distribution (Is direct transition better for large model?) (TODO: investigate this question)
+    # Find stationary distribution (Is direct transition better for large model?)
     #------------------------------------------------------
     # Define transition matrix
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
@@ -123,114 +123,6 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
                                                        iters = n_direct_transition_iters)
     else
         error("Solution method for Kolmogorov forward equation $(kfe_method) is not recognized. " *
-              "Available methods are [:krylov, :direct]")
-    end
-
-    #-----------------------------------------------------------------------------
-    # Calculate capital stock
-    #-----------------------------------------------------------------------------
-    K = dot(distr, k_ndgrid) # faster to use dot
-    B = dot(distr, m_ndgrid)
-
-    return K, B, TransitionMat, TransitionMat_a, TransitionMat_n, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star, Vm, Vk, distr
-end
-
-# TODO: delete this version of Ksupply when it's no longer needed
-function Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm::AbstractArray, Vk::AbstractArray, distr_guess::AbstractArray,
-                 inc::AbstractArray, eff_int::AbstractArray; verbose::Symbol = :none, coarse::Bool = false,
-                 parallel::Bool = false) where {T <: Real, T1 <: Real}
-    # TODO: replace `m` with θ, grids, and kwargs for settings
-
-    ## Set up
-    # initialize distance variables
-    dist                = 9999.0
-    dist1               = dist
-    dist2               = dist
-    Π                   = m.grids[:Π]::Matrix{T1}             # type declarations necessary b/c grids is an OrderedDict =>
-    m_grid              = get_gridpts(m, :m_grid)::Vector{T1} # ensures type stability, or else unnecessary allocations are made
-    m_ndgrid            = m.grids[:m_ndgrid]::Array{T1, 3}    # TODO: pass grids directly
-    k_ndgrid            = m.grids[:k_ndgrid]::Array{T1, 3}
-    q                   = 1.0       # price of Capital
-
-    # Map parameter values to NamedTuple
-    θ                   = parameters2namedtuple(m) # and pass parameters as a NamedTuple # TODO: pass in the parameters as a NamedTuple
-
-    #----------------------------------------------------------------------------
-    # Iterate over consumption policies
-    #----------------------------------------------------------------------------
-    count               = 0
-    n                   = size(Vm)
-    ϵ                   = get_setting(m, coarse ? :coarse_ϵ : :ϵ) # TODO: pass this as a setting
-
-    # containers for policies, initialized here
-    Vm_new              = Array{T,3}(undef, n)
-    Vk_new              = Array{T,3}(undef, n)
-    m_n_star            = Array{T,3}(undef, n)
-    m_a_star            = Array{T,3}(undef, n)
-    k_a_star            = Array{T,3}(undef, n)
-    c_a_star            = Array{T,3}(undef, n)
-    c_n_star            = Array{T,3}(undef, n)
-
-    while dist > ϵ && count < get_setting(m, :max_value_function_iters) # Iterate consumption policies until convergence
-        count          += 1
-
-        # Take expectations for labor income change
-        joined_mk_dims  = (n[1] * n[2], n[3])
-        EVm             = reshape((reshape(eff_int, joined_mk_dims) .*   # Note that this allocates a new matrix,
-                                   reshape(Vm, joined_mk_dims)) * Π', n) # so EVm and EVk are separate from Vm and Vk
-        EVk             = reshape(reshape(Vk, joined_mk_dims) * Π', n)   # Also note, Π has dims (n[3], n[3]), hence the reshapes
-
-        # Policy update step: changes EVm, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star
-        # Note that EVm is not used in the remainder of the loop, so we overwrite it
-        # to stop some calculations from making extra allocations
-        EGM_policyupdate!(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, θ, m.grids, false,
-                          c_a_star, m_a_star, k_a_star, c_n_star, m_n_star; parallel = parallel)
-
-        # marginal value update step: updates Vm_new and Vk_new
-        updateV!(Vm_new, Vk_new, EVk, c_a_star, c_n_star, m_n_star,
-                 R_guess - 1.0, q, θ, m_grid, Π; parallel = parallel)
-
-        # Calculate distance in updates
-        dist1           = maximum(abs, _bbl_invmutil(Vk_new, θ[:ξ]) - _bbl_invmutil(Vk, θ[:ξ]))
-        dist2           = maximum(abs, _bbl_invmutil(Vm_new, θ[:ξ]) - _bbl_invmutil(Vm, θ[:ξ]))
-        dist            = max(dist1, dist2) # distance of old and new policy
-
-        # update policy guess/marginal values of liquid/illiquid assets
-        # We use .= to overwrite Vm and Vk. Since Vm_new and Vk_new are overwritten by updateV!,
-        # we need to copy them, but so Vm = Vm_new won't work. It's also slower to do
-        # Vm = copy(Vm_new) since this creates a new allocation. Running Vm .= Vm_new
-        # avoids allocating a new array for Vm.
-        Vm             .= Vm_new
-        Vk             .= Vk_new
-    end
-
-    if verbose == :high
-        println("Max abs error after completing EGM iterations = $(dist)")
-    end
-
-    #------------------------------------------------------
-    # Find stationary distribution (Is direct transition better for large model?) (TODO: investigate this question)
-    #------------------------------------------------------
-    # Define transition matrix  # TODO: faster way to construct this (inspect MakeTransition, also sparse calls), e.g. BlockBandedMatrices
-    S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
-                                                     parallel = parallel)
-    TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
-    TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
-    TransitionMat                   = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
-
-    if get_setting(m, :kfe_method) == :krylov # TODO: add this as kwarg
-        # Calculate left-hand unit eigenvector (uses KrylovKit package)
-        aux   = real.(eigsolve(TransitionMat', 1)[2][1])
-        distr = reshape(vec(aux) ./ sum(aux), n)
-    elseif get_setting(m, :kfe_method) == :direct # TODO: add n_direct_transition_iters kwarg
-        # Direct Transition. `distr_guess` will be over-written to avoid allocations
-        distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
-        distr, dist, count = MultipleDirectTransition!(m_a_star, m_n_star, k_a_star, distr_guess, θ[:λ], Π,
-                                                       n, DSGE.get_idiosyncratic_gridpts(m), ϵ;
-                                                       iters = get_setting(m, :n_direct_transition_iters),
-                                                       parallel = parallel)
-    else
-        error("Solution method for Kolmogorov forward equation $(get_setting(m, :kfe_method)) is not recognized. " *
               "Available methods are [:krylov, :direct]")
     end
 

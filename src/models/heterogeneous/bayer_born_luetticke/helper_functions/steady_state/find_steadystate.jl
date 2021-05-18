@@ -144,7 +144,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     # b/c in this case, Kdiff is positive when capital guess is low.
     # Then we should add a loop and an algorithm to lower the lower bound.
     # Similar steps should be taken for the upper loop
-    BrentOut = CustomBrent(d, KSS*lower_prop, KSS*upper_prop; tol = get_setting(m, :ϵ)
+    BrentOut = CustomBrent(d, KSS*lower_prop, KSS*upper_prop; tol = get_setting(m, :ϵ))
     KSS      = BrentOut[1]
     VmSS     = BrentOut[3][2]
     VkSS     = BrentOut[3][3]

@@ -1,8 +1,5 @@
 function _bbl_incomes(θ::NamedTuple, grids::OrderedDict, KSS::Real, distrSS::Array{<: Real, 3})
 
-    # TODO: double check this computation is approximately same as original code (b/c floating point differences,
-    # the output may not exactly match)
-
     # Set up for type stability
     m_ndgrid = grids[:m_ndgrid]::Array{Float64, 3}
     k_ndgrid = grids[:k_ndgrid]::Array{Float64, 3}
