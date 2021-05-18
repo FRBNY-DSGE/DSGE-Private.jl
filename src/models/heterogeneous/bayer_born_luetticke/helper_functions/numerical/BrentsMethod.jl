@@ -6,7 +6,7 @@ function Brent(g::Function, a::Real, b::Real; tol = 1e-14)
     f(z)=g(z)[1]
     fa = f(a); fb = f(b)
     if fa * fb > 0
-        error("f[a] and f[b] should not have different signs!")
+        error("f[a] and f[b] should have different signs!")
     end
 
     c = a;
@@ -77,14 +77,14 @@ end
 #-------------------------------------------------------------------------------
 ## BRENT'S METHOD ##
 #-------------------------------------------------------------------------------
-function CustomBrent(f::Function, a::Real, b::Real; tol = 1e-14)
+function CustomBrent(f::Function, a::Real, b::Real; tol::Real = 1e-14, initial::Bool = true)
     # Implementation of Brent's method to find a root of a function (as on wikipedia)
     fa = f(a)
-    fb = f(b, true, fa[2], fa[3], fa[4])
+    fb = f(b, initial, fa[2], fa[3], fa[4])
     if fa[1] * fb[1] > 0
-        error("f[a] and f[b] should not have different signs!")
+        error("f[a] and f[b] should have different signs! The respective values are $(fa[1]) and $(fb[1]).")
     end
-    
+
     c = a;
     fc=fa;   # at the beginning: c = a
     c = a;
@@ -93,11 +93,11 @@ function CustomBrent(f::Function, a::Real, b::Real; tol = 1e-14)
 
     iter = 0
     maxiter = 10000
-    initial = true
+    # initial = true
     while iter < maxiter
         iter += 1
-        if iter == 2
-            initial= false
+        if initial && iter == 2
+            initial = false
         end
         if fb[1] * fc[1] > 0
             c = a; fc = fa; d = b - a; e = d

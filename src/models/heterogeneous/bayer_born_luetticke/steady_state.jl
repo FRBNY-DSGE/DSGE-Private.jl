@@ -14,6 +14,8 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
             KSS, VmSS, VkSS, distrSS = find_steadystate(m; verbose = verbose,
                                                         skip_coarse_grid = haskey(get_settings(m), :skip_coarse_grid) &&
                                                         get_setting(m, :skip_coarse_grid),
+                                                        use_old_steadystate = haskey(get_settings(m), :use_old_steadystate) &&
+                                                        get_setting(m, :use_old_steadystate),
                                                         parallel = haskey(get_settings(m), :parallel_steadystate) &&
                                                         get_setting(m, :parallel_steadystate))
 

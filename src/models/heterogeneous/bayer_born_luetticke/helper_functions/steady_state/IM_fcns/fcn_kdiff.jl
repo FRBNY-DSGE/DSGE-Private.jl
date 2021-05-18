@@ -21,9 +21,13 @@ households face idiosyncratic income risk (Aiyagari model).
 - `coarse::Bool = false`: use a coarse grid when true.
 
 """
-function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::NamedTuple,
-               initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),
-               Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1);
+function Kdiff(K_guess::T1, grids::OrderedDict, θ::NamedTuple,
+               initial::Bool = true, Vm_guess::AbstractArray = Array{T1,3}(undef, 0, 0, 0),
+               Vk_guess::AbstractArray = Array{T1,3}(undef, 0, 0, 0), distr_guess::AbstractArray = zeros(1, 1, 1),
+               Vm_tmp::AbstractArray = Array{T1,3}(undef, 0, 0, 0), Vk_tmp::AbstractArray = Array{T1,3}(undef, 0, 0, 0),
+               m_a_star::AbstractArray = Array{T1,3}(undef, 0, 0, 0), m_n_star::AbstractArray = Array{T1,3}(undef, 0, 0, 0),
+               k_a_star::AbstractArray = Array{T1,3}(undef, 0, 0, 0),
+               c_a_star::AbstractArray = Array{T1,3}(undef, 0, 0, 0), c_n_star::AbstractArray = Array{T1,3}(undef, 0, 0, 0);
                verbose::Symbol = :none, coarse::Bool = false,
                parallel::Bool = false, ϵ::Float64 = 1e-5,
                max_value_function_iters::Int64 = 1000,
@@ -89,25 +93,35 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::Nam
     #----------------------------------------------------------------------------
 
     # initial guess consumption and marginal values (if not set)
-    if initial # TODO: pass in m_ndgrid .> 0. if that's already calculated elsewhere
+    if isempty(Vm_guess) || isempty(Vk_guess)
+        c_guess  = inc[1] .+ inc[2] .* (inc[2] .> 0) .+ inc[3] .* (m_ndgrid .> 0.)
+        if any(x -> x < 0., c_guess)
+            @warn "negative consumption guess"
+        end
+
+        if isempty(Vm_guess)
+            Vm_guess = eff_int .* _bbl_mutil(c_guess, θ[:ξ])
+        end
+        if isempty(Vk_guess)
+            Vk_guess = (rk + θ[:λ]) .* _bbl_mutil(c_guess, θ[:ξ])
+        end
+    elseif initial # TODO: pass in m_ndgrid .> 0. if that's already calculated elsewhere
         c_guess     = inc[1] .+ inc[2] .* (inc[2] .> 0) .+ inc[3] .* (m_ndgrid .> 0.)
         if any(x -> x < 0., c_guess)
             @warn "negative consumption guess"
         end
-        Vm          = eff_int .* _bbl_mutil(c_guess, θ[:ξ])
-        Vk          = (rk + θ[:λ]) .* _bbl_mutil(c_guess, θ[:ξ])
-        #distr       = get_untransformed_values(m[:distr_star])::Array{T1, 3}
-    else
-        Vm          = Vm_guess
-        Vk          = Vk_guess
-        #distr       = distr_guess
+        Vm_guess .= eff_int .* _bbl_mutil(c_guess, θ[:ξ])
+        Vk_guess .= (rk + θ[:λ]) .* _bbl_mutil(c_guess, θ[:ξ])
     end
+    Vm    = Vm_guess
+    Vk    = Vk_guess
+    distr = distr_guess
 
     #----------------------------------------------------------------------------
     # Calculate supply of funds for given prices
     #----------------------------------------------------------------------------
-    #θ               = parameters2namedtuple(m)
     KS              = Ksupply(RB, 1.0 + rk, grids, θ, Vm, Vk, distr, inc, eff_int,
+                              Vm_tmp, Vk_tmp, m_a_star, m_n_star, k_a_star, c_a_star, c_n_star;
                               verbose = verbose, coarse = coarse, parallel = parallel,
                               ϵ = ϵ, max_value_function_iters = max_value_function_iters,
                               n_direct_transition_iters = n_direct_transition_iters,
@@ -117,5 +131,6 @@ function Kdiff(K_guess::Float64, grids::OrderedDict, distr::Array{T1,3}, θ::Nam
     Vk              = KS[end-1]                                                 # marginal value of illiquid assets
     distr           = KS[end]                                                   # stationary distribution
     diff            = K - K_guess                                               # excess supply of funds
+
     return diff, Vm, Vk, distr
 end

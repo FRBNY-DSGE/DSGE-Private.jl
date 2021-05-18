@@ -32,7 +32,9 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     # obtain other steady state variables
     KSS, BSS, TransitionMatSS, TransitionMat_aSS, TransitionMat_nSS,
         c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
-            Ksupply(RBSS, 1.0 + rkSS, m, VmSS, VkSS, distrSS, incnet, eff_int)
+            Ksupply(RBSS, 1.0 + rkSS, m.grids, θ, VmSS, VkSS, distrSS, incnet, eff_int,
+                    similar(VmSS), similar(VkSS), similar(VmSS), similar(VmSS),
+                    similar(VmSS), similar(VmSS), similar(VmSS))
             # not passing verbose to Ksupply b/c any print statements in Ksupply are redundant
 
     VmSS                = log.(VmSS)

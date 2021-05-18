@@ -37,7 +37,9 @@ where `T <: Real`
 """
 
 function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm::AbstractArray, Vk::AbstractArray,
-                 distr_guess::AbstractArray, inc::AbstractArray, eff_int::AbstractArray;
+                 distr_guess::AbstractArray, inc::AbstractArray, eff_int::AbstractArray,
+                 Vm_new::AbstractArray, Vk_new::AbstractArray, m_a_star::AbstractArray, m_n_star::AbstractArray,
+                 k_a_star::AbstractArray, c_a_star::AbstractArray, c_n_star::AbstractArray;
                  verbose::Symbol = :none, coarse::Bool = false, parallel::Bool = false,
                  ϵ::Float64 = 1e-5, max_value_function_iters::Int = 1000, n_direct_transition_iters::Int = 10000,
                  kfe_method::Symbol = :krylov) where {T <: Real}
@@ -49,11 +51,11 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     dist2               = dist
     Π                   = grids[:Π]::Matrix{T}                   # type declarations necessary b/c grids is an OrderedDict =>
     m_grid              = get_gridpts(grids, :m_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
-    k_grid              = get_gridpts(grids, :k_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
-    y_grid              = get_gridpts(grids, :y_grid)::Vector{T} # ensures type stability, or else unnecessary allocations are made
+    k_grid              = get_gridpts(grids, :k_grid)::Vector{T}
+    y_grid              = get_gridpts(grids, :y_grid)::Vector{T}
     m_ndgrid            = grids[:m_ndgrid]::Array{T, 3}
     k_ndgrid            = grids[:k_ndgrid]::Array{T, 3}
-    q                   = 1.0       # price of Capital
+    q                   = 1.0                                    # price of Capital
 
     #----------------------------------------------------------------------------
     # Iterate over consumption policies
@@ -62,14 +64,6 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     n                   = size(Vm)
 
     # containers for policies, initialized here
-    Vm_new              = Array{T,3}(undef, n)
-    Vk_new              = Array{T,3}(undef, n)
-    m_n_star            = Array{T,3}(undef, n)
-    m_a_star            = Array{T,3}(undef, n)
-    k_a_star            = Array{T,3}(undef, n)
-    c_a_star            = Array{T,3}(undef, n)
-    c_n_star            = Array{T,3}(undef, n)
-
     while dist > ϵ && count < max_value_function_iters # Iterate consumption policies until convergence
         count          += 1
 
@@ -123,7 +117,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
         distr = reshape(vec(aux) ./ sum(aux), n)
     elseif kfe_method == :direct
         # Direct Transition
-        distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
+        # distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
         distr, dist, count = MultipleDirectTransition!(m_a_star, m_n_star, k_a_star, distr_guess, θ[:λ], Π,
                                                        n, m_grid, k_grid, y_grid, ϵ;
                                                        iters = n_direct_transition_iters)

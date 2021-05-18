@@ -753,6 +753,10 @@ function model_settings!(m::BayerBornLuetticke)
                  "Number of iterations when approximating stationary distribution " *
                  "directly as a limit of the transition equation")
 
+    # Interval size for Brent's method on refined grid
+    m <= Setting(:brent_interval_size, (0.95, 1.05), "Interval size for Brent's method on refined grid as" *
+                " multiples of the steady state capital guess")
+
     # Reduction settings for the following reduction strategy:
     # (1) Keep DCT coefficients of value functions that explain some fraction of total "energy"
     # (2) Perturb marginals, which are mapped into perturbations of the

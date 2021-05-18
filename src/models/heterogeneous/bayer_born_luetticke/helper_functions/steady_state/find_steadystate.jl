@@ -15,9 +15,16 @@ Find the stationary equilibrium capital stock.
 - `distrSS::Array{Float64,3}`: steady-state distribution of idiosyncratic states, computed by `Ksupply`
 """
 function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
+                          use_old_steadystate::Bool = false,
                           skip_coarse_grid::Bool = false, parallel::Bool = false) where {T <: Real}
 
     # BLAS.set_num_threads(Threads.nthreads()) # this should be set outside of the function
+
+    # Initial set up
+    θ = parameters2namedtuple(m)
+    max_value_function_iters = get_setting(m, :max_value_function_iters)
+    n_direct_transition_iters = get_setting(m, :n_direct_transition_iters)
+    kfe_method = get_setting(m, :kfe_method)
 
     # -------------------------------------------------------------------------------
     ## STEP 1: Find the stationary equilibrium for coarse grid
@@ -26,8 +33,8 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     # Income Process and Income Grids
     #-------------------------------------------------------
 
-    if skip_coarse_grid
-        KSS = m[:K_star] # use K_star as an initial guess
+    if skip_coarse_grid || use_old_steadystate
+        KSS = exp(m[:K_star]) # use K_star as an initial guess
     else
         # Construct coarse grid based on information from settings
         init_grids!(m; coarse = true)
@@ -41,32 +48,34 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
         brent_Kmin = 1.0  * ((m[:δ_0] - 0.0005 + (1.0 - m[:β]) / m[:β]) / m[:α])^(0.5 / (m[:α] - 1.0))
 
         # a.) Define excess demand function with coarse = true
+
+        # Initialize matrix which will be used when kfe_method == :direct
+        # so that stationary distribution can be updated in-place
         init_distr_guess = get_untransformed_values(m[:distr_star])
 
-        θ = parameters2namedtuple(m)
+        # Additional numerical settings
         ϵ = get_setting(m, :coarse_ϵ)
-        max_value_function_iters = get_setting(m, :max_value_function_iters)
-        n_direct_transition_iters = get_setting(m, :n_direct_transition_iters)
-        kfe_method = get_setting(m, :kfe_method)
+        nm, nk, ny = get_idiosyncratic_dims(m; coarse = true)
 
-        ny = get_setting(m, :coarse_ny)
+        # Initialize arrays to ensure efficient memory usage during EGM loop
+        Vm_tmp = Array{T,3}(undef, nm, nk, ny)
+        Vk_tmp = Array{T,3}(undef, nm, nk, ny)
+        m_n_star = Array{T,3}(undef, nm, nk, ny)
+        m_a_star = Array{T,3}(undef, nm, nk, ny)
+        k_a_star = Array{T,3}(undef, nm, nk, ny)
+        c_n_star = Array{T,3}(undef, nm, nk, ny)
+        c_a_star = Array{T,3}(undef, nm, nk, ny)
 
-        @inline function d_coarse(  K,
-                                    initial::Bool=true,
-                                    Vm_guess = zeros(1,1,1),
-                                    Vk_guess = zeros(1,1,1),
-                                    distr_guess = init_distr_guess
-                                    )
-            distr = initial ? get_untransformed_values(m[:distr_star])::Array{T,3} : distr_guess
-            out = Kdiff(K, m.grids, distr, θ,
-                        initial, Vm_guess, Vk_guess, distr_guess;
-                        verbose = verbose, coarse = true, parallel = parallel,
-                        ϵ, max_value_function_iters, n_direct_transition_iters,
-                        kfe_method, ny)
-            return out
-        end
-        # TODO: directly write d_coarse as an inline function e.g. d_coarse(...) = ... instead of @inline function d_coarse(...)
-        # This form is meant to be useful for timing how long the Kdiff function takes
+        d_coarse(  K, initial::Bool=true,
+                   Vm_guess = Array{T,3}(undef, nm, nk, ny),
+                   Vk_guess = Array{T,3}(undef, nm, nk, ny),
+                   distr_guess = init_distr_guess
+                   ) = Kdiff(K, m.grids, θ,
+                             initial, Vm_guess, Vk_guess, distr_guess,
+                             Vm_tmp, Vk_tmp, m_a_star, m_n_star, k_a_star, c_a_star, c_n_star;
+                             verbose = verbose, coarse = true, parallel = parallel,
+                             ϵ, max_value_function_iters, n_direct_transition_iters,
+                             kfe_method, ny)
 
         # b.) Find equilibrium capital stock (multigrid on y,m,k)
         KSS = CustomBrent(d_coarse, brent_Kmin, brent_Kmax)[1]
@@ -86,41 +95,56 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
 
     # Find stationary equilibrium for refined economy
     # a.) Define excess demand function with coarse = false
-    ny_fine = get_setting(m, :ny)
+
+    # Additional numerical settings
     ϵ_fine = get_setting(m, :ϵ)
+    nm, nk, ny = get_idiosyncratic_dims(m; coarse = false)
 
-    θ = parameters2namedtuple(m)
-    max_value_function_iters = get_setting(m, :max_value_function_iters)
-    n_direct_transition_iters = get_setting(m, :n_direct_transition_iters)
-    kfe_method = get_setting(m, :kfe_method)
+    # Initialize arrays to ensure efficient memory usage during EGM loop
+    Vm_tmp = Array{T,3}(undef, nm, nk, ny)
+    Vk_tmp = Array{T,3}(undef, nm, nk, ny)
+    m_n_star = Array{T,3}(undef, nm, nk, ny)
+    m_a_star = Array{T,3}(undef, nm, nk, ny)
+    k_a_star = Array{T,3}(undef, nm, nk, ny)
+    c_n_star = Array{T,3}(undef, nm, nk, ny)
+    c_a_star = Array{T,3}(undef, nm, nk, ny)
 
-    @inline function d(  K,
-                         initial::Bool=true,
-                         Vm_guess = zeros(1,1,1),
-                         Vk_guess = zeros(1,1,1),
-                         distr_guess = init_distr_guess
-                         )
-        distr = initial ? get_untransformed_values(m[:distr_star])::Array{T,3} : distr_guess
-            out = Kdiff(K, m.grids, distr, θ,
-                        initial, Vm_guess, Vk_guess, distr_guess;
-                        verbose = verbose, coarse = false, parallel = parallel,
-                        ϵ = ϵ_fine, max_value_function_iters, n_direct_transition_iters,
-                        kfe_method, ny = ny_fine)
-        #out = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
-        #            verbose = verbose, coarse = false, parallel = parallel)
-        return out
+    # Initialize matrix which will be used when kfe_method == :direct
+    # so that stationary distribution can be updated in-place
+    init_distr_guess = get_untransformed_values(m[:distr_star])
+
+    d = if use_old_steadystate
+        init_Vm_guess = exp.(get_untransformed_values(m[:Vm_star]))
+        init_Vk_guess = exp.(get_untransformed_values(m[:Vk_star]))
+
+        d1(  K, initial::Bool=false,
+             Vm_guess = init_Vm_guess,
+             Vk_guess = init_Vk_guess,
+             distr_guess = init_distr_guess
+             ) = Kdiff(K, m.grids, θ, initial, Vm_guess, Vk_guess, distr_guess,
+                       Vm_tmp, Vk_tmp, m_a_star, m_n_star, k_a_star, c_a_star, c_n_star;
+                       verbose = verbose, coarse = false, parallel = parallel,
+                       ϵ = ϵ_fine, max_value_function_iters, n_direct_transition_iters,
+                       kfe_method, ny = ny)
+    else
+        d2(  K, initial::Bool=true,
+             Vm_guess = Array{T,3}(undef, nm, nk, ny),
+             Vk_guess = Array{T,3}(undef, nm, nk, ny),
+             distr_guess = init_distr_guess
+             ) = Kdiff(K, m.grids, θ, initial, Vm_guess, Vk_guess, distr_guess,
+                       Vm_tmp, Vk_tmp, m_a_star, m_n_star, k_a_star, c_a_star, c_n_star;
+                       verbose = verbose, coarse = false, parallel = parallel,
+                       ϵ = ϵ_fine, max_value_function_iters, n_direct_transition_iters,
+                       kfe_method, ny = ny)
     end
-    # TODO: uncomment code below b/c it directly writes d as an inline function
-#=    d(  K,
-        initial::Bool=true,
-        Vm_guess = zeros(1,1,1),
-        Vk_guess = zeros(1,1,1),
-        distr_guess = init_distr_guess
-        )                              = Kdiff(K, m, initial, Vm_guess, Vk_guess, distr_guess;
-                                               verbose = verbose, coarse = false, parallel = parallel)=#
 
     # b.) Find equilibrium capital stock (multigrid on (m, k, y))
-    BrentOut = CustomBrent(d, KSS*.95, KSS*1.05; tol = get_setting(m, :ϵ)) # TODO: if using skip_coarse_grid, add option to permit a wider interval than .95 and 1.05, maybe via a for loop check
+    lower_prop, upper_prop = get_setting(m, :brent_interval_size)
+    # TODO: update CustomBrent to check if f(a) > 0 and to return an error otherwise
+    # b/c in this case, Kdiff is positive when capital guess is low.
+    # Then we should add a loop and an algorithm to lower the lower bound.
+    # Similar steps should be taken for the upper loop
+    BrentOut = CustomBrent(d, KSS*lower_prop, KSS*upper_prop; tol = get_setting(m, :ϵ)
     KSS      = BrentOut[1]
     VmSS     = BrentOut[3][2]
     VkSS     = BrentOut[3][3]
