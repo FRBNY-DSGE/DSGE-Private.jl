@@ -64,6 +64,10 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     n                   = size(Vm)
 
     # containers for policies, initialized here
+    inv_mutil_old = similar(Vm)
+    inv_mutil_new = similar(Vm_new)
+    println("EGM Loop")
+    @time begin
     while dist > ϵ && count < max_value_function_iters # Iterate consumption policies until convergence
         count          += 1
 
@@ -84,8 +88,8 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
                  R_guess - 1.0, q, θ, m_grid, Π; parallel = parallel)
 
         # Calculate distance in updates
-        dist1           = maximum(abs, _bbl_invmutil(Vk_new, θ[:ξ]) - _bbl_invmutil(Vk, θ[:ξ]))
-        dist2           = maximum(abs, _bbl_invmutil(Vm_new, θ[:ξ]) - _bbl_invmutil(Vm, θ[:ξ]))
+        dist1           = maximum(abs, _bbl_invmutil!(inv_mutil_new, Vk_new, θ[:ξ]) - _bbl_invmutil!(inv_mutil_old, Vk, θ[:ξ]))
+        dist2           = maximum(abs, _bbl_invmutil!(inv_mutil_new, Vm_new, θ[:ξ]) - _bbl_invmutil!(inv_mutil_old, Vm, θ[:ξ]))
         dist            = max(dist1, dist2) # distance of old and new policy
 
         # update policy guess/marginal values of liquid/illiquid assets
@@ -100,9 +104,13 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     if verbose == :high
         println("Max abs error after completing EGM iterations = $(dist)")
     end
-
+    end
+    println("Solving KFE")
+    @time begin
     #------------------------------------------------------
     # Find stationary distribution (Is direct transition better for large model?)
+    # Expensiveness on coarse grid (ny = 6) => .01 s for making transition matrix,
+    #                                       => 0.3 s for calling KrylovKit
     #------------------------------------------------------
     # Define transition matrix
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
@@ -125,7 +133,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
         error("Solution method for Kolmogorov forward equation $(kfe_method) is not recognized. " *
               "Available methods are [:krylov, :direct]")
     end
-
+    end
     #-----------------------------------------------------------------------------
     # Calculate capital stock
     #-----------------------------------------------------------------------------

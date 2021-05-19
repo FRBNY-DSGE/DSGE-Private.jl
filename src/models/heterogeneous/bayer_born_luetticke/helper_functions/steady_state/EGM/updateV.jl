@@ -29,6 +29,8 @@ function updateV!(Vm::Array,
                   m_grid::AbstractVector{T1},
                   Π::Array;
                   parallel::Bool = false) where {T1 <: Real}
+# Expensiveness on coarse grid (ny = 6)
+# .000307 s
 
     # Setup
     β::Float64 = θ[:β]
@@ -64,8 +66,8 @@ function updateV!(Vm::Array,
         end
     else
         @inbounds @views begin
-            for j::Int = 1:n[3]
-                for k::Int = 1:n[2]
+            @simd for j in 1:n[3]
+                @simd for k in 1:n[2]
                     Vk[:, k, j] = mylinearinterpolate(m_grid, EVk[:, k, j], m_n_star[:, k, j]) # evaluate marginal value at policy
                 end
             end

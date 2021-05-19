@@ -27,7 +27,7 @@ function MakeWeightsLight(xpol,grid)
     idx         = Array{Int}(undef, size(xpol))
     weightright = Array{eltype(xpol)}(undef, size(xpol))
     dx          = diff(grid)
-    @inbounds begin
+    @fastmath @inbounds begin
         for i in eachindex(xpol)
             if xpol[i] <= grid[1]
                 idx[i]     = 1

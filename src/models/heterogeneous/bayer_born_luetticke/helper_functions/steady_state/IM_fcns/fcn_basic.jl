@@ -5,9 +5,17 @@ _bbl_mutil(c::Array, ξ::Union{Real, AbstractParameter})     = 1.0 ./ ((c.*c).*(
 _bbl_invmutil(mu::Array, ξ::Union{Real, AbstractParameter}) = 1.0 ./ (sqrt.(sqrt.(mu))) # mu.^(1.0./ξ), and ξ = 4.
 
 function _bbl_mutil!(F::Array, c::Array, ξ::Union{Real, AbstractParameter})
-    for i in eachindex(c)
+    @inbounds @fastmath @simd for i in eachindex(c)
         cᵢ   = c[i]
         F[i] = 1.0 ./ ((cᵢ * cᵢ) * (cᵢ * cᵢ)) # c.^ξ, and ξ = 4.
+    end
+    return F
+end
+
+@inline function _bbl_invmutil!(F::Array, mu::Array, ξ::Union{Real, AbstractParameter})
+    @inbounds @fastmath @simd for i in eachindex(mu)
+        muᵢ  = mu[i]
+        F[i] = 1. / (sqrt(sqrt(muᵢ))) # mu.^(1.0./ξ), and ξ = 4.
     end
     return F
 end

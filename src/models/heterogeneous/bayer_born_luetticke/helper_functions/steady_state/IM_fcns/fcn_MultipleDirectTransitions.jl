@@ -25,7 +25,7 @@ function MultipleDirectTransition!(m_a_star::AbstractArray{T,3},
     dPrime = Array{eltype(distr), 3}(undef, size(distr)) # initialize matrix here, not using zeros so that line 29 isn't redundant on first loop
     while (dist>ϵ) && (count<iters)
         dPrime .= 0. # reset all entries to zero after each loop. This avoids making allocations, which is faster in the end
-        @inbounds begin
+        @fastmath @inbounds begin
             for zz = 1:ny # all current income states
                 for kk = 1:nk # all current illiquid asset states
                     #idk_n = kk
