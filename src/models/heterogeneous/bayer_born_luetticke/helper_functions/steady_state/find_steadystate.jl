@@ -139,7 +139,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     end
 
     # b.) Find equilibrium capital stock (multigrid on (m, k, y))
-    lower_prop, upper_prop = get_setting(m, :brent_interval_size)
+    lower_prop, upper_prop = get_setting(m, :brent_interval_endpoints)
     # TODO: update CustomBrent to check if f(a) > 0 and to return an error otherwise
     # b/c in this case, Kdiff is positive when capital guess is low.
     # Then we should add a loop and an algorithm to lower the lower bound.
