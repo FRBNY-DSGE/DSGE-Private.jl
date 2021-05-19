@@ -104,9 +104,9 @@ function _parallel_MakeTransition(m_a_star::AbstractArray{T,3},
     idm_n, weightright_m_n, weightleft_m_n = MakeWeights(m_n_star,m_grid)
 
     # Adjustment case
-    weight      = Array{typeof(k_a_star[1]),3}(undef, 4,ny,nk* nm*ny)
-    targetindex = zeros(Int,4,ny,nk* nm*ny)
-    startindex  = zeros(Int,4,ny,nk* nm*ny)
+    weight      = Array{typeof(k_a_star[1]),3}(undef, 4, ny, nm * nk * ny)
+    targetindex = Array{Int,3}(undef, 4, ny, nm * nk * ny)
+    startindex  = Array{Int,3}(undef, 4, ny, nm * nk * ny)
     blockindex  = (0:ny-1)*nk*nm
 
     Threads.@threads for (runindex, mmkkzz) in mky_CI
@@ -138,9 +138,9 @@ function _parallel_MakeTransition(m_a_star::AbstractArray{T,3},
     W_a          = vec(weight)
 
     # Non-Adjustment case
-    weight2      = zeros(typeof(k_a_star[1]), 2,ny,nk* nm*ny)
-    targetindex2 = zeros(Int, 2,ny,nk* nm*ny)
-    startindex2  = zeros(Int,2,ny,nk* nm*ny)
+    weight2      = Array{typeof(k_a_star[1]),3}(undef, 2, ny, nm * nk * ny)
+    targetindex2 = Array{Int,3}(undef, 2, ny, nm * nk * ny)
+    startindex2  = Array{Int,3}(undef, 2, ny, nm * nk * ny)
     Threads.@threads for (runindex, mmkkzz) in mky_CI
         mm, kk, zz = mmkkzz[1], mmkkzz[2], mmkkzz[3]
         WL       = weightleft_m_n[mm,kk,zz]

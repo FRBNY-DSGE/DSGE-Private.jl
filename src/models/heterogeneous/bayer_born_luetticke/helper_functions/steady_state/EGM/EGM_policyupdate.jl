@@ -60,7 +60,6 @@ function EGM_policyupdate!(EVm::Array,
     ############################################################################
     ## EGM Step 1: Find optimal liquid asset holdings in the constrained case ##
     ############################################################################
-    # EMU         = EVm .* β
     EVm       .*= β   # directly adjust EVm and set EMU = EVm
     EMU         = EVm # since we don't need access to the original EVm for the remainder of an EGM loop
     c_star_n    = _bbl_invmutil(EMU, θ[:ξ]) # 6% of time with rolled out power function
@@ -87,9 +86,6 @@ function EGM_policyupdate!(EVm::Array,
 
     # Policies for tuples (c*,m*,y) are now given. Need to interpolate to return to
     # fixed grid. Note that c_n_star & m_n_star are the policies when HH cannot adjust
-    #=c_n_star    = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # Initialize c_n-container
-    m_n_star    = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # Initialize m_n-container=#
-
     @inbounds @views begin
         for jj = 1:n[3] # Loop over income states
             for kk = 1:n[2] # Loop over capital states
@@ -221,9 +217,6 @@ end
 ####################################################################
 ## EGM Step 4: Interpolate back to fixed grid                     ##
 ####################################################################
-#=c_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # These are chosen c, m, and k when
-m_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # HH can adjust their portfolios
-k_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3]))=#
 Resource_grid       = reshape(inc_IA + inc_LA + inc_rent, (n[1] * n[2], n[3])) # resources according to income
 labor_inc_grid      = vec(inc_lab[1, 1, :])
 
@@ -297,7 +290,6 @@ function _parallel_EGM_policyupdate!(EVm::Array,
                                     c_n_star::Array,
                                     m_n_star::Array)
 
-    # TODO: add more comments explaining how we figure out policies when households can and cannot adjust portfolios
     ################### Copy/read-out stuff#####################################
     β::Float64 = θ[:β]
     borrwedge  = θ[:Rbar] .* Tshock
@@ -342,10 +334,6 @@ function _parallel_EGM_policyupdate!(EVm::Array,
 
     # Policies for tuples (c*,m*,y) are now given. Need to interpolate to return to
     # fixed grid. Note that c_n_star & m_n_star are the policies when HH cannot adjust
-#=    c_n_star    = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # Initialize c_n-container
-    m_n_star    = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # Initialize m_n-container=#
-
-    # TODO: maybe it's cleaner to write a separate function specifically when using parallel computations
     @inbounds @views begin
         Threads.@threads for kkjj in CartesianIndices((n[2], n[3]))
             kk, jj = kkjj[1], kkjj[2] # Loop over capital (kk) and income (jj) states
@@ -477,9 +465,6 @@ end
 ####################################################################
 ## EGM Step 4: Interpolate back to fixed grid                     ##
 ####################################################################
-#=c_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # These are chosen c, m, and k when
-m_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3])) # HH can adjust their portfolios
-k_a_star            = Array{eltype(c_star_n), 3}(undef, (n[1], n[2], n[3]))=#
 Resource_grid       = reshape(inc_IA + inc_LA + inc_rent, (n[1] * n[2], n[3])) # resources according to income
 labor_inc_grid      = vec(inc_lab[1, 1, :])
 

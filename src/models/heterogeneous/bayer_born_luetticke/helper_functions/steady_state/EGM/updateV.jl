@@ -56,9 +56,10 @@ function updateV!(Vm::Array,
     # Vk = Array{eltype(EVk), 3}(undef, n)                       # Initialize Vk-container
     if parallel # multi-threading b/c this loop is quick, and we don't expect to use too many threads
         @inbounds @views begin
-            Threads.@threads for kj in CartesianIndices((n[2], n[3]))
-                k, j        = kj[1], kj[2]
+            Threads.@threads for j in 1:n[3] # Thread only over income states b/c a single call to
+                for k in 1:n[2]              # mylinearinterpolate is too cheap
                 Vk[:, k, j] = mylinearinterpolate(m_grid, EVk[:, k, j], m_n_star[:, k, j]) # evaluate marginal value at policy
+                end
             end
         end
     else
