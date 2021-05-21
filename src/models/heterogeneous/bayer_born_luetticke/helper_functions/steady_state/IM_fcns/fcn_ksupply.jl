@@ -184,13 +184,16 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
         # Define transition matrix
         S_a, T_a, W_a, S_n, T_n, W_n = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
                                                          parallel = parallel)
-        TransitionMat_a              = sparse(S_a, T_a, W_a, n_total_dims, n_total_dims)
-        TransitionMat_n              = sparse(S_n, T_n, W_n, n_total_dims, n_total_dims)
+#=        TransitionMat_a              = sparse(S_a, T_a, W_a, n_total_dims, n_total_dims) # original code
+        TransitionMat_n              = sparse(S_n, T_n, W_n, n_total_dims, n_total_dims)=#
+        TransitionMat_a              = sparse(T_a, S_a, W_a, n_total_dims, n_total_dims) # but we construct it this way
+        TransitionMat_n              = sparse(T_n, S_n, W_n, n_total_dims, n_total_dims) # to avoid applying a transpose
         TransitionMat                = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
 
         # Calculate left-hand unit eigenvector (uses KrylovKit.jl)
-        aux   = real.(eigsolve(TransitionMat', 1)[2][1])
-        distr = reshape(vec(aux) ./ sum(aux), n)
+        # aux   = real.(eigsolve(TransitionMat', 1)[2][1]) # original code
+        aux   = real.(eigsolve(TransitionMat, 1)[2][1]) # but since we construct TransitionMat_a, TransitionMat_n as their transposes,
+        distr = reshape(vec(aux) ./ sum(aux), n)        # we don't need to call eigsolve on TransitionMat'
     elseif kfe_method == :direct
         # Direct Transition
         distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
