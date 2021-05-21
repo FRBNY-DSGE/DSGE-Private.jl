@@ -30,8 +30,7 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, avg_tax_rateSS, eff_int = _bbl_incomes(θ, m.grids, KSS, distrSS)
 
     # obtain other steady state variables
-    KSS, BSS, TransitionMatSS, TransitionMat_aSS, TransitionMat_nSS,
-        c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
+    KSS, BSS, c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
             Ksupply(RBSS, 1.0 + rkSS, m.grids, θ, VmSS, VkSS, distrSS, incnet, eff_int,
                     similar(VmSS), similar(VkSS), similar(VmSS), similar(VmSS),
                     similar(VmSS), similar(VmSS), similar(VmSS))

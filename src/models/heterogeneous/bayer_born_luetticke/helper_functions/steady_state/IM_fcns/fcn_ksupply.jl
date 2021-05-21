@@ -112,10 +112,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     # Expensiveness on coarse grid (ny = 6) => .01 s for making transition matrix,
     #                                       => 0.3 s for calling KrylovKit
     #------------------------------------------------------
-    # Define transition matrix
-    S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
-                                                     parallel = parallel)
-        n_total_dims = prod(n) # total number of dimensions, used to construct transition matrix
+        n_total_dims = prod(n) # total number of dimensions, used to construct transition matrix for Krylov methods
 
         if kfe_method == :slepc
             SlepcInitialize()
@@ -183,13 +180,15 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
             # Stop Slepc
             SlepcFinalize()
         else
-    TransitionMat_a                 = sparse(S_a, T_a, W_a, n_total_dims, n_total_dims)
-    TransitionMat_n                 = sparse(S_n, T_n, W_n, n_total_dims, n_total_dims)
-    TransitionMat                   = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
-
     if kfe_method == :krylov
+        # Define transition matrix
+        S_a, T_a, W_a, S_n, T_n, W_n = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
+                                                         parallel = parallel)
+        TransitionMat_a              = sparse(S_a, T_a, W_a, n_total_dims, n_total_dims)
+        TransitionMat_n              = sparse(S_n, T_n, W_n, n_total_dims, n_total_dims)
+        TransitionMat                = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
+
         # Calculate left-hand unit eigenvector (uses KrylovKit.jl)
-        # TODO: check we get the same result if we construct the transpose of TransitionMat directly
         aux   = real.(eigsolve(TransitionMat', 1)[2][1])
         distr = reshape(vec(aux) ./ sum(aux), n)
     elseif kfe_method == :direct
@@ -210,5 +209,5 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     K = dot(distr, k_ndgrid) # faster to use dot
     B = dot(distr, m_ndgrid)
 
-    return K, B, TransitionMat, TransitionMat_a, TransitionMat_n, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star, Vm, Vk, distr
+    return K, B, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star, Vm, Vk, distr
 end
