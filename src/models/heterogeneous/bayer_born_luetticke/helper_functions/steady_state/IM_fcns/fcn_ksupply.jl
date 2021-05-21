@@ -115,17 +115,86 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     # Define transition matrix
     S_a, T_a, W_a, S_n, T_n, W_n    = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
                                                      parallel = parallel)
-    TransitionMat_a                 = sparse(S_a, T_a, W_a, prod(n), prod(n))
-    TransitionMat_n                 = sparse(S_n, T_n, W_n, prod(n), prod(n))
+        n_total_dims = prod(n) # total number of dimensions, used to construct transition matrix
+
+        if kfe_method == :slepc
+            SlepcInitialize()
+
+            # Update the weights to account for the probability of being able to adjust portfolios
+            W_a .*= θ[:λ]
+            W_n .*= 1. - θ[:λ]
+
+            # Create the problem matrices, set sizes, and apply "command-line" options.
+            TransitionMat_a = MatCreate()
+            MatSetSizes(TransitionMat_a, PETSC_DECIDE, PETSC_DECIDE, n_total_dims, n_total_dims)
+            MatSetFromOptions(TransitionMat_a)
+            MatSetUp(TransitionMat_a)
+            TransitionMat_n = MatCreate()
+            MatSetSizes(TransitionMat_n, PETSC_DECIDE, PETSC_DECIDE, n_total_dims, n_total_dims)
+            MatSetFromOptions(TransitionMat_n)
+            MatSetUp(TransitionMat_n)
+            TransitionMat = MatCreate()
+            MatSetSizes(TransitionMat, PETSC_DECIDE, PETSC_DECIDE, n_total_dims, n_total_dims)
+            MatSetFromOptions(TransitionMat)
+            MatSetUp(TransitionMat)
+
+            # Get rows handled by the local processor for the adjust and no-adjust transition matrices
+            TransitionMat_a_rstart, TransitionMat_a_rend = MatGetOwnershipRange(TransitionMat_a)
+            TransitionMat_n_rstart, TransitionMat_n_rend = MatGetOwnershipRange(TransitionMat_n)
+
+            for i in eachindex(W_a)
+                # arg 2 = row index (PETSC is in C, so it's zero-based indexing => decrement row by 1)
+                # arg 3 = col index (PETSC is in C, so it's zero-based indexing => decrement col by 1)
+                # arg 4 = value
+                MatSetValues(TransitionMat_a, [T_a[i] - 1], [S_a[i] - 1], [W_a[i]], INSERT_VALUES)
+            end
+            for i in eachindex(W_n)
+                MatSetValues(TransitionMat_n, [T_n[i] - 1], [S_n[i] - 1], [W_n[i]], INSERT_VALUES)
+            end
+
+            # Add matrices to create TransitionMat
+            MatCompositeAddMat(TransitionMat, TransitionMat_a)
+            MatCompositeAddMat(TransitionMat, TransitionMat_n)
+
+            # Assemble matrix
+            MatAssemblyBegin(TransitionMat, MAT_FINAL_ASSEMBLY)
+            MatAssemblyEnd(TransitionMat, MAT_FINAL_ASSEMBLY)
+
+            # Set up eigenvalue solver. By default, it calculates the largest eigenvalue and
+            # the associated eigenvector using a Krylov-Schur algorithm (like KrylovKit.jl)
+            eps = EPSCreate()
+            EPSSetOperators(eps, TranstionMat, NULL) # set B matrix to NULL => solve Ax = λx, not Ax = λBx
+            EPSSetFromOptions(eps)
+            EPSSetUp(eps)
+            EPSSolve(eps)
+
+            # Retrieve largest eigenvector's real part
+            vecr, veci = MatCreateVecs(TransitionMat)
+            aux, _ = EPSGetEigenvector(eps, 0, vecr, veci) # only want the real part
+
+            # Free Memory
+            MatDestroy(TransitionMat_a)
+            MatDestroy(TransitionMat_n)
+            MatDestroy(TransitionMat)
+            VecDestroy(vecr)
+            VecDestroy(veci)
+            EPSDestroy(eps)
+
+            # Stop Slepc
+            SlepcFinalize()
+        else
+    TransitionMat_a                 = sparse(S_a, T_a, W_a, n_total_dims, n_total_dims)
+    TransitionMat_n                 = sparse(S_n, T_n, W_n, n_total_dims, n_total_dims)
     TransitionMat                   = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
 
     if kfe_method == :krylov
-        # Calculate left-hand unit eigenvector (uses KrylovKit package)
+        # Calculate left-hand unit eigenvector (uses KrylovKit.jl)
+        # TODO: check we get the same result if we construct the transpose of TransitionMat directly
         aux   = real.(eigsolve(TransitionMat', 1)[2][1])
         distr = reshape(vec(aux) ./ sum(aux), n)
     elseif kfe_method == :direct
         # Direct Transition
-        # distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
+        distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
         distr, dist, count = MultipleDirectTransition!(m_a_star, m_n_star, k_a_star, distr_guess, θ[:λ], Π,
                                                        n, m_grid, k_grid, y_grid, ϵ;
                                                        iters = n_direct_transition_iters)
@@ -133,6 +202,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
         error("Solution method for Kolmogorov forward equation $(kfe_method) is not recognized. " *
               "Available methods are [:krylov, :direct]")
     end
+        end
     end
     #-----------------------------------------------------------------------------
     # Calculate capital stock
