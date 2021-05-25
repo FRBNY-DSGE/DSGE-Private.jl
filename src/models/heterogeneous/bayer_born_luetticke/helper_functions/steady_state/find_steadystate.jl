@@ -25,6 +25,10 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     max_value_function_iters = get_setting(m, :max_value_function_iters)
     n_direct_transition_iters = get_setting(m, :n_direct_transition_iters)
     kfe_method = get_setting(m, :kfe_method)
+    if kfe_method == :slepc
+        @assert false "SLEPc currently is not a working method for solving the KFE"
+        SlepcInitialize()
+    end
 
     # -------------------------------------------------------------------------------
     ## STEP 1: Find the stationary equilibrium for coarse grid
@@ -151,6 +155,10 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     distrSS  = BrentOut[3][4]
     if verbose in [:low, :high]
         println("Capital stock is $(KSS)")
+    end
+
+    if kfe_method == :slepc
+        SlepcFinalize()
     end
 
     return KSS, VmSS, VkSS, distrSS
