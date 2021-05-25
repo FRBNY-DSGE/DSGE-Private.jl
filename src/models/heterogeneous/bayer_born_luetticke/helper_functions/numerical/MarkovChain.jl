@@ -69,6 +69,7 @@ N = length(bounds)-1
         sigma_e=riskscale*sqrt(1-rho^2)# Calculate short run variance
         P=zeros(typeof(riskscale),N,N) # Initialize Transition Probability Matrix
 
+    # this appears to be a similar integration procedure as above, not sure how it is different yet
         for i=1:floor(Int,(N-1)/2)+1
             nodes, weights = _bbl_qnwcheb(500, bounds[i], bounds[i+1])
             for j=1:N
@@ -93,4 +94,61 @@ function pr_ij(x,bound1,bound2,rho,sigma_e)
     mypdf(x) =  1/sqrt(2*π).*exp.(-x.^2/2.0)
     p = mypdf.(x) .* (mycdf.((bound2 - rho.*x)./sigma_e) - mycdf.((bound1 - rho.*x)./sigma_e) )
 return p
+end
+
+# TODO: compare Tauchen implementation above to standard original method
+# to understand exactly how it works. My guess is that this implementation
+# modifies the original algorithm to allow you to perturb the idiosyncratic
+# volatility of the income process while using the same grid points.
+# This approach amounts to fixing the grid points and re-weighting
+# transition probabilities to account for the effect of the change in
+# idiosyncratic volatility.
+#
+# Then adjust rouwenhorst method below to do the same.
+"""
+```
+rouwenhorst(N, ρ, σ, μ=0.0)
+```
+Rouwenhorst's method to approximate AR(1) processes. This code
+was directly copied from QuantEcon.jl (and modified to
+return the nodes and transition matrix directly).
+
+The process follows
+```math
+    y_t = \mu + \rho y_{t-1} + \epsilon_t
+```
+where ``\epsilon_t \sim N (0, \sigma^2)``
+##### Arguments
+- `N::Integer` : Number of points in markov process
+- `ρ::Real` : Persistence parameter in AR(1) process
+- `σ::Real` : Standard deviation of random component of AR(1) process
+- `μ::Real` :  Mean of AR(1) process
+
+##### Returns
+- `state_values` and `transition_matrix`
+"""
+function rouwenhorst(N::Integer, ρ::Real, σ::Real, μ::Real=0.0)
+    σ_y = σ / sqrt(1-ρ^2)
+    p  = (1+ρ)/2
+    Θ = [p 1-p; 1-p p]
+    ψ = sqrt(N-1) * σ_y
+    m = μ / (1 - ρ)
+
+    return _rouwenhorst(p, p, m, ψ, N) # returns state_values, transition_matrix
+end
+
+function _rouwenhorst(p::Real, q::Real, m::Real, Δ::Real, n::Integer)
+    if n == 2
+        return [m-Δ, m+Δ],  [p 1-p; 1-q q]
+    else
+        _, θ_nm1 = _rouwenhorst(p, q, m, Δ, n-1)
+        θN = p    *[θ_nm1 zeros(n-1, 1); zeros(1, n)] +
+             (1-p)*[zeros(n-1, 1) θ_nm1; zeros(1, n)] +
+             q    *[zeros(1, n); zeros(n-1, 1) θ_nm1] +
+             (1-q)*[zeros(1, n); θ_nm1 zeros(n-1, 1)]
+
+        θN[2:end-1, :] ./= 2
+
+        return range(m-Δ, stop=m+Δ, length=n), θN
+    end
 end
