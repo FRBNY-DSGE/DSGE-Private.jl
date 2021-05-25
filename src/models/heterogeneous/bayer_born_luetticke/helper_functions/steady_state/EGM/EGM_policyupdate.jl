@@ -156,7 +156,7 @@ function EGM_policyupdate!(EVm::Array,
         EMU_star[j] = EMU[idx + aux_index[j]] * (1.0 - s) +         # linear interpolation to populate EMU using s as a convex weight
         s * (EMU[idx + aux_index[j] + 1])
     end
-c_a_aux         = _bbl_invmutil(EMU_star, θ[:ξ])
+c_a_aux         = _bbl_invmutil!(EMU_star, EMU_star, θ[:ξ])
 
 # Resources that lead to capital choice
 # k'= c + m*(k") + k" - w*h*N
@@ -341,7 +341,7 @@ function _parallel_EGM_policyupdate!(EVm::Array,
 
     # Policies for tuples (c*,m*,y) are now given. Need to interpolate to return to
     # fixed grid. Note that c_n_star & m_n_star are the policies when HH cannot adjust
-    @inbounds @views begin
+    @inbounds @views @fastmath begin
         Threads.@threads for kkjj in CartesianIndices((n[2], n[3]))
             kk, jj = kkjj[1], kkjj[2] # Loop over capital (kk) and income (jj) states
             cc, mn = mylinearinterpolate_mult2(m_star_n[:, kk, jj], c_star_n[:, kk, jj], m_grid, m_grid)
@@ -350,7 +350,7 @@ function _parallel_EGM_policyupdate!(EVm::Array,
 
             # Check for binding borrowing constraints, no extrapolation from grid
             bcpol = m_star_n[1, kk, jj]
-            for mm = 1:n[1]
+            @simd for mm = 1:n[1]
                 # this loop should be fairly fast, so we don't bother with using threads.
                 # The reason is that, since this loop depends on the interpolation above,
                 # we would need to use `Threads.@spawn` and one of the tools available for
@@ -387,7 +387,7 @@ function _parallel_EGM_policyupdate!(EVm::Array,
     step            = diff(m_grid)                                  # Stepsize on grid()
 
     # Interpolate EMU[m",k',s'*h',M',K'] over m*_n[k"], m-dim is dropped # TODO: figure out exactly what EMU is. Are we using EVk = EVm or something like it?
-    Threads.@threads for j in eachindex(m_a_aux)
+    @inbounds @fastmath Threads.@threads for j in eachindex(m_a_aux)
         xi          = m_a_aux[j]
 
         # find indexes on grid next smallest to optimal policy
@@ -404,7 +404,7 @@ function _parallel_EGM_policyupdate!(EVm::Array,
         EMU_star[j] = EMU[idx + aux_index[j]] * (1.0 - s) +         # linear interpolation to populate EMU using s as a convex weight
         s * (EMU[idx + aux_index[j] + 1])
     end
-c_a_aux         = _bbl_invmutil(EMU_star, θ[:ξ])
+c_a_aux         = _bbl_invmutil!(EMU_star, EMU_star, θ[:ξ]) # TODO: make this inplace
 
 # Resources that lead to capital choice
 # k'= c + m*(k") + k" - w*h*N
@@ -422,7 +422,7 @@ res_list        = Array{Array{eltype(c_star_n)}}(undef, n[3], 1) # resources
 mon_list        = Array{Array{eltype(c_star_n)}}(undef, n[3], 1) # liquid asset choice
 cap_list        = Array{Array{eltype(c_star_n)}}(undef, n[3], 1) # capital choice
 
-Threads.@threads for j = 1:n[3] # Iterate over income states
+ @fastmath @inbounds Threads.@threads for j = 1:n[3] # Iterate over income states
     # When choosing zero capital holdings, HHs might still want to choose money
     # holdings smaller than m*(k'=0)
     if m_star_zero[j] > m_grid[1]
@@ -462,7 +462,7 @@ end
 c_a_aux             = reshape(c_a_aux, (n[2], n[3]))
 m_a_aux             = reshape(m_a_aux, (n[2], n[3]))
 
-Threads.@threads for j = 1:n[3] # thread-safe b/c each loop is independent of others, even though we're calling append!
+@inbounds Threads.@threads for j = 1:n[3] # thread-safe b/c each loop is independent of others, even though we're calling append!
     cons_list[j]    = append!(cons_list[j], c_a_aux[:, j]) # c_a_aux[:, j] is consumption over all points on k_grid, fixing income state zⱼ
     res_list[j]     = append!(res_list[j],  Resource[:, j])
     mon_list[j]     = append!(mon_list[j],  m_a_aux[:, j])
@@ -475,7 +475,7 @@ end
 Resource_grid       = reshape(inc_IA + inc_LA + inc_rent, (n[1] * n[2], n[3])) # resources according to income
 labor_inc_grid      = vec(inc_lab[1, 1, :])
 
-@views @inbounds begin
+@fastmath @views @inbounds begin
     @Threads.threads for j = 1:n[3]
         # Check monotonicity of resources
         if warnme
@@ -503,8 +503,8 @@ labor_inc_grid      = vec(inc_lab[1, 1, :])
 
         # Update consumption policy to be back on grid and
         # check if policies go beyond largest grid points
-        for kk = 1:n[2]     # this nested loop shouldn't be so slow that it's worth
-            for mm = 1:n[1] # going through the hassle of nested multi-threading
+        @simd for kk = 1:n[2]     # this nested loop shouldn't be so slow that it's worth
+            @simd for mm = 1:n[1] # going through the hassle of nested multi-threading
                 runind                  = mm + (kk-1) * n[1] # linear indexing
                 mp                      = m_a_star1[runind]  # liquid asset saving
                 kp                      = k_a_star1[runind]  # illiquid asset saving

@@ -129,8 +129,9 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
 
                 # Calculate left-hand unit eigenvector (uses KrylovKit.jl)
                 # aux   = real.(eigsolve(TransitionMat', 1)[2][1]) # original code
-                aux   = real.(eigsolve(TransitionMat, 1)[2][1]) # but since we construct TransitionMat_a, TransitionMat_n as their transposes,
-                distr = reshape(vec(aux) ./ sum(aux), n)        # we don't need to call eigsolve on TransitionMat'
+                distr   = real.(eigsolve(TransitionMat, 1)[2][1]) # but since we construct TransitionMat_a, TransitionMat_n as their transposes,
+                distr ./= sum(distr)                              # we don't need to call eigsolve on TransitionMat'
+                distr   = reshape(distr, n)
             elseif kfe_method == :direct
                 # Direct Transition
                 distr_guess .= 1 ./ prod(n) # uniform distribution guess provides most robust convergence rather than using previous distribution
