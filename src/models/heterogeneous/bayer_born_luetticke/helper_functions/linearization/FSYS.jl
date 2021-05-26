@@ -165,7 +165,7 @@ function Fsys(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray, θ::Na
             Π                  = Π
             PP                 = ExTransition(θ[:ρ_h], y_bin_bounds, sqrt(σ_t))
             Π[1:end-1,1:end-1] = PP.*(1.0 - θ[:ζ])
-        end
+        end # TODO: if using Rouwenhorst method, this step is not necessary b/c perturbing σ doesn't change the transition productivity
     else
         Π                  = Π .+ zero(eltype(X))
         PP                 = ExTransition(θ[:ρ_h], y_bin_bounds, sqrt(σ_t))
