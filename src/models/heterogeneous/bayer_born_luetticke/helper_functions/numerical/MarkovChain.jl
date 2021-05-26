@@ -2,7 +2,9 @@
 ```
 tauchen86(ρ, N; σ = 1., μ_e = 0.)
 ```
-Generate a discrete approximation to an AR(1) process, following Tauchen (1986).
+Generate a discrete approximation to an AR(1) process. This function
+is named after Tauchen (1986), but it actually is implementing
+the Adda and Cooper (2003) method.
 
 Uses importance sampling: each bin has probability 1/N to realize
 
@@ -62,6 +64,11 @@ function tauchen86(ρ::T, N::Int; σ::T = 1.0, μ_e::T = 0.0) where {T <: Real}
     return grid_vec, P, bounds
 end
 
+# Does the exact same thing as tauchen86 above except it does not re-create the bin bounds
+# and does not create the grid vector implied by the bins. This function here therefore
+# only creates the transition matrix. It is primarily used to get the Jacobian
+# of the model with respect to an infinitessimal change in the unconditional variance
+# of the income process.
 function ExTransition(rho::Number,bounds::Array{Float64,1},riskscale::Number)
 #similar to TAUCHEN
 N = length(bounds)-1
