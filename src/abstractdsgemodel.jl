@@ -222,7 +222,7 @@ get_parameters(m::AbstractDSGEModel) = m.parameters
 get_rng(m::AbstractDSGEModel) = m.rng
 
 # Interface for accessing settings dictionary
-get_settings(m::AbstractDSGEModel) = hasproperty(m, :testing) ? (m.testing ? m.test_settings : m.settings) : m.settings
+get_settings(m::AbstractDSGEModel) = m.settings
 
 # Interface for accessing observables dictionary
 get_observables(m::AbstractDSGEModel) = m.observables
