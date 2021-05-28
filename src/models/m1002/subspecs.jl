@@ -6130,7 +6130,7 @@ function ss84!(m::Model1002)
     ss9!(m) # fix γ_gdi, δ_gdi; also add Iskander's changes and change bounds on rhos
 
     ## Set up model regime-switching
-    m <= Setting(:regime_switching, true)
+#=    m <= Setting(:regime_switching, true)
     m <= Setting(:regime_dates, Dict{Int, Date}(1 => date_presample_start(m), 2 => Date(2020, 3, 31),
                                                 3 => Date(2020, 6, 30), 4 => Date(2020, 9, 30),
                                                 5 => Date(2020, 12, 31), 6 => Date(2021, 3, 31),
@@ -6331,7 +6331,7 @@ function ss84!(m::Model1002)
         m <= Setting(:model2para_regime, m2p)
     end
 
-    ModelConstructors.toggle_regime!(m.parameters, 1) # ensure that regimes are toggled to regime 1
+    ModelConstructors.toggle_regime!(m.parameters, 1) # ensure that regimes are toggled to regime 1=#
 end
 
 function ss85!(m::Model1002)
