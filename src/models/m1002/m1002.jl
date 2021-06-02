@@ -731,6 +731,11 @@ function model_settings!(m::Model1002)
     m <= Setting(:shockdec_startdate, Nullable(quartertodate("2007-Q1")),
                  "Date of start of shock decomposition output period. If null, then shockdec starts at date_mainsample_start")
 
+    if subspec(m) in ["ss59", "ss60", "ss61", "ss62", "ss63", "ss64", "ss65", "ss66", "ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss79", "ss80", "ss81", "ss82", "ss83", "ss84", "ss85"]
+        m <= Setting(:add_pseudo_gdp, true)
+        m <= Setting(:add_pseudo_corepce, true)
+    end
+
     nothing
 end
 
