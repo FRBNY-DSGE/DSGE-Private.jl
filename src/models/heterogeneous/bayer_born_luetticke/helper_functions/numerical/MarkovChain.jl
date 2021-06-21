@@ -113,9 +113,9 @@ return the nodes and transition matrix directly).
 
 The process follows
 ```math
-    y_t = \mu + \rho y_{t-1} + \epsilon_t
+    y_t = mu + rho y_{t-1} + epsilon_t
 ```
-where ``\epsilon_t \sim N (0, \sigma^2)``
+where ``epsilon_t ~ N (0, sigma^2)``
 ##### Arguments
 - `N::Integer` : Number of points in markov process
 - `ρ::Real` : Persistence parameter in AR(1) process
