@@ -8,7 +8,7 @@ module DSGE
     using Missings, Nullables, Optim, Printf, Random, RecipesBase
     using SparseArrays, SparseDiffTools, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
-    using PetscWrap, SlepcWrap
+    #using PetscWrap, SlepcWrap
     using CSV, DataFrames, DataStructures, OrderedCollections
     using BandedMatrices: Zeros
     using DataStructures: SortedDict, insert!, ForwardOrdering
