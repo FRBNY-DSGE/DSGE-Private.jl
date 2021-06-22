@@ -67,7 +67,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     inv_mutil_old = similar(Vm)
     inv_mutil_new = similar(Vm_new)
     println("EGM Loop")
-    @time begin
+    #@time begin
     while dist > ϵ && count < max_value_function_iters # Iterate consumption policies until convergence
         count          += 1
 
@@ -104,9 +104,9 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     if verbose == :high
         println("Max abs error after completing EGM iterations = $(dist)")
     end
-    end
+    #end
     println("Solving KFE")
-    @time begin
+    #@time begin
     #------------------------------------------------------
     # Find stationary distribution (Is direct transition better for large model?)
     # Expensiveness on coarse grid (ny = 6) => .01 s for making transition matrix,

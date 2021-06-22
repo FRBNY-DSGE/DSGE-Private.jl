@@ -169,7 +169,7 @@ function eqcond(m::TwoAssetHANK)
         y_shock      = real(y_shock ./ y_shock_mean .* y_mean)
 
         println("Timing: solve_hjb()")
-        @time c, s, d  = solve_hjb(V, a_lb, γ, ddeath, pam, trans, ξ, τ_I, aggZ, w,
+        c, s, d  = solve_hjb(V, a_lb, γ, ddeath, pam, trans, ξ, τ_I, aggZ, w,
                                    r_b_vec, y_shock, a, b, cost, util, deposit;
                                    permanent=permanent)
 
@@ -180,7 +180,7 @@ function eqcond(m::TwoAssetHANK)
 
         # Derive transition matrices
         println("Timing: transition()")
-        @time A, AT = transition(ddeath, pam, ξ, w, a_lb, aggZ, d, d_g, s, s_g, r_a,
+        A, AT = transition(ddeath, pam, ξ, w, a_lb, aggZ, d, d_g, s, s_g, r_a,
                                  a, a_g, b, b_g, y_shock, cost; permanent=permanent)
 
         cc  = kron(lambda, my_speye(I*J))
@@ -279,10 +279,10 @@ function eqcond(m::TwoAssetHANK)
     n_s_exp = nEErrors # n_shocks_expectational(m)
     n_s_exo = n_Z      # n_shocks_exogenous(m)
 
-    @time get_residuals(zeros(Float64, 2 * nstates + n_s_exp + 1))
+    get_residuals(zeros(Float64, 2 * nstates + n_s_exp + 1))
 
     x = zeros(Float64, 2 * nstates + n_s_exp + 1)
-    @time derivs = ForwardDiff.sparse_jacobian(get_residuals, x)
+    derivs = ForwardDiff.sparse_jacobian(get_residuals, x)
 
     # vars = zeros(Float64, 2 * nstates + n_s_exp + n_s_exo)
 

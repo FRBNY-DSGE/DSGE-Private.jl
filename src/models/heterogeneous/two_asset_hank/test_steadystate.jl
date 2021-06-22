@@ -131,7 +131,7 @@ function steadystate!(m::TwoAssetHANK)
 	    #----------------------------------------------------------------
 	    # Solve HJB
 	    #----------------------------------------------------------------
-        @time for nn = 1 : maxit_HJB
+        for nn = 1 : maxit_HJB
             c, s, d = solve_hjb(Vn, a_lb, ggamma, ddeath, pam, trans, xxi,
                                 tau_I, 0.0, w, r_b_vec, y, a, b, cost, util, deposit)
             u = util.(c)
@@ -194,7 +194,7 @@ function steadystate!(m::TwoAssetHANK)
         #----------------------------------------------------------------
         # Iteration to solve Kolmogorov Forward equation
         #----------------------------------------------------------------
-        @time for nn = 1:maxit_KFE
+        for nn = 1:maxit_KFE
 
             gg_tilde  = dab_g_tilde_vec .* gg
             gg_tilde2 = reshape(gg_tilde, I_g*J_g, N)
