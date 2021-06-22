@@ -67,7 +67,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     inv_mutil_old = similar(Vm)
     inv_mutil_new = similar(Vm_new)
     println("EGM Loop")
-    @time begin
+    #@time begin
     while dist > ϵ && count < max_value_function_iters # Iterate consumption policies until convergence
         count          += 1
 
@@ -104,9 +104,9 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     if verbose == :high
         println("Max abs error after completing EGM iterations = $(dist)")
     end
-    end
+    #end
     println("Solving KFE")
-    @time begin
+    #@time begin
     #------------------------------------------------------
     # Find stationary distribution (Is direct transition better for large model?)
     # Expensiveness on coarse grid (ny = 6) => .01 s for making transition matrix,
@@ -114,9 +114,9 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     #------------------------------------------------------
         n_total_dims = prod(n) # total number of dimensions, used to construct transition matrix for Krylov methods
 
-        if kfe_method == :slepc
-            distr = _slepc_solve_kfe(m_a_star, m_n_star, k_a_star, Π, n, n_total_dims, m_grid, k_grid, y_grid, θ, parallel)
-        else
+        #if kfe_method == :slepc
+            #distr = _slepc_solve_kfe(m_a_star, m_n_star, k_a_star, Π, n, n_total_dims, m_grid, k_grid, y_grid, θ, parallel)
+        #else
             if kfe_method == :krylov
                 # Define transition matrix
                 S_a, T_a, W_a, S_n, T_n, W_n = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
@@ -142,8 +142,8 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
                 error("Solution method for Kolmogorov forward equation $(kfe_method) is not recognized. " *
                       "Available methods are [:krylov, :direct]")
             end
-        end
-    end
+        #end
+    #end
     #-----------------------------------------------------------------------------
     # Calculate capital stock
     #-----------------------------------------------------------------------------
@@ -152,7 +152,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
 
     return K, B, c_a_star, m_a_star, k_a_star, c_n_star, m_n_star, Vm, Vk, distr
 end
-
+#=
 function _slepc_solve_kfe(m_a_star::AbstractArray, m_n_star::AbstractArray, k_a_star::AbstractArray,
                           Π::AbstractMatrix, n::NTuple{3,Int}, n_total_dims::Int,
                           m_grid::AbstractVector, k_grid::AbstractVector, y_grid::AbstractVector,
@@ -259,4 +259,4 @@ function _slepc_solve_kfe(m_a_star::AbstractArray, m_n_star::AbstractArray, k_a_
     #            SlepcFinalize()
 
     return distr
-end
+end=#

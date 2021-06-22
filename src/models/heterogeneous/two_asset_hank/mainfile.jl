@@ -30,7 +30,7 @@ inv_state_red = my_speye(nVars-n_p)
 println("=> Reducing Value Function Distribution")
 @show reduceDistribution
 #error()
-@time if reduceDistribution
+if reduceDistribution
 
    state_red, inv_state_red, n_g = stateSpaceReduction(Γ0, Γ1, n_v, n_g, n_p, n_Z, reduceDist_hor)
 
