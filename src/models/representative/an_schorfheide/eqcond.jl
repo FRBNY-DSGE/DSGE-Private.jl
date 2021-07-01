@@ -103,7 +103,7 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
         Π[eq[:eq_Eπ], ex[:Eπ_sh]] = 1
 
     elseif method == :lti
-        n_endo = n_states(m) # maybe instead do `n_endo = get_setting(m, :n_states_lti)` so you don't
+        n_endo = get_setting(m, :n_states_lti) # maybe instead do `n_endo = get_setting(m, :n_states_lti)` so you don't
         n_exo  = n_shocks_exogenous(m) # need to delete indices from m.endogenous_states, etc.
         endo   = m.endogenous_states
         exo    = m.exogenous_shocks
