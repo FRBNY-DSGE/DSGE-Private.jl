@@ -15,8 +15,8 @@ specified in their proper positions.
 * `Ψ`  (`n_states` x `n_shocks_exogenous`) holds coefficients of iid shocks.
 * `Π`  (`n_states` x `n_states_expectational`) holds coefficients of expectational states.
 """
-function eqcond(m::AnSchorfheide) # do not edit this function definition
-    return eqcond(m, 1)
+function eqcond(m::AnSchorfheide; method::Symbol = :gensys, matrix_type::DataType = Float64) # do not edit this function definition
+    return eqcond(m, 1; method = method, matrix_type = matrix_type)
 end
 
 function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_type::DataType = Float64) # do not edit these inputs
@@ -103,8 +103,11 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
         Π[eq[:eq_Eπ], ex[:Eπ_sh]] = 1
 
     elseif method == :lti
-        n_endo = n_endogenous_states(m)
+        n_endo = n_states(m)
         n_exo  = n_shocks_exogenous(m)
+        endo   = m.endogenous_states
+        exo    = m.exogenous_shocks
+        eq     = m.equilibrium_conditions
 
         M00 = zeros(matrix_type, n_endo, n_endo)
         M10 = zeros(matrix_type, n_endo, n_endo)
