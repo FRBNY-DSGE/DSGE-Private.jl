@@ -30,18 +30,9 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
                 toggle_regime!(para, reg)
             end
         end
+    end
 
-        ### ENDOGENOUS STATES ###
-
-
-        ### 1. Consumption Euler Equation
-
-        Γ0[eq[:eq_euler], endo[:y_t]]  = 1.
-        Γ0[eq[:eq_euler], endo[:R_t]] = 1/m[:τ]
-        Γ0[eq[:eq_euler], endo[:g_t]] = -(1-m[:ρ_g])
-        Γ0[eq[:eq_euler], endo[:z_t]] = -m[:ρ_z]/m[:τ]
-        Γ0[eq[:eq_euler], endo[:Ey_t1]] = -1
-        Γ0[eq[:eq_euler], endo[:Eπ_t1]] = -1/m[:τ]
+    # You should definitely made edits to the following code!
 
     if method == :gensys
         endo = m.endogenous_states # for convenience, make references to these fields
@@ -63,15 +54,15 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
         Γ0[eq[:eq_euler], endo[:R_t]] = 1/m[:τ]
         Γ0[eq[:eq_euler], endo[:g_t]] = -(1-m[:ρ_g])
         Γ0[eq[:eq_euler], endo[:z_t]] = -m[:ρ_z]/m[:τ]
-        Γ0[eq[:eq_euler], endo[:Ey_t]] = -1
-        Γ0[eq[:eq_euler], endo[:Eπ_t]] = -1/m[:τ]
+        Γ0[eq[:eq_euler], endo[:Ey_t1]] = -1
+        Γ0[eq[:eq_euler], endo[:Eπ_t1]] = -1/m[:τ]
 
         ### 2. NK Phillips Curve
 
         Γ0[eq[:eq_phillips], endo[:y_t]] = -m[:κ]
         Γ0[eq[:eq_phillips], endo[:π_t]] = 1
         Γ0[eq[:eq_phillips], endo[:g_t]] = m[:κ]
-        Γ0[eq[:eq_phillips], endo[:Eπ_t]] = -1/(1+m[:rA]/400)
+        Γ0[eq[:eq_phillips], endo[:Eπ_t1]] = -1/(1+m[:rA]/400)
 
         ### 3. Monetary Policy Rule
 
@@ -102,13 +93,13 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
         ### 7. Expected output
 
         Γ0[eq[:eq_Ey], endo[:y_t]] = 1
-        Γ1[eq[:eq_Ey], endo[:Ey_t]] = 1
+        Γ1[eq[:eq_Ey], endo[:Ey_t1]] = 1
         Π[eq[:eq_Ey], ex[:Ey_sh]] = 1
 
         ### 8. Expected inflation
 
         Γ0[eq[:eq_Eπ], endo[:π_t]] = 1
-        Γ1[eq[:eq_Eπ], endo[:Eπ_t]] = 1
+        Γ1[eq[:eq_Eπ], endo[:Eπ_t1]] = 1
         Π[eq[:eq_Eπ], ex[:Eπ_sh]] = 1
 
     elseif method == :lti
@@ -167,22 +158,17 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
         Ms[eq[:eq_z], exo[:z_sh]]  = one(matrix_type)
     end
 
-        if use_sparse
-            Γ0 = spzeros(matrix_type, n_endo, n_endo)
-            Γ1 = spzeros(matrix_type, n_endo, n_endo)
-            Γ2 = spzeros(matrix_type, n_endo, n_endo)
-            Γ3 = spzeros(matrix_type, n_endo, n_exo)
-        else
-            Γ0 = zeros(matrix_type, n_endo, n_endo)
-            Γ1 = zeros(matrix_type, n_endo, n_endo)
-            Γ2 = zeros(matrix_type, n_endo, n_endo)
-            Γ3 = zeros(matrix_type, n_endo, n_exo)
+    # Ensure parameter regimes are in 1 at the end (you should probably not edit)
+    for para in m.parameters      # if you're new to DSGE.jl, then revisit this block of code later.
+        if !isempty(para.regimes) # if you don't need regime-switching, then you can comment out this block of code
+            toggle_regime!(para, 1)
         end
+    end
 
-   if method == :gensys
-       return Γ0, Γ1, C, Ψ, Π # do not edit this return
-   elseif method == :lti
-       return M00, M10, M01, Ms
-   end
+    if method == :gensys
+        return Γ0, Γ1, C, Ψ, Π # do not edit this return
+    elseif method == :lti
+        return M00, M10, M01, Ms
+    end
 
 end
