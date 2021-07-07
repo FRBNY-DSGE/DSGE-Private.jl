@@ -116,7 +116,7 @@ function structural_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{S
 
     # Check for fixed parameters
     if length(θ) < length(m.parameters)
-        unfixed = get_unfixed_parameter_indices(m)
+        unfixed = .!(get_fixed_parameter_indices(m))
         update_wrapper! = x -> ModelConstructors.update!(m.parameters,
                                                       x, unfixed;
                                                       change_value_type = true)
@@ -129,6 +129,7 @@ function structural_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{S
     # SPEED THIS UP USING SPARSEDIFFTOOLS
     # AND IGNORING ENTRIES WHICH DON'T DEPEND ON ANYTHING
     @inline function diff_struct_obj_fnct(var)
+        @show var
         update_wrapper!(var)
         steadystate!(m)
         Γ0, Γ1, Γ2, Γ3 = eqcond(m; method = :klein,
@@ -229,7 +230,7 @@ function transition_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{U
 
     # Make sure types are the same as they used to be (may change due to use of ForwardDiff)
     if length(θ) < length(m.parameters)
-        unfixed = get_unfixed_parameter_indices(m)
+        unfixed = .!(get_fixed_parameter_indices(m))
         ModelConstructors.update!(m.parameters, θold, unfixed; change_value_type = true)
     else
         ModelConstructors.update!(m.parameters, θold; change_value_type = true)
@@ -292,7 +293,7 @@ function measurement_matrices_jacobian(m::AbstractDSGEModel, θ::AbstractVector{
     # define appropriate function to differentiate
     # Z and D as functions of theta, T, and R
     if length(θ) < length(m.parameters)
-        unfixed = get_unfixed_parameter_indices(m)
+        unfixed = .!(get_fixed_parameter_indices(m))
         update_wrapper! = x -> ModelConstructors.update!(m.parameters,
                                                       x, unfixed;
                                                       change_value_type = true)
