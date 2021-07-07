@@ -22,6 +22,7 @@ end
 function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_type::DataType = Float64) # do not edit these inputs
 
     # Regime-switching parameters (you should probably not edit this call)
+    #=
     for para in m.parameters      # if you're new to DSGE.jl, then revisit this block of code later.
         if !isempty(para.regimes) # if you don't need regime-switching, then you can comment out this block of code
             if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
@@ -31,7 +32,7 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
             end
         end
     end
-
+    =#
     # You should definitely made edits to the following code!
 
     if method == :gensys
@@ -102,6 +103,61 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
         Γ1[eq[:eq_Eπ], endo[:Eπ_t1]] = 1
         Π[eq[:eq_Eπ], ex[:Eπ_sh]] = 1
 
+    elseif method == :klein
+
+        endo = m.endogenous_states
+        exo  = m.exogenous_shocks
+        eq   = m.equilibrium_conditions
+        n_endo = get_setting(m, :n_endogenous_states_klein)
+        n_exo  = n_shocks_exogenous(m)
+
+        Γ0 = spzeros(matrix_type, n_endo, n_endo)
+        Γ1 = spzeros(matrix_type, n_endo, n_endo)
+        Γ2 = spzeros(matrix_type, n_endo, n_endo)
+        Γ3 = spzeros(matrix_type, n_endo, n_exo)
+
+        ### 1. Consumption Euler Equation
+
+        Γ0[eq[:eq_euler], endo[:y_t]] = 1.
+        Γ0[eq[:eq_euler], endo[:R_t]] = 1. / m[:τ]
+        Γ0[eq[:eq_euler], endo[:g_t]] = -(1-m[:ρ_g])
+        Γ0[eq[:eq_euler], endo[:z_t]] = -m[:ρ_z]/m[:τ]
+        Γ1[eq[:eq_euler], endo[:y_t]] = 1.
+        Γ1[eq[:eq_euler], endo[:π_t]] = 1. / m[:τ]
+
+        ### 2. NK Phillips Curve
+
+        Γ0[eq[:eq_phillips], endo[:y_t]] = -m[:κ]
+        Γ0[eq[:eq_phillips], endo[:π_t]] = 1.
+        Γ0[eq[:eq_phillips], endo[:g_t]] = m[:κ]
+        Γ1[eq[:eq_phillips], endo[:π_t]] = 1. / (1+m[:rA]/400)
+
+        ### 3. Monetary Policy Rule
+
+        Γ0[eq[:eq_mp], endo[:y_t]] = -(1-m[:ρ_R])*m[:ψ_2]
+        Γ0[eq[:eq_mp], endo[:π_t]] = -(1-m[:ρ_R])*m[:ψ_1]
+        Γ0[eq[:eq_mp], endo[:R_t]] = 1.
+        Γ0[eq[:eq_mp], endo[:g_t]] = (1-m[:ρ_R])*m[:ψ_2]
+        Γ2[eq[:eq_mp], endo[:R_t]] = m[:ρ_R]
+        Γ3[eq[:eq_mp], exo[:rm_sh]] = m[:σ_R]
+
+        ### 4. Output lag
+
+        Γ0[eq[:eq_y_t1], endo[:y_t1]] = 1.
+        Γ2[eq[:eq_y_t1], endo[:y_t]] = 1.
+        
+	### 5. Government spending
+
+        Γ0[eq[:eq_g], endo[:g_t]] = 1.
+        Γ2[eq[:eq_g], endo[:g_t]] = m[:ρ_g]
+        Γ3[eq[:eq_g], exo[:g_sh]] = m[:σ_g]
+
+        ### 6. Technology
+
+        Γ0[eq[:eq_z], endo[:z_t]] = 1.
+        Γ2[eq[:eq_z], endo[:z_t]] = m[:ρ_z]
+        Γ3[eq[:eq_z], exo[:z_sh]] = m[:σ_z]
+
     elseif method == :lti
         n_endo = get_setting(m, :n_states_lti) # maybe instead do `n_endo = get_setting(m, :n_states_lti)` so you don't
         n_exo  = n_shocks_exogenous(m) # need to delete indices from m.endogenous_states, etc.
@@ -159,16 +215,19 @@ function eqcond(m::AnSchorfheide, reg::Int; method::Symbol = :gensys, matrix_typ
     end
 
     # Ensure parameter regimes are in 1 at the end (you should probably not edit)
+    #=
     for para in m.parameters      # if you're new to DSGE.jl, then revisit this block of code later.
         if !isempty(para.regimes) # if you don't need regime-switching, then you can comment out this block of code
             toggle_regime!(para, 1)
         end
     end
+    =#
 
     if method == :gensys
         return Γ0, Γ1, C, Ψ, Π # do not edit this return
     elseif method == :lti
         return M00, M10, M01, Ms
+    elseif method == :klein
+        return Γ0, Γ1, Γ2, Γ3
     end
-
 end
