@@ -363,7 +363,7 @@ paramter values.
 - `m`: the model object
 - `values`: the new values to assign to non-steady-state parameters.
 """
-function transform_to_model_space!(m::AbstractDSGEModel, values::Vector{T}) where {T<:AbstractFloat}
+function transform_to_model_space!(m::AbstractDSGEModel, values::Vector{T}) where {T<:Real}
     new_values = transform_to_model_space(m.parameters, values)
     DSGE.update!(m, new_values)
     steadystate!(m)
