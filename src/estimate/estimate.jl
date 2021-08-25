@@ -277,10 +277,12 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
 
             #hessian_inv = U*sqrt.(S_inv) # this is the inverse of the hessian
             hessian_inv = F.V * S_inv * F.U'#sqrt.(S_inv) * F.U'
-            DegenerateMvNormal(params, hessian_inv, hessian, diag(S_inv))
+
+            DegenerateMvNormal(params, hessian_inv; stdev = false)
         else
-            DegenerateMvNormal(params, proposal_covariance, pinv(proposal_covariance),
-                               eigen(proposal_covariance).values)
+#            DegenerateMvNormal(params, proposal_covariance, pinv(proposal_covariance),
+#                              eigen(proposal_covariance).values)
+            DegenerateMvNormal(params, proposal_covariance; stdev = false)
         end
 
         if rank(propdist) != n_parameters_free(m)

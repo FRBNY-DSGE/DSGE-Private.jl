@@ -94,11 +94,10 @@ function metropolis_hastings(proposal_dist::Distribution,
         cc = c
     end
 
-    propdist = init_deg_mvnormal(proposal_dist.μ, proposal_dist.σ)
-
+    propdist = DegenerateMvNormal(proposal_dist.μ, proposal_dist.Σ; stdev = false)
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
-    para_old = rand(propdist, rng; cc = cc0)
+    para_old = rand(propdist; cc = cc0)
     post_old = -Inf
 
     initialized = false
@@ -113,7 +112,7 @@ function metropolis_hastings(proposal_dist::Distribution,
             propdist.μ = para_old
             initialized = true
         else
-            para_old = rand(propdist, rng; cc=cc0)
+            para_old = rand(propdist; cc=cc0)
         end
     end
 
@@ -184,14 +183,13 @@ function metropolis_hastings(proposal_dist::Distribution,
 
                 # Draw para_new from the proposal distribution
                 para_subset = para_old[block_a]
-                d_subset    = DegenerateMvNormal(propdist.μ[block_a],
-                                       (propdist.σ[block_a, block_a] +
-                                       propdist.σ[block_a, block_a]') / 2.,
-                                       inv((propdist.σ[block_a, block_a] +
-                                       propdist.σ[block_a, block_a]') / 2.),
-                                       propdist.λ_vals[block_a])
 
-                para_draw   = rand(d_subset, rng; cc = cc)
+                d_subset    = DegenerateMvNormal(propdist.μ[block_a],
+                                                 (propdist.Σ[block_a, block_a] +
+                                                  propdist.Σ[block_a, block_a]') / 2.;
+                                                 stdev = false)
+
+                para_draw   = mvnormal_mixture_draw(para_subset, d_subset; c = cc, α = α)
 
                 para_new          = deepcopy(para_old)
                 para_new[block_a] = para_draw
