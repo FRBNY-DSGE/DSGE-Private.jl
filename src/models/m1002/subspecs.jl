@@ -1250,6 +1250,9 @@ models the COVID-19 pandemic by using the following features:
 
 Confer with the official documentation about the COVID-19 shocks on the GitHub page.
 """
+
+# This branch only used for plotting so it doesn't matter if model is wrong.
+
 function ss63!(m::Model1002)
     ss9!(m) # fix γ_gdi, δ_gdi; also add Iskander's changes and change bounds on rhos
 end
@@ -1340,4 +1343,60 @@ end
 
 function ss85!(m::Model1002)
     ss9!(m) # fix γ_gdi, δ_gdi; also add Iskander's changes and change bounds on rhos
+end
+
+function ss86!(m::Model1002)
+    ss9!(m)
+end
+
+function ss87!(m::Model1002)
+    ss9!(m)
+end
+
+function ss87!(m::Model1002)
+    ss9!(m)
+end
+
+function ss88!(m::Model1002)
+    ss9!(m)
+end
+
+function ss89!(m::Model1002)
+    ss9!(m)
+end
+
+function ss90!(m::Model1002)
+    ss9!(m)
+end
+
+function ss91!(m::Model1002)
+    ss9!(m)
+end
+
+function ss92!(m::Model1002)
+    ss9!(m)
+end
+
+function ss93!(m::Model1002)
+    ss9!(m)
+end
+
+function ss94!(m::Model1002)
+    ss9!(m)
+end
+
+function ss95!(m::Model1002)
+    ss9!(m)
+end
+
+function ss96!(m::Model1002)
+    ss9!(m)
+end
+
+function ss97!(m::Model1002)
+    ss9!(m)
+end
+
+function ss98!(m::Model1002)
+    ss9!(m)
 end
