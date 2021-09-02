@@ -95,8 +95,37 @@ function init_subspec!(m::Model1002)
         return ss84!(m)
     elseif subspec(m) == "ss85"
         return ss85!(m)
+    elseif subspec(m) == "ss86"
+        return ss86!(m)
+    elseif subspec(m) == "ss87"
+        return ss87!(m)
+    elseif subspec(m) == "ss88"
+        return ss88!(m)
+    elseif subspec(m) == "ss89"
+        return ss89!(m)
+    elseif subspec(m) == "ss90"
+        return ss90!(m)
+    elseif subspec(m) == "ss91"
+        return ss91!(m)
+    elseif subspec(m) == "ss92"
+        return ss92!(m)
+    elseif subspec(m) == "ss93"
+        return ss93!(m)
+    elseif subspec(m) == "ss94"
+        return ss94!(m)
+    elseif subspec(m) == "ss95"
+        return ss95!(m)
+    elseif subspec(m) == "ss96"
+        return ss96!(m)
+    elseif subspec(m) == "ss97"
+        return ss97!(m)
+    elseif subspec(m) == "ss98"
+        return ss98!(m)
     else
-        error("This subspec is not defined.")
+        ss9!(m) ## dev-7 is only used for plotting so actual model doesn't matter
+        ## So just assign all future models to ss9! since it doesn't matter.
+        ## All future model changes then don't require any changes to DSGE.
+        # error("This subspec is not defined.")
     end
 end
 
