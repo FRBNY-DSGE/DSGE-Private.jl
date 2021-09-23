@@ -99,7 +99,7 @@ function metropolis_hastings(proposal_dist::Distribution,
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
     para_old = rand(propdist; cc = cc0)
     post_old = -Inf
-
+    save("proposal_dist.jld2", "propdist", propdist.Σ)
     initialized = false
     while !initialized
         # This version of posterior! is not in the DSGE.jl package (which has the method signature
@@ -126,6 +126,8 @@ function metropolis_hastings(proposal_dist::Distribution,
     else # Actual parameter blocking will occur in the MH loop
         n_free_para = length(free_para_inds)
         reblock     = true
+        println("n_free_para")
+        println(n_free_para)
     end
 
     # Report number of blocks that will be used
@@ -173,14 +175,16 @@ function metropolis_hastings(proposal_dist::Distribution,
         for j = 1:(n_sim * mhthin)
 
             if reblock # Parameter blocking by randomly drawing blocks every MH draw
-                blocks_free = SMC.generate_free_blocks(n_free_para, n_param_blocks)
+                free_para_inds = ModelConstructors.get_free_para_inds(parameters)
+                blocks_free = SMC.generate_free_blocks(free_para_inds, n_param_blocks)
                 for block_f in blocks_free
                     sort!(block_f)
                 end
             end
 
             for (k, block_a) in enumerate(blocks_free)
-
+                println("block a")
+                println(block_a)
                 # Draw para_new from the proposal distribution
                 para_subset = para_old[block_a]
 
