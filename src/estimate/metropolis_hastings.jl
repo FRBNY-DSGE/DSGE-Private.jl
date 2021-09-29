@@ -183,8 +183,6 @@ function metropolis_hastings(proposal_dist::Distribution,
             end
 
             for (k, block_a) in enumerate(blocks_free)
-                println("block a")
-                println(block_a)
                 # Draw para_new from the proposal distribution
                 para_subset = para_old[block_a]
 
