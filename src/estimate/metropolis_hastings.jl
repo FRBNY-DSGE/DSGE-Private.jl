@@ -186,15 +186,8 @@ function metropolis_hastings(proposal_dist::Distribution,
                 # Draw para_new from the proposal distribution
                 para_subset = para_old[block_a]
 
-                # d_subset    = DegenerateMvNormal(propdist.μ[block_a],
-                #                                  (propdist.Σ[block_a, block_a] +
-                #                                   propdist.Σ[block_a, block_a]') / 2.;
-                #                                  stdev = false)
-
-
                 d_μ = propdist.μ[block_a]
                 d_Σ = (propdist.Σ[block_a, block_a] + propdist.Σ[block_a, block_a]') / 2.
-                save("problem_blocking.jld2", "problem", d_Σ)
 
                 para_draw   = mvnormal_mixture_draw(para_subset, d_μ, d_Σ; c = cc, α = α)
 
