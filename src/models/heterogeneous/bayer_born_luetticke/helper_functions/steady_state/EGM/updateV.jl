@@ -60,7 +60,9 @@ function updateV!(Vm::Array,
         @inbounds @views begin
             Threads.@threads for j in 1:n[3] # Thread only over income states b/c a single call to
                 for k in 1:n[2]              # mylinearinterpolate is too cheap
-                Vk[:, k, j] = mylinearinterpolate(m_grid, EVk[:, k, j], m_n_star[:, k, j]) # evaluate marginal value at policy
+                    # m_inter = extrapolate(interpolate((m_grid,), EVk[:,k,j], Gridded(Linear())), Line())
+                    # Vk[:, k, j] = m_inter(m_n_star[:, k, j])
+                    Vk[:, k, j] = mylinearinterpolate(m_grid, EVk[:, k, j], m_n_star[:, k, j]) # evaluate marginal value at policy
                 end
             end
         end
@@ -68,6 +70,8 @@ function updateV!(Vm::Array,
         @inbounds @views begin
             @simd for j in 1:n[3]
                 @simd for k in 1:n[2]
+                    # m_inter = extrapolate(interpolate((m_grid,), EVk[:,k,j], Gridded(Linear())), Line())
+                    # Vk[:, k, j] = m_inter(m_n_star[:, k, j]) ## Interpolations.jl is 3x slower
                     Vk[:, k, j] = mylinearinterpolate(m_grid, EVk[:, k, j], m_n_star[:, k, j]) # evaluate marginal value at policy
                 end
             end

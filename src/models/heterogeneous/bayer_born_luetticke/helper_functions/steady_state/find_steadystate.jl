@@ -16,18 +16,15 @@ Find the stationary equilibrium capital stock.
 """
 function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                           use_old_steadystate::Bool = false,
-                          skip_coarse_grid::Bool = false, parallel::Bool = false) where {T <: Real}
+                          skip_coarse_grid::Bool = false, parallel::Bool = false)::Tuple{Float64,AbstractArray{Float64,3},AbstractArray{Float64,3},AbstractArray{Float64,3}} where {T <: Real}
 
-    # BLAS.set_num_threads(Threads.nthreads()) # this should be set outside of the function
-
-    # Initial set up
     θ = parameters2namedtuple(m)
     max_value_function_iters = get_setting(m, :max_value_function_iters)
     n_direct_transition_iters = get_setting(m, :n_direct_transition_iters)
     kfe_method = get_setting(m, :kfe_method)
     if kfe_method == :slepc
-        @assert false "SLEPc currently is not a working method for solving the KFE"
-        #SlepcInitialize()
+        # @assert false "SLEPc currently is not a working method for solving the KFE"
+        SlepcInitialize()
     end
 
     # -------------------------------------------------------------------------------
@@ -36,7 +33,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     #-------------------------------------------------------
     # Income Process and Income Grids
     #-------------------------------------------------------
-
+    @show "Yo"
     if skip_coarse_grid || use_old_steadystate
         KSS = exp(m[:K_star]) # use K_star as an initial guess
     else
@@ -60,7 +57,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
         # Additional numerical settings
         ϵ = get_setting(m, :coarse_ϵ)
         nm, nk, ny = get_idiosyncratic_dims(m; coarse = true)
-
+        @show "Work"
         # Initialize arrays to ensure efficient memory usage during EGM loop
         Vm_tmp = Array{T,3}(undef, nm, nk, ny)
         Vk_tmp = Array{T,3}(undef, nm, nk, ny)
@@ -82,6 +79,8 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                              kfe_method, ny)
 
         # b.) Find equilibrium capital stock (multigrid on y,m,k)
+        @show "OK"
+        CustomBrent(d_coarse, brent_Kmin, brent_Kmax)
         KSS = CustomBrent(d_coarse, brent_Kmin, brent_Kmax)[1]
 
         if verbose in [:low, :high]

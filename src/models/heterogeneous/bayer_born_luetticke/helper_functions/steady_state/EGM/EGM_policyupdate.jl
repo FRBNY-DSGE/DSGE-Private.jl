@@ -18,7 +18,7 @@ are off-grid values.
 - `c_a_star`,`m_a_star`,`k_a_star`,`c_n_star`,`m_n_star`: optimal (on-grid) policies for
     consumption [`c`], liquid [`m`] and illiquid [`k`] asset, with [`a`] or
     without [`n`] adjustment of illiquid asset
-""" # TODO: would FiPIt work and be faster?
+"""
 function EGM_policyupdate!(EVm::Array,
                           EVk::Array,
                           Qminus::Real,
@@ -138,7 +138,7 @@ function EGM_policyupdate!(EVm::Array,
     EMU_star        = Matrix{eltype(m_a_aux)}(undef, n[2], n[3])    # container (note it is over capital and income)
     step            = diff(m_grid)                                  # Stepsize on grid()
 
-    # Interpolate EMU[m",k',s'*h',M',K'] over m*_n[k"], m-dim is dropped # TODO: figure out exactly what EMU is. Are we using EVk = EVm or something like it?
+    # Interpolate EMU[m",k',s'*h',M',K'] over m*_n[k"], m-dim is dropped
     @inbounds @fastmath @simd for j in eachindex(m_a_aux)
         xi          = m_a_aux[j]
 
@@ -220,6 +220,7 @@ m_a_aux             = reshape(m_a_aux, (n[2], n[3]))
     mon_list[j]     = append!(mon_list[j],  m_a_aux[:, j])
     cap_list[j]     = append!(cap_list[j],  k_grid)
 end
+## TODO: Doesn't this repeat values?
 
 ####################################################################
 ## EGM Step 4: Interpolate back to fixed grid                     ##
