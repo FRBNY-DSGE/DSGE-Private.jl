@@ -203,8 +203,11 @@ function _slepc_solve_kfe(m_a_star::AbstractArray, m_n_star::AbstractArray, k_a_
     avail_inds = TransitionMat_rstart .< Is .<= TransitionMat_rend
     ## Count by rank
     comm = MPI.COMM_WORLD
-    counting = zeros(MPI.Comm_size(comm))
-    counting[MPI.Comm_rank(comm)+1] = TransitionMat_rend-TransitionMat_rstart
+    counting = zeros(Int32, MPI.Comm_size(comm))
+    MPI.Barrier(comm)
+    if mod(length(distr_vec), MPI.Comm_size(comm)) != 0
+        MPI.Allgather!(MPI.Buffer([TransitionMat_rend-TransitionMat_rstart]), MPI.UBuffer(counting, 1), comm)
+    end
 
     ## Count number of diagonal and off-diagonal non-zero elements in each row
     ## Used to pre-allocate matrix for speed gains later.
@@ -243,7 +246,7 @@ function _slepc_solve_kfe(m_a_star::AbstractArray, m_n_star::AbstractArray, k_a_
     if mod(length(distr_vec), MPI.Comm_size(comm)) == 0
         MPI.Allgather!(MPI.Buffer(vec(aux)), MPI.UBuffer(distr_vec, TransitionMat_rend-TransitionMat_rstart), comm)
     else
-        MPI.Allgatherv!(MPI.Buffer(vec(aux)), MPI.UBuffer(distr_vec, TransitionMat_rend-TransitionMat_rstart), counting, comm)
+        MPI.Allgatherv!(MPI.Buffer(vec(aux)), MPI.VBuffer(distr_vec, counting), comm)
     end
 
     MPI.Barrier(comm)
@@ -257,6 +260,6 @@ function _slepc_solve_kfe(m_a_star::AbstractArray, m_n_star::AbstractArray, k_a_
     VecDestroy(veci) ## 4 microseconds
     EPSDestroy(eps) ## 303 microseconds
 
-    MPI.Barrier(MPI.COMM_WORLD)
+    MPI.Barrier(comm)
     return distr
 end
