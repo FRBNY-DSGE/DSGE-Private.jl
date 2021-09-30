@@ -127,8 +127,6 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
                 # Define transition matrix
                 S_a, T_a, W_a, S_n, T_n, W_n = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
                                                               parallel = parallel)
-                #=        TransitionMat_a              = sparse(S_a, T_a, W_a, n_total_dims, n_total_dims) # original code
-                TransitionMat_n              = sparse(S_n, T_n, W_n, n_total_dims, n_total_dims)=#
                 TransitionMat_a              = sparse(T_a, S_a, W_a, n_total_dims, n_total_dims) # but we construct it this way
                 TransitionMat_n              = sparse(T_n, S_n, W_n, n_total_dims, n_total_dims) # to avoid applying a transpose
 
@@ -136,24 +134,9 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
                 droptol!(TransitionMat_a, 1e-14)
                 droptol!(TransitionMat_n, 1e-14)
 
-                jldopen("KrylovMat.jld2", "w") do file
-                    file["TM_a"] = TransitionMat_a
-                    file["TM_n"] = TransitionMat_n
-                    file["T_a"] = T_a
-                    file["T_n"] = T_n
-                    file["S_a"] = S_a
-                    file["S_n"] = S_n
-                    file["W_a"] = W_a
-                    file["W_n"] = W_n
-                end
-
                 TransitionMat                = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
 
                 # Calculate left-hand unit eigenvector (uses KrylovKit.jl)
-                # aux   = real.(eigsolve(TransitionMat', 1)[2][1]) # original code
-                # @btime distr   = vec(real.(Arpack.eigs($TransitionMat, nev=1)[2]))
-                # @btime distr   = real.(eigsolve($TransitionMat, 1)[2][1])
-                @btime distr   = real.(eigsolve($TransitionMat, 1)[2][1])
                 distr   = real.(eigsolve(TransitionMat, 1)[2][1]) # but since we construct TransitionMat_a, TransitionMat_n as their transposes,
                 distr ./= sum(distr)                              # we don't need to call eigsolve on TransitionMat'.
                 ## Transpose necessary b/c we are getting left eigenvector
