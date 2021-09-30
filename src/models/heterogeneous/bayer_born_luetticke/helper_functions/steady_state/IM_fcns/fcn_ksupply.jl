@@ -149,7 +149,7 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
                                                                iters = n_direct_transition_iters)
             else
                 error("Solution method for Kolmogorov forward equation $(kfe_method) is not recognized. " *
-                      "Available methods are [:krylov, :direct]")
+                      "Available methods are [:krylov, :direct, :slepc]")
             end
         end
     #end
@@ -167,116 +167,50 @@ function _slepc_solve_kfe(m_a_star::AbstractArray, m_n_star::AbstractArray, k_a_
                           m_grid::AbstractVector, k_grid::AbstractVector, y_grid::AbstractVector,
                           θ::NamedTuple, parallel::Bool)
 
-    @show "Running"
-    #@assert false
+    ## Initialize vector that will be reshaped for final answer
+    distr_vec = Array{Float64}(undef,prod(n))
 
-    @passobj 1 workers() m_a_star
-    @passobj 1 workers() m_n_star
-    @passobj 1 workers() k_a_star
-    @passobj 1 workers() Π
-    @passobj 1 workers() n
-    @passobj 1 workers() n_total_dims
-    @passobj 1 workers() m_grid
-    @passobj 1 workers() k_grid
-    @passobj 1 workers() y_grid
-    @passobj 1 workers() θ
-    @passobj 1 workers() parallel
-
-    @show "But not here"
-    @assert false
     # Calculate locations and values for creating the transition matrix
-    #=@show "Start Krylov equivalent timing"
-
-    @btime S_a, T_a, W_a, S_n, T_n, W_n = MakeTransition($m_a_star,  $m_n_star, $k_a_star, $Π, $n, $m_grid, $k_grid, $y_grid;
-                                                  parallel = $parallel) ## 124 microseconds w/ coarsse (3, 20, 20)=#
-    @show nprocs()
-    @show workers()
     S_a, T_a, W_a, S_n, T_n, W_n = MakeTransition(m_a_star,  m_n_star, k_a_star, Π, n, m_grid, k_grid, y_grid;
-                                                  parallel = parallel)
+                                                  parallel = parallel) ## 124 microseconds w/ coarse (3, 20, 20)
 
-    #=@btime TransitionMat_a              = sparse($T_a, $S_a, $W_a, $n_total_dims, $n_total_dims) # but we construct it this way ## 154.9 microseconds
-    @btime TransitionMat_n              = sparse($T_n, $S_n, $W_n, $n_total_dims, $n_total_dims) # to avoid applying a transpose ## 58.8 microseconds=#
+    TransitionMat_a              = sparse(T_a, S_a, W_a, n_total_dims, n_total_dims) ## 154.9 microseconds # but we construct it this way
+    TransitionMat_n              = sparse(T_n, S_n, W_n, n_total_dims, n_total_dims) ## 58.8 microseconds # to avoid applying a transpose
 
-    TransitionMat_a              = sparse(T_a, S_a, W_a, n_total_dims, n_total_dims) # but we construct it this way
-    TransitionMat_n              = sparse(T_n, S_n, W_n, n_total_dims, n_total_dims) # to avoid applying a transpose
-
-    @passobj 1 workers() TransitionMat_a
-    @passobj 1 workers() TransitionMat_n
     # Remove values close to 0
     droptol!(TransitionMat_a, 1e-14)
     droptol!(TransitionMat_n, 1e-14)
-    #=@btime TransitionMat2                = $θ[:λ] .* $TransitionMat_a + (1.0 - $θ[:λ]) .* $TransitionMat_n ## 127.4 microseconds
-    @show "Done timing same as Krylov"=#
-    TransitionMat2                = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n
-    #@btime I,J,V = findnz($TransitionMat2) ## 53 microseconds, 3.7 ms with finer
-    @show "Hi"
-    @passobj 1 workers() TransitionMat2
-    @show "Second"
-    # I,J,V = findnz(TransitionMat2)
-    @everywhere I,J,V = findnz(TransitionMat2)
-    @show "Third"
-    # SMC.sendto(workers(), I = I)
-    # SMC.sendto(workers(), J = J)
-    # SMC.sendto(workers(), V = V)
 
-    # TransitionMat_a .*= θ[:λ]
-    # TransitionMat_n .*= 1.0 - θ[:λ]
+    TransitionMat2                = θ[:λ] .* TransitionMat_a + (1.0 - θ[:λ]) .* TransitionMat_n ## 127.4 μs
+    Is,Js,Vs = findnz(TransitionMat2) ## 53 microseconds, 3.7 ms with finer
 
-#    @assert false
-    #           SlepcInitialize()
-    # SlepcInitialize()#"-eps_max_it 100 -eps_tol 1e-5 -eps_nev 1 -eps_target 1")
-#=
-    # Update the weights to account for the probability of being able to adjust portfolios
-    W_a .*= θ[:λ]
-    W_n .*= 1. - θ[:λ]
+    ## Pass these objects to all workers
+    @eval @everywhere TransitionMat2 = $TransitionMat2
+    @eval @everywhere Is = $Is
+    @eval @everywhere Js = $Js
+    @eval @everywhere Vs = $Vs
 
-    # Step 1: Set correct Transition matrix values in TransitionMat
-   ## Do this via create_composite_add(W_a, W_n) but need indices to be the same.
-    ## Fastest way to do this is by creating W_a and W_n as Petsc matrices.
-    # Step 2: Transpose and solve the eigenvalue problem to get the eigenvector
+    # Use Slepc to calcualte eigenvector
+    ## All times without parallelization
+    TransitionMat = MatCreate() ## 6 μs
 
-    # Iterate through the indices to find matches
-    ## Need to get rid of this somehow
-    ## Basically, it creates a vector of length "unique (start,end) indices" (across _a and _n)
-    ## Each index is
+    MatSetSizes(TransitionMat, PETSC_DECIDE, PETSC_DECIDE, n_total_dims, n_total_dims) ## 516 ns
+    MatSetFromOptions(TransitionMat) ## 6.7 μs
+    MatSetUp(TransitionMat) ## 117.7 ns
 
-    # Issue is W_a and W_n are converted into vectors and then S_a, T_a yield the row and column index
-    ## for each element in the vector in the same order.
-    ## S_a and S_n just index into the third dimension of the matrix.
-    ST_a = [(i, j) for (i, j) in zip(S_a, T_a)]
-    ST_n = [(i, j) for (i, j) in zip(S_n, T_n)]
-    ST_unique = unique(vcat(ST_a, ST_n))
-    ST_inter = intersect(ST_a, ST_n)
-    W_join = similar(W_a, length(ST_unique))
-    ctr_a = 1
-    ctr_n = 1
-    ctr_inter = 1
-=#
-    # Create the problem matrices, set sizes, and apply "command-line" options.
-    # @btime @everywhere TransitionMat = MatCreate() ## 6 microseconds
-
-    # Create the problem matrices, set sizes, and apply "command-line" options.
-    # MPI.Init()
-    TransitionMat = MatCreate()
-    # @everywhere TransitionMat = MatCreate()
-
-    # @btime MatSetSizes($TransitionMat, PETSC_DECIDE, PETSC_DECIDE, $n_total_dims, $n_total_dims) ## 516 ns
-    # @btime MatSetFromOptions($TransitionMat) ## 6.7 microseconds
-    # @btime MatSetUp($TransitionMat) ## 117.7 ns
     # Get rows handled by the local processor for the adjust and no-adjust transition matrices
-    # @btime TransitionMat_rstart, TransitionMat_rend = MatGetOwnershipRange($TransitionMat) ## 101.8 ns
-
-    MatSetSizes(TransitionMat, PETSC_DECIDE, PETSC_DECIDE, n_total_dims, n_total_dims)
-    MatSetFromOptions(TransitionMat)
-    MatSetUp(TransitionMat)
-    # Get rows handled by the local processor for the adjust and no-adjust transition matrices
-    TransitionMat_rstart, TransitionMat_rend = MatGetOwnershipRange(TransitionMat)
-    avail_inds = TransitionMat_rstart .< I .<= TransitionMat_rend
+    TransitionMat_rstart, TransitionMat_rend = MatGetOwnershipRange(TransitionMat) ## 101.8 ns
+    avail_inds = TransitionMat_rstart .< Is .<= TransitionMat_rend
+    ## Count by rank
+    comm = MPI.COMM_WORLD
+    counting = zeros(MPI.Comm_size(comm))
+    counting[MPI.Comm_rank(comm)+1] = TransitionMat_rend-TransitionMat_rstart
 
     ## Count number of diagonal and off-diagonal non-zero elements in each row
+    ## Used to pre-allocate matrix for speed gains later.
     diag_nonzero = zeros(Int32, TransitionMat_rend - TransitionMat_rstart+1)
     offdiag_nonzero = zeros(Int32, TransitionMat_rend - TransitionMat_rstart+1)
-    for (i,j) in collect(zip(I[avail_inds],J[avail_inds]))
+    for (i,j) in collect(zip(Is[avail_inds] .- TransitionMat_rstart,Js[avail_inds]))
         if j <= TransitionMat_rstart || j > TransitionMat_rend
             offdiag_nonzero[i] += 1
         else
@@ -285,79 +219,12 @@ function _slepc_solve_kfe(m_a_star::AbstractArray, m_n_star::AbstractArray, k_a_
     end
 
     MatMPIAIJSetPreallocation(TransitionMat,convert(Int32, 0),diag_nonzero,convert(Int32, 0),offdiag_nonzero)
-    @show TransitionMat_rstart, TransitionMat_rend
 
-#=    jldopen("TransitionMat.jld2", "w") do file
-        file["TM"] = TransitionMat2
-        file["nz"] = findnz(TransitionMat2)
-        file["I"] = I
-        file["J"] = J
-        file["V"] = V
-    end
-=#
-@show "Ummmm"
-#=    @btime for (i,j,v) in collect(zip($I[$avail_inds],$J[$avail_inds],$V[$avail_inds])) ## btime: 8.3 ms, else: 0.226 seconds, finer: 1.1 seconds #[TransitionMat_rstart+1:TransitionMat_rend]#eachindex(TransitionMat2)[TransitionMat_rstart+1:TransitionMat_rend]
-        MatSetValues($TransitionMat, [i-1], [j-1], [v], INSERT_VALUES)
-        # MatSetValues(TransitionMat, [i], 1:n_total_dims, TransitionMat2[:,i+1], INSERT_VALUES)
-        #[ST_unique[i][2] - 1], [ST_unique[i][1] - 1], [W_join[i]], INSERT_VALUES)
-    end=#
-    for (i,j,v) in collect(zip(I[avail_inds],J[avail_inds],V[avail_inds])) ## 0.226 seconds #[TransitionMat_rstart+1:TransitionMat_rend]#eachindex(TransitionMat2)[TransitionMat_rstart+1:TransitionMat_rend]
+    # Set matrix values
+    for (i,j,v) in collect(zip(Is[avail_inds],Js[avail_inds],Vs[avail_inds])) ## btime: 8.3 ms, else: 0.226 seconds, finer: 1.1 s
         MatSetValues(TransitionMat, [i-1], [j-1], [v], INSERT_VALUES)
-        # MatSetValues(TransitionMat, [i], 1:n_total_dims, TransitionMat2[:,i+1], INSERT_VALUES)
-        #[ST_unique[i][2] - 1], [ST_unique[i][1] - 1], [W_join[i]], INSERT_VALUES)
     end
 
-    #=
-    TransitionMat_a = MatCreate()
-    MatSetSizes(TransitionMat_a, PETSC_DECIDE, PETSC_DECIDE, n_total_dims, n_total_dims)
-    MatSetFromOptions(TransitionMat_a)
-    MatSetUp(TransitionMat_a)
-    TransitionMat_n = MatCreate()
-    MatSetSizes(TransitionMat_n, PETSC_DECIDE, PETSC_DECIDE, n_total_dims, n_total_dims)
-    MatSetFromOptions(TransitionMat_n)
-    MatSetUp(TransitionMat_n)=#
-#=
-    for i in eachindex(W_join)
-        if ST_unique[i] == ST_inter[ctr_inter]
-            W_join[i] = W_a[ctr_a] + W_n[ctr_n]
-            ctr_inter < length(ST_inter) && (ctr_inter += 1)
-            ctr_a < length(ST_a) && (ctr_a += 1)
-            ctr_n < length(ST_n) && (ctr_n += 1)
-        elseif ST_unique[i] == ST_a[ctr_a]
-            W_join[i] = W_a[ctr_a]
-            ctr_a < length(ST_a) && (ctr_a += 1)
-        else
-            W_join[i] = W_n[ctr_n]
-            ctr_n < length(ST_n) && (ctr_n += 1)
-        end
-        MatSetValues(TransitionMat, [ST_unique[i][2]-1], [ST_unique[i][1]-1], [W_join[i]], INSERT_VALUES) ## I think Julia version is 1-indexed.
-    end
-=#
-    # Get rows handled by the local processor for the adjust and no-adjust transition matrices
-    # TransitionMat_rstart, TransitionMat_rend = MatGetOwnershipRange(TransitionMat)
-    #=            TransitionMat_a_rstart, TransitionMat_a_rend = MatGetOwnershipRange(TransitionMat_a)
-    TransitionMat_n_rstart, TransitionMat_n_rend = MatGetOwnershipRange(TransitionMat_n)=#
-
-    #=for i in eachindex(W_join)
-        MatSetValues(TransitionMat, [ST_unique[i][2] - 1], [ST_unique[i][1] - 1], [W_join[i]], INSERT_VALUES)
-    end=#
-    #=            for i in eachindex(W_a)
-    # arg 2 = row index (PETSC is in C, so it's zero-based indexing => decrement row by 1)
-    # arg 3 = col index (PETSC is in C, so it's zero-based indexing => decrement col by 1)
-    # arg 4 = value
-    MatSetValues(TransitionMat_a, [T_a[i] - 1], [S_a[i] - 1], [W_a[i]], INSERT_VALUES)
-    end
-    for i in eachindex(W_n)
-    MatSetValues(TransitionMat_n, [T_n[i] - 1], [S_n[i] - 1], [W_n[i]], INSERT_VALUES)
-    end=#
- # ending here
-#=
-    # Add matrices to create TransitionMat
-    ## Need to first make _a and _n PetscMatrices
-                # TransitionMat = MatCreate()
-    TransitionMat = PetscWrap.create_composite_add(TransitionMat_a, TransitionMat_n)
-    # MatCreateComposite(2, [TransitionMat_a, TransitionMat_n], TransitionMat)
-=#
     # Assemble matrix
     MatAssemblyBegin(TransitionMat, MAT_FINAL_ASSEMBLY) ## 0.000003 seconds
     MatAssemblyEnd(TransitionMat, MAT_FINAL_ASSEMBLY) ## 187 microseconds
@@ -368,39 +235,29 @@ function _slepc_solve_kfe(m_a_star::AbstractArray, m_n_star::AbstractArray, k_a_
     EPSSetOperators(eps, TransitionMat) ## 26 microseconds # set B matrix to NULL => solve Ax = λx, not Ax = λBx
     EPSSetFromOptions(eps) ## 360 microseconds
     EPSSetUp(eps) ## 246 microseconds
-    @time EPSSolve(eps) ## 40.252 milliseconds, finer: 3.2 seconds
-
+    EPSSolve(eps) ## 40.252 milliseconds, finer: 3.2 seconds
     # Retrieve largest eigenvector's real part
     vecr, veci = MatCreateVecs(TransitionMat) ## 68 microseconds
-    # aux, aux_ref = VecGetArray(EPSGetEigenvector(eps, 0, vecr, veci)[1]) # only want the real part
     aux, aux_ref = VecGetArray(EPSGetEigenpair(eps, 0, vecr, veci)[3]) # only want the real part ## 183 microseconds
-    distr = reshape(vec(aux) ./ sum(aux), n) ## 16 microseconds
+
+    if mod(length(distr_vec), MPI.Comm_size(comm)) == 0
+        MPI.Allgather!(MPI.Buffer(vec(aux)), MPI.UBuffer(distr_vec, TransitionMat_rend-TransitionMat_rstart), comm)
+    else
+        MPI.Allgatherv!(MPI.Buffer(vec(aux)), MPI.UBuffer(distr_vec, TransitionMat_rend-TransitionMat_rstart), counting, comm)
+    end
+
+    MPI.Barrier(comm)
+    distr = reshape(distr_vec ./ sum(distr_vec), n)
+
     VecRestoreArray(vecr, aux_ref) ## 1 microseconds
 
     # Free Memory
-    #=            MatDestroy(TransitionMat_a)
-    MatDestroy(TransitionMat_n)=#
     MatDestroy(TransitionMat) ## 0 seconds
     VecDestroy(vecr) ## 6 microseconds
     VecDestroy(veci) ## 4 microseconds
     EPSDestroy(eps) ## 303 microseconds
-#=
-    jldopen("TransitionMat.jld2", "w") do file
-        file["S_a"] = S_a
-        file["T_a"] = T_a
-        file["W_a"] = W_a
-        file["S_n"] = S_n
-        file["T_n"] = T_n
-        file["W_n"] = W_n
-        file["TM"] = TransitionMat2
-        file["distr"] = distrs
-        file["distr_pet"] = distr
-        #file["IJV"] = TransitionMat
-    end
-=#
-    # Stop Slepc
-    #            SlepcFinalize()
-@assert false
+
+    MPI.Barrier(MPI.COMM_WORLD)
     return distr
 end
 

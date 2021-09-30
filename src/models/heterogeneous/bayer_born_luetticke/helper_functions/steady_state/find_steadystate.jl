@@ -24,7 +24,8 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     kfe_method = get_setting(m, :kfe_method)
     if kfe_method == :slepc
         # @assert false "SLEPc currently is not a working method for solving the KFE"
-        SlepcInitialize()
+        SlepcInitialize("-eps_nev 1")
+        # SlepcInitialize("-eps_max_it 100 -eps_tol 1e-6 -eps_nev 1")
     end
 
     # -------------------------------------------------------------------------------
