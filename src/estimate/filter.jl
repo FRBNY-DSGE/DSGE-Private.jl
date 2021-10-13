@@ -399,8 +399,11 @@ function filter(m::PoolModel, data::AbstractArray,
     ### each worker. But sendto and passobj are not working on functions.
     if parallel
         Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
-        sendto(workers(), m=m)
-        @everywhere Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
+        let m = m
+            @sync @distributed for p in workers()
+                Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
+            end
+        end
     else
         Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
     end
