@@ -97,7 +97,8 @@ function metropolis_hastings(proposal_dist::Distribution,
     propdist = DegenerateMvNormal(proposal_dist.μ, proposal_dist.Σ; stdev = false)
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
-    para_old = rand(propdist; cc = cc0)
+    # para_old = rand(propdist; cc = cc0)
+    para_old = proposal_dist.μ
     post_old = -Inf
     save("proposal_dist.jld2", "propdist", propdist.Σ)
     initialized = false
