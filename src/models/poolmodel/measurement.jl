@@ -32,16 +32,24 @@ function measurement(m::PoolModel{T}) where {T<:AbstractFloat}
     F_u = DiscreteUniform(0,0)
     if weight_type == :dynamic
         Ψ_dynamic_pm(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
+        function Ψ_dynamic_pm(x::Float64, data::Vector{Float64})
+            λ_t = cdf(Normal(), x)
+            return data[1]*λ_t + data[2]*(1.0-λ_t)
+        end
+
         return Ψ_dynamic_pm, F_u
     elseif weight_type == :equal
         equal_wt = m[:λ].value
         Ψ_equal_pm(x::Vector{Float64}, data::Vector{Float64}) = dot(data, equal_wt .* ones(2))
+        Ψ_equal_pm(x::Float64, data::Vector{Float64}) = dot(data, equal_wt .* ones(2))
         return Ψ_equal_pm, F_u
     elseif weight_type == :static
         Ψ_static_pm(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
+        Ψ_static_pm(x::Float64, data::Vector{Float64}) = data[1]*x + data[2]*(1.0-x)
         return Ψ_static_pm, F_u
     elseif weight_type == :bma
         Ψ_bma_pm(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
+        Ψ_bma_pm(x::Float64, data::Vector{Float64}) = data[1]*x + data[2]*(1.0-x)
         return Ψ_bma_pm, F_u
     end
 end

@@ -14,12 +14,19 @@ where Φ(⋅) is the cdf of a N(0,1) random variable, F_ϵ is the distribution o
 and F_λ is the distribution of λ(x_0).
 """
 function transition(m::PoolModel{T}) where {T<:AbstractFloat}
+    ρ = m[:ρ].value
+    μ = m[:μ].value
+    σ = m[:σ].value
+
     @inline Φ(x::Vector{Float64}, ϵ::Vector{Float64}) = abs.([0;1] .-
-                                                             (cdf.(Normal(), (1 - m[:ρ].value) .*
-                                                                   m[:μ].value .+ m[:ρ].value .*
-                                                                   quantile(Normal(),x[1]) .+
-                                                                   sqrt(1 - m[:ρ].value^2) .*
-                                                                   m[:σ].value .* ϵ)))
+                                                             ((1.0 - ρ) *
+                                                                   μ + ρ * x[1] .+
+                                                                   sqrt(1 - ρ^2) .*
+                                                                   σ .* ϵ))
+
+    @inline Φ(x::Float64, ϵ::Float64) = (1.0 - ρ) * μ + ρ *
+                                            x + sqrt(1 - ρ^2) * σ * ϵ
+
     F_ϵ = Normal(0.,1.)
     F_λ = Uniform(0.,1.)
     return Φ, F_ϵ, F_λ
