@@ -431,10 +431,9 @@ function filter(m::PoolModel, data::AbstractArray,
                                         fixed_sched = fixed_sched,
                                         tuning..., verbose = :none)
     elseif weight_type == :equal
-        loglhconditional = log.(mapslices(x -> Ψ([0.], x), data, dims = 1))
-        return sum(loglhconditional), loglhconditional
+        loglhconditional = [log(Ψ(0.0, data))]
     elseif weight_type == :static
-        loglhconditional = log.(mapslices(x -> Ψ([m[:λ].value; 1 - m[:λ].value], x), data, dims = 1))
+        loglhconditional = [log(Ψ(m[:λ].value, data))]
         return sum(loglhconditional), loglhconditional
     elseif weight_type == :bma
         error("Estimation for Bayesian Model Averaging is computed directly by the estimate_bma function, so the filter function does not return anything.")
