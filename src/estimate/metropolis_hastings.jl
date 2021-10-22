@@ -156,6 +156,7 @@ function metropolis_hastings(proposal_dist::Distribution,
     # Initialize acceptance rate at the target if adaptively adjusting acceptance prob.
     if adaptive_accept
         curr_accept = target_accept
+        local_min = 0
     end
 
     # Keep track of how long metropolis_hastings has been sampling
@@ -174,6 +175,10 @@ function metropolis_hastings(proposal_dist::Distribution,
             # to try and solve local maximum problem, set lower bound for cc
             if cc < 0.2
                 cc = 0.2
+                local_min += 1
+                if local_min >= 5
+                    cc = 1
+                end
             end
         end
 
