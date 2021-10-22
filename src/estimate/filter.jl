@@ -395,8 +395,6 @@ function filter(m::PoolModel, data::AbstractArray,
     n_particles = haskey(tuning, :n_particles) ? tuning[:n_particles] : 1000
     if isempty(s_0)
         s_0 = quantile.(F_λ, rand(F_λ, n_particles))
-        #s_0 = reshape(rand(F_λ, n_particles), 1, n_particles)
-        # s_0 = [s_0; 1 .- s_0]
     elseif get_setting(m, :weight_type) == :dynamic
         if size(s_0,1) != n_particles || size(s_0,2) != n_particles
             error("s0 does not contain enough particles")
@@ -431,9 +429,9 @@ function filter(m::PoolModel, data::AbstractArray,
                                         fixed_sched = fixed_sched,
                                         tuning..., verbose = :none)
     elseif weight_type == :equal
-        loglhconditional = [log(Ψ(0.0, data))]
+        loglhconditional = log.(mapslices(x -> Ψ([0.], x), data, dims = 1))
     elseif weight_type == :static
-        loglhconditional = [log(Ψ(m[:λ].value, data))]
+        loglhconditional = log.(mapslices(x -> Ψ([m[:λ].value; 1 - m[:λ].value], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional
     elseif weight_type == :bma
         error("Estimation for Bayesian Model Averaging is computed directly by the estimate_bma function, so the filter function does not return anything.")
