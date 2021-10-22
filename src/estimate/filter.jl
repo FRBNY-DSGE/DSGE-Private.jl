@@ -381,26 +381,15 @@ function filter(m::PoolModel, data::AbstractArray,
     end
 
     # Compute transition and measurement equations
-    #=@sync @distributed for p in workers()
-        @show "Zero", myid(), F_u
-    end=#
     Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
-    #=@sync @distributed for p in workers()
-        @show "First", myid(), F_u
-    end=#
-    # @show "System computed"
+
     if (!haskey(tuning, :parallel) && parallel) || (haskey(tuning, :parallel) && tuning[:parallel])
-        # @show "Does this even run?"
         let m = m
             @sync @distributed for p in workers()
                 Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
             end
         end
     end
-
-    #=@sync @distributed for p in workers()
-        @show "Second", myid(), F_u
-    end=#
 
     # Check initial states
     n_particles = haskey(tuning, :n_particles) ? tuning[:n_particles] : 1000
@@ -409,9 +398,9 @@ function filter(m::PoolModel, data::AbstractArray,
         #s_0 = reshape(rand(F_λ, n_particles), 1, n_particles)
         # s_0 = [s_0; 1 .- s_0]
     elseif get_setting(m, :weight_type) == :dynamic
-        #=if size(s_0,2) != n_particles
+        if size(s_0,1) != n_particles || size(s_0,2) != n_particles
             error("s0 does not contain enough particles")
-        end=#
+        end
     end
 
     # Check tuning
