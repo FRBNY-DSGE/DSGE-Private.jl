@@ -394,7 +394,8 @@ function filter(m::PoolModel, data::AbstractArray,
     # Check initial states
     n_particles = haskey(tuning, :n_particles) ? tuning[:n_particles] : 1000
     if isempty(s_0)
-        s_0 = quantile.(F_λ, rand(F_λ, n_particles))
+        s_0 = quantile.(Normal(), rand(F_λ, n_particles))
+        # s_0 = rand(F_λ, n_particles)
     elseif get_setting(m, :weight_type) == :dynamic
         if size(s_0,1) != n_particles || size(s_0,2) != n_particles
             error("s0 does not contain enough particles")
