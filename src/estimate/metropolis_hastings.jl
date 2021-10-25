@@ -389,3 +389,222 @@ function metropolis_hastings(propdist::Distribution,
                                regime_switching = regime_switching, verbose = verbose,
                                savepath = savepath, rng = rng, testing = testing)
 end
+
+
+function de_mc(proposal_dist::Distribution,
+                             loglikelihood::Function,
+                             parameters::ParameterVector{S},
+                             data::Matrix{T},
+                             cc0::T,
+                             cc::T;
+                             n_blocks::Int64        = 1,
+                             n_param_blocks::Int64  = 1,  # TODO: give these kwargs better names
+                             n_sim::Int64           = 100,
+                             n_burn::Int64          = 0,
+                             mhthin::Int64          = 1,
+                             n_pop::Int64           = 1000,
+                             α::T                   = 1.0,
+                             c::T                   = 0.5,
+                             verbose::Symbol        = :low,
+                             savepath::String       = "mhsave.h5",
+                             rng::MersenneTwister   = MersenneTwister(0),
+                             regime_switching::Bool = false,
+                             toggle::Bool           = true,
+                             testing::Bool          = false) where {S<:Number, T<:AbstractFloat}
+
+    # If testing, set the random seeds at fixed numbers
+    if testing
+        Random.seed!(rng, 654)
+    end
+
+    propdist = DegenerateMvNormal(proposal_dist.μ, proposal_dist.Σ; stdev = false)
+    # Initialize algorithm by drawing para_old from normal distribution centered at the
+    # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
+    para_old = rand(propdist, 1000; cc = cc0)
+    # para_old = proposal_dist.μ
+    post_old = -Inf * ones(1000)
+
+    for i in 1:n_pop
+        initialized = false
+        while !initialized
+            # This version of posterior! is not in the DSGE.jl package (which has the method signature
+            # posterior!(m::Union{AbstractDSGEModel,AbstractVARModel},
+            #            parameters::Vector, data::Matrix; ...)
+            # This version of posterior!(loglikelihood::Function, ...)
+            # can be found in ModelConstructors.jl
+            post_old = posterior!(loglikelihood, parameters, para_old[:, i], data; sampler = true)
+            if post_old > -Inf
+                initialized = true
+            else
+                para_old[:, i] = rand(propdist; cc=cc0)
+            end
+        end
+    end
+
+    # Parameter Blocking
+    free_para_inds = ModelConstructors.get_free_para_inds(parameters;
+                                                          regime_switching = regime_switching, toggle = toggle)
+    n_params       = regime_switching ? n_parameters_regime_switching(parameters) : length(parameters)
+    if n_param_blocks == 1
+        blocks_free = Vector{Int}[free_para_inds]
+        reblock     = false # to randomly block parameters again or not?
+    else # Actual parameter blocking will occur in the MH loop
+        n_free_para = length(free_para_inds)
+        reblock     = true
+        println("n_free_para")
+        println(n_free_para)
+    end
+
+    # Report number of blocks that will be used
+    println(verbose, :low, "Blocks: $n_blocks")
+    println(verbose, :low, "Draws per block: $n_sim")
+    println(verbose, :low, "Parameter blocks: $n_param_blocks")
+
+    # For n_sim*mhthin iterations within each block, generate a new parameter draw.
+    # Decide to accept or reject, and save every (mhthin)th draw that is accepted.
+    all_rejections = 0
+
+    # Initialize matrices for parameter draws and transition matrices
+    mhparams = zeros(n_sim * n_param_blocks, n_params, n_pop)
+
+    # Open HDF5 file for saving parameter draws
+    simfile     = h5open(savepath, "w")
+    n_saved_obs = n_sim * n_param_blocks * (n_blocks - n_burn) * n_pop
+    parasim     = isdefined(HDF5, :create_dataset) ?
+        HDF5.create_dataset(simfile, "mhparams", datatype(Float64),
+                            dataspace(n_saved_obs, n_params, n_pop);
+                            chunk = (n_sim * n_param_blocks, n_params, n_pop)) :
+                                HDF5.d_create(simfile, "mhparams", datatype(Float64),
+                                              dataspace(n_saved_obs, n_params, n_pop),
+                                              "chunk", (n_sim * n_param_blocks, n_params, n_pop))
+
+    # Keep track of how long metropolis_hastings has been sampling
+    total_sampling_time = 0.
+
+    # indices of particles used for random sampling
+    pop_inds = collect(1:n_pop)
+
+    # gamma parameter for proposal distribution, efficient for mv normal target distribution
+    # NOTE: make this a parameter of the function
+    γ = 2.38 / sqrt(n_params)
+
+    # distribution of random variable e in proposal distribution
+    # NOTE: make this a parameter of the function
+    e_dist = Uniform(-10^(-4), 10^(-4))
+    for block = 1:n_blocks
+
+        begin_time = time_ns()
+        block_rejections = 0
+
+        for j = 1:(n_sim * mhthin)
+
+            if reblock # Parameter blocking by randomly drawing blocks every MH draw
+                free_para_inds = ModelConstructors.get_free_para_inds(parameters)
+                blocks_free = SMC.generate_free_blocks(free_para_inds, n_param_blocks)
+                for block_f in blocks_free
+                    sort!(block_f)
+                end
+            end
+
+            for x_i in 1:n_pop
+
+                for (k, block_a) in enumerate(blocks_free)
+                    # Draw para_new from the proposal distribution
+                    para_subset = para_old[block_a]
+
+                    R1, R2 = StatsBase.sample(pop_inds[1:100 .!= x_i], 2; replace = false)
+
+                    x_R1   = para_old[block_a, R1]
+                    x_R2   = para_old[block_a, R2]
+
+                    x_p = para_old[block_a, x_i] + γ * (x_R1 - x_R2) + rand(e_dist, length(block_a))
+
+
+                    para_new          = deepcopy(para_old)
+                    para_new[block_a, x_i] = para_draw
+
+
+                    # Solve the model (checking that parameters are within bounds and
+                    # gensys returns a meaningful system) and evaluate the posterior
+                    # This version of posterior! is not in the DSGE.jl package (which has the method signature
+                    # posterior!(m::Union{AbstractDSGEModel,AbstractVARModel},
+                    #            parameters::Vector, data::Matrix; ...)
+                    # This version of posterior!(loglikelihood::Function, ...)
+                    # can be found in ModelConstructors.jl.
+                    post_new[x_i] = posterior!(loglikelihood, parameters, para_new, data;
+                                          sampler = true)
+
+                    println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
+                            "$k/$(n_param_blocks): posterior = $post_new")
+
+                    # Choose to accept or reject the new parameter by calculating the
+                    # ratio (r) of the new posterior value relative to the old one We
+                    # compare min(1, r) to a number drawn randomly from a uniform (0, 1)
+                    # distribution. This allows us to always accept the new draw if its
+                    # posterior value is greater than the previous draw's, but it gives
+                    # some probability to accepting a draw with a smaller posterior
+                    # value, so that we may explore tails and other local modes.
+                    r = exp((post_new[x_i] - post_old[x_i])
+                    x = rand(rng)
+
+                    if x < min(1.0, r)
+                        # Accept proposed jump
+                        para_old[:, x_i] = para_new
+                        post_old[x_i] = post_new[x_i]
+
+                        println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
+                                "$k/$(n_param_blocks): accept proposed jump")
+                    else
+                        # Reject proposed jump
+                        block_rejections += 1
+
+                        println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
+                                "$k/$(n_param_blocks): reject proposed jump")
+                    end
+
+                    # Save every (mhthin)th draw
+                    if j % mhthin == 0
+                        draw_index = convert(Int, ((j / mhthin) - 1) * n_param_blocks + k)
+                        mhparams[draw_index, :]  = para_old'
+                    end
+                end # of loop over parameter blocks
+            end # of loop over n_pop particles
+        end # of block
+
+        all_rejections += block_rejections
+        block_rejection_rate = block_rejections / (n_sim * mhthin * n_param_blocks)
+        if adaptive_accept
+            curr_accept = 1. - block_rejection_rate
+        end
+
+        ## Once every iblock times, write parameters to a file
+
+        # Calculate start/end indices for this block (corresponds to new chunk in memory)
+        block_start = n_sim * n_param_blocks * (block - n_burn - 1)+1
+        block_end   = block_start + (n_sim * n_param_blocks) - 1
+
+        # Write parameters to file if we're past n_burn blocks
+        if block > n_burn
+            parasim[block_start:block_end, :] = map(Float64, mhparams)
+        end
+
+        # Calculate time to complete this block, average block time, and
+        # expected time to completion
+        block_time                      = (time_ns() - begin_time) / 1e9
+        total_sampling_time            += block_time
+        total_sampling_time_minutes     = total_sampling_time / 60
+        expected_time_remaining_sec     = (total_sampling_time / block) * (n_blocks - block)
+        expected_time_remaining_minutes = expected_time_remaining_sec / 60
+
+        println(verbose, :low, "Completed $block of $n_blocks blocks.")
+        println(verbose, :low, "Total time to compute $block blocks: " *
+                "$total_sampling_time_minutes minutes")
+        println(verbose, :low, "Expected time remaining for Metropolis-Hastings: " *
+                "$expected_time_remaining_minutes minutes")
+        println(verbose, :low, "Block $block acceptance rate: $(1. - block_rejection_rate) \n")
+    end # of loop over blocks
+    close(simfile)
+
+    rejection_rate = all_rejections / (n_blocks * n_sim * mhthin * n_param_blocks)
+    println(verbose, :low, "Overall acceptance rate: $(1. - rejection_rate)")
+end
