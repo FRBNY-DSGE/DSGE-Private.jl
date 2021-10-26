@@ -157,6 +157,7 @@ function metropolis_hastings(proposal_dist::Distribution,
     if adaptive_accept
         curr_accept = target_accept
         local_min = 0
+	cc = 1
     end
 
     # Keep track of how long metropolis_hastings has been sampling
@@ -164,23 +165,9 @@ function metropolis_hastings(proposal_dist::Distribution,
 
     for block = 1:n_blocks
 
-        begin_time = time_ns()
+    	begin_time = time_ns()
         block_rejections = 0
 
-        if adaptive_accept
-            # Calculate adaptive c-step for use as scaling coefficient in mutation MH step
-            cc *= (0.95 + 0.10 * exp(16.0 * (curr_accept - target_accept)) /
-                  (1.0 + exp(16.0 * (curr_accept - target_accept))))
-            @show cc, curr_accept
-            # to try and solve local maximum problem, set lower bound for cc
-            if cc < 0.2
-                cc = 0.2
-                local_min += 1
-                if local_min >= 5
-                    cc = 1
-                end
-            end
-        end
 
         for j = 1:(n_sim * mhthin)
 
@@ -190,10 +177,28 @@ function metropolis_hastings(proposal_dist::Distribution,
                 for block_f in blocks_free
                     sort!(block_f)
                 end
-            end
+            end		
 
-            for (k, block_a) in enumerate(blocks_free)
-                # Draw para_new from the proposal distribution
+            for (k, block_a) in enumerate(blocks_free)		
+	    		                
+                if adaptive_accept
+  		    # Calculate adaptive c-step for use as scaling coefficient in mutation MH step
+            	    #cc *= (0.95 + 0.10 * exp(16.0 * (curr_accept - target_accept)) /
+                    #(1.0 + exp(16.0 * (curr_accept - target_accept))))
+
+            	    cc += (block * (n_sim * mhthin) + j)^(-0.66)*(curr_accept - target_accept)
+		    @show cc, curr_accept
+            	    # to try and solve local maximum problem, set lower bound for cc
+            	    if cc < 0.2
+                       cc = 0.2
+                       local_min += 1
+                       if local_min >= 5
+                       	  cc = 1
+                       end  
+                    end
+                end
+
+		# Draw para_new from the proposal distribution
                 para_subset = para_old[block_a]
 
                 d_μ = propdist.μ[block_a]
