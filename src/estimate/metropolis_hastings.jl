@@ -346,7 +346,8 @@ function metropolis_hastings(propdist::Distribution,
                              cc::T;
                              filestring_addl::Vector{String} = Vector{String}(undef, 0),
                              regime_switching::Bool = false, toggle::Bool = true,
-                             verbose::Symbol = :low) where {T<:AbstractFloat}
+                             verbose::Symbol = :low,
+                             de_mc::Bool = false) where {T<:AbstractFloat}
 
     n_blocks = n_mh_blocks(m)
     n_sim    = n_mh_simulations(m)
@@ -380,14 +381,22 @@ function metropolis_hastings(propdist::Distribution,
             likelihood(m, data; sampler = true, catch_errors = false)
         end
     end
-
-    return metropolis_hastings(propdist, loglikelihood, get_parameters(m), data, cc0, cc;
-                               n_blocks = n_blocks, n_param_blocks = n_param_blocks,
-                               adaptive_accept = adaptive_accept, target_accept = target_accept,
-                               c = c, α = α, n_sim = n_sim,
-                               n_burn = n_burn, mhthin = mhthin, toggle = toggle,
-                               regime_switching = regime_switching, verbose = verbose,
-                               savepath = savepath, rng = rng, testing = testing)
+    if de_mc
+        return de_mc(propdist, loglikelihood, get_parameters(m), data, cc0, cc;
+                     n_blocks = n_blocks, n_param_blocks = n_param_blocks,
+                     c = c, α = α, n_sim = n_sim,
+                     n_burn = n_burn, mhthin = mhthin, toggle = toggle,
+                     regime_switching = regime_switching, verbose = verbose,
+                     savepath = savepath, rng = rng, testing = testing)
+    else
+        return metropolis_hastings(propdist, loglikelihood, get_parameters(m), data, cc0, cc;
+                                   n_blocks = n_blocks, n_param_blocks = n_param_blocks,
+                                   adaptive_accept = adaptive_accept, target_accept = target_accept,
+                                   c = c, α = α, n_sim = n_sim,
+                                   n_burn = n_burn, mhthin = mhthin, toggle = toggle,
+                                   regime_switching = regime_switching, verbose = verbose,
+                                   savepath = savepath, rng = rng, testing = testing)
+    end
 end
 
 
@@ -402,7 +411,6 @@ function de_mc(proposal_dist::Distribution,
                              n_sim::Int64           = 100,
                              n_burn::Int64          = 0,
                              mhthin::Int64          = 1,
-                             n_pop::Int64           = 1000,
                              α::T                   = 1.0,
                              c::T                   = 0.5,
                              verbose::Symbol        = :low,
@@ -416,6 +424,9 @@ function de_mc(proposal_dist::Distribution,
     if testing
         Random.seed!(rng, 654)
     end
+
+    # NOTE: make this keyword argument
+    n_pop = 1000
 
     propdist = DegenerateMvNormal(proposal_dist.μ, proposal_dist.Σ; stdev = false)
     # Initialize algorithm by drawing para_old from normal distribution centered at the

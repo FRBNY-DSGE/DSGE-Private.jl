@@ -93,7 +93,9 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
                   toggle::Bool = true,
-                  log_prob_old_data::Float64 = 0.0)
+                  log_prob_old_data::Float64 = 0.0,
+                  de_test::Bool = false)
+
     data = df_to_matrix(m, df)
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
@@ -102,7 +104,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
              continue_intermediate = continue_intermediate,
              intermediate_stage_increment = intermediate_stage_increment,
              save_intermediate = save_intermediate,
-             run_csminwel = run_csminwel, toggle = toggle, log_prob_old_data = log_prob_old_data)
+             run_csminwel = run_csminwel, toggle = toggle, log_prob_old_data = log_prob_old_data,
+             de_test = de_test)
 end
 
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
@@ -148,7 +151,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
                   intermediate_stage_increment::Int = 10,
 		          save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
-                  toggle::Bool = true, log_prob_old_data::Float64 = 0.0)
+                  toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
+                  de_test::Bool = false)
 
     if !(get_setting(m, :sampling_method) in [:SMC, :MH])
         error("method must be :SMC or :MH")
@@ -298,7 +302,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
         cc  = get_setting(m, :mh_cc)
 
         metropolis_hastings(propdist, m, data, cc0, cc; regime_switching = regime_switching,
-                            toggle = toggle, verbose = verbose, filestring_addl = filestring_addl);
+                            toggle = toggle, verbose = verbose, filestring_addl = filestring_addl,
+                            de_test = de_test);
 
     elseif get_setting(m, :sampling_method) == :SMC
         ########################################################################################
