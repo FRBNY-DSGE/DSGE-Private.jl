@@ -465,6 +465,7 @@ function de_mc(proposal_dist::Distribution,
     all_rejections = 0
 
     # Initialize matrices for parameter draws and transition matrices
+
     mhparams = zeros(n_sim * n_param_blocks, n_params, n_pop)
 
     # Open HDF5 file for saving parameter draws
@@ -510,8 +511,9 @@ function de_mc(proposal_dist::Distribution,
 
                 for (k, block_a) in enumerate(blocks_free)
                     # Draw para_new from the proposal distribution
-                    para_subset = para_old[block_a]
+                    para_subset = para_old[block_a, x_i]
 
+                    # sample from indices excluding x_i without replacement
                     R1, R2 = StatsBase.sample(pop_inds[1:100 .!= x_i], 2; replace = false)
 
                     x_R1   = para_old[block_a, R1]
@@ -565,7 +567,7 @@ function de_mc(proposal_dist::Distribution,
                     # Save every (mhthin)th draw
                     if j % mhthin == 0
                         draw_index = convert(Int, ((j / mhthin) - 1) * n_param_blocks + k)
-                        mhparams[draw_index, :]  = para_old'
+                        mhparams[draw_index, :, x_i]  = para_old[:, x_i]'
                     end
                 end # of loop over parameter blocks
             end # of loop over n_pop particles
@@ -585,7 +587,7 @@ function de_mc(proposal_dist::Distribution,
 
         # Write parameters to file if we're past n_burn blocks
         if block > n_burn
-            parasim[block_start:block_end, :] = map(Float64, mhparams)
+            parasim[block_start:block_end, :, :] = map(Float64, mhparams)
         end
 
         # Calculate time to complete this block, average block time, and
