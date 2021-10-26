@@ -157,12 +157,14 @@ function metropolis_hastings(proposal_dist::Distribution,
     if adaptive_accept
         curr_accept = target_accept
         local_min = 0
-	cc = 1
+	    cc = 1
     end
 
     # Keep track of how long metropolis_hastings has been sampling
     total_sampling_time = 0.
-
+    # keeping track of total iterations and rejections the easy way
+    n = 0
+    total_rejections = 0
     for block = 1:n_blocks
 
     	begin_time = time_ns()
@@ -170,31 +172,36 @@ function metropolis_hastings(proposal_dist::Distribution,
 
 
         for j = 1:(n_sim * mhthin)
-
+            n += 1
             if reblock # Parameter blocking by randomly drawing blocks every MH draw
                 free_para_inds = ModelConstructors.get_free_para_inds(parameters)
                 blocks_free = SMC.generate_free_blocks(free_para_inds, n_param_blocks)
                 for block_f in blocks_free
                     sort!(block_f)
                 end
-            end		
+            end
 
-            for (k, block_a) in enumerate(blocks_free)		
-	    		                
+            for (k, block_a) in enumerate(blocks_free)
+
                 if adaptive_accept
-  		    # Calculate adaptive c-step for use as scaling coefficient in mutation MH step
+  		            # Calculate adaptive c-step for use as scaling coefficient in mutation MH step
             	    #cc *= (0.95 + 0.10 * exp(16.0 * (curr_accept - target_accept)) /
                     #(1.0 + exp(16.0 * (curr_accept - target_accept))))
 
-            	    cc += (block * (n_sim * mhthin) + j)^(-0.66)*(curr_accept - target_accept)
-		    @show cc, curr_accept
+                    # cc += ((block - 1) * (n_sim * mhthin) + j)^(-0.66)*(curr_accept - target_accept)
+                    if n < 100
+                        cc = 1
+                    else
+                        cc += (n)^(-0.66) * (curr_accept - target_accept)
+                    end
+		            @show cc, curr_accept
             	    # to try and solve local maximum problem, set lower bound for cc
             	    if cc < 0.2
                        cc = 0.2
                        local_min += 1
                        if local_min >= 5
                        	  cc = 1
-                       end  
+                       end
                     end
                 end
 
@@ -202,20 +209,20 @@ function metropolis_hastings(proposal_dist::Distribution,
                 para_subset = para_old[block_a]
 
                 d_μ = propdist.μ[block_a]
-                d_Σ = (propdist.Σ[block_a, block_a] + propdist.Σ[block_a, block_a]') / 2.
+                d_Σ = cc .* (propdist.Σ[block_a, block_a] + propdist.Σ[block_a, block_a]') / 2.
 
-                para_draw   = mvnormal_mixture_draw(para_subset, d_μ, d_Σ; c = cc, α = α)
-
+                # para_draw   = mvnormal_mixture_draw(para_subset, d_μ, d_Σ; c = cc, α = α)
+                para_draw = rand(DegenerateMvNormal(d_μ, d_Σ; stdev = false))
                 para_new          = deepcopy(para_old)
                 para_new[block_a] = para_draw
 
-                q0, q1 = if adaptive_accept
-                    # NOT DONE YET, we're not actually computing draws from the mixture yet b/c not using mvnormal_mixture_draw
-                    SMC.compute_proposal_densities(para_draw, para_subset, d_μ, d_Σ;
-                                                   α = α, c = cc, catch_near_zeros = false)
-                else
-                    0.0, 0.0
-                end
+                # q0, q1 = if adaptive_accept
+                #     # NOT DONE YET, we're not actually computing draws from the mixture yet b/c not using mvnormal_mixture_draw
+                #     SMC.compute_proposal_densities(para_draw, para_subset, d_μ, d_Σ;
+                #                                    α = α, c = cc, catch_near_zeros = false)
+                # else
+                #     0.0, 0.0
+                # end
 
                 # Solve the model (checking that parameters are within bounds and
                 # gensys returns a meaningful system) and evaluate the posterior
@@ -237,7 +244,7 @@ function metropolis_hastings(proposal_dist::Distribution,
                 # posterior value is greater than the previous draw's, but it gives
                 # some probability to accepting a draw with a smaller posterior
                 # value, so that we may explore tails and other local modes.
-                r = exp((post_new - post_old) + (q0 - q1))
+                r = exp((post_new - post_old)) # + (q0 - q1))
                 x = rand(rng)
 
                 if x < min(1.0, r)
@@ -251,7 +258,8 @@ function metropolis_hastings(proposal_dist::Distribution,
                 else
                     # Reject proposed jump
                     block_rejections += 1
-
+                    total_rejections += 1
+                    curr_accept = 1 - (total_rejections / n)
                     println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
                         "$k/$(n_param_blocks): reject proposed jump")
                 end
