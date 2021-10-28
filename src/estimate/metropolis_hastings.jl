@@ -110,7 +110,8 @@ function metropolis_hastings(proposal_dist::Distribution,
         # can be found in ModelConstructors.jl
         post_old = posterior!(loglikelihood, parameters, para_old, data; sampler = true)
         if post_old > -Inf
-            propdist.μ = para_old
+            Y_n = para_old
+            propdist.μ = zeros(length(para_old))
             initialized = true
         else
             para_old = rand(propdist; cc=cc0)
@@ -143,9 +144,13 @@ function metropolis_hastings(proposal_dist::Distribution,
     # Initialize matrices for parameter draws and transition matrices
     mhparams = zeros(n_sim * n_param_blocks, n_params)
 
+    S_n = 0.5
     # Open HDF5 file for saving parameter draws
+    n_blocks = 25
+    n_sim = 1000
     simfile     = h5open(savepath, "w")
     n_saved_obs = n_sim * n_param_blocks * (n_blocks - n_burn)
+
     parasim     = isdefined(HDF5, :create_dataset) ?
         HDF5.create_dataset(simfile, "mhparams", datatype(Float64),
                             dataspace(n_saved_obs, n_params);
@@ -162,9 +167,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
     # Keep track of how long metropolis_hastings has been sampling
     total_sampling_time = 0.
-    # keeping track of total iterations and rejections the easy way
-    n = 0
-    total_rejections = 0
+
     for block = 1:n_blocks
 
     	begin_time = time_ns()
@@ -172,7 +175,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
 
         for j = 1:(n_sim * mhthin)
-            n += 1
+
             if reblock # Parameter blocking by randomly drawing blocks every MH draw
                 free_para_inds = ModelConstructors.get_free_para_inds(parameters)
                 blocks_free = SMC.generate_free_blocks(free_para_inds, n_param_blocks)
@@ -189,32 +192,45 @@ function metropolis_hastings(proposal_dist::Distribution,
                     #(1.0 + exp(16.0 * (curr_accept - target_accept))))
 
                     # cc += ((block - 1) * (n_sim * mhthin) + j)^(-0.66)*(curr_accept - target_accept)
-                    if n < 100
-                        cc = 1
+
+                    Y_n = para_old + exp(S_n) .* rand(propdist)  #real(sqrt(propdist.Σ)) * rand(propdist)
+
+                    post_new = posterior!(loglikelihood, parameters, Y_n, data;
+                                      sampler = true)
+
+                    r = exp((post_new - post_old))
+
+                    x = rand(rng)
+
+                    S_n = S_n + ((block - 1) * (n_sim * mhthin) + j)^(-0.66) * ( min(1.0,r) - target_accept)
+                    if x < min(1.0, r)
+                        # Accept proposed jump
+                        para_old = Y_n
+                        post_old = post_new
+
+                        println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
+                                "$k/$(n_param_blocks): accept proposed jump")
                     else
-                        cc += (n)^(-0.66) * (curr_accept - target_accept)
+                        # Reject proposed jump
+                        block_rejections += 1
+                        println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
+                                "$k/$(n_param_blocks): reject proposed jump")
                     end
-		            @show cc, curr_accept
-            	    # to try and solve local maximum problem, set lower bound for cc
-            	    if cc < 0.2
-                       cc = 0.2
-                       local_min += 1
-                       if local_min >= 5
-                       	  cc = 1
-                       end
-                    end
-                end
+
+		            @show S_n, curr_accept
+
+                end # of adaptive acc if/else
 
 		# Draw para_new from the proposal distribution
-                para_subset = para_old[block_a]
+                # para_subset = para_old[block_a]
 
-                d_μ = propdist.μ[block_a]
-                d_Σ = cc .* (propdist.Σ[block_a, block_a] + propdist.Σ[block_a, block_a]') / 2.
+                # d_μ = propdist.μ[block_a]
+                # d_Σ = cc .* (propdist.Σ[block_a, block_a] + propdist.Σ[block_a, block_a]') / 2.
 
-                # para_draw   = mvnormal_mixture_draw(para_subset, d_μ, d_Σ; c = cc, α = α)
-                para_draw = rand(DegenerateMvNormal(d_μ, d_Σ; stdev = false))
-                para_new          = deepcopy(para_old)
-                para_new[block_a] = para_draw
+                # # para_draw   = mvnormal_mixture_draw(para_subset, d_μ, d_Σ; c = cc, α = α)
+                # para_draw = rand(DegenerateMvNormal(d_μ, d_Σ; stdev = false))
+                # para_new          = deepcopy(para_old)
+                # para_new[block_a] = para_draw
 
                 # q0, q1 = if adaptive_accept
                 #     # NOT DONE YET, we're not actually computing draws from the mixture yet b/c not using mvnormal_mixture_draw
@@ -231,11 +247,11 @@ function metropolis_hastings(proposal_dist::Distribution,
                 #            parameters::Vector, data::Matrix; ...)
                 # This version of posterior!(loglikelihood::Function, ...)
                 # can be found in ModelConstructors.jl.
-                post_new = posterior!(loglikelihood, parameters, para_new, data;
-                                      sampler = true)
+                # post_new = posterior!(loglikelihood, parameters, para_new, data;
+                #                       sampler = true)
 
-                println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
-                        "$k/$(n_param_blocks): posterior = $post_new")
+                # println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
+                #         "$k/$(n_param_blocks): posterior = $post_new")
 
                 # Choose to accept or reject the new parameter by calculating the
                 # ratio (r) of the new posterior value relative to the old one We
@@ -244,25 +260,25 @@ function metropolis_hastings(proposal_dist::Distribution,
                 # posterior value is greater than the previous draw's, but it gives
                 # some probability to accepting a draw with a smaller posterior
                 # value, so that we may explore tails and other local modes.
-                r = exp((post_new - post_old)) # + (q0 - q1))
-                x = rand(rng)
+                # r = exp((post_new - post_old)) # + (q0 - q1))
+                # x = rand(rng)
 
-                if x < min(1.0, r)
-                    # Accept proposed jump
-                    para_old = para_new
-                    post_old = post_new
-                    propdist.μ = para_new
+                # if x < min(1.0, r)
+                #     # Accept proposed jump
+                #     para_old = para_new
+                #     post_old = post_new
+                #     propdist.μ = para_new
 
-                    println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
-                        "$k/$(n_param_blocks): accept proposed jump")
-                else
-                    # Reject proposed jump
-                    block_rejections += 1
-                    total_rejections += 1
-                    curr_accept = 1 - (total_rejections / n)
-                    println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
-                        "$k/$(n_param_blocks): reject proposed jump")
-                end
+                #     println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
+                #         "$k/$(n_param_blocks): accept proposed jump")
+                # else
+                #     # Reject proposed jump
+                #     block_rejections += 1
+                #     total_rejections += 1
+                #     curr_accept = 1 - (total_rejections / n)
+                #     println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
+                #         "$k/$(n_param_blocks): reject proposed jump")
+                # end
 
                 # Save every (mhthin)th draw
                 if j % mhthin == 0
