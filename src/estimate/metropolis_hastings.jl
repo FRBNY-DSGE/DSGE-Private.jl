@@ -347,7 +347,7 @@ function metropolis_hastings(propdist::Distribution,
                              filestring_addl::Vector{String} = Vector{String}(undef, 0),
                              regime_switching::Bool = false, toggle::Bool = true,
                              verbose::Symbol = :low,
-                             de_mc::Bool = false) where {T<:AbstractFloat}
+                             de_test::Bool = false) where {T<:AbstractFloat}
 
     n_blocks = n_mh_blocks(m)
     n_sim    = n_mh_simulations(m)
@@ -381,7 +381,7 @@ function metropolis_hastings(propdist::Distribution,
             likelihood(m, data; sampler = true, catch_errors = false)
         end
     end
-    if de_mc
+    if de_test
         return de_mc(propdist, loglikelihood, get_parameters(m), data, cc0, cc;
                      n_blocks = n_blocks, n_param_blocks = n_param_blocks,
                      c = c, α = α, n_sim = n_sim,
@@ -431,7 +431,7 @@ function de_mc(proposal_dist::Distribution,
     propdist = DegenerateMvNormal(proposal_dist.μ, proposal_dist.Σ; stdev = false)
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
-    para_old = rand(propdist, 1000; cc = cc0)
+    para_old = rand(DegenerateMvNormal(propdist.μ, 2*cc0^2 * propdist.Σ), 1000)
     # para_old = proposal_dist.μ
     post_old = -Inf * ones(1000)
 
@@ -456,6 +456,7 @@ function de_mc(proposal_dist::Distribution,
     free_para_inds = ModelConstructors.get_free_para_inds(parameters;
                                                           regime_switching = regime_switching, toggle = toggle)
     n_params       = regime_switching ? n_parameters_regime_switching(parameters) : length(parameters)
+
     if n_param_blocks == 1
         blocks_free = Vector{Int}[free_para_inds]
         reblock     = false # to randomly block parameters again or not?
@@ -530,7 +531,11 @@ function de_mc(proposal_dist::Distribution,
                     x_R1   = para_old[block_a, R1]
                     x_R2   = para_old[block_a, R2]
 
-                    x_p = para_old[block_a, x_i] + γ * (x_R1 - x_R2) + rand(e_dist, length(block_a))
+                    if j % 10 == 0
+                        x_p = para_old[block_a, x_i] + (x_R1 - x_R2) + rand(e_dist, length(block_a))
+                    else
+                        x_p = para_old[block_a, x_i] + γ * (x_R1 - x_R2) + rand(e_dist, length(block_a))
+                    end
 
 
                     para_new          = deepcopy(para_old)
@@ -557,7 +562,7 @@ function de_mc(proposal_dist::Distribution,
                     # posterior value is greater than the previous draw's, but it gives
                     # some probability to accepting a draw with a smaller posterior
                     # value, so that we may explore tails and other local modes.
-                    r = exp((post_new[x_i] - post_old[x_i])
+                    r = exp((post_new[x_i] - post_old[x_i]))
                     x = rand(rng)
 
                     if x < min(1.0, r)
