@@ -329,7 +329,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
     ### Step 4: Calculate and save parameter covariance matrix
     ########################################################################################
 
-    compute_parameter_covariance(m, filestring_addl = filestring_addl)
+#    compute_parameter_covariance(m, filestring_addl = filestring_addl)
 
     return nothing
 end

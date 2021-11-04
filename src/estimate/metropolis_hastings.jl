@@ -153,6 +153,13 @@ function metropolis_hastings(proposal_dist::Distribution,
                                 HDF5.d_create(simfile, "mhparams", datatype(Float64),
                                               dataspace(n_saved_obs, n_params), "chunk", (n_sim * n_param_blocks, n_params))
 
+    lamsim      = isdefined(HDF5, :create_dataset) ?
+        HDF5.create_dataset(simfile, "mhlams", datatype(Float64),
+                            dataspace(n_saved_obs, 1);
+                            chunk = (n_sim * n_param_blocks, 1)) :
+                                HDF5.d_create(simfile, "mhparams", datatype(Float64),
+                                              dataspace(n_saved_obs, 1), "chunk", (n_sim * n_param_blocks, 1))
+
     # Initialize acceptance rate at the target if adaptively adjusting acceptance prob.
     if adaptive_accept
         curr_accept = target_accept
@@ -219,7 +226,7 @@ function metropolis_hastings(proposal_dist::Distribution,
                 #            parameters::Vector, data::Matrix; ...)
                 # This version of posterior!(loglikelihood::Function, ...)
                 # can be found in ModelConstructors.jl.
-                post_new = posterior!(loglikelihood, parameters, para_new, data;
+                post_new, lams, lam_weights = posterior!(loglikelihood, parameters, para_new, data;
                                       sampler = true)
 
                 println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
@@ -255,6 +262,7 @@ function metropolis_hastings(proposal_dist::Distribution,
                 if j % mhthin == 0
                     draw_index = convert(Int, ((j / mhthin) - 1) * n_param_blocks + k)
                     mhparams[draw_index, :]  = para_old'
+                    mhlams[draw_index, :] = lams'
                 end
             end # of loop over parameter blocks
         end # of block
@@ -274,6 +282,7 @@ function metropolis_hastings(proposal_dist::Distribution,
         # Write parameters to file if we're past n_burn blocks
         if block > n_burn
             parasim[block_start:block_end, :] = map(Float64, mhparams)
+            lamsim[block_start:block_end, :]  = map(Float64, mhlams)
         end
 
         # Calculate time to complete this block, average block time, and
@@ -424,16 +433,17 @@ function de_mc(proposal_dist::Distribution,
     if testing
         Random.seed!(rng, 654)
     end
-
+    n_sim = 10
     # NOTE: make this keyword argument
-    n_pop = 1000
+    n_pop = 100
+    n_blocks = 10
 
     propdist = DegenerateMvNormal(proposal_dist.μ, proposal_dist.Σ; stdev = false)
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
-    para_old = rand(DegenerateMvNormal(propdist.μ, 2*cc0^2 * propdist.Σ), 1000)
+    para_old = rand(DegenerateMvNormal(propdist.μ, 2*cc0^2 * propdist.Σ), 100)
     # para_old = proposal_dist.μ
-    post_old = -Inf * ones(1000)
+    post_old = -Inf * ones(100)
 
     for i in 1:n_pop
         initialized = false
@@ -443,8 +453,8 @@ function de_mc(proposal_dist::Distribution,
             #            parameters::Vector, data::Matrix; ...)
             # This version of posterior!(loglikelihood::Function, ...)
             # can be found in ModelConstructors.jl
-            post_old = posterior!(loglikelihood, parameters, para_old[:, i], data; sampler = true)
-            if post_old > -Inf
+            post_old[i] = posterior!(loglikelihood, parameters, para_old[:, i], data; sampler = true)
+            if post_old[i] > -Inf
                 initialized = true
             else
                 para_old[:, i] = rand(propdist; cc=cc0)
@@ -452,6 +462,7 @@ function de_mc(proposal_dist::Distribution,
         end
     end
 
+    println(para_old)
     # Parameter Blocking
     free_para_inds = ModelConstructors.get_free_para_inds(parameters;
                                                           regime_switching = regime_switching, toggle = toggle)
@@ -526,7 +537,7 @@ function de_mc(proposal_dist::Distribution,
                     para_subset = para_old[block_a, x_i]
 
                     # sample from indices excluding x_i without replacement
-                    R1, R2 = StatsBase.sample(pop_inds[1:100 .!= x_i], 2; replace = false)
+                    R1, R2 = sample(pop_inds[1:n_pop .!= x_i], 2; replace = false)
 
                     x_R1   = para_old[block_a, R1]
                     x_R2   = para_old[block_a, R2]
@@ -539,7 +550,8 @@ function de_mc(proposal_dist::Distribution,
 
 
                     para_new          = deepcopy(para_old)
-                    para_new[block_a, x_i] = para_draw
+                    println(para_new)
+                    para_new[block_a, x_i] = x_p
 
 
                     # Solve the model (checking that parameters are within bounds and
@@ -549,7 +561,7 @@ function de_mc(proposal_dist::Distribution,
                     #            parameters::Vector, data::Matrix; ...)
                     # This version of posterior!(loglikelihood::Function, ...)
                     # can be found in ModelConstructors.jl.
-                    post_new[x_i] = posterior!(loglikelihood, parameters, para_new, data;
+                    post_new = posterior!(loglikelihood, parameters, para_new[:,x_i], data;
                                           sampler = true)
 
                     println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
@@ -562,13 +574,13 @@ function de_mc(proposal_dist::Distribution,
                     # posterior value is greater than the previous draw's, but it gives
                     # some probability to accepting a draw with a smaller posterior
                     # value, so that we may explore tails and other local modes.
-                    r = exp((post_new[x_i] - post_old[x_i]))
+                    r = exp((post_new - post_old[x_i]))
                     x = rand(rng)
 
                     if x < min(1.0, r)
                         # Accept proposed jump
-                        para_old[:, x_i] = para_new
-                        post_old[x_i] = post_new[x_i]
+                        para_old[:, x_i] = para_new[:, x_i]
+                        post_old[x_i] = post_new
 
                         println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
                                 "$k/$(n_param_blocks): accept proposed jump")
@@ -590,10 +602,7 @@ function de_mc(proposal_dist::Distribution,
         end # of block
 
         all_rejections += block_rejections
-        block_rejection_rate = block_rejections / (n_sim * mhthin * n_param_blocks)
-        if adaptive_accept
-            curr_accept = 1. - block_rejection_rate
-        end
+        block_rejection_rate = block_rejections / (n_sim * mhthin * n_param_blocks * n_pop)
 
         ## Once every iblock times, write parameters to a file
 
@@ -623,6 +632,6 @@ function de_mc(proposal_dist::Distribution,
     end # of loop over blocks
     close(simfile)
 
-    rejection_rate = all_rejections / (n_blocks * n_sim * mhthin * n_param_blocks)
+    rejection_rate = all_rejections / (n_blocks * n_sim * mhthin * n_param_blocks * n_pop)
     println(verbose, :low, "Overall acceptance rate: $(1. - rejection_rate)")
 end

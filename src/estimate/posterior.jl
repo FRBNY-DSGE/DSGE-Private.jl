@@ -177,8 +177,9 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     # Return total log-likelihood, excluding the presample
     try
         if isa(m, PoolModel)
-            return ψ_l * sum(filter_likelihood(m, data; tol = tol,
-                                               tuning = get_setting(m, :tuning))) + ψ_p * penalty
+            loglh, lams, lam_weights = filter_likelihood(m, data; tol = tol,
+                                                         tuning = get_setting(m, :tuning))
+            return ψ_l * sum(loglh) + ψ_p * penalty, lams, lam_weights
         elseif use_chand_recursion==false
             return ψ_l * sum(filter_likelihood(m, data, system;
                                                include_presample = false, tol = tol)) +

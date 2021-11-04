@@ -420,7 +420,8 @@ function filter(m::PoolModel, data::AbstractArray,
         return tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u, s_0; parallel = parallel,
                                         poolmodel = true,
                                         fixed_sched = fixed_sched,
-                                        tuning..., verbose = :none)
+                                        tuning..., verbose = :none,
+                                        get_t_particle_dist = true)
     elseif weight_type == :equal
         loglhconditional = log.(mapslices(x -> Ψ([0.], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional
@@ -445,7 +446,7 @@ function filter_likelihood(m::PoolModel, data::AbstractArray,
     tuning[:get_t_particle_dist] = false
 
     if get_setting(m, :weight_type) == :dynamic_weight
-        ~, loglhconditional, ~ = filter(m, data, s_0; start_date = start_date,
+        ~, loglhconditional, ~, lams, lam_weights = filter(m, data, s_0; start_date = start_date,
                                         include_presample = include_presample,
                                         cond_type = cond_type, in_sample = in_sample, tol = tol,
                                         parallel = parallel, tuning = tuning)
@@ -456,5 +457,5 @@ function filter_likelihood(m::PoolModel, data::AbstractArray,
                                      parallel = parallel, tuning = tuning)
     end
 
-    return loglhconditional
+    return loglhconditional, lams, lam_weights
 end
