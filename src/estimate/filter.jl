@@ -383,13 +383,21 @@ function filter(m::PoolModel, data::AbstractArray,
     # Compute transition and measurement equations
     Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
 
+    if (!haskey(tuning, :parallel) && parallel) || (haskey(tuning, :parallel) && tuning[:parallel])
+        let m = m
+            @sync @distributed for p in workers()
+                Φ, Ψ, F_ϵ, F_u, F_λ = compute_system(m)
+            end
+        end
+    end
+
     # Check initial states
     n_particles = haskey(tuning, :n_particles) ? tuning[:n_particles] : 1000
     if isempty(s_0)
-        s_0 = reshape(rand(F_λ, n_particles), 1, n_particles)
-        s_0 = [s_0; 1 .- s_0]
+        s_0 = quantile.(Normal(), rand(F_λ, n_particles))
+        # s_0 = rand(F_λ, n_particles)
     elseif get_setting(m, :weight_type) == :dynamic
-        if size(s_0,2) != n_particles
+        if size(s_0,1) != n_particles || size(s_0,2) != n_particles
             error("s0 does not contain enough particles")
         end
     end
@@ -424,7 +432,6 @@ function filter(m::PoolModel, data::AbstractArray,
                                         get_t_particle_dist = true)
     elseif weight_type == :equal
         loglhconditional = log.(mapslices(x -> Ψ([0.], x), data, dims = 1))
-        return sum(loglhconditional), loglhconditional
     elseif weight_type == :static
         loglhconditional = log.(mapslices(x -> Ψ([m[:λ].value; 1 - m[:λ].value], x), data, dims = 1))
         return sum(loglhconditional), loglhconditional

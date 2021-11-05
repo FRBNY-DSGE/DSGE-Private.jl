@@ -327,7 +327,7 @@ sampling from the posterior distribution of the parameters.
 
 ### Estimation Settings
 Please see the section on 'Metropolis-Hastings Settings' on the
-'Advaned Usage' page of the online documentation or src/defaults.jl
+'Advanced Usage' page of the online documentation or src/defaults.jl
 for a full description of all the estimation settings for MH.
 Most of the settings for MH are stored in the model object.
 The keyword arguments described below are not directly related
