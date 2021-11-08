@@ -14,9 +14,9 @@ where Φ(⋅) is the cdf of a N(0,1) random variable, F_ϵ is the distribution o
 and F_λ is the distribution of λ(x_0).
 """
 function transition(m::PoolModel{T}) where {T<:AbstractFloat}
-    ρ = m[:ρ].value
-    μ = m[:μ].value
-    σ = m[:σ].value
+    ρ::Float64 = m[:ρ].value
+    μ::Float64 = m[:μ].value
+    σ::Float64 = m[:σ].value
 
     @inline Φ(x::Vector{Float64}, ϵ::Vector{Float64}) = abs.([0;1] .-
                                                              ((1.0 - ρ) *

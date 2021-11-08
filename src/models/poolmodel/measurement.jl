@@ -25,11 +25,11 @@ The outputs are a function that computes the average of
 passed predictive densities and a degenerate measurement error Distribution.
 """
 function measurement(m::PoolModel{T}) where {T<:AbstractFloat}
-    obs = m.observables
+    # obs = m.observables ##unused
     weight_type = get_setting(m, :weight_type)
 
     # Assumes λ to be weight on the first model
-    F_u = DiscreteUniform(0,0)
+    F_u::Distribution = DiscreteUniform(0,0)
     if weight_type == :dynamic
         Ψ_dynamic_pm(x::Vector{Float64}, data::Vector{Float64}) = dot(data, x)
         #Ψ_dynamic_pm(x::Float64, data::Vector{Float64}) = data[1]*x + data[2]*(1.0-x)
