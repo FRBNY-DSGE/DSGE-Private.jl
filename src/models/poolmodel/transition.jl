@@ -18,11 +18,11 @@ function transition(m::PoolModel{T}) where {T<:AbstractFloat}
     μ = m[:μ].value
     σ = m[:σ].value
 
-    @inline Φ(x::Vector{Float64}, ϵ::Vector{Float64}) = abs.([0;1] .-
-                                                             ((1.0 - ρ) *
-                                                                   μ + ρ * x[1] .+
-                                                                   sqrt(1 - ρ^2) .*
-                                                                   σ .* ϵ))
+    # @inline Φ(x::Vector{Float64}, ϵ::Vector{Float64}) = abs.([0;1] .-
+    #                                                          ((1.0 - ρ) *
+    #                                                                μ + ρ * x[1] .+
+    #                                                                sqrt(1 - ρ^2) .*
+    #                                                                σ .* ϵ))
 
     @inline Φ(x::Float64, ϵ::Float64) = (1.0 - ρ) * μ + ρ *
                                             x + sqrt(1 - ρ^2) * σ * ϵ

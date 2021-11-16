@@ -83,6 +83,8 @@ function metropolis_hastings(proposal_dist::Distribution,
                              toggle::Bool           = true,
                              testing::Bool          = false) where {S<:Number, T<:AbstractFloat}
 
+    #NOTE: remove n_blocks = 22
+
     # If testing, set the random seeds at fixed numbers
     if testing
         Random.seed!(rng, 654)
@@ -108,8 +110,13 @@ function metropolis_hastings(proposal_dist::Distribution,
         #            parameters::Vector, data::Matrix; ...)
         # This version of posterior!(loglikelihood::Function, ...)
         # can be found in ModelConstructors.jl
+
+        # don't need lambdas here so we can avoid indexing issue when
+        # posterior! returns -Inf by only taking first arg instead of
+        # grabing lambdas and weights as well
         post_old = posterior!(loglikelihood, parameters, para_old, data; sampler = true)
-        if post_old > -Inf
+
+        if post_old[1] > -Inf
             propdist.μ = para_old
             initialized = true
         else
@@ -142,6 +149,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
     # Initialize matrices for parameter draws and transition matrices
     mhparams = zeros(n_sim * n_param_blocks, n_params)
+    mhlams   = zeros(n_sim * n_param_blocks, 78)
 
     # Open HDF5 file for saving parameter draws
     simfile     = h5open(savepath, "w")
@@ -155,10 +163,10 @@ function metropolis_hastings(proposal_dist::Distribution,
 
     lamsim      = isdefined(HDF5, :create_dataset) ?
         HDF5.create_dataset(simfile, "mhlams", datatype(Float64),
-                            dataspace(n_saved_obs, 1);
-                            chunk = (n_sim * n_param_blocks, 1)) :
-                                HDF5.d_create(simfile, "mhparams", datatype(Float64),
-                                              dataspace(n_saved_obs, 1), "chunk", (n_sim * n_param_blocks, 1))
+                            dataspace(n_saved_obs, 78);
+                            chunk = (n_sim * n_param_blocks, 78)) :
+                                HDF5.d_create(simfile, "mhlams", datatype(Float64),
+                                              dataspace(n_saved_obs, 78), "chunk", (n_sim * n_param_blocks, 78))
 
     # Initialize acceptance rate at the target if adaptively adjusting acceptance prob.
     if adaptive_accept
@@ -168,6 +176,10 @@ function metropolis_hastings(proposal_dist::Distribution,
 
     # Keep track of how long metropolis_hastings has been sampling
     total_sampling_time = 0.
+
+    # NOTE: temporary for bug fixing purposes
+    iterations = 0
+    lams_arr_old = zeros(78)
 
     for block = 1:n_blocks
 
@@ -226,8 +238,27 @@ function metropolis_hastings(proposal_dist::Distribution,
                 #            parameters::Vector, data::Matrix; ...)
                 # This version of posterior!(loglikelihood::Function, ...)
                 # can be found in ModelConstructors.jl.
-                post_new, lams, lam_weights = posterior!(loglikelihood, parameters, para_new, data;
+
+                # NOTE: this is bad code: calling posterior! twice. should be simplified.
+
+                if  posterior!(loglikelihood, parameters, para_new, data; sampler = true) == -Inf
+                    post_new = -Inf
+                    lams_arr_new = zeros(78)
+                else
+                    post_new, lams_new, lam_weights_new = posterior!(loglikelihood, parameters, para_new, data;
                                       sampler = true)
+
+                    lams_arr_new = zeros(length(lam_weights_new[1,:]))
+
+                    for i in 1:length(lam_weights_new[1,:])
+
+                        lams_arr_new[i] = dot(lams_new[i], lam_weights_new[:,i] ./ 1000)
+
+                    end
+
+                end
+
+
 
                 println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
                         "$k/$(n_param_blocks): posterior = $post_new")
@@ -239,7 +270,7 @@ function metropolis_hastings(proposal_dist::Distribution,
                 # posterior value is greater than the previous draw's, but it gives
                 # some probability to accepting a draw with a smaller posterior
                 # value, so that we may explore tails and other local modes.
-                r = exp((post_new - post_old) + (q0 - q1))
+                r = exp((post_new - post_old[1]) + (q0 - q1))
                 x = rand(rng)
 
                 if x < min(1.0, r)
@@ -248,6 +279,9 @@ function metropolis_hastings(proposal_dist::Distribution,
                     post_old = post_new
                     propdist.μ = para_new
 
+                    lams_old = lams_new
+                    lams_arr_old = lams_arr_new
+                    lam_weights_old = lam_weights_new
                     println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
                         "$k/$(n_param_blocks): accept proposed jump")
                 else
@@ -262,7 +296,13 @@ function metropolis_hastings(proposal_dist::Distribution,
                 if j % mhthin == 0
                     draw_index = convert(Int, ((j / mhthin) - 1) * n_param_blocks + k)
                     mhparams[draw_index, :]  = para_old'
-                    mhlams[draw_index, :] = lams'
+                    println(size(lams_arr_old))
+                    println(size(vec(lams_arr_old)))
+                    if size(lams_arr_old)[1] < 78
+                        append!(lams_arr_old, zeros(78 - size(lams_arr_old)[1]))
+                    end
+                    mhlams[draw_index, :] = lams_arr_old
+                    println("loading mhlams worked fine")
                 end
             end # of loop over parameter blocks
         end # of block
@@ -379,7 +419,7 @@ function metropolis_hastings(propdist::Distribution,
     use_chand_recursion = !any(isnan.(data)) && !regime_switching
 
     loglikelihood = if isa(m, AbstractDSGEModel)
-        function _loglikelihood_dsge(p::ParameterVector, data::Matrix{Float64})::Float64
+        function _loglikelihood_dsge(p::ParameterVector, data::Matrix{Float64})
             update!(m, p; regime_switching = regime_switching, toggle = toggle)
             likelihood(m, data; sampler = true, catch_errors = false,
                        use_chand_recursion = use_chand_recursion)
@@ -398,6 +438,7 @@ function metropolis_hastings(propdist::Distribution,
                      regime_switching = regime_switching, verbose = verbose,
                      savepath = savepath, rng = rng, testing = testing)
     else
+        println("about to return MH with loglikelihood function after post call")
         return metropolis_hastings(propdist, loglikelihood, get_parameters(m), data, cc0, cc;
                                    n_blocks = n_blocks, n_param_blocks = n_param_blocks,
                                    adaptive_accept = adaptive_accept, target_accept = target_accept,
@@ -462,7 +503,7 @@ function de_mc(proposal_dist::Distribution,
         end
     end
 
-    println(para_old)
+
     # Parameter Blocking
     free_para_inds = ModelConstructors.get_free_para_inds(parameters;
                                                           regime_switching = regime_switching, toggle = toggle)

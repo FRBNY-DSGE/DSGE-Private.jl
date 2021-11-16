@@ -425,6 +425,7 @@ function filter(m::PoolModel, data::AbstractArray,
 
     weight_type = get_setting(m, :weight_type)
     if weight_type == :dynamic
+
         return tempered_particle_filter(data, Φ, Ψ, F_ϵ, F_u, s_0; parallel = parallel,
                                         poolmodel = true,
                                         fixed_sched = fixed_sched,
@@ -450,19 +451,23 @@ function filter_likelihood(m::PoolModel, data::AbstractArray,
 
     # Guarantee output settings in tuning give desired output
     tuning[:allout] = true
-    tuning[:get_t_particle_dist] = false
+    tuning[:get_t_particle_dist] = true
 
     if get_setting(m, :weight_type) == :dynamic_weight
-        ~, loglhconditional, ~, lams, lam_weights = filter(m, data, s_0; start_date = start_date,
+
+        lgl, loglhconditional, ~, lams, lam_weights = filter(m, data, s_0; start_date = start_date,
                                         include_presample = include_presample,
                                         cond_type = cond_type, in_sample = in_sample, tol = tol,
                                         parallel = parallel, tuning = tuning)
+
     else
-        ~, loglhconditional = filter(m, data, s_0; start_date = start_date,
+
+        lgl, loglhconditional, ~, lams, lam_weights = filter(m, data, s_0; start_date = start_date,
                                      include_presample = include_presample,
                                      cond_type = cond_type, in_sample = in_sample, tol = tol,
                                      parallel = parallel, tuning = tuning)
+
     end
 
-    return loglhconditional, lams, lam_weights
+    return lgl, loglhconditional, lams, lam_weights
 end
