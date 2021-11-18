@@ -478,7 +478,8 @@ function forecast(m::AbstractDSGEModel, z0::Vector{S}, states::AbstractMatrix{S}
         last_endo_zlb = !isnothing(last_endo_zlb) ? last_endo_zlb-1 + first_endo_zlb : size(obs, 2) -3
 
         max_zlb_regimes = haskey(get_settings(m), :max_temporary_altpolicy_length) ? get_setting(m, :max_temporary_altpolicy_length) : size(obs, 2) - 3
-        last_endo_zlb = min(last_endo_zlb, get_setting(m, :historical_temporary_altpolicy_length) + max_zlb_regimes)
+        hist_temporary_altpolicy_length = haskey(get_settings(m), :historical_temporary_altpolicy_length) ? get_setting(m, :historical_temporary_altpolicy_length) : 0
+        last_endo_zlb = min(last_endo_zlb, hist_temporary_altpolicy_length + max_zlb_regimes)
 
 
         # set up the information sets TODO: add checkfor whether or not we even need to update the tvis_info_set
