@@ -294,3 +294,22 @@ Get total number of parameter regimes for each parameter
 function n_param_regs(params::ParameterVector)
     return [haskey(params[i].regimes, :value) ? length(params[i].regimes[:value]) : 1 for i in 1:length(params)]
 end
+
+"""
+```
+n
+```
+"""
+function find_param_ind(params::Vector{AbstractParameter{Float64}}, para_one::Symbol; regime::Int = 1)
+    if regime == 1
+        return findfirst(x -> x == para_one, [params[i].key for i in 1:length(params)])
+    end
+    j = length(params)
+    for i in 1:length(params)
+        if !isempty(params[i].regimes) && params[i].key != para_one
+            j += length(params[i].regimes[:value])-1
+        elseif params[i].key == para_one
+            return j += regime - 1
+        end
+    end
+end

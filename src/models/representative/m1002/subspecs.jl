@@ -121,6 +121,8 @@ function init_subspec!(m::Model1002)
         return ss97!(m)
     elseif subspec(m) == "ss98"
         return ss98!(m)
+    elseif subspec(m) == "ss99"
+        return ss99!(m)
     else
         error("This subspec is not defined.")
     end
@@ -6858,4 +6860,20 @@ function ss98!(m)
     # Note that here in eqcond we liberate rho_biidc - the higher it is, the less negative the rho
     ## Don't do multiple regimes because sigma_biidc is 0 outside Covid
     ## so it will just persist the after effects of Covid which is fine.
+end
+
+# 97 but removes subtraction by e_{pi,t-1} in first post-MR period
+function ss99!(m)
+    ss97!(m)
+
+    # Create new parameter for coefficient of e_{pi,t-1}
+    get_setting(m, :model2para_regime)[:meas_π1] = copy(get_setting(m, :model2para_regime)[:ρ_meas_π])
+
+    set_regime_valuebounds!(m[:meas_π1], 1, (0.0, 5.0))
+    set_regime_valuebounds!(m[:meas_π1], 2, (0.0, 5.0))
+    set_regime_val!(m[:meas_π1], 1, 0.0)
+    set_regime_val!(m[:meas_π1], 2, 1.0)
+    set_regime_fixed!(m[:meas_π1], 1, true)
+    set_regime_fixed!(m[:meas_π1], 2, true)
+
 end

@@ -891,6 +891,11 @@ buted to steady-state inflation.",
                        tex_label="\\rho_{\\lambda_f, ziid}")
     end
 
+    if subspec(m) == "ss99"
+        m <= parameter(:meas_π1, 0.0, (0.0, 5.0), (0.0, 5.0), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=true,
+                       tex_label="meas_\\pi1")
+    end
+
     # steady states
     m <= SteadyStateParameter(:z_star, NaN, tex_label="\\z_*")
     m <= SteadyStateParameter(:rstar, NaN, tex_label="\\r_*")

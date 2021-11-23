@@ -158,7 +158,7 @@ function measurement(m::Model1002{T},
     ZZ[obs[:obs_gdpdeflator], endo_new[:e_gdpdef_t]] = 1.0
     if parse(Int,SubString(subspec(m),3,4)) >= 87
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t]]  = 1.0
-        ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t1]] = -1.0
+        ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
     DD[obs[:obs_gdpdeflator]]                        = 100*(m[:π_star]-1) + m[:δ_gdpdef]
 
@@ -167,7 +167,7 @@ function measurement(m::Model1002{T},
     ZZ[obs[:obs_corepce], endo_new[:e_corepce_t]] = 1.0
     if parse(Int,SubString(subspec(m),3,4)) >= 87
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t]]  = 1.0
-        ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t1]] = -1.0
+        ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
     DD[obs[:obs_corepce]]                         = 100*(m[:π_star]-1)
 

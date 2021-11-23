@@ -183,7 +183,7 @@ function pseudo_measurement(m::Model1002{T},
 
             if parse(Int,SubString(subspec(m),3,4)) >= 87
                 ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t]]  = 1.0
-                ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t1]] = -1.0
+                ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
             end
         end
     end
