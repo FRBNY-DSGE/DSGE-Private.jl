@@ -124,8 +124,8 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   new_colors = Dict(:hist => :black, :forecast => :red, :bands => :red),
                                   old_alphas = Dict{Symbol, Float64}(),
                                   new_alphas = Dict{Symbol, Float64}(),
-                                  old_styles = Dict(:hist => :dash, :forecast => :dash, :bands => :dash),
-                                  new_styles = Dict(:hist => :solid, :forecast => :solid, :bands => :solid),
+                                  old_styles = Dict(:hist => :dash, :forecast => :dash, :bands => :fan),
+                                  new_styles = Dict(:hist => :solid, :forecast => :solid, :bands => :fan),
                                   plotroot::String = "",
                                   titles::Vector{String} = String[],
                                   verbose::Symbol = :low,
@@ -159,7 +159,7 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
 		     		              df_plot_data = df_plot_data, save_as_csv = save_as_csv,
                                   names = old_names, colors = old_colors,
                                   alphas = old_alphas, styles = old_styles,
-                                  bands_pcts = bands_pcts, bands_style = :line,
+                                  bands_pcts = bands_pcts, bands_style = :fan,
                                   title = title, ylabel = series_ylabel(m_new, var, class),
                                   kwargs...)
 	    if save_as_csv
@@ -171,7 +171,7 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
 	                  df_plot_data = df_plot_data, save_as_csv = save_as_csv,
                       names = new_names, colors = new_colors,
                       alphas = new_alphas, styles = new_styles,
-                      bands_pcts = bands_pcts, bands_style = :line, kwargs...)
+                      bands_pcts = bands_pcts, bands_style = :fan, kwargs...)
 
         if save_as_csv
             if !isdir("blog_plot_data")
