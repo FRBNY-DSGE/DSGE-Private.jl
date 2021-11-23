@@ -252,7 +252,7 @@ histforecast
         bands_color = haskey(colors, :bands) ? colors[:bands] : :blue
         bands_alpha = haskey(alphas, :bands) ? alphas[:bands] : 0.1
         bands_linestyle = haskey(styles, :bands) ? styles[:bands] : :solid
-
+bands_style = :fan
         if bands_style == :fan
             @series begin
                 if transparent_bands
