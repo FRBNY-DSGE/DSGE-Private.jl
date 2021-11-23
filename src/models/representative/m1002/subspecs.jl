@@ -1672,6 +1672,12 @@ function ss63!(m::Model1002)
                                                 3 => Date(2020, 6, 30), 4 => Date(2020, 9, 30),
                                                 5 => Date(2020, 12, 31), 6 => Date(2021, 3, 31),
                                                 7 => Date(2021, 6, 30)))
+    ind = maximum(keys(get_setting(m, :regime_dates)))
+    date = get_setting(m, :regime_dates)[ind]
+    qs = DSGE.subtract_quarters(date_forecast_start(m), date) - 1
+    for q in 1:qs
+        get_setting(m, :regime_dates)[ind+q] = DSGE.iterate_quarters(date, q)
+    end
     m <= Setting(:time_varying_trends, true)
     setup_regime_switching_inds!(m)
 
