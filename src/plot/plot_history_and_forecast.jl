@@ -214,7 +214,7 @@ histforecast
     # Concatenate MeansBands
     var, hist, forecast = hf.args
     combined = cat(hist, forecast)
-    dates = combined.means[:date]
+    dates = combined.means[!,:date]
 
     # Assign date ticks
     date_ticks = Base.filter(x -> start_date <= x <= end_date,    dates)
@@ -225,7 +225,7 @@ histforecast
 
     # Bands
     sort!(bands_pcts, rev = true) # s.t. non-transparent bands will be plotted correctly
-    inds = findall(start_date .<= combined.bands[var][:date] .<= end_date)
+    inds = findall(start_date .<= combined.bands[var][!,:date] .<= end_date)
 
 
 
