@@ -252,7 +252,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
                     for i in 1:length(lam_weights_new[1,:])
 
-                        lams_arr_new[i] = dot(lams_new[i], lam_weights_new[:,i] ./ 1000)
+                        lams_arr_new[i] = dot(lams_new[:,i], lam_weights_new[:,i])
 
                     end
 
@@ -296,13 +296,11 @@ function metropolis_hastings(proposal_dist::Distribution,
                 if j % mhthin == 0
                     draw_index = convert(Int, ((j / mhthin) - 1) * n_param_blocks + k)
                     mhparams[draw_index, :]  = para_old'
-                    println(size(lams_arr_old))
-                    println(size(vec(lams_arr_old)))
+
                     if size(lams_arr_old)[1] < 78
                         append!(lams_arr_old, zeros(78 - size(lams_arr_old)[1]))
                     end
                     mhlams[draw_index, :] = lams_arr_old
-                    println("loading mhlams worked fine")
                 end
             end # of loop over parameter blocks
         end # of block
@@ -438,7 +436,7 @@ function metropolis_hastings(propdist::Distribution,
                      regime_switching = regime_switching, verbose = verbose,
                      savepath = savepath, rng = rng, testing = testing)
     else
-        println("about to return MH with loglikelihood function after post call")
+
         return metropolis_hastings(propdist, loglikelihood, get_parameters(m), data, cc0, cc;
                                    n_blocks = n_blocks, n_param_blocks = n_param_blocks,
                                    adaptive_accept = adaptive_accept, target_accept = target_accept,
