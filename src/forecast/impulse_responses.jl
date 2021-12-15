@@ -33,7 +33,7 @@ where `S<:AbstractFloat`
     horizon = impulse_response_horizons(m)
     irf_reg = haskey(get_settings(m), :impulse_response_regime) ?
         get_setting(m, :impulse_response_regime) : get_setting(m, :n_regimes)
-
+    println(irf_reg)
     if use_changing_systems
         return impulse_responses(m, system, horizon, flip_shocks = flip_shocks, start_reg = irf_reg)
     else

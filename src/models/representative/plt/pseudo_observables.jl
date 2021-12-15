@@ -3,33 +3,33 @@ function init_pseudo_observable_mappings!(m::PLT) # do not edit inputs
     # with an OrderedDict mapping name (as Symbol) to a PseudoObservable instance
 
     # make sure you create `pseudo_names`, but it can be empty or have different names in it
-    # pseudo_names = [:y_t, :π_t, :z_t, :NominalFFR, :RealFFR]
+    pseudo_names = [:x_t, :π_t, :r_t, :p_t]
 
-    # # Create PseudoObservable objects
-    # pseudo = OrderedDict{Symbol,PseudoObservable}() # do not edit
-    # for k in pseudo_names
-    #     pseudo[k] = PseudoObservable(k)
-    # end
+    # Create PseudoObservable objects
+    pseudo = OrderedDict{Symbol,PseudoObservable}() # do not edit
+    for k in pseudo_names
+        pseudo[k] = PseudoObservable(k)
+    end
 
     # # Starting here, you may want to edit the code
 
     # # Fill in names and reverse transforms
-    # pseudo[:y_t].name = "Output Growth"
+    pseudo[:x_t].name = "Output Gap"
     # pseudo[:y_t].longname = "Output Growth Per Capita"
 
-    # pseudo[:π_t].name = "Inflation"
+    pseudo[:π_t].name = "Inflation"
     # pseudo[:π_t].longname = "Inflation"
     # pseudo[:π_t].rev_transform = quartertoannual
 
-    # pseudo[:z_t].name     = "z_t"
+    pseudo[:p_t].name     = "Price Level"
     # pseudo[:z_t].longname = "z_t"
 
-    # pseudo[:NominalFFR].name     = "Nominal FFR"
+    pseudo[:r_t].name     = "Interest Rate"
     # pseudo[:NominalFFR].longname = "Nominal FFR at an annual rate"
 
     # pseudo[:RealFFR].name     = "Real FFR"
     # pseudo[:RealFFR].longname = "Real FFR at an annual rate"
 
     # # Add to model object
-    # m.pseudo_observable_mappings = pseudo # do not edit this line
+    m.pseudo_observable_mappings = pseudo # do not edit this line
 end

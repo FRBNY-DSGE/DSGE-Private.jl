@@ -61,10 +61,10 @@ function measurement(m::PLT{T}, TTT::Matrix{T}, # do not edit input arguments
     # EE[obs[:obs_cpi], obs[:obs_cpi]]                 = m[:e_π]^2
     # EE[obs[:obs_nominalrate], obs[:obs_nominalrate]] = m[:e_R]^2
 
-    # # Variance of innovations
-    # QQ[exo[:z_sh],exo[:z_sh]]   = (m[:σ_z])^2
-    # QQ[exo[:g_sh],exo[:g_sh]]   = (m[:σ_g])^2
-    # QQ[exo[:rm_sh],exo[:rm_sh]] = (m[:σ_R])^2
+    # Variance of innovations
+    QQ[exo[:u_sh],exo[:u_sh]]   = (m[:σ])^2
+    QQ[exo[:r_sh],exo[:r_sh]]   = (m[:σ])^2
+#    QQ[exo[:rm_sh],exo[:rm_sh]] = (m[:σ_R])^2
 
     return Measurement(ZZ, DD, QQ, EE) # do not edit this return
 end
