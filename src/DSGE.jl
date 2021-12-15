@@ -158,7 +158,7 @@ module DSGE
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
         PoolModel, eqcond, measurement, pseudo_measurement,
-        shock_groupings, transition, DSGEVAR, DSGEVECM,
+        shock_groupings, transition, DSGEVAR, DSGEVECM, PLT,
 
         # models/heterogeneous/
         KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
@@ -386,6 +386,14 @@ module DSGE
     include("models/representative/an_schorfheide/pseudo_measurement.jl")
     include("models/representative/an_schorfheide/augment_states.jl")
 
+    include("models/representative/plt/plt.jl")
+    include("models/representative/plt/eqcond.jl")
+    include("models/representative/plt/subspecs.jl")
+    include("models/representative/plt/observables.jl")
+    include("models/representative/plt/measurement.jl")
+    include("models/representative/plt/pseudo_observables.jl")
+    include("models/representative/plt/pseudo_measurement.jl")
+    include("models/representative/plt/augment_states.jl")
     # PoolModel
     include("models/poolmodel/subspecs.jl")
     include("models/poolmodel/observables.jl")
