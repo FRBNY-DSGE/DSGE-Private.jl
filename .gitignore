@@ -10,6 +10,9 @@
 
 Manifest.toml
 
+# Fragments
+*.orig
+
 # Data
 *.mat
 *core.[0-9]*

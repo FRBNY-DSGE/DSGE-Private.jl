@@ -152,9 +152,13 @@ function plot_impulse_response(m1::AbstractDSGEModel, m2::AbstractDSGEModel,
     plots = OrderedDict{Symbol, Plots.Plot}()
     for (var, title) in zip(vars, titles)
         # Call recipe
-        if isempty(bands_pcts)
+        if isempty(bands_pcts) && input_type1 == :full
             bands_pcts = which_density_bands((which_model == 1) ? mb1 : mb2, uniquify = true)
         end
+        if input_type1 == :mode
+            bands_pcts = []
+        end
+
         plots[var] = irf(shock, var, mb1, MeansBands();
                          title = title, input_type = input_type1, input_type2 = Symbol(),
                          bands_color = bands_color1, bands_alpha = bands_alpha1,
@@ -195,6 +199,7 @@ function plot_impulse_response(m::Vector,
                                titles::Vector{String} = String[],
                                addl_text::String = "",
                                verbose::Symbol = :low,
+                               cumulative_vars::Vector{Symbol},
                                kwargs...)
     # Read in MeansBands
     mbs = Vector{MeansBands}(undef,length(m))
@@ -202,40 +207,53 @@ function plot_impulse_response(m::Vector,
         mbs[i] = read_mb(m[i], input_type[i], cond_type[i], Symbol(:irf, class), forecast_string = forecast_string[i])
     end
 
-    # Get titles if not provided
-    if isempty(titles)
-        detexify_title = typeof(Plots.backend()) == Plots.GRBackend
-        titles = map(var -> describe_series(m[which_model], var, class, detexify = detexify_title), vars)
-    end
-
-    # Loop through variables
     plots = OrderedDict{Symbol, Plots.Plot}()
-    for (var, title) in zip(vars, titles)
-        # Call recipe
-        if isempty(bands_pcts)
-            bands_pcts = which_density_bands(mbs[which_model], uniquify = true)
+    cumulative = false
+    for varset in [vars, cumulative_vars]
+        if isempty(titles) || cumulative
+            detexify_title = typeof(Plots.backend()) == Plots.GRBackend
+            titles = map(var -> describe_series(m[which_model], var, class, detexify = detexify_title) * (cumulative ? ", Cumulative Sum" : ""), varset)
+            for i in 1:length(titles)
+                if titles[i] == ""
+                    titles[i] = String(varset[i])
+                end
+            end
         end
-        plots[var] = irf(shock, var, mbs[1], MeansBands();
-                         title = title, input_type = input_type[1], input_type2 = Symbol(),
-                         bands_color = bands_color[1], bands_alpha = bands_alpha[1],
-                         bands_pcts = bands_pcts, mean_color = bands_color[1], kwargs...)
-        for i in 2:length(mbs)
-            irf!(shock, var, mbs[i], MeansBands();
-                 title = title, input_type = input_type[i], input_type2 = Symbol(),
-                 bands_color = bands_color[i], bands_alpha = bands_alpha[i],
-                 bands_pcts = bands_pcts, mean_color = bands_color[i], kwargs...)
-        end
+        for var in varset
+            # Get titles if not provided
 
-        # Save plot
-        if !isempty(plotroot)
-            output_file = get_forecast_filename(plotroot, filestring_base(mbs[which_model]),
-                                                input_type[which_model],
-                                                cond_type[which_model],
-                                                Symbol("irf_", detexify(shock), "_", detexify(var), addl_text),
-                                                forecast_string = forecast_string[which_model],
-                                                fileformat = plot_extension())
-            save_plot(plots[var], output_file, verbose = verbose)
+            # Loop through variables
+            for (var, title) in zip(varset, titles)
+                # Call recipe
+                if isempty(bands_pcts)
+                    bands_pcts = which_density_bands(mbs[which_model], uniquify = true)
+                end
+                plots[Symbol(var, cumulative ? "_cumulative" : "")] = irf(shock, var, mbs[1], MeansBands();
+                                 title = title, input_type = input_type[1], input_type2 = Symbol(),
+                                 bands_color = bands_color[1], bands_alpha = bands_alpha[1],
+                                 bands_pcts = bands_pcts, mean_color = bands_color[1],
+                                 cumulative = cumulative, kwargs...)
+                for i in 2:length(mbs)
+                    irf!(shock, var, mbs[i], MeansBands();
+                         title = title, input_type = input_type[i], input_type2 = Symbol(),
+                         bands_color = bands_color[i], bands_alpha = bands_alpha[i],
+                         bands_pcts = bands_pcts, mean_color = bands_color[i],
+                         cumulative = cumulative, kwargs...)
+                end
+
+                # Save plot
+                if !isempty(plotroot)
+                    output_file = get_forecast_filename(plotroot, filestring_base(mbs[which_model]),
+                                                        input_type[which_model],
+                                                        cond_type[which_model],
+                                                        Symbol("irf_", detexify(shock), "_", detexify(var), (cumulative ? "_cumulative" : ""), addl_text),
+                                                        forecast_string = forecast_string[which_model],
+                                                        fileformat = plot_extension())
+                    save_plot(plots[var], output_file, verbose = verbose)
+                end
+            end
         end
+        cumulative = true
     end
     return plots
 end
@@ -278,7 +296,8 @@ irf
                    bands_alpha = 0.1,
                    bands_pcts = which_density_bands(irf.args[3], uniquify = true),
                    input_type = Symbol(),
-                   input_type2 = Symbol())
+                   input_type2 = Symbol(),
+                   cumulative = false)
     # Error checking
   #=  if length(irf.args) != 3 || typeof(irf.args[1]) != Symbol || typeof(irf.args[2]) != Symbol ||
         typeof(irf.args[3]) != MeansBands
@@ -303,12 +322,17 @@ irf
         end
     end
 
+    ir = mb.means[quarters_ahead, varshock]
+    if cumulative
+        ir = cumsum(ir)
+    end
+
     # Mean
     @series begin
         label     := label_mean_bands ? "Mean"*string(input_type) : ""
         linewidth := 2
         linecolor := mean_color
-        quarters_ahead, sign * mb.means[quarters_ahead, varshock]
+        quarters_ahead, sign * ir
     end
 
    #= if input_type2 != Symbol()
