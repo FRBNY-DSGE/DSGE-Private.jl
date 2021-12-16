@@ -73,9 +73,10 @@ function eqcond(m::PLT, reg::Int) # do not edit these inputs
     Ψ[eq[:eq_u], exo[:u_sh]]  = 1
 
     ### Inflation
-    Γ0[eq[:eq_r], endo[:r_t]] = 1
-    Γ1[eq[:eq_r], endo[:r_t]] = m[:ρ_r]
-    Ψ[eq[:eq_r], exo[:r_sh]]  = 1
+    Γ0[eq[:eq_r], endo[:r_t]] = 1.0
+    Γ1[eq[:eq_r], endo[:r_t]] = 1.0
+    Ψ[eq[:eq_r], exo[:r_sh]]  = 1.0
+    C[endo[:r_t]] = m[:ρ_r]
 
     ### Policy (optimal under commitment with lam = 0)
     # Γ0[eq[:eq_pol], endo[:π_t]] = 1
