@@ -3,7 +3,7 @@ function init_pseudo_observable_mappings!(m::PLT) # do not edit inputs
     # with an OrderedDict mapping name (as Symbol) to a PseudoObservable instance
 
     # make sure you create `pseudo_names`, but it can be empty or have different names in it
-    pseudo_names = [:x_t, :π_t, :i_t, :p_t]
+    pseudo_names = [:i_t, :π_t, :x_t, :p_t]
 
     # Create PseudoObservable objects
     pseudo = OrderedDict{Symbol,PseudoObservable}() # do not edit
