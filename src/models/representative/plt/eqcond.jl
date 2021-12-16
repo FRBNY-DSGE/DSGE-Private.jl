@@ -87,19 +87,19 @@ function eqcond(m::PLT, reg::Int) # do not edit these inputs
     ψ_pi = m[:κ] / (m[:λ_i] * m[:σ])
     ψ_x  = m[:λ_x] / (m[:λ_i] * m[:σ])
 
-    Γ0[eq[:eq_pol], endo[:i_t]]  = 1
-    Γ1[eq[:eq_pol], endo[:i_t]]  = (1 + ψ_i + ψ_di)
-    Γ1[eq[:eq_pol], endo[:i_t1]] = - ψ_di
-    Γ0[eq[:eq_pol], endo[:π_t]]  = - ψ_pi
-    Γ0[eq[:eq_pol], endo[:x_t]]  = - ψ_x
-    Γ1[eq[:eq_pol], endo[:x_t]]  = - ψ_x
-
     # Γ0[eq[:eq_pol], endo[:i_t]]  = 1
-    # Γ1[eq[:eq_pol], endo[:i_t]]  = 2.163
-    # Γ1[eq[:eq_pol], endo[:i_t1]] = -1.010
-    # Γ0[eq[:eq_pol], endo[:π_t]]  = - 0.641
-    # Γ0[eq[:eq_pol], endo[:x_t]]  = - 0.325
-    # Γ1[eq[:eq_pol], endo[:x_t]]  = - 0.325
+    # Γ1[eq[:eq_pol], endo[:i_t]]  = (1 + ψ_i + ψ_di)
+    # Γ1[eq[:eq_pol], endo[:i_t1]] = - ψ_di
+    # Γ0[eq[:eq_pol], endo[:π_t]]  = - ψ_pi
+    # Γ0[eq[:eq_pol], endo[:x_t]]  = - ψ_x
+    # Γ1[eq[:eq_pol], endo[:x_t]]  = - ψ_x
+
+   Γ0[eq[:eq_pol], endo[:i_t]]  = 1
+    Γ1[eq[:eq_pol], endo[:i_t]]  = 2.163
+    Γ1[eq[:eq_pol], endo[:i_t1]] = -1.010
+    Γ0[eq[:eq_pol], endo[:π_t]]  = - 0.641
+    Γ0[eq[:eq_pol], endo[:x_t]]  = - 0.325
+    Γ1[eq[:eq_pol], endo[:x_t]]  = - 0.325
 
 
     ### lagged i_t
@@ -110,7 +110,6 @@ function eqcond(m::PLT, reg::Int) # do not edit these inputs
     Γ0[eq[:eq_Ex_t1], endo[:x_t]]   = 1
     Γ1[eq[:eq_Ex_t1], endo[:Ex_t1]] = 1
     Π[eq[:eq_Ex_t1], ex[:Ex_sh]] = 1
-
     ### expected pi_t
     Γ0[eq[:eq_Eπ_t1], endo[:π_t]]   = 1
     Γ1[eq[:eq_Eπ_t1], endo[:Eπ_t1]] = 1
