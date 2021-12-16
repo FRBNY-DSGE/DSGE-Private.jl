@@ -3,7 +3,7 @@ function init_pseudo_observable_mappings!(m::PLT) # do not edit inputs
     # with an OrderedDict mapping name (as Symbol) to a PseudoObservable instance
 
     # make sure you create `pseudo_names`, but it can be empty or have different names in it
-    pseudo_names = [:x_t, :π_t, :r_t, :p_t]
+    pseudo_names = [:x_t, :π_t, :i_t, :p_t]
 
     # Create PseudoObservable objects
     pseudo = OrderedDict{Symbol,PseudoObservable}() # do not edit
@@ -24,7 +24,7 @@ function init_pseudo_observable_mappings!(m::PLT) # do not edit inputs
     pseudo[:p_t].name     = "Price Level"
     # pseudo[:z_t].longname = "z_t"
 
-    pseudo[:r_t].name     = "Interest Rate"
+    pseudo[:i_t].name     = "Interest Rate"
     # pseudo[:NominalFFR].longname = "Nominal FFR at an annual rate"
 
     # pseudo[:RealFFR].name     = "Real FFR"

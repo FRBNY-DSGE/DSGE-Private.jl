@@ -45,7 +45,7 @@ function pseudo_measurement(m::PLT{T}, TTT::Matrix{T}, # do not edit inputs
     ZZ_pseudo[pseudo[:p_t], endo[:p_t]] = 1.
 
     ## Nominal FFR
-    ZZ_pseudo[pseudo[:r_t], endo[:r_t]] = 1.
+    ZZ_pseudo[pseudo[:i_t], endo[:i_t]] = 1.
 #    DD_pseudo[pseudo[:NominalFFR]] = m[:π_star] + m[:rA] + 4.0*m[:γ_Q]
 
     ## Real FFR

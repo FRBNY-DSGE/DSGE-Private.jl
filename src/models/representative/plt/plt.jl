@@ -122,7 +122,7 @@ Initializes indices (mapping names to index number) for all of `m`'s states, sho
 function init_model_indices!(m::PLT) # do not edit inputs though
     # Endogenous states (the states in canonical gensys form)
     endogenous_states = collect([
-        :x_t, :π_t, :r_t, :i_t, :p_t, :u_t, :Ex_t1, :Eπ_t1])
+        :x_t, :π_t, :r_t, :i_t, :p_t, :u_t, :Ex_t1, :Eπ_t1, :i_t1])
 
     # Exogenous shocks (the exogenous shocks in canonical gensys form)
     exogenous_shocks = collect([
@@ -134,7 +134,7 @@ function init_model_indices!(m::PLT) # do not edit inputs though
 
     # Equilibrium conditions (the names of the equations which characterize the model's equilibrium conditions)
     equilibrium_conditions = collect([
-        :eq_is, :eq_phillips, :eq_p, :eq_u, :eq_r, :eq_pol, :eq_Ex_t1, :eq_Eπ_t1])
+        :eq_is, :eq_phillips, :eq_p, :eq_u, :eq_r, :eq_pol, :eq_Ex_t1, :eq_Eπ_t1, :eq_it1])
 
     # Additional states added after solving model, typically
     # lagged states and observables measurement error
@@ -255,6 +255,9 @@ function init_parameters!(m::PLT) # don't change the inputs
                    description="β",
                    tex_label="\\beta")
     m <= parameter(:λ_x, 0.048, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
+                   description="λ_x",
+                   tex_label="\\lambda_x")
+    m <= parameter(:λ_i, 0.236, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
                    description="λ_x",
                    tex_label="\\lambda_x")
 
