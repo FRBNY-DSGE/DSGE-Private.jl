@@ -72,7 +72,7 @@ function eqcond(m::PLT, reg::Int) # do not edit these inputs
     Γ1[eq[:eq_u], endo[:u_t]] = m[:ρ_u]
     Ψ[eq[:eq_u], exo[:u_sh]]  = 1
 
-    ### Inflation
+    ### r
     Γ0[eq[:eq_r], endo[:r_t]] = 1.0
     Γ1[eq[:eq_r], endo[:r_t]] = m[:ρ_r]
     Ψ[eq[:eq_r], exo[:r_sh]]  = 1.0
