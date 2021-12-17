@@ -115,34 +115,6 @@ function eqcond(m::PLT, reg::Int) # do not edit these inputs
     Γ1[eq[:eq_Eπ_t1], endo[:Eπ_t1]] = 1
     Π[eq[:eq_Eπ_t1], ex[:Eπ_sh]] = 1
 
-    # ### 4. Output lag
-
-    # Γ0[eq[:eq_y_t1], endo[:y_t1]] = 1
-    # Γ1[eq[:eq_y_t1], endo[:y_t]] = 1
-
-    # ### 5. Government spending
-
-    # Γ0[eq[:eq_g], endo[:g_t]] = 1
-    # Γ1[eq[:eq_g], endo[:g_t]] = m[:ρ_g]
-    # Ψ[eq[:eq_g], exo[:g_sh]] = 1
-
-    # ### 6. Technology
-
-    # Γ0[eq[:eq_z], endo[:z_t]] = 1
-    # Γ1[eq[:eq_z], endo[:z_t]] = m[:ρ_z]
-    # Ψ[eq[:eq_z], exo[:z_sh]] = 1
-
-    # ### 7. Expected output
-
-    # Γ0[eq[:eq_Ey], endo[:y_t]] = 1
-    # Γ1[eq[:eq_Ey], endo[:Ey_t]] = 1
-    # Π[eq[:eq_Ey], ex[:Ey_sh]] = 1
-
-    # ### 8. Expected inflation
-
-    # Γ0[eq[:eq_Eπ], endo[:π_t]] = 1
-    # Γ1[eq[:eq_Eπ], endo[:Eπ_t]] = 1
-    # Π[eq[:eq_Eπ], ex[:Eπ_sh]] = 1
 
     # Ensure parameter regimes are in 1 at the end (you should probably not edit)
     for para in m.parameters      # if you're new to DSGE.jl, then revisit this block of code later.
