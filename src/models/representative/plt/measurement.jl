@@ -43,8 +43,12 @@ function measurement(m::PLT{T}, TTT::Matrix{T}, # do not edit input arguments
     # Starting from here, you should probably edit!
 
     ## Output growth
-    # ZZ[obs[:obs_gdp], endo[:y_t]]  = 1.0
-    # ZZ[obs[:obs_gdp], endo[:y_t1]] = -1.0
+    ZZ[obs[:i_t], endo[:i_t]]  = 1.0
+    ZZ[obs[:π_t], endo[:π_t]] = 1.0
+    ZZ[obs[:x_t], endo[:x_t]] = 1.0
+    ZZ[obs[:p_t], endo[:p_t]] = 1.0
+#    ZZ[obs[:u_t], endo[:u_t]] = 1.0
+#    ZZ[obs[:r_t], endo[:r_t]] = 1.0
     # ZZ[obs[:obs_gdp], endo[:z_t]]  = 1.0
     # DD[obs[:obs_gdp]]              = m[:γ_Q]
 
@@ -62,9 +66,9 @@ function measurement(m::PLT{T}, TTT::Matrix{T}, # do not edit input arguments
     # EE[obs[:obs_nominalrate], obs[:obs_nominalrate]] = m[:e_R]^2
 
     # Variance of innovations
-<<<<<<< HEAD
-    QQ[exo[:u_sh],exo[:u_sh]]   =  (m[:σ])^2
-    QQ[exo[:r_sh],exo[:r_sh]]   =  (m[:σ])^2
+
+    QQ[exo[:u_sh],exo[:u_sh]]   = 0.1665
+    QQ[exo[:r_sh],exo[:r_sh]]   = 13.8266
 
 #    QQ[exo[:rm_sh],exo[:rm_sh]] = (m[:σ_R])^2
 

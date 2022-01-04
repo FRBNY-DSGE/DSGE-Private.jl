@@ -18,11 +18,11 @@ function init_observable_mappings!(m::PLT) # do not edit inputs
     #     oneqtrpctchange(gdp)
     # end
 
+    function identity(x)
+        return x
+    end
     # gdp_rev_transform = loggrowthtopct_annualized_percapita
 
-#    observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
-#                                      gdp_fwd_transform, gdp_rev_transform,
-#                                       "Real GDP Growth", "Real GDP Growth Per Capita")
 
     ############################################################################
     ## 2. CPI Inflation
@@ -37,10 +37,34 @@ function init_observable_mappings!(m::PLT) # do not edit inputs
 
     # cpi_rev_transform = loggrowthtopct_annualized
 
-    # observables[:obs_cpi] = Observable(:obs_cpi, [:CPIAUCSL__FRED],
-    #                                     cpi_fwd_transform, cpi_rev_transform,
-    #                                     "CPI Inflation",
-    #                                     "CPI Inflation")
+    observables[:i_t] = Observable(:i_t, [:CPIAUCSL__FRED],
+                                        identity, identity,
+                                        "i_t",
+                                        "i_t")
+
+    observables[:π_t] = Observable(:π_t, [:DFF__FRED],
+                                               identity, identity,
+                                               "pi_t",
+                                               "pi_t")
+
+   observables[:x_t] = Observable(:x_t, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
+                                     identity, identity,
+                                      "x_t", "x_t")
+
+    observables[:p_t] = Observable(:p_t, [:DFF__FRED],
+                                               identity, identity,
+                                               "p_t",
+                                               "p_t")
+
+    # observables[:u_t] = Observable(:u_t, [:DFF__FRED],
+    #                                            identity, identity,
+    #                                            "u_t",
+    #                                            "u_t")
+
+    # observables[:r_t] = Observable(:r_t, [:DFF__FRED],
+    #                                            identity, identity,
+    #                                            "r_t",
+    #                                            "r_t")
 
     ############################################################################
     ## 3. Nominal short-term interest rate (3 months)
@@ -56,10 +80,8 @@ function init_observable_mappings!(m::PLT) # do not edit inputs
 
     # nominalrate_rev_transform = identity
 
-    # observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:DFF__FRED],
-    #                                            nominalrate_fwd_transform, nominalrate_rev_transform,
-    #                                            "Nominal FFR",
-    #                                            "Nominal Effective Fed Funds Rate")
 
-#    m.observable_mappings = observables # do not edit this line
+
+
+    m.observable_mappings = observables # do not edit this line
 end

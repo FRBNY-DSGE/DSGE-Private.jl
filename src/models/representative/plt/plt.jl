@@ -122,7 +122,8 @@ Initializes indices (mapping names to index number) for all of `m`'s states, sho
 function init_model_indices!(m::PLT) # do not edit inputs though
     # Endogenous states (the states in canonical gensys form)
     endogenous_states = collect([
-        :x_t, :π_t, :r_t, :i_t, :p_t, :u_t, :Ex_t1, :Eπ_t1, :i_t1])
+        :r_t, :u_t, :π_t, :x_t, :i_t, :p_t,
+        :Ex_t1, :Eπ_t1, :i_t1])
 
     # Exogenous shocks (the exogenous shocks in canonical gensys form)
     exogenous_shocks = collect([
@@ -134,7 +135,8 @@ function init_model_indices!(m::PLT) # do not edit inputs though
 
     # Equilibrium conditions (the names of the equations which characterize the model's equilibrium conditions)
     equilibrium_conditions = collect([
-        :eq_is, :eq_phillips, :eq_p, :eq_u, :eq_r, :eq_pol, :eq_Ex_t1, :eq_Eπ_t1, :eq_it1])
+        :eq_phillips, :eq_is, :eq_pol,
+        :eq_u, :eq_r, :eq_p, :eq_it1, :eq_Ex_t1, :eq_Eπ_t1])
 
     # Additional states added after solving model, typically
     # lagged states and observables measurement error
@@ -239,11 +241,11 @@ function init_parameters!(m::PLT) # don't change the inputs
                    description="κ: Composite parameter in New Keynesian Phillips Curve.",
                    tex_label="\\kappa")
 
-    m <= parameter(:ρ_r, 0.35, (1e-20, 1-1e-7), (1e-20, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
+    m <= parameter(:ρ_r, 0.35, (0.0, 1-1e-7), (0.0, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
                    description="ρ_R: AR(1) coefficient on interest rate.",
                    tex_label="\\rho_r")
 
-    m <= parameter(:ρ_u, 0.35, (1e-20, 1-1e-7), (1e-20, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
+    m <= parameter(:ρ_u, 0.35, (0.0, 1-1e-7), (0.0, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
                    description="ρ_u: AR(1) coefficient on u_t = ρ_g u_t + ϵ_ut",
                    tex_label="\\rho_u")
 
@@ -260,6 +262,22 @@ function init_parameters!(m::PLT) # don't change the inputs
     m <= parameter(:λ_i, 0.236, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
                    description="λ_x",
                    tex_label="\\lambda_x")
+
+    m <= parameter(:ψ_piT, 1.291, (-1e5, 1e5), (-1e-5, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
+                   description="ψ_piT",
+                   tex_label="\\psi_piT")
+
+    m <= parameter(:ψ_xT, 0.263, (-1e5, 1e5), (-1e5, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
+                   description="ψ_xT",
+                   tex_label="\\psi_xT")
+
+    m <= parameter(:ψ_pW, 1.291, (-1e5, 1e5), (-1e-5, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
+                   description="ψ_piT",
+                   tex_label="\\psi_piT")
+
+    m <= parameter(:ψ_xW, 0.263, (-1e5, 1e5), (-1e5, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
+                   description="ψ_xT",
+                   tex_label="\\psi_xT")
 
 end
 

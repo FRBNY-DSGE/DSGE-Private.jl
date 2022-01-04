@@ -1,6 +1,6 @@
 """
 ```
-eqcond(m::Schorf)
+eqcond(m::PLT)
 ```
 
 Expresses the equilibrium conditions in canonical form using Γ0, Γ1, C, Ψ, and Π matrices.
@@ -63,7 +63,7 @@ function eqcond(m::PLT, reg::Int) # do not edit these inputs
 
     ### 3. Price level
 
-    Γ1[eq[:eq_p], endo[:p_t]] = 1
+    Γ1[eq[:eq_p], endo[:p_t]] = 1.0
     Γ0[eq[:eq_p], endo[:π_t]] = -1
     Γ0[eq[:eq_p], endo[:p_t]] = 1
 
@@ -77,30 +77,62 @@ function eqcond(m::PLT, reg::Int) # do not edit these inputs
     Γ1[eq[:eq_r], endo[:r_t]] = m[:ρ_r]
     Ψ[eq[:eq_r], exo[:r_sh]]  = 1.0
 
-    ### Policy (optimal under commitment with lam = 0)
-    # Γ0[eq[:eq_pol], endo[:π_t]] = 1
-    # Γ0[eq[:eq_pol], endo[:x_t]] = m[:λ_x] / m[:κ]
-    # Γ1[eq[:eq_pol], endo[:x_t]] = m[:λ_x] / m[:κ]
-    ψ_i = m[:κ] / (m[:β] * m[:σ])
-    ψ_di = 1 / m[:β]
-    ψ_pi = m[:κ] / (m[:λ_i] * m[:σ])
-    ψ_x  = m[:λ_x] / (m[:λ_i] * m[:σ])
+    ### policy equation depends on subspec
 
-    Γ0[eq[:eq_pol], endo[:i_t]]  = 1
-    Γ1[eq[:eq_pol], endo[:i_t]]  = (1 + ψ_i + ψ_di)
-    Γ1[eq[:eq_pol], endo[:i_t1]] = - ψ_di
-    Γ0[eq[:eq_pol], endo[:π_t]]  = - ψ_pi
-    Γ0[eq[:eq_pol], endo[:x_t]]  = - ψ_x
-    Γ1[eq[:eq_pol], endo[:x_t]]  = - ψ_x
+    if subspec(m) in ["ss0"]
+        # optimal policy
+        ψ_i = m[:κ] / (m[:β] * m[:σ])
+        ψ_di = 1 / m[:β]
+        ψ_pi = m[:κ] / (m[:λ_i] * m[:σ])
+        ψ_x  = m[:λ_x] / (m[:λ_i] * m[:σ])
 
-   # Γ0[eq[:eq_pol], endo[:i_t]]  = 1
-   #  Γ1[eq[:eq_pol], endo[:i_t]]  = 2.163
-   #  Γ1[eq[:eq_pol], endo[:i_t1]] = -1.010
-   #  Γ0[eq[:eq_pol], endo[:π_t]]  = - 0.641
-   #  Γ0[eq[:eq_pol], endo[:x_t]]  = - 0.325
-   #  Γ1[eq[:eq_pol], endo[:x_t]]  = - 0.325
+        Γ0[eq[:eq_pol], endo[:i_t]]  = 1
+        Γ1[eq[:eq_pol], endo[:i_t]]  = (1 + ψ_i + ψ_di)
+        Γ1[eq[:eq_pol], endo[:i_t1]] = - ψ_di
+        Γ0[eq[:eq_pol], endo[:π_t]]  = - ψ_pi
+        Γ0[eq[:eq_pol], endo[:x_t]]  = - ψ_x / 4
+        Γ1[eq[:eq_pol], endo[:x_t]]  = - ψ_x / 4
 
+        # Γ0[eq[:eq_pol], endo[:i_t]]  = 1
+        # Γ1[eq[:eq_pol], endo[:i_t]]  = 2.163
+        # Γ1[eq[:eq_pol], endo[:i_t1]] = -1.010
+        # Γ0[eq[:eq_pol], endo[:π_t]]  = - 0.641
+        # Γ0[eq[:eq_pol], endo[:x_t]]  = - 0.325
+        # Γ1[eq[:eq_pol], endo[:x_t]]  = - 0.325
+    elseif subspec(m) in ["ss1"]
+        # optimal under commitment with lam_i = 0
+        Γ0[eq[:eq_pol], endo[:π_t]] = 1
+        Γ0[eq[:eq_pol], endo[:x_t]] = m[:λ_x] / m[:κ]
+        Γ1[eq[:eq_pol], endo[:x_t]] = m[:λ_x] / m[:κ]
+    elseif subspec(m) in ["ss2"]
+        # optimal under discretion with lam_i = 0
+        Γ0[eq[:eq_pol], endo[:π_t]] = 1
+        Γ0[eq[:eq_pol], endo[:x_t]] = m[:λ_x] / m[:κ]
+    elseif subspec(m) in ["ss3"]
+        # Taylor rule ρ_r = 0 (coeff come from table 2 of paper
 
+        Γ0[eq[:eq_pol], endo[:i_t]] = 1
+        Γ0[eq[:eq_pol], endo[:π_t]] = -m[:ψ_piT]
+        Γ0[eq[:eq_pol], endo[:x_t]] = -m[:ψ_xT]
+    elseif subspec(m) in ["ss4"]
+        # Taylor rule ρ_u = 0
+        ψ_piT = 0.888
+        ψ_xT  = 0.694
+        Γ0[eq[:eq_pol], endo[:i_t]] = 1
+        Γ0[eq[:eq_pol], endo[:π_t]] = -ψ_piT
+        Γ0[eq[:eq_pol], endo[:x_t]] = -ψ_xT
+    elseif subspec(m) in ["ss5"]
+        # wick rule
+        Γ0[eq[:eq_pol], endo[:i_t]] = 1
+        Γ0[eq[:eq_pol], endo[:p_t]] = -m[:ψ_pW]
+        Γ0[eq[:eq_pol], endo[:x_t]] = -m[:ψ_xW]
+    elseif subspec(m) in ["ss6"]
+        ψ_pW = 1.997
+        ψ_xW = 0.182
+        Γ0[eq[:eq_pol], endo[:i_t]] = 1
+        Γ0[eq[:eq_pol], endo[:p_t]] = -ψ_pW
+        Γ0[eq[:eq_pol], endo[:x_t]] = -ψ_xW
+    end
     ### lagged i_t
     Γ0[eq[:eq_it1], endo[:i_t1]] = 1
     Γ1[eq[:eq_it1], endo[:i_t]]  = 1

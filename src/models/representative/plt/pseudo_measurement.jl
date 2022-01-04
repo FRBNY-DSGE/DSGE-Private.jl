@@ -35,17 +35,19 @@ function pseudo_measurement(m::PLT{T}, TTT::Matrix{T}, # do not edit inputs
     ##########################################################
 
     ## Output
-    ZZ_pseudo[pseudo[:x_t],endo[:x_t]] = 1.
+#    ZZ_pseudo[pseudo[:x_t],endo[:x_t]] = 1.
 
     ## π_t
-    ZZ_pseudo[pseudo[:π_t],endo[:π_t]] = 1.
+#    ZZ_pseudo[pseudo[:π_t],endo[:π_t]] = 1.
 #    DD_pseudo[pseudo[:π_t]]            = 100*(m[:π_star]-1);
 
     ## p_t
-    ZZ_pseudo[pseudo[:p_t], endo[:p_t]] = 1.
+#    ZZ_pseudo[pseudo[:p_t], endo[:p_t]] = 1.
 
     ## Nominal FFR
-    ZZ_pseudo[pseudo[:i_t], endo[:i_t]] = 1.
+#    ZZ_pseudo[pseudo[:i_t], endo[:i_t]] = 1.
+    ZZ_pseudo[pseudo[:r_t], endo[:r_t]] = 1.
+    ZZ_pseudo[pseudo[:u_t], endo[:u_t]] = 1.
 #    DD_pseudo[pseudo[:NominalFFR]] = m[:π_star] + m[:rA] + 4.0*m[:γ_Q]
 
     ## Real FFR
