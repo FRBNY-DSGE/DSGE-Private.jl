@@ -69,6 +69,9 @@ function plot_shock_decomposition(m::AbstractDSGEModel, vars::Vector{Symbol}, cl
     else
         mbs = map(output_var -> read_mb(m, input_type, cond_type, output_var, forecast_string = forecast_string),
                   output_vars)
+        save("mbs.jld2", "mbs", mbs)
+        push!(mbs[4].means, mbs[5].means[1,:])
+        mbs[5].means = mbs[5].means[2:end, :]
     end
 
     # Get titles if not provided
