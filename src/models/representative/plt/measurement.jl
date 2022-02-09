@@ -67,8 +67,8 @@ function measurement(m::PLT{T}, TTT::Matrix{T}, # do not edit input arguments
 
     # Variance of innovations
 
-    QQ[exo[:u_sh],exo[:u_sh]]   = 0.1665
-    QQ[exo[:r_sh],exo[:r_sh]]   = 13.8266
+    QQ[exo[:u_sh],exo[:u_sh]]   = (0.0283)^2 * 18.3731/100^2
+    QQ[exo[:r_sh],exo[:r_sh]]   = 13.826599 / (16 * 100^2)
 
 #    QQ[exo[:rm_sh],exo[:rm_sh]] = (m[:σ_R])^2
 

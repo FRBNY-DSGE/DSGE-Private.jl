@@ -245,7 +245,7 @@ function init_parameters!(m::PLT) # don't change the inputs
                    description="ρ_R: AR(1) coefficient on interest rate.",
                    tex_label="\\rho_r")
 
-    m <= parameter(:ρ_u, 0.35, (0.0, 1-1e-7), (0.0, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
+    m <= parameter(:ρ_u, 0.0, (0.0, 1-1e-7), (0.0, 1-1e-7), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
                    description="ρ_u: AR(1) coefficient on u_t = ρ_g u_t + ϵ_ut",
                    tex_label="\\rho_u")
 
@@ -259,15 +259,15 @@ function init_parameters!(m::PLT) # don't change the inputs
     m <= parameter(:λ_x, 0.048, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
                    description="λ_x",
                    tex_label="\\lambda_x")
-    m <= parameter(:λ_i, 0.236, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
+    m <= parameter(:λ_i, 0.236405, (1e-20, 1e5), (1e-20, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
                    description="λ_x",
                    tex_label="\\lambda_x")
 
-    m <= parameter(:ψ_piT, 1.291, (-1e5, 1e5), (-1e-5, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
+    m <= parameter(:ψ_piT, 1.5, (-1e5, 1e5), (-1e-5, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
                    description="ψ_piT",
                    tex_label="\\psi_piT")
 
-    m <= parameter(:ψ_xT, 0.263, (-1e5, 1e5), (-1e5, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
+    m <= parameter(:ψ_xT, 0.5, (-1e5, 1e5), (-1e5, 1e5), ModelConstructors.Exponential(), RootInverseGamma(4, .4), fixed=false,
                    description="ψ_xT",
                    tex_label="\\psi_xT")
 

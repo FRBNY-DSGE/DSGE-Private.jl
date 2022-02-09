@@ -81,17 +81,17 @@ function eqcond(m::PLT, reg::Int) # do not edit these inputs
 
     if subspec(m) in ["ss0"]
         # optimal policy
-        ψ_i = m[:κ] / (m[:β] * m[:σ])
-        ψ_di = 1 / m[:β]
-        ψ_pi = m[:κ] / (m[:λ_i] * m[:σ])
-        ψ_x  = m[:λ_x] / (m[:λ_i] * m[:σ])
+        ψ_i = 2.163#m[:κ] / (m[:β] * m[:σ])
+        ψ_di = 1.0101#1 / m[:β]
+        ψ_pi = 0.6408
+        ψ_x  = 0.0813 #m[:λ_x] / (m[:λ_i] * m[:σ])
 
         Γ0[eq[:eq_pol], endo[:i_t]]  = 1
-        Γ1[eq[:eq_pol], endo[:i_t]]  = (1 + ψ_i + ψ_di)
+        Γ1[eq[:eq_pol], endo[:i_t]]  = ψ_i #(1 + ψ_i + ψ_di)
         Γ1[eq[:eq_pol], endo[:i_t1]] = - ψ_di
         Γ0[eq[:eq_pol], endo[:π_t]]  = - ψ_pi
-        Γ0[eq[:eq_pol], endo[:x_t]]  = - ψ_x / 4
-        Γ1[eq[:eq_pol], endo[:x_t]]  = - ψ_x / 4
+        Γ0[eq[:eq_pol], endo[:x_t]]  = - ψ_x #/ 4
+        Γ1[eq[:eq_pol], endo[:x_t]]  = - ψ_x #/ 4
 
         # Γ0[eq[:eq_pol], endo[:i_t]]  = 1
         # Γ1[eq[:eq_pol], endo[:i_t]]  = 2.163
