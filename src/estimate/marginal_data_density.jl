@@ -25,7 +25,7 @@ function marginal_data_density(m::Union{AbstractDSGEModel,AbstractVARModel},
                                calculation_method::Symbol = :incremental_weights,
                                parallel::Bool = false, bridge_vec::Vector = [],
                                smc_estimate_file::String = rawpath(m, "estimate", "smc_cloud.jld2"),
-                               new_prior::Bool = false, new_params = Matrix(0,0))
+                               new_prior::Bool = false, new_params = Matrix{Float64}(undef,0,0))
     if estimation_method == :mh && calculation_method == :incremental_weights
         throw("Can only calculation MDD with incremental weights if the estimation method is :smc")
     end
