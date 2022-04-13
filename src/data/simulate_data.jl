@@ -84,7 +84,7 @@ function simulate_observables(m::AbstractDSGEModel;
                            s_0 = s_0, P_0 = P_0)
 
     meas_error_dist = DegenerateMvNormal(zeros(length(system[:DD])),
-                                         meas_error*Matrix{Float64}(I, length(system[:DD]), length(system[:DD])))
+                                         meas_error^2*Matrix{Float64}(I, length(system[:DD]), length(system[:DD])))
 
     y = Matrix{Float64}(undef, n_obs, n_periods)
     for i in 1:n_periods
@@ -109,9 +109,9 @@ function simulate_states(TTT::Matrix{Float64},
 
     # Initializing shocks
     if isempty(ϵ)
-        # Because we parameterize DegenerateMvNormal distributions
-        # with the σ not the var
-        ϵ = rand(DegenerateMvNormal(zeros(n_shocks), sqrt.(QQ)), burnin + n_periods)
+        # We now parametrize DegenMvNormal with covariance matrix,
+        # previously it was with the sqrt of a diagonal matrix
+        ϵ = rand(DegenerateMvNormal(zeros(n_shocks), (QQ)), burnin + n_periods)
     end
 
     # Only need shocks starting from t = 1
