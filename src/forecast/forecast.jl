@@ -111,7 +111,9 @@ function forecast(m::AbstractDSGEModel, system::Union{RegimeSwitchingSystem{S}, 
                         DegenerateDiagMvTDist(μ, σ, ν)
                     else
                         # Use normally distributed shocks
-                        DegenerateMvNormal(μ, σ)
+                        # need to square σ element-wise as we now define degenMvNormal using
+                        # covariance matrix, not the generalized standard deviation
+                        DegenerateMvNormal(μ, σ.^2)
                     end
                     shocks[:, ts] = rand(dist, length(ts))
                     sys_ind += 1
@@ -125,7 +127,7 @@ function forecast(m::AbstractDSGEModel, system::Union{RegimeSwitchingSystem{S}, 
                     DegenerateDiagMvTDist(μ, σ, ν)
                 else
                     # Use normally distributed shocks
-                    DegenerateMvNormal(μ, σ)
+                    DegenerateMvNormal(μ, σ.^2)
                 end
                 shocks = rand(dist, horizon)
             end
