@@ -675,11 +675,11 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
         # Create a new alternative policy equivalent to the true policy but without setting pgap1
         ## if weight on true policy > 0 before pgap1 set.
         ## This ensures that the new pgap is unexpected.
-        if any([orig_regime_eqcond_info[i].weights[1] > 0.0 for i in 1:maximum(set_pgap1[1])])
+        if any([orig_regime_eqcond_info[i].weights[1] > 0.0 for i in minimum(collect(keys(orig_regime_eqcond_info))):maximum(set_pgap1[1])])
             orig_regime_eqcond_info2 = copy(orig_regime_eqcond_info)
             for i in collect(keys(orig_regime_eqcond_info2))
                 orig_regime_eqcond_info2[i].weights = [1.0]
-                orig_regime_eqcond_info[i].weights = [0.0, orig_regime_eqcond_info[i].weights[2:end], orig_regime_eqcond_info[i][1]]
+                orig_regime_eqcond_info[i].weights = vcat(0.0, orig_regime_eqcond_info[i].weights[2:end] ./ sum(orig_regime_eqcond_info[i].weights[2:end]))#, orig_regime_eqcond_info[i].weights[1])
             end
             true_pol = MultiPeriodAltPolicy(:true_rule, get_setting(m, :n_regimes), orig_regime_eqcond_info2, gensys2 = is_gensys2,
                                  temporary_altpolicy_names = orig_temp_altpol_names,

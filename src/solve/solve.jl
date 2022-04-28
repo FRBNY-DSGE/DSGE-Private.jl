@@ -752,9 +752,9 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
     ng2  = length(Tcal) - 1 # number of gensys2 regimes
     nzlb = haskey(get_settings(m), :temporary_altpolicy_length) ? get_setting(m, :temporary_altpolicy_length) : ng2
 
-    @show nzlb, ng2
+    #=@show nzlb, ng2
     @show gensys2_regimes
-    @show [get_setting(m, :regime_eqcond_info)[i].alternative_policy.key for i in sort(collect(keys(get_setting(m, :regime_eqcond_info))))]
+    @show [get_setting(m, :regime_eqcond_info)[i].alternative_policy.key for i in sort(collect(keys(get_setting(m, :regime_eqcond_info))))]=#
     # @show gensys_regimes
     @assert nzlb == ng2 "The setting :temporary_altpolicy_length does not match the number of gensys2 regimes."
 

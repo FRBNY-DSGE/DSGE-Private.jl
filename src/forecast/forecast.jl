@@ -483,6 +483,10 @@ function forecast(m::AbstractDSGEModel, z0::Vector{S}, states::AbstractMatrix{S}
 
     ## 1. Determine if we need to do anything (are there any further negative nominal rates)
     # If not, return the forecast as is
+    @show isnothing(first_endo_zlb)
+    @show first_endo_zlb
+    @show forecast_zlb_value(m)
+    @show view(obs, get_observables(m)[:obs_nominalrate], :)
     if isnothing(first_endo_zlb)
         if rerun_smoother
             return states, obs, pseudo, histstates, histshocks, histpseudo, initial_states
@@ -693,6 +697,11 @@ function forecast(m::AbstractDSGEModel, z0::Vector{S}, states::AbstractMatrix{S}
                 get_setting(m, :alternative_policies)[altpol_ind].perfect_credibility_identical_transitions = orig_altpol_perfect_cred_identical_transitions[altpol_num]
             end
         end
+
+        #=@show "Save model post"
+        JLD2.jldopen("model_post.jld2", "w") do file
+            file["m"] = m
+        end=#
 
         if rerun_smoother
             return states, obs, pseudo, histstates, histshocks, histpseudo, initial_states

@@ -256,9 +256,12 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
         zlb_ind = findfirst(x -> add_zlb_duration[2] in x, regime_inds)#regime_indices(m, start_date))
         ##TODO: Handle case when add_zlb_duration[2] != regime_inds[zlb_ind][end]
 
+        # @show "save model pre"
+        # mod_pre = deepcopy(m.settings)
+
         ### Save settings that need to change to forecast from add_zlb_duration[2]
         horizons = get_setting(m, :forecast_horizons)
-        orig_regime_eqcond_info = get_setting(m, :regime_eqcond_info)
+        orig_regime_eqcond_info = deepcopy(get_setting(m, :regime_eqcond_info))
         orig_temp_altpol_len = get_setting(m, :temporary_altpolicy_length)
         orig_reg_forecast_start = get_setting(m, :reg_forecast_start)
         orig_reg_post_conditional_end = get_setting(m, :reg_post_conditional_end)
@@ -270,6 +273,10 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
         orig_cred_vary_until = haskey(m.settings, :cred_vary_until) ? get_setting(m, :cred_vary_until) : nothing
         orig_perf_cred = haskey(m.settings, :perfect_credibility_identical_transitions) ? get_setting(m, :perfect_credibility_identical_transitions) : nothing
         orig_iden_eqcond = haskey(m.settings, :identical_eqcond_regimes) ? get_setting(m, :identical_eqcond_regimes) : nothing
+        orig_date_forecast_start = haskey(m.settings, :date_forecast_start) ? get_setting(m, :date_forecast_start) : nothing
+        orig_date_conditional_end = haskey(m.settings, :date_conditional_end) ? get_setting(m, :date_conditional_end) : nothing
+        orig_n_cond_regimes = haskey(m.settings, :n_cond_regimes) ? get_setting(m, :n_cond_regimes) : nothing
+        orig_preprocessed_transitions = haskey(m.settings, :preprocessed_transitions) ? deepcopy(get_setting(m, :preprocessed_transitions)) : nothing
 
         ### Reset settings for add_zlb_duration[2]
         for a in collect(keys(get_setting(m, :regime_eqcond_info)))#zlb_ind+1:length(get_setting(m, :regime_eqcond_info))
@@ -288,6 +295,9 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
         m <= Setting(:reg_post_conditional_end, zlb_ind)
         m <= Setting(:n_fcast_regimes, get_setting(m, :n_regimes) - zlb_ind + 1)
         m <= Setting(:n_hist_regimes, zlb_ind - 1)
+        m <= Setting(:date_forecast_start, get_setting(m, :regime_dates)[get_setting(m, :reg_forecast_start)])
+        m <= Setting(:date_conditional_end, get_setting(m, :regime_dates)[max(1,zlb_ind-1)])
+
         if !isnothing(orig_min_temp_altpol_len)
             m <= Setting(:min_temporary_altpolicy_length, 0)
         end
@@ -304,13 +314,18 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
             delete!(m.settings, :identical_eqcond_regimes)
         end
 
+        #h5write("model_pre.h5", "mods", collect(keys(m.settings)))
+        #=JLD2.jldopen("model_pre3.jld2", "w") do file
+            file["m"] = m.settings
+            # file["lik"] = filter_lik
+        end=#
+
         ## Actually get the implied ZLB duration
-        @show [get_setting(m, :regime_eqcond_info)[i].alternative_policy.key for i in collect(keys(get_setting(m, :regime_eqcond_info)))]
-        _, fcast_obs, _ = forecast(m, zlb_st, zeros(length(zlb_st), horizons), zeros(length(m.observables), horizons),
+        _, fcast_obs2, _ = forecast(m, zlb_st, zeros(length(zlb_st), horizons), zeros(length(m.observables), horizons),
                  zeros(length(m.pseudo_observables), horizons), zeros(length(m.exogenous_shocks), horizons);
                  cond_type = :none)
 
-        implied_zlb_duration = findfirst(x -> x > get_setting(m, :zlb_rule_value) / 4.0 + 1e-5, fcast_obs[m.observables[:obs_nominalrate],:]) - 1
+        implied_zlb_duration = findfirst(x -> x > get_setting(m, :zlb_rule_value) / 4.0 + 1e-5, fcast_obs2[m.observables[:obs_nominalrate],:]) - 1
 
         ### Reset to original model settings
         m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
@@ -319,6 +334,9 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
         m <= Setting(:n_fcast_regimes, orig_n_fcast_regimes)
         m <= Setting(:n_hist_regimes, orig_n_hist_regimes)
         m <= Setting(:temporary_altpolicy_length, orig_temp_altpol_len)
+        m <= Setting(:date_forecast_start, orig_date_forecast_start)
+        m <= Setting(:date_conditional_end, orig_date_conditional_end)
+
         if !isnothing(orig_min_temp_altpol_len)
             m <= Setting(:min_temporary_altpolicy_length, orig_min_temp_altpol_len)
         end
@@ -337,10 +355,42 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
         end
         if !isnothing(orig_perf_cred)
             m <= Setting(:perfect_credibility_identical_transitions, orig_perf_cred)
+        else
+            delete!(m.settings, :perfect_credibility_identical_transitions)
         end
         if !isnothing(orig_iden_eqcond)
             m <= Setting(:identical_eqcond_regimes, orig_iden_eqcond)
+        else
+            delete!(m.settings, :identical_eqcond_regimes)
         end
+        if !isnothing(orig_n_cond_regimes)
+            m <= Setting(:n_cond_regimes, orig_n_cond_regimes)
+        else
+            delete!(m.settings, :n_cond_regimes)
+        end
+        if !isnothing(orig_preprocessed_transitions)
+            m <= Setting(:preprocessed_transitions, orig_preprocessed_transitions)
+        else
+            delete!(m.settings, :preprocessed_transitions)
+        end
+
+        #=@show "save model post"
+        for i in collect(union(keys(m.settings), keys(mod_pre)))
+           if !haskey(m.settings, i) || !(i in keys(mod_pre)) || get_setting(m, i) != mod_pre[i].value
+               @show i
+               @show !haskey(m.settings, i), !(i in keys(mod_pre))
+               if get_setting(m, i) != mod_pre[i].value
+                   @show "last one", i
+                   @show get_setting(m, i)
+                   @show mod_pre[i]
+               end
+           end
+       end
+       @show filter_lik=#
+        #h5write("model_post.h5", "mods", collect(keys(m.settings)))
+        #=JLD2.jldopen("model_post3.jld2", "w") do file
+            file["m"] = m.settings
+        end=#
 
         # Compute loss for ZLB duration
         prior_prob = log(pdf(Normal(0.0, 0.25), abs(log(get_setting(m, :zlb_duration)) - log(implied_zlb_duration))))
@@ -348,7 +398,7 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
         # zlb_dist = Normal(log(get_setting(m, :zlb_duration)) - log(), log(1.5))
         # prior_prob = log(pdf(zlb_dist, log(implied_zlb_duration))) ##:zlb_duration is the actual median ZLB duration. -1 b/c we are actually including liftoff qtr (since implied_zlb_duration can be 0)
 
-        return filter_lik#, prior_prob
+        return filter_lik .+ prior_prob#, prior_prob
     end
 end
 

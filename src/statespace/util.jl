@@ -26,6 +26,9 @@ function compute_gensys_gensys2_regimes(m::AbstractDSGEModel)
             last_gensys2_regime = haskey(get_settings(m), :temporary_altpolicy_length) ?
                 min(first_gensys2_regime + get_setting(m, :temporary_altpolicy_length), n_regimes) :
                 n_regimes # NOTE removed a +1 here--if tests start failing, check here first
+            if haskey(get_settings(m), :temporary_altpolicy_length) && haskey(get_settings(m), :set_pgap1)
+                last_gensys2_regime += length(findall(x -> x >= last_gensys2_regime, get_setting(m, :set_pgap1)[1])) ## assuming continuously follow from end of temp_altpol
+            end
 
             gensys_regimes = UnitRange{Int}[1:(first_gensys2_regime - 1)]
             if last_gensys2_regime != n_regimes

@@ -6606,24 +6606,32 @@ function add_sigma_mkup_iid!(m)
 end
 
 
-function add_meas_pi!(m)
-    get_setting(m, :model2para_regime)[:ρ_meas_π] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 2)
+function add_meas_pi!(m; rho_reg2::Bool = true)
+    if rho_reg2
+        get_setting(m, :model2para_regime)[:ρ_meas_π] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 2)
+    end
     get_setting(m, :model2para_regime)[:σ_meas_π] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 1)
     for i in 10:get_setting(m, :n_regimes)
-        get_setting(m, :model2para_regime)[:ρ_meas_π][i] = 2
+        if rho_reg2
+            get_setting(m, :model2para_regime)[:ρ_meas_π][i] = 2
+        end
         get_setting(m, :model2para_regime)[:σ_meas_π][i] = 1
     end
 
     # Set regime value bounds
-    set_regime_valuebounds!(m[:ρ_meas_π], 1, (0.0, 5.0))
+    if rho_reg2
+        set_regime_valuebounds!(m[:ρ_meas_π], 1, (0.0, 5.0))
+        set_regime_valuebounds!(m[:ρ_meas_π], 2, (1.0e-8, 5.0))
+    end
     set_regime_valuebounds!(m[:σ_meas_π], 1, (0.0, 5.0))
-    set_regime_valuebounds!(m[:ρ_meas_π], 2, (1.0e-8, 5.0))
     m[:ρ_meas_π].valuebounds = (1.0e-8, 5.0)
     set_regime_valuebounds!(m[:σ_meas_π], 2, (1.0e-8, 5.0))
 
     # Set values (priors are set already unless regime-switching is desired in 2020:Q4)
-    set_regime_val!(m[:ρ_meas_π], 1, 0.)
-    set_regime_val!(m[:ρ_meas_π], 2, 0.2320)
+    if rho_reg2
+        set_regime_val!(m[:ρ_meas_π], 1, 0.)
+        set_regime_val!(m[:ρ_meas_π], 2, 0.2320)
+    end
     m[:ρ_meas_π].value = 0.2320
     set_regime_val!(m[:σ_meas_π], 1, 0.)
     set_regime_val!(m[:σ_meas_π], 2, 0.0999)
@@ -6631,29 +6639,39 @@ function add_meas_pi!(m)
     # Fix shocks to 0 in para regime 1
     m[:ρ_meas_π].fixed = false#true
     m[:σ_meas_π].fixed = true
-    set_regime_fixed!(m[:ρ_meas_π], 1, true)
-    set_regime_fixed!(m[:ρ_meas_π], 2, false)
+    if rho_reg2
+        set_regime_fixed!(m[:ρ_meas_π], 1, true)
+        set_regime_fixed!(m[:ρ_meas_π], 2, false)
+    end
     set_regime_fixed!(m[:σ_meas_π], 1, true)
     set_regime_fixed!(m[:σ_meas_π], 2, false)
 
     set_regime_prior!(m[:σ_meas_π], 1, m[:σ_meas_π].prior)
     set_regime_prior!(m[:σ_meas_π], 2, m[:σ_meas_π].prior)
-    # set_regime_prior!(m[:ρ_meas_π], 1, m[:ρ_meas_π].prior)
-    # set_regime_prior!(m[:ρ_meas_π], 2, m[:ρ_meas_π].prior)
+    if rho_reg2
+        set_regime_prior!(m[:ρ_meas_π], 1, m[:ρ_meas_π].prior)
+        set_regime_prior!(m[:ρ_meas_π], 2, m[:ρ_meas_π].prior)
+    end
 end
 
-function add_zero_meas_pi!(m)
+function add_zero_meas_pi!(m; rho_reg2::Bool = true)
     # Set measurement errors from ss87 to 0
-    get_setting(m, :model2para_regime)[:ρ_meas_π] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 2)
+    if rho_reg2
+        get_setting(m, :model2para_regime)[:ρ_meas_π] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 2)
+    end
     get_setting(m, :model2para_regime)[:σ_meas_π] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 1)
     for i in 10:get_setting(m, :n_regimes)
-        get_setting(m, :model2para_regime)[:ρ_meas_π][i] = 2
+        if rho_reg2
+            get_setting(m, :model2para_regime)[:ρ_meas_π][i] = 2
+        end
         get_setting(m, :model2para_regime)[:σ_meas_π][i] = 1
     end
 
     # Set values (priors are set already unless regime-switching is desired in 2020:Q4)
-    set_regime_val!(m[:ρ_meas_π], 1, 0.)
-    set_regime_val!(m[:ρ_meas_π], 2, 0.0)
+    if rho_reg2
+        set_regime_val!(m[:ρ_meas_π], 1, 0.)
+        set_regime_val!(m[:ρ_meas_π], 2, 0.0)
+    end
     m[:ρ_meas_π].value = 0.0
     set_regime_val!(m[:σ_meas_π], 1, 0.)
     set_regime_val!(m[:σ_meas_π], 2, 0.0)
@@ -6661,8 +6679,10 @@ function add_zero_meas_pi!(m)
     # Fix shocks to 0 in para regime 1
     m[:ρ_meas_π].fixed = false#true
     m[:σ_meas_π].fixed = true
-    set_regime_fixed!(m[:ρ_meas_π], 1, true)
-    set_regime_fixed!(m[:ρ_meas_π], 2, true)
+    if rho_reg2
+        set_regime_fixed!(m[:ρ_meas_π], 1, true)
+        set_regime_fixed!(m[:ρ_meas_π], 2, true)
+    end
     set_regime_fixed!(m[:σ_meas_π], 1, true)
     set_regime_fixed!(m[:σ_meas_π], 2, true)
 end
@@ -6689,31 +6709,41 @@ function remove_persist_mkup!(m)
     set_regime_fixed!(m[:σ_λ_f], 2, true)
 end
 
-function rm_iid_pce_meas_err!(m)
+function rm_iid_pce_meas_err!(m; rho_reg2::Bool = true)
 
     #get_setting(m, :model2para_regime)[:ρ_gdpdef] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2)
     #get_setting(m, :model2para_regime)[:σ_gdpdef] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2)
-    get_setting(m, :model2para_regime)[:ρ_corepce] = Dict(1 => 1) ## Don't need to change ρ_corepce
+    if rho_reg2
+        get_setting(m, :model2para_regime)[:ρ_corepce] = Dict(1 => 1) ## Don't need to change ρ_corepce
+    end
     get_setting(m, :model2para_regime)[:σ_corepce] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 1)
-    for i in 2:9
-        get_setting(m, :model2para_regime)[:ρ_corepce][i] = 1
+    if rho_reg2
+        for i in 2:9
+            get_setting(m, :model2para_regime)[:ρ_corepce][i] = 1
+        end
     end
     for i in 10:get_setting(m, :n_regimes)
         #get_setting(m, :model2para_regime)[:ρ_gdpdef][i] = 1
         #get_setting(m, :model2para_regime)[:σ_gdpdef][i] = 1
-        get_setting(m, :model2para_regime)[:ρ_corepce][i] = 1
+        if rho_reg2
+            get_setting(m, :model2para_regime)[:ρ_corepce][i] = 1
+        end
         get_setting(m, :model2para_regime)[:σ_corepce][i] = 1
     end
 
     # Change valuebounds in regime 2 and keep those in regime 1
     #set_regime_valuebounds!(m[:ρ_gdpdef], 1, m[:ρ_gdpdef].valuebounds)
     #set_regime_valuebounds!(m[:σ_gdpdef], 1, m[:σ_gdpdef].valuebounds)
-    set_regime_valuebounds!(m[:ρ_corepce], 1, m[:ρ_corepce].valuebounds)
+    if rho_reg2
+        set_regime_valuebounds!(m[:ρ_corepce], 1, m[:ρ_corepce].valuebounds)
+    end
     set_regime_valuebounds!(m[:σ_corepce], 1, m[:σ_corepce].valuebounds)
 
     #set_regime_valuebounds!(m[:ρ_gdpdef], 2, (0.0, m[:ρ_gdpdef].valuebounds[2]))
     #set_regime_valuebounds!(m[:σ_gdpdef], 2, (0.0, m[:σ_gdpdef].valuebounds[2]))
-    set_regime_valuebounds!(m[:ρ_corepce], 2, (0.0, m[:ρ_corepce].valuebounds[2]))
+    if rho_reg2
+        set_regime_valuebounds!(m[:ρ_corepce], 2, (0.0, m[:ρ_corepce].valuebounds[2]))
+    end
     set_regime_valuebounds!(m[:σ_corepce], 2, (0.0, m[:σ_corepce].valuebounds[2]))
 
     # Set values (priors are set already)
@@ -6722,8 +6752,10 @@ function rm_iid_pce_meas_err!(m)
     #set_regime_val!(m[:σ_gdpdef], 1, 0.1575)
     #set_regime_val!(m[:σ_gdpdef], 2, 0.0)
 
-    set_regime_val!(m[:ρ_corepce], 1, 0.2320)
-    set_regime_val!(m[:ρ_corepce], 2, 0.0)
+    if rho_reg2
+        set_regime_val!(m[:ρ_corepce], 1, 0.2320)
+        set_regime_val!(m[:ρ_corepce], 2, 0.0)
+    end
     set_regime_val!(m[:σ_corepce], 1, 0.0999)
     set_regime_val!(m[:σ_corepce], 2, 0.0)
 
@@ -6736,20 +6768,26 @@ function rm_iid_pce_meas_err!(m)
     m[:ρ_corepce].fixed = false
     m[:σ_corepce].fixed = false
 
-    set_regime_fixed!(m[:ρ_corepce], 1, false)
-    set_regime_fixed!(m[:ρ_corepce], 2, true)
+    if rho_reg2
+        set_regime_fixed!(m[:ρ_corepce], 1, false)
+        set_regime_fixed!(m[:ρ_corepce], 2, true)
+    end
     set_regime_fixed!(m[:σ_corepce], 1, false)
     set_regime_fixed!(m[:σ_corepce], 2, true)
 
     # Change valuebounds in regime 2 and keep those in regime 1
     #set_regime_valuebounds!(m[:ρ_gdpdef], 1, m[:ρ_gdpdef].valuebounds)
     #set_regime_valuebounds!(m[:σ_gdpdef], 1, m[:σ_gdpdef].valuebounds)
-    set_regime_valuebounds!(m[:ρ_corepce], 1, m[:ρ_corepce].valuebounds)
+    if rho_reg2
+        set_regime_valuebounds!(m[:ρ_corepce], 1, m[:ρ_corepce].valuebounds)
+    end
     set_regime_valuebounds!(m[:σ_corepce], 1, m[:σ_corepce].valuebounds)
 
     #set_regime_valuebounds!(m[:ρ_gdpdef], 2, (0.0, m[:ρ_gdpdef].valuebounds[2]))
     #set_regime_valuebounds!(m[:σ_gdpdef], 2, (0.0, m[:σ_gdpdef].valuebounds[2]))
-    set_regime_valuebounds!(m[:ρ_corepce], 2, (0.0, m[:ρ_corepce].valuebounds[2]))
+    if rho_reg2
+        set_regime_valuebounds!(m[:ρ_corepce], 2, (0.0, m[:ρ_corepce].valuebounds[2]))
+    end
     set_regime_valuebounds!(m[:σ_corepce], 2, (0.0, m[:σ_corepce].valuebounds[2]))
 
     # Set values
@@ -6757,8 +6795,10 @@ function rm_iid_pce_meas_err!(m)
     #set_regime_val!(m[:ρ_gdpdef], 1, 0.5379)
     #set_regime_val!(m[:ρ_gdpdef], 2, 0.0)
 
-    set_regime_val!(m[:ρ_corepce], 1, 0.2320)
-    set_regime_val!(m[:ρ_corepce], 2, 0.0)
+    if rho_reg2
+        set_regime_val!(m[:ρ_corepce], 1, 0.2320)
+        set_regime_val!(m[:ρ_corepce], 2, 0.0)
+    end
     set_regime_val!(m[:σ_corepce], 1, 0.0999)
     set_regime_val!(m[:σ_corepce], 2, 0.0)
 end
@@ -6788,7 +6828,7 @@ function ss90!(m)
     ss89!(m)
 end
 
-function ss91!(m)
+function ss91!(m; rho_reg2::Bool = true)
     ss89!(m)
 
     ######
@@ -6797,22 +6837,28 @@ function ss91!(m)
     add_meas_pi!(m)
 
     # Set regime value bounds
-    set_regime_valuebounds!(m[:ρ_meas_π], 1, (0.0, 5.0))
+    if rho_reg2
+        set_regime_valuebounds!(m[:ρ_meas_π], 1, (0.0, 5.0))
+        set_regime_valuebounds!(m[:ρ_meas_π], 2, (1.0e-8, 5.0))
+    end
     set_regime_valuebounds!(m[:σ_meas_π], 1, (0.0, 5.0))
-    set_regime_valuebounds!(m[:ρ_meas_π], 2, (1.0e-8, 5.0))
     set_regime_valuebounds!(m[:σ_meas_π], 2, (1.0e-8, 5.0))
 
     # Set values (priors are set already unless regime-switching is desired in 2020:Q4)
-    set_regime_val!(m[:ρ_meas_π], 1, 0.)
-    set_regime_val!(m[:ρ_meas_π], 2, 0.2320)
+    if rho_reg2
+        set_regime_val!(m[:ρ_meas_π], 1, 0.)
+        set_regime_val!(m[:ρ_meas_π], 2, 0.2320)
+    end
     set_regime_val!(m[:σ_meas_π], 1, 0.)
     set_regime_val!(m[:σ_meas_π], 2, 0.0999)
 
     # Set prior for standard deviation to be large since we are removing other measurement error
     set_regime_prior!(m[:σ_meas_π], 1, m[:σ_meas_π].prior)
     set_regime_prior!(m[:σ_meas_π], 2, m[:σ_meas_π].prior)
-    set_regime_prior!(m[:ρ_meas_π], 1, m[:ρ_meas_π].prior)
-    set_regime_prior!(m[:ρ_meas_π], 2, m[:ρ_meas_π].prior)
+    if rho_reg2
+        set_regime_prior!(m[:ρ_meas_π], 1, m[:ρ_meas_π].prior)
+        set_regime_prior!(m[:ρ_meas_π], 2, m[:ρ_meas_π].prior)
+    end
     prior2 = get(m[:σ_meas_π].prior)
     prior2.τ = 0.2
     set_regime_prior!(m[:σ_meas_π], 2, prior2)
@@ -6827,19 +6873,23 @@ function ss92!(m)
     ss91!(m)
 end
 
-function ss93!(m)
+function ss93!(m; rho_reg2::Bool = true)
     ss87!(m)
 
     # Set regime value bounds
-    # set_regime_valuebounds!(m[:ρ_meas_π], 1, (0.0, 5.0))
+    if rho_reg2
+        set_regime_valuebounds!(m[:ρ_meas_π], 1, (0.0, 5.0))
+        set_regime_valuebounds!(m[:ρ_meas_π], 2, (1.0e-8, 5.0))
+    end
     set_regime_valuebounds!(m[:σ_meas_π], 1, (0.0, 5.0))
-    # set_regime_valuebounds!(m[:ρ_meas_π], 2, (1.0e-8, 5.0))
     m[:ρ_meas_π].valuebounds = (1.0e-8, 5.0)
     set_regime_valuebounds!(m[:σ_meas_π], 2, (1.0e-8, 5.0))
 
     # Set values (priors are set already unless regime-switching is desired in 2020:Q4)
-    # set_regime_val!(m[:ρ_meas_π], 1, 0.)
-    # set_regime_val!(m[:ρ_meas_π], 2, 0.2320)
+    if rho_reg2
+        set_regime_val!(m[:ρ_meas_π], 1, 0.)
+        set_regime_val!(m[:ρ_meas_π], 2, 0.2320)
+    end
     m[:ρ_meas_π].value = 0.2320
     set_regime_val!(m[:σ_meas_π], 1, 0.)
     set_regime_val!(m[:σ_meas_π], 2, 0.0999)
