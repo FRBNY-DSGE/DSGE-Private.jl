@@ -483,10 +483,6 @@ function forecast(m::AbstractDSGEModel, z0::Vector{S}, states::AbstractMatrix{S}
 
     ## 1. Determine if we need to do anything (are there any further negative nominal rates)
     # If not, return the forecast as is
-    @show isnothing(first_endo_zlb)
-    @show first_endo_zlb
-    @show forecast_zlb_value(m)
-    @show view(obs, get_observables(m)[:obs_nominalrate], :)
     if isnothing(first_endo_zlb)
         if rerun_smoother
             return states, obs, pseudo, histstates, histshocks, histpseudo, initial_states
