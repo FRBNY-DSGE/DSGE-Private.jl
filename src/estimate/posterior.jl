@@ -137,8 +137,6 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
         for θ in m.parameters
             (left, right) = θ.valuebounds
             if !θ.fixed && !(left <= θ.value <= right)
-                @show "is this the issue"
-                @show θ
                 return -Inf
             end
         end
@@ -158,7 +156,6 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
                 penalty +=  -0.5 * (log(target) - log(m[var].value))^2 / σt^2
             catch err
                 println(err)
-                @show "issue here?"
                 return -Inf
             end
         end
@@ -172,7 +169,6 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
         compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
     catch err
         if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
-            @show "or here"
             return -Inf
         else
             rethrow(err)
@@ -205,7 +201,6 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     catch err
         if catch_errors && isa(err, DomainError)
             @warn "Log of incremental likelihood is negative; returning -Inf"
-            @show "nothing here"
             return -Inf
         else
             rethrow(err)
