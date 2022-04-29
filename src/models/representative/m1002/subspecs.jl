@@ -6606,7 +6606,7 @@ function add_sigma_mkup_iid!(m)
 end
 
 
-function add_meas_pi!(m; rho_reg2::Bool = true)
+function add_meas_pi!(m; rho_reg2::Bool = false)
     if rho_reg2
         get_setting(m, :model2para_regime)[:ρ_meas_π] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 2)
     end
@@ -6654,7 +6654,7 @@ function add_meas_pi!(m; rho_reg2::Bool = true)
     end
 end
 
-function add_zero_meas_pi!(m; rho_reg2::Bool = true)
+function add_zero_meas_pi!(m; rho_reg2::Bool = false)
     # Set measurement errors from ss87 to 0
     if rho_reg2
         get_setting(m, :model2para_regime)[:ρ_meas_π] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2, 8 => 2, 9 => 2, 10 => 2)
@@ -6709,7 +6709,7 @@ function remove_persist_mkup!(m)
     set_regime_fixed!(m[:σ_λ_f], 2, true)
 end
 
-function rm_iid_pce_meas_err!(m; rho_reg2::Bool = true)
+function rm_iid_pce_meas_err!(m; rho_reg2::Bool = false)
 
     #get_setting(m, :model2para_regime)[:ρ_gdpdef] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2)
     #get_setting(m, :model2para_regime)[:σ_gdpdef] = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2, 5 => 2, 6 => 2, 7 => 2)
@@ -6828,7 +6828,7 @@ function ss90!(m)
     ss89!(m)
 end
 
-function ss91!(m; rho_reg2::Bool = true)
+function ss91!(m; rho_reg2::Bool = false)
     ss89!(m)
 
     ######
@@ -6873,7 +6873,7 @@ function ss92!(m)
     ss91!(m)
 end
 
-function ss93!(m; rho_reg2::Bool = true)
+function ss93!(m; rho_reg2::Bool = false)
     ss87!(m)
 
     # Set regime value bounds
