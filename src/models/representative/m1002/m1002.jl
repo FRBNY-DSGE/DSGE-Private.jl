@@ -811,7 +811,7 @@ buted to steady-state inflation.",
                        description="φ_y: Weight on output gap in AIT Rule",
                        tex_label="\\varphi_y")
 
-        m <= parameter(:ρ_smooth, 0.9, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.75, 0.10), fixed=false,
+        m <= parameter(:ρ_smooth, 0.9, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.85, 0.10), fixed=false,
                        description="ρ_smooth: Degree of inertia in AIT Rule",
                        tex_label="\\rho_{smooth}")
     end

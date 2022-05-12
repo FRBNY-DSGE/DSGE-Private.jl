@@ -240,9 +240,9 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 	        tempered_update_prior_weight = tempered_update_prior_weight,
 
             regime_switching = regime_switching,
-            debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data,
-            add_zlb_duration = add_zlb_duration,
-            timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
+            debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data)#,
+            #add_zlb_duration = add_zlb_duration,
+            #timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
 
     if run_csminwel
         m <= Setting(:sampling_method, :SMC)
