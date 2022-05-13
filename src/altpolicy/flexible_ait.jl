@@ -69,7 +69,7 @@ function flexible_ait_replace_eq_entries(m::AbstractDSGEModel,
         # MP shock process
         Γ0[eq[:eq_ait_rm], endo[:ait_rm_t]] = 1.0
         Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = m[:ρ_ait_rm]
-        Ψ[eq[:eq_ait_rm], m.exogenous_shocks[:ait_rm_sh]]  = 1.0
+        Ψ[eq[:eq_ait_rm], m.exogenous_shocks[:rm_ait_sh]]  = 1.0
     else
         Γ0[eq[:eq_mp], endo[:rm_t]]     = -1.
     end

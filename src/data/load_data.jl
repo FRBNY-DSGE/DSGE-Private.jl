@@ -33,7 +33,8 @@ means, standard deviations,
 """
 function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bool = true,
                    verbose::Symbol=:low, check_empty_columns::Bool = true,
-                   summary_statistics::Symbol = :low, add_vals = (false, Date(2020,12,31)))
+                   summary_statistics::Symbol = :low, add_vals = (false, Date(2020,12,31)),
+                   fomc_dates::Vector{Int64} = Vector{Int64}())
     recreate_data = false
 
     # Check if already downloaded
@@ -78,7 +79,7 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
         if any(occursin.("obs_exp_nominalrate", string.(vcat(cond_semi_names(m), cond_full_names(m)))))
             spd_data = CSV.read(inpath(m, "raw", "spd_raw_$(data_vintage(m)).csv"), DataFrame, copycols = true)
             # Transform into usable form
-            spd_data = transform_spd_data(spd_data)
+            spd_data = transform_spd_data(spd_data, fomc_dates = fomc_dates)
             CSV.write(inpath(m, "raw", "spd_$(data_vintage(m)).csv"), spd_data)
 
             dates = DSGE.get_quarter_ends(iterate_quarters(date_mainsample_end(m), 1), date_conditional_end(m))
@@ -200,11 +201,6 @@ function load_data_levels(m::AbstractDSGEModel; verbose::Symbol=:low,
 
     # Set SPD expected FFR to load
     if !isempty(expected_ffr(m))
-        if !(:obs_exp_nominalrate1 in cond_semi_names(m) || :obs_exp_nominalrate1 in cond_full_names(m))
-            spd_data = CSV.read(inpath(m, "raw", "spd_raw_$(data_vintage(m)).csv"), DataFrame, copycols = true)
-            spd_data = transform_spd_data(spd_data)
-            CSV.write(inpath(m, "raw", "spd_$(data_vintage(m)).csv"), spd_data)
-        end
         data_series[:SPD] = [Symbol("exp_ant$i") for i in expected_ffr(m)]
     end
 

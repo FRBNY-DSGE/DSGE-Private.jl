@@ -153,12 +153,13 @@ function init_model_indices!(m::Model1002)
     equilibrium_conditions = [[
         :eq_euler, :eq_inv, :eq_capval, :eq_spread, :eq_nevol, :eq_output, :eq_caputl, :eq_capsrv, :eq_capev,
         :eq_mkupp, :eq_phlps, :eq_caprnt, :eq_msub, :eq_wage, :eq_mp, :eq_res, :eq_g, :eq_b, :eq_μ, :eq_z,
-        :eq_λ_f, :eq_λ_w, :eq_rm, :eq_σ_ω, :eq_μ_e, :eq_γ, :eq_λ_f1, :eq_λ_w1, :eq_Ec,
+        :eq_λ_f, :eq_λ_w, :eq_rm,  :eq_σ_ω, :eq_μ_e, :eq_γ, :eq_λ_f1, :eq_λ_w1, :eq_Ec,
         :eq_Eqk, :eq_Ei, :eq_Eπ, :eq_EL, :eq_Erk, :eq_Ew, :eq_ERktil, :eq_euler_f, :eq_inv_f,
         :eq_capval_f, :eq_output_f, :eq_caputl_f, :eq_capsrv_f, :eq_capev_f, :eq_mkupp_f,
         :eq_caprnt_f, :eq_msub_f, :eq_res_f, :eq_Ec_f, :eq_Eqk_f, :eq_Ei_f, :eq_EL_f,
         :eq_ztil, :eq_π_star, :eq_π1, :eq_π2, :eq_π_a, :eq_Rt1, :eq_zp, :eq_Ez, :eq_spread_f,:eq_nevol_f,  :eq_ERktil_f];
         [Symbol("eq_rml$i") for i=1:n_mon_anticipated_shocks(m)]]
+
     for (key, val) in get_setting(m, :antshocks)
         equilibrium_conditions = vcat(equilibrium_conditions, [Symbol("eq_", key, "l$i") for i = 1:val])
     end
@@ -302,7 +303,14 @@ function init_model_indices!(m::Model1002)
     if haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
         push!(endogenous_states, setdiff([:ait_rm_t], endogenous_states)...)
         push!(equilibrium_conditions, setdiff([:eq_ait_rm], equilibrium_conditions)...)
-        push!(exogenous_shocks, setdiff([:ait_rm_sh], exogenous_shocks)...)
+        push!(exogenous_shocks, setdiff([:rm_ait_sh], exogenous_shocks)...)
+        if !isempty(mon_anticipated_ait_shocks(m))
+            for i = 1:maximum(mon_anticipated_ait_shocks(m))
+                push!(endogenous_states, setdiff([Symbol("rm_ait_tl$i")], endogenous_states)...)
+                push!(exogenous_shocks, setdiff([Symbol("rm_ait_shl$i")], exogenous_shocks)...)
+                push!(equilibrium_conditions, setdiff([Symbol("eq_ait_rml$i")], equilibrium_conditions)...)
+            end
+        end
     end
 
     if haskey(get_settings(m), :add_iid_cond_obs_gdp_meas_err) ?
@@ -607,7 +615,7 @@ buted to steady-state inflation.",
     end
 
     if haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
-        m <= parameter(:ρ_ait_rm, 0.2135, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+        m <= parameter(:ρ_ait_rm, 0.2135, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                        description="ρ_ait_rm: AR(1) coefficient in the AIT monetary policy shock process.",
                        tex_label="\\rho_{ait,r^m}")
     end
@@ -636,7 +644,7 @@ buted to steady-state inflation.",
     m <= parameter(:σ_λ_w, 0.3864, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                    tex_label="\\sigma_{\\lambda_w}")
 
-    m <= parameter(:σ_r_m, 0.2380, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+    m <= parameter(:σ_r_m, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                    description="σ_r_m: The standard deviation of the monetary policy shock.",
                    tex_label="\\sigma_{r^m}")
 
@@ -684,7 +692,7 @@ buted to steady-state inflation.",
     end
 
     if haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
-        m <= parameter(:σ_ait_rm, 0.2380, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+        m <= parameter(:σ_ait_rm, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description="σ_ait_rm: The standard deviation of the AIT monetary policy shock.",
                        tex_label="\\sigma_{ait,r^m}")
     end
@@ -865,14 +873,25 @@ buted to steady-state inflation.",
     end
 
     # standard deviations of the anticipated policy shocks
+    if  haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
+        for i in mon_anticipated_ait_shocks(m)
+            m <= parameter(Symbol("σ_ait_r_m$i"), .2, (0.0, 100.), (0.0, 0.), ModelConstructors.Exponential(),
+                           RootInverseGamma(4, .2), fixed=false,
+                           description="σ_r_m$i: Standard deviation of the $i-period-ahead anticipated policy shock.",
+                           tex_label=@sprintf("\\sigma_{ant%d}",i))
+        end
+    end
+
+
     for i = 1:n_mon_anticipated_shocks_padding(m)
         if i <= n_mon_anticipated_shocks(m)
-            m <= parameter(Symbol("σ_r_m$i"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(),
+            m <= parameter(Symbol("σ_r_m$i"), .2, (0.0, 100.), (0.0, 0.), ModelConstructors.Exponential(),
                            RootInverseGamma(4, .2), fixed=false,
                            description="σ_r_m$i: Standard deviation of the $i-period-ahead anticipated policy shock.",
                            tex_label=@sprintf("\\sigma_{ant%d}",i))
         else
-            m <= parameter(Symbol("σ_r_m$i"), .0, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=true,
+
+            m <= parameter(Symbol("σ_r_m$i"), .0, (0.0, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=true,
                            description="σ_r_m$i: Standard deviation of the $i-period-ahead anticipated policy shock.",
                            tex_label=@sprintf("\\sigma_{ant%d}",i))
         end
@@ -947,6 +966,7 @@ buted to steady-state inflation.",
                            RootInverseGamma(4, .2), fixed=true,
                            description="σ_exp_rm$i: Standard deviation of the $i-period-ahead FFR measurement error.",
                            tex_label=@sprintf("\\sigma_{exp_rm%d}",i))
+
         end
         m <= parameter(:ρ_exp_rm, 0., (-1e-5, 0.999), (-1e-5, 0.999), ModelConstructors.SquareRoot(), Normal(0.0, 0.2), fixed=true,
                        tex_label="\\rho_{exp_rm}")
@@ -1353,7 +1373,7 @@ function shock_groupings(m::Model1002)
 
         rm_vec = vcat([:rm_sh], [Symbol("rm_shl$i") for i = 1:n_mon_anticipated_shocks(m)])
         if haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
-            append!(rm_vec, :ait_rm_sh)
+            append!(rm_vec, :rm_ait_sh)
         end
 
         pol = ShockGroup("pol", rm_vec, RGB(1.0, 0.84, 0.0)) # gold

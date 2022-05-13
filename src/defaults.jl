@@ -69,6 +69,9 @@ function default_settings!(m::AbstractDSGEModel)
     settings[:monetary_policy_shock] = Setting(:monetary_policy_shock, :rm_sh,
                                                "Name of the monetary policy shock in field `exogenous_shocks` " *
                                                "of a concrete subtype of AbstractDSGEModel")
+    settings[:monetary_policy_ait_shock] = Setting(:monetary_policy_ait_shock, :rm_ait_sh,
+                                                   "Name of the monetary policy AIT shock")
+
     settings[:nominal_rate_observable] = Setting(:nominal_rate_observable, :obs_nominalrate,
                                                  "Name of the observable for monetary policy's nominal interest rate.")
 
@@ -217,6 +220,10 @@ function default_settings!(m::AbstractDSGEModel)
         "Primarily for numerical accuracy/testing purposes.")
     settings[:previous_data_vintage] = Setting(:previous_data_vintage, vint,
         "The old data vintage from which to start SMC when using a tempered update.")
+
+    # AIT Liftoff is in 2022Q1 (reg. 10 generally)
+    settings[:ait_liftoff_regime] = Setting(:ait_liftoff_regime, 10,
+                                            "Regime when monetary policy lifted off from ZLB and followed AIT.")
 
     # Alternative policy
     ## TODO: delete this once alternative policies have been completely ported to using regime_eqcond_info

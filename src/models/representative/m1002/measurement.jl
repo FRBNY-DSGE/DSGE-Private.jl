@@ -277,8 +277,8 @@ function measurement(m::Model1002{T},
         QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = m[:σ_meas_π]^2
     end
 
-    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
-        QQ[exo[:ait_rm_sh], exo[:ait_rm_sh]] = m[:σ_ait_rm]^2
+    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm) && reg >= get_setting(m, :ait_liftoff_regime)
+        QQ[exo[:rm_ait_sh], exo[:rm_ait_sh]] = m[:σ_ait_rm]^2
     end
 
     if subspec(m) in ["ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83"]
@@ -379,9 +379,14 @@ function measurement(m::Model1002{T},
             ZZ[obs[Symbol("obs_exp_nominalrate$i")], endo_new[Symbol("e_exp_rm$i")]]  = 1.0
             DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[endo[:R_t]]
 
-            if reg >= get_setting(m, :ait_liftoff_regime)
-                QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
-            end
+            QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
+
+        end
+    end
+
+    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+        for i in mon_anticipated_ait_shocks(m)
+            QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_ait_r_m$i")]^2
         end
     end
 
