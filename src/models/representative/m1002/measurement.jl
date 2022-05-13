@@ -277,7 +277,7 @@ function measurement(m::Model1002{T},
         QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = m[:σ_meas_π]^2
     end
 
-    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm) && reg >= get_setting(m, :ait_liftoff_regime)
+    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
         QQ[exo[:rm_ait_sh], exo[:rm_ait_sh]] = m[:σ_ait_rm]^2
     end
 
@@ -402,9 +402,7 @@ function measurement(m::Model1002{T},
         ZZ[obs[Symbol("obs_exp_nominalrate$i")], endo_new[Symbol("e_exp_rm$i")]]  = 1.0
         DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[endo[:R_t]]
 
-        if reg >= get_setting(m, :ait_liftoff_regime)
-            QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
-        end
+        QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
     end
 
     # Anticipated GDP growth
