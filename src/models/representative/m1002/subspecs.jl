@@ -6890,7 +6890,7 @@ function expected_nominal_rates!(m)
 
     # iid measurement error on expected AIT shock
     for i in expected_ffr(m)
-        symb_i = Symbol("σ_exp_r_m$(i)")
+        symb_i = Symbol("σ_exp_rm$(i)")
         get_setting(m, :model2para_regime)[symb_i] = Dict(1 => 1)
         for j in 1:11
             if j < 10

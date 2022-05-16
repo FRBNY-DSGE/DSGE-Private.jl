@@ -962,7 +962,7 @@ buted to steady-state inflation.",
     # SPD expected FFR measurement error parameters
     if !isempty(expected_ffr(m))
         for i in expected_ffr(m)
-            m <= parameter(Symbol("σ_exp_rm$i"), 0.0375 + 0.00625 * i, (1e-7, 5.), (1e-7, 5.), ModelConstructors.Exponential(),
+            m <= parameter(Symbol("σ_exp_rm$i"), 0.0375 + 0.00625 * i, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(),
                            RootInverseGamma(4, .2), fixed=true,
                            description="σ_exp_rm$i: Standard deviation of the $i-period-ahead FFR measurement error.",
                            tex_label=@sprintf("\\sigma_{exp_rm%d}",i))
