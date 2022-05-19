@@ -729,3 +729,28 @@ function k_periods_ahead_expected_sums(TTT::AbstractMatrix, CCC::AbstractVector,
         end
     end
 end
+
+# The k_periods_ahead_expectations function is optimized for finding E[s_{t+k}]. But what if you want
+## E[s_{t+k}] for k = 1,...,n? Then, simply get TTT^k sequentially and return. CCC^k = (∑ₘ₌₁ᵏ⁻¹ (∏ⱼ₌ₘ₊₁ᵏ Tₜ₊ⱼ) Cₜ₊ₘ) + Cₜ₊ₖ
+function one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, t, k)
+    final_T = AbstractVector{Matrix{Float64}}(undef, k)
+    final_C = AbstractVector{Vector{Float64}}(undef, k)
+    if isempty(TTTs) || isempty(CCCs)
+        final_T[1] = TTT
+        final_C[1] = CCC
+        for i in 2:k
+            final_T[i] = TTT * final_T[i-1]
+            # Tᵏsum = (I - TTT) \ (I - Tᵏ)
+            final_C[i] = final_T[i] * final_C[i-1] + CCC
+        end
+    else
+        final_T[1] = TTTs[t+1]
+        final_C[1] = CCCs[t+1]
+        for i in 2:k
+            final_T[i] = TTTs[t+i] * final_T[i-1]
+            # Tᵏsum = (I - TTT) \ (I - Tᵏ)
+            final_C[i] = final_T[i] * final_C[i-1] + CCCs[t+i]
+        end
+    end
+    return final_T, final_C
+end
