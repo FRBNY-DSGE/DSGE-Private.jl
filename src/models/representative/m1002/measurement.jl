@@ -355,7 +355,7 @@ function measurement(m::Model1002{T},
     # ZZ_obs_nomrate = ZZ[obs[:obs_nominalrate], :]'
     finished_expffr = []
     #for i = 1:n_mon_anticipated_shocks(m)
-        TTT_accum, CCC_accum = one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, n_mon_anticipated_shocks(m))
+        TTT_accum, CCC_accum = one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, n_mon_anticipated_shocks(m), permanent_t)
 #=k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, i, permanent_t;
                                                             integ_series = integ_series,
                                                             memo = (isnothing(memo) || !use_fwd_exp) ? nothing :
