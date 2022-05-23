@@ -409,8 +409,25 @@ function measurement(m::Model1002{T},
             QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_ait_r_m$i")]^2
         end
     end
-
+#=
     # Expected FFR from SPD
+    for i = setdiff(expected_ffr(m), finished_expffr)
+        TTT_accum, CCC_accum = k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, i, permanent_t;
+                                                            integ_series = integ_series,
+                                                            memo = (isnothing(memo) || !use_fwd_exp) ? nothing :
+                                                            ForwardExpectationsMemo(memo.time_varying_memo[min(reg + i, permanent_t, 17)],
+                                                                                    memo.permanent_memo))
+
+        ZZ[obs[Symbol("obs_exp_nominalrate$i")], :] = view(TTT_accum, endo[:R_t], :)
+        ZZ[obs[Symbol("obs_exp_nominalrate$i")], endo_new[Symbol("e_exp_rm$i")]]  = 1.0
+        DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[endo[:R_t]]
+
+        QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
+        # if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+        #     QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_ait_r_m$i")]^2
+#        end
+    end=#
+# New method starts here
     spd_left = sort(setdiff(expected_ffr(m), finished_expffr))
     for j in 1:length(spd_left)
         i = spd_left[j]
@@ -435,8 +452,8 @@ function measurement(m::Model1002{T},
                                                                                     memo.permanent_memo))
 
         if n_mon_anticipated_shocks(m) >= 1 || j > 1
-            TTT_accum = TTT_accum * T_last
             CCC_accum = CCC_accum .+ TTT_accum * C_last
+            TTT_accum = TTT_accum * T_last
         end
 
         ZZ[obs[Symbol("obs_exp_nominalrate$i")], :] = view(TTT_accum, endo[:R_t], :)
@@ -445,7 +462,7 @@ function measurement(m::Model1002{T},
 
         QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
     end
-
+# New method ends here
     # Anticipated GDP growth
     if haskey(get_settings(m), :add_anticipated_obs_gdp)
         if get_setting(m, :add_anticipated_obs_gdp)
