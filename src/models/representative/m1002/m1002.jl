@@ -974,12 +974,12 @@ buted to steady-state inflation.",
 
     # Kappa to restrict values to fixed proportion of value in earlier regime
     if haskey(m.settings, :add_κ_covid) && get_setting(m, :add_κ_covid)
-        m <= parameter(:κ_covid, 1.0, (0.0, 2.0), (0.0, 2.0), Untransformed(), Uniform(0,1), fixed=false,
+        m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=true,
                        description="Fraction of regime 2 value used in regime 3 for σ_{covid}",
                        tex_label = "\\kappa_{covid}")
     end
     if haskey(m.settings, :add_κ_pce) && get_setting(m, :add_κ_pce)
-        m <= parameter(:κ_pce, 1.0, (0.0, 2.0), (0.0, 2.0), Untransformed(), Uniform(0,1), fixed=true,
+        m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=true,
                        description="Fraction of regime 2 value used in regime 3 for σ_{meas,π}",
                        tex_label = "\\kappa_{pce}")
     end

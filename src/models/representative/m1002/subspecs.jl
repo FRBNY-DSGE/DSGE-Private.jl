@@ -6629,16 +6629,17 @@ function add_meas_pi!(m; rho_reg2::Bool = false)
     end
     set_regime_valuebounds!(m[:σ_meas_π], 1, (0.0, 5.0))
     m[:ρ_meas_π].valuebounds = (1.0e-8, 5.0)
-    set_regime_valuebounds!(m[:σ_meas_π], 2, (1.0e-8, 5.0))
+    set_regime_valuebounds!(m[:σ_meas_π], 2, (0.0, 5.0))
 
     # Set values (priors are set already unless regime-switching is desired in 2020:Q4)
     if rho_reg2
         set_regime_val!(m[:ρ_meas_π], 1, 0.)
         set_regime_val!(m[:ρ_meas_π], 2, 0.2320)
     end
-    m[:ρ_meas_π].value = 0.2320
+    m[:ρ_meas_π].value = rho_reg2 ? 0.0 : 0.2320
     set_regime_val!(m[:σ_meas_π], 1, 0.)
     set_regime_val!(m[:σ_meas_π], 2, 0.0999)
+    m[:σ_meas_π].value = 0.0
 
     # Fix shocks to 0 in para regime 1
     m[:ρ_meas_π].fixed = false#true
@@ -6679,6 +6680,7 @@ function add_zero_meas_pi!(m; rho_reg2::Bool = false)
     m[:ρ_meas_π].value = 0.0
     set_regime_val!(m[:σ_meas_π], 1, 0.)
     set_regime_val!(m[:σ_meas_π], 2, 0.0)
+    m[:σ_meas_π].value = 0.0
 
     # Fix shocks to 0 in para regime 1
     m[:ρ_meas_π].fixed = false#true
@@ -6827,6 +6829,7 @@ function expected_nominal_rates!(m)
 
         set_regime_fixed!(m[symb_i], 1, true)
         set_regime_fixed!(m[symb_i], 2, false)
+        m[symb_i].fixed = true
    end
 
     for i in 1:n_mon_anticipated_shocks_padding(m) ## Taylor Rule expected FFR
@@ -6869,6 +6872,7 @@ function expected_nominal_rates!(m)
 
     set_regime_fixed!(m[:σ_ait_rm], 1, true)
     set_regime_fixed!(m[:σ_ait_rm], 2, false)
+    m[:σ_ait_rm].fixed = true
 
     # Contemporaneous Taylor shock
     get_setting(m, :model2para_regime)[:σ_r_m] = Dict(1 => 1)
@@ -6908,6 +6912,7 @@ function expected_nominal_rates!(m)
 
         set_regime_fixed!(m[symb_i], 1, true)
         set_regime_fixed!(m[symb_i], 2, false)
+        m[symb_i].fixed = true
    end
 end
 
@@ -6959,6 +6964,7 @@ function ss91!(m; rho_reg2::Bool = false)
     end
     set_regime_val!(m[:σ_meas_π], 1, 0.)
     set_regime_val!(m[:σ_meas_π], 2, 0.0999)
+    m[:σ_meas_π].value = 0.0
 
     # Set prior for standard deviation to be large since we are removing other measurement error
     set_regime_prior!(m[:σ_meas_π], 1, m[:σ_meas_π].prior)
@@ -7001,6 +7007,7 @@ function ss93!(m; rho_reg2::Bool = false)
     m[:ρ_meas_π].value = 0.2320
     set_regime_val!(m[:σ_meas_π], 1, 0.)
     set_regime_val!(m[:σ_meas_π], 2, 0.0999)
+    m[:σ_meas_π].value = 0.0
 
     # Set prior for standard deviation to be large since we are removing other measurement error
     set_regime_prior!(m[:σ_meas_π], 1, m[:σ_meas_π].prior)
