@@ -52,6 +52,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol,
                             bdd_fcast::Bool = true, skipnan::Bool = false,
                             pseudo2data::AbstractDict{Symbol, Symbol} = Dict{Symbol, Symbol}(),
                             variable_names::Vector{Symbol} = Vector{Symbol}(undef, 0),
+                            transform_gdp = true,
                             kwargs...)
 
     if VERBOSITY[verbose] >= VERBOSITY[:low]
@@ -94,6 +95,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol,
                                     variable_names = variable_names,
                                     verbose = verbose,
                                     bdd_fcast = bdd_fcast,
+                                    transform_gdp = transform_gdp,
                                     kwargs...)
             GC.gc()
         end
@@ -117,6 +119,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                             variable_names::Vector{Symbol} = Vector{Symbol}(undef, 0),
                             verbose::Symbol = :none,
                             bdd_fcast::Bool = true,
+                            transform_gdp = true,
                             kwargs...)
 
     # Determine class and product
@@ -150,11 +153,27 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                                                kwargs...)
             end
         else
+
+           if transform_gdp
+                # indices = compute_indices(m, input_type, cond_type, output_var, :PseudoGDP, df;
+                #                                             pop_growth = pop_growth, forecast_string = forecast_string,
+                #                                             pseudo2data = pseudo2data,
+                #                                             bdd_fcast = bdd_fcast,
+                #                                             skipnan = skipnan,
+                #                                             transform_gdp = transform_gdp,
+                #                                             kwargs...)
+               indices = load("you_filepath_here","indices")
+               indices = BitArray(indices)
+
+           end
             mb_vec = map_fcn(var_name -> compute_meansbands(m, input_type, cond_type, output_var, var_name, df;
                                                             pop_growth = pop_growth, forecast_string = forecast_string,
                                                             pseudo2data = pseudo2data,
                                                             bdd_fcast = bdd_fcast,
-                                                            skipnan = skipnan, kwargs...),
+                                                            skipnan = skipnan,
+                                                            transform_gdp = transform_gdp,
+                                                            indices = indices,
+                                                            kwargs...),
                              variable_names)
         end
 
@@ -197,12 +216,13 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
     end
 
     mb = MeansBands(metadata, means, bands)
-
+    forecast_string = forecast_string * "aidan_test_less1"
     # Write to file
     filepath = get_meansbands_output_file(m, input_type, cond_type, output_var,
                                           forecast_string = forecast_string)
     dirpath = dirname(filepath)
     isdir(dirpath) || mkpath(dirpath)
+    println(filepath)
     JLD2.jldopen(filepath, true, true, true, IOStream) do file
         write(file, "mb", mb)
     end
@@ -223,7 +243,9 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                             minimize::Bool = false,
                             pseudo2data::AbstractDict{Symbol, Symbol} = Dict{Symbol, Symbol}(),
                             compute_shockdec_bands::Bool = false,
-                            bdd_fcast::Bool = true)
+                            bdd_fcast::Bool = true,
+                            transform_gdp::Bool = true,
+                            indices = [])
 
     # Return only one set of bands if we read in only one draw
     if input_type in [:init, :mode, :mean]
@@ -263,8 +285,17 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
         transformed_series = transformed_series[.!nanrows, :]
     end
 
+    if transform_gdp
+
+        if output_var in [:histobs, :hist4qobs]
+            #do nothing
+        else
+            transformed_series = transformed_series[indices,:]
+        end
+    end
     # Compute means and bands
     means = vec(mean(transformed_series, dims = 1))
+
     bands = if product in [:shockdec, :dettrend, :trend, :shockdecseq, :shockdecqtrs] && !compute_shockdec_bands
         Dict{Symbol,DataFrame}()
     else
@@ -272,6 +303,142 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
     end
     return means, bands
 end
+function compute_indices(m::AbstractDSGEModel, input_type::Symbol, cond_type::Symbol,
+                            output_var::Symbol, var_name::Symbol, df::DataFrame;
+                            forecast_string::String = "",
+                            pop_growth::AbstractVector{Float64} = Float64[],
+                            skipnan::Bool = false,
+                            shock_name::Nullable{Symbol} = Nullables.Nullable{Symbol}(),
+                            density_bands::Vector{Float64} = [0.5,0.6,0.7,0.8,0.9],
+                            minimize::Bool = false,
+                            pseudo2data::AbstractDict{Symbol, Symbol} = Dict{Symbol, Symbol}(),
+                            compute_shockdec_bands::Bool = false,
+                            bdd_fcast::Bool = true,
+                            transform_gdp::Bool = true)
+
+    # Return only one set of bands if we read in only one draw
+    if input_type in [:init, :mode, :mean]
+        density_bands = [.5]
+    end
+
+    # Determine class and product
+    class = get_class(output_var)
+    product = get_product(output_var)
+
+    # Read in forecast draws
+    fcast_series, transform = read_forecast_output(m, input_type, cond_type,
+                                                   output_var, var_name, shock_name,
+                                                   forecast_string = forecast_string)
+
+    # Reverse transform
+    y0_index = get_y0_index(m, product) # this should be index_forecast_start(m) - 4, so 4 quarters before forecast
+    data = if haskey(pseudo2data, var_name) && product != :irf
+        Float64.(collect(Missings.replace(Vector{Union{Missing, Float64}}(df[!,pseudo2data[var_name]]), NaN)))
+    elseif class == :obs && product != :irf
+        Float64.(collect(Missings.replace(Vector{Union{Missing, Float64}}(df[!,var_name]), NaN)))
+    else
+        fill(NaN, size(df, 1))
+    end
+
+    # data = class == :obs && product != :irf ? Float64.(collect(Missings.replace(df[:,var_name], NaN))) : fill(NaN, size(df, 1))
+    transformed_series = mb_reverse_transform(fcast_series, transform, product, class,
+                                              y0_index = y0_index, data = data,
+                                              pop_growth = pop_growth, use_data = haskey(pseudo2data, var_name))
+
+    replace!(transformed_series, missing=>NaN)
+
+    # Handle NaNs
+    if skipnan && !(output_var in [:histobs, :hist4qobs]) && any(isnan.(transformed_series))
+        # Remove rows with NaNs
+        nanrows = vec(mapslices(x -> all(isnan.(x)), transformed_series, dims = Int[2]))
+        transformed_series = transformed_series[.!nanrows, :]
+    end
+
+   if transform_gdp
+       if var_name == :PseudoGDP
+
+           indices = any.(<(-1.0), eachrow(transformed_series[:,1:10]))
+#           indices = (indices .- 1) .* -1
+           save("your_filepath_here", "indices", indices)
+           return indices
+       end
+   end
+    # Compute means and bands
+    means = vec(mean(transformed_series, dims = 1))
+
+    bands = if product in [:shockdec, :dettrend, :trend, :shockdecseq, :shockdecqtrs] && !compute_shockdec_bands
+        Dict{Symbol,DataFrame}()
+    else
+        find_density_bands(transformed_series, density_bands, minimize = minimize)
+    end
+    return means, bands
+end
+
+# function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type::Symbol,
+#                             output_var::Symbol, var_name::Symbol, df::DataFrame;
+#                             forecast_string::String = "",
+#                             pop_growth::AbstractVector{Float64} = Float64[],
+#                             skipnan::Bool = false,
+#                             shock_name::Nullable{Symbol} = Nullables.Nullable{Symbol}(),
+#                             density_bands::Vector{Float64} = [0.5,0.6,0.7,0.8,0.9],
+#                             minimize::Bool = false,
+#                             pseudo2data::AbstractDict{Symbol, Symbol} = Dict{Symbol, Symbol}(),
+#                             compute_shockdec_bands::Bool = false,
+#                             bdd_fcast::Bool = true,
+#                             filter_gdp = false)
+
+#     # Return only one set of bands if we read in only one draw
+#     if input_type in [:init, :mode, :mean]
+#         density_bands = [.5]
+#     end
+
+#     # Determine class and product
+#     class = get_class(output_var)
+#     product = get_product(output_var)
+
+#     # Read in forecast draws
+#     fcast_series, transform = read_forecast_output(m, input_type, cond_type,
+#                                                    output_var, var_name, shock_name,
+#                                                    forecast_string = forecast_string)
+
+#     # Reverse transform
+#     y0_index = get_y0_index(m, product) # this should be index_forecast_start(m) - 4, so 4 quarters before forecast
+#     data = if haskey(pseudo2data, var_name) && product != :irf
+#         Float64.(collect(Missings.replace(Vector{Union{Missing, Float64}}(df[!,pseudo2data[var_name]]), NaN)))
+#     elseif class == :obs && product != :irf
+#         Float64.(collect(Missings.replace(Vector{Union{Missing, Float64}}(df[!,var_name]), NaN)))
+#     else
+#         fill(NaN, size(df, 1))
+#     end
+
+#     # data = class == :obs && product != :irf ? Float64.(collect(Missings.replace(df[:,var_name], NaN))) : fill(NaN, size(df, 1))
+#     transformed_series = mb_reverse_transform(fcast_series, transform, product, class,
+#                                               y0_index = y0_index, data = data,
+#                                               pop_growth = pop_growth, use_data = haskey(pseudo2data, var_name))
+
+#     replace!(transformed_series, missing=>NaN)
+
+#     # Handle NaNs
+#     if skipnan && !(output_var in [:histobs, :hist4qobs]) && any(isnan.(transformed_series))
+#         # Remove rows with NaNs
+#         nanrows = vec(mapslices(x -> all(isnan.(x)), transformed_series, dims = Int[2]))
+#         transformed_series = transformed_series[.!nanrows, :]
+#     end
+
+
+#     if transform_gdp
+#         println(transformed_series)
+#     end
+
+#     # Compute means and bands
+#     means = vec(mean(transformed_series, dims = 1))
+#     bands = if product in [:shockdec, :dettrend, :trend, :shockdecseq, :shockdecqtrs] && !compute_shockdec_bands
+#         Dict{Symbol,DataFrame}()
+#     else
+#         find_density_bands(transformed_series, density_bands, minimize = minimize)
+#     end
+#     return means, bands
+# end
 
 """
 ```
