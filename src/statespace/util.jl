@@ -420,7 +420,7 @@ function k_periods_ahead_expectations(TTT::AbstractMatrix, CCC::AbstractVector,
             end
         else
             # Computation time can be saved by realizing some matrices are not time-varying
-            h = (permanent_t - 1) - t # last time of time-variation is permanent_t - 1
+            h = max(0, (permanent_t - 1) - t) # last time of time-variation is permanent_t - 1
             if isnothing(memo)
                 Tᵏ⁻ʰₜ₊ₕ₊₁ = (k == h) ? Diagonal(ones(length(CCCs[permanent_t]))) : TTTs[permanent_t]^(k - h) # why using Diagonal instead of I?
             else
@@ -740,8 +740,7 @@ function one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, t, k, permane
         final_C[1] = CCC
         for i in 2:k
             final_T[i] = TTT * final_T[i-1]
-            # Tᵏsum = (I - TTT) \ (I - Tᵏ)
-            final_C[i] = final_T[i] * final_C[i-1] + CCC
+            final_C[i] = TTT * final_C[i-1] + CCC
         end
     else
         final_T[1] = TTTs[t+1]
@@ -749,8 +748,7 @@ function one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, t, k, permane
         for i in 2:k
             T_ind = t+i > permanent_t ? permanent_t : t+i
             final_T[i] = TTTs[T_ind] * final_T[i-1]
-            # Tᵏsum = (I - TTT) \ (I - Tᵏ)
-            final_C[i] = final_T[i] * final_C[i-1] + CCCs[T_ind]
+            final_C[i] = TTTs[T_ind] * final_C[i-1] + CCCs[T_ind]
         end
     end
     return final_T, final_C

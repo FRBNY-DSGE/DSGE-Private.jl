@@ -352,40 +352,12 @@ function measurement(m::Model1002{T},
         get_setting(m, :measurement_use_current_regime_matrices) : true
 
     # Anticipated monetary policy shocks
-    # ZZ_obs_nomrate = ZZ[obs[:obs_nominalrate], :]'
     finished_expffr = []
-    #for i = 1:n_mon_anticipated_shocks(m)
-        TTT_accum, CCC_accum = one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, n_mon_anticipated_shocks(m), permanent_t)
-#=k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, i, permanent_t;
-                                                            integ_series = integ_series,
-                                                            memo = (isnothing(memo) || !use_fwd_exp) ? nothing :
-                                                            ForwardExpectationsMemo(memo.time_varying_memo[min(reg + i, permanent_t, 17)],
-                                                                                    memo.permanent_memo))=#
+    TTT_accums, CCC_accums = one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, n_mon_anticipated_shocks(m), permanent_t)
 
-        for i in 1:n_mon_anticipated_shocks(m)
-            ZZ[obs[Symbol("obs_nominalrate$i")], :] = view(TTT_accum[i], endo[:R_t], :)
-            DD[obs[Symbol("obs_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[i][endo[:R_t]]
-            if subspec(m) == "ss11"
-                QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[:σ_r_m]^2 / n_mon_anticipated_shocks(m)
-            else
-                QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[Symbol("σ_r_m$i")]^2
-            end
-
-            # Expected FFR from SPD - here to minimize expectations computations
-            if i in expected_ffr(m)
-                append!(finished_expffr, i)
-
-                ZZ[obs[Symbol("obs_exp_nominalrate$i")], :] = view(TTT_accum[i], endo[:R_t], :)
-                ZZ[obs[Symbol("obs_exp_nominalrate$i")], endo_new[Symbol("e_exp_rm$i")]]  = 1.0
-                DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[i][endo[:R_t]]
-
-                QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
-            end
-
-#=        # ZZ[obs[Symbol("obs_nominalrate$i")], :] = ZZ_obs_nomrate * TTT_accum
-        ZZ[obs[Symbol("obs_nominalrate$i")], :] = view(TTT_accum, endo[:R_t], :)
-        # DD[obs[Symbol("obs_nominalrate$i")]]    = m[:Rstarn] + ZZ_obs_nomrate * CCC_accum
-        DD[obs[Symbol("obs_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[endo[:R_t]]
+    for i in 1:n_mon_anticipated_shocks(m)
+        ZZ[obs[Symbol("obs_nominalrate$i")], :] = view(TTT_accums[i], endo[:R_t], :)
+        DD[obs[Symbol("obs_nominalrate$i")]]    = m[:Rstarn] + CCC_accums[i][endo[:R_t]]
         if subspec(m) == "ss11"
             QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[:σ_r_m]^2 / n_mon_anticipated_shocks(m)
         else
@@ -396,12 +368,12 @@ function measurement(m::Model1002{T},
         if i in expected_ffr(m)
             append!(finished_expffr, i)
 
-            ZZ[obs[Symbol("obs_exp_nominalrate$i")], :] = view(TTT_accum, endo[:R_t], :)
+            ZZ[obs[Symbol("obs_exp_nominalrate$i")], :] = view(TTT_accums[i], endo[:R_t], :)
             ZZ[obs[Symbol("obs_exp_nominalrate$i")], endo_new[Symbol("e_exp_rm$i")]]  = 1.0
-            DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[endo[:R_t]]
+            DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accums[i][endo[:R_t]]
 
             QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
-        end=#
+        end
     end
 
     if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
@@ -409,25 +381,7 @@ function measurement(m::Model1002{T},
             QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_ait_r_m$i")]^2
         end
     end
-#=
-    # Expected FFR from SPD
-    for i = setdiff(expected_ffr(m), finished_expffr)
-        TTT_accum, CCC_accum = k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, i, permanent_t;
-                                                            integ_series = integ_series,
-                                                            memo = (isnothing(memo) || !use_fwd_exp) ? nothing :
-                                                            ForwardExpectationsMemo(memo.time_varying_memo[min(reg + i, permanent_t, 17)],
-                                                                                    memo.permanent_memo))
 
-        ZZ[obs[Symbol("obs_exp_nominalrate$i")], :] = view(TTT_accum, endo[:R_t], :)
-        ZZ[obs[Symbol("obs_exp_nominalrate$i")], endo_new[Symbol("e_exp_rm$i")]]  = 1.0
-        DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[endo[:R_t]]
-
-        QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
-        # if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
-        #     QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_ait_r_m$i")]^2
-#        end
-    end=#
-# New method starts here
     spd_left = sort(setdiff(expected_ffr(m), finished_expffr))
     for j in 1:length(spd_left)
         i = spd_left[j]
@@ -435,34 +389,35 @@ function measurement(m::Model1002{T},
             expect_t = reg
             expect_k = i
         elseif j == 1
-            T_last = TTT_accum[end]
-            C_last = CCC_accum[end]
+            T_last = TTT_accums[end]
+            C_last = CCC_accums[end]
             expect_t = reg + n_mon_anticipated_shocks(m)
             expect_k = i - n_mon_anticipated_shocks(m)
         else
-            T_last = TTT_accum
-            C_last = CCC_accum
+            T_last = TTT_accums[end]
+            C_last = CCC_accums[end]
             expect_t = reg + spd_left[j-1]
             expect_k = i - spd_left[j-1]
         end
-        TTT_accum, CCC_accum = k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, expect_t, expect_k, permanent_t;
+
+        TTT_accums[end], CCC_accums[end] = k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, expect_t, expect_k, permanent_t;
                                                             integ_series = integ_series,
                                                             memo = (isnothing(memo) || !use_fwd_exp) ? nothing :
                                                             ForwardExpectationsMemo(memo.time_varying_memo[min(reg + i, permanent_t, 17)],
                                                                                     memo.permanent_memo))
 
         if n_mon_anticipated_shocks(m) >= 1 || j > 1
-            CCC_accum = CCC_accum .+ TTT_accum * C_last
-            TTT_accum = TTT_accum * T_last
+            CCC_accums[end] = CCC_accums[end] .+ TTT_accums[end] * C_last
+            TTT_accums[end] = TTT_accums[end] * T_last
         end
 
-        ZZ[obs[Symbol("obs_exp_nominalrate$i")], :] = view(TTT_accum, endo[:R_t], :)
+        ZZ[obs[Symbol("obs_exp_nominalrate$i")], :] = view(TTT_accums[end], endo[:R_t], :)
         ZZ[obs[Symbol("obs_exp_nominalrate$i")], endo_new[Symbol("e_exp_rm$i")]]  = 1.0
-        DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accum[endo[:R_t]]
+        DD[obs[Symbol("obs_exp_nominalrate$i")]]    = m[:Rstarn] + CCC_accums[end][endo[:R_t]]
 
         QQ[exo[Symbol("exp_rm_sh$i")], exo[Symbol("exp_rm_sh$i")]] = m[Symbol("σ_exp_rm$i")]^2
     end
-# New method ends here
+
     # Anticipated GDP growth
     if haskey(get_settings(m), :add_anticipated_obs_gdp)
         if get_setting(m, :add_anticipated_obs_gdp)
@@ -472,7 +427,7 @@ function measurement(m::Model1002{T},
             ZZ_obs_gdp[endo_new[:e_gdp_t]]  = meas_err
             ZZ_obs_gdp[endo_new[:e_gdp_t1]] = -meas_err * m[:me_level]
 
-            for i = 1:get_setting(m, :n_anticipated_obs_gdp)
+            for i = 1:get_setting(m, :n_anticipated_obs_gdp) ##TODO: Use earlier expectations results (not urgent b/c this is generally used with :n_anticipated_obs_gdp = 1)
                 TTT_accum, CCC_accum = k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, i, permanent_t;
                                                                     integ_series = integ_series,
                                                                     memo = (isnothing(memo) || !use_fwd_exp) ? nothing :
