@@ -221,10 +221,6 @@ function default_settings!(m::AbstractDSGEModel)
     settings[:previous_data_vintage] = Setting(:previous_data_vintage, vint,
         "The old data vintage from which to start SMC when using a tempered update.")
 
-    # AIT Liftoff is in 2022Q1 (reg. 10 generally)
-    settings[:ait_liftoff_regime] = Setting(:ait_liftoff_regime, 10,
-                                            "Regime when monetary policy lifted off from ZLB and followed AIT.")
-
     # Alternative policy
     ## TODO: delete this once alternative policies have been completely ported to using regime_eqcond_info
     # baseline_policy = AltPolicy(:historical, eqcond, solve, forecast_init = identity)

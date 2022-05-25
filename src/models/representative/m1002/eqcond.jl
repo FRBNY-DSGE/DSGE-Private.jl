@@ -468,12 +468,9 @@ function eqcond(m::Model1002, reg::Int)
     Ψ[eq[:eq_λ_w1], exo[:λ_w_sh]]   = 1.
 
     # Monetary policy shock
-    noant = haskey(m.settings, :remove_rm_t_shocks) &&
-            reg >= get_setting(m, :remove_rm_t_shocks) ? 0.0 : 1.0
-
     Γ0[eq[:eq_rm], endo[:rm_t]] = 1.
     Γ1[eq[:eq_rm], endo[:rm_t]] = m[:ρ_rm]
-    Ψ[eq[:eq_rm], exo[:rm_sh]]  = noant
+    Ψ[eq[:eq_rm], exo[:rm_sh]]  = 1.0
 
     # Labor preference shock
     if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59
@@ -536,12 +533,9 @@ function eqcond(m::Model1002, reg::Int)
     Ψ[eq[:eq_γ], exo[:γ_sh]]  = 1.
 
     # Long-term inflation expectations
-    nopish = haskey(m.settings, :remove_pistar_shocks) &&
-        reg >= get_setting(m, :remove_pistar_shocks) ? 0.0 : 1.0
-
     Γ0[eq[:eq_π_star], endo[:π_star_t]] = 1.
     Γ1[eq[:eq_π_star], endo[:π_star_t]] = m[:ρ_π_star]
-    Ψ[eq[:eq_π_star], exo[:π_star_sh]]  = nopish
+    Ψ[eq[:eq_π_star], exo[:π_star_sh]]  = 1.0
 
     # Anticipated policy shocks
     if n_mon_anticipated_shocks(m) > 0

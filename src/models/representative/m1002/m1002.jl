@@ -660,7 +660,7 @@ buted to steady-state inflation.",
                    description="σ_γ: The fraction of entrepreneurs surviving period t follows an exogenous process with standard deviation σ_γ.",
                    tex_label="\\sigma_{\\gamma}")
 
-    m <= parameter(:σ_π_star, 0.0269, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(6, 0.03), fixed=false,
+    m <= parameter(:σ_π_star, 0.0269, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(6, 0.03), fixed=false,
                    description="σ_π_star: The standard deviation of the inflation target.",
                    tex_label="\\sigma_{\\pi_*}")
 
