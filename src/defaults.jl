@@ -72,6 +72,8 @@ function default_settings!(m::AbstractDSGEModel)
     settings[:monetary_policy_ait_shock] = Setting(:monetary_policy_ait_shock, :rm_ait_sh,
                                                    "Name of the monetary policy AIT shock")
 
+    settings[:ait_liftoff_regime] = Setting(:ait_liftoff_regime, 10, "Regime when FFR lifts off with AIT")
+
     settings[:nominal_rate_observable] = Setting(:nominal_rate_observable, :obs_nominalrate,
                                                  "Name of the observable for monetary policy's nominal interest rate.")
 

@@ -278,7 +278,7 @@ function measurement(m::Model1002{T},
     end
 
     if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
-        QQ[exo[:rm_ait_sh], exo[:rm_ait_sh]] = m[:σ_ait_rm]^2
+        QQ[exo[:rm_ait_sh], exo[:rm_ait_sh]] = haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor) && reg >= get_setting(m, :ait_liftoff_regime) ? m[:σ_r_m]^2 : m[:σ_ait_rm]^2
     end
 
     if subspec(m) in ["ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83"]
@@ -377,8 +377,15 @@ function measurement(m::Model1002{T},
     end
 
     if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+        firsti = mon_anticipated_ait_shocks(m)[1]
         for i in mon_anticipated_ait_shocks(m)
-            QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_ait_r_m$i")]^2
+            QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = if haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor)
+                reg >= get_setting(m, :ait_liftoff_regime) ? m[Symbol("σ_r_m$i")]^2 : 0.0
+            elseif haskey(m.settings, :ait_antshocks_identical) && get_setting(m, :ait_antshocks_identical)
+                m[Symbol("σ_ait_r_m$(firsti)")]^2
+            else
+                m[Symbol("σ_ait_r_m$i")]^2
+            end
         end
     end
 

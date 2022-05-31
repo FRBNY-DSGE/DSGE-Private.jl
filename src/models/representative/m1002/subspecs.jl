@@ -6875,8 +6875,8 @@ function expected_nominal_rates!(m)
     m[:σ_ait_rm].fixed = true
 
     # Contemporaneous Taylor shock
-    get_setting(m, :model2para_regime)[:σ_r_m] = Dict(1 => 1)
-    for i in 1:9
+    # get_setting(m, :model2para_regime)[:σ_r_m] = Dict(1 => 1)
+    for i in 5:9
         get_setting(m, :model2para_regime)[:σ_r_m][i] = 1
     end
     for i in 10:11
@@ -6955,7 +6955,7 @@ function ss91!(m; rho_reg2::Bool = false)
         set_regime_valuebounds!(m[:ρ_meas_π], 2, (1.0e-8, 5.0))
     end
     set_regime_valuebounds!(m[:σ_meas_π], 1, (0.0, 5.0))
-    set_regime_valuebounds!(m[:σ_meas_π], 2, (1.0e-8, 5.0))
+    set_regime_valuebounds!(m[:σ_meas_π], 2, (0.0, 5.0))
 
     # Set values (priors are set already unless regime-switching is desired in 2020:Q4)
     if rho_reg2
@@ -6997,7 +6997,7 @@ function ss93!(m; rho_reg2::Bool = false)
     end
     set_regime_valuebounds!(m[:σ_meas_π], 1, (0.0, 5.0))
     m[:ρ_meas_π].valuebounds = (1.0e-8, 5.0)
-    set_regime_valuebounds!(m[:σ_meas_π], 2, (1.0e-8, 5.0))
+    set_regime_valuebounds!(m[:σ_meas_π], 2, (0.0, 5.0))
 
     # Set values (priors are set already unless regime-switching is desired in 2020:Q4)
     if rho_reg2

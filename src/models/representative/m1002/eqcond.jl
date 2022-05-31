@@ -890,6 +890,9 @@ function eqcond(m::Model1002, reg::Int)
        Γ0[eq[:eq_ait_rm], endo[:ait_rm_t]] = 1.0
        Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = m[:ρ_ait_rm]
        Ψ[eq[:eq_ait_rm], exo[:rm_ait_sh]] = 1.0
+       if haskey(m.settings, :add_taylor_rm) && get_setting(m, :add_taylor_rm)
+           Γ0[eq[:eq_mp], endo[:ait_rm_t]] = -1.0
+       end
    end
 
    for para in m.parameters
