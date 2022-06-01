@@ -984,6 +984,13 @@ buted to steady-state inflation.",
                        tex_label = "\\kappa_{pce}")
     end
 
+    # Parameter to turn off Taylor FFR contemp and ant shocks
+    if  haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
+        m <= parameter(:ι_taylor_sh, 1.0, (0.0,1.0), (0.0,1.0), Untransformed(), Uniform(0,1), fixed=true,
+                       description="ι_taylor_sh: Whether to keep the Taylor Rule FFR contemp and antshocks (doesn't affect AIT shocks added to Taylor eq via add_taylor_rm)",
+                       tex_label = "\\iota_{taylor}")
+    end
+
     # steady states
     m <= SteadyStateParameter(:z_star, NaN, tex_label="\\z_*")
     m <= SteadyStateParameter(:rstar, NaN, tex_label="\\r_*")
