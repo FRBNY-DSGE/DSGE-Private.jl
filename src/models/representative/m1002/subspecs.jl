@@ -6894,22 +6894,24 @@ function expected_nominal_rates!(m)
 
     # Kill contemp and ant Taylor FFR shocks
     ## This is a bit redundant with killing σ_r_m but not when get_setting(m, :ait_shocks_equal_taylor)
-    get_setting(m, :model2para_regime)[:ι_taylor_sh] = Dict(1 => 1)
-    for i in 1:4
-        get_setting(m, :model2para_regime)[:ι_taylor_sh][i] = 1
-    end
-    for i in 5:11
-        get_setting(m, :model2para_regime)[:ι_taylor_sh][i] = 2
-    end
-    set_regime_valuebounds!(m[:ι_taylor_sh], 1, (1.0,1.0))
-    set_regime_valuebounds!(m[:ι_taylor_sh], 2, (0.0,0.0))
-    m[:ι_taylor_sh].fixed = true
+    if haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor)
+        get_setting(m, :model2para_regime)[:ι_taylor_sh] = Dict(1 => 1)
+        for i in 1:4
+            get_setting(m, :model2para_regime)[:ι_taylor_sh][i] = 1
+        end
+        for i in 5:11
+            get_setting(m, :model2para_regime)[:ι_taylor_sh][i] = 2
+        end
+        set_regime_valuebounds!(m[:ι_taylor_sh], 1, (1.0,1.0))
+        set_regime_valuebounds!(m[:ι_taylor_sh], 2, (0.0,0.0))
+        m[:ι_taylor_sh].fixed = true
 
-    set_regime_val!(m[:ι_taylor_sh], 1, 1.0)
-    set_regime_val!(m[:ι_taylor_sh], 2, 0.0)
+        set_regime_val!(m[:ι_taylor_sh], 1, 1.0)
+        set_regime_val!(m[:ι_taylor_sh], 2, 0.0)
 
-    set_regime_fixed!(m[:ι_taylor_sh], 1, true)
-    set_regime_fixed!(m[:ι_taylor_sh], 2, true)
+        set_regime_fixed!(m[:ι_taylor_sh], 1, true)
+        set_regime_fixed!(m[:ι_taylor_sh], 2, true)
+    end
 
     # iid measurement error on expected AIT shock
     for i in expected_ffr(m)

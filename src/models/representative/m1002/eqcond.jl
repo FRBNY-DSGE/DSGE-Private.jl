@@ -468,9 +468,12 @@ function eqcond(m::Model1002, reg::Int)
     Ψ[eq[:eq_λ_w1], exo[:λ_w_sh]]   = 1.
 
     # Monetary policy shock
+    noant = haskey(m.settings, :remove_rm_t_shocks) &&
+            reg >= get_setting(m, :remove_rm_t_shocks) ? 0.0 : 1.0
+
     Γ0[eq[:eq_rm], endo[:rm_t]] = 1.
     Γ1[eq[:eq_rm], endo[:rm_t]] = m[:ρ_rm]
-    Ψ[eq[:eq_rm], exo[:rm_sh]]  = m[:ι_taylor_sh]
+    Ψ[eq[:eq_rm], exo[:rm_sh]]  = haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm) && haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor) ? m[:ι_taylor_sh] : noant
 
     # Labor preference shock
     if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59
@@ -544,7 +547,10 @@ function eqcond(m::Model1002, reg::Int)
         # will hit in two periods), and the equations are set up so that rm_tl2 last period
         # will feed into rm_tl1 this period (and so on for other numbers), and last period's
         # rm_tl1 will feed into the rm_t process (and affect the Taylor Rule this period).
-        Γ1[eq[:eq_rm], endo[:rm_tl1]]   = m[:ι_taylor_sh]
+        noant = haskey(m.settings, :remove_rm_shocks) &&
+            reg >= get_setting(m, :remove_rm_shocks) ? 0.0 : 1.0
+
+        Γ1[eq[:eq_rm], endo[:rm_tl1]]   = haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm) && haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor) ? m[:ι_taylor_sh] : noant
         Γ0[eq[:eq_rml1], endo[:rm_tl1]] = 1.
         Ψ[eq[:eq_rml1], exo[:rm_shl1]]  = 1.
 
