@@ -740,7 +740,7 @@ function trends(m::AbstractDSGEModel, system::RegimeSwitchingSystem{S},
             end
         end
     end
-#start_index = 1
+start_index = 1
     if start_index == 1
         return state_trends, obs_trends, pseudo_trends
     else

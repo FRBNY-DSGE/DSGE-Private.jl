@@ -19,7 +19,7 @@ function make_decomp_mbs(m_new::M, m_old::M, input_type::Symbol,
     end
 
     # Common metadata
-    comps = [:policyait, :policyeqcond, :release, :cond, :revise, :param]
+    comps = [:policyait, :policyeqcond, :release, :cond, :revise, :param, :spd]
     comps = model_decomp ? vcat(comps, :model) : comps
     dates = decomps[collect(keys(decomps))[1]][!,:date]
     vars  = collect(keys(get_dict(m_new, class)))
@@ -153,14 +153,15 @@ function plot_forecast_decomposition(m_new::M, m_old::M, vars::Vector{Symbol}, c
 
     # Create shock grouping
     if !individual_shocks
-        groups = [ShockGroup("Policy-AIT", [:policyait], colorant"#9DE0AD"), # sea foam green
-                  ShockGroup("Policy-eqcond", [:policyeqcond], colorant"#45ADA8"), # turquoise
-                  ShockGroup("Params", [:param], colorant"green"), # turquoise
-                  ShockGroup("Data-Revisions", [:revise], colorant"orange"), # turquoise
-                  ShockGroup("Data-Conditional", [:cond], colorant"blue"), # turquoise
-                  ShockGroup("Data-Release", [:release], colorant"#547980")] # blue gray
+        groups = [ShockGroup("SPD", [:spd], colorant"purple"),
+                  ShockGroup("Policy-AIT", [:policyait], colorant"#9DE0AD"), # sea foam green
+                  ShockGroup("Policy-Credibility", [:policyeqcond], colorant"#45ADA8"), # turquoise
+                  ShockGroup("Parameters", [:param], colorant"green"), # turquoise
+                  ShockGroup("Data-Historical Revisions", [:revise], colorant"orange"), # turquoise
+                  ShockGroup("Data-Conditional Revisions", [:cond], colorant"blue"), # turquoise
+                  ShockGroup("Data-Newest Judgemental", [:release], colorant"#547980")] # blue gray
         if model_decomp
-            push!(groups, ShockGroup("model", [:model], colorant"red"))
+            push!(groups, ShockGroup("Other Model Settings", [:model], colorant"red"))
         end
     end
 

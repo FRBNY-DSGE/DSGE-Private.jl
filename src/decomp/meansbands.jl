@@ -58,9 +58,8 @@ function decomposition_means(m_new::M, m_old::M, input_type::Symbol,
     dates = jldopen(input_file, "r") do file
         sort(collect(keys(read(file, "date_indices"))))
     end
-
     decomp = DataFrame(date = dates)
-    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :total]
+    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
     comps = model_decomp ? vcat(comps, :model) : comps
     for comp in comps
         product = Symbol(:decomp, comp)
@@ -77,17 +76,15 @@ function decomposition_means(m_new::M, m_old::M, input_type::Symbol,
         else
             [comp]
         end
-
         if comp == :shockdec
             shock_indices = load(input_file, "shock_indices")
         end
         indices = load(input_file, "$(class_long)_indices")
         var_ind = indices[var]
         for key in loopkeys
-            # Read in raw output: ndraws x nperiods
+          # Read in raw output: ndraws x nperiods
             decomp_series = if comp == :shockdec
                 if verbose in [:low, :high]
-                    @show key
                 end
                 shock_key = shock_indices[key]
                 read_forecast_series(input_file, var_ind, shock_key)

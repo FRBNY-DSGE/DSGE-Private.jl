@@ -24,7 +24,7 @@ function get_decomp_output_files(m_new::M, m_old::M, input_type::Symbol,
                                  classes::Vector{Symbol}; forecast_string_new = "", forecast_string_old = "",
                                  model_decomp::Bool = false) where M<:AbstractDSGEModel
     output_files = Dict{Symbol, String}()
-    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :total]
+    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
     comps = model_decomp ? vcat(comps, :model) : comps
     for comp in comps
         for class in classes
@@ -55,7 +55,7 @@ function write_forecast_decomposition(m_new::M, m_old::M, input_type::Symbol,
                                       block_inds::AbstractRange{Int} = 1:0,
                                       verbose::Symbol = :low, model_decomp::Bool = false,
                                       forecast_string_new = "", forecast_string_old = "") where M<:AbstractDSGEModel
-    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :total]
+    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
     comps = model_decomp ? vcat(comps, :model) : comps
     @show keys(decomps)
     for comp in comps
