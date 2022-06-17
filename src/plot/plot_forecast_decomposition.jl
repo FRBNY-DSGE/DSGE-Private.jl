@@ -154,14 +154,14 @@ function plot_forecast_decomposition(m_new::M, m_old::M, vars::Vector{Symbol}, c
     # Create shock grouping
     if !individual_shocks
         groups = [ShockGroup("SPD", [:spd], colorant"purple"),
-                  ShockGroup("Policy-AIT", [:policyait], colorant"#9DE0AD"), # sea foam green
-                  ShockGroup("Policy-Credibility", [:policyeqcond], colorant"#45ADA8"), # turquoise
-                  ShockGroup("Parameters", [:param], colorant"green"), # turquoise
-                  ShockGroup("Data-Historical Revisions", [:revise], colorant"orange"), # turquoise
+                  ShockGroup("Data-New", [:revise], colorant"orange"), # turquoise
                   ShockGroup("Data-Conditional Revisions", [:cond], colorant"blue"), # turquoise
-                  ShockGroup("Data-Newest Judgemental", [:release], colorant"#547980")] # blue gray
+                  ShockGroup("Data-Historical", [:release], colorant"#547980"), # blue gray
+                  ShockGroup("Actual Policy Parameters", [:policyait], colorant"#9DE0AD"), # sea foam green
+                  ShockGroup("Credibility + ZLB", [:policyeqcond], colorant"#45ADA8"), # turquoise
+                  ShockGroup("Parameters", [:param], colorant"green")]
         if model_decomp
-            push!(groups, ShockGroup("Other Model Settings", [:model], colorant"red"))
+            push!(groups, ShockGroup("Other", [:model], colorant"red"))
         end
     end
 
