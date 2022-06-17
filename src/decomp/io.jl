@@ -72,6 +72,7 @@ function write_forecast_decomposition(m_new::M, m_old::M, input_type::Symbol,
                 JLD2.jldopen(filepath, true, true, true, IOStream) do file
                     # Write metadata
                     # Pass in m_old because its historical and forecast dates are used
+                    m_old.exogenous_shocks = m_new.exogenous_shocks
                     write_forecast_metadata(m_old, file, var)
                 end
 
