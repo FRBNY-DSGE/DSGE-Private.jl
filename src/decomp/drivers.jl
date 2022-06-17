@@ -40,9 +40,6 @@ output variable (see `?shock_decompositions`, `forecast_one`, and `compute_means
 
 - `check::Bool`: whether to check that the individual components add up to the
   correct total difference in forecasts. This roughly doubles the runtime
-- `shockdec_data_only::Bool`: whether the outputted shock decompositions should
-    compare new model, new data, new params to old model, old data, new params
-    or instead new model, new data to new model, old data.
 
 **Method 1 only:**
 
@@ -157,7 +154,6 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
                             endogenous_zlb_new::Bool = false, endogenous_zlb_old::Bool = false,
                             enforce_zlb_new::Bool = false, enforce_zlb_old::Bool = false,
                             set_zlb_regime_vals_new::Function = identity, set_zlb_regime_vals_old::Function = identity,
-                            shockdec_data_only::Bool = true,
                             model_decomp::Bool = false,
                             m_nospd::Union{Nothing, M} = nothing,
                             df_nospd::Union{Nothing, DataFrame} = nothing,
@@ -173,6 +169,11 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
                                catch_smoother_lapack = catch_smoother_lapack,
                                kwargs..., check = check)
 
+    # Save some original settings
+    m_new_shocks = copy(m_new.exogenous_shocks)
+    m_new_obs = copy(m_new.observables)
+    m_new_pseudoobs = copy(m_new.pseudo_observables)
+
 
     # New forecast
     out1 = f(m_new, df_new, params_new, cond_new, outputs = [:forecast, :shockdec],
@@ -180,53 +181,25 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
              set_zlb_regime_vals = set_zlb_regime_vals_new) # new data, new params
 
     # New forecast without spd
-    #m_new <= Setting(:add_ait_rm, false)
-    #delete!(m_new.settings, :mon_anticipated_policy_shocks)
-    #delete!(m_new.settings, :expected_ffr)
     m_new = deepcopy(m_nospd)
     df_new = deepcopy(df_nospd)
     params_new = deepcopy(para_nospd)
     out1_5 = f(m_new, df_new, params_new, cond_new, outputs = [:forecast, :shockdec],
              enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
              set_zlb_regime_vals = set_zlb_regime_vals_new) # new data, new params
-
-    # New Model with Old Model AIT, New Data, New Data
-    m_new <= Setting(:flexible_ait_φ_π, get_setting(m_old,:flexible_ait_φ_π))
-    m_new <= Setting(:flexible_ait_φ_y, get_setting(m_old,:flexible_ait_φ_y))
-    m_new <= Setting(:ait_Thalf, get_setting(m_old,:ait_Thalf))
-    m_new <= Setting(:gdp_Thalf, get_setting(m_old,:gdp_Thalf))
-    m_new <= Setting(:pgap_value, get_setting(m_old,:pgap_value))
-    m_new <= Setting(:ygap_value, get_setting(m_old,:ygap_value))
-    m_new <= Setting(:flexible_ait_ρ_smooth, get_setting(m_old,:flexible_ait_ρ_smooth))
-
-    ind_init = findfirst(df_new[!, :date] .== Date("2020-06-30"))
-    df_new[ind_init, :obs_ygap] = -get_setting(m_old, :ygap_value)
-    df_new[ind_init, :obs_pgap] = -get_setting(m_old, :pgap_value)
-
-    out2 = f(m_new, df_new, params_new, cond_new, outputs = [:forecast, :shockdec],
-             enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
-             set_zlb_regime_vals = set_zlb_regime_vals_new)
-    # Eqcond Changes
-    m_new <= Setting(:regime_eqcond_info, deepcopy(get_setting(m_old, :regime_eqcond_info)))
-    m_new <= Setting(:alternative_policies, deepcopy(get_setting(m_old, :alternative_policies)))
-    m_new <= Setting(:temporary_altpolicy_length, get_setting(m_old, :temporary_altpolicy_length))
-    m_new <= Setting(:tvis_information_set, deepcopy(get_setting(m_old, :tvis_information_set)))
-    setup_regime_switching_inds!(m_new, cond_type = cond_new)
-    out3 = f(m_new, df_new, params_new, cond_new, outputs = [:forecast, :shockdec],
-             enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
-             set_zlb_regime_vals = set_zlb_regime_vals_new)
     # DATA
     # Remove just latest quarter of data
     df_new_lesscond = df_new[df_new[!,:date] .<= get_setting(m_old, :date_conditional_end), :]
-    m_new <= Setting(:date_conditional_end, get_setting(m_old, :date_conditional_end))
-    out4 = f(m_new, df_new_lesscond, params_new, cond_new, outputs = [:forecast, :shockdec],
+    #m_new <= Setting(:date_conditional_end, get_setting(m_old, :date_conditional_end))
+    out2 = f(m_new, df_new_lesscond, params_new, :none, outputs = [:forecast, :shockdec],
              enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
              set_zlb_regime_vals = set_zlb_regime_vals_new)
     # Single out forecast quarter data revisions
     df_new_lesscond[.&(df_new_lesscond[!, :date] .<= get_setting(m_old, :date_conditional_end),
-                       df_new_lesscond[!, :date] .>= get_setting(m_old, :date_forecast_start)), names(df_old)] = df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
-                df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), :]
-    out5 = f(m_new, df_new_lesscond, params_new, cond_new, outputs = [:forecast, :shockdec],
+                       df_new_lesscond[!, :date] .>= get_setting(m_old, :date_forecast_start)),
+                       names(df_old)] = df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
+                       df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), :]
+    out3 = f(m_new, df_new_lesscond, params_new, :none, outputs = [:forecast, :shockdec],
              enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
              set_zlb_regime_vals = set_zlb_regime_vals_new)
 
@@ -256,19 +229,50 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
         end
     end
 
-
+    # Save settings for future resetting
     m_old_params = copy(m_old.parameters)
     m_old_mod2par = haskey(m_old.settings, :model2para_regime) ? get_setting(m_old, :model2para_regime) : nothing
-
-
-    ind_init = findfirst(df_new_lesscond[!, :date] .== Date("2020-06-30"))
 
     get_setting(m_new_olddf, :model2para_regime)[:σ_condgdp] = get_setting(m_old, :model2para_regime)[:σ_condgdp]
     get_setting(m_new_olddf, :model2para_regime)[:σ_condcorepce] = get_setting(m_old, :model2para_regime)[:σ_condcorepce]
 
-    out6 = f(m_new_olddf, df_old, params_new, cond_new, outputs = [:forecast, :shockdec],
+    # Use new model's initial pgap and ygap
+    ind_init = findfirst(df_old[!, :date] .== Date("2020-06-30"))
+    df_old[ind_init, :obs_ygap] = -get_setting(m_new, :ygap_value)
+    df_old[ind_init, :obs_pgap] = -get_setting(m_new, :pgap_value)
+
+    out4 = f(m_new_olddf, df_old, params_new, cond_new, outputs = [:forecast, :shockdec],
              enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
              set_zlb_regime_vals = set_zlb_regime_vals_new)
+
+    # New Model with Old Model AIT, New Data, New Data
+    m_new_olddf <= Setting(:flexible_ait_φ_π, get_setting(m_old,:flexible_ait_φ_π))
+    m_new_olddf <= Setting(:flexible_ait_φ_y, get_setting(m_old,:flexible_ait_φ_y))
+    m_new_olddf <= Setting(:ait_Thalf, get_setting(m_old,:ait_Thalf))
+    m_new_olddf <= Setting(:gdp_Thalf, get_setting(m_old,:gdp_Thalf))
+    m_new_olddf <= Setting(:pgap_value, get_setting(m_old,:pgap_value))
+    m_new_olddf <= Setting(:ygap_value, get_setting(m_old,:ygap_value))
+    m_new_olddf <= Setting(:flexible_ait_ρ_smooth, get_setting(m_old,:flexible_ait_ρ_smooth))
+
+    # Reset to old initial pgap and ygap
+    ind_init = findfirst(df_old[!, :date] .== Date("2020-06-30"))
+    df_old[ind_init, :obs_ygap] = -get_setting(m_old, :ygap_value)
+    df_old[ind_init, :obs_pgap] = -get_setting(m_old, :pgap_value)
+
+    out5 = f(m_new_olddf, df_old, params_new, cond_old, outputs = [:forecast, :shockdec],
+             enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
+             set_zlb_regime_vals = set_zlb_regime_vals_new)
+
+    # Eqcond Changes
+    m_new_olddf <= Setting(:regime_eqcond_info, deepcopy(get_setting(m_old, :regime_eqcond_info)))
+    m_new_olddf <= Setting(:alternative_policies, deepcopy(get_setting(m_old, :alternative_policies)))
+    m_new_olddf <= Setting(:temporary_altpolicy_length, get_setting(m_old, :temporary_altpolicy_length))
+    m_new_olddf <= Setting(:tvis_information_set, deepcopy(get_setting(m_old, :tvis_information_set)))
+    setup_regime_switching_inds!(m_new_olddf, cond_type = cond_old)
+    out6 = f(m_new_olddf, df_old, params_new, cond_old, outputs = [:forecast, :shockdec],
+             enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
+             set_zlb_regime_vals = set_zlb_regime_vals_new)
+
 
     # Other Model Settings
     # Change old parameters to forecast old model with new parameters
@@ -277,9 +281,7 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
         m_old <= Setting(:model2para_regime, get_setting(m_new, :model2para_regime))
     end
 
-
-    #m_old <= Setting(:model2para_regime, get_setting(m_new, :model2para_regime))
-    out7 = f(m_old, df_old, params_new, cond_new, outputs = [:forecast, :shockdec],
+    out7 = f(m_old, df_old, params_new, cond_old, outputs = [:forecast, :shockdec],
              enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
              set_zlb_regime_vals = set_zlb_regime_vals_new)
 
@@ -290,6 +292,7 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     else
         m_old <= Setting(:model2para_regime, m_old_mod2par)
     end
+
 
     # Old Forecast
     out8 = f(m_old, df_old, params_old, cond_old, outputs = [:forecast, :shockdec],
@@ -313,6 +316,36 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
         min_ind = min(size(out2[forecastvar],1), size(out3[forecastvar],1))
 
         ## For shockdec, insert zeroes if shock in new model not in the old one
+        ## ~~ adjust some indices ~~
+        if (length(m_new_shocks) != length(m_old.exogenous_shocks)) || (class == :pseudo ? length(m_old.pseudo_observables) != length(m_new_pseudoobs) : length(m_old.observables) != length(m_new_obs))
+            old_shocks = zeros(size(out1[shockdecvar]))
+            new_exog_keys = string.(keys(m_new_shocks))
+            old_exog_keys = string.(keys(m_old.exogenous_shocks))
+            new_var_keys  = class == :obs ? string.(keys(m_new_obs)) : string.(keys(m_new_pseudoobs))
+            old_var_keys  = class == :obs ? string.(keys(m_old.observables)) : string.(keys(m_old.pseudo_observables))
+            for i in 1:size(old_shocks, 3)
+                indi = findfirst(x -> x == new_exog_keys[i], old_exog_keys)
+                if !isnothing(indi)
+                    old_shock = zeros(size(out1[shockdecvar][:,:,indi]))
+                    for j in 1:length(new_var_keys)
+                        indj = findfirst(x -> x == new_var_keys[j], old_var_keys)
+                        if !isnothing(indj)
+                            old_shock[j,:] = out8[shockdecvar][indj,:,indi]
+                        end
+                    end
+                    old_shocks[:,:,i] = old_shock
+                end
+            end
+        else
+            old_shocks = out8[shockdecvar]
+        end
+
+        @show out1[shockdecvar][23,:,41]
+        @show out1[shockdecvar][23,end-40:end-30,5]
+
+@assert false
+        #=
+        ## For SPD changes, insert zeroes if some spd quarters are in only one of the models
         if length(m_new.exogenous_shocks) > length(m_old.exogenous_shocks)
             old_shocks = zeros(size(out1[shockdecvar]))
             new_exog_keys = string.(keys(m_new.exogenous_shocks))
@@ -320,70 +353,54 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
             for i in 1:size(old_shocks, 3)
                 indi = findfirst(x -> x == new_exog_keys[i], old_exog_keys)
                 if !isnothing(indi)
-                    old_shocks[:,:,i] = out4[shockdecvar][:,:,indi]
+                    old_shocks[:,:,i] = out8[shockdecvar][:,:,indi]
                 end
             end
         else
-            old_shocks = out4[shockdecvar]
+            old_shocks = out8[shockdecvar]
         end
-        if forecastvar == :histforecastpseudo
-            @show out1[forecastvar][22, end]
-            @show out1_5[forecastvar][22, end]
-            @show out8[forecastvar][22, end]
-            #@assert false
-        end
-
-
+=#
         # 0.5 SPD Changes
         #policy_comp = out1[forecastvar] - out1_5[forecastvar]
         spd_comp = out1[forecastvar][1:size(out1_5[forecastvar], 1), :] - out1_5[forecastvar]
         decomp[Symbol(:decompspd, class)] = spd_comp
 
-        # 1. AIT Changes
-        policy_comp = out1_5[forecastvar] - out2[forecastvar]
-
-        decomp[Symbol(:decomppolicyait, class)] = policy_comp
-
-        # 2. Eqcond Changes
-        eqcond_comp = out2[forecastvar] - out3[forecastvar]
-        decomp[Symbol(:decomppolicyeqcond, class)] = eqcond_comp
-
-        # 3. Latest quarter
-        release_comp = out3[forecastvar] - out4[forecastvar]
+        # 1. Latest quarter
+        release_comp = out1_5[forecastvar] - out2[forecastvar]
         decomp[Symbol(:decomprelease, class)] = release_comp
 
-        # 4. Conditional data revision
-        cond_comp = out4[forecastvar] - out5[forecastvar]
+        # 3. Conditional data revision
+        cond_comp = out2[forecastvar] - out3[forecastvar]
         decomp[Symbol(:decompcond, class)] = cond_comp
 
-        # 5. Historical data revision
-        revise_comp = out5[forecastvar] - out6[forecastvar]
+        # 4. Historical data revision
+        revise_comp = out3[forecastvar] - out4[forecastvar]
         decomp[Symbol(:decomprevise, class)] = revise_comp
 
-        # 6. Other settings changes
+        # 5. AIT Changes
+        policy_comp = out4[forecastvar] - out5[forecastvar]
+        decomp[Symbol(:decomppolicyait, class)] = policy_comp
+
+        # 6. Eqcond Changes
+        eqcond_comp = out5[forecastvar] - out6[forecastvar]
+        decomp[Symbol(:decomppolicyeqcond, class)] = eqcond_comp
+
+        # 7. Other settings changes
         model_comp = out6[forecastvar] - out7[forecastvar]
         decomp[Symbol(:decompmodel, class)] = model_comp
 
-        # 7. Parameter changes
-        param_comp = out7[forecastvar] - vcat(out8[forecastvar], zeros(size(out7[forecastvar],1)-size(out8[forecastvar],1), size(out7[forecastvar],2)))
+        # 8. Parameter changes
+        param_comp = out7[forecastvar] - out8[forecastvar]
         decomp[Symbol(:decompparam, class)] = param_comp
-        out8_temp = zeros(size(out1[shockdecvar],1), size(out1[shockdecvar],2), size(out1[shockdecvar],3))
 
-        out8_temp[1:size(out8[shockdecvar],1), 1:size(out8[shockdecvar],2), 1:size(out8[shockdecvar],3)] = out8[shockdecvar]
-        shockdec_comp = out1[shockdecvar] - out8_temp #out8[shockdecvar] # Ny x Nh x Ne
-        if shockdec_data_only
-            decomp[Symbol(:decompshockdec, class)] = shockdec_comp
-        else
-            decomp[Symbol(:decompshockdec, class)] = out1[shockdecvar] - old_shocks ## Want full difference
-        end
+        shockdec_comp = out1[shockdecvar] - old_shocks #out8[shockdecvar] # Ny x Nh x Ne
+        decomp[Symbol(:decompshockdec, class)] = shockdec_comp
+
         out8_temp = zeros(size(out1[dettrendvar],1), size(out1[dettrendvar],2))
         out8_temp[1:size(out8[dettrendvar],1), 1:size(out8[dettrendvar],2)] = out8[dettrendvar]
         dettrend_comp = out1[dettrendvar] - out8_temp#out8[dettrendvar]
-        if shockdec_data_only
-            decomp[Symbol(:decompdettrend, class)] = dettrend_comp
-        else
-            decomp[Symbol(:decompdettrend, class)] = out1[dettrendvar] - out4[dettrendvar]
-        end
+        decomp[Symbol(:decompdettrend, class)] = dettrend_comp
+
         # Get difference in trends
         if haskey(m_new.settings, :regime_dates) && haskey(m_new.settings, :n_regimes)
             # TODO adjust to handle forecasting the same regime (or more than 1 regime apart)
@@ -400,19 +417,7 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
             trend_comp = trend_new - trend_old
         end
 
-        if shockdec_data_only
-            decomp[Symbol(:decomptrend, class)] = trend_comp
-        elseif haskey(m_old.settings, :regime_dates) && haskey(m_old.settings, :n_regimes)
-            trend4 = get_trend_dates(get_setting(m_old, :regime_dates), out4[trendvar],
-                                     date_mainsample_start(m_old), size(out4[datavar],2),
-                                     n_regs = get_setting(m_old, :n_regimes))
-            decomp[Symbol(:decomptrend, class)] = trend_new - trend4
-        else
-            trend4 = get_trend_dates(Dict(1 => date_mainsample_start(m_old)), out4[trendvar],
-                                     date_mainsample_start(m_old), size(out4[datavar],2),
-                                     n_regs = 1)
-            decomp[Symbol(:decomptrend, class)] = trend_new - trend4
-        end
+        decomp[Symbol(:decomptrend, class)] = trend_comp
 
         total_decomp = out1[forecastvar] - vcat(out8[forecastvar], zeros(size(out1[forecastvar],1)-size(out8[forecastvar],1), 288))
         decomp[Symbol(:decomptotal, class)] = total_decomp
