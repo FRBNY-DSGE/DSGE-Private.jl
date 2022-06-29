@@ -287,42 +287,6 @@ end
 
 """
 ```
-n_param_regs(params::ParameterVector)
-```
-Get total number of parameter regimes for each parameter
-"""
-function n_param_regs(params::ParameterVector)
-    return [haskey(params[i].regimes, :value) ? length(params[i].regimes[:value]) : 1 for i in 1:length(params)]
-end
-
-"""
-```
-find_param_ind(params::Vector{AbstractParameter{Float64}}, para_one::Symbol; regime::Int = 1)
-```
-Return the index of (para_one, regime) in params.
-"""
-function find_param_ind(params::Vector{AbstractParameter{Float64}}, para_one::Symbol; regime::Int = 1)
-    if regime == 1
-        correct_ind = findfirst(x -> x == para_one, [params[i].key for i in 1:length(params)])
-        return isnothing(correct_ind) ? -1 : correct_ind
-    end
-    j = length(params)
-    for i in 1:length(params)
-        if !isempty(params[i].regimes) && params[i].key != para_one
-            j += length(params[i].regimes[:value])-1
-        elseif params[i].key == para_one
-            if haskey(params[i].regimes[:value], regime)
-                return j += regime - 1
-            else
-                return -1
-            end
-        end
-    end
-    return -1
-end
-
-"""
-```
 find_param_regimes(m::AbstractDSGEModel, reg::Int64)
 ```
 Return an array of the parameter regimes associated with the given model regime.
