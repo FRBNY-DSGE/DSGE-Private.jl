@@ -51,7 +51,7 @@ m = Model990(custom_settings = custom_settings)
 
 # reoptimize parameter vector, compute Hessian at mode, and full posterior
 # parameter sampling
-estimate(m)
+estimate(m; check_empty_columns = false)
 
 # produce LaTeX tables of parameter moments
 moment_tables(m)
