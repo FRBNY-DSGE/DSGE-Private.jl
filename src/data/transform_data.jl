@@ -192,13 +192,14 @@ end
 
 """
 ```
-function transform_spd_data(spd_df::DataFrame; column::Symbol = :MODAL_MEDIAN,
-    use_last_survey::Bool = true, use_last_meeting::Bool = true)
+function transform_spd_data(df::DataFrame; column::Symbol = :MODAL_MEDIAN,
+    use_last_survey::Bool = true, use_last_meeting::Bool = false,
+    remove_zlb::Bool = true, interpolation::Bool = true,
+    interpolation_in_data::Bool = true,
+    fomc_dates::Vector{Int64} = Vector{Int64}())
 ```
 Transform the raw SPD Modal Path data into a format matching that of OIS.
-Two different forecasts of the same quarter taken at different times in the same quarter are averaged.
 FFR forecasts of different FOMC meetings in the same quarter are aggregated using the implied daily FFR.
-But if data given for quarter rather than meeting, use that value for whole quarter.
 
 ### Inputs
 
@@ -206,7 +207,7 @@ But if data given for quarter rather than meeting, use that value for whole quar
 
 ### Keyword Arguments
 
-- `column`: Which column's values to return (median, 25th, or 75th percentile)
+- `column`: Which column's values to return (median, 25th, or 75th percentile). Must be one of [:MODAL_MEDIAN, :MODAL_25TH, :MODAL_75TH]
 - `use_last_survey`: whether to use the last survey in a quarter.
     If false, both surveys in a quarter are averaged.
 - `use_last_meeting`: whether to use the last meeting in a quarter for the forecast.
@@ -214,7 +215,7 @@ But if data given for quarter rather than meeting, use that value for whole quar
 - `remove_zlb`: whether to remove instances when the median forecast is at the ZLB.
 - `interpolation`: whether to linearly interpolate FFR at qtrs w/ missing data
     in daily implied FFR calculation.
-- `interpolation_in_data`: whether to include interpolated meetings as data.
+- `interpolation_in_data`: whether to include quarters with only interpolated rates as data.
 - `fomc_dates`: Vector of FOMC dates as Ints in the format "yymmdd" - needs to be passed in
     for dates up to the latest one in the SPD data if interpolating
 """
@@ -437,6 +438,10 @@ function spd_data_bands(spd_df::DataFrame)
 ```
 Transform the raw SPD Modal Path data into a format matching that of OIS.
 Returns 3 datasets, one each for 25%, 50%, and 75%.
+
+### Input
+
+- `spd_df`: Modal forecasts dataset from the NY Fed's SPD.
 """
 function spd_data_bands(spd_df::DataFrame)
     df_med = transform_spd_data(spd_df, column = :MODAL_MEDIAN)
