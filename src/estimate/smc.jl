@@ -225,6 +225,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
                 deleteat!(para2, key_del)
             end
 
+            @assert sum(ModelConstructors.n_param_regs(old_model.parameters)) == length(para2) ## Delete for speed when testing done
+
             update!(old_model, para2, regime_switching = old_regime_switching)
             m <= Setting(:preprocessed_transitions, Dict())
             likelihood(old_model, data; sampler = false, catch_errors = true,
