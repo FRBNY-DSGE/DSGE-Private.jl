@@ -60,7 +60,7 @@ moment_tables(m)
 my_procs = addprocs(10)
 @everywhere using DSGE
 
-forecast_one(m, :full, :none, [:forecaststates, :forecastobs])
+forecast_one(m, :full, :none, [:forecaststates, :forecastobs], check_empty_columns = false)
 compute_meansbands(m, :full, :none, [:forecaststates, :forecastobs])
 rmprocs(my_procs)
 ```
