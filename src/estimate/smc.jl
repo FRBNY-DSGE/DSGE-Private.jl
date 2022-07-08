@@ -225,9 +225,22 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
                 deleteat!(para2, key_del)
             end
 
-            @assert sum(ModelConstructors.n_param_regs(old_model.parameters)) == length(para2) ## Delete for speed when testing done
+            # @show sum(ModelConstructors.n_param_regs(old_model.parameters)), sum(ModelConstructors.n_param_regs(para2))
+            # @show length(old_model.parameters), length(para2)
+            @assert sum(ModelConstructors.n_param_regs(old_model.parameters)) == sum(ModelConstructors.n_param_regs(para2)) ## Delete for speed when testing done
 
             update!(old_model, para2, regime_switching = old_regime_switching)
+
+            # @show "For loop testing"
+            for p in para2 # Test correct params updated b/c update! assumes ordering is the same
+                @assert old_model[p.key].value == p.value
+                if haskey(p.regimes, :value)
+                    for i in collect(keys(p.regimes[:value]))
+                        @assert old_model[p.key].regimes[:value][i] == p.regimes[:value][i]
+                    end
+                end
+            end
+
             m <= Setting(:preprocessed_transitions, Dict())
             likelihood(old_model, data; sampler = false, catch_errors = true,
                        use_chand_recursion = use_chand_recursion, verbose = verbose)
