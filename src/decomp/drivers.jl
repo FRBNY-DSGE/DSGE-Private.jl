@@ -155,9 +155,9 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
                             enforce_zlb_new::Bool = false, enforce_zlb_old::Bool = false,
                             set_zlb_regime_vals_new::Function = identity, set_zlb_regime_vals_old::Function = identity,
                             model_decomp::Bool = false,
-                            m_nospd::Union{Nothing, M} = nothing,
-                            df_nospd::Union{Nothing, DataFrame} = nothing,
-                            para_nospd::Union{Nothing, Vector{Float64}} = nothing,
+                            m_oldspd::Union{Nothing, M} = nothing,
+                            df_oldspd::Union{Nothing, DataFrame} = nothing,
+                            para_oldspd::Union{Nothing, Vector{Float64}} = nothing,
                             ) where M<:AbstractDSGEModel
 
     # Check numbers of periods
@@ -181,12 +181,17 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
              set_zlb_regime_vals = set_zlb_regime_vals_new) # new data, new params
 
     # New forecast without spd
-    m_new = deepcopy(m_nospd)
-    df_new = deepcopy(df_nospd)
-    params_new = deepcopy(para_nospd)
-    out1_5 = f(m_new, df_new, params_new, cond_new, outputs = [:forecast, :shockdec],
-             enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
-             set_zlb_regime_vals = set_zlb_regime_vals_new) # new data, new params
+    if !isnothing(m_oldspd)
+        m_new = deepcopy(m_oldspd)
+        df_new = deepcopy(df_oldspd)
+        params_new = deepcopy(para_oldspd)
+        out1_5 = f(m_new, df_new, params_new, cond_new, outputs = [:forecast, :shockdec],
+                 enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
+                 set_zlb_regime_vals = set_zlb_regime_vals_new) # new data, new params
+    else
+        out1_5 = out1
+    end
+
     # DATA
     # Remove just latest quarter of data
     df_new_lesscond = df_new[df_new[!,:date] .<= get_setting(m_old, :date_conditional_end), :]
@@ -340,26 +345,6 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
             old_shocks = out8[shockdecvar]
         end
 
-        @show out1[shockdecvar][23,:,41]
-        @show out1[shockdecvar][23,end-40:end-30,5]
-
-@assert false
-        #=
-        ## For SPD changes, insert zeroes if some spd quarters are in only one of the models
-        if length(m_new.exogenous_shocks) > length(m_old.exogenous_shocks)
-            old_shocks = zeros(size(out1[shockdecvar]))
-            new_exog_keys = string.(keys(m_new.exogenous_shocks))
-            old_exog_keys = string.(keys(m_old.exogenous_shocks))
-            for i in 1:size(old_shocks, 3)
-                indi = findfirst(x -> x == new_exog_keys[i], old_exog_keys)
-                if !isnothing(indi)
-                    old_shocks[:,:,i] = out8[shockdecvar][:,:,indi]
-                end
-            end
-        else
-            old_shocks = out8[shockdecvar]
-        end
-=#
         # 0.5 SPD Changes
         #policy_comp = out1[forecastvar] - out1_5[forecastvar]
         spd_comp = out1[forecastvar][1:size(out1_5[forecastvar], 1), :] - out1_5[forecastvar]
@@ -564,10 +549,10 @@ Returns `out::Dict{Symbol, Array{Float64}}`, which has keys determined as follow
           system0               = zero_system_constants(system)
 
           if regime_switching
-
+              start_index = 1
               # Calculate trends
               if haskey(get_settings(m), :time_varying_trends) ? get_setting(m, :time_varying_trends) : false
-                  _, out[:trendobs], out[:trendpseudo] = trends(m, system, start_date, end_date, cond_type)
+                  _, out[:trendobs], out[:trendpseudo] = trends(m, system, start_date, end_date, cond_type; start_index = start_index)
               else
                   _, out[:trendobs], out[:trendpseudo] = trends(system)
               end

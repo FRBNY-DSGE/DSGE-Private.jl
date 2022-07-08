@@ -638,14 +638,15 @@ end
 function trends(m::AbstractDSGEModel, system::RegimeSwitchingSystem{S},
                 start_date::Dates.Date = date_presample_start(m),
                 end_date::Dates.Date = prev_quarter(date_forecast_start(m)),
-                cond_type::Symbol = :none) where {S<:AbstractFloat}
-
+                cond_type::Symbol = :none;
+                start_index::Int64 = index_shockdec_start(m)) where {S<:AbstractFloat}
+@show "643"
     # Dates: We compute the trend starting from the
     # first historical period.  However, since it is only used to
     # compute shock decompositions, we truncate and only store
     # results for periods corresponding to the shockdec period.
     nperiods    = subtract_quarters(date_forecast_end(m), date_mainsample_start(m)) + 1
-    start_index = index_shockdec_start(m)
+#     start_index = index_shockdec_start(m)
     end_index   = index_shockdec_end(m)
 
     # Now calculate the regime indices in history and forecast
@@ -740,7 +741,7 @@ function trends(m::AbstractDSGEModel, system::RegimeSwitchingSystem{S},
             end
         end
     end
-start_index = 1
+
     if start_index == 1
         return state_trends, obs_trends, pseudo_trends
     else
