@@ -188,8 +188,13 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
         out1_5 = f(m_new, df_new, params_new, cond_new, outputs = [:forecast, :shockdec],
                  enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
                  set_zlb_regime_vals = set_zlb_regime_vals_new) # new data, new params
-    else
-        out1_5 = out1
+    end
+
+    for i in expected_ffr(m_new)
+        var = "obs_exp_nominalrate$i"
+        if in(names(df_old), var)
+            df_new[!, var] = vcat(df_old[!, var], repeat([missing], length(df_new[!, :date]) - length(df_old[!, :date])))
+        end
     end
 
     # DATA
