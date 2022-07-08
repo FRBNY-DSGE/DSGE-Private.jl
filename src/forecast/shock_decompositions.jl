@@ -640,7 +640,6 @@ function trends(m::AbstractDSGEModel, system::RegimeSwitchingSystem{S},
                 end_date::Dates.Date = prev_quarter(date_forecast_start(m)),
                 cond_type::Symbol = :none;
                 start_index::Int64 = index_shockdec_start(m)) where {S<:AbstractFloat}
-@show "643"
     # Dates: We compute the trend starting from the
     # first historical period.  However, since it is only used to
     # compute shock decompositions, we truncate and only store
