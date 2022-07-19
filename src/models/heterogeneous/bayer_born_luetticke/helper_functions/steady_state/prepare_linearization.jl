@@ -1,7 +1,7 @@
-"""
+"
 ```
 prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose::Symbol = :none, parallel::Bool = false)
-```
+
 Compute a number of equilibrium objects needed for linearization
 and updates the steady state values and indices in `m`.
 
@@ -14,10 +14,12 @@ and updates the steady state values and indices in `m`.
 
 ### Keyword Arguments
 - `verbose`: verbosity of print statements at 3 different levels `[:none, :low, :high]`
-"""
+"
+
 function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArray{T, 3}, VkSS::AbstractArray{T, 3},
                                distrSS::AbstractArray{T, 3}; verbose::Symbol = :none,
                                parallel::Bool = false) where {T <: Real}
+
 
     # Set up
     if verbose in [:low, :high]
@@ -26,18 +28,39 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     θ  = parameters2namedtuple(m)
     nm, nk, ny = get_idiosyncratic_dims(m)
 
+
+
     # Calculate other equilibrium quantities
     incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, avg_tax_rateSS, eff_int = _bbl_incomes(θ, m.grids, KSS, distrSS)
 
+
     # obtain other steady state variables
+
+
     KSS, BSS, c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
             Ksupply(RBSS, 1.0 + rkSS, m.grids, θ, VmSS, VkSS, distrSS, incnet, eff_int,
                     similar(VmSS), similar(VkSS), similar(VmSS), similar(VmSS),
                     similar(VmSS), similar(VmSS), similar(VmSS))
             # not passing verbose to Ksupply b/c any print statements in Ksupply are redundant
 
+
+
+
+   #= KSS, BSS, c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
+            original_Ksupply(RBSS, 1.0 + rkSS, m, VmSS, VkSS, distrSS, incnet, eff_int)
+=#
+
+    #BRUNO CHANGED HERE
     VmSS                = log.(VmSS)
     VkSS                = log.(VkSS)
+
+
+
+
+   # VmSS = log.(1.0 ./ sqrt.( sqrt.( VmSS)))
+   # VkSS = log.(1.0 ./ sqrt.( sqrt.( VkSS)))
+
+
 
     # Calculate taxes and government expenditures
     TSS                 = (tot_taxrev + avg_tax_rateSS * ((1.0 - 1.0 / θ[:μ_w]) * wSS * NSS))
@@ -87,41 +110,67 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     m[:Vm_star]             = VmSS       # note that VmSS and VkSS are both already logged
     m[:Vk_star]             = VkSS
 
+
+
+
     # ------------------------------------------------------------------------------
     ## STEP 2: Dimensionality reduction
     # ------------------------------------------------------------------------------
     # 2 a.) Discrete cosine transformation of marginal value functions
     # ------------------------------------------------------------------------------
     ThetaVm             = vec(dct(VmSS))                             # Discrete cosine transformation of marginal liquid asset value
+
     ind                 = sortperm(abs.(vec(ThetaVm)); rev = true)   # Indexes of coefficients sorted by their absolute size
+
     coeffs              = 1                                          # Container to store the number of retained coefficients
 
     # Find the important basis functions (discrete cosine) for VmSS (in L2 norm)
-    while norm(view(ThetaVm, view(ind, 1:coeffs))) / norm(ThetaVm) < 1. - get_setting(m, :dct_energy_loss)
+    threshold = get_setting(m, :dct_energy_loss)
+
+    while norm(ThetaVm[ind[1:coeffs]]) / norm(ThetaVm) < 1 - threshold
+
             coeffs     += 1                                          # add retained coefficients until only some share of energy is lost
     end
     compressionIndexesVm = ind[1:coeffs]                             # store indexes of retained coefficients
 
     ThetaVk             = vec(dct(VkSS))                             # Discrete cosine transformation of marginal illiquid asset value
     ind                 = sortperm(abs.(vec(ThetaVk)); rev = true)   # Indexes of coefficients sorted by their absolute size
-    coeffs              = 1                                          # Container to store the number of retained coefficients
+
+
+coeffs              = 1                                          # Container to store the number of retained coefficients
 
     # Find the important basis functions (discrete cosine) for VkSS
-    while norm(view(ThetaVk, view(ind, 1:coeffs))) / norm(ThetaVk) < 1. - get_setting(m, :dct_energy_loss)
+
+    while norm(ThetaVk[ind[1:coeffs]]) / norm(ThetaVk) < 1 - threshold
+
             coeffs     += 1                                          # add retained coefficients until only some share of energy is lost
     end
     compressionIndexesVk = ind[1:coeffs]                             # store indexes of retained coefficients
 
+
+
     distr_LOL           = view(distrSS, 1:nm-1, 1:nk-1, 1:ny-1)      # Leave out last entry of histogramm (b/c it integrates to 1)
     ThetaD              = vec(dct(distr_LOL))                        # Discrete cosine transformation of Copula
     ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
-    n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
-    compressionIndexesD = ind[2:1+n_copula_coefs]                    # leave out index no. 1 as this shifts the constant
+
+#n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
+    #compressionIndexesD = ind[2:1+n_copula_coefs]      # leave out index no. 1 as this shifts the constant
+
+
+
+
+    SELECT = [ ((i+j+k) <= 30) & (!((i==1) & (j==1)) & !((k == 1) & (j == 1)) & !((k == 1) & (i == 1))) for i = 1:10, j = 1:10, k = 1:10]
+
+    compressionIndexesD  = findall(SELECT[:])
 
     compressionIndexes  = Array{Array{Int, 1}, 1}(undef, 3)          # Container to store all retained coefficients in one array
     compressionIndexes[1] = compressionIndexesVm
     compressionIndexes[2] = compressionIndexesVk
     compressionIndexes[3] = compressionIndexesD
+
+@show size(compressionIndexesVm)
+@show size(compressionIndexesVk)
+@show size(compressionIndexesD)
 
     # Store reduction parameters (coefficients go as SteadyStateParameterGrid, indices go as settings)
     m[:dct_Vm_star]     = ThetaVm

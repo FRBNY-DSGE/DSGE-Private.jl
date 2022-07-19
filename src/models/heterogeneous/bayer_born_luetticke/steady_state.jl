@@ -7,7 +7,11 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
         KSS, VmSS, VkSS, distrSS = original_find_steadystate(m; verbose = verbose,
                                                              skip_coarse_grid = haskey(get_settings(m), :skip_coarse_grid) &&
                                                              get_setting(m, :skip_coarse_grid))
-        original_prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
+        #original_prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
+
+         prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose,
+                                  parallel = haskey(get_settings(m), :parallel_steadystate) &&
+                                  get_setting(m, :parallel_steadystate))
     else
         if get_setting(m, :compute_full_steadystate)
             # Compute steady state
@@ -19,11 +23,17 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
                                                         parallel = haskey(get_settings(m), :parallel_steadystate) &&
                                                         get_setting(m, :parallel_steadystate))
 
+
+
             if get_setting(m, :save_steadystate)
                 save_steadystate(m, KSS, VmSS, VkSS, distrSS)
             end
 
             # Update steady-state parameters, reduce state space, and update indices
+
+
+
+
             prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose,
                                   parallel = haskey(get_settings(m), :parallel_steadystate) &&
                                   get_setting(m, :parallel_steadystate))

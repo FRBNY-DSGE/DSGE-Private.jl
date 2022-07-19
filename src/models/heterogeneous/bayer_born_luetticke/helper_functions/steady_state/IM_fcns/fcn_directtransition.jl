@@ -28,19 +28,22 @@ function DirectTransition(m_a_star::Array,
                 dr    = (dd .* wR_k_a[mm,kk,zz])
                 DRL_a = (dr .* (1.0 .- wR_m_a[mm,kk,zz]))
                 DRR_a = (dr .* wR_m_a[mm,kk,zz])
+
                 DL_n  = (dd .* (1.0 .- wR_m_n[mm,kk,zz]))
                 DR_n  = (dd .* wR_m_n[mm,kk,zz])
                 pp    = (Π[zz,:])
                 for yy = 1:ny
+
                     id_a = IDD_a .+ blockindex[yy]
                     id_n = IDD_n .+ blockindex[yy]
-                    fac = λ .* pp
-                    dPrime[id_a]            += fac .* DLL_a
-                    dPrime[id_a+1]          += fac .* DLR_a
-                    dPrime[id_a+nm]         += fac .* DRL_a
-                    dPrime[id_a+nm+1]       += fac .* DRR_a
-                    dPrime[id_n]            += (1.0 .- λ) .* pp[yy] .* DL_n
-                    dPrime[id_n+1]          += (1.0 .- λ) .* pp[yy] .* DR_n
+                    fac = λ * pp[yy]
+
+                    dPrime[id_a]            += fac * DLL_a
+                    dPrime[id_a+1]          += fac * DLR_a
+                    dPrime[id_a+nm]         += fac * DRL_a
+                    dPrime[id_a+nm+1]       += fac * DRR_a
+                    dPrime[id_n]            += (1.0 - λ) * pp[yy] * DL_n
+                    dPrime[id_n+1]          += (1.0 - λ) * pp[yy] * DR_n
                 end
             end
         end

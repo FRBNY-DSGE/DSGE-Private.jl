@@ -13,7 +13,6 @@ Driver to compute the model solution and augment transition matrices.
 
 - `regime_switching::Bool`: true if the state space system features regime switching
 - `regimes::Union{Int, Vector{Int}, UnitRange{Int}}`: specifies the specific regime to solve for.
-
 ### Outputs
  - TTT, RRR, and CCC matrices of the state transition equation:
 ```
@@ -38,6 +37,9 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
         # AND for implementing imperfect awareness via uncertain_altpolicy
         apply_altpolicy = haskey(get_settings(m), :alternative_policy) && get_setting(m, :alternative_policy).solve != solve
         if get_setting(m, :solution_method) == :gensys
+           # if typeof(m) <: BayerBornLuetticke
+
+           # end
             if !apply_altpolicy
 
                 # Get equilibrium condition matrices
@@ -82,6 +84,7 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
             return TTT, RRR, CCC
         elseif get_setting(m, :solution_method) == :klein
             TTT_jump, TTT, eu = klein(m)
+
 
             if eu == -1
                 throw(KleinError("Equilibrium is locally indeterminate"))

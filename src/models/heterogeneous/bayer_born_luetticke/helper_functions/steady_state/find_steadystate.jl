@@ -18,15 +18,17 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                           use_old_steadystate::Bool = false,
                           skip_coarse_grid::Bool = false, parallel::Bool = false)::Tuple{Float64,AbstractArray{Float64,3},AbstractArray{Float64,3},AbstractArray{Float64,3}} where {T <: Real}
 
+
+
     θ = parameters2namedtuple(m)
     max_value_function_iters = get_setting(m, :max_value_function_iters)
     n_direct_transition_iters = get_setting(m, :n_direct_transition_iters)
     kfe_method = get_setting(m, :kfe_method)
-    if kfe_method == :slepc
+    #=if kfe_method == :slepc
         # @assert false "SLEPc currently is not a working method for solving the KFE"
-        SlepcInitialize("-eps_nev 1")
+        ## SlepcInitialize("-eps_nev 1")
         # SlepcInitialize("-eps_max_it 100 -eps_tol 1e-6 -eps_nev 1")
-    end
+    end=#
 
     # -------------------------------------------------------------------------------
     ## STEP 1: Find the stationary equilibrium for coarse grid
@@ -34,10 +36,11 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     #-------------------------------------------------------
     # Income Process and Income Grids
     #-------------------------------------------------------
-    @show "Yo"
+
     if skip_coarse_grid || use_old_steadystate
         KSS = exp(m[:K_star]) # use K_star as an initial guess
     else
+
         # Construct coarse grid based on information from settings
         init_grids!(m; coarse = true)
 
@@ -46,8 +49,11 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
         end
 
         # Capital stock guesses
-        brent_Kmax = 1.75 * ((m[:δ_0] - 0.0025 + (1.0 - m[:β]) / m[:β]) / m[:α])^(1.0 / (m[:α] - 1.0))
-        brent_Kmin = 1.0  * ((m[:δ_0] - 0.0005 + (1.0 - m[:β]) / m[:β]) / m[:α])^(0.5 / (m[:α] - 1.0))
+        brent_Kmax = 1.75 * ((m[:δ_0] - .0025 + (1.0 .- m[:β]) / m[:β]) / m[:α])^(1.0 / (m[:α] - 1.0))
+        brent_Kmin = 1.0  * ((m[:δ_0] - .0005 + (1.0 .- m[:β]) / m[:β]) / m[:α])^(0.5 / (m[:α] - 1.0))
+
+       # brent_Kmax = 50.0
+       # brent_Kmin = 20.0
 
         # a.) Define excess demand function with coarse = true
 
@@ -58,7 +64,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
         # Additional numerical settings
         ϵ = get_setting(m, :coarse_ϵ)
         nm, nk, ny = get_idiosyncratic_dims(m; coarse = true)
-        @show "Work"
+
         # Initialize arrays to ensure efficient memory usage during EGM loop
         Vm_tmp = Array{T,3}(undef, nm, nk, ny)
         Vk_tmp = Array{T,3}(undef, nm, nk, ny)
@@ -80,9 +86,9 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                              kfe_method, ny)
 
         # b.) Find equilibrium capital stock (multigrid on y,m,k)
-        @show "OK"
+
         CustomBrent(d_coarse, brent_Kmin, brent_Kmax)
-        KSS = CustomBrent(d_coarse, brent_Kmin, brent_Kmax)[1]
+        KSS =  CustomBrent(d_coarse, brent_Kmin, brent_Kmax)[1]
 
         if verbose in [:low, :high]
             println("Capital stock is $(KSS)")
@@ -92,6 +98,8 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
     # -------------------------------------------------------------------------------
     ## STEP 2: Find the stationary equilibrium for final grid
     # -------------------------------------------------------------------------------
+
+
     if verbose in [:low, :high]
         println("Finding equilibrium capital stock for refined income grid...")
     end
@@ -142,13 +150,17 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
                        kfe_method, ny = ny)
     end
 
+
     # b.) Find equilibrium capital stock (multigrid on (m, k, y))
     lower_prop, upper_prop = get_setting(m, :brent_interval_endpoints)
     # TODO: update CustomBrent to check if f(a) > 0 and to return an error otherwise
     # b/c in this case, Kdiff is positive when capital guess is low.
     # Then we should add a loop and an algorithm to lower the lower bound.
     # Similar steps should be taken for the upper loop
+
+
     BrentOut = CustomBrent(d, KSS*lower_prop, KSS*upper_prop; tol = get_setting(m, :ϵ))
+
     KSS      = BrentOut[1]
     VmSS     = BrentOut[3][2]
     VkSS     = BrentOut[3][3]
@@ -157,9 +169,12 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
         println("Capital stock is $(KSS)")
     end
 
-    if kfe_method == :slepc
+    #=if kfe_method == :slepc
         SlepcFinalize()
-    end
+    end=#
 
     return KSS, VmSS, VkSS, distrSS
+
+
+
 end

@@ -143,7 +143,12 @@ function load_data_levels(m::AbstractDSGEModel; verbose::Symbol=:low,
                           add_vals = (false,Date(2020,12,31)))
     # Start two quarters further back than `start_date` as we need these additional
     # quarters to compute differences.
-    start_date = date_presample_start(m) - Dates.Month(6)
+
+    start_date = if typeof(m) <: BayerBornLuetticke
+        date_presample_start(m)
+    else
+        date_presample_start(m) - Dates.Month(6)
+    end
     end_date = date_mainsample_end(m)
 
     # Parse m.observable_mappings for data series
@@ -217,10 +222,15 @@ function load_data_levels(m::AbstractDSGEModel; verbose::Symbol=:low,
 
             # Warn on sources with incomplete data; missing data will be replaced with missing
             # during merge.
-            if !in(lastdayofquarter(start_date), addl_data[!,:date]) ||
-                !in(lastdayofquarter(end_date), addl_data[!,:date])
+            if !in(lastdayofquarter(start_date), addl_data[!,:date]) || !in(lastdayofquarter(end_date), addl_data[!,:date])
 
                 @warn "$file does not contain the entire date range specified; missings used."
+            end
+
+            if !in(lastdayofquarter(start_date), addl_data[!,:date])
+                print(lastdayofquarter(start_date))
+                println("start date is the problem")
+
             end
 
             # Make sure each mnemonic that was specified is present

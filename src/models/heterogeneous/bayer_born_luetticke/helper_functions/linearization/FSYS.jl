@@ -179,8 +179,9 @@ function Fsys(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray, θ::Na
     ############################################################################
     #           III. 1. Aggregate Part #
     ############################################################################
-    Fsys_agg(F, X, XPrime, θ, grids, id, nt, eqconds) # Fsys_agg(X, XPrime, θ, grids, id, nt, eqconds)
+    #Fsys_agg(F, X, XPrime, θ, grids, id, nt, eqconds) # Fsys_agg(X, XPrime, θ, grids, id, nt, eqconds)
 
+    F = Fsys_agg(F, X, XPrime, θ, grids, id, nt, eqconds)
     # Error Term on prices/aggregate summary vars (logarithmic, controls)
     KP           = dot(k_grid, distr_k)
     F[first(eqconds[:eq_capital_market_clear])] = log.(K_t)     - log.(KP)
@@ -265,6 +266,9 @@ function Fsys(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray, θ::Na
     updateV!(Vm_new, Vk_new, EVkPrime, c_a_star, c_n_star, m_n_star,
              rk_t - 1.0, q_t, θ, m_grid, Π) # update expected marginal values time t
 
+
+@show size(DC)
+
     # Calculate error terms on marginal values
     Vm_err        = log.((Vm_new)) - nt[:Vm_t]
     Vm_thet       = compress(dct_compression_indices[:Vm], Vm_err, DC, IDC, (nm, nk, ny))
@@ -302,6 +306,7 @@ function Fsys(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray, θ::Na
     # Get implied distribution and compute the error relative to steady state
     distr_up         = diff(diff(diff(CDF_joint; dims=3);dims=2);dims=1)
     distr_err        = distr_up - nt[:distr_t]
+
 
     # Compute the DCT using the steady-state basis and calculate the change in free DCT coefficients
     D_thet       = compressD(dct_compression_indices[:copula], distr_err[1:end-1, 1:end-1, 1:end-1], DCD, IDCD, (nm, nk, ny))

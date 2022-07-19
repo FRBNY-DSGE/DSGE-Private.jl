@@ -105,6 +105,8 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     compressionIndexes[2] = compressionIndexesVk
     compressionIndexes[3] = compressionIndexesD
 
+@show size(compressionIndexesVm)
+@show size(compressionIndexesVk)
     # Store reduction parameters (coefficients go as SteadyStateParameterGrid, indices go as settings)
     m[:dct_Vm_star]     = ThetaVm
     m[:dct_Vk_star]     = ThetaVk

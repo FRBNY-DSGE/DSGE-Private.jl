@@ -82,6 +82,9 @@ function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
     # Eliminate unused rows/columns from the transformation matrix
     KK   = unique(kk)
     MM   = unique(mm)
+
+    @save "saved_variables.jld2" MM, DC
+
     dc1  = DC[1][MM,:]
     dc2  = DC[2][KK,:]
 

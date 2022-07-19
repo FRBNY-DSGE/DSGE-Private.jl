@@ -29,6 +29,9 @@ function original_Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     N           = _original_bbl_employment(K_guess, 1.0 ./ (m[:μ_p] * m[:μ_w]), m[:α],      # employment
                                   m[:τ_lev], m[:τ_prog], m[:γ])
     w           = _original_bbl_wage(K_guess, 1.0 ./ m[:μ_p], N, m[:α])                     # wages
+
+
+#ADDED THE 1.0
     rk          = _original_bbl_interest(K_guess, 1.0 ./ m[:μ_p], N, m[:α], m[:δ_0])        # Return on illiquid asset
     profits     = (1.0 .- 1.0 ./ m[:μ_p]) .* _original_bbl_output(K_guess, 1.0, N, m[:α])    # Profit income
     RB          = m[:RB] ./ m[:π]                                                  # Real return on liquid assets

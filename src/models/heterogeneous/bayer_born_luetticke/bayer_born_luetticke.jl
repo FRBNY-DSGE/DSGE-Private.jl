@@ -1,3 +1,9 @@
+#CHANGED:
+#changed the original replication settings
+
+
+
+
 """
 ```
 BayerBornLuetticke{T} <: AbstractHeterogeneousModel{T}
@@ -75,7 +81,7 @@ mutable struct BayerBornLuetticke{T} <: AbstractHetModel{T}
     # figure out a more flexible way to define
     # "grids" that are not necessarily quadrature
     # grids within the model
-# TODO: maybe add field/type to hold reduction information e.g. DCT indices (but not coefficient values), copula info
+# TODO: maybe add field/type to hold reduction information e.g. DCTindices (but not coefficient values), copula info
     grids::OrderedDict{Symbol,Union{Grid, Array, T}}
     keys::OrderedDict{Symbol,Int}                    # Human-readable names for all the model
                                               # parameters and steady-states
@@ -172,6 +178,8 @@ function init_model_indices!(m::BayerBornLuetticke)
     m <= Setting(:n_scalar_states, length(get_aggregate_state_variables(m)))
     m <= Setting(:n_scalar_jumps, length(get_aggregate_jump_variables(m)))
     m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states))
+
+    m <= Setting(:PRightAll, Matrix{Float64}(undef, 0, 0))
 
     # Exogenous shocks
     exogenous_shocks = collect([:A_sh, :Z_sh, :Ψ_sh, :μ_p_sh, :μ_w_sh, :G_sh, :R_sh, :S_sh, :P_sh])
@@ -694,11 +702,15 @@ function init_parameters!(m::BayerBornLuetticke)
                                   "over idiosyncratic states (steady-state)",
                                   tex_label = "\\theta_{D, *}")
 
+
+
     # Jacobians to be updated
     m <= SteadyStateParameterGrid(:A, Matrix{Float64}(undef, 0, 0),
                                   description = "The A matrix computed by jacobian(m)")
     m <= SteadyStateParameterGrid(:B, Matrix{Float64}(undef, 0, 0),
                                   description = "The B matrix computed by jacobian(m)")
+
+
 end
 
 function model_settings!(m::BayerBornLuetticke)
@@ -716,16 +728,42 @@ function model_settings!(m::BayerBornLuetticke)
     ## Numerical settings for steady state
 
     # Coarse grid settings
-    m <= Setting(:coarse_ϵ,  1e-5, "Steady-state tolerance for coarse grid")
-    m <= Setting(:coarse_ny, 6, "Number of idiosyncratic income states for coarse grid")
-    m <= Setting(:coarse_nm, 40, "Number of liquid asset (bond) points for coarse grid")
-    m <= Setting(:coarse_nk, 41, "Number of illiquid asset (capital) points for coarse grid")
+
+    m <= Setting(:coarse_ϵ,  1e-6, "Steady-state tolerance for coarse grid")
+    m <= Setting(:coarse_ny, 4, "Number of idiosyncratic income states for coarse grid")
+    m <= Setting(:coarse_nm, 10, "Number of liquid asset (bond) points for coarse grid")
+    m <= Setting(:coarse_nk, 10, "Number of illiquid asset (capital) points for coarse grid")
     m <= Setting(:coarse_ymin, 0.5, "Minimum grid value for income states on coarse grid")
     m <= Setting(:coarse_ymax, 1.5, "Maximum grid value for income states on coarse grid")
     m <= Setting(:coarse_mmin, -6.6, "Minimum grid value for liquid assets (bond) on coarse grid")
     m <= Setting(:coarse_mmax, 1000., "Maximum grid value for liquid assets (bond) on coarse grid")
     m <= Setting(:coarse_kmin, 0., "Minimum grid value for illiquid assets (capital) on coarse grid")
-    m <= Setting(:coarse_kmax, 1500., "Maximum grid value for illiquid assets (capital) on coarse grid")
+    m <= Setting(:coarse_kmax, 1750., "Maximum grid value for illiquid assets (capital) on coarse grid")
+
+    # Refined grid settings
+    m <= Setting(:ϵ, 1e-11, "Steady-state tolerance for refined grid")
+    m <= Setting(:ny, 22, "Number of idiosyncratic income states for refined grid")
+    m <= Setting(:nm, 80, "Number of liquid asset (bond) points for refined grid")
+    m <= Setting(:nk, 80, "Number of illiquid asset (capital) points for refined grid")
+    m <= Setting(:ymin, 0.5, "Minimum grid value for income states on refined grid")
+    m <= Setting(:ymax, 1.5, "Maximum grid value for income states on refined grid")
+    m <= Setting(:mmin, -6.6, "Minimum grid value for liquid assets (bond) on refined grid")
+    m <= Setting(:mmax, 1000., "Maximum grid value for liquid assets (bond) on refined grid")
+    m <= Setting(:kmin, 0., "Minimum grid value for illiquid assets (capital) on refined grid")
+    m <= Setting(:kmax, 1750., "Maximum grid value for illiquid assets (capital) on refined grid")
+
+
+#=
+    m <= Setting(:coarse_ϵ,  1e-5, "Steady-state tolerance for coarse grid")
+    m <= Setting(:coarse_ny, 4, "Number of idiosyncratic income states for coarse grid")
+    m <= Setting(:coarse_nm, 10, "Number of liquid asset (bond) points for coarse grid")
+    m <= Setting(:coarse_nk, 10, "Number of illiquid asset (capital) points for coarse grid")
+    m <= Setting(:coarse_ymin, 0.5, "Minimum grid value for income states on coarse grid")
+    m <= Setting(:coarse_ymax, 1.5, "Maximum grid value for income states on coarse grid")
+    m <= Setting(:coarse_mmin, -6.6, "Minimum grid value for liquid assets (bond) on coarse grid")
+    m <= Setting(:coarse_mmax, 1750., "Maximum grid value for liquid assets (bond) on coarse grid")
+    m <= Setting(:coarse_kmin, 0., "Minimum grid value for illiquid assets (capital) on coarse grid")
+    m <= Setting(:coarse_kmax, 2250., "Maximum grid value for illiquid assets (capital) on coarse grid")
 
     # Refined grid settings
     m <= Setting(:ϵ, 1e-10, "Steady-state tolerance for refined grid")
@@ -735,9 +773,11 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:ymin, 0.5, "Minimum grid value for income states on refined grid")
     m <= Setting(:ymax, 1.5, "Maximum grid value for income states on refined grid")
     m <= Setting(:mmin, -6.6, "Minimum grid value for liquid assets (bond) on refined grid")
-    m <= Setting(:mmax, 1000., "Maximum grid value for liquid assets (bond) on refined grid")
+    m <= Setting(:mmax, 1750., "Maximum grid value for liquid assets (bond) on refined grid")
     m <= Setting(:kmin, 0., "Minimum grid value for illiquid assets (capital) on refined grid")
-    m <= Setting(:kmax, 1500., "Maximum grid value for illiquid assets (capital) on refined grid")
+    m <= Setting(:kmax, 2250., "Maximum grid value for illiquid assets (capital) on refined grid")
+
+=#
 
     # Consumption policy iteration
     m <= Setting(:max_value_function_iters, 1000,
@@ -750,8 +790,10 @@ function model_settings!(m::BayerBornLuetticke)
                  "directly as a limit of the transition equation")
 
     # Interval endpoints for Brent's method on refined grid
-    m <= Setting(:brent_interval_endpoints, (0.95, 1.05), "Interval endpoints for Brent's method on refined grid as" *
-                " multiples of the steady state capital guess")
+    #m <= Setting(:brent_interval_endpoints, (0.95, 1.05), "Interval endpoints for Brent's method on refined grid as" *
+     #          " multiples of the steady state capital guess")
+    m <= Setting(:brent_interval_endpoints, (0.8, 1.2), "Interval endpoints for Brent's method on refined grid as" *
+               " multiples of the steady state capital guess")
 
     # Reduction settings for the following reduction strategy:
     # (1) Keep DCT coefficients of value functions that explain some fraction of total "energy"
@@ -760,9 +802,10 @@ function model_settings!(m::BayerBornLuetticke)
     # (3) Keep DCT coefficients of distribution over idiosyncratic states to approximate perturbations
     #     in the copula while keeping the marginals fixed.
     # (4) Remove even more basis functions
-    m <= Setting(:dct_energy_loss, 1e-5, "Lost fraction of 'energy' in the DCT compression of 'value functions'")
-    m <= Setting(:n_copula_dct_coefficients, 11, "Number of coefficients in the DCT compression of the " *
+    m <= Setting(:dct_energy_loss, 1e-6, "Lost fraction of 'energy' in the DCT compression of 'value functions'")
+    m <= Setting(:n_copula_dct_coefficients, 10, "Number of coefficients in the DCT compression of the " *
                  "distribution over idiosyncratic states to approximate a perturbation in the copula")
+
     m <= Setting(:remove_non_volatile_basis_functions, false, "Remove non-volatile basis functions for further compression")
 
     # Initialize storages for settings/objects related to reduction
@@ -806,6 +849,10 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:replicate_original_output, false, "Use steady state and linearization functions that exactly " *
                  "replicate output from the original implementation by Bayer, Born, and Luetticke.")
     m <= Setting(:original_dataset, false, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
+
+#m <= Setting(:replicate_original_output, true, "Use steady state and linearization functions that exactly " *
+#                 "replicate output from the original implementation by Bayer, Born, and Luetticke.")
+ #   m <= Setting(:original_dataset, true, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
 
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)
@@ -890,6 +937,7 @@ function setup_indices!(m::BayerBornLuetticke)
         aggr_endo[k] = i + n_aggr_states
     end
     m <= Setting(:n_model_states, first(endo[jump_vars[end]]))
+    @show get_setting(m, :n_model_states)
     m <= Setting(:n_jumps, get_setting(m, :n_model_states) - n_states)
 
     ## Populate equation indices

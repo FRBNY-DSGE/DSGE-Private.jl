@@ -149,7 +149,9 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
     # Specify starting mode
 
     vint = get_setting(m, :data_vintage)
-    if reoptimize(m) && method == :MH
+    @show get_setting(m, :reoptimize)
+   # if reoptimize(m) && method == :MH
+    if get_setting(m, :reoptimize) && method == :MH
         println("Reoptimizing...")
 
         # Inputs to optimization algorithm
@@ -197,14 +199,20 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
         end
     end
 
+
+
     params = ModelConstructors.get_values(get_parameters(m); regime_switching = regime_switching)
+
+
 
     # Sampling does not make sense if mle=true
     if mle || !sampling
         return nothing
     end
 
+
     if get_setting(m,:sampling_method) == :MH
+
         ########################################################################################
         ### Step 2: Compute proposal distribution for Markov Chain Monte Carlo (MCMC)
         ###

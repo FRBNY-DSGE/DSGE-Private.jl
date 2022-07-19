@@ -1,3 +1,4 @@
+#hank
 # TODO: add an option that constructs nt and id only once rather than repeatedly
 """
 ```
@@ -17,6 +18,7 @@ are updated in place.
     `XPrime` [`A`]
 """
 @inline function jacobian(m::BayerBornLuetticke{T}) where {T <: Real}
+
     if get_setting(m, :replicate_original_output)::Bool
         # This block replicates output from the original implementation by Bayer, Born, and Luetticke
         if get_setting(m, :linearize_heterogeneous_block)::Bool
@@ -28,12 +30,32 @@ are updated in place.
     else
         if get_setting(m, :linearize_heterogeneous_block)::Bool
             # Compute the Jacobian from scratch (assumes steadystate!(m) has already been called)
+             m <= Setting(:linearize_heterogeneous_block, false)
             return _jacobian!(m)
         else
             # Note that since get_untransformed_values(m[:A]) = m[:A].value,
             # the A matrix in m[:A] is being directly updated
-            return _update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
+            if isempty(m[:A]) || isempty(m[:B])
+                return _jacobian!(m)
+            else
+
+                return _update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
                                                get_untransformed_values(m[:B])::Matrix{T})
+            end
+
+
+            #= try
+                result =  _update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
+                                               get_untransformed_values(m[:B])::Matrix{T})
+            catch e
+                result = _jacobian!(m)
+            end
+
+            return result =#
+
+           #= return _update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
+                                               get_untransformed_values(m[:B])::Matrix{T})
+                =#
         end
     end
 end
@@ -47,6 +69,7 @@ function _jacobian!(m::BayerBornLuetticke)
     id = get_setting(m, :prime_and_noprime_indices)::OrderedDict{Symbol, UnitRange{Int}}
     nm, nk, ny = get_idiosyncratic_dims(m)
 
+
     ############################################################################
     # Prepare elements used for uncompression
     ############################################################################
@@ -54,17 +77,30 @@ function _jacobian!(m::BayerBornLuetticke)
     Γ  = shuffle_matrix(m[:distr_star])
 
     # Matrices for discrete cosine transforms
+    #DC = Vector{Array{Float64, 2}}(undef, 3)
     DC = Vector{Array{Float64, 2}}(undef, 3)
     DC[1]  = mydctmx(nm)
     DC[2]  = mydctmx(nk)
     DC[3]  = mydctmx(ny)
+
+    @show size(DC)
+
     IDC    = [DC[1]', DC[2]', DC[3]'] # TODO: why do we need to take the transpose?
 
     DCD = Vector{Array{Float64, 2}}(undef, 3)
+    # DCD = Vector{Array{Float64, 2}}(undef, 3)
+    n_copula = get_setting(m, :n_copula_dct_coefficients)
     DCD[1]  = mydctmx(nm-1)
     DCD[2]  = mydctmx(nk-1)
     DCD[3]  = mydctmx(ny-1)
     IDCD    = [DCD[1]', DCD[2]', DCD[3]']
+
+#=
+    DCD[1]  = mydctmx(n_copula)
+    DCD[2]  = mydctmx(n_copula)
+    DCD[3]  = mydctmx(n_copula)
+    IDCD    = [DCD[1]', DCD[2]', DCD[3]']=#
+
 
     ############################################################################
     # Check whether steady state solves the difference equation
@@ -88,16 +124,20 @@ function _jacobian!(m::BayerBornLuetticke)
     nxA         = length_X0 - n_marginals
     n_vars      = n_model_states(m)
 
+
     # The objective function omits the Vm, Vk in the X vector, but we left off at index id[:Vm_t][1] - 1,
     # so after we use zeros for the Vm, Vk parts of X, we need to start from id[:Vm_t][1]. We then go
     # to nxB since that is the total number of X elements we want to perturb.
     # For XPrime, we ignore the marginal perturbations and then have to start at nxB + 1 since
     # x is a vector of length nxB + nxA.
     BA = zeros(n_vars, nxB + nxA)
+
     obj_fnct    = (F, x) -> Fsys(F, [x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
                                  [Zeros(n_marginals); x[nxB+1:end]],
                                  θ, m.grids, id, nt, m.equilibrium_conditions,
                                  get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
+    @show n_vars
+
     ForwardDiff.jacobian!(BA, obj_fnct, zeros(n_vars), zeros(nxB+nxA))
 
     A      = zeros(n_vars, n_vars)
@@ -179,15 +219,20 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
     obj_fnct = (F, x) -> Fsys_agg(F, x[1:length_X0], x[length_X0+1:end], θ,
                                   m.grids, id, nt, aggr_eqconds)
 
+
+
     if use_sparse_jac && has_sparsity_pattern
+
         sparsity_pattern = get_setting(m, :sparsity_pattern)::SparseMatrixCSC{T,Int}
         colorvec = haskey(get_settings(m), :colorvec) ? get_setting(m, :colorvec)::Vector{Int} : matrix_colors(sparsity_pattern)
 
         if haskey(get_settings(m), :sparse_aggregate_block_jacobian)
+
             BA = get_setting(m, :sparse_aggregate_block_jacobian)::SparseMatrixCSC{T,Int}
             input = get_setting(m, :aggregate_block_jacobian_input)::Vector{T}
             output = get_setting(m, :aggregate_block_jacobian_output)::Vector{T}
         else
+
             BA = similar(sparsity_pattern)
             input = zeros(T, 2 * length_X0)
             output = similar(input, length_X0)
@@ -200,16 +245,19 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
                                     colorvec = colorvec, sparsity = sparsity_pattern)
     else
         if use_sparse_jac
+
             warn_str = "No sparsity pattern provided, so a dense Jacobian will be computed via ForwardDiff" *
                 " instead of a sparse Jacobian via SparseDiffTools"
             @warn warn_str
         end
 
         if haskey(get_settings(m), :aggregate_block_jacobian)
+           #this is the only block that runs
             BA = get_setting(m, :aggregate_block_jacobian)::Matrix{T}
             input = get_setting(m, :aggregate_block_jacobian_input)::Vector{T}
             output = get_setting(m, :aggregate_block_jacobian_output)::Vector{T}
         else
+
             BA = Matrix{T}(undef, length_X0, 2 * length_X0)
             input = zeros(T, 2 * length_X0)
             output = similar(input, length_X0)
@@ -220,11 +268,13 @@ function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::
         ForwardDiff.jacobian!(BA, obj_fnct, output, input)
     end
 
+    @show size(BA)
     Aa          = BA[:, length_X0+1:end] # aggregate A       # to create the required Jacobian sparsity pattern
     Ba          = BA[:, 1:length_X0]     # aggregate B
 
     # Update Jacobians of equilibrium conditions w.r.t. aggregate variables,
     # excluding aggregates that are distributional in nature (e.g. Gini coefficients)
+
     for (aggr_endo_state_name, j) in aggr_endo_states_excl_distr # endo states are the columns
         _j = first(endo_states[aggr_endo_state_name])
         for (aggr_eqcond_name, i) in aggr_eqconds_excl_distr # eqconds are the rows

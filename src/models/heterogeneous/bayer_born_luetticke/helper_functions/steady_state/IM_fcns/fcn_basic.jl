@@ -90,9 +90,9 @@ function distrSummaries(distr::AbstractArray{T, 3}, c_a_star::AbstractArray,
     p90             = findfirst(x -> x >= 0.9, moneycapital_cdf)
     w9050           = mplusk[p90] / mplusk[p50]
     FN_wealthshares = cumsum(mplusk .* moneycapital_pdf) ./ dot(mplusk, moneycapital_pdf)
-    money_inter     = extrapolate(interpolate((moneycapital_cdf,), FN_wealthshares, Gridded(Linear())), Line())
-    w90share        = 1.0 - money_inter(0.9)
-    # w90share        = 1.0 - mylinearinterpolate(moneycapital_cdf, FN_wealthshares, [0.9])[1]
+    # money_inter     = extrapolate(interpolate((moneycapital_cdf,), FN_wealthshares, Gridded(Linear())), Line())
+    # w90share        = 1.0 - money_inter(0.9)
+    w90share        = 1.0 - mylinearinterpolate(moneycapital_cdf, FN_wealthshares, [0.9])[1]
 
     x                   = Array{eltype(c_a_star)}(undef, nm, nk, ny, 2)
     c                   = Array{eltype(c_a_star)}(undef, nm, nk, ny, 2)
@@ -141,8 +141,8 @@ function distrSummaries(distr::AbstractArray{T, 3}, c_a_star::AbstractArray,
     Y_cdf              = cumsum(Y_pdf)
     p10                = findfirst(x -> x >= 0.1, Y_cdf)
     FN_incomesharesnet = cumsum(Yidio .* Y_pdf) ./ dot(Yidio, Y_pdf)
-    Y_inter            = extrapolate(interpolate((Y_cdf,), FN_wealthshares, Gridded(Linear())), Line())
-    I90sharenet        = 1.0 - Y_inter(0.9)
+    # Y_inter            = extrapolate(interpolate((Y_cdf,), FN_wealthshares, Gridded(Linear())), Line())
+    I90sharenet        = 1.0 .- mylinearinterpolate(Y_cdf, FN_incomesharesnet, [0.9])[1]# - Y_inter(0.9)
 
     Yidio           = incgross[1] + incgross[2] + incgross[3] - m_ndgrid
     IX              = sortperm(vec(Yidio))
@@ -150,9 +150,9 @@ function distrSummaries(distr::AbstractArray{T, 3}, c_a_star::AbstractArray,
     Y_pdf           = distr[IX]
     Y_cdf           = cumsum(Y_pdf)
     FN_incomeshares = cumsum(Yidio .* Y_pdf) ./ dot(Yidio, Y_pdf)
-    Y_inter         = extrapolate(interpolate((Y_cdf,), FN_incomeshares, Gridded(Linear())), Line())
-    I90share        = 1.0 - Y_inter(0.9)
-    # I90share      = 1.0 .- mylinearinterpolate(Y_cdf, FN_incomeshares, [0.9])[1]
+    # Y_inter         = extrapolate(interpolate((Y_cdf,), FN_incomeshares, Gridded(Linear())), Line())
+    # I90share        = 1.0 - Y_inter(0.9)
+    I90share      = 1.0 .- mylinearinterpolate(Y_cdf, FN_incomeshares, [0.9])[1]
 
     S               = vcat(0., cumsum(Y_pdf .* Yidio))
     giniincome      = 1. - (dot(Y_pdf, (S[1:end-1] + S[2:end])) / S[end])
