@@ -13,12 +13,14 @@ function original_Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     H                   = m.grids[:H]::T1
     HW                  = m.grids[:HW]::T1
 
+    @save "save4.jld2" Π y_grid m_ndgrid k_ndgrid y_ndgrid H HW
+
     # TODO: check if there's a notable speed up by only passing settings, grids,
     #       and parameters into this function as kwargs
     #----------------------------------------------------------------------------
     # Calculate other prices from capital stock
     #----------------------------------------------------------------------------
-#=    N           = _bbl_employment(K_guess, 1.0 / (m[:μ_p] * m[:μ_w]), m[:α],      # employment
+   #= N           = _bbl_employment(K_guess, 1.0 / (m[:μ_p] * m[:μ_w]), m[:α],      # employment
                                   m[:τ_lev], m[:τ_prog], m[:γ])
     w           = _bbl_wage(K_guess, 1.0 / m[:μ_p], N, m[:α])                     # wages
     rk          = _bbl_interest(K_guess, 1.0 / m[:μ_p], N, m[:α], m[:δ_0])        # Return on illiquid asset
@@ -26,6 +28,8 @@ function original_Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     neg_liq_ret = RB + m[:Rbar]
     eff_int     = [x <= 0. ? neg_liq_ret : RB for x in m_ndgrid]        # effective rate depending on assets
     RB          = m[:RB] ./ m[:π]                                                  # Real return on liquid assets=#
+
+
     N           = _original_bbl_employment(K_guess, 1.0 ./ (m[:μ_p] * m[:μ_w]), m[:α],      # employment
                                   m[:τ_lev], m[:τ_prog], m[:γ])
     w           = _original_bbl_wage(K_guess, 1.0 ./ m[:μ_p], N, m[:α])                     # wages
@@ -37,6 +41,7 @@ function original_Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     RB          = m[:RB] ./ m[:π]                                                  # Real return on liquid assets
 
     eff_int     = (RB .+ m[:Rbar] .* (m_ndgrid .<= 0.0))
+
     GHHFA       = (m[:γ] + m[:τ_prog]) / (m[:γ] + 1.0)                            # transformation (scaling) for composite good
 
     #----------------------------------------------------------------------------
@@ -62,9 +67,11 @@ function original_Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     incnet          = m[:τ_lev] .* (mcw .* w .* N ./ H .* y_grid).^(1. - m[:τ_prog])
     incnet[end]     = m[:τ_lev] .* (y_grid[end] .* profits).^(1. - m[:τ_prog])
 
+
     # average tax rate
     # av_tax_rate     = dot((incgross - incnet), distr_y) / dot(incgross, distr_y)
     av_tax_rate     = dot((incgross - incnet), distr_y) ./ dot(incgross, distr_y)
+
 
     # TODO: replace the y_ndgrid calculation with just repeating the incnet vector OR use list comprehension later on
     ny              = get_setting(m, coarse ? :coarse_ny : :ny)
@@ -84,6 +91,14 @@ function original_Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
     # Initialize policy function (guess/stored values)
     #----------------------------------------------------------------------------
 
+#=
+var1 = inc[1]
+var2 = inc[2]
+var3 = inc[3]
+var4 = inc[4]
+
+@save "save3.jld2" var1 var2 var3 var4
+=#
     # initial guess consumption and marginal values (if not set)
     if initial # TODO: pass in m_ndgrid .> 0. if that's already calculated elsewhere
         # c_guess     = inc[1] .+ inc[2] .* (inc[2] .> 0) .+ inc[3] .* (m_ndgrid .> 0.)

@@ -11,14 +11,28 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     # Calculate other equilibrium quantities
     incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, avg_tax_rateSS, eff_int = _original_bbl_incomes(θ, m.grids, KSS, distrSS)
 
+
     # obtain other steady state variables
     KSS, BSS, TransitionMatSS, TransitionMat_aSS, TransitionMat_nSS,
         c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
             original_Ksupply(RBSS, 1.0 + rkSS, m, VmSS, VkSS, distrSS, incnet, eff_int)
+
+
+    KSS1 = KSS
+    VmSS1 = VmSS
+    VkSS1 = VkSS
+    distrSS1 = distrSS
+
+    @save "dsge_steady_state_replica.jld2" KSS1 VmSS1 VkSS1 distrSS1
+
+
+
             # not passing verbose to Ksupply b/c any print statements in Ksupply are redundant
 
-    VmSS                = log.(VmSS)
-    VkSS                = log.(VkSS)
+
+    VmSS                = log.(1.0 ./ (sqrt.(sqrt.(VmSS))))
+    VkSS                = log.(1.0 ./ (sqrt.(sqrt.(VkSS))))
+
 
     # Calculate taxes and government expenditures
     # TSS                 = (tot_taxrev + avg_tax_rateSS * ((1.0 .- 1.0 ./ θ[:μ_w]) .* wSS .* NSS))
@@ -69,6 +83,7 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     m[:Vm_star]             = VmSS       # note that VmSS and VkSS are both already logged
     m[:Vk_star]             = VkSS
 
+
     # ------------------------------------------------------------------------------
     ## STEP 2: Dimensionality reduction
     # ------------------------------------------------------------------------------
@@ -76,7 +91,9 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     # ------------------------------------------------------------------------------
     ThetaVm             = vec(dct(VmSS))                             # Discrete cosine transformation of marginal liquid asset value
     ind                 = sortperm(abs.(vec(ThetaVm)); rev = true)   # Indexes of coefficients sorted by their absolute size
-    coeffs              = 1                                          # Container to store the number of retained coefficients
+    coeffs              = 1                     # Container to store the number of retained coefficients
+
+
 
     # Find the important basis functions (discrete cosine) for VmSS (in L2 norm)
     while norm(view(ThetaVm, view(ind, 1:coeffs))) / norm(ThetaVm) < 1. - get_setting(m, :dct_energy_loss)
@@ -84,9 +101,13 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     end
     compressionIndexesVm = ind[1:coeffs]                             # store indexes of retained coefficients
 
-    ThetaVk             = vec(dct(VkSS))                             # Discrete cosine transformation of marginal illiquid asset value
+
+    ThetaVk             = vec(dct(VkSS))# Discrete cosine transformation of marginal liquid asset value
+
+    @save "save_dsge.jld2" VkSS ThetaVk
+
     ind                 = sortperm(abs.(vec(ThetaVk)); rev = true)   # Indexes of coefficients sorted by their absolute size
-    coeffs              = 1                                          # Container to store the number of retained coefficients
+    coeffs              = 1
 
     # Find the important basis functions (discrete cosine) for VkSS
     while norm(view(ThetaVk, view(ind, 1:coeffs))) / norm(ThetaVk) < 1. - get_setting(m, :dct_energy_loss)
@@ -107,6 +128,8 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
 
 @show size(compressionIndexesVm)
 @show size(compressionIndexesVk)
+@show size(compressionIndexesD)
+
     # Store reduction parameters (coefficients go as SteadyStateParameterGrid, indices go as settings)
     m[:dct_Vm_star]     = ThetaVm
     m[:dct_Vk_star]     = ThetaVk

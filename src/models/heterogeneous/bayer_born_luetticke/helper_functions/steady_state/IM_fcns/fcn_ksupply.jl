@@ -71,6 +71,8 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
     if dist > ϵ ## Initialize EVm, EVk here to avoid reallocating arrays in loop
         joined_mk_dims  = (n[1] * n[2], n[3])
     end
+
+
     while dist > ϵ && count < max_value_function_iters # Iterate consumption policies until convergence
         count          += 1
 
@@ -87,11 +89,15 @@ function Ksupply(RB_guess::T, R_guess::T, grids::OrderedDict, θ::NamedTuple, Vm
         EGM_policyupdate!(EVm, EVk, q, θ[:π], RB_guess, 1.0, inc, θ, grids, false,
                           c_a_star, m_a_star, k_a_star, c_n_star, m_n_star; parallel = parallel)
 
+
+
         # marginal value update step: updates Vm_new and Vk_new
         #=@btime updateV!($Vm_new, $Vk_new, $EVk, $c_a_star, $c_n_star, $m_n_star,
                  $R_guess - 1.0, $q, $θ, $m_grid, $Π; parallel = $parallel)=#
         updateV!(Vm_new, Vk_new, EVk, c_a_star, c_n_star, m_n_star,
                  R_guess - 1.0, q, θ, m_grid, Π; parallel = parallel)
+
+       # Vk_new, Vm_new = original_updateV(EVk, c_a_star, c_n_star, m_n_star, R_guess - 1.0, q,θ, m_grid, Π)
 
         # Calculate distance in updates
         dist1           = maximum(abs, _bbl_invmutil!(inv_mutil_new, Vk_new, θ[:ξ]) - _bbl_invmutil!(inv_mutil_old, Vk, θ[:ξ]))

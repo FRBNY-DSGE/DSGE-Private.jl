@@ -38,6 +38,9 @@ function original_Ksupply(RB_guess::T, R_guess::T, m::BayerBornLuetticke{T1}, Vm
 #=        EVk             = reshape(reshape(Vk, (n[1] * n[2], n[3])) * Π', (n[1], n[2], n[3]))
         EVm             = reshape((reshape(eff_int, (n[1] * n[2], n[3])) .*
                                    reshape(Vm, (n[1] * n[2], n[3]))) * Π', (n[1], n[2], n[3]))=#
+
+
+
         EVk             = reshape(reshape(Vk, (n[1] .* n[2], n[3])) * Π', (n[1], n[2], n[3]))
         EVm             = reshape((reshape(eff_int, (n[1] .* n[2], n[3])) .*
                                    reshape(Vm, (n[1] .* n[2], n[3]))) * Π', (n[1], n[2], n[3]))

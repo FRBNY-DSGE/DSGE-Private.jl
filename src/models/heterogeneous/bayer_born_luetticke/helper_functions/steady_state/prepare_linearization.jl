@@ -29,7 +29,6 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     nm, nk, ny = get_idiosyncratic_dims(m)
 
 
-
     # Calculate other equilibrium quantities
     incgross, incnet, NSS, rkSS, wSS, YSS, ProfitsSS, ISS, RBSS, taxrev, tot_taxrev, avg_tax_rateSS, eff_int = _bbl_incomes(θ, m.grids, KSS, distrSS)
 
@@ -37,18 +36,19 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     # obtain other steady state variables
 
 
-    KSS, BSS, c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
+   KSS, BSS, c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
             Ksupply(RBSS, 1.0 + rkSS, m.grids, θ, VmSS, VkSS, distrSS, incnet, eff_int,
                     similar(VmSS), similar(VkSS), similar(VmSS), similar(VmSS),
                     similar(VmSS), similar(VmSS), similar(VmSS))
             # not passing verbose to Ksupply b/c any print statements in Ksupply are redundant
 
+KSS2 = KSS
+VmSS2 = VmSS
+VkSS2 = VkSS
+distrSS2 = distrSS
+@save "dsge_steady_state_2.jld2" KSS2 VmSS2 VkSS2 distrSS2
 
 
-
-   #= KSS, BSS, c_a_starSS, m_a_starSS, k_a_starSS, c_n_starSS, m_n_starSS, VmSS, VkSS, distrSS =
-            original_Ksupply(RBSS, 1.0 + rkSS, m, VmSS, VkSS, distrSS, incnet, eff_int)
-=#
 
     #BRUNO CHANGED HERE
     VmSS                = log.(VmSS)
@@ -66,10 +66,11 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     TSS                 = (tot_taxrev + avg_tax_rateSS * ((1.0 - 1.0 / θ[:μ_w]) * wSS * NSS))
     GSS                 = TSS - (θ[:RB] / θ[:π] - 1.0) * BSS
 
-    # Produce distributional summary statistics
+   # Produce distributional summary statistics
     distr_m_SS, distr_k_SS, distr_y_SS, share_borrowerSS, GiniWSS, I90shareSS,I90sharenetSS, GiniXSS,
             sdlogxSS, P9010CSS, GiniCSS, sdlogCSS, P9010ISS, GiniISS, sdlogySS, w90shareSS, P10CSS, P50CSS, P90CSS =
             distrSummaries(distrSS, c_a_starSS, c_n_starSS, incnet, incgross, θ, get_idiosyncratic_dims(m), m.grids)
+
 
     ## Store quantities in m
 

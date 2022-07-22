@@ -742,9 +742,9 @@ function model_settings!(m::BayerBornLuetticke)
 
     # Refined grid settings
     m <= Setting(:ϵ, 1e-11, "Steady-state tolerance for refined grid")
-    m <= Setting(:ny, 22, "Number of idiosyncratic income states for refined grid")
-    m <= Setting(:nm, 80, "Number of liquid asset (bond) points for refined grid")
-    m <= Setting(:nk, 80, "Number of illiquid asset (capital) points for refined grid")
+    m <= Setting(:ny, 11, "Number of idiosyncratic income states for refined grid")
+    m <= Setting(:nm, 40, "Number of liquid asset (bond) points for refined grid")
+    m <= Setting(:nk, 40, "Number of illiquid asset (capital) points for refined grid")
     m <= Setting(:ymin, 0.5, "Minimum grid value for income states on refined grid")
     m <= Setting(:ymax, 1.5, "Maximum grid value for income states on refined grid")
     m <= Setting(:mmin, -6.6, "Minimum grid value for liquid assets (bond) on refined grid")
@@ -846,13 +846,13 @@ function model_settings!(m::BayerBornLuetticke)
                  "Inversion method to obtain gx and hx during the Klein algorithm")
 
     ## Replication-related settings
-    m <= Setting(:replicate_original_output, false, "Use steady state and linearization functions that exactly " *
-                 "replicate output from the original implementation by Bayer, Born, and Luetticke.")
-    m <= Setting(:original_dataset, false, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
+   # m <= Setting(:replicate_original_output, false, "Use steady state and linearization functions that exactly " *
+   #              "replicate output from the original implementation by Bayer, Born, and Luetticke.")
+    #m <= Setting(:original_dataset, false, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
 
-#m <= Setting(:replicate_original_output, true, "Use steady state and linearization functions that exactly " *
-#                 "replicate output from the original implementation by Bayer, Born, and Luetticke.")
- #   m <= Setting(:original_dataset, true, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
+m <= Setting(:replicate_original_output, true, "Use steady state and linearization functions that exactly " *
+                "replicate output from the original implementation by Bayer, Born, and Luetticke.")
+    m <= Setting(:original_dataset, true, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
 
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)

@@ -21,8 +21,7 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
     # Linearization
     #################
 
-    println("jacobian:")
-    @time jac_out = jacobian(m)
+    jac_out = jacobian(m)
 
     # A and B are defined in the first condition
 
@@ -54,9 +53,8 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
     # A ≈ QZ[:Q]*QZ[:S]*QZ[:Z]'
     # B ≈ QZ[:Q]*QZ[:T]*QZ[:Z]'
 
-    @show size(A)
-    println("schur time:")
-    @time QZ = schur!(A, B)
+
+    QZ = schur!(A, B)
 
     # Reorder so that stable comes first
 
@@ -80,7 +78,6 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
 
     inv_method = haskey(get_settings(m), :klein_inversion_method) ?
         get_setting(m, :klein_inversion_method) : :minimum_norm
-
 
 
     if inv_method == :minimum_norm

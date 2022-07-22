@@ -3,15 +3,22 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
 
     # TODO: add ability to pass initial guesses for VmSS, VkSS more robustly (currently, find_steadystate makes a guess itself)
     if get_setting(m, :replicate_original_output)
+
         # Thi block replicates the output from the original implementation by Bayer, Born, and Luetticke
         KSS, VmSS, VkSS, distrSS = original_find_steadystate(m; verbose = verbose,
                                                              skip_coarse_grid = haskey(get_settings(m), :skip_coarse_grid) &&
                                                              get_setting(m, :skip_coarse_grid))
-        #original_prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
 
-         prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose,
-                                  parallel = haskey(get_settings(m), :parallel_steadystate) &&
-                                  get_setting(m, :parallel_steadystate))
+        KSS1 = KSS
+        VmSS1 = VmSS
+        VkSS1 = VkSS
+        distrSS1 = distrSS
+
+        @save "save1.jld2" KSS1 VmSS1 VkSS1 distrSS1
+
+        original_prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
+
+
     else
         if get_setting(m, :compute_full_steadystate)
             # Compute steady state
@@ -21,7 +28,7 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
                                                         use_old_steadystate = haskey(get_settings(m), :use_old_steadystate) &&
                                                         get_setting(m, :use_old_steadystate),
                                                         parallel = haskey(get_settings(m), :parallel_steadystate) &&
-                                                        get_setting(m, :parallel_steadystate))
+                                                       get_setting(m, :parallel_steadystate))
 
 
 
@@ -30,10 +37,6 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
             end
 
             # Update steady-state parameters, reduce state space, and update indices
-
-
-
-
             prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose,
                                   parallel = haskey(get_settings(m), :parallel_steadystate) &&
                                   get_setting(m, :parallel_steadystate))
