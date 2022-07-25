@@ -104,7 +104,6 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
 
     ThetaVk             = vec(dct(VkSS))# Discrete cosine transformation of marginal liquid asset value
 
-    @save "save_dsge.jld2" VkSS ThetaVk
 
     ind                 = sortperm(abs.(vec(ThetaVk)); rev = true)   # Indexes of coefficients sorted by their absolute size
     coeffs              = 1
@@ -115,11 +114,20 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     end
     compressionIndexesVk = ind[1:coeffs]                             # store indexes of retained coefficients
 
+
     distr_LOL           = view(distrSS, 1:nm-1, 1:nk-1, 1:ny-1)      # Leave out last entry of histogramm (b/c it integrates to 1)
     ThetaD              = vec(dct(distr_LOL))                        # Discrete cosine transformation of Copula
+
+#=
     ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
     n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
     compressionIndexesD = ind[2:1+n_copula_coefs]                    # leave out index no. 1 as this shifts the constant
+=#
+
+#Copula Coefficients from BBL
+SELECT = [ ((i+j+k) <= get_setting(m, :reduc_copula)) & (!((i == 1) & (j == 1)) & !((k == 1) & (j == 1)) & !((k == 1) & (i == 1))) for i = 1:get_setting(m, :nm_copula), j = 1:get_setting(m, :nk_copula), k = 1:get_setting(m, :ny_copula)]
+
+compressionIndexesD = findall(SELECT[:])
 
     compressionIndexes  = Array{Array{Int, 1}, 1}(undef, 3)          # Container to store all retained coefficients in one array
     compressionIndexes[1] = compressionIndexesVm
@@ -140,7 +148,10 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
 
     # TODO: move this step to the indices/dimensions update (setting is n_backward_looking_states)
     # add to no. of states the coefficients that perturb the copula
-    # @set! n_par.nstates = n_par.ny + n_par.nk + n_par.nm + n_par.naggrstates - 3 + length(compressionIndexes[3])
+    # n_par.nstates = n_par.ny + n_par.nk + n_par.nm + n_par.naggrstates - 3 + length(compressionIndexes[3])
+
+
+#nstates = get_setting(m, :nm) + get_setting(m, :nk) + get_setting(m, :ny) - 3 +
 
     # ------------------------------------------------------------------------------
     # 2b.) Produce the Copula as an interpolant on the distribution function

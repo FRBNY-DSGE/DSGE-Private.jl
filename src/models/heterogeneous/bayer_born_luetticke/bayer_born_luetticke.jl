@@ -180,9 +180,22 @@ function init_model_indices!(m::BayerBornLuetticke)
     m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states))
 
     m <= Setting(:PRightAll, Matrix{Float64}(undef, 0, 0))
+    m <= Setting(:PRightStates, Matrix{Float64}(undef, 0, 0))
 
     # Exogenous shocks
     exogenous_shocks = collect([:A_sh, :Z_sh, :Ψ_sh, :μ_p_sh, :μ_w_sh, :G_sh, :R_sh, :S_sh, :P_sh])
+
+#=
+    standard_deviation_dictionary = Dict("A_sh" => "σ_A", "Z_sh" => "σ_Z", "ψ_sh" => "σ_ψ", "μ_p_sh" => "σ_μ_p",
+                                     "μ_w_sh" => "σ_μ_w", "G_sh" => "σ_G", "R_sh" => "σ_R", "S_sh" => "σ_S",
+                                     "P_sh" => "σ_P")
+=#
+
+    standard_deviation_dictionary = Dict(:A_sh => :σ_A, :Z_sh => :σ_Z, :ψ_sh => :σ_ψ:, :μ_p_sh: => :σ_μ_p:,
+                                     :μ_w_sh => :σ_μ_w, :G_sh => :σ_G, :R_sh => :σ_R, :S_sh => :σ_S:,
+                                     :P_sh => :σ_P)
+
+    m <= Setting(:shock_to_deviation_dict, standard_deviation_dictionary)
 
     # Observables
     observables = keys(m.observable_mappings)
@@ -552,6 +565,7 @@ function init_parameters!(m::BayerBornLuetticke)
                    description = "σ_P: standard dev. of the tax progressivity shock process",
                    tex_label = "\\sigma_{P}")
 
+
     # Measurement error
     m <= parameter(:e_W90_share, 0.2, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
@@ -752,6 +766,13 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:kmin, 0., "Minimum grid value for illiquid assets (capital) on refined grid")
     m <= Setting(:kmax, 1750., "Maximum grid value for illiquid assets (capital) on refined grid")
 
+    #copula reduction settings (to match BBL code)
+    m <= Setting(:reduc_copula, 30)
+    m <= Setting(:nm_copula, 10)
+    m <= Setting(:nk_copula, 10)
+    m <= Setting(:ny_copula, 10)
+    m <= Setting(:further_compress_critS, 1e-11) #critical value for eigenvalues for Value functions
+    m <= Setting(:further_compress_critC, eps()) #critical value for eigenvalues for copula
 
 #=
     m <= Setting(:coarse_ϵ,  1e-5, "Steady-state tolerance for coarse grid")
