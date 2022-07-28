@@ -1,9 +1,6 @@
 #CHANGED:
 #changed the original replication settings
 
-
-
-
 """
 ```
 BayerBornLuetticke{T} <: AbstractHeterogeneousModel{T}
@@ -180,6 +177,8 @@ function init_model_indices!(m::BayerBornLuetticke)
     m <= Setting(:n_scalar_variables,  get_setting(m, :n_scalar_jumps) + get_setting(m, :n_scalar_states))
 
     m <= Setting(:PRightAll, Matrix{Float64}(undef, 0, 0))
+    m <= Setting(:State2Control, Matrix{Float64}(undef, 0, 0))
+    m <= Setting(:LOMstate, Matrix{Float64}(undef, 0, 0))
     m <= Setting(:PRightStates, Matrix{Float64}(undef, 0, 0))
 
     # Exogenous shocks
@@ -191,9 +190,9 @@ function init_model_indices!(m::BayerBornLuetticke)
                                      "P_sh" => "σ_P")
 =#
 
-    standard_deviation_dictionary = Dict(:A_sh => :σ_A, :Z_sh => :σ_Z, :ψ_sh => :σ_ψ:, :μ_p_sh: => :σ_μ_p:,
-                                     :μ_w_sh => :σ_μ_w, :G_sh => :σ_G, :R_sh => :σ_R, :S_sh => :σ_S:,
-                                     :P_sh => :σ_P)
+    standard_deviation_dictionary = Dict(:A_sh => 48, :Z_sh => 49, :Ψ_sh => 50, :μ_p_sh => 51,
+                                     :μ_w_sh => 52, :G_sh => 55, :R_sh => 54, :S_sh => 53,
+                                     :P_sh => 56)
 
     m <= Setting(:shock_to_deviation_dict, standard_deviation_dictionary)
 

@@ -17,6 +17,7 @@ module DSGE
     using StatsBase: sample, Weights
     using StatsFuns: chisqinvcdf
     using Statistics: std
+    using MatrixEquations
 
     import Calculus
     import Base.isempty, Base.<, Base.min, Base.max

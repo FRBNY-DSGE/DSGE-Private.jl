@@ -95,6 +95,13 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
 	# next, want to represent policy functions in terms of meaningful things
 	# gx_fval = Qy'*gx_coef*Qx
 	# hx_fval = Qx'*hx_coef*Qx
+
+    println("GOT TO KELIN JL")
+
+    if(typeof(m) <: BayerBornLuetticke)
+        m <= Setting(:State2Control, gx_coef)
+        m <= Setting(:LOMstate, hx_coef)
+    end
     return gx_coef, hx_coef, eu
 end
 

@@ -12,6 +12,7 @@ function  mydctmx(n::Int)
     end
     return DC
 end
+
 function produceCompMat(DC,compressionIndexes,dims)
     IDD = DC[1]'
     for j=2:dims
@@ -56,6 +57,7 @@ function uncompressD(compressionIndexes, XC, DC,IDC, grid_dims::NTuple{3, Int})
     return θ
 end
 
+
 function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
                   DC::AbstractArray, IDC::AbstractArray, grid_dims::NTuple{3, Int})
     nm, nk, ny = grid_dims
@@ -83,8 +85,6 @@ function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
     KK   = unique(kk)
     MM   = unique(mm)
 
-    @save "saved_variables.jld2" MM, DC
-
     dc1  = DC[1][MM,:]
     dc2  = DC[2][KK,:]
 
@@ -99,26 +99,12 @@ function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
 
         for j  =1:length(compressionIndexes)
             θ[j] = XU2[compressionIndexes[j]]
-        end
-    end
-    return θ
-end
 
-function compressD(compressionIndexes::AbstractArray, XU::AbstractArray,
-                   DC::AbstractArray, IDC::AbstractArray, grid_dims::NTuple{3, Int})
-    nm, nk, ny = grid_dims
-    θ   = zeros(eltype(XU),length(compressionIndexes))
-    XU2 = zeros(eltype(XU),size(XU))
-    # preallocate mm and kk (subs from comressionIndexes)
-    mm  = zeros(Int,length(compressionIndexes))
-    kk  = zeros(Int,length(compressionIndexes))
-    zz  = zeros(Int,length(compressionIndexes))
-    # Use the fact that not all elements of the grid are used in the compression index
-    for j  = 1:length(compressionIndexes) # index to subs
         zz[j] = div(compressionIndexes[j],(nm-1)*(nk-1)) +1
         kk[j] = div(compressionIndexes[j]- (zz[j]-1)*(nm-1)*(nk-1), nk-1) +1
         mm[j] = compressionIndexes[j] - (zz[j]-1)*(nm-1)*(nk-1) -(kk[j]-1)*(nk-1)
-    end
+        end
+
     # for j  = 1:length(compressionIndexes) # index to subs
         # zz[j] = CartesianIndices(mesh_m)[compressionIndexes[j]][3]
         # kk[j] = CartesianIndices(mesh_m)[compressionIndexes[j]][2]
@@ -130,6 +116,13 @@ function compressD(compressionIndexes::AbstractArray, XU::AbstractArray,
     # Eliminate unused rows/columns from the transformation matrix
     KK   = unique(kk)
     MM   = unique(mm)
+
+#=
+   for i in MM
+       @show MM[i] > 39
+   end
+=#
+
     dc1  = DC[1][MM,:]
     dc2  = DC[2][KK,:]
 

@@ -23,10 +23,6 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     VkSS1 = VkSS
     distrSS1 = distrSS
 
-    @save "dsge_steady_state_replica.jld2" KSS1 VmSS1 VkSS1 distrSS1
-
-
-
             # not passing verbose to Ksupply b/c any print statements in Ksupply are redundant
 
 
@@ -114,10 +110,6 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     end
     compressionIndexesVk = ind[1:coeffs]                             # store indexes of retained coefficients
 
-
-    distr_LOL           = view(distrSS, 1:nm-1, 1:nk-1, 1:ny-1)      # Leave out last entry of histogramm (b/c it integrates to 1)
-    ThetaD              = vec(dct(distr_LOL))                        # Discrete cosine transformation of Copula
-
 #=
     ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
     n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
@@ -128,6 +120,12 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
 SELECT = [ ((i+j+k) <= get_setting(m, :reduc_copula)) & (!((i == 1) & (j == 1)) & !((k == 1) & (j == 1)) & !((k == 1) & (i == 1))) for i = 1:get_setting(m, :nm_copula), j = 1:get_setting(m, :nk_copula), k = 1:get_setting(m, :ny_copula)]
 
 compressionIndexesD = findall(SELECT[:])
+
+
+    distr_LOL           = view(distrSS, 1:get_setting(m, :nm_copula)-1, 1:get_setting(m, :nk_copula)-1, 1:get_setting(m, :ny_copula)-1)      # Leave out last entry of histogramm (b/c it integrates to 1)
+    ThetaD              = vec(dct(distr_LOL))                        # Discrete cosine transformation of Copula
+
+
 
     compressionIndexes  = Array{Array{Int, 1}, 1}(undef, 3)          # Container to store all retained coefficients in one array
     compressionIndexes[1] = compressionIndexesVm
