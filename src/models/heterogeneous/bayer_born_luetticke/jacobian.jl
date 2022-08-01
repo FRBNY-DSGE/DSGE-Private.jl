@@ -83,8 +83,6 @@ function _jacobian!(m::BayerBornLuetticke)
     DC[2]  = mydctmx(nk)
     DC[3]  = mydctmx(ny)
 
-    @show size(DC)
-
     IDC    = [DC[1]', DC[2]', DC[3]'] # TODO: why do we need to take the transpose?
 
     DCD = Vector{Array{Float64, 2}}(undef, 3)

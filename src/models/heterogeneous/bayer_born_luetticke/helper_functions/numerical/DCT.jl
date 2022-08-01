@@ -73,6 +73,7 @@ function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
         kk[j] = div(compressionIndexes[j]- (zz[j]-1)*nm*nk, nk) +1
         mm[j] = compressionIndexes[j] - (zz[j]-1)*nm*nk -(kk[j]-1)*nk
     end
+
     # for j  = 1:length(compressionIndexes) # index to subs
         # zz[j] = CartesianIndices(mesh_m)[compressionIndexes[j]][3]
         # kk[j] = CartesianIndices(mesh_m)[compressionIndexes[j]][2]
@@ -84,6 +85,7 @@ function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
     # Eliminate unused rows/columns from the transformation matrix
     KK   = unique(kk)
     MM   = unique(mm)
+
 
     dc1  = DC[1][MM,:]
     dc2  = DC[2][KK,:]
@@ -100,10 +102,11 @@ function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
         for j  =1:length(compressionIndexes)
             θ[j] = XU2[compressionIndexes[j]]
 
-        zz[j] = div(compressionIndexes[j],(nm-1)*(nk-1)) +1
-        kk[j] = div(compressionIndexes[j]- (zz[j]-1)*(nm-1)*(nk-1), nk-1) +1
-        mm[j] = compressionIndexes[j] - (zz[j]-1)*(nm-1)*(nk-1) -(kk[j]-1)*(nk-1)
+            zz[j] = div(compressionIndexes[j],(nm-1)*(nk-1)) +1
+            kk[j] = div(compressionIndexes[j]- (zz[j]-1)*(nm-1)*(nk-1), nk-1) +1
+            mm[j] = compressionIndexes[j] - (zz[j]-1)*(nm-1)*(nk-1) -(kk[j]-1)*(nk-1)
         end
+    end
 
     # for j  = 1:length(compressionIndexes) # index to subs
         # zz[j] = CartesianIndices(mesh_m)[compressionIndexes[j]][3]
@@ -117,11 +120,6 @@ function compress(compressionIndexes::AbstractArray, XU::AbstractArray,
     KK   = unique(kk)
     MM   = unique(mm)
 
-#=
-   for i in MM
-       @show MM[i] > 39
-   end
-=#
 
     dc1  = DC[1][MM,:]
     dc2  = DC[2][KK,:]

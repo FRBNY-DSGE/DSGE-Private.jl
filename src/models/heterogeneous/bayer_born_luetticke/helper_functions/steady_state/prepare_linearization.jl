@@ -42,13 +42,10 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
                     similar(VmSS), similar(VmSS), similar(VmSS))
             # not passing verbose to Ksupply b/c any print statements in Ksupply are redundant
 
-KSS2 = KSS
-VmSS2 = VmSS
-VkSS2 = VkSS
-distrSS2 = distrSS
-@save "dsge_steady_state_2.jld2" KSS2 VmSS2 VkSS2 distrSS2
-
-
+    KSS2 = KSS
+    VmSS2 = VmSS
+    VkSS2 = VkSS
+    distrSS2 = distrSS
 
     #BRUNO CHANGED HERE
     VmSS                = log.(VmSS)
@@ -154,15 +151,15 @@ coeffs              = 1                                          # Container to 
     ThetaD              = vec(dct(distr_LOL))                        # Discrete cosine transformation of Copula
     ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
 
-#n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
-    #compressionIndexesD = ind[2:1+n_copula_coefs]      # leave out index no. 1 as this shifts the constant
+n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
+compressionIndexesD = ind[2:1+n_copula_coefs]      # leave out index no. 1 as this shifts the constant
 
 
 
 
-    SELECT = [ ((i+j+k) <= 30) & (!((i==1) & (j==1)) & !((k == 1) & (j == 1)) & !((k == 1) & (i == 1))) for i = 1:10, j = 1:10, k = 1:10]
+   # SELECT = [ ((i+j+k) <= 30) & (!((i==1) & (j==1)) & !((k == 1) & (j == 1)) & !((k == 1) & (i == 1))) for i = 1:10, j = 1:10, k = 1:10]
 
-    compressionIndexesD  = findall(SELECT[:])
+    #compressionIndexesD  = findall(SELECT[:])
 
     compressionIndexes  = Array{Array{Int, 1}, 1}(undef, 3)          # Container to store all retained coefficients in one array
     compressionIndexes[1] = compressionIndexesVm

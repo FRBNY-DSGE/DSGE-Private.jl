@@ -866,8 +866,8 @@ function model_settings!(m::BayerBornLuetticke)
                  "Inversion method to obtain gx and hx during the Klein algorithm")
 
     ## Replication-related settings
-   # m <= Setting(:replicate_original_output, false, "Use steady state and linearization functions that exactly " *
-   #              "replicate output from the original implementation by Bayer, Born, and Luetticke.")
+    #m <= Setting(:replicate_original_output, false, "Use steady state and linearization functions that exactly " *
+    #             "replicate output from the original implementation by Bayer, Born, and Luetticke.")
     #m <= Setting(:original_dataset, false, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
 
 m <= Setting(:replicate_original_output, true, "Use steady state and linearization functions that exactly " *

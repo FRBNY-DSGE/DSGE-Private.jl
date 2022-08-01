@@ -85,7 +85,9 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     # ------------------------------------------------------------------------------
     # 2 a.) Discrete cosine transformation of marginal value functions
     # ------------------------------------------------------------------------------
-    ThetaVm             = vec(dct(VmSS))                             # Discrete cosine transformation of marginal liquid asset value
+    ThetaVm             = vec(dct(VmSS)) # Discrete cosine transformation of marginal liquid asset value
+
+
     ind                 = sortperm(abs.(vec(ThetaVm)); rev = true)   # Indexes of coefficients sorted by their absolute size
     coeffs              = 1                     # Container to store the number of retained coefficients
 
@@ -104,12 +106,13 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     ind                 = sortperm(abs.(vec(ThetaVk)); rev = true)   # Indexes of coefficients sorted by their absolute size
     coeffs              = 1
 
+
+
     # Find the important basis functions (discrete cosine) for VkSS
     while norm(view(ThetaVk, view(ind, 1:coeffs))) / norm(ThetaVk) < 1. - get_setting(m, :dct_energy_loss)
             coeffs     += 1                                          # add retained coefficients until only some share of energy is lost
     end
     compressionIndexesVk = ind[1:coeffs]                             # store indexes of retained coefficients
-
 #=
     ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
     n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
