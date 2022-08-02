@@ -36,7 +36,6 @@ ControlCOVAR = (ControlCOVAR + ControlCOVAR') ./ 2
 #STEP 2: produce eigenvalue decomposition
 #--------------------------------------------------
 
-#NSTATES IS INCORRECT
 compression_indices = get_setting(m, :dct_compression_indices)
 #nstates = get_setting(m, :n_backward_looking_states)
 ntotal = length(compression_indices[:Vm]) + length(compression_indices[:Vk]) + length(compression_indices[:copula])
@@ -48,7 +47,7 @@ indKeepD = Dindex[keepD]
 nstates_reduced = nstates - length(Dindex) + length(indKeepD)
 
 Vindex = [compression_indices[:Vm] ; compression_indices[:Vk]]
-Vindex = 1081:2119
+#Vindex = 1081:2119
 evalC, evecC = eigen(ControlCOVAR[Vindex .- nstates, Vindex .- nstates])
 keepV = abs.(evalC).>maximum(evalC)*get_setting(m, :further_compress_critC)
 indKeepV = Vindex[keepV]
@@ -71,6 +70,6 @@ keep[Dindex[.!keepD]] .= false
 keep[Vindex[.!keepV]] .= false
 m <= Setting(:PRightAll, PRightAll_aux[:, keep])
 
-#update_compression_indices!(m, [:Vm, :Vk, :copula], keepV[keepV][1:2], keepV[keepV][3:end], keepD[keepD])
+update_compression_indices!(m, [:Vm, :Vk, :copula], keepV[keepV][1:2], keepV[keepV][3:end], keepD[keepD])
 
 end
