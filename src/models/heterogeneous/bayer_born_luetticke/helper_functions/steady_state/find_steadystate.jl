@@ -74,6 +74,7 @@ function find_steadystate(m::BayerBornLuetticke{T}; verbose::Symbol = :none,
         c_n_star = Array{T,3}(undef, nm, nk, ny)
         c_a_star = Array{T,3}(undef, nm, nk, ny)
 
+        ## Uses coarse grid settings for Kdiff for excess demand function *
         d_coarse(  K, initial::Bool=true,
                    Vm_guess = Array{T,3}(undef, nm, nk, ny),
                    Vk_guess = Array{T,3}(undef, nm, nk, ny),

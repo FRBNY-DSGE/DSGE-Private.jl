@@ -10,7 +10,7 @@ shock_index = Dict()
 
 j = 0
 for i in shocks
-   shock_index[i] = tNo + tNo4 -3 + j
+   shock_index[i] = tNo + tNo4 -3 + j ## parallels BBL getfield(sr.indexes,i) in their compute_reduction.jl
     j = j + 1
 end
 
@@ -40,7 +40,7 @@ compression_indices = get_setting(m, :dct_compression_indices)
 #nstates = get_setting(m, :n_backward_looking_states)
 ntotal = length(compression_indices[:Vm]) + length(compression_indices[:Vk]) + length(compression_indices[:copula])
 
-Dindex = compression_indices[:copula]
+Dindex = compression_indices[:copula] ## values of the indices do not match
 evalS, evecS = eigen(StateCOVAR[Dindex, Dindex])
 keepD = abs.(evalS).>maximum(evalS)*get_setting(m, :further_compress_critS)
 indKeepD = Dindex[keepD]
