@@ -1,7 +1,7 @@
 function compute_reduction(m::BayerBornLuetticke)
 
 #for now, hard coded are: nstates, the inputs for LOMstate and State2Control,
-
+## nm, nk here are 40 whereas in BBL are 50 each, different lengths of value function compression indices
 tNo = get_setting(m, :nk) + get_setting(m, :ny) + get_setting(m, :nm)
 tNo4 = length(get_setting(m, :dct_compression_indices)[:copula])
 shocks = keys(m.exogenous_shocks)
@@ -9,6 +9,8 @@ shocks = keys(m.exogenous_shocks)
 shock_index = Dict()
 
 j = 0
+
+## shock index alignment is off (for BBL is not necessarily linearly asigned from 1080 onwards)
 for i in shocks
    shock_index[i] = tNo + tNo4 -3 + j ## parallels BBL getfield(sr.indexes,i) in their compute_reduction.jl
     j = j + 1
