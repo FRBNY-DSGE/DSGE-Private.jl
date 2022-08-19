@@ -205,10 +205,10 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
              enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
              set_zlb_regime_vals = set_zlb_regime_vals_new)
     # Single out forecast quarter data revisions
-    df_new_lesscond[.&(df_new_lesscond[!, :date] .<= get_setting(m_old, :date_conditional_end),
-                       df_new_lesscond[!, :date] .>= get_setting(m_old, :date_forecast_start)),
-                       names(df_old)] = df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
-                       df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), :]
+    # df_new_lesscond[.&(df_new_lesscond[!, :date] .<= get_setting(m_old, :date_conditional_end),
+    #                    df_new_lesscond[!, :date] .>= get_setting(m_old, :date_forecast_start)),
+    #                    names(df_old)] = df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
+    #                    df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), :]
     out3 = f(m_new, df_new_lesscond, params_new, :none, outputs = [:forecast, :shockdec],
              enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
              set_zlb_regime_vals = set_zlb_regime_vals_new)
@@ -352,11 +352,16 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
 
         # 0.5 SPD Changes
         #policy_comp = out1[forecastvar] - out1_5[forecastvar]
-        spd_comp = out1[forecastvar][1:size(out1_5[forecastvar], 1), :] - out1_5[forecastvar]
+        # spd_comp = out1[forecastvar][1:size(out1_5[forecastvar], 1), :] - out1_5[forecastvar]
+        # decomp[Symbol(:decompspd, class)] = spd_comp
+
+        # now that spd changes are permanent, not sure this is necessary
+        # setting it to zero for now but should remove it entirely soon
+        spd_comp = out1[forecastvar]- out1[forecastvar]
         decomp[Symbol(:decompspd, class)] = spd_comp
 
         # 1. Latest quarter
-        release_comp = out1_5[forecastvar] - out2[forecastvar]
+        release_comp = out1[forecastvar] - out2[forecastvar]
         decomp[Symbol(:decomprelease, class)] = release_comp
 
         # 3. Conditional data revision
@@ -394,9 +399,14 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
         # Get difference in trends
         if haskey(m_new.settings, :regime_dates) && haskey(m_new.settings, :n_regimes)
             # TODO adjust to handle forecasting the same regime (or more than 1 regime apart)
-            trend_new = out1[trendvar][:, 1:end-1]
+#            trend_new = out1[trendvar][:, 1:end-1]
             trend_old = out8[trendvar]
-            trend_comp = trend_new - vcat(trend_old, zeros(size(trend_new,1)-size(trend_old,1), 288))
+            trend_new = out1[trendvar]
+            # why is the second dim hardcoded? @alissa
+            println(size(trend_new))
+            println(size(trend_old))
+#            trend_comp = trend_new - vcat(trend_old, zeros(size(trend_new,1)-size(trend_old,1), 289))
+            trend_comp = trend_new - trend_old
         else
             trend_new = get_trend_dates(Dict(1 => date_mainsample_start(m_new)), out1[trendvar],
                                         date_mainsample_start(m_new), size(out1[datavar],2),
@@ -409,7 +419,8 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
 
         decomp[Symbol(:decomptrend, class)] = trend_comp
 
-        total_decomp = out1[forecastvar] - vcat(out8[forecastvar], zeros(size(out1[forecastvar],1)-size(out8[forecastvar],1), 288))
+#        total_decomp = out1[forecastvar] - vcat(out8[forecastvar], zeros(size(out1[forecastvar],1)-size(out8[forecastvar],1), 288))
+        total_decomp = out1[forecastvar] - out8[forecastvar]
         decomp[Symbol(:decomptotal, class)] = total_decomp
         #check && @assert total_diff ≈ out1[forecastvar][1:min_ind,:] - out4[forecastvar][1:min_ind,:]
     end
@@ -445,6 +456,8 @@ function decomposition_periods(m_new::M, m_old::M, df_new::DataFrame, df_old::Da
     T1_old = cond_old == :none ? 0 : n_conditional_periods(m_old)
     # Check DataFrame sizes
     @assert size(df_new, 1) == T0 + T + T1_new
+    println(size(df_old,1))
+    println(T0 + T - k + T1_old)
     @assert size(df_old, 1) == T0 + T - k + T1_old
 
     # Old model forecasts up to T+H

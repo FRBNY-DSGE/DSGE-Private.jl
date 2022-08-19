@@ -14,7 +14,9 @@ function get_decomp_filename(m_new::M, m_old::M, input_type::Symbol,
     base_new, ext = splitext(basename(fn_new))
     base_old, _   = splitext(basename(fn_old))
     base_old = replace(base_old, string(output_var) => "")
-    base_old = spec(m_old) * "_" * subspec(m_old) * base_old
+    # output filenames are too long, shortening the old filename for now
+    # should think of better naming scheme moving forward
+    base_old = spec(m_old)# * "_" * subspec(m_old) * base_old
 
     return joinpath(dir, base_new * "__" * base_old * ext)
 end
@@ -63,6 +65,8 @@ function write_forecast_decomposition(m_new::M, m_old::M, input_type::Symbol,
             prod = Symbol(:decomp, comp)
             var = Symbol(prod, class)
             filepath = decomp_output_files[var]
+
+
 
             if isnull(block_number) || get(block_number) == 1
                 # Write forecast metadata to a jld2 and the raw forecast output
