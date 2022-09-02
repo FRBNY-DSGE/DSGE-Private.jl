@@ -32,10 +32,13 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
         # and we will take the generalized Schur decomposition of A and -B.
         A = jac_out[1]::Matrix{T} # Need to get dense matrices out for schur
         B = -jac_out[2]::Matrix{T}
-
+        #println("A preliminary value")
+        #println(m[:A].value[1:5,1:5])
         n = size(A, 1)
     else
         Jac1 = jacobian(m)
+        #CHECK ON THIS n approach
+        #Jac1 = jac_out
         A = Jac1[:, 1:n]::Matrix{T}
         B = -Jac1[:, n+1:2*n]::Matrix{T}
     end
@@ -54,7 +57,9 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
     # B ≈ QZ[:Q]*QZ[:T]*QZ[:Z]'
 
 
-    QZ = schur!(A, B)
+    QZ = schur!(deepcopy(A),deepcopy(B))
+    #println("A post schur")
+    #println(m[:A].value[1:5,1:5])
 
     # Reorder so that stable comes first
 
@@ -102,6 +107,8 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
         m <= Setting(:State2Control, gx_coef)
         m <= Setting(:LOMstate, hx_coef)
     end
+    #println("final A model")
+    #println(m[:A].value[1:5,1:5])
     return gx_coef, hx_coef, eu
 end
 

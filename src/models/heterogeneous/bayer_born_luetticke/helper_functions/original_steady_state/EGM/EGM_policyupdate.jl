@@ -37,7 +37,8 @@ function original_EGM_policyupdate(EVm::Array,
     m_star_n    = c_star_n .+ m_ndgrid .- inc_lab .- inc_rent
 
     # Apply correct interest rate
-    m_star_n .= m_star_n ./ ((RBminus .+ borrwedge .* (m_star_n .< 0)) ./ πminus)  # apply borrowing rate
+    m_star_n .= m_star_n ./ (RBminus ./ πminus .+ borrwedge .* (m_star_n .< 0))  # apply borrowing rate
+    #m_star_n .= m_star_n ./ (RBminus .+ borrwedge .* (m_star_n .< 0))  # apply borrowing rate
     # m_star_n   ./= ((RBminus .+ borrwedge .* (m_star_n .< 0)) ./ πminus)  # apply borrowing rate
 
     # Next step: Interpolate w_guess and c_guess from new k-grids

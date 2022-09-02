@@ -2,6 +2,7 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
     # See helper_functions/HetAgentDSGE
 
     # TODO: add ability to pass initial guesses for VmSS, VkSS more robustly (currently, find_steadystate makes a guess itself)
+
     if get_setting(m, :replicate_original_output)
 
         # Thi block replicates the output from the original implementation by Bayer, Born, and Luetticke
@@ -13,7 +14,8 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
         VmSS1 = VmSS
         VkSS1 = VkSS
         distrSS1 = distrSS
-
+        save_steadystate(m,KSS,VmSS,VkSS,distrSS)
+        println("steady state saved")
         @save "save1.jld2" KSS1 VmSS1 VkSS1 distrSS1
 
         original_prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
@@ -30,7 +32,8 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
                                                         parallel = haskey(get_settings(m), :parallel_steadystate) &&
                                                        get_setting(m, :parallel_steadystate))
 
-
+            m <= Setting(:save_steadystate, true)
+            println("saving steady state")
 
             if get_setting(m, :save_steadystate)
                 save_steadystate(m, KSS, VmSS, VkSS, distrSS)

@@ -1,5 +1,30 @@
 ## THIS CAN ALL BE EFFICIENTLY DONE USING INTERPOLATIONS.jl
 
+@doc raw"""
+    myinterpolate3(xgrd1, xgrd2, xgrd3, ygrd, xeval1, xeval2, xeval3)
+Trilineary project `ygrd` on (`xgrd1`,`xgrd2`,`xgrd3`) and use it to
+interpolate value at (`xeval1`,`xeval2`,`xeval3`).
+# Example
+```jldoctest
+julia> xgrd = [1.0,6.0];
+julia> f((x,y,z)) = x+y+z;
+julia> ygrd = f.(collect(Iterators.product(xgrid,xgrid,xgrid));
+julia> xeval = [3.0,5.0];
+julia> mylinearinterpolate3(xgrd,xgrd,xgrd,ygrd,xeval,xeval,xeval)
+2x2x2 Array{Float64,3}:
+[:,:,1] =
+ 9.0 11.0
+11.0 13.0
+[:,:,2] =
+11.0 13.0
+13.0 15.0
+```
+"""
+myinterpolate3(xgrd1::AbstractVector, xgrd2::AbstractVector,
+    xgrd3::AbstractVector, ygrd::AbstractArray,
+    xeval1::AbstractVector, xeval2::AbstractVector, xeval3::AbstractVector) =
+    mylinearinterpolate3(xgrd1, xgrd2, xgrd3, ygrd, xeval1, xeval2, xeval3)
+
 #-------------------------------------------------------------------------------
 ## Linear interpolations ##
 #-------------------------------------------------------------------------------

@@ -38,6 +38,8 @@ Wagesum′            = N′_t * w′_t                               # Total wa
 N_GAP                   = DSGE._bbl_employment(K_t, Z_t ./ (θ[:μ_p] * θ[:μ_w]), θ[:α], θ[:τ_lev], θ[:τ_prog], θ[:γ])
 Y_GAP                   = DSGE._bbl_output(K_t, Z_t, N_GAP, θ[:α])
 
+YREACTION = Ygrowth_t
+
 # tax progressivity variabels used to calculate e.g. total taxes
 tax_prog_scale          = (θ[:γ] + θ[:τ_prog]) / ((θ[:γ] + τ_prog_t))                        # scaling of labor disutility including tax progressivity
 # TODO: check if we can avoid doing this inc = [...] stuff b/c it seems it's just allocating one vector??
@@ -101,13 +103,13 @@ F[eq_Cgrowth]      = log(Cgrowth_t)      - log(C_t / C_t1)
 #  Taylor rule and interest rates
 F[eq_mp]           = log(RB′_t) - nt[:RB_t] -
                          ((1 - θ[:ρ_R]) * θ[:θ_π]) * log(π_t) -
-                         ((1 - θ[:ρ_R]) * θ[:θ_Y]) * log(Y_t / Y_GAP) -
+                         ((1 - θ[:ρ_R]) * θ[:θ_Y]) * log(YREACTION) -
                          θ[:ρ_R] * (log(RB_t) - nt[:RB_t])  - log(R_sh_t)
 
 # Tax rule
 F[eq_tax_progressivity]        = log(τ_prog_t) - θ[:ρ_P] * log(τ_prog_t1)  - # TODO: find correct name of τ_prog_lag_t1
                          (1.0 - θ[:ρ_P]) * (nt[:τ_prog_t]) -
-                         (1.0 - θ[:ρ_P]) * θ[:γ_Y_P] * log(Y_t / Y_GAP) -
+                         (1.0 - θ[:ρ_P]) * θ[:γ_Y_P] * log(YREACTION) -
                          (1.0 - θ[:ρ_P]) * θ[:γ_B_P] * (log(B_t)- nt[:B_t]) -
                          log(P_sh_t)
 
@@ -120,13 +122,13 @@ F[eq_tax_revenue]            = log(T_t) - log(sum(nt[:distr_t] .* taxrev) + avg_
 
 F[eq_avg_tax_rate]  = log(avg_tax_rate_t) - θ[:ρ_τ] * log(avg_tax_rate_t1)  -
                             (1.0 - θ[:ρ_τ]) * nt[:avg_tax_rate_t] -
-                            (1.0 - θ[:ρ_τ]) * θ[:γ_Y_τ] * log(Y_t / Y_GAP) -
+                            (1.0 - θ[:ρ_τ]) * θ[:γ_Y_τ] * log(YREACTION) -
                             (1.0 - θ[:ρ_τ]) * θ[:γ_B_τ] * (log(B_t) - nt[:B_t])
 
 # --------- Controls ------------
 # Deficit rule
 F[eq_deficit_rule]            = log(Bgrowth′_t) + θ[:γ_B] * (log(B_t) - nt[:B_t])  -
-                          θ[:γ_Y] * log(Y_t / Y_GAP)  - θ[:γ_π] * log(π_t) - log(G_sh_t)
+                          θ[:γ_Y] * log(YREACTION)  - θ[:γ_π] * log(π_t) - log(G_sh_t)
 
 F[eq_gov_budget_constraint]            = log(G_t) - log(B′_t + T_t - RB_t / π_t * B_t)             # Government Budget Constraint
 
@@ -174,8 +176,10 @@ F[eq_exante_liquidity_premium]         = log(LP_XA_t)                - (log((q�
 F[eq_capital_accum]            = K′_t -  K_t * (1.0 - depr)  - Ψ_t * I_t * (1.0 - θ[:ϕ] / 2.0 * (Igrowth_t -1.0).^2.0)           # Capital accumulation equation
 F[eq_labor_supply]            = log(N_t) - log(((1.0 - τ_prog_t) * τ_level_t * (mc_w_t * w_t).^(1.0 - τ_prog_t)).^(1.0 / (θ[:γ] + τ_prog_t)) * Ht_t)   # labor supply
 F[eq_output]            = log(Y_t) - log(Z_t * N_t .^(1.0 - θ[:α]) * Kserv .^ θ[:α])                                          # production function
-F[eq_resource_constraint]            = log(Y_t - G_t - I_t - BD_t * θ[:Rbar] + (A_t - 1.0) * RB_t * B_t / π_t -
-                               (δ_1 * (u_t - 1.0) + δ_2 / 2.0 * (u_t - 1.0)^2.0) * K_t ) - log(C_t) # Resource constraint
+#F[eq_resource_constraint]            = log(Y_t - G_t - I_t - BD_t * θ[:Rbar] + (A_t - 1.0) * RB_t * B_t / π_t -
+                              # (δ_1 * (u_t - 1.0) + δ_2 / 2.0 * (u_t - 1.0)^2.0) * K_t ) - log(C_t) # Resource constraint
+#println("testing new equation")
+F[eq_resource_constraint]            = log(Y_t - G_t - I_t - BD_t * θ[:Rbar] + (A_t - 1.0) * RB_t * B_t / π_t)  - log(C_t) # Resource constraint
 
 # Error Term on prices/aggregate summary vars (logarithmic, controls), here difference to SS value averages
 F[eq_capital_market_clear]            = log(K_t)     - nt[:K_t]                                                            # Capital market clearing

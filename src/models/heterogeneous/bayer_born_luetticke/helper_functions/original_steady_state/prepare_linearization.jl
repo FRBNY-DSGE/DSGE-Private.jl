@@ -1,3 +1,4 @@
+using Roots
 function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArray{T, 3}, VkSS::AbstractArray{T, 3},
                                         distrSS::AbstractArray{T, 3}; verbose::Symbol = :none) where {T <: Real}
 
@@ -38,7 +39,7 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     # Produce distributional summary statistics
     distr_m_SS, distr_k_SS, distr_y_SS, share_borrowerSS, GiniWSS, I90shareSS,I90sharenetSS, GiniXSS,
             sdlogxSS, P9010CSS, GiniCSS, sdlogCSS, P9010ISS, GiniISS, sdlogySS, w90shareSS, P10CSS, P50CSS, P90CSS =
-            original_distrSummaries(distrSS, c_a_starSS, c_n_starSS, incnet, incgross, θ, get_idiosyncratic_dims(m), m.grids)
+            original_distrSummaries(distrSS, 1.0, c_a_starSS, c_n_starSS, incnet, incgross, θ, get_idiosyncratic_dims(m), m.grids)
 
     ## Store quantities in m
 
@@ -119,7 +120,7 @@ function original_prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::Abs
     compressionIndexesD = ind[2:1+n_copula_coefs]                    # leave out index no. 1 as this shifts the constant
 =#
 
-#Copula Coefficients from BBL
+#Copula Coefficients from BBL, NEEDED TO USE n_dct_copula coeffs instead if wanted to restrict to 10 arbitrrily
 SELECT = [ ((i+j+k) <= get_setting(m, :reduc_copula)) & (!((i == 1) & (j == 1)) & !((k == 1) & (j == 1)) & !((k == 1) & (i == 1))) for i = 1:get_setting(m, :nm_copula), j = 1:get_setting(m, :nk_copula), k = 1:get_setting(m, :ny_copula)]
 
 compressionIndexesD = findall(SELECT[:])
@@ -170,6 +171,19 @@ compressionIndexesD = findall(SELECT[:])
     CDF_y                     = cumsum([0.0; vec(distr_y_SS)])                       # Marginal distribution (cdf) of income
 
     # TODO: create notion of "steady-state function parameter" and store this function there b/c we will need it for MCMC/SMC
+    # Calculate interpolation nodes for the copula as those elements of the marginal distribution
+    # that yield close to equal aggregate shares in liquid wealth, illiquid wealth and income.
+    # Entrepreneur state treated separately.
+    copula_marginal_m = copula_marg_equi(distr_m_SS, m.grids[:m_grid], get_setting(m,:nm_copula))
+    copula_marginal_k = copula_marg_equi(distr_k_SS, m.grids[:k_grid], get_setting(m,:nk_copula))
+    copula_marginal_y = copula_marg_equi_y(distr_y_SS, m.grids[:y_grid], get_setting(m,:ny_copula))
+    m <= Setting(:copula_marginal_m, copula_marginal_m)
+    m <= Setting(:copula_marginal_k, copula_marginal_k)
+    m <= Setting(:copula_marginal_y, copula_marginal_y)
+
+
+
+
     Copula(x::Vector, y::Vector, z::Vector) =
         mylinearinterpolate3(CDF_m, CDF_k, CDF_y, CDF_SS, x, y, z) # Define Copula as a function (used only if not perturbed)
 
@@ -185,4 +199,131 @@ compressionIndexesD = findall(SELECT[:])
     setup_indices!(m)
 
     m
+end
+
+
+# in case we ever just want the vector
+@inline function construct_steadystate_vector(m::BayerBornLuetticke; only_aggregate::Bool = false)
+
+    if only_aggregate
+        keys = [unprime(k) for k in vcat(get_aggregate_state_variables(m), get_aggregate_jump_variables(m))]
+
+        return [get_untransformed_values(m[_bbl_parse_endogenous_states(k)]) for k in keys]
+    else
+        keys = vcat(:marginal_pdf_m_t, :marginal_pdf_k_t, :marginal_pdf_y_t, :distr_t, # TODO: are marginal_pdfs going to be state variables?
+                    [_bbl_parse_endogenous_states(unprime(k)) for
+                     k in vcat(get_aggregate_state_variables(m), m.jump_variables)])   # m.jump_variables = [Vm_t, Vk_t, aggregate scalars names...]
+
+        return [get_untransformed_values(m[_bbl_parse_endogenous_states(k)]) for k in keys]
+    end
+end
+
+@inline function construct_steadystate_namedtuple(m::BayerBornLuetticke; only_aggregate::Bool = false)
+
+    # Create keys for steady-state variables
+    keys = if only_aggregate
+        ([unprime(k) for k in get_aggregate_state_variables(m)]...,
+         [unprime(k) for k in get_aggregate_jump_variables(m)]...)
+    else
+        (:marginal_pdf_m_t, # not just using m.state_variables b/c we will need
+         :marginal_pdf_k_t, # the entire distribution, not just the DCT coefficients
+         :marginal_pdf_y_t,
+         :distr_t,
+         [unprime(k) for
+          k in get_aggregate_state_variables(m)]...,
+         [unprime(k) for k in m.jump_variables]...) # m.jump_variables = [Vm_t, Vk_t, aggregate scalars names...]
+    end
+
+    # Create NamedTuple by parsing key to obtain the implied steady-state value in m
+    nt = NamedTuple{keys}(get_untransformed_values(m[_bbl_parse_endogenous_states(k)]) for k in keys)
+
+    return nt
+end
+
+@inline function construct_prime_and_noprime_indices(m::BayerBornLuetticke; only_aggregate::Bool = false)
+
+    if only_aggregate
+        id = OrderedDict{Symbol, Int64}(k => i for (i, k) in enumerate(get_aggregate_state_variables(m)))
+        n_aggr_states = length(id)
+        for (i, k) in enumerate(get_aggregate_jump_variables(m))
+            id[k] = i + n_aggr_states
+        end
+
+        for (k, v) in id
+            id[unprime(k)] = v
+        end
+    else
+        id = deepcopy(m.endogenous_states)
+
+        for (k, v) in id
+            id[unprime(k)] = v
+        end
+    end
+
+    return id
+end
+
+
+function copula_marg_equi_y(distr_i, grid_i, nx)
+    grid_i       = grid_i.points
+
+    CDF_i        = cumsum(distr_i[:])          # Marginal distribution (cdf) of liquid assets
+    aux_marginal = collect(range(CDF_i[1], stop = CDF_i[end], length = nx))
+
+    x2 = 1.0
+    for i = 2:nx-1
+        equi(x1)            = equishares(x1, x2, grid_i[1:end-1], distr_i[1:end-1], nx-1)
+        x2                  = find_zero(equi, (1e-9, x2))
+        aux_marginal[end-i] = x2
+    end
+
+    aux_marginal[end]   = CDF_i[end]
+    aux_marginal[1]     = CDF_i[1]
+    aux_marginal[end-1] = CDF_i[end-1]
+    copula_marginal     = copy(aux_marginal)
+    jlast               = nx
+    for i = nx-1:-1:1
+        j = locate(aux_marginal[i], CDF_i) + 1
+        if jlast == j
+            j -=1
+        end
+        jlast = j
+        copula_marginal[i] = CDF_i[j]
+    end
+    return copula_marginal
+end
+
+function copula_marg_equi(distr_i, grid_i, nx)
+    grid_i       = grid_i.points
+    CDF_i        = cumsum(distr_i[:])          # Marginal distribution (cdf) of liquid assets
+    aux_marginal = collect(range(CDF_i[1], stop = CDF_i[end], length = nx))
+
+    x2 = 1.0
+    for i = 1:nx-1
+        equi(x1)            = equishares(x1, x2, grid_i, distr_i, nx)
+        x2                  = find_zero(equi ,(1e-9, x2))
+        aux_marginal[end-i] = x2
+    end
+
+    aux_marginal[end] = CDF_i[end]
+    aux_marginal[1]   = CDF_i[1]
+    copula_marginal   = copy(aux_marginal)
+    jlast             = nx
+    for i = nx-1:-1:1
+        j = locate(aux_marginal[i], CDF_i) + 1
+        if jlast == j
+            j -=1
+        end
+        jlast = j
+        copula_marginal[i] = CDF_i[j]
+    end
+    return copula_marginal
+end
+
+function equishares(x1, x2, grid_i, distr_i, nx)
+    FN_Wshares = cumsum(grid_i .* distr_i) ./ sum(grid_i .* distr_i)
+    Wshares    = diff(mylinearinterpolate(cumsum(distr_i), FN_Wshares, [x1; x2]))
+    dev_equi   = Wshares .- 1.0 ./ nx
+
+    return dev_equi
 end

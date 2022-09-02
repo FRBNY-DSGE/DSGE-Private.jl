@@ -2,7 +2,19 @@ function original_Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
                         initial::Bool = true, Vm_guess::AbstractArray = zeros(1, 1, 1),
                         Vk_guess::AbstractArray = zeros(1, 1, 1), distr_guess::AbstractArray = zeros(1, 1, 1);
                         verbose::Symbol = :none, coarse::Bool = false) where {T1 <: Real}
-
+#=
+    println("K_guess")
+    println(K_guess)
+    println("Vk_guess norm")
+    println(norm(Vk_guess))
+    println("distr_guess norm")
+    println(norm(distr_guess))
+    println("Vm_guess norm")
+    println(norm(Vm_guess))
+    #println("test change")
+    #println("Transitions EigVal")
+    #println(m.grids[:Π])
+=#
     # Some type declarations b/c grids is an OrderedDict
     # => ensures type stability, or else unnecessary allocations are made
     Π                   = m.grids[:Π]::Matrix{T1}
@@ -94,8 +106,7 @@ function original_Kdiff(K_guess::Float64, m::BayerBornLuetticke{T1},
 #=
 var1 = inc[1]
 var2 = inc[2]
-var3 = inc[3]
-var4 = inc[4]
+var3 = inc[3]var4 = inc[4]
 
 @save "save3.jld2" var1 var2 var3 var4
 =#

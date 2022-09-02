@@ -2,29 +2,35 @@ function compute_reduction(m::BayerBornLuetticke)
 
 #for now, hard coded are: nstates, the inputs for LOMstate and State2Control,
 ## nm, nk here are 40 whereas in BBL are 50 each, different lengths of value function compression indices
+#id = get_setting(m,:prime_and_noprime_indices)::OrderedDict{Symbol, UnitRange{Int}} #double check that this prints indices,otherwise call construct
+id = construct_prime_and_noprime_indices(m; only_aggregate = false) #perhaps pass it in/set it inside the jacobian file so that don't have to call it again
+#maybe can use m.endogenous_states rather than reconstructing
+#println(id)
+id_keys = keys(id)
+id_values = values(id)
 tNo = get_setting(m, :nk) + get_setting(m, :ny) + get_setting(m, :nm)
 tNo4 = length(get_setting(m, :dct_compression_indices)[:copula])
 shocks = keys(m.exogenous_shocks)
+shock2state_name_map = Dict(:A_sh => :A_t,:Z_sh => :Z_t,:Ψ_sh => :Ψ_t,:μ_p_sh => :μ_p_t,:μ_w_sh => :μ_w_t, :G_sh => :G_sh_t,:P_sh => :P_sh_t,:R_sh => :R_sh_t,:S_sh => :S_sh_t)
 
 shock_index = Dict()
 
-j = 0
-
 ## shock index alignment is off (for BBL is not necessarily linearly asigned from 1080 onwards)
 for i in shocks
-   shock_index[i] = tNo + tNo4 -3 + j ## parallels BBL getfield(sr.indexes,i) in their compute_reduction.jl
-    j = j + 1
+   shock_index[i] = id[shock2state_name_map[i]] ## parallels BBL getfield(sr.indexes,i) in their compute_reduction.jl
 end
+print(shock_index)
 
 #-------------------------------------------------
 #STEP 1: Long Run Covariance
 #-------------------------------------------------
 
 sd_dictionary = get_setting(m, :shock_to_deviation_dict)
-nstates = 1080
+nstates = get_setting(m,:n_backward_looking_states)
+ntotal = get_setting(m,:n_model_states)
 SCov = zeros(nstates, nstates)
 for i in shocks
-    SCov[shock_index[i], shock_index[i]] =(m.parameters[sd_dictionary[i]].value).^2
+    SCov[shock_index[i], shock_index[i]] .=(sd_dictionary[i]).^2
 end
 @save "scov.jld2" SCov
 
@@ -38,19 +44,20 @@ ControlCOVAR = (ControlCOVAR + ControlCOVAR') ./ 2
 #STEP 2: produce eigenvalue decomposition
 #--------------------------------------------------
 
-compression_indices = get_setting(m, :dct_compression_indices)
+#compression_indices = get_setting(m, :dct_compression_indices)
 #nstates = get_setting(m, :n_backward_looking_states)
-ntotal = length(compression_indices[:Vm]) + length(compression_indices[:Vk]) + length(compression_indices[:copula])
+#ntotal = length(compression_indices[:Vm]) + length(compression_indices[:Vk]) + length(compression_indices[:copula])
 
-Dindex = compression_indices[:copula] ## values of the indices do not match
+Dindex = id[:copula_t] ## values of the indices do not match
 evalS, evecS = eigen(StateCOVAR[Dindex, Dindex])
 keepD = abs.(evalS).>maximum(evalS)*get_setting(m, :further_compress_critS)
 indKeepD = Dindex[keepD]
 nstates_reduced = nstates - length(Dindex) + length(indKeepD)
 
-Vindex = [compression_indices[:Vm] ; compression_indices[:Vk]]
+#may not want to be using the literal compression indices bc are different than the regular indices variable
+Vindex = [id[:Vm_t] ; id[:Vk_t]]
 #Vindex = 1081:2119
-evalC, evecC = eigen(ControlCOVAR[Vindex .- nstates, Vindex .- nstates])
+evalC, evecC = eigen(ControlCOVAR[Vindex.-nstates, Vindex.-nstates])
 keepV = abs.(evalC).>maximum(evalC)*get_setting(m, :further_compress_critC)
 indKeepV = Vindex[keepV]
 
@@ -70,8 +77,35 @@ PRightAll_aux[Vindex, Vindex] = evecC
 keep = ones(Bool, ntotal)
 keep[Dindex[.!keepD]] .= false
 keep[Vindex[.!keepV]] .= false
+#println("Whole P")
+#println(PRightAll_aux)
+println("dindex")
+println(Dindex)
+println("sum keep")
+#println(keep)
+println(sum(sum(keep)))
+println("D index matrix")
+println(PRightAll_aux[Dindex,Dindex])
+println("Sum P")
+println(sum(sum(PRightAll_aux)))
 m <= Setting(:PRightAll, PRightAll_aux[:, keep])
-
-update_compression_indices!(m, [:Vm, :Vk, :copula], keepV[keepV][1:2], keepV[keepV][3:end], keepD[keepD])
-
+#@assert false
+# NEED TO DECIDE HOW YOU UPDATE INDEX
+#update_compression_indices!(m, [:Vm, :Vk, :copula], keepV[keepV][1:2], keepV[keepV][3:end], keepD[keepD])
+# seems like more about
+id_reduced = Dict()
+for key in id_keys
+    id_reduced[key] = id[key]
 end
+id_reduced[:copula_t] = Int.(indKeepD)
+id_reduced[:Vm] = Int.(indKeepV[indKeepV.<= last(id[:Vm_t])])
+id_reduced[:Vk] = Int.(indKeepV[indKeepV.> last(id[:Vm_t])])
+println(id_reduced)
+println("indKeepV")
+println(indKeepV)
+println("indKeepD")
+println(indKeepD)
+return id_reduced #may need to save this separately and the ordering of this may need to change, look to setup_indices and construct_prime_and_noprime for further guidance
+end
+
+# create a function here to generate reduced indices and variables

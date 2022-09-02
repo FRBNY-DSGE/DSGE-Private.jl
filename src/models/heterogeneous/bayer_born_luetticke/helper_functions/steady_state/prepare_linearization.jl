@@ -48,14 +48,14 @@ function prepare_linearization(m::BayerBornLuetticke, KSS::T, VmSS::AbstractArra
     distrSS2 = distrSS
 
     #BRUNO CHANGED HERE
-    VmSS                = log.(VmSS)
-    VkSS                = log.(VkSS)
+    #VmSS                = log.(VmSS)
+    #VkSS                = log.(VkSS)
 
 
 
 
-   # VmSS = log.(1.0 ./ sqrt.( sqrt.( VmSS)))
-   # VkSS = log.(1.0 ./ sqrt.( sqrt.( VkSS)))
+    VmSS = log.(1.0 ./ sqrt.( sqrt.( VmSS)))
+    VkSS = log.(1.0 ./ sqrt.( sqrt.( VkSS)))
 
 
 
@@ -150,8 +150,9 @@ coeffs              = 1                                          # Container to 
     distr_LOL           = view(distrSS, 1:nm-1, 1:nk-1, 1:ny-1)      # Leave out last entry of histogramm (b/c it integrates to 1)
     ThetaD              = vec(dct(distr_LOL))                        # Discrete cosine transformation of Copula
     ind                 = sortperm(abs.(vec(ThetaD)); rev = true)    # Indexes of coefficients sorted by their absolute size
-
-n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
+## COMMENTING OUT RELIANCE ON fixed n dct_coupla coeffs
+#n_copula_coefs      = get_setting(m, :n_copula_dct_coefficients) # keep n_copula_coefs coefficients, but
+n_copula_coefs      = length(get_setting(m,:dct_compression_indices)[:copula])
 compressionIndexesD = ind[2:1+n_copula_coefs]      # leave out index no. 1 as this shifts the constant
 
 

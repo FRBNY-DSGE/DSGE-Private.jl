@@ -91,6 +91,7 @@ end
     if verbose in [:low, :high]
         println("Capital stock is $(KSS)")
     end
+    #@assert false
     # -------------------------------------------------------------------------------
     ## STEP 2: Find the stationary equilibrium for final grid
     # -------------------------------------------------------------------------------
@@ -112,7 +113,7 @@ end
     return out
 end
 
-    KSS = 40.8946
+    # KSS = 40.8946
     # b.) Find equilibrium capital stock (multigrid on y,m,k) # TODO: isn't grid on (m, k, y)?
     BrentOut = CustomBrent(d, KSS*.8, KSS*1.2; tol = get_setting(m, :ϵ))
     KSS      = BrentOut[1]
@@ -126,6 +127,6 @@ end
     @show size(VmSS)
     @show size(VkSS)
     @show size(distrSS)
-
+    #@assert false
     return KSS, VmSS, VkSS, distrSS
 end

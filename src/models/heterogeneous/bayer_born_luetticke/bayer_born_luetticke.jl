@@ -28,8 +28,7 @@ equilibrium conditions.
 * `endogenous_states::OrderedDict{Symbol,Int}`: Maps each state to a column in
   the measurement and equilibrium condition matrices.
 
-* `exogenous_shocks::OrderedDict{Symbol,Int}`: Maps each shock to a column in
-  the measurement and equilibrium condition matrices.
+* `exogenous_shocks::OrderedDict{Symbol,Int}`: Maps each shock to a column in the measurement and equilibrium condition matrices.
 
 * `expected_shocks::OrderedDict{Symbol,Int}`: Maps each expected shock to a
   column in the measurement and equilibrium condition matrices.
@@ -155,6 +154,7 @@ function init_model_indices!(m::BayerBornLuetticke)
 
     # Jumps
     # TODO: delete jump variables that should just be pseudo-observables
+#=
     m.jump_variables = [# Function-valued jumps
                         :Vm′_t, :Vk′_t,
 
@@ -168,6 +168,21 @@ function init_model_indices!(m::BayerBornLuetticke)
                         :Tgrowth′_t, :LP′_t, :LP_XA′_t, :tot_retained_Y′_t,
                         :union_firm_profits′_t, :union_profits′_t, :firm_profits′_t,
                         :profits′_t]
+
+=#
+    println("testing new ordering")
+    m.jump_variables = [:Vm′_t, :Vk′_t,
+                        # Function valued jumps above, Distribution Names
+                        :Gini_C′_t, :Gini_X′_t, :I90_share′_t, :I90_share_net′_t,:W90_share′_t, :sd_log_y′_t,
+                        # Endogenous scalar-valued jumps
+                        :rk′_t, :w′_t, :K′_t, :π′_t, :π_w′_t, :Y′_t, :C′_t, :q′_t, :N′_t, :mc′_t,
+                        :mc_w′_t, :u′_t, :Ht′_t, :avg_tax_rate′_t, :T′_t, :I′_t, :B′_t,
+                        :BD′_t, :BY′_t, :TY′_t, :mc_w_w′_t, :G′_t, :τ_level′_t, :τ_prog′_t, :Ygrowth′_t,
+                        :Bgrowth′_t, :Igrowth′_t, :wgrowth′_t, :Cgrowth′_t,
+                        :Tgrowth′_t, :LP′_t, :LP_XA′_t, :tot_retained_Y′_t,
+                        :union_firm_profits′_t, :union_profits′_t, :firm_profits′_t,
+                        :profits′_t]
+
 
     m.aggregate_jump_variables = m.jump_variables[3:end]
 
@@ -189,10 +204,14 @@ function init_model_indices!(m::BayerBornLuetticke)
                                      "μ_w_sh" => "σ_μ_w", "G_sh" => "σ_G", "R_sh" => "σ_R", "S_sh" => "σ_S",
                                      "P_sh" => "σ_P")
 =#
-
-    standard_deviation_dictionary = Dict(:A_sh => 48, :Z_sh => 49, :Ψ_sh => 50, :μ_p_sh => 51,
+    ## Check These Values Commented Out the 48, 49 etc. values, NOT SURE WHY THEY WERE SET THIS WAY
+  #=  standard_deviation_dictionary = Dict(:A_sh => 48, :Z_sh => 49, :Ψ_sh => 50, :μ_p_sh => 51,
                                      :μ_w_sh => 52, :G_sh => 55, :R_sh => 54, :S_sh => 53,
-                                     :P_sh => 56)
+                                     :P_sh => 56)=#
+
+standard_deviation_dictionary = Dict(:A_sh => 0.00033, :Z_sh => 0.00033, :Ψ_sh => 0.00033, :μ_p_sh => 0.00033,
+                                     :μ_w_sh => 0.00033, :G_sh => 0.00033, :R_sh => 0.00033, :S_sh => 0.511538,
+                                     :P_sh => 0.00033)
 
     m <= Setting(:shock_to_deviation_dict, standard_deviation_dictionary)
 
@@ -330,6 +349,7 @@ parameters (in preparation for `steadystate!(m)` being called to initialize
 those).
 """
 function init_parameters!(m::BayerBornLuetticke)
+    ## Compare with BBL m_par (not just what's specified in Parameters.jl because some change based on the mode of the prior distribution)
     ######################################
     # Parameters that affect steady-state
     ######################################
@@ -407,31 +427,37 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\omega_U")
 
     # Technological parameters
-    m <= parameter(:δ_s, 5., (0., 1e2), (0., 1e2), ModelConstructors.Exponential(),
+    ## Old Value 5. rather than 4.2
+    m <= parameter(:δ_s, 4.2, (0., 1e2), (0., 1e2), ModelConstructors.Exponential(),
                    GammaAlt(5., 2.), fixed = false,
                    description = "Depreciation increase from flexible utilization",
                    tex_label = "\\delta_s")
-    m <= parameter(:ϕ, 4., (0., 1e2), (0., 1e2), ModelConstructors.Exponential(),
+    ## Old Value 4. rather than 3.0
+    m <= parameter(:ϕ, 3.0, (0., 1e2), (0., 1e2), ModelConstructors.Exponential(),
                    GammaAlt(4., 2.), fixed = false,
                    description = "Depreciation increase from flexible utilization",
                    tex_label = "\\phi")
 
     # NK Phillips Curve
-    m <= parameter(:κ_p, 1. / 11., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    ## Old Value 1./11. rather than 0.099
+    m <= parameter(:κ_p, 0.099, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.1, 0.01), fixed = false,
                    description = "Price adjustment cost (Calvo probability)",
                    tex_label = "\\kappa_p")
-    m <= parameter(:κ_w, 1. / 11., (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    ## Old Value 1./11 rather than 0.099
+    m <= parameter(:κ_w, 0.099, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.1, 0.01), fixed = false,
                    description = "Wage adjustment cost (Calvo probability)",
                    tex_label = "\\kappa_w")
 
     # Monetary policy
-    m <= parameter(:ρ_R , 0.9, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(),
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_R , 0.5, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(),
                    BetaAlt(0.5, 0.20), fixed = false,
                    description = "ρ: The degree of inertia in the monetary policy rule.",
                    tex_label="\\rho_R")
-    m <= parameter(:θ_π, 2., (1., 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
+    ## Old Value 2. rather than 1.7
+    m <= parameter(:θ_π, 1.7, (1., 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
                    Normal(1.7, 0.3), fixed = false, # Note second tuple is parameterization for Exponential transform
                    description = "ψ1: Weight on inflation gap in monetary policy rule.",
                    tex_label = "\\theta_{\\pi}")
@@ -441,15 +467,18 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\theta_y")
 
     # Fiscal policy
-    m <= parameter(:γ_B, 0.2, (0., 5.), (0., 5.), SquareRoot(),
+    ## Old Value 0.2 rather 0.0438
+    m <= parameter(:γ_B, 0.0438, (0., 5.), (0., 5.), SquareRoot(),
                    GammaAlt(0.1, 0.075), fixed = false,
                    description = "γ_B: Reaction of deficit to debt",
                    tex_label = "\\gamma_B")
-    m <= parameter(:γ_π, -0.1, (-10., 10.), (-10., 10.), SquareRoot(),
+    ## Old Value -0.1 rather than 0.0, check mean of Normal Dist with BBL
+    m <= parameter(:γ_π, 0.0, (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0.1, 1.), fixed = false,
                    description = "γ_π: Reaction of deficit to inflation",
                    tex_label = "\\gamma_{\\pi}")
-    m <= parameter(:γ_Y, -1., (-10., 10.), (-10., 10.), SquareRoot(),
+    ## Old Value -1. rather than 0.0
+    m <= parameter(:γ_Y, 0.0, (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0.1, 1.), fixed = false,
                    description = "γ_Y: Reaction of deficit to output",
                    tex_label = "\\gamma_{Y}")
@@ -457,11 +486,11 @@ function init_parameters!(m::BayerBornLuetticke)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_τ: Persistence in tax level",
                    tex_label = "\\rho_{\\tau}")
-    m <= parameter(:γ_B_τ, 0., (-10., 10.), (-10., 10.), SquareRoot(),
+    m <= parameter(:γ_B_τ, 0.0, (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_B_τ: Reaction of tax level to debt",
                    tex_label = "\\gamma_{B, \\tau}")
-    m <= parameter(:γ_Y_τ, 0., (-10., 10.), (-10., 10.), SquareRoot(),
+    m <= parameter(:γ_Y_τ, 0.0, (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_Y_τ: Reaction of tax level to output",
                    tex_label = "\\gamma_{Y, \\tau}")
@@ -479,31 +508,38 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\gamma_{Y, P}")
 
     # Exogenous processes - autocorrelation
-    m <= parameter(:ρ_A, 0.9, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_A, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_A: AR(1) coefficient in the bond-spread process.",
                    tex_label = "\\rho_A")
-    m <= parameter(:ρ_Z, 0.9, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_Z, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_Z: AR(1) coefficient in the technology process.",
                    tex_label = "\\rho_Z")
-    m <= parameter(:ρ_Ψ, 0.9, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_Ψ, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_Ψ: AR(1) coefficient in marginal efficiency of investment (MEI) process.",
                    tex_label = "\\rho_{\\Psi}")
-    m <= parameter(:ρ_μ_p, 0.9, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_μ_p, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_μ_p: AR(1) coefficient in the price mark-up shock process.",
                    tex_label = "\\rho_{\\mu_p}")
-    m <= parameter(:ρ_μ_w, 0.9, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_μ_w, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_μ_w: AR(1) coefficient in the wage mark-up shock process.",
                    tex_label = "\\rho_{\\mu_w}")
-    m <= parameter(:ρ_S, 0.84, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    ## Old Value 0.84 rather than 0.878
+    m <= parameter(:ρ_S, 0.878, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.7, 0.2), fixed = false,
                    description = "ρ_S: AR(1) coefficient in the idiosyncratic income risk process.",
                    tex_label = "\\rho_S")
-    m <= parameter(:ρ_G, 0.98, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    ## Old Value 0.98 rather than 0.5
+    m <= parameter(:ρ_G, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_G: AR(1) coefficient in the government structural deficit process.",
                    tex_label = "\\rho_G")
@@ -523,6 +559,7 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\rho_{S, \\epsilon}")
 
     # Exogenous processes - standard deviations
+    ## all rater close to 0.0003 for BBL, so may change to 0 later
     m <= parameter(:σ_A, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false, # Note second tuple is parameterization for Exponential transform
                    description = "σ_A: standard dev. of the bond-spread process.",
@@ -703,6 +740,15 @@ function init_parameters!(m::BayerBornLuetticke)
     m <= SteadyStateParameterGrid(:Vk_star, Array{Float64, 3}(undef, 0, 0, 0),
                                   description = "Marginal value of illiquid capital (steady-state)", tex_label = "V_{k, *}")
 
+    #May need this to replicate BBL's Fsys
+    m <= SteadyStateParameterGrid(:copula_marginal_m, Vector{Float64}(undef, 0), # populated later, just need to have the right typing
+                                  description = "Marginal PDF from Copula of liquid bonds (steady-state)", tex_label = "D_{m, *}")
+    m <= SteadyStateParameterGrid(:copula_marginal_k, Vector{Float64}(undef, 0), # populated later, just need to have the right typing
+                                  description = "Marginal PDF from Copula of illiquid bonds (steady-state)", tex_label = "D_{m, *}")
+    m <= SteadyStateParameterGrid(:copula_marginal_y, Vector{Float64}(undef, 0), # populated later, just need to have the right typing
+                                  description = "Marginal PDF from Copula of income  (steady-state)", tex_label = "D_{m, *}")
+
+
     # Steady state grids for reduction-related variables (indices for perturbation kept elsewhere) # TODO: document where compression indices are
     m <= SteadyStateParameterGrid(:dct_Vm_star, Vector{Float64}(undef, 0),
                                   description = "DCT coefficients of the marginal value of liquid bonds (steady-state)",
@@ -741,6 +787,8 @@ function model_settings!(m::BayerBornLuetticke)
     ## Numerical settings for steady state
 
     # Coarse grid settings
+    ## Setting to skip coarse grid for time being
+    m <= Setting(:skip_coarse_grid, true)
 
     m <= Setting(:coarse_ϵ,  1e-6, "Steady-state tolerance for coarse grid")
     m <= Setting(:coarse_ny, 4, "Number of idiosyncratic income states for coarse grid")
@@ -749,21 +797,26 @@ function model_settings!(m::BayerBornLuetticke)
     m <= Setting(:coarse_ymin, 0.5, "Minimum grid value for income states on coarse grid")
     m <= Setting(:coarse_ymax, 1.5, "Maximum grid value for income states on coarse grid")
     m <= Setting(:coarse_mmin, -6.6, "Minimum grid value for liquid assets (bond) on coarse grid")
-    m <= Setting(:coarse_mmax, 1000., "Maximum grid value for liquid assets (bond) on coarse grid")
+## Old Value 1000 rather than 1750.
+    m <= Setting(:coarse_mmax, 1750., "Maximum grid value for liquid assets (bond) on coarse grid")
     m <= Setting(:coarse_kmin, 0., "Minimum grid value for illiquid assets (capital) on coarse grid")
-    m <= Setting(:coarse_kmax, 1750., "Maximum grid value for illiquid assets (capital) on coarse grid")
+## Old Value 1750. rather than 2250.
+    m <= Setting(:coarse_kmax, 2250., "Maximum grid value for illiquid assets (capital) on coarse grid")
 
     # Refined grid settings
     m <= Setting(:ϵ, 1e-11, "Steady-state tolerance for refined grid")
     m <= Setting(:ny, 11, "Number of idiosyncratic income states for refined grid")
-    m <= Setting(:nm, 40, "Number of liquid asset (bond) points for refined grid")
-    m <= Setting(:nk, 40, "Number of illiquid asset (capital) points for refined grid")
+    ## CHANGING FROM 40 to 50 TO MATCH BBL's SETTINGS
+    m <= Setting(:nm, 50 , "Number of liquid asset (bond) points for refined grid")
+    m <= Setting(:nk, 50 , "Number of illiquid asset (capital) points for refined grid")
     m <= Setting(:ymin, 0.5, "Minimum grid value for income states on refined grid")
     m <= Setting(:ymax, 1.5, "Maximum grid value for income states on refined grid")
     m <= Setting(:mmin, -6.6, "Minimum grid value for liquid assets (bond) on refined grid")
-    m <= Setting(:mmax, 1000., "Maximum grid value for liquid assets (bond) on refined grid")
+    ## Old Value 1000 rather than 1750.
+    m <= Setting(:mmax, 1750., "Maximum grid value for liquid assets (bond) on refined grid")
     m <= Setting(:kmin, 0., "Minimum grid value for illiquid assets (capital) on refined grid")
-    m <= Setting(:kmax, 1750., "Maximum grid value for illiquid assets (capital) on refined grid")
+    ## Old Value 1750 rater than 2250.0
+    m <= Setting(:kmax, 2250., "Maximum grid value for illiquid assets (capital) on refined grid")
 
     #copula reduction settings (to match BBL code)
     m <= Setting(:reduc_copula, 30)
@@ -800,7 +853,8 @@ function model_settings!(m::BayerBornLuetticke)
 =#
 
     # Consumption policy iteration
-    m <= Setting(:max_value_function_iters, 1000,
+    ## Old Value 1000 rather than 10000
+    m <= Setting(:max_value_function_iters, 10000,
                  "Maximum number of fixed point iterations for the marginal value functions")
 
     # Kolmogorov forward equation
@@ -823,6 +877,7 @@ function model_settings!(m::BayerBornLuetticke)
     #     in the copula while keeping the marginals fixed.
     # (4) Remove even more basis functions
     m <= Setting(:dct_energy_loss, 1e-6, "Lost fraction of 'energy' in the DCT compression of 'value functions'")
+    ## WILL ULTIMATELY NO LONGER USE THIS SETTING
     m <= Setting(:n_copula_dct_coefficients, 10, "Number of coefficients in the DCT compression of the " *
                  "distribution over idiosyncratic states to approximate a perturbation in the copula")
 
@@ -931,7 +986,10 @@ function setup_indices!(m::BayerBornLuetticke)
     endo[:marginal_pdf_m′_t] = 1:(nm - 1)
     endo[:marginal_pdf_k′_t] = (1 + nm - 1):(nm + nk - 2)
     endo[:marginal_pdf_y′_t] = (1 + nm + nk - 2):n_idio_states
-    n_distr_states           = n_idio_states + get_setting(m, :n_copula_dct_coefficients)
+    n_dct_copula             = length(get_setting(m,:dct_compression_indices)[:copula])
+    n_distr_states           = n_idio_states + n_dct_copula
+    ## COMMENTING OUT OLD APPROACH WITH FIXED n_dct to match BBL
+    #n_distr_states           = n_idio_states + get_setting(m, :n_copula_dct_coefficients)
     endo[:copula′_t]         = (1 + n_idio_states):n_distr_states
     for (i, k) in enumerate(get_aggregate_state_variables(m))
         endo[k] = (n_distr_states + i):(n_distr_states + i)
@@ -990,6 +1048,7 @@ function setup_indices!(m::BayerBornLuetticke)
     n_aggr_states = length(aggr_eqn_names)
 
     for (i, name) in enumerate([# Endogenous model states (for the jumps)
+                                :eq_Gini_C, :eq_Gini_X, :eq_I90_share, :eq_I90_share_net, :eq_W90_share, :eq_sd_log_y,
                                 :eq_capital_return, :eq_wages_firms_pay, :eq_capital_market_clear,
                                 :eq_deficit_rule, :eq_real_wage_inflation,
                                 :eq_output, :eq_resource_constraint, :eq_tobins_q,
@@ -1000,8 +1059,6 @@ function setup_indices!(m::BayerBornLuetticke)
                                 :eq_bond_output_ratio, :eq_tax_output_ratio,
                                 :eq_received_wages, :eq_gov_budget_constraint,
                                 :eq_tax_level, :eq_tax_progressivity,
-                                :eq_Gini_C, :eq_Gini_X, :eq_sd_log_y, :eq_I90_share,
-                                :eq_I90_share_net, :eq_W90_share,
                                 :eq_Ygrowth, :eq_Bgrowth, :eq_Igrowth,
                                 :eq_wgrowth, :eq_Cgrowth, :eq_Tgrowth,
                                 :eq_expost_liquidity_premium,

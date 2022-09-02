@@ -77,6 +77,7 @@ function original_Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::A
     @unpack_and_first eq_Lavg_tax_rate, eq_Lτ_prog = eq
     @unpack_and_first eq_A, eq_Z, eq_Ψ, eq_μ_p, eq_μ_w, eq_σ, eq_G, eq_P, eq_R, eq_S = eq
 
+    println("testing new modification y update")
     # Take aggregate model from equation file
     @include "original_aggregate_equations.jl"
 

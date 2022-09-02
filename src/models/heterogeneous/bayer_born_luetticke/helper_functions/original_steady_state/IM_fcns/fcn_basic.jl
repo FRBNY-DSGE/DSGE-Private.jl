@@ -10,7 +10,7 @@ _original_bbl_output(K::Real, A::Real, N::Real, α::Union{Real, AbstractParamete
             .* K .^(α)).^((1.0 - τ_prog) ./ (γ + τ_prog + (α) .* (1. - τ_prog)))
 end
 
-function original_distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
+function original_distrSummaries(distr::AbstractArray, Q, c_a_star::AbstractArray,
                                  c_n_star::AbstractArray, inc::AbstractArray,
                                  incgross::AbstractArray, θ::NamedTuple,
                                  dims::NTuple{3, Int}, grids::OrderedDict)
@@ -24,7 +24,7 @@ function original_distrSummaries(distr::AbstractArray, c_a_star::AbstractArray,
     mplusk = Vector{eltype(c_a_star)}(undef, nk * nm)
     @inbounds for k = 1:nk
         for m = 1:nm
-            mplusk[m + (k - 1) * nm] = m_grid[m] + k_grid[k]
+            mplusk[m + (k - 1) * nm] = m_grid[m] .+ Q .* k_grid[k]
         end
     end
     IX               = sortperm(mplusk)
