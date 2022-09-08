@@ -153,15 +153,17 @@ F[eq_received_wages]         = log(mc_w_w_t) - log(mc_w_t * w_t)                
 
 F[eq_wages_firms_pay]            = log(w_t) - log(DSGE._bbl_wage(Kserv, Z_t * mc_t, N_t, θ[:α]))     # wages that firms pay
 
-F[eq_union_firm_profits]   = log(union_firm_profits_t)  - log(w_t * N_t * (1.0 - mc_w_t))  # profits of the monopolistic unions
-F[eq_union_profits]         = log(union_profits_t)        - log((1.0 - exp(nt[:mc_w_t])) * w_t * N_t  + θ[:ω_U] *
-                                                                   (union_firm_profits_t - (1.0 - exp(nt[:mc_w_t])) * w_t * N_t + log(union_retained_t))) # distributed profits to households
-F[eq_union_retained]       = log(union_retained′_t) - (union_firm_profits_t - union_profits_t + log(union_retained_t) * (RB_t / π_t)) # Accumulation equation, retained is in levels
+#F[eq_union_firm_profits]   = log(union_firm_profits_t)  - log(w_t * N_t * (1.0 - mc_w_t))  # profits of the monopolistic unions
+F[eq_union_profits]         = log(union_profits_t)        - log(w_t.*N_t.*(1-mc_w_t)) # distributed profits to households
+#F[eq_union_retained]       = log(union_retained′_t) - (union_firm_profits_t - union_profits_t + log(union_retained_t) * (RB_t / π_t)) # Accumulation equation, retained is in levels
 
-F[eq_firm_profits]         = log(firm_profits_t)  - log(Y_t * (1.0 - mc_t))                                               # profits of the monopolistic resellers
-F[eq_profits_distr_to_hh]              = log(profits_t)       - log((1.0 - exp(nt[:mc_t])) * Y_t + θ[:ω_F] *
-                                                        (firm_profits_t - (1.0 - exp(nt[:mc_t])) * Y_t + log(retained_t))) # distributed profits to households
-F[eq_retained]             = log(retained′_t) - (firm_profits_t - profits_t + log(retained_t) * (RB_t / π_t))            # Accumulation equation (levels)
+#F[eq_firm_profits]         = log(firm_profits_t)  - log(Y_t * (1.0 - mc_t))                                               # profits of the monopolistic resellers
+#F[eq_profits_distr_to_hh]              = log(profits_t)       - log((1.0 - exp(nt[:mc_t])) * Y_t + θ[:ω_F] *
+
+
+F[eq_profits_distr_to_hh]              = log(profits_t)       - log((1.0 - mc_t) .* Y_t .+ q_t .*(K′_t .- (1.0 - depr) .*K_t).- I_t) # distributed profits to households
+#                                                        (firm_profits_t - (1.0 - exp(nt[:mc_t])) * Y_t + log(retained_t))) # distributed profits to households
+#F[eq_retained]             = log(retained′_t) - (firm_profits_t - profits_t + log(retained_t) * (RB_t / π_t))            # Accumulation equation (levels)
 
 F[eq_tobins_q]            = 1.0 - Ψ_t * q_t * (1.0 - θ[:ϕ] / 2.0 * (Igrowth_t - 1.0)^2.0 - # price of capital investment adjustment costs
                           θ[:ϕ] * (Igrowth_t - 1.0) * Igrowth_t)  -
@@ -184,10 +186,10 @@ F[eq_resource_constraint]            = log(Y_t - G_t - I_t - BD_t * θ[:Rbar] + 
 # Error Term on prices/aggregate summary vars (logarithmic, controls), here difference to SS value averages
 F[eq_capital_market_clear]            = log(K_t)     - nt[:K_t]                                                            # Capital market clearing
 F[eq_debt_market_clear]           = log(BD_t)    - nt[:BD_t]                                                        # IOUs
-F[eq_bond_market_clear]            = log(B_t)     - log(exp(nt[:B_t]) + log(retained_t) + log(union_retained_t) )   # Bond market clearing
+F[eq_bond_market_clear]            = log(B_t)     - nt[:B_t]   #+ log(retained_t) + log(union_retained_t) )   # Bond market clearing
 F[eq_bond_output_ratio]           = log(BY_t)    - log(B_t / Y_t)                                                               # Bond to Output ratio
 F[eq_tax_output_ratio]           = log(TY_t)    - log(T_t / Y_t)                                                               # Tax to output ratio
-F[eq_retained_earnings_gdp_ratio] = log(tot_retained_Y_t) - ((log(retained_t) + log(union_retained_t)) / Y_t)                      # retained Earnings to GDP
+#F[eq_retained_earnings_gdp_ratio] = log(tot_retained_Y_t) - ((log(retained_t) + log(union_retained_t)) / Y_t)                      # retained Earnings to GDP
 
 # Add distributional summary stats that do change with other aggregate controls/prices so that the stationary
 F[eq_Ht]           = log(Ht_t) - log(Htact)

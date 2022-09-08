@@ -18,7 +18,7 @@ function original_Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::A
     ############################################################################
 
     # Today
-    @sslogdeviations2levels union_retained_t, retained_t = X, id, nt
+    #@sslogdeviations2levels union_retained_t, retained_t = X, id, nt
     @sslogdeviations2levels Y_t1, B_t1, T_t1, I_t1, w_t1, q_t1 = X, id, nt
     @sslogdeviations2levels C_t1, avg_tax_rate_t1, τ_prog_t1 = X, id, nt
     @sslogdeviations2levels A_t, Z_t, Ψ_t, RB_t, μ_p_t, μ_w_t = X, id, nt
@@ -32,11 +32,11 @@ function original_Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::A
     @sslogdeviations2levels I90_share_t, I90_share_net_t, W90_share_t = X, id, nt
     @sslogdeviations2levels Ygrowth_t, Bgrowth_t, Igrowth_t, wgrowth_t = X, id, nt
     @sslogdeviations2levels Cgrowth_t, Tgrowth_t, LP_t, LP_XA_t = X, id, nt
-    @sslogdeviations2levels tot_retained_Y_t, union_firm_profits_t = X, id, nt
-    @sslogdeviations2levels union_profits_t, firm_profits_t, profits_t = X, id, nt
+    #@sslogdeviations2levels tot_retained_Y_t, union_firm_profits_t = X, id, nt
+    @sslogdeviations2levels union_profits_t, profits_t = X, id, nt
 
     # Tomorrow # NOTE that we use XPrime, so id[:C_t] and id[:C_t] should point to the same indices
-    @sslogdeviations2levels_unprimekeys union_retained′_t, retained′_t = XPrime, id, nt
+    #@sslogdeviations2levels_unprimekeys union_retained′_t, retained′_t = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys Y′_t1, B′_t1, T′_t1, I′_t1, w′_t1, q′_t1 = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys C′_t1, avg_tax_rate′_t1, τ_prog′_t1 = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys A′_t, Z′_t, Ψ′_t, RB′_t, μ_p′_t, μ_w′_t = XPrime, id, nt
@@ -50,8 +50,8 @@ function original_Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::A
     @sslogdeviations2levels_unprimekeys I90_share′_t, I90_share_net′_t, W90_share′_t = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys Ygrowth′_t, Bgrowth′_t, Igrowth′_t, wgrowth′_t = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys Cgrowth′_t, Tgrowth′_t, LP′_t, LP_XA′_t = XPrime, id, nt
-    @sslogdeviations2levels_unprimekeys tot_retained_Y′_t, union_firm_profits′_t = XPrime, id, nt
-    @sslogdeviations2levels_unprimekeys union_profits′_t, firm_profits′_t, profits′_t = XPrime, id, nt
+    #@sslogdeviations2levels_unprimekeys tot_retained_Y′_t, union_firm_profits′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys union_profits′_t, profits′_t = XPrime, id, nt
 
     # Some special handling for type stability
     y_grid   = get_gridpts(grids, :y_grid)::Vector{Float64}
@@ -64,13 +64,13 @@ function original_Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::A
     @unpack_and_first eq_gov_budget_constraint, eq_price_phillips_curve = eq
     @unpack_and_first eq_wage_phillips_curve, eq_real_wage_inflation, eq_capital_util = eq
     @unpack_and_first eq_capital_return, eq_received_wages, eq_wages_firms_pay = eq
-    @unpack_and_first eq_union_firm_profits, eq_union_profits, eq_union_retained = eq
-    @unpack_and_first eq_firm_profits, eq_profits_distr_to_hh, eq_retained = eq
+    @unpack_and_first eq_union_profits = eq
+    @unpack_and_first eq_profits_distr_to_hh = eq
     @unpack_and_first eq_tobins_q, eq_expost_liquidity_premium = eq
     @unpack_and_first eq_exante_liquidity_premium, eq_capital_accum, eq_labor_supply = eq
     @unpack_and_first eq_output, eq_resource_constraint, eq_capital_market_clear = eq
     @unpack_and_first eq_debt_market_clear, eq_bond_market_clear, eq_bond_output_ratio = eq
-    @unpack_and_first eq_tax_output_ratio, eq_retained_earnings_gdp_ratio, eq_Ht = eq
+    @unpack_and_first eq_tax_output_ratio, eq_Ht = eq
     @unpack_and_first eq_Ygrowth, eq_Tgrowth, eq_Bgrowth = eq
     @unpack_and_first eq_Igrowth, eq_wgrowth, eq_Cgrowth = eq
     @unpack_and_first eq_LY, eq_LB, eq_LI, eq_Lw, eq_LT, eq_Lq, eq_LC = eq
@@ -80,6 +80,8 @@ function original_Fsys_agg(X::AbstractArray, XPrime::AbstractArray, # distrSS::A
     println("testing new modification y update")
     # Take aggregate model from equation file
     @include "original_aggregate_equations.jl"
+    #DSGE.@include("original_aggregate_equations.jl")
+    #include("original_aggregate_equations.jl")
 
     return F
 end

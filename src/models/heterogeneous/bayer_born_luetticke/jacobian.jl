@@ -25,8 +25,9 @@ are updated in place.
         if get_setting(m, :linearize_heterogeneous_block)::Bool
             return _original_jacobian!(m)
         else
-            return _original_update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
-                                                        get_untransformed_values(m[:B])::Matrix{T})
+            #return _original_update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
+                                                       # get_untransformed_values(m[:B])::Matrix{T})
+            return _original_update_aggregate_jacobian!(m, m[:A].value::Matrix{T},m[:B].value::Matrix{T})
         end
     else
         if get_setting(m, :linearize_heterogeneous_block)::Bool
@@ -608,21 +609,23 @@ function _original_jacobian!(m::BayerBornLuetticke)
 
 #=
      ## TO TEST FSYS FCT
-    println("Gamma y")
-    println(Γ[3][:,1])
+    #println("Gamma y")
+    #println(Γ[3][:,1])
     println("New Test 1")
     println("testing evaluation of Fsys at 0,0 at chosen locations")
     #Debugger.@enter obj_fnct(zeros(2*length_X0))
     #Debugger.@run obj_fnct(zeros(2*length_X0))
     X0_t = zeros(length_X0)
     X0_tPrime = X0_t
-    X0_t[99] = 0.1
+    X0_t[1081] = -0.01
+    X0_t[1084]= -0.01*0
     #println("X0_t y")
     #println(X0_t[99:100])
     diff_Fsys_test = obj_fnct(hcat(X0_t, X0_tPrime))
 
 
-    println(diff_Fsys_test[1103:1107])
+    println(diff_Fsys_test[2216])
+    println(diff_Fsys_test[1101:1105])
     println("norm of diff of 0s")
     println(norm(diff_Fsys_test))
     abs_diff = abs.(diff_Fsys_test)
@@ -630,7 +633,7 @@ function _original_jacobian!(m::BayerBornLuetticke)
     println(maximum(abs_diff))
     println("max abs diff and index")
     println(findmax(abs_diff))
-    diff_Fsys_test_bool = (abs_diff.>1e-5)
+    diff_Fsys_test_bool = (abs_diff.>1e-2)
     #println("indices where nonzero")
     #println(diff_Fsys_test_bool)
     println("number of indices where nonzero")
@@ -684,9 +687,9 @@ function _original_jacobian!(m::BayerBornLuetticke)
     m[:A] = A
     m[:B] = B
     println("A pre passing to klein no schur")
-    println(m[:A].value[1:5,1:5])
+    println(m[:B].value[2216,1081])
     println("saved A,B")
-    #@assert false
+   # @assert false
 
     return A, B
 end

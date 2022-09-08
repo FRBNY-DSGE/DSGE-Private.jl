@@ -38,7 +38,7 @@ function original_Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, 
     ############################################################################
 
     # Today
-    @sslogdeviations2levels union_retained_t, retained_t = X, id, nt
+    #@sslogdeviations2levels union_retained_t, retained_t = X, id, nt
     @sslogdeviations2levels Y_t1, B_t1, T_t1, I_t1, w_t1, q_t1 = X, id, nt
     @sslogdeviations2levels C_t1, avg_tax_rate_t1, τ_prog_t1 = X, id, nt
     @sslogdeviations2levels A_t, Z_t, Ψ_t, RB_t, μ_p_t, μ_w_t = X, id, nt
@@ -52,11 +52,11 @@ function original_Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, 
     @sslogdeviations2levels I90_share_t, I90_share_net_t, W90_share_t = X, id, nt
     @sslogdeviations2levels Ygrowth_t, Bgrowth_t, Igrowth_t, wgrowth_t = X, id, nt
     @sslogdeviations2levels Cgrowth_t, Tgrowth_t, LP_t, LP_XA_t = X, id, nt
-    @sslogdeviations2levels tot_retained_Y_t, union_firm_profits_t = X, id, nt
-    @sslogdeviations2levels union_profits_t, firm_profits_t, profits_t = X, id, nt
+    #@sslogdeviations2levels tot_retained_Y_t, union_firm_profits_t = X, id, nt
+    @sslogdeviations2levels union_profits_t, profits_t = X, id, nt
 
     # Tomorrow # NOTE that we use XPrime, so id[:C_t] and id[:C′_t] should point to the same indices
-    @sslogdeviations2levels_unprimekeys union_retained′_t, retained′_t = XPrime, id, nt
+    #@sslogdeviations2levels_unprimekeys union_retained′_t, retained′_t = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys Y′_t1, B′_t1, T′_t1, I′_t1, w′_t1, q′_t1 = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys C′_t1, avg_tax_rate′_t1, τ_prog′_t1 = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys A′_t, Z′_t, Ψ′_t, RB′_t, μ_p′_t, μ_w′_t = XPrime, id, nt
@@ -70,8 +70,8 @@ function original_Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, 
     @sslogdeviations2levels_unprimekeys I90_share′_t, I90_share_net′_t, W90_share′_t = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys Ygrowth′_t, Bgrowth′_t, Igrowth′_t, wgrowth′_t = XPrime, id, nt
     @sslogdeviations2levels_unprimekeys Cgrowth′_t, Tgrowth′_t, LP′_t, LP_XA′_t = XPrime, id, nt
-    @sslogdeviations2levels_unprimekeys tot_retained_Y′_t, union_firm_profits′_t = XPrime, id, nt
-    @sslogdeviations2levels_unprimekeys union_profits′_t, firm_profits′_t, profits′_t = XPrime, id, nt
+    #@sslogdeviations2levels_unprimekeys tot_retained_Y′_t, union_firm_profits′_t = XPrime, id, nt
+    @sslogdeviations2levels_unprimekeys union_profits′_t, profits′_t = XPrime, id, nt
 
     ############################################################################
     # I.2. Distributions (Γ-multiplying makes sure that they are distributions)
@@ -350,6 +350,14 @@ tot_taxrev  = distr[:]' * taxrev[:]
     incgrossaux     = ((y_grid/H).^tax_prog_scale.*LC)
     incgrossaux[end]= y_grid[end].*profits_t
     av_tax_rate_up  = dot(distr_y, taxrev)./(dot(distr_y,incgrossaux))
+#println("effint")
+#println(eff_int[1:5])
+#println("A")
+#println(A_t)
+#println("pi")
+#println(π_t)
+#println("RB")
+#println(RB_t)
 #=
 println("tax_prog_scale")
 println(tax_prog_scale)
@@ -390,6 +398,8 @@ F[first(eqconds[:eq_tax_revenue])]    = log(T_t) - log(dot(taxrev,distr_y) + avg
 
     # Update marginal values
     Vk_new, Vm_new = original_updateV(EVkPrime, c_a_star, c_n_star, m_n_star, rk_t - 1.0, q_t, θ, m_grid, Π) # update expected marginal values time t
+    #println("rk_t")
+    #println(rk_t)
     #println("Vm new")
     #println(Vm_new[1:5])
     #println("EVm")

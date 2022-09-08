@@ -112,6 +112,7 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
             m <= Setting(:linearize_heterogeneous_block, false)
             klein(m)
         end
+
     end
     #println("final A model")
     #println(m[:A].value[1:5,1:5])

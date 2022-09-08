@@ -64,11 +64,11 @@ function original_aggregate_steadystate!(m::BayerBornLuetticke{T}) where {T <: R
     m[:Cgrowth_star] = 0.
     m[:Tgrowth_star] = 0.
     m[:Ht_star] = 0.
-    m[:retained_star] = 0.
-    m[:firm_profits_star] = get_untransformed_values(m[:profits_star])::T
-    m[:union_retained_star] = 0.
-    m[:union_firm_profits_star] = get_untransformed_values(m[:union_profits_star])::T
-    m[:tot_retained_Y_star] = 0.
+    #m[:retained_star] = 0.
+    #m[:firm_profits_star] = get_untransformed_values(m[:profits_star])::T
+    #m[:union_retained_star] = 0.
+    #m[:union_firm_profits_star] = get_untransformed_values(m[:union_profits_star])::T
+    #m[:tot_retained_Y_star] = 0.
 
     return m
 end

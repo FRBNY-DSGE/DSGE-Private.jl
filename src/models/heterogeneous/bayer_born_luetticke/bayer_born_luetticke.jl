@@ -132,7 +132,6 @@ function init_model_indices!(m::BayerBornLuetticke)
     m.state_variables = [:marginal_pdf_m′_t, :marginal_pdf_k′_t, :marginal_pdf_y′_t, :copula′_t,
 
                          :A′_t, :Z′_t, :Ψ′_t, :RB′_t, :μ_p′_t, :μ_w′_t, :σ′_t, # TODO: rename σ′_t to σ_sq′_t to make it clear it's the variance
-                         :union_retained′_t, :retained′_t,
                          :Y′_t1, :B′_t1, :T′_t1, :I′_t1, :w′_t1, :q′_t1, :C′_t1,
                          :avg_tax_rate′_t1, :τ_prog′_t1,
 
@@ -179,8 +178,7 @@ function init_model_indices!(m::BayerBornLuetticke)
                         :mc_w′_t, :u′_t, :Ht′_t, :avg_tax_rate′_t, :T′_t, :I′_t, :B′_t,
                         :BD′_t, :BY′_t, :TY′_t, :mc_w_w′_t, :G′_t, :τ_level′_t, :τ_prog′_t, :Ygrowth′_t,
                         :Bgrowth′_t, :Igrowth′_t, :wgrowth′_t, :Cgrowth′_t,
-                        :Tgrowth′_t, :LP′_t, :LP_XA′_t, :tot_retained_Y′_t,
-                        :union_firm_profits′_t, :union_profits′_t, :firm_profits′_t,
+                        :Tgrowth′_t, :LP′_t, :LP_XA′_t, :union_profits′_t,
                         :profits′_t]
 
 
@@ -199,19 +197,21 @@ function init_model_indices!(m::BayerBornLuetticke)
     # Exogenous shocks
     exogenous_shocks = collect([:A_sh, :Z_sh, :Ψ_sh, :μ_p_sh, :μ_w_sh, :G_sh, :R_sh, :S_sh, :P_sh])
 
-#=
-    standard_deviation_dictionary = Dict("A_sh" => "σ_A", "Z_sh" => "σ_Z", "ψ_sh" => "σ_ψ", "μ_p_sh" => "σ_μ_p",
-                                     "μ_w_sh" => "σ_μ_w", "G_sh" => "σ_G", "R_sh" => "σ_R", "S_sh" => "σ_S",
-                                     "P_sh" => "σ_P")
-=#
+    shock2state_map = Dict(:A_sh => :A_t, :Z_sh => :Z_t, :Ψ_sh => :Ψ_t, :μ_p_sh => :μ_p_t, :μ_w_sh => :μ_w_t, :G_sh => :G_sh_t, :P_sh => :P_sh_t, :R_sh => :R_sh_t, :S_sh => :S_sh_t)
+    m <= Setting(:shock2state, shock2state_map)
+
+    standard_deviation_dictionary = Dict(:A_sh => :σ_A, :Z_sh => :σ_Z, :Ψ_sh => :σ_Ψ, :μ_p_sh => :σ_μ_p,
+                                     :μ_w_sh => :σ_μ_w, :G_sh => :σ_G, :R_sh => :σ_R, :S_sh => :σ_S,
+                                     :P_sh => :σ_P)
+
     ## Check These Values Commented Out the 48, 49 etc. values, NOT SURE WHY THEY WERE SET THIS WAY
   #=  standard_deviation_dictionary = Dict(:A_sh => 48, :Z_sh => 49, :Ψ_sh => 50, :μ_p_sh => 51,
                                      :μ_w_sh => 52, :G_sh => 55, :R_sh => 54, :S_sh => 53,
                                      :P_sh => 56)=#
 
-standard_deviation_dictionary = Dict(:A_sh => 0.00033, :Z_sh => 0.00033, :Ψ_sh => 0.00033, :μ_p_sh => 0.00033,
-                                     :μ_w_sh => 0.00033, :G_sh => 0.00033, :R_sh => 0.00033, :S_sh => 0.511538,
-                                     :P_sh => 0.00033)
+#standard_deviation_dictionary = Dict(:A_sh => 0.00033, :Z_sh => 0.00033, :Ψ_sh => 0.00033, :μ_p_sh => 0.00033,
+                                    # :μ_w_sh => 0.00033, :G_sh => 0.00033, :R_sh => 0.00033, :S_sh => 0.511538,
+                                    # :P_sh => 0.00033)
 
     m <= Setting(:shock_to_deviation_dict, standard_deviation_dictionary)
 
@@ -318,7 +318,7 @@ function BayerBornLuetticke(subspec::String="ss1";
 
     # Initialize grids
     init_grids!(m; coarse = !load_steadystate) # if steady state has not been computed, we start from a coarse grid
-
+    #println(m[:Σ_n].value)
     # Load the steady state if it has already been computed
     # from the filepath get_setting(m, :steadystate_output_file)
     if load_steadystate
@@ -328,14 +328,14 @@ function BayerBornLuetticke(subspec::String="ss1";
 
     # So that the indices of m.endogenous_states reflect the normalization
     # normalize_model_state_indices!(m)
-
-    init_subspec!(m)
-
+    #println(m[:Σ_n].value)
+    #init_subspec!(m)
+    #println(m[:Σ_n].value)
     # Load Jacobian if it has already been computed
     if load_jacobian
         load_jacobian!(m)
     end
-
+    #println(m[:Σ_n].value)
     return m
 end
 
@@ -396,11 +396,11 @@ function init_parameters!(m::BayerBornLuetticke)
                    description = "Price markup", tex_label = "\\mu_p")
     m <= parameter(:μ_w, 1.1, fixed = true,
                    description = "Wage markup", tex_label = "\\mu_w")
-    m <= parameter(:π, 1.0 ^ 0.25, fixed = true,
+    m <= parameter(:π, 1.0^0.25 , fixed = true,
                    description = "Steady-state inflation", tex_label = "\\pi")
 
     # Monetary policy
-    m <= parameter(:RB, m[:π] * 1.0 ^ 0.25, fixed = true,
+    m <= parameter(:RB, m[:π]*(1.0.^0.25) , fixed = true,
                    description = "Steady-state nominal interest rate", tex_label = "\\RB")
 
     # Remaining parameters affecting the steady-state
@@ -417,6 +417,7 @@ function init_parameters!(m::BayerBornLuetticke)
     # Parameters that affect dynamics but not steady-state
     #######################################################
     # Retained earnings
+#=
     m <= parameter(:ω_F, 0.1, (0., 1.), (0., 1.), SquareRoot(),
                    Uniform(0., 1.), fixed = false,
                    description = "fraction of retained earnings (profits) that is disbursed to HH",
@@ -425,6 +426,7 @@ function init_parameters!(m::BayerBornLuetticke)
                    Uniform(0., 1.), fixed = false,
                    description = "fraction of retained earnings (wages) that is disbursed to HH",
                    tex_label = "\\omega_U")
+=#
 
     # Technological parameters
     ## Old Value 5. rather than 4.2
@@ -440,12 +442,12 @@ function init_parameters!(m::BayerBornLuetticke)
 
     # NK Phillips Curve
     ## Old Value 1./11. rather than 0.099
-    m <= parameter(:κ_p, 0.099, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:κ_p, 0.09900000000000002, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.1, 0.01), fixed = false,
                    description = "Price adjustment cost (Calvo probability)",
                    tex_label = "\\kappa_p")
     ## Old Value 1./11 rather than 0.099
-    m <= parameter(:κ_w, 0.099, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:κ_w, 0.09900000000000002, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.1, 0.01), fixed = false,
                    description = "Wage adjustment cost (Calvo probability)",
                    tex_label = "\\kappa_w")
@@ -468,7 +470,7 @@ function init_parameters!(m::BayerBornLuetticke)
 
     # Fiscal policy
     ## Old Value 0.2 rather 0.0438
-    m <= parameter(:γ_B, 0.0438, (0., 5.), (0., 5.), SquareRoot(),
+    m <= parameter(:γ_B, 0.04375000000000002, (0., 5.), (0., 5.), SquareRoot(),
                    GammaAlt(0.1, 0.075), fixed = false,
                    description = "γ_B: Reaction of deficit to debt",
                    tex_label = "\\gamma_B")
@@ -534,7 +536,7 @@ function init_parameters!(m::BayerBornLuetticke)
                    description = "ρ_μ_w: AR(1) coefficient in the wage mark-up shock process.",
                    tex_label = "\\rho_{\\mu_w}")
     ## Old Value 0.84 rather than 0.878
-    m <= parameter(:ρ_S, 0.878, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_S, 0.8777777777777779, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.7, 0.2), fixed = false,
                    description = "ρ_S: AR(1) coefficient in the idiosyncratic income risk process.",
                    tex_label = "\\rho_S")
@@ -560,43 +562,52 @@ function init_parameters!(m::BayerBornLuetticke)
 
     # Exogenous processes - standard deviations
     ## all rater close to 0.0003 for BBL, so may change to 0 later
-    m <= parameter(:σ_A, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_A, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false, # Note second tuple is parameterization for Exponential transform
                    description = "σ_A: standard dev. of the bond-spread process.",
                    tex_label = "\\sigma_{A}")
-    m <= parameter(:σ_Z, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_Z,  0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_Z: standard dev. of the process describing the " *
                    "stationary component of productivity.", tex_label = "\\sigma_Z")
-    m <= parameter(:σ_Ψ, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_Ψ, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_Ψ: standard dev. of the exogenous marginal efficiency" *
                    " of investment shock process.", tex_label = "\\sigma_{\\Psi}")
-    m <= parameter(:σ_μ_p, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_μ_p, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_μ_p: standard dev. of the price mark-up shock process",
                    tex_label = "\\sigma_{\\mu_p}")
-    m <= parameter(:σ_μ_w, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_μ_w, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_μ_w: : standard dev. of the wage mark-up shock process",
                    tex_label = "\\sigma_{\\mu_w}")
-    m <= parameter(:σ_S, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_S, 0.5115384615384616, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.65, 0.3), fixed = false,
                    description = "σ_S: standard dev. of the idiosyncratic income risk shock process",
                    tex_label = "\\sigma_{S}")
-    m <= parameter(:Σ_n, 0., (-1e3, 1e3), (-1e3, 1e3), ModelConstructors.SquareRoot(),
+#=
+    m <= parameter(:Σ_n, 0.0, (-1e3, 1e3), (-1e3, 1e3), ModelConstructors.SquareRoot(),
                    Normal(0., 100.), fixed = false,
                    description = "Σ_n: reaction of income risk to employment status",
                    tex_label = "\\Sigma_{n}")
-    m <= parameter(:σ_R, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+=#
+     m <= parameter(:Σ_n, 0.0, (-1000.0, 1000.0), (-1000.0, 1000.0), ModelConstructors.SquareRoot(),
+                   Normal(0., 100.), fixed = false,
+                   description = "Σ_n: reaction of income risk to employment status",
+                   tex_label = "\\Sigma_{n}")
+    #m[:Σ_n] = 0.0
+    #println(m[:Σ_n].value)
+
+    m <= parameter(:σ_R, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.10), fixed = false,
                    description = "σ_R_ϵ: standard dev. of the monetary policy shock process",
                    tex_label = "\\sigma_{R, \\epsilon}")
-    m <= parameter(:σ_G, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_G, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.65, 0.3), fixed = false,
                    description = "σ_G: standard dev. of the structural deficit shock process",
                    tex_label = "\\sigma_{G}")
-    m <= parameter(:σ_P, 0.01, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_P, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2., 0.10), fixed = false,
                    description = "σ_P: standard dev. of the tax progressivity shock process",
                    tex_label = "\\sigma_{P}")
@@ -690,15 +701,15 @@ function init_parameters!(m::BayerBornLuetticke)
     m <= SteadyStateParameter(:Cgrowth_star, NaN, description = "Consumption growth (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:Tgrowth_star, NaN, description = "Tax revenue growth (steady-state)", tex_label = "")
     m <= SteadyStateParameter(:Ht_star, NaN, description = "Ht (steady-state)", tex_label = "")
-    m <= SteadyStateParameter(:retained_star, NaN,
-                              description = "Retained earnings of the monopolisticaly competitive intermediate" *
-                              " firm sector, shifted by 1.0 (steady-state)", tex_label = "")
-    m <= SteadyStateParameter(:firm_profits_star, NaN, description = "Firm profits (steady-state)", tex_label = "")
-    m <= SteadyStateParameter(:union_retained_star, NaN, description = "Retained earnings of the monopolistic union" *
-                              " sector, shifted by 1.0 (steady-state)", tex_label = "")
-    m <= SteadyStateParameter(:union_firm_profits_star, NaN, description = "Union profits (steady-state)", tex_label = "")
-    m <= SteadyStateParameter(:tot_retained_Y_star, NaN, description = "Exponential of the retained earnings to gdp ratio" *
-                              " (equal to zero) (steady-state)", tex_label = "")
+   #m <= SteadyStateParameter(:retained_star, NaN,
+                              #description = "Retained earnings of the monopolisticaly competitive intermediate" *
+                             # " firm sector, shifted by 1.0 (steady-state)", tex_label = "")
+   # m <= SteadyStateParameter(:firm_profits_star, NaN, description = "Firm profits (steady-state)", tex_label = "")
+   # m <= SteadyStateParameter(:union_retained_star, NaN, description = "Retained earnings of the monopolistic union" *
+                             # " sector, shifted by 1.0 (steady-state)", tex_label = "")
+   # m <= SteadyStateParameter(:union_firm_profits_star, NaN, description = "Union profits (steady-state)", tex_label = "")
+   # m <= SteadyStateParameter(:tot_retained_Y_star, NaN, description = "Exponential of the retained earnings to gdp ratio" *
+                              #" (equal to zero) (steady-state)", tex_label = "")
 
     # Scalar summary statistics about the idiosyncratic states (e.g. inequality measures)
     # TODO: add descriptions to these parameters
@@ -1033,7 +1044,7 @@ function setup_indices!(m::BayerBornLuetticke)
     # Aggregate blocks
     aggr_eqn_names = [# Exogenous shocks
                       :eq_A, :eq_Z, :eq_Ψ, :eq_mp, :eq_μ_p, :eq_μ_w,
-                      :eq_σ, :eq_union_retained, :eq_retained,
+                      :eq_σ,
 
                       :eq_LY, :eq_LB, :eq_LT, :eq_LI, :eq_Lw,
                       :eq_Lq, :eq_LC, :eq_Lavg_tax_rate,
@@ -1062,10 +1073,7 @@ function setup_indices!(m::BayerBornLuetticke)
                                 :eq_Ygrowth, :eq_Bgrowth, :eq_Igrowth,
                                 :eq_wgrowth, :eq_Cgrowth, :eq_Tgrowth,
                                 :eq_expost_liquidity_premium,
-                                :eq_exante_liquidity_premium,
-                                :eq_retained_earnings_gdp_ratio,
-                                :eq_union_firm_profits, :eq_union_profits,
-                                :eq_firm_profits, :eq_profits_distr_to_hh])
+                                :eq_exante_liquidity_premium,:eq_union_profits,:eq_profits_distr_to_hh])
         eqconds[name] = (n_states_idio_jumps + i):(n_states_idio_jumps + i)
         aggr_eqconds[name] = i + n_aggr_states
     end
