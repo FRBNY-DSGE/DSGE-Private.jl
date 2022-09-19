@@ -350,14 +350,22 @@ tot_taxrev  = distr[:]' * taxrev[:]
     incgrossaux     = ((y_grid/H).^tax_prog_scale.*LC)
     incgrossaux[end]= y_grid[end].*profits_t
     av_tax_rate_up  = dot(distr_y, taxrev)./(dot(distr_y,incgrossaux))
-#println("effint")
-#println(eff_int[1:5])
-#println("A")
-#println(A_t)
-#println("pi")
-#println(π_t)
-#println("RB")
-#println(RB_t)
+test = incgross[1].-inc[1]
+#println("size taxrev")
+#println(size(test))
+#println("dot product tax dist")
+#println(sum((nt[:distr_t].*test)))
+#println(F[2233])
+#=
+println("effint")
+println(eff_int[1:5])
+println("A")
+println(A_t)
+println("pi")
+println(π_t)
+println("RB")
+println(RB_t)
+=#
 #=
 println("tax_prog_scale")
 println(tax_prog_scale)
@@ -373,7 +381,9 @@ println(w_t)
 println(N_t)
 =#
 #println("inc")
-#println(inc[1][:][1:5])
+#println(norm(inc))
+#println("taxrev")
+#println(norm(taxrev))
  F[first(eqconds[:eq_tax_level])] = avg_tax_rate_t - av_tax_rate_up
 F[first(eqconds[:eq_tax_revenue])]    = log(T_t) - log(dot(taxrev,distr_y) + avg_tax_rate_t * (union_profits_t))
 

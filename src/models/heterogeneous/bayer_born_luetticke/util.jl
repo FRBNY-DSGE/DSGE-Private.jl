@@ -57,8 +57,8 @@ end
         mkpath(dirname(fp))
     end
     JLD2.jldopen(fp, true, true, true, IOStream) do file
-        write(file, "A", get_untransformed_values(m[:A])::Matrix{T})
-        write(file, "B", get_untransformed_values(m[:B])::Matrix{T})
+        write(file, "A", m[:A].value::Matrix{T})
+        write(file, "B", m[:B].value::Matrix{T})
     end
     nothing
 end
@@ -78,4 +78,24 @@ end
     m[:A] = out["A"]
     m[:B] = out["B"]
     m
+end
+
+@inline function compute_and_save_irfs(m::BayerBornLuetticke,T,fp)
+    system_main = compute_system(m)
+    θ = parameters2namedtuple(m)
+    shocks = collect(keys(m.exogenous_shocks))
+    shock2deviation_dict = get_setting(m,:shock_to_deviation_dict)
+    sd_shocks = zeros(length(shocks))
+    ct = 1
+    for  i in shocks
+       sd_shocks[ct] = θ[shock2deviation_dict[i]]
+       ct+=1
+    end
+    states, pseudo, obs = impulse_responses(m,system_main, T, shocks,sd_shocks)
+    JLD2.jldopen(fp,true, true,true,IOStream) do file
+      write(file,"states",states)
+      write(file,"obs",obs)
+      write(file,"pseudo",pseudo)
+    end
+    nothing
 end

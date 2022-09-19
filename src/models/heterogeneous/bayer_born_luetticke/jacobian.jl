@@ -1,6 +1,6 @@
 #hank
 # TODO: add an option that constructs nt and id only once rather than repeatedly
-using Debugger
+using Debugger, CSV, Tables
 """
 ```
 jacobian(m::BayerBornLuetticke)
@@ -617,14 +617,17 @@ function _original_jacobian!(m::BayerBornLuetticke)
     #Debugger.@run obj_fnct(zeros(2*length_X0))
     X0_t = zeros(length_X0)
     X0_tPrime = X0_t
-    X0_t[1081] = -0.01
-    X0_t[1084]= -0.01*0
+    X0_t[2222] = 0.01*0
+    X0_t[107]= 0.01
     #println("X0_t y")
     #println(X0_t[99:100])
     diff_Fsys_test = obj_fnct(hcat(X0_t, X0_tPrime))
 
-
-    println(diff_Fsys_test[2216])
+    println("F at selected location")
+    println(diff_Fsys_test[2233])
+    println(diff_Fsys_test[2239])
+    println(diff_Fsys_test[2251])
+    println(diff_Fsys_test[109:115])
     println(diff_Fsys_test[1101:1105])
     println("norm of diff of 0s")
     println(norm(diff_Fsys_test))
@@ -645,6 +648,8 @@ function _original_jacobian!(m::BayerBornLuetticke)
     println(sum(isnan.(diff_Fsys_test)))
     println("diff at those values")
     #println(diff_Fsys_test[ind_vals_non])
+    #println("saved")
+    #CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_F_RB_shock.csv",Tables.table(diff_Fsys_test))
     @assert false
 =#
     # TODO: make Fsys in place? Would it make sense to make Fsys in place in general, particularly w.r.t Fsys_agg?
@@ -686,10 +691,24 @@ function _original_jacobian!(m::BayerBornLuetticke)
     # Store A and B Jacobians
     m[:A] = A
     m[:B] = B
-    println("A pre passing to klein no schur")
+    if get_setting(m,:load_bbl_posterior_mean)
+        CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_A_Mat_v3.csv",Tables.table(m[:A].value))
+        CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_B_Mat_v3.csv",Tables.table(m[:B].value))
+    else
+        CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_A_Mat_v3.csv",Tables.table(m[:A].value))
+        CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_B_Mat_v3.csv",Tables.table(m[:B].value))
+    end
+    println("B values  pre passing to klein no schur")
+    println("I90sharenet")
     println(m[:B].value[2216,1081])
+    println("output")
+    println(m[:B].value[2224,1081])
+    println("Gini C")
+    println(m[:B].value[2213,1081])
+    println("Gini X")
+    println(m[:B].value[2214,1081])
     println("saved A,B")
-   # @assert false
+    #@assert false
 
     return A, B
 end

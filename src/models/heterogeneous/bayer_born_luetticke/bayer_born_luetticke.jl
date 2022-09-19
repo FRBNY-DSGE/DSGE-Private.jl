@@ -781,6 +781,15 @@ function init_parameters!(m::BayerBornLuetticke)
                                   description = "The B matrix computed by jacobian(m)")
 
 
+    # Should have created the P matrix over here, not in settings
+    if  get_setting(m,:load_bbl_posterior_mean)
+        params = ModelConstructors.get_values(DSGE.get_parameters(m))
+        params = vcat(params[1:19],1.226, 0.164,0.097,0.110,0.788,2.457,0.115,0.294,-1.078,-0.877,0.401,1.454,2.842,params[33:35],0.943,0.997,0.969,0.899,0.859,params[41],0.994,params[43:45],0.00199,0.00582,0.02158,0.01660,0.05930,params[51:52],0.00257,0.00291,params[55:59])
+        println(params)
+        #params = Vector{Float64}(params)
+        ModelConstructors.update!(m.parameters,params)
+    end
+
 end
 
 function model_settings!(m::BayerBornLuetticke)
@@ -940,6 +949,7 @@ m <= Setting(:replicate_original_output, true, "Use steady state and linearizati
                 "replicate output from the original implementation by Bayer, Born, and Luetticke.")
     m <= Setting(:original_dataset, true, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
 
+    m <= Setting(:load_bbl_posterior_mean, false, "Load posterior mean parameter values from Bayer, Born, and Luetticke")
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)
     m <= Setting(:save_jacobian, true)

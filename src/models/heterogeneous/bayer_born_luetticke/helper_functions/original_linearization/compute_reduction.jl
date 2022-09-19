@@ -56,9 +56,11 @@ ControlCOVAR = (ControlCOVAR + ControlCOVAR') ./ 2
 
 Dindex = id[:copula_t] ## values of the indices do not match
 evalS, evecS = eigen(StateCOVAR[Dindex, Dindex])
-#println("evalS")
-#println(evalS)
+println("evalS max")
+println(maximum(evalS))
 keepD = abs.(evalS).>maximum(evalS)*get_setting(m, :further_compress_critS)
+println("sum keepD")
+println(sum(keepD))
 indKeepD = Dindex[keepD]
 nstates_reduced = nstates - length(Dindex) + length(indKeepD)
 
@@ -67,6 +69,8 @@ Vindex = [id[:Vm_t] ; id[:Vk_t]]
 #Vindex = 1081:2119
 evalC, evecC = eigen(ControlCOVAR[Vindex.-nstates, Vindex.-nstates])
 keepV = abs.(evalC).>maximum(evalC)*get_setting(m, :further_compress_critC)
+println("max evalC")
+println(maximum(evalC))
 indKeepV = Vindex[keepV]
 
 #-----------------------------------------------------------

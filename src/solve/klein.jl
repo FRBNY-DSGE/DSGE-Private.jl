@@ -14,7 +14,7 @@ Klein (2004) algorithm.
     * -2: local non-existence
     * -3: numerical error during matrix inversions
 """
-
+#using CSV, Tables
 function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbose::Symbol = :none) where {T <: Real}
 
     #################
@@ -104,19 +104,57 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
     println("GOT TO KELIN JL")
 
     if(typeof(m) <: BayerBornLuetticke)
+       #perhaps change the way this is used
+       # m <= Setting(:State2Control, Matrix{Float64}(undef,0,0))
+       # m <= Setting(:LOMstate, Matrix{Float64}(undef,0,0))
         m <= Setting(:State2Control, gx_coef)
         m <= Setting(:LOMstate, hx_coef)
 
         if get_setting(m,:linearize_heterogeneous_block)
+            if get_setting(m,:load_bbl_posterior_mean)
+              println("saving")
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_LOM_Mat_v3.csv",Tables.table(get_setting(m,:LOMstate)))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_S2C_Mat_v3.csv",Tables.table(get_setting(m,:State2Control)))
+              #CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_P_Mat_v3.csv",Tables.table(get_setting(m.:PRightAll)))
+             else
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_LOM_Mat_v3.csv",Tables.table(get_setting(m,:LOMstate)))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_S2C_Mat_v3.csv",Tables.table(get_setting(m,:State2Control)))
+              #CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_P_Mat_v3.csv",Tables.table(get_setting(m.:PRightAll)))
+            end
+            println("computing reduction")
             compute_reduction(m)
             m <= Setting(:linearize_heterogeneous_block, false)
-            klein(m)
+            gx, hx, eu = klein(m)
+            if get_setting(m,:load_bbl_posterior_mean)
+              println("saving")
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_LOM_Reduced_Mat_v3.csv",Tables.table(get_setting(m,:LOMstate)))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_S2C_Reduced_Mat_v3.csv",Tables.table(get_setting(m,:State2Control)))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_P_Mat_v3.csv",Tables.table(get_setting(m,:PRightAll)))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_A_Reduced_Mat_v3.csv",Tables.table(m[:A].value))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_B_Reduced_Mat_v3.csv",Tables.table(m[:B].value))
+             else
+              println("saving")
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_LOM_Reduced_Mat_v3.csv",Tables.table(get_setting(m,:LOMstate)))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_S2C_Reduced_Mat_v3.csv",Tables.table(get_setting(m,:State2Control)))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_P_Mat_v3.csv",Tables.table(get_setting(m,:PRightAll)))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_A_Reduced_Mat_v3.csv",Tables.table(m[:A].value))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_B_Reduced_Mat_v3.csv",Tables.table(m[:B].value))
+            end
+            return gx,hx,eu
         end
 
+
     end
+    if !get_setting(m,:linearize_heterogeneous_block)
     #println("final A model")
     #println(m[:A].value[1:5,1:5])
-    return gx_coef, hx_coef, eu
+        println("size gx")
+        println(size(gx_coef))
+        println("size hx")
+        println(size(hx_coef))
+        println("test")
+        return gx_coef, hx_coef, eu
+    end
 end
 
 # Need an additional transition_equation function to properly stack the

@@ -117,7 +117,14 @@ F[eq_tax_progressivity]        = log(τ_prog_t) - θ[:ρ_P] * log(τ_prog_t1)  -
 
 F[eq_tax_revenue]            = log(T_t) - log(dot(nt[:distr_t], taxrev) + avg_tax_rate_t * union_profits_t)=#
 F[eq_tax_level]         = avg_tax_rate_t - sum(nt[:distr_t] .* taxrev) / sum(nt[:distr_t] .* incgrossaux) # Union profits are taxed at average tax rate
-
+#=
+println("av tax rate")
+println(avg_tax_rate_t)
+println("union profits")
+println(union_profits_t)
+println("T_t")
+println(T_t)
+=#
 F[eq_tax_revenue]            = log(T_t) - log(sum(nt[:distr_t] .* taxrev) + avg_tax_rate_t * union_profits_t)
 
 F[eq_avg_tax_rate]  = log(avg_tax_rate_t) - θ[:ρ_τ] * log(avg_tax_rate_t1)  -
