@@ -99,3 +99,21 @@ end
     end
     nothing
 end
+
+
+@doc raw"""
+    ig_pars(igmean,igvariance)
+Compute the location and shape parameter of the Inverse Gamma distribution from the mean and variance.
+# Arguments
+- `igmean`: prior mean of inverse gamma distribution [scalar]
+- `igvariance`: prior variance of inverse gamma distribution [scalar]
+Ouputs:
+- `a`: location parameter of inverse gamma distribution [scalar]
+- `b`: shape parameter of inverse gamma distribution [scalar]
+"""
+@inline function ig_pars(igmean, igvariance)
+    a = igmean^2 / igvariance + 2
+    b = igmean * (igmean^2 / igvariance + 1)
+
+    return a, b
+end

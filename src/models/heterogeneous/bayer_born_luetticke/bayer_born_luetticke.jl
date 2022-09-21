@@ -501,11 +501,11 @@ function init_parameters!(m::BayerBornLuetticke)
                    description = "ρ_P: Persistence in tax level",
                    tex_label = "\\rho_{P}")
     m <= parameter(:γ_B_P, 0., (-10., 10.), (-10., 10.), SquareRoot(),
-                   Normal(0., 1.), fixed = false,
+                   Normal(0., 1.), fixed = true,
                    description = "γ_B_P: Reaction of tax level to debt",
                    tex_label = "\\gamma_{B, P}")
     m <= parameter(:γ_Y_P, 0., (-10., 10.), (-10., 10.), SquareRoot(),
-                   Normal(0., 1.), fixed = false,
+                   Normal(0., 1.), fixed = true,
                    description = "γ_Y_P: Reaction of tax level to output",
                    tex_label = "\\gamma_{Y, P}")
 
@@ -563,23 +563,21 @@ function init_parameters!(m::BayerBornLuetticke)
     # Exogenous processes - standard deviations
     ## all rater close to 0.0003 for BBL, so may change to 0 later
     m <= parameter(:σ_A, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2, 0.10), fixed = false, # Note second tuple is parameterization for Exponential transform
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false, # Note second tuple is parameterization for Exponential transform
                    description = "σ_A: standard dev. of the bond-spread process.",
                    tex_label = "\\sigma_{A}")
     m <= parameter(:σ_Z,  0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2, 0.10), fixed = false,
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
                    description = "σ_Z: standard dev. of the process describing the " *
                    "stationary component of productivity.", tex_label = "\\sigma_Z")
-    m <= parameter(:σ_Ψ, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2, 0.10), fixed = false,
-                   description = "σ_Ψ: standard dev. of the exogenous marginal efficiency" *
+    m <= parameter(:σ_Ψ, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(), InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,description = "σ_Ψ: standard dev. of the exogenous marginal efficiency" *
                    " of investment shock process.", tex_label = "\\sigma_{\\Psi}")
     m <= parameter(:σ_μ_p, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2, 0.10), fixed = false,
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
                    description = "σ_μ_p: standard dev. of the price mark-up shock process",
                    tex_label = "\\sigma_{\\mu_p}")
     m <= parameter(:σ_μ_w, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2, 0.10), fixed = false,
+                  InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
                    description = "σ_μ_w: : standard dev. of the wage mark-up shock process",
                    tex_label = "\\sigma_{\\mu_w}")
     m <= parameter(:σ_S, 0.5115384615384616, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
@@ -593,41 +591,41 @@ function init_parameters!(m::BayerBornLuetticke)
                    tex_label = "\\Sigma_{n}")
 =#
      m <= parameter(:Σ_n, 0.0, (-1000.0, 1000.0), (-1000.0, 1000.0), ModelConstructors.SquareRoot(),
-                   Normal(0., 100.), fixed = false,
+                   Normal(0., 100.), fixed = true,
                    description = "Σ_n: reaction of income risk to employment status",
                    tex_label = "\\Sigma_{n}")
     #m[:Σ_n] = 0.0
     #println(m[:Σ_n].value)
 
     m <= parameter(:σ_R, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2, 0.10), fixed = false,
+                 InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
                    description = "σ_R_ϵ: standard dev. of the monetary policy shock process",
                    tex_label = "\\sigma_{R, \\epsilon}")
     m <= parameter(:σ_G, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   GammaAlt(0.65, 0.3), fixed = false,
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
                    description = "σ_G: standard dev. of the structural deficit shock process",
                    tex_label = "\\sigma_{G}")
     m <= parameter(:σ_P, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2., 0.10), fixed = false,
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
                    description = "σ_P: standard dev. of the tax progressivity shock process",
                    tex_label = "\\sigma_{P}")
 
 
     # Measurement error
     m <= parameter(:e_W90_share, sqrt(3.6982248520710056e-8), (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2., 0.10), fixed = false,
+                 InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = false,
                    description = "σ_W90_share: standard dev. of measurement error for 90th percentile of wealth distribution",
                    tex_label = "\\sigma_{W^{(90)}}")
     m <= parameter(:e_I90_share,  sqrt(3.6982248520710056e-8), (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2., 0.10), fixed = false,
+                  InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = false,
                    description = "σ_I90_share: standard dev. of measurement error for 90th percentile of income distribution",
                    tex_label = "\\sigma_{I^{(90)}}")
     m <= parameter(:e_τ_prog,  sqrt(3.6982248520710056e-8), (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2., 0.10), fixed = false,
+                    InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = false,
                    description = "σ_P_me: standard dev. of measurement error for tax progressivity",
                    tex_label = "\\sigma_{P, me}")
     m <= parameter(:e_σ, sqrt(0.0021556122448979594), (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   RootInverseGamma(2., 0.10), fixed = false,
+                   InverseGamma(ig_pars(0.05,0.01.^2)...), fixed = false,
                    description = "σ_S_me: standard dev. of measurement error for idiosyncratic income risk",
                    tex_label = "\\sigma_{S, me}")
 

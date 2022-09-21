@@ -60,8 +60,8 @@ CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSG
 
 CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_OrigStateCovarEigvecs.csv",Tables.table(evecS))
 
-println("eval S")
-println(evalS)
+#println("eval S")
+#println(evalS)
 println("evalS max")
 println(maximum(evalS))
 keepD = abs.(evalS).>maximum(evalS)*get_setting(m, :further_compress_critS)
