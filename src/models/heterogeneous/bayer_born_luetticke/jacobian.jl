@@ -606,7 +606,8 @@ function _original_jacobian!(m::BayerBornLuetticke)
     # x is a vector of length nxB + nxA.
     obj_fnct    = x -> original_Fsys(x[1:length_X0], x[length_X0+1:end],
                                      θ, m.grids, id, nt, m.equilibrium_conditions,                                                                    get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD, m)
-
+    println("obj fnct norm zeros")
+    println(norm(obj_fnct(zeros(2*length_X0))))
 #=
      ## TO TEST FSYS FCT
     #println("Gamma y")

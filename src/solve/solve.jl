@@ -83,8 +83,15 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
 
             return TTT, RRR, CCC
         elseif get_setting(m, :solution_method) == :klein
+            # CHANGE BACK TO COMPUTING RATHER THAN IMPORTING
             TTT_jump, TTT, eu = klein(m)
-
+            #=
+            eu = 1
+            TTT_jump = CSV.File("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/BBL_Saved_Vars/BBL_Prior_Mode_Save/BBL_S2C_Reduced_v3.csv",header=true)|>Tables.matrix
+            TTT = CSV.File("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/BBL_Saved_Vars/BBL_Prior_Mode_Save/BBL_LOM_Reduced_v3.csv",header=true)|>Tables.matrix
+            update_compression_indices!(m,[:Vm,:Vk,:copula],collect(192:193),collect(194:220),collect(109:171))
+            setup_indices!(m)
+            =#
 
             if eu == -1
                 throw(KleinError("Equilibrium is locally indeterminate"))

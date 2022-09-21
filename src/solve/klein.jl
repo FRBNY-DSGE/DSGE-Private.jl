@@ -20,7 +20,8 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
     #################
     # Linearization
     #################
-
+    # CHANGE BACK
+    #if !get_setting(m,:linearize_heterogeneous_block)
     jac_out = jacobian(m)
 
     # A and B are defined in the first condition
@@ -43,7 +44,15 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
         B = -Jac1[:, n+1:2*n]::Matrix{T}
     end
 
-
+    #else
+    # load in BBL matrices
+    #A = CSV.File("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/BBL_Saved_Vars/BBL_Prior_Mode_Save/BBL_A_Mat_v3.csv", header=true)|> Tables.matrix
+    #B =  CSV.File("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/BBL_Saved_Vars/BBL_Prior_Mode_Save/BBL_B_Mat_v3.csv", header=true)|> Tables.matrix
+    #m[:A] = A
+    #m[:B] = B
+    #B = -1 .* B
+    #n = size(A,1)
+    #end
     # NK is number of predetermined variables
     # NK = get_setting(m, :n_predetermined_variables)
     NK = n_backward_looking_states(m)::Int
@@ -123,6 +132,7 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
             end
             println("computing reduction")
             compute_reduction(m)
+            #@assert false
             m <= Setting(:linearize_heterogeneous_block, false)
             gx, hx, eu = klein(m)
             if get_setting(m,:load_bbl_posterior_mean)

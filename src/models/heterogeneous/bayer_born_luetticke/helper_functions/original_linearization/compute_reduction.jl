@@ -56,6 +56,12 @@ ControlCOVAR = (ControlCOVAR + ControlCOVAR') ./ 2
 
 Dindex = id[:copula_t] ## values of the indices do not match
 evalS, evecS = eigen(StateCOVAR[Dindex, Dindex])
+CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_OrigStateCovarEigvals.csv",Tables.table(evalS))
+
+CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_OrigStateCovarEigvecs.csv",Tables.table(evecS))
+
+println("eval S")
+println(evalS)
 println("evalS max")
 println(maximum(evalS))
 keepD = abs.(evalS).>maximum(evalS)*get_setting(m, :further_compress_critS)
@@ -71,6 +77,8 @@ evalC, evecC = eigen(ControlCOVAR[Vindex.-nstates, Vindex.-nstates])
 keepV = abs.(evalC).>maximum(evalC)*get_setting(m, :further_compress_critC)
 println("max evalC")
 println(maximum(evalC))
+println("sum keepV")
+println(sum(keepV))
 indKeepV = Vindex[keepV]
 
 #-----------------------------------------------------------
@@ -120,6 +128,7 @@ id_reduced[:Vk] = Int.(indKeepV[indKeepV.> last(id[:Vm_t])])
 #println(indKeepV)
 #println("indKeepD")
 #println(indKeepD)
+#@assert false
 update_compression_indices!(m, [:Vm, :Vk, :copula], id_reduced[:Vm], id_reduced[:Vk], id_reduced[:copula_t])
 setup_indices!(m)
 #m <= Setting(:linearize_heterogeneous_block, false) #once reduced, only want the aggregate jacobian to be computed
