@@ -118,6 +118,7 @@ function plot_history_and_forecast(m::AbstractDSGEModel, vars::Vector{Symbol}, c
 	        if !isdir("blog_plot_data")
 	            mkdir("blog_plot_data")
             end
+            println(df_plot_data)
             CSV.write(string("blog_plot_data/", get_setting(m, :data_vintage),
                              "_", replace(replace(title, " " => "_"), "," => ""), "_", var,
                              "_", join(map(x->string(x), weights), "_"), ".csv"), df_plot_data)
@@ -311,8 +312,10 @@ histforecast
         inds = intersect(findall(start_date .<= dates .<= end_date),
                          findall(hist.means[1, :date] .<= dates .<= hist.means[end, :date]))
         if save_as_csv
-	   df_mean_hist.dates = combined.means[inds, :date]
-	   df_mean_hist.mean_history = combined.means[inds, var]
+	        df_mean_hist.dates = combined.means[inds, :date]
+	        df_mean_hist.mean_history = combined.means[inds, var]
+            # this sort may not be needed
+            sort!(df_mean_hist, [:dates])
         end
 
 	combined.means[inds, :date], combined.means[inds, var]
@@ -334,7 +337,7 @@ histforecast
 	        df_mean_forecast.dates = combined.means[inds, :date]
 	        df_mean_forecast.mean_forecast = combined.means[inds, var]
 	        df_means = outerjoin(df_mean_hist, df_mean_forecast, on = :dates)
-
+            sort!(df_means, [:dates])
 
     	    if size(df_means) != (0, 0)
         	    df_plot_data.mean_history = df_means.mean_history
