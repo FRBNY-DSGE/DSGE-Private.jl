@@ -6,7 +6,7 @@ function original_Fsys(X::AbstractArray, XPrime::AbstractArray, θ::NamedTuple, 
                        IDCD::Array{Adjoint{Float64,Array{Float64,2}},1}, m::BayerBornLuetticke)
     # The function call with Duals takes
     # Reserve space for error terms
-    println("test")
+    #println("test")
     F = zeros(eltype(X), size(X))
 
     ############################################################################

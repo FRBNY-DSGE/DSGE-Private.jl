@@ -171,7 +171,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     # Calls SMC package's generic SMC
     println("Calling SMC.jl's SMC estimation routine...")
 
-    @assert false
+    #@assert false
     SMC.smc(my_likelihood, get_parameters(m), data;
             verbose = verbose,
             testing = m.testing,

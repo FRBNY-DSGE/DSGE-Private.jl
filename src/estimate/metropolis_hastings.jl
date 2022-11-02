@@ -93,22 +93,33 @@ function metropolis_hastings(proposal_dist::Distribution,
         cc0 = c
         cc = c
     end
-
+    #println("posterior")
+    #println(posterior!(loglikelihood,parameters,proposal_dist.μ,data))
     propdist = init_deg_mvnormal(proposal_dist.μ, proposal_dist.σ)
-
+    #println("proposal dist")
+    #println(proposal_dist.σ)
+    #@assert false
+    println("Testing")
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
     para_old = rand(propdist, rng; cc = cc0)
     post_old = -Inf
+    #para_old = proposal_dist.μ
 
     initialized = false
     while !initialized
         post_old = posterior!(loglikelihood, parameters, para_old, data; sampler = true)
+        println("post_old val")
+        println(post_old)
         if post_old > -Inf
             propdist.μ = para_old
             initialized = true
         else
-            para_old = rand(propdist, rng; cc=cc0)
+          println("drawing")
+          para_old = rand(propdist, rng; cc=cc0)
+          #println("para_old")
+         # println(para_old)
+          #@assert false
         end
     end
 
@@ -189,6 +200,8 @@ function metropolis_hastings(proposal_dist::Distribution,
                 para_draw   = rand(d_subset, rng; cc = cc)
 
                 para_new          = deepcopy(para_old)
+                #println(para_new)
+                #@assert false
                 para_new[block_a] = para_draw
 
                 q0, q1 = if adaptive_accept

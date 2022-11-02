@@ -9,7 +9,7 @@ Compute Hessian of DSGE/VAR posterior function evaluated at x.
 """
 function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
                   x::Vector{T}, data::AbstractArray; check_neg_diag::Bool = true,
-                  toggle::Bool = true, verbose::Symbol = :none) where T<:AbstractFloat
+                  toggle::Bool = true, verbose::Symbol = :none, twice_diff::Bool = false) where T<:AbstractFloat
 
     regime_switching = haskey(get_settings(m), :regime_switching) &&
         get_setting(m, :regime_switching)
@@ -41,9 +41,14 @@ function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
     end
 
     distr = use_parallel_workers(m)
+    if !twice_diff
     hessian_free, has_errors = hessizero(f_hessian, x_hessian;
         check_neg_diag = check_neg_diag, verbose = verbose, distr = distr)
-
+    else
+    has_errors = false
+    func = Optim.TwiceDifferentiable(t -> f_hessian(t), x_hessian)
+    hessian_free = Optim.hessian!(func, x_hessian)
+    end
     # Fill in rows/cols of zeros corresponding to location of fixed parameters
     # For each row corresponding to a free parameter, fill in columns corresponding to free
     # parameters. Everything else is 0.

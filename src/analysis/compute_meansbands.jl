@@ -150,12 +150,17 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                                                kwargs...)
             end
         else
+            println("testing on one computation")
+            println(output_var)
+            println(compute_meansbands(m,input_type,cond_type,output_var,variable_names[2], df; pop_growth=pop_growth, forecast_string=forecast_string, pseudo2data=pseudo2data, bdd_fcast=bdd_fcast, skipnan=true))
+            println("testing map")
             mb_vec = map_fcn(var_name -> compute_meansbands(m, input_type, cond_type, output_var, var_name, df;
                                                             pop_growth = pop_growth, forecast_string = forecast_string,
                                                             pseudo2data = pseudo2data,
                                                             bdd_fcast = bdd_fcast,
-                                                            skipnan = skipnan, kwargs...),
+                                                            skipnan = skipnan,kwargs...),
                              variable_names)
+           println("after")
         end
 
         # Re-assemble pmap outputs
@@ -621,9 +626,11 @@ function mb_reverse_transform(fcast_series::AbstractArray, transform::Function,
         else
             Float64[]
         end
+        println("pre reverse transform")
         reverse_transform(fcast_series, transform4q;
                           fourquarter = true, y0s = y0s,
                           pop_growth = pop_growth)
+        println("post reverse transform")
     # elseif product in [:histlvl, :forecastlvl, :bddforecastlvl]
     #     # NEED TO ADD CASE HERE FOR HISTLVL, ETC# .
         # reverse_transform(fcast_series, transform4q;
@@ -636,6 +643,9 @@ function mb_reverse_transform(fcast_series::AbstractArray, transform::Function,
             transform = get_nopop_transform(transform)
             y0 = 0.0
         else
+            println("data")
+            println(data)
+            println(y0_index)
             y0 = class == :obs ? data[y0_index] : NaN
         end
 

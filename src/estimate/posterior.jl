@@ -41,6 +41,8 @@ function posterior(m::Union{AbstractDSGEModel{T},AbstractVARModel{T}}, data::Abs
     like = likelihood(m, data; sampler = sampler,
                       catch_errors = catch_errors)
     post = ϕ_smc*like + prior(m)
+    println("post")
+    println(post)
     return post
 end
 

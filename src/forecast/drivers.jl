@@ -1129,10 +1129,11 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                                  update_regime_eqcond_info! = update_regime_eqcond_info!)
                 end
             else
+                #println("testing enforce zlb change in drivers.jl")
                 forecaststates, forecastobs, forecastpseudo, forecastshocks =
                     forecast(m, system, s_T;
                              cond_type = cond_type, enforce_zlb = true, draw_shocks = uncertainty)
-            end
+            end ##CHANGE BACK TO ENFORCE IS TRUE
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
             # NOTE: ZZ REGIME SWITCHING NOT FULLY SUPPORTED, SO JUST TAKE THE LAST ZZ IN THE SYSTEM
@@ -1303,21 +1304,29 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
     irf_vars = [:irfstates, :irfobs, :irfpseudo]
     irfs_to_compute = intersect(output_vars, irf_vars)
-
     if !isempty(irfs_to_compute)
-        if shock_name!=:none
-            irfstates, irfobs, irfpseudo = impulse_responses(m, system, impulse_response_horizons(m),
+        if (typeof(m) <: BayerBornLuetticke)
+            #println("BBL forecasting test irfs")
+            irfstates, irfobs, irfpseudo = impulse_responses(system, impulse_response_horizons(m))
+            #forecast_output[:irfstates] = irfstates
+            #forecast_output[:irfobs] = irfobs
+            #forecast_output[:irfpseudo] = irfpseudo
+         else
+
+            if shock_name!=:none
+               irfstates, irfobs, irfpseudo = impulse_responses(m, system, impulse_response_horizons(m),
                                                              shock_name,
                                                              shock_var_name,
                                                              shock_var_value)
-        else
-            irfstates, irfobs, irfpseudo = impulse_responses(m, system)
+            else
+               irfstates, irfobs, irfpseudo = impulse_responses(m, system)
+            end
         end
         forecast_output[:irfstates] = irfstates
         forecast_output[:irfobs] = irfobs
         forecast_output[:irfpseudo] = irfpseudo
-    end
 
+    end
     ### Return only desired output_vars
 
     for key in keys(forecast_output)
@@ -1329,5 +1338,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
     if testing_carter_kohn && input_type == :full && get_setting(m, :forecast_smoother) == :carter_kohn
         forecast_output[:conded] = conded
     end
+    #println("forecast output")
+    #println(forecast_output)
     return forecast_output
 end

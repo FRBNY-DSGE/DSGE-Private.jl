@@ -2,6 +2,9 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
     # See helper_functions/HetAgentDSGE
 
     # TODO: add ability to pass initial guesses for VmSS, VkSS more robustly (currently, find_steadystate makes a guess itself)
+    if !get_setting(m,:compute_steadystate)
+       return m
+    end
 
     if get_setting(m, :replicate_original_output)
 
@@ -19,7 +22,7 @@ function steadystate!(m::BayerBornLuetticke; verbose::Symbol = :none)
         @save "save1.jld2" KSS1 VmSS1 VkSS1 distrSS1
 
         original_prepare_linearization(m, KSS, VmSS, VkSS, distrSS; verbose = verbose)
-
+        m <= Setting(:compute_steadystate, false)
 
     else
         if get_setting(m, :compute_full_steadystate)

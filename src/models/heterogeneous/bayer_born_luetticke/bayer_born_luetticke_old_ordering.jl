@@ -391,59 +391,11 @@ function init_parameters!(m::BayerBornLuetticke)
     m <= parameter(:δ_0, (.07 + .016) / 4., fixed = true,
                    description = "Depreciation rate", tex_label = "\\delta_0")
 
-    # Technological parameters
-    ## Old Value 5. rather than 4.2
-    m <= parameter(:δ_s, 4.2, (0., 1e2), (0., 1e2), ModelConstructors.Exponential(),
-                   GammaAlt(5., 2.), fixed = false,
-                   description = "Depreciation increase from flexible utilization",
-                   tex_label = "\\delta_s")
-#CHANGE delta_s, phi to fixed = false eventually, may have to modify after when trying to fix
-
-    ## Old Value 4. rather than 3.0
-    m <= parameter(:ϕ, 3.0, (0., 1e2), (0., 1e2), ModelConstructors.Exponential(),
-                   GammaAlt(4., 2.), fixed = false,
-                   description = "Depreciation increase from flexible utilization",
-                   tex_label = "\\phi")
-
-
-    # NK Phillips Curve #BBL's \mu
+    # NK Phillips Curve
     m <= parameter(:μ_p, 1.1, fixed = true,
                    description = "Price markup", tex_label = "\\mu_p")
-
-    # NK Phillips Curve
-    ## Old Value 1./11. rather than 0.099
-    m <= parameter(:κ_p, 0.09900000000000002, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   GammaAlt(0.1, 0.01), fixed = false,
-                   description = "Price adjustment cost (Calvo probability)",
-                   tex_label = "\\kappa_p")
-
     m <= parameter(:μ_w, 1.1, fixed = true,
                    description = "Wage markup", tex_label = "\\mu_w")
-    ## Old Value 1./11 rather than 0.099
-    m <= parameter(:κ_w, 0.09900000000000002, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   GammaAlt(0.1, 0.01), fixed = false,
-                   description = "Wage adjustment cost (Calvo probability)",
-                   tex_label = "\\kappa_w")
-
-
-
-    m <= parameter(:ψ, 0.1, fixed = true,
-                   description = "Steady-state bond to capital ratio", tex_label = "\\psi")
-
-
-    m <= parameter(:τ_lev, 0.825, fixed = true,
-                   description = "Steady-state income tax rate level", tex_label = "\\tau^L")
-    m <= parameter(:τ_prog, 0.12, fixed = true,
-                   description = "Steady-state income tax rate progressivity", tex_label = "\\tau^P")
-
-
-    # Unused Parameters
-    m <= parameter(:Runused, 1.01, fixed = true,
-                   description = "Unused", tex_label = "\\R")
-    m <= parameter(:Kunused, 40.0, fixed = true,
-                   description = "Unused", tex_label = "\\K")
-
-
     m <= parameter(:π, 1.0^0.25 , fixed = true,
                    description = "Steady-state inflation", tex_label = "\\pi")
 
@@ -451,123 +403,61 @@ function init_parameters!(m::BayerBornLuetticke)
     m <= parameter(:RB, m[:π]*(1.0.^0.25) , fixed = true,
                    description = "Steady-state nominal interest rate", tex_label = "\\RB")
 
-
+    # Remaining parameters affecting the steady-state
+    m <= parameter(:ψ, 0.1, fixed = true,
+                   description = "Steady-state bond to capital ratio", tex_label = "\\psi")
+    m <= parameter(:τ_lev, 0.825, fixed = true,
+                   description = "Steady-state income tax rate level", tex_label = "\\tau^L")
+    m <= parameter(:τ_prog, 0.12, fixed = true,
+                   description = "Steady-state income tax rate progressivity", tex_label = "\\tau^P")
     m <= parameter(:Rbar, (m[:π] * (1.0675 ^ 0.25) - 1.), fixed = true,
                    description = "Borrowing wedge in interest rate", tex_label = "\\bar{R}")
 
-
-
-
-     # Exogenous processes - autocorrelation
-    ## Old Value 0.9 rather than 0.5
-    m <= parameter(:ρ_A, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
-                   BetaAlt(0.5, 0.2), fixed = false,
-                   description = "ρ_A: AR(1) coefficient in the bond-spread process.",
-                   tex_label = "\\rho_A")
-
-
-     # Exogenous processes - standard deviations
-    ## all rater close to 0.0003 for BBL, so may change to 0 later
-    m <= parameter(:σ_A, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false, # Note second tuple is parameterization for Exponential transform
-                   description = "σ_A: standard dev. of the bond-spread process.",
-                   tex_label = "\\sigma_{A}")
-
-    ## Old Value 0.9 rather than 0.5
-    m <= parameter(:ρ_Z, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
-                   BetaAlt(0.5, 0.2), fixed = false,
-                   description = "ρ_Z: AR(1) coefficient in the technology process.",
-                   tex_label = "\\rho_Z")
-
-
-     m <= parameter(:σ_Z,  0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
-                   description = "σ_Z: standard dev. of the process describing the " *
-                   "stationary component of productivity.", tex_label = "\\sigma_Z")
-
-    ## Old Value 0.9 rather than 0.5
-    m <= parameter(:ρ_Ψ, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
-                   BetaAlt(0.5, 0.2), fixed = false,
-                   description = "ρ_Ψ: AR(1) coefficient in marginal efficiency of investment (MEI) process.",
-                   tex_label = "\\rho_{\\Psi}")
-
-
-
-     m <= parameter(:σ_Ψ, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(), InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,description = "σ_Ψ: standard dev. of the exogenous marginal efficiency" *
-                   " of investment shock process.", tex_label = "\\sigma_{\\Psi}")
-
-
-    ## Old Value 0.9 rather than 0.5
-    m <= parameter(:ρ_μ_p, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
-                   BetaAlt(0.5, 0.2), fixed = false,
-                   description = "ρ_μ_p: AR(1) coefficient in the price mark-up shock process.",
-                   tex_label = "\\rho_{\\mu_p}")
-
-
-
- m <= parameter(:σ_μ_p, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
-                   description = "σ_μ_p: standard dev. of the price mark-up shock process",
-                   tex_label = "\\sigma_{\\mu_p}")
-    ## Old Value 0.9 rather than 0.5
-    m <= parameter(:ρ_μ_w, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
-                   BetaAlt(0.5, 0.2), fixed = false,
-                   description = "ρ_μ_w: AR(1) coefficient in the wage mark-up shock process.",
-                   tex_label = "\\rho_{\\mu_w}")
-
-
-   m <= parameter(:σ_μ_w, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                  InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
-                   description = "σ_μ_w: : standard dev. of the wage mark-up shock process",
-                   tex_label = "\\sigma_{\\mu_w}")
-
-
-
-    ## Old Value 0.84 rather than 0.878
-    m <= parameter(:ρ_S, 0.8777777777777779, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
-                   BetaAlt(0.7, 0.2), fixed = false,
-                   description = "ρ_S: AR(1) coefficient in the idiosyncratic income risk process.",
-                   tex_label = "\\rho_S")
-
-
-
-
-
-    m <= parameter(:σ_S, 0.5115384615384616, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   GammaAlt(0.65, 0.3), fixed = false,
-                   description = "σ_S: standard dev. of the idiosyncratic income risk shock process",
-                   tex_label = "\\sigma_{S}")
+    #######################################################
+    # Parameters that affect dynamics but not steady-state
+    #######################################################
+    # Retained earnings
 #=
-    m <= parameter(:Σ_n, 0.0, (-1e3, 1e3), (-1e3, 1e3), ModelConstructors.SquareRoot(),
-                   Normal(0., 100.), fixed = false,
-                   description = "Σ_n: reaction of income risk to employment status",
-                   tex_label = "\\Sigma_{n}")
+    m <= parameter(:ω_F, 0.1, (0., 1.), (0., 1.), SquareRoot(),
+                   Uniform(0., 1.), fixed = false,
+                   description = "fraction of retained earnings (profits) that is disbursed to HH",
+                   tex_label = "\\omega_F")
+    m <= parameter(:ω_U, 0.1, (0., 1.), (0., 1.), SquareRoot(),
+                   Uniform(0., 1.), fixed = false,
+                   description = "fraction of retained earnings (wages) that is disbursed to HH",
+                   tex_label = "\\omega_U")
 =#
-     m <= parameter(:Σ_n, 0.0, (-1000.0, 1000.0), (-1000.0, 1000.0), ModelConstructors.SquareRoot(),
-                   Normal(0., 100.), fixed = true,
-                   description = "Σ_n: reaction of income risk to employment status",
-                   tex_label = "\\Sigma_{n}")
-    #m[:Σ_n] = 0.0
-    #println(m[:Σ_n].value)
 
+    # Technological parameters
+    ## Old Value 5. rather than 4.2
+    m <= parameter(:δ_s, 4.2, (0., 1e2), (0., 1e2), ModelConstructors.Exponential(),
+                   GammaAlt(5., 2.), fixed = false,
+                   description = "Depreciation increase from flexible utilization",
+                   tex_label = "\\delta_s")
+    ## Old Value 4. rather than 3.0
+    m <= parameter(:ϕ, 3.0, (0., 1e2), (0., 1e2), ModelConstructors.Exponential(),
+                   GammaAlt(4., 2.), fixed = false,
+                   description = "Depreciation increase from flexible utilization",
+                   tex_label = "\\phi")
 
- # Monetary policy
+    # NK Phillips Curve
+    ## Old Value 1./11. rather than 0.099
+    m <= parameter(:κ_p, 0.09900000000000002, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   GammaAlt(0.1, 0.01), fixed = false,
+                   description = "Price adjustment cost (Calvo probability)",
+                   tex_label = "\\kappa_p")
+    ## Old Value 1./11 rather than 0.099
+    m <= parameter(:κ_w, 0.09900000000000002, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   GammaAlt(0.1, 0.01), fixed = false,
+                   description = "Wage adjustment cost (Calvo probability)",
+                   tex_label = "\\kappa_w")
+
+    # Monetary policy
     ## Old Value 0.9 rather than 0.5
     m <= parameter(:ρ_R , 0.5, (1e-5, 0.999), (1e-5, 0.999), SquareRoot(),
                    BetaAlt(0.5, 0.20), fixed = false,
                    description = "ρ: The degree of inertia in the monetary policy rule.",
                    tex_label="\\rho_R")
-
-
-
-    m <= parameter(:σ_R, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                 InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
-                   description = "σ_R_ϵ: standard dev. of the monetary policy shock process",
-                   tex_label = "\\sigma_{R, \\epsilon}")
-
-
-
-
     ## Old Value 2. rather than 1.7
     m <= parameter(:θ_π, 1.7, (1., 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
                    Normal(1.7, 0.3), fixed = false, # Note second tuple is parameterization for Exponential transform
@@ -594,27 +484,11 @@ function init_parameters!(m::BayerBornLuetticke)
                    Normal(0.1, 1.), fixed = false,
                    description = "γ_Y: Reaction of deficit to output",
                    tex_label = "\\gamma_{Y}")
-
-
-
-    ## Old Value 0.98 rather than 0.5
-    m <= parameter(:ρ_G, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
-                   BetaAlt(0.5, 0.2), fixed = false,
-                   description = "ρ_G: AR(1) coefficient in the government structural deficit process.",
-                   tex_label = "\\rho_G")
-
-
-     m <= parameter(:σ_G, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
-                   description = "σ_G: standard dev. of the structural deficit shock process",
-                   tex_label = "\\sigma_{G}")
- m <= parameter(:ρ_τ, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
+    m <= parameter(:ρ_τ, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_τ: Persistence in tax level",
                    tex_label = "\\rho_{\\tau}")
-
-
-  m <= parameter(:γ_B_τ, 0.0, (-10., 10.), (-10., 10.), SquareRoot(),
+    m <= parameter(:γ_B_τ, 0.0, (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = false,
                    description = "γ_B_τ: Reaction of tax level to debt",
                    tex_label = "\\gamma_{B, \\tau}")
@@ -622,18 +496,11 @@ function init_parameters!(m::BayerBornLuetticke)
                    Normal(0., 1.), fixed = false,
                    description = "γ_Y_τ: Reaction of tax level to output",
                    tex_label = "\\gamma_{Y, \\tau}")
-
-m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
+    m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_P: Persistence in tax level",
                    tex_label = "\\rho_{P}")
-
-  m <= parameter(:σ_P, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
-                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
-                   description = "σ_P: standard dev. of the tax progressivity shock process",
-                   tex_label = "\\sigma_{P}")
-
-  m <= parameter(:γ_B_P, 0., (-10., 10.), (-10., 10.), SquareRoot(),
+    m <= parameter(:γ_B_P, 0., (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = true,
                    description = "γ_B_P: Reaction of tax level to debt",
                    tex_label = "\\gamma_{B, P}")
@@ -642,26 +509,42 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    description = "γ_Y_P: Reaction of tax level to output",
                    tex_label = "\\gamma_{Y, P}")
 
-
-    # Retained earnings
-#=
-    m <= parameter(:ω_F, 0.1, (0., 1.), (0., 1.), SquareRoot(),
-                   Uniform(0., 1.), fixed = false,
-                   description = "fraction of retained earnings (profits) that is disbursed to HH",
-                   tex_label = "\\omega_F")
-    m <= parameter(:ω_U, 0.1, (0., 1.), (0., 1.), SquareRoot(),
-                   Uniform(0., 1.), fixed = false,
-                   description = "fraction of retained earnings (wages) that is disbursed to HH",
-                   tex_label = "\\omega_U")
-=#
-
-
-
-
-
-
-
-
+    # Exogenous processes - autocorrelation
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_A, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
+                   BetaAlt(0.5, 0.2), fixed = false,
+                   description = "ρ_A: AR(1) coefficient in the bond-spread process.",
+                   tex_label = "\\rho_A")
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_Z, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
+                   BetaAlt(0.5, 0.2), fixed = false,
+                   description = "ρ_Z: AR(1) coefficient in the technology process.",
+                   tex_label = "\\rho_Z")
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_Ψ, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+                   BetaAlt(0.5, 0.2), fixed = false,
+                   description = "ρ_Ψ: AR(1) coefficient in marginal efficiency of investment (MEI) process.",
+                   tex_label = "\\rho_{\\Psi}")
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_μ_p, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+                   BetaAlt(0.5, 0.2), fixed = false,
+                   description = "ρ_μ_p: AR(1) coefficient in the price mark-up shock process.",
+                   tex_label = "\\rho_{\\mu_p}")
+    ## Old Value 0.9 rather than 0.5
+    m <= parameter(:ρ_μ_w, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+                   BetaAlt(0.5, 0.2), fixed = false,
+                   description = "ρ_μ_w: AR(1) coefficient in the wage mark-up shock process.",
+                   tex_label = "\\rho_{\\mu_w}")
+    ## Old Value 0.84 rather than 0.878
+    m <= parameter(:ρ_S, 0.8777777777777779, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+                   BetaAlt(0.7, 0.2), fixed = false,
+                   description = "ρ_S: AR(1) coefficient in the idiosyncratic income risk process.",
+                   tex_label = "\\rho_S")
+    ## Old Value 0.98 rather than 0.5
+    m <= parameter(:ρ_G, 0.5, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+                   BetaAlt(0.5, 0.2), fixed = false,
+                   description = "ρ_G: AR(1) coefficient in the government structural deficit process.",
+                   tex_label = "\\rho_G")
 
     # Auxiliary exogenous processes - autocorrelations (fixed to a very small number in baseline specification)
     m <= parameter(:ρ_R_sh, 1e-8, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
@@ -676,6 +559,57 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = true,
                    description = "ρ_S_ϵ: AR(1) coefficient in shock process of the shock in the idiosyncatic income shock process.",
                    tex_label = "\\rho_{S, \\epsilon}")
+
+    # Exogenous processes - standard deviations
+    ## all rater close to 0.0003 for BBL, so may change to 0 later
+    m <= parameter(:σ_A, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false, # Note second tuple is parameterization for Exponential transform
+                   description = "σ_A: standard dev. of the bond-spread process.",
+                   tex_label = "\\sigma_{A}")
+    m <= parameter(:σ_Z,  0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
+                   description = "σ_Z: standard dev. of the process describing the " *
+                   "stationary component of productivity.", tex_label = "\\sigma_Z")
+    m <= parameter(:σ_Ψ, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(), InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,description = "σ_Ψ: standard dev. of the exogenous marginal efficiency" *
+                   " of investment shock process.", tex_label = "\\sigma_{\\Psi}")
+    m <= parameter(:σ_μ_p, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
+                   description = "σ_μ_p: standard dev. of the price mark-up shock process",
+                   tex_label = "\\sigma_{\\mu_p}")
+    m <= parameter(:σ_μ_w, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                  InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
+                   description = "σ_μ_w: : standard dev. of the wage mark-up shock process",
+                   tex_label = "\\sigma_{\\mu_w}")
+    m <= parameter(:σ_S, 0.5115384615384616, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   GammaAlt(0.65, 0.3), fixed = false,
+                   description = "σ_S: standard dev. of the idiosyncratic income risk shock process",
+                   tex_label = "\\sigma_{S}")
+#=
+    m <= parameter(:Σ_n, 0.0, (-1e3, 1e3), (-1e3, 1e3), ModelConstructors.SquareRoot(),
+                   Normal(0., 100.), fixed = false,
+                   description = "Σ_n: reaction of income risk to employment status",
+                   tex_label = "\\Sigma_{n}")
+=#
+     m <= parameter(:Σ_n, 0.0, (-1000.0, 1000.0), (-1000.0, 1000.0), ModelConstructors.SquareRoot(),
+                   Normal(0., 100.), fixed = true,
+                   description = "Σ_n: reaction of income risk to employment status",
+                   tex_label = "\\Sigma_{n}")
+    #m[:Σ_n] = 0.0
+    #println(m[:Σ_n].value)
+
+    m <= parameter(:σ_R, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                 InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
+                   description = "σ_R_ϵ: standard dev. of the monetary policy shock process",
+                   tex_label = "\\sigma_{R, \\epsilon}")
+    m <= parameter(:σ_G, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
+                   description = "σ_G: standard dev. of the structural deficit shock process",
+                   tex_label = "\\sigma_{G}")
+    m <= parameter(:σ_P, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
+                   description = "σ_P: standard dev. of the tax progressivity shock process",
+                   tex_label = "\\sigma_{P}")
+
 
     # Measurement error
     m <= parameter(:e_W90_share, sqrt(3.6982248520710056e-8), (0., 5.), (0., 5.), ModelConstructors.Exponential(),
@@ -696,6 +630,11 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    tex_label = "\\sigma_{S, me}")
 
 
+# Unused Parameters
+ m <= parameter(:Runused, 1.01, fixed = true,
+                   description = "Unused", tex_label = "\\R")
+m <= parameter(:Kunused, 40.0, fixed = true,
+                   description = "Unused", tex_label = "\\K")
 
     # Steady-state parameters
 
@@ -848,28 +787,22 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
 
 
     # Should have created the P matrix over here, not in settings
-
-#Permute to BBL space, assign in BBL space, and then permute back
+    if  get_setting(m,:load_bbl_posterior_mean)
+        params = ModelConstructors.get_values(DSGE.get_parameters(m))
+        params = vcat(params[1:19],1.226, 0.164,0.097,0.110,0.788,2.457,0.115,0.294,-1.078,-0.877,0.401,1.454,2.842,params[33:35],0.943,0.997,0.969,0.899,0.859,params[41],0.994,params[43:45],0.00199,0.00582,0.02158,0.01660,0.05930,params[51:52],0.00257,0.00291,params[55:59],params[60:61])
+        println(params)
+        #params = Vector{Float64}(params)
+        ModelConstructors.update!(m.parameters,params)
+    end
+#=
+## Permute to BBL space, assign in BBL space, and then permute back
     # Note 22, 21 are unused parameters can set 21, R =1.01 and 22 K = 40.0 have been appended to the end
     permute_to_bbl = [1,2,3,4,5,6,7,8,9,10,11,14,16,23,24,18,19,20,25,12,13,15,17,39,41,42,43,44,45,48,49,50,51,53,54,26,28,30,32,34,36,46,55,56,57,27,29,31,33,35,37,38,40,47,52,58,59,60,61,21,22]
-    #permute_to_dsge = sortperm(permute_to_bbl)
-
-   #= params_copy = deepcopy(m.parameters)
+    permute_to_dsge = sortperm(permute_to_bbl)
+    params_copy = deepcopy(m.parameters)
     for i = 1:length(m.parameters)
        m.parameters[permute_to_bbl[i]] =  params_copy[i]
     end
-   =#
-     if  get_setting(m,:load_bbl_posterior_mean)
-        params = ModelConstructors.get_values(DSGE.get_parameters(m))
-        params = vcat(params[1:19],1.226, 0.164,0.097,0.110,0.788,2.457,0.115,0.294,-1.078,-0.877,0.401,1.454,2.842,params[33:35],0.943,0.997,0.969,0.899,0.859,params[41],0.994,params[43:45],0.00199,0.00582,0.02158,0.01660,0.05930,params[51:52],0.00257,0.00291,params[55:59],params[60:61])
-        params_bbl = zeros(size(params))
-        for i = 1:length(params)
-             params_bbl[permute_to_bbl[i]] = params[i]
-        end
-        println(params_bbl)
-        #params = Vector{Float64}(params)
-        ModelConstructors.update!(m.parameters,params_bbl)
-  end
 
     if get_setting(m,:load_bbl_posterior_mode)
        free_para_inds = ModelConstructors.get_free_para_inds(DSGE.get_parameters(m))
@@ -879,7 +812,7 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
        params[free_para_inds] = bbl_mode_values
        ModelConstructors.update!(m.parameters,params)
     end
-
+=#
 end
 
 function model_settings!(m::BayerBornLuetticke)
@@ -1040,7 +973,7 @@ m <= Setting(:replicate_original_output, true, "Use steady state and linearizati
     m <= Setting(:original_dataset, true, "Load original dataset used by Bayer, Born, and Luetticke for their paper.")
 
     m <= Setting(:load_bbl_posterior_mean, false, "Load posterior mean parameter values from Bayer, Born, and Luetticke")
-     m <= Setting(:load_bbl_posterior_mode, true, "Load posterior mode parameter values from Bayer, Born, and Luetticke")
+     m <= Setting(:load_bbl_posterior_mode, false, "Load posterior mode parameter values from Bayer, Born, and Luetticke")
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)
     m <= Setting(:save_jacobian, true)

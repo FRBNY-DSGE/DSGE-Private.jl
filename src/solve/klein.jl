@@ -110,7 +110,7 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
 	# gx_fval = Qy'*gx_coef*Qx
 	# hx_fval = Qx'*hx_coef*Qx
 
-    println("GOT TO KELIN JL")
+    #println("GOT TO KELIN JL")
 
     if(typeof(m) <: BayerBornLuetticke)
        #perhaps change the way this is used
@@ -142,13 +142,13 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
               CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_P_Mat_v3.csv",Tables.table(get_setting(m,:PRightAll)))
               CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_A_Reduced_Mat_v3.csv",Tables.table(m[:A].value))
               CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Posterior_Mean_Save/DSGE_B_Reduced_Mat_v3.csv",Tables.table(m[:B].value))
-             else
+           #=  else
               println("saving")
               CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_LOM_Reduced_Mat_v3.csv",Tables.table(get_setting(m,:LOMstate)))
               CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_S2C_Reduced_Mat_v3.csv",Tables.table(get_setting(m,:State2Control)))
               CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_P_Mat_v3.csv",Tables.table(get_setting(m,:PRightAll)))
               CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_A_Reduced_Mat_v3.csv",Tables.table(m[:A].value))
-              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_B_Reduced_Mat_v3.csv",Tables.table(m[:B].value))
+              CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_B_Reduced_Mat_v3.csv",Tables.table(m[:B].value))=#
             end
             return gx,hx,eu
         end
@@ -158,11 +158,11 @@ function klein(m::AbstractModel{T}; minimum_inversion_tol::Float64 = 1e-4, verbo
     if !get_setting(m,:linearize_heterogeneous_block)
     #println("final A model")
     #println(m[:A].value[1:5,1:5])
-        println("size gx")
-        println(size(gx_coef))
-        println("size hx")
-        println(size(hx_coef))
-        println("test")
+        #println("size gx")
+        #println(size(gx_coef))
+        #println("size hx")
+        #println(size(hx_coef))
+        #println("test")
         return gx_coef, hx_coef, eu
     end
 end
