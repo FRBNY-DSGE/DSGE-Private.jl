@@ -169,7 +169,7 @@ function init_model_indices!(m::BayerBornLuetticke)
                         :profits′_t]
 
 =#
-    println("testing new ordering")
+    println("testing new ordering bbl")
     m.jump_variables = [:Vm′_t, :Vk′_t,
                         # Function valued jumps above, Distribution Names
                         :Gini_C′_t, :Gini_X′_t, :I90_share′_t, :I90_share_net′_t,:W90_share′_t, :sd_log_y′_t,
@@ -879,6 +879,12 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
        params[free_para_inds] = bbl_mode_values
        ModelConstructors.update!(m.parameters,params)
     end
+    if get_setting(m,:smc_fix_at_mode)
+       m[:δ_s].fixed = true
+       println(m.parameters[12])
+       m[:ϕ].fixed = true
+       println(m.parameters[13])
+    end
 
 end
 
@@ -1041,6 +1047,7 @@ m <= Setting(:replicate_original_output, true, "Use steady state and linearizati
 
     m <= Setting(:load_bbl_posterior_mean, false, "Load posterior mean parameter values from Bayer, Born, and Luetticke")
      m <= Setting(:load_bbl_posterior_mode, true, "Load posterior mode parameter values from Bayer, Born, and Luetticke")
+     m <= Setting(:smc_fix_at_mode,true, "Fix certain parameters that don't seem to travel far enough at mode")
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)
     m <= Setting(:save_jacobian, true)

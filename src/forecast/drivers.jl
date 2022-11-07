@@ -1132,7 +1132,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                 #println("testing enforce zlb change in drivers.jl")
                 forecaststates, forecastobs, forecastpseudo, forecastshocks =
                     forecast(m, system, s_T;
-                             cond_type = cond_type, enforce_zlb = true, draw_shocks = uncertainty)
+                             cond_type = cond_type, enforce_zlb = false, draw_shocks = uncertainty)
             end ##CHANGE BACK TO ENFORCE IS TRUE
 
             # For conditional data, transplant the obs/state/pseudo vectors from hist to forecast
