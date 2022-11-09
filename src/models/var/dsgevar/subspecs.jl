@@ -94,7 +94,7 @@ function ss20!(m::DSGEVAR)
 end
 
 function ss21!(m::DSGEVAR)
-    observables = [:obs_gdp, :obs_consumption, :obs_investment, :obs_wages, :obs_hours, :obs_gdpdeflator, :obs_nominalrate, :obs_sigmasq]
+    observables = [:obs_gdp, :obs_consumption, :obs_investment, :obs_wages, :obs_hours, :obs_gdpdeflator, :obs_nominalrate, :obs_W90share, :obs_I90share, :obs_sigmasq, :obs_taxprogressivity]
     lags        = 4
     λ           = 1.
     update!(m; observables = observables, lags = lags, λ = λ)
