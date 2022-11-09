@@ -99,6 +99,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               old_data::Matrix{Float64} = Matrix{Float64}(undef, size(data, 1), 0),
               old_cloud::Union{DSGE.ParticleCloud, DSGE.Cloud,
                                SMC.Cloud} = DSGE.ParticleCloud(m, 0),
+              old_model::Union{AbstractDSGEModel, AbstractVARModel} = m,
               run_test::Bool = false,
               filestring_addl::Vector{String} = Vector{String}(),
               continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
@@ -136,6 +137,14 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
     use_chand_recursion = get_setting(m, :use_chand_recursion)
 
+
+
+    if isa(old_model, AbstractVARModel)
+        old_regime_switching = false
+    else
+        old_regime_switching = haskey(old_model.settings, :regime_switching) && get_setting(m, :regime_switching)
+    end
+
     my_likelihood = if isa(m, AbstractDSGEModel)
         function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
             update!(m, parameters)
@@ -144,10 +153,142 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
         end
     else isa(m, AbstractVARModel)
         function _my_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
+
             update!(m, parameters)
+            m <= Setting(:preprocessed_transitions, Dict())
+
             likelihood(m, data; sampler = false, catch_errors = true, verbose = verbose)
         end
     end
+
+
+
+    if isa(old_model, AbstractDSGEVARModel)
+        old_model_para_keys = [old_model.dsge.parameters[i].key for i in 1:length(old_model.dsge.parameters)]
+        m_para_keys = [m.dsge.parameters[i].key for i in 1:length(m.dsge.parameters)]
+        key_del = []
+        # reg_del_full = Vector{Int}()
+        reg_del = Dict{Int, Vector{Int}}()
+        toggle_regime!(m.dsge.parameters, 1)
+    else
+        old_model_para_keys = [old_model.parameters[i].key for i in 1:length(old_model.parameters)]
+        m_para_keys = [m.parameters[i].key for i in 1:length(m.parameters)]
+        key_del = []
+        # reg_del_full = Vector{Int}()
+        reg_del = Dict{Int, Vector{Int}}()
+        toggle_regime!(m.parameters, 1)
+    end
+
+
+
+
+    if isa(m, AbstractDSGEVARModel)
+        for i in 1:length(m.dsge.parameters)
+            keyed = m.dsge.parameters[i].key
+            if !(keyed in old_model_para_keys)
+                push!(key_del, i)
+            elseif haskey(m.dsge.parameters[i].regimes, :value) && (isempty(old_model.dsge[keyed].regimes) || length(old_model.dsge[keyed].regimes[:value]) != length(m.dsge.parameters[i].regimes[:value]))
+                if isempty(old_model.dsge[keyed].regimes)
+                    # push!(reg_del_full, i)
+                    reg_del[i] = [1]
+                    for j in collect(m.dsge.parameters[i].regimes[:value])
+                        push!(reg_del[i], j)
+                    end
+                    # filter!(x -> x > 1, reg_del[i])
+                else
+                    @assert length(m.dsge.parameters[i].regimes[:value]) > length(old_model.dsge[keyed].regimes[:value])
+                    for j in collect(m.dsge.parameter[i].regimes[:value])
+                        if !(j in old_model.dsge[keyed].regimes[:value])
+                            if haskey(reg_del, i)
+                                push!(reg_del[i], j)
+                            else
+                                reg_del[i] = [j]
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    else
+        for i in 1:length(m.parameters)
+            keyed = m.parameters[i].key
+            if !(keyed in old_model_para_keys)
+                push!(key_del, i)
+            elseif haskey(m.parameters[i].regimes, :value) && (isempty(old_model[keyed].regimes) || length(old_model[keyed].regimes[:value]) != length(m.parameters[i].regimes[:value]))
+                if isempty(old_model[keyed].regimes)
+                    # push!(reg_del_full, i)
+                    reg_del[i] = [1]
+                    for j in collect(m.parameters[i].regimes[:value])
+                        push!(reg_del[i], j)
+                    end
+                    # filter!(x -> x > 1, reg_del[i])
+                else
+                    @assert length(m.parameters[i].regimes[:value]) > length(old_model[keyed].regimes[:value])
+                    for j in collect(m.parameter[i].regimes[:value])
+                        if !(j in old_model[keyed].regimes[:value])
+                            if haskey(reg_del, i)
+                                push!(reg_del[i], j)
+                            else
+                                reg_del[i] = [j]
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    @assert isnothing(findfirst(x -> !(x in m_para_keys), old_model_para_keys))
+
+    my_old_likelihood = if isa(m, AbstractDSGEModel)
+        function _my_old_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64}; new_model_params::Bool = false)::Float64
+            ## Remove parameters and parameter regimes that don't appear in the old model
+            para2 = copy(parameters)
+            if new_model_params
+                for i in collect(keys(reg_del))
+                    if length(collect(values(reg_del[i]))) == length(para2[i].regimes[:value])
+                        for k in keys(para2[i].regimes)
+                            delete!(para2[i].regimes, k)
+                        end
+                    else
+                        for k in keys(para2[i].regimes)
+                            for j in collect(values(reg_del[i]))
+                                delete!(para2[i].regimes[k], j)
+                            end
+                        end
+                    end
+                end
+
+                deleteat!(para2, key_del)
+            end
+
+            # @show sum(ModelConstructors.n_param_regs(old_model.parameters)), sum(ModelConstructors.n_param_regs(para2))
+            # @show length(old_model.parameters), length(para2)
+            @assert sum(ModelConstructors.n_param_regs(old_model.parameters)) == sum(ModelConstructors.n_param_regs(para2)) ## Delete for speed when testing done
+
+            update!(old_model, para2, regime_switching = old_regime_switching)
+
+            # @show "For loop testing"
+            for p in para2 # Test correct params updated b/c update! assumes ordering is the same
+                @assert old_model[p.key].value == p.value
+                if haskey(p.regimes, :value)
+                    for i in collect(keys(p.regimes[:value]))
+                        @assert old_model[p.key].regimes[:value][i] == p.regimes[:value][i]
+                    end
+                end
+            end
+
+            m <= Setting(:preprocessed_transitions, Dict())
+            likelihood(old_model, data; sampler = false, catch_errors = true,
+                       use_chand_recursion = use_chand_recursion, verbose = verbose)
+        end
+    else isa(m, AbstractVARModel)
+        function _my_old_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
+            update!(old_model, parameters, regime_switching = old_regime_switching)
+            m <= Setting(:preprocessed_transitions, Dict())
+            likelihood(old_model, data; sampler = false, catch_errors = true, verbose = verbose)
+        end
+    end
+
 
     tempered_update = !isempty(old_data)
 
