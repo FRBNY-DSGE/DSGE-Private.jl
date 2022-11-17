@@ -72,17 +72,17 @@ function measurement(m::BayerBornLuetticke{T},
     # Nominal interest rate
     _ZZ[obs[:obs_nominalrate], first(endo[:RB′_t])] = 1.0
 
-    # Wealth inequality
-    _ZZ[obs[:obs_W90share], first(endo[:W90_share′_t])] = 1.0
+    # # Wealth inequality
+    # _ZZ[obs[:obs_W90share], first(endo[:W90_share′_t])] = 1.0
 
-    # Income inequality
-    _ZZ[obs[:obs_I90share], first(endo[:I90_share′_t])] = 1.0
+    # # Income inequality
+    # _ZZ[obs[:obs_I90share], first(endo[:I90_share′_t])] = 1.0
 
-    # Idiosyncratic income risk
-    _ZZ[obs[:obs_sigmasq], first(endo[:σ′_t])] = 1.0
+    # # Idiosyncratic income risk
+    # _ZZ[obs[:obs_sigmasq], first(endo[:σ′_t])] = 1.0
 
-    # Idiosyncratic income risk
-    _ZZ[obs[:obs_taxprogressivity], first(endo[:τ_prog′_t])] = 1.0
+    # # Idiosyncratic income risk
+    # _ZZ[obs[:obs_taxprogressivity], first(endo[:τ_prog′_t])] = 1.0
 
     ZZ = if track_states_only
         # Construct measurement matrix from selection matrix, using
@@ -97,10 +97,10 @@ function measurement(m::BayerBornLuetticke{T},
     end
 
     ## Measurement error
-    EE[obs[:obs_W90share], obs[:obs_W90share]] = m[:e_W90_share]^2
-    EE[obs[:obs_I90share], obs[:obs_I90share]] = m[:e_I90_share]^2
-    EE[obs[:obs_taxprogressivity], obs[:obs_taxprogressivity]] = m[:e_τ_prog]^2
-    EE[obs[:obs_sigmasq], obs[:obs_sigmasq]] = m[:e_σ]^2
+    # EE[obs[:obs_W90share], obs[:obs_W90share]] = m[:e_W90_share]^2
+    # EE[obs[:obs_I90share], obs[:obs_I90share]] = m[:e_I90_share]^2
+    # EE[obs[:obs_taxprogressivity], obs[:obs_taxprogressivity]] = m[:e_τ_prog]^2
+    # EE[obs[:obs_sigmasq], obs[:obs_sigmasq]] = m[:e_σ]^2
 
     ## Variance of innovations
     QQ[exo[:A_sh], exo[:A_sh]]     = m[:σ_A]^2
@@ -190,16 +190,16 @@ function measurement(m::BayerBornLuetticke{T},
     _ZZ[obs[:obs_nominalrate], first(endo[:RB′_t])] = 1.0
 
     # Wealth inequality
-    _ZZ[obs[:obs_W90share], first(endo[:W90_share′_t])] = 1.0
+#    _ZZ[obs[:obs_W90share], first(endo[:W90_share′_t])] = 1.0
 
-    # Income inequality
-    _ZZ[obs[:obs_I90share], first(endo[:I90_share′_t])] = 1.0
+    # # Income inequality
+    # _ZZ[obs[:obs_I90share], first(endo[:I90_share′_t])] = 1.0
 
-    # Idiosyncratic income risk
-    _ZZ[obs[:obs_sigmasq], first(endo[:σ′_t])] = 1.0
+    # # Idiosyncratic income risk
+    # _ZZ[obs[:obs_sigmasq], first(endo[:σ′_t])] = 1.0
 
-    # Idiosyncratic income risk
-    _ZZ[obs[:obs_taxprogressivity], first(endo[:τ_prog′_t])] = 1.0
+    # # Idiosyncratic income risk
+    # _ZZ[obs[:obs_taxprogressivity], first(endo[:τ_prog′_t])] = 1.0
 
     ZZ = if track_states_only
         # Construct measurement matrix from selection matrix, using
@@ -214,10 +214,10 @@ function measurement(m::BayerBornLuetticke{T},
     end
 
     ## Measurement error
-    EE[obs[:obs_W90share], obs[:obs_W90share]] = m[:e_W90_share]^2
-    EE[obs[:obs_I90share], obs[:obs_I90share]] = m[:e_I90_share]^2
-    EE[obs[:obs_taxprogressivity], obs[:obs_taxprogressivity]] = m[:e_τ_prog]^2
-    EE[obs[:obs_sigmasq], obs[:obs_sigmasq]] = m[:e_σ]^2
+    # EE[obs[:obs_W90share], obs[:obs_W90share]] = m[:e_W90_share]^2
+    # EE[obs[:obs_I90share], obs[:obs_I90share]] = m[:e_I90_share]^2
+    # EE[obs[:obs_taxprogressivity], obs[:obs_taxprogressivity]] = m[:e_τ_prog]^2
+    # EE[obs[:obs_sigmasq], obs[:obs_sigmasq]] = m[:e_σ]^2
 
     ## Variance of innovations
     QQ[exo[:A_sh], exo[:A_sh]]     = m[:σ_A]^2

@@ -139,37 +139,37 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     # 8. Wealth inequality
     ############################################################################
 
-    observables[:obs_W90share] = Observable(:obs_W90share, [:w90share__BBL],
-                                            x -> iden_fwd_transform(x, :w90share), identity,
-                                            "Top 90% Wealth Share",
-                                            "90th Percentile of Net Personal Wealth Distribution")
+    # observables[:obs_W90share] = Observable(:obs_W90share, [:w90share__BBL],
+    #                                         x -> iden_fwd_transform(x, :w90share), identity,
+    #                                         "Top 90% Wealth Share",
+    #                                         "90th Percentile of Net Personal Wealth Distribution")
 
     ############################################################################
     # 9. Income inequality
     ############################################################################
 
-    observables[:obs_I90share] = Observable(:obs_I90share, [:I90share__BBL],
-                                            x -> iden_fwd_transform(x, :I90share), identity,
-                                            "Top 90% Income Share",
-                                            "Top 90% Percentile of Pre-Tax National Income Distribution")
+    # observables[:obs_I90share] = Observable(:obs_I90share, [:I90share__BBL],
+    #                                         x -> iden_fwd_transform(x, :I90share), identity,
+    #                                         "Top 90% Income Share",
+    #                                         "Top 90% Percentile of Pre-Tax National Income Distribution")
 
-    ############################################################################
-    # 10. Idiosyncratic income risk
-    ############################################################################
+    # ############################################################################
+    # # 10. Idiosyncratic income risk
+    # ############################################################################
 
-    observables[:obs_sigmasq] = Observable(:obs_sigmasq, [:sigma2__BBL],
-                                           x -> iden_fwd_transform(x, :sigma2), identity,
-                                           "Idiosyncratic Income Risk",
-                                           "Variance of Idiosyncratic Income")
+    # observables[:obs_sigmasq] = Observable(:obs_sigmasq, [:sigma2__BBL],
+    #                                        x -> iden_fwd_transform(x, :sigma2), identity,
+    #                                        "Idiosyncratic Income Risk",
+    #                                        "Variance of Idiosyncratic Income")
 
-    ############################################################################
-    # 11. Tax progressivity
-    ############################################################################
+    # ############################################################################
+    # # 11. Tax progressivity
+    # ############################################################################
 
-    observables[:obs_taxprogressivity] = Observable(:obs_taxprogressivity, [:tauprog__BBL],
-                                                    x -> iden_fwd_transform(x, :tauprog), identity,
-                                                    "Tax Progressivity",
-                                                    "Tax Progressivity from Ferriere and Navarro (2018)")
+    # observables[:obs_taxprogressivity] = Observable(:obs_taxprogressivity, [:tauprog__BBL],
+    #                                                 x -> iden_fwd_transform(x, :tauprog), identity,
+    #                                                 "Tax Progressivity",
+    #                                                 "Tax Progressivity from Ferriere and Navarro (2018)")
 
     m.observable_mappings = observables
 end
@@ -181,7 +181,7 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     iden_fwd_transform = function (levels, name)
         return levels[!, name]
     end
-
+    println(observables)
     ############################################################################
     ## 1. GDP growth per capita
     ############################################################################
@@ -260,37 +260,37 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     # 8. Wealth inequality
     ############################################################################
 
-    observables[:obs_W90share] = Observable(:obs_W90share, [:w90share__BBL],
-                                            x -> iden_fwd_transform(x, :w90share), identity,
-                                            "Top 90% Wealth Share",
-                                            "90th Percentile of Net Personal Wealth Distribution")
+    # observables[:obs_W90share] = Observable(:obs_W90share, [:w90share__BBL],
+    #                                         x -> iden_fwd_transform(x, :w90share), identity,
+    #                                         "Top 90% Wealth Share",
+    #                                         "90th Percentile of Net Personal Wealth Distribution")
 
     ############################################################################
     # 9. Income inequality
     ############################################################################
 
-    observables[:obs_I90share] = Observable(:obs_I90share, [:I90share__BBL],
-                                            x -> iden_fwd_transform(x, :I90share), identity,
-                                            "Top 90% Income Share",
-                                            "Top 90% Percentile of Pre-Tax National Income Distribution")
+    # observables[:obs_I90share] = Observable(:obs_I90share, [:I90share__BBL],
+    #                                         x -> iden_fwd_transform(x, :I90share), identity,
+    #                                         "Top 90% Income Share",
+    #                                         "Top 90% Percentile of Pre-Tax National Income Distribution")
 
-    ############################################################################
-    # 10. Idiosyncratic income risk
-    ############################################################################
+    # ############################################################################
+    # # 10. Idiosyncratic income risk
+    # ############################################################################
 
-    observables[:obs_sigmasq] = Observable(:obs_sigmasq, [:sigma2__BBL],
-                                           x -> iden_fwd_transform(x, :sigma2), identity,
-                                           "Idiosyncratic Income Risk",
-                                           "Variance of Idiosyncratic Income")
+    # observables[:obs_sigmasq] = Observable(:obs_sigmasq, [:sigma2__BBL],
+    #                                        x -> iden_fwd_transform(x, :sigma2), identity,
+    #                                        "Idiosyncratic Income Risk",
+    #                                        "Variance of Idiosyncratic Income")
 
-    ############################################################################
-    # 11. Tax progressivity
-    ############################################################################
+    # ############################################################################
+    # # 11. Tax progressivity
+    # ############################################################################
 
-    observables[:obs_taxprogressivity] = Observable(:obs_taxprogressivity, [:tauprog__BBL],
-                                                    x -> iden_fwd_transform(x, :tauprog), identity,
-                                                    "Tax Progressivity",
-                                                    "Tax Progressivity from Ferriere and Navarro (2018)")
-
+    # observables[:obs_taxprogressivity] = Observable(:obs_taxprogressivity, [:tauprog__BBL],
+    #                                                 x -> iden_fwd_transform(x, :tauprog), identity,
+    #                                                 "Tax Progressivity",
+    #                                                 "Tax Progressivity from Ferriere and Navarro (2018)")
+    println(observables)
     observables
 end
