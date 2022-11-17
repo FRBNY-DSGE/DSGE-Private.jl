@@ -274,6 +274,7 @@ function likelihood(m::AbstractVARModel, data::AbstractMatrix;
         if isa(m, AbstractDSGEVECMModel)
             return ψ_l * dsgevecm_likelihood(m, data) + ψ_p * penalty
         elseif isa(m, AbstractDSGEVARModel)
+
             return ψ_l * dsgevar_likelihood(m, data) + ψ_p * penalty
         end
     catch err
