@@ -1307,6 +1307,9 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
     if !isempty(irfs_to_compute)
         if (typeof(m) <: BayerBornLuetticke)
             #println("BBL forecasting test irfs")
+            #to standardize
+            nshocks = length(m.exogenous_shocks)
+            system[:QQ][:,:] = Matrix{Int}(I,nshocks,nshocks)
             irfstates, irfobs, irfpseudo = impulse_responses(system, impulse_response_horizons(m))
             #forecast_output[:irfstates] = irfstates
             #forecast_output[:irfobs] = irfobs

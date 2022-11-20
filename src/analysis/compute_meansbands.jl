@@ -131,7 +131,8 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
         variable_names = collect(keys(metadata[:indices]))
     end
     pop_growth     = get_mb_population_series(product, population_data, population_forecast, date_list)
-
+    println("date list")
+    println(date_list)
     # Compute means and bands
     map_fcn = get_setting(m, :use_parallel_workers) ? pmap : map
     if product in [:hist, :histut, :hist4q, :forecast, :forecastut, :forecast4q,
@@ -644,7 +645,8 @@ function mb_reverse_transform(fcast_series::AbstractArray, transform::Function,
             y0 = 0.0
         else
             println("data")
-            println(data)
+            println(size(data))
+            println(size(pop_growth))
             println(y0_index)
             y0 = class == :obs ? data[y0_index] : NaN
         end
