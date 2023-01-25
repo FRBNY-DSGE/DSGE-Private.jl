@@ -56,9 +56,13 @@ ControlCOVAR = (ControlCOVAR + ControlCOVAR') ./ 2
 
 Dindex = id[:copula_t] ## values of the indices do not match
 evalS, evecS = eigen(StateCOVAR[Dindex, Dindex])
-CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_OrigStateCovarEigvals.csv",Tables.table(evalS))
+#CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_OrigStateCovarEigvals.csv",Tables.tabl
 
-CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_OrigStateCovarEigvecs.csv",Tables.table(evecS))
+#e(evalS))
+
+#CSV.write("/data/dsge_data_dir/SystemwideDSGE/Estimation/BBL/DSGE_Saved_Vars/DSGE_Prior_Mode_Save/DSGE_OrigStateCovarEigvecs.csv",Tables.tabl
+
+#e(evecS))
 
 #println("eval S")
 #println(evalS)
