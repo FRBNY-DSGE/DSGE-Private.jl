@@ -531,7 +531,7 @@ function init_parameters!(m::BayerBornLuetticke)
 
 
 
-
+   ## In the Seven Variable Version, this needs to be fixed at 0
 
     m <= parameter(:σ_S, 0.5115384615384616, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.65, 0.3), fixed = false,
@@ -627,7 +627,7 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_P: Persistence in tax level",
                    tex_label = "\\rho_{P}")
-
+ ## In the Seven Variable Version, this needs to be Fixed at 0
   m <= parameter(:σ_P, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
                    description = "σ_P: standard dev. of the tax progressivity shock process",
@@ -677,6 +677,8 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    description = "ρ_S_ϵ: AR(1) coefficient in shock process of the shock in the idiosyncatic income shock process.",
                    tex_label = "\\rho_{S, \\epsilon}")
 
+
+    ## In the Seven Variable Version, these variables should not be changing
     # Measurement error
     m <= parameter(:e_W90_share, sqrt(3.6982248520710056e-8), (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                  InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = false,
@@ -886,6 +888,25 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
        println(m.parameters[13])
     end
 
+    if get_setting(m,:seven_var_bbl)
+       m[:σ_P] = 0
+       m[:σ_P].fixed = true
+       m[:σ_S] = 0
+       m[:σ_S].fixed = true
+       m[:e_W90_share] = 0
+       m[:e_W90_share].fixed = true
+       m[:e_I90_share] = 0
+       m[:e_I90_share].fixed = true
+       m[:e_τ_prog] = 0
+       m[:e_τ_prog].fixed = true
+       m[:e_σ] = 0
+       m[:e_σ].fixed = true
+
+       println(m[:σ_P])
+
+
+    end
+
 end
 
 function model_settings!(m::BayerBornLuetticke)
@@ -1048,6 +1069,7 @@ m <= Setting(:replicate_original_output, true, "Use steady state and linearizati
     m <= Setting(:load_bbl_posterior_mean, false, "Load posterior mean parameter values from Bayer, Born, and Luetticke")
      m <= Setting(:load_bbl_posterior_mode, true, "Load posterior mode parameter values from Bayer, Born, and Luetticke")
      m <= Setting(:smc_fix_at_mode,true, "Fix certain parameters that don't seem to travel far enough at mode")
+     m <= Setting(:seven_var_bbl, true)
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)
     m <= Setting(:save_jacobian, true)
