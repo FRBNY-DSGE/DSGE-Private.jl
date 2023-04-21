@@ -17,6 +17,9 @@ function decomposition_means(m_new::M, m_old::M, input_type::Symbol,
             class_long = get_class_longname(class)
             collect(keys(read(file, string(class_long) * "_indices")))
         end
+        #if class == :pseudo
+         #   variable_names = variable_names[1:22]
+        #end
 
         # Get to work!
         mapfcn = use_parallel_workers(m_new) ? pmap : map
@@ -59,7 +62,14 @@ function decomposition_means(m_new::M, m_old::M, input_type::Symbol,
         sort(collect(keys(read(file, "date_indices"))))
     end
     decomp = DataFrame(date = dates)
-    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+    #decomp = decomp[1:end-1, :]
+    # comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+    if (get_setting(m_new, :date_forecast_start) != get_setting(m_old, :date_forecast_start))
+       comps = [:shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+    else
+       comps = [:shockdec, :dettrend, :trend, :cond, :revise, :param, :spd, :total]
+    end
+    # comps = [:shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :total] - what you'd use for m1010
     comps = model_decomp ? vcat(comps, :model) : comps
     for comp in comps
         product = Symbol(:decomp, comp)

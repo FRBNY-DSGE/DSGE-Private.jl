@@ -26,7 +26,13 @@ function get_decomp_output_files(m_new::M, m_old::M, input_type::Symbol,
                                  classes::Vector{Symbol}; forecast_string_new = "", forecast_string_old = "",
                                  model_decomp::Bool = false) where M<:AbstractDSGEModel
     output_files = Dict{Symbol, String}()
-    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+    #comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+    if(get_setting(m_new, :date_forecast_start) != get_setting(m_old, :date_forecast_start))
+        comps = [:shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+    else
+        comps = [:shockdec, :dettrend, :trend, :cond, :revise, :param, :spd, :total]
+    end
+    #comps = [:shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :total] - use for m1010
     comps = model_decomp ? vcat(comps, :model) : comps
     for comp in comps
         for class in classes
@@ -57,16 +63,20 @@ function write_forecast_decomposition(m_new::M, m_old::M, input_type::Symbol,
                                       block_inds::AbstractRange{Int} = 1:0,
                                       verbose::Symbol = :low, model_decomp::Bool = false,
                                       forecast_string_new = "", forecast_string_old = "") where M<:AbstractDSGEModel
-    comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+
+    #comps = [:policyait, :policyeqcond, :shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+    if (get_setting(m_new, :date_forecast_start) != get_setting(m_old, :date_forecast_start))
+        comps = [:shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :spd, :total]
+    else
+        comps = [:shockdec, :dettrend, :trend, :cond, :revise, :param, :spd, :total]
+    end
+    #comps = [:shockdec, :dettrend, :trend, :release, :cond, :revise, :param, :total] - use for m1010
     comps = model_decomp ? vcat(comps, :model) : comps
-    @show keys(decomps)
     for comp in comps
         for class in classes
             prod = Symbol(:decomp, comp)
             var = Symbol(prod, class)
             filepath = decomp_output_files[var]
-
-
 
             if isnull(block_number) || get(block_number) == 1
                 # Write forecast metadata to a jld2 and the raw forecast output
