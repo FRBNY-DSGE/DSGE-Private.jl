@@ -532,11 +532,17 @@ function init_parameters!(m::BayerBornLuetticke)
 
 
    ## In the Seven Variable Version, this needs to be fixed at 0
-
-    m <= parameter(:σ_S, 0.5115384615384616, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+if get_setting(m,:seven_var_bbl)
+ m <= parameter(:σ_S, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   GammaAlt(0.65, 0.3), fixed = true,
+                   description = "σ_S: standard dev. of the idiosyncratic income risk shock process",
+                   tex_label = "\\sigma_{S}")
+else
+ m <= parameter(:σ_S, 0.5115384615384616, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.65, 0.3), fixed = false,
                    description = "σ_S: standard dev. of the idiosyncratic income risk shock process",
                    tex_label = "\\sigma_{S}")
+end
 #=
     m <= parameter(:Σ_n, 0.0, (-1e3, 1e3), (-1e3, 1e3), ModelConstructors.SquareRoot(),
                    Normal(0., 100.), fixed = false,
@@ -628,10 +634,17 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    description = "ρ_P: Persistence in tax level",
                    tex_label = "\\rho_{P}")
  ## In the Seven Variable Version, this needs to be Fixed at 0
-  m <= parameter(:σ_P, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+if get_setting(m,:seven_var_bbl)
+  m <= parameter(:σ_P, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = true,
+                   description = "σ_P: standard dev. of the tax progressivity shock process",
+                   tex_label = "\\sigma_{P}")
+else
+    m <= parameter(:σ_P, 0.00033388842631140714, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = false,
                    description = "σ_P: standard dev. of the tax progressivity shock process",
                    tex_label = "\\sigma_{P}")
+end
 
   m <= parameter(:γ_B_P, 0., (-10., 10.), (-10., 10.), SquareRoot(),
                    Normal(0., 1.), fixed = true,
@@ -679,6 +692,24 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
 
 
     ## In the Seven Variable Version, these variables should not be changing
+if get_setting(m,:seven_var_bbl)
+  m <= parameter(:e_W90_share, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                 InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = true,
+                   description = "σ_W90_share: standard dev. of measurement error for 90th percentile of wealth distribution",
+                   tex_label = "\\sigma_{W^{(90)}}")
+    m <= parameter(:e_I90_share, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                  InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = true,
+                   description = "σ_I90_share: standard dev. of measurement error for 90th percentile of income distribution",
+                   tex_label = "\\sigma_{I^{(90)}}")
+    m <= parameter(:e_τ_prog, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                    InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = true,
+                   description = "σ_P_me: standard dev. of measurement error for tax progressivity",
+                   tex_label = "\\sigma_{P, me}")
+    m <= parameter(:e_σ, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+                   InverseGamma(ig_pars(0.05,0.01.^2)...), fixed = true,
+                   description = "σ_S_me: standard dev. of measurement error for idiosyncratic income risk",
+                   tex_label = "\\sigma_{S, me}")
+else
     # Measurement error
     m <= parameter(:e_W90_share, sqrt(3.6982248520710056e-8), (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                  InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = false,
@@ -696,6 +727,7 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    InverseGamma(ig_pars(0.05,0.01.^2)...), fixed = false,
                    description = "σ_S_me: standard dev. of measurement error for idiosyncratic income risk",
                    tex_label = "\\sigma_{S, me}")
+end
 
 
 
