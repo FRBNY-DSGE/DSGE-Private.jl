@@ -889,20 +889,30 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
     end
 
     if get_setting(m,:seven_var_bbl)
+       params = ModelConstructors.get_values(DSGE.get_parameters(m))
+       θ = parameters2namedtuple(m)
+       id = construct_prime_and_noprime_indices(m; only_aggregate = false)
        m[:σ_P] = 0
+       params[id[:σ_P]]=0
        m[:σ_P].fixed = true
        m[:σ_S] = 0
+       params[id[:σ_S]]=0
        m[:σ_S].fixed = true
        m[:e_W90_share] = 0
+       params[id[:e_W90_share]]=0
        m[:e_W90_share].fixed = true
        m[:e_I90_share] = 0
+       params[id[:e_I90_share]]=0
        m[:e_I90_share].fixed = true
        m[:e_τ_prog] = 0
+       params[id[:e_τ_prog]]=0
        m[:e_τ_prog].fixed = true
        m[:e_σ] = 0
+       params[id[:e_σ]]=0
        m[:e_σ].fixed = true
-
+       ModelConstructors.update!(m.parameters,params)
        println(m[:σ_P])
+       println(m[:σ_P].value)
 
 
     end
@@ -1068,7 +1078,7 @@ m <= Setting(:replicate_original_output, true, "Use steady state and linearizati
 
     m <= Setting(:load_bbl_posterior_mean, false, "Load posterior mean parameter values from Bayer, Born, and Luetticke")
      m <= Setting(:load_bbl_posterior_mode, true, "Load posterior mode parameter values from Bayer, Born, and Luetticke")
-     m <= Setting(:smc_fix_at_mode,true, "Fix certain parameters that don't seem to travel far enough at mode")
+     m <= Setting(:smc_fix_at_mode,false, "Fix certain parameters that don't seem to travel far enough at mode")
      m <= Setting(:seven_var_bbl, true)
     ## Saving and loading steady state output and Jacobians
     m <= Setting(:save_steadystate, true)
