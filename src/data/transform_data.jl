@@ -144,6 +144,10 @@ function transform_population_data(population_data::DataFrame, population_foreca
             last_recorded_ind   = findall(population_forecast[!,:date] .== last_recorded_date)[1]
             population_forecast = population_forecast[(last_recorded_ind+1):end, :]
         end
+        println("population forecast")
+        println(population_forecast[1,:date])
+        println(last_recorded_date)
+
         @assert subtract_quarters(population_forecast[1, :date], last_recorded_date) == 1
     end
 
