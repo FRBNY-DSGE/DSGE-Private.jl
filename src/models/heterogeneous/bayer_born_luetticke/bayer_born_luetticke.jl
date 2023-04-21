@@ -533,7 +533,7 @@ function init_parameters!(m::BayerBornLuetticke)
 
    ## In the Seven Variable Version, this needs to be fixed at 0
 if get_setting(m,:seven_var_bbl)
- m <= parameter(:σ_S, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+ m <= parameter(:σ_S, 0.0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    GammaAlt(0.65, 0.3), fixed = true,
                    description = "σ_S: standard dev. of the idiosyncratic income risk shock process",
                    tex_label = "\\sigma_{S}")
@@ -635,7 +635,7 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
                    tex_label = "\\rho_{P}")
  ## In the Seven Variable Version, this needs to be Fixed at 0
 if get_setting(m,:seven_var_bbl)
-  m <= parameter(:σ_P, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+  m <= parameter(:σ_P, 0.0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    InverseGamma(ig_pars(0.001,0.02.^2)...), fixed = true,
                    description = "σ_P: standard dev. of the tax progressivity shock process",
                    tex_label = "\\sigma_{P}")
@@ -693,19 +693,19 @@ end
 
     ## In the Seven Variable Version, these variables should not be changing
 if get_setting(m,:seven_var_bbl)
-  m <= parameter(:e_W90_share, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+  m <= parameter(:e_W90_share, 0.0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                  InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = true,
                    description = "σ_W90_share: standard dev. of measurement error for 90th percentile of wealth distribution",
                    tex_label = "\\sigma_{W^{(90)}}")
-    m <= parameter(:e_I90_share, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_I90_share, 0.0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                   InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = true,
                    description = "σ_I90_share: standard dev. of measurement error for 90th percentile of income distribution",
                    tex_label = "\\sigma_{I^{(90)}}")
-    m <= parameter(:e_τ_prog, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_τ_prog, 0.0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                     InverseGamma(ig_pars(0.0005,0.001.^2)...), fixed = true,
                    description = "σ_P_me: standard dev. of measurement error for tax progressivity",
                    tex_label = "\\sigma_{P, me}")
-    m <= parameter(:e_σ, 0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
+    m <= parameter(:e_σ, 0.0, (0., 5.), (0., 5.), ModelConstructors.Exponential(),
                    InverseGamma(ig_pars(0.05,0.01.^2)...), fixed = true,
                    description = "σ_S_me: standard dev. of measurement error for idiosyncratic income risk",
                    tex_label = "\\sigma_{S, me}")
@@ -927,22 +927,22 @@ end
        #print(θ)
        #println(id)
        m[:σ_P] = 0
-       params[52]=0
+       params[52]=0.0
        m[:σ_P].fixed = true
        m[:σ_S] = 0
-       params[37]=0
+       params[37]=0.0
        m[:σ_S].fixed = true
        m[:e_W90_share] = 0
-       params[58]=0
+       params[58]=0.0
        m[:e_W90_share].fixed = true
        m[:e_I90_share] = 0
-       params[59]=0
+       params[59]=0.0
        m[:e_I90_share].fixed = true
        m[:e_τ_prog] = 0
-       params[60]=0
+       params[60]=0.0
        m[:e_τ_prog].fixed = true
        m[:e_σ] = 0
-       params[61]=0
+       params[61]=0.0
        m[:e_σ].fixed = true
        ModelConstructors.update!(m.parameters,params)
        println(m[:σ_P])
