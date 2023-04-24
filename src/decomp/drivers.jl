@@ -185,7 +185,8 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     for i in expected_ffr(m_new)
         var = "obs_exp_nominalrate$i"
         if in(var, names(df_old))
-            #pad missings to the old df data (here, we replace the spd data in the new df with the old df's data, adding missings to             account for quarter differences)
+            #pad missings to the old df data (here, we replace the spd data in the new df with the old df's data, adding missings to
+            #account for quarter differences)
             #if both forecasts have same conditional quarter, df_new_oldspd is just the old spd with no missings
             df_new_oldspd[!, var] = vcat(df_old[!, var], repeat([missing], length(df_new[!, :date]) - length(df_old[!, :date])))
         end
@@ -196,7 +197,8 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     @show new_regime
     @show old_regime
 
-    #the point of out1-out1_5 should be to see just the effect of updating the spd data (out1 contains the completely new dataframe,     with all new SPD values, while out1_5 contains most of the new dataframe, but where the expected nominal rate 1-6 periods ahead
+    #the point of out1-out1_5 should be to see just the effect of updating the spd data (out1 contains the completely new dataframe
+    #with all new SPD values, while out1_5 contains most of the new dataframe, but where the expected nominal rate 1-6 periods ahead
     #columns hold the old forecast's SPD values)
 
      out1_5 = f(m_new, df_new_oldspd, params_new, cond_new, outputs = [:forecast, :shockdec],
