@@ -106,7 +106,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
               tempered_update_prior_weight::Float64 = 0.0,
               run_csminwel::Bool = true,
-              regime_switching::Bool = false)
+              regime_switching::Bool = false,
+              log_prob_old_data::Float64 = 0.0)
 
     parallel    = get_setting(m, :use_parallel_workers)
     n_parts     = get_setting(m, :n_particles)
@@ -349,7 +350,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
             save_intermediate = save_intermediate,
             intermediate_stage_increment = intermediate_stage_increment,
 	        tempered_update_prior_weight = tempered_update_prior_weight,
-            regime_switching = regime_switching)
+            regime_switching = regime_switching,
+            log_prob_old_data = log_prob_old_data)
 
     if run_csminwel
         m <= Setting(:sampling_method, :SMC)

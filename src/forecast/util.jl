@@ -22,11 +22,12 @@ n_forecast_draws(m, input_type)
 Returns the number of forecast draws in the file
 `get_forecast_input_file(m, input_type)`.
 """
-function n_forecast_draws(m::AbstractDSGEModel, input_type::Symbol)
+function n_forecast_draws(m::AbstractDSGEModel, input_type::Symbol;
+                          filestring_addl::Vector{String} = Vector{String}(undef,0))
     if input_type in [:mean, :mode, :init]
         return 1
     elseif input_type in [:full, :subset]
-        input_file = get_forecast_input_file(m, input_type)
+        input_file = get_forecast_input_file(m, input_type; filestring_addl = filestring_addl)
         draws = h5open(input_file, "r") do file
             if get_setting(m, :sampling_method) == :MH
                 dataset = isdefined(HDF5, :open_object) ? HDF5.open_object(file, "mhparams") : HDF5.o_open(file, "mhparams")

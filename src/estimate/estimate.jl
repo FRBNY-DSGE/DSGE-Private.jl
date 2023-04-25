@@ -76,7 +76,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   save_intermediate::Bool = false,
                   tempered_update_prior_weight::Float64 = 0.,
                   run_csminwel::Bool = true,
-                  toggle::Bool = true)
+                  toggle::Bool = true,
+                  log_prob_old_data::Float64 = 0.0)
     data = df_to_matrix(m, df)
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
@@ -85,7 +86,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
              intermediate_stage_increment = intermediate_stage_increment,
              save_intermediate = save_intermediate,
              tempered_update_prior_weight = tempered_update_prior_weight,
-             run_csminwel = run_csminwel, toggle = toggle)
+             run_csminwel = run_csminwel, toggle = toggle,
+             log_prob_old_data = log_prob_old_data)
 end
 
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
@@ -103,7 +105,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
 		          save_intermediate::Bool = false,
                   tempered_update_prior_weight::Float64 = 0.,
                   run_csminwel::Bool = true,
-                  toggle::Bool = true)
+                  toggle::Bool = true,
+                  log_prob_old_data::Float64 = 0.0)
     # Load data
     df = load_data(m; verbose = verbose)
     estimate(m, df; verbose = verbose, proposal_covariance = proposal_covariance,
@@ -113,7 +116,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
              intermediate_stage_increment = intermediate_stage_increment,
 	         save_intermediate = save_intermediate,
              tempered_update_prior_weight = tempered_update_prior_weight,
-             run_csminwel = run_csminwel, toggle = toggle)
+             run_csminwel = run_csminwel, toggle = toggle,
+             log_prob_old_data = log_prob_old_data)
 end
 
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractArray;
@@ -131,7 +135,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
 		          save_intermediate::Bool = false,
                   tempered_update_prior_weight::Float64 = 0.,
                   run_csminwel::Bool = true,
-                  toggle::Bool = true)
+                  toggle::Bool = true,
+                  log_prob_old_data::Float64 = 0.0)
 
     if !(get_setting(m, :sampling_method) in [:SMC, :MH])
         error("method must be :SMC or :MH")
@@ -313,7 +318,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
              intermediate_stage_increment = intermediate_stage_increment,
              run_csminwel = run_csminwel,
              tempered_update_prior_weight = tempered_update_prior_weight,
-             regime_switching = regime_switching)
+             regime_switching = regime_switching,
+             log_prob_old_data = log_prob_old_data)
     end
 
     ########################################################################################

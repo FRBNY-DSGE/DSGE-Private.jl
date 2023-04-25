@@ -49,8 +49,11 @@ function marginal_data_density(m::Union{AbstractDSGEModel,AbstractVARModel},
                 throw("For calculating the MDD with a :mh sample, one must provide the data as the
                       second positional argument to this function")
             end
-            all_params = h5read(rawpath(m, "estimate", "mhsave.h5"), "mhparams")
-            all_params = map(Float64, all_params)
+#            all_params = h5read(rawpath(m, "estimate", "mhsave.h5"), "mhparams")
+#            all_params = map(Float64, all_params)
+            csv_file_path = rawpath(m,"estimate")*"/bbl_draws_full_params.csv"
+            df_mh_draws = CSV.read(csv_file_path, DataFrame, header=false)
+            all_params = Matrix(df_mh_draws)
             params = Matrix(thin_mh_draws(m, all_params; jstep = 5)')
 
             n_para = n_parameters(m)

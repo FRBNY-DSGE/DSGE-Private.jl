@@ -507,7 +507,7 @@ function forecast_one(m::AbstractDSGEModel{Float64},
                       show_failed_percent::Bool = false, only_filter::Bool = false,
                       verbose::Symbol = :low, testing_carter_kohn::Bool = false,
                       trend_nostates_obs = Array{(0,0)}, trend_nostates_pseudo = Array{(0,0)},
-                      full_shock_decomp::Bool = true)
+                      full_shock_decomp::Bool = true, filestring_addl::Vector{String}=Vector{String}(undef,0))
 
     ### Common Setup
 
@@ -579,7 +579,7 @@ function forecast_one(m::AbstractDSGEModel{Float64},
         if get_setting(m, :sampling_method) == :SMC
             subset_cond = input_type == :subset && get_jstep(m, length(subset_inds)) > 1
             other_cond = input_type in [:full, :prior, :init_draw_shocks, :mode_draw_shocks] &&
-                get_jstep(m, n_forecast_draws(m, :full)) > 1
+                get_jstep(m, n_forecast_draws(m, :full; filestring_addl=filestring_addl)) > 1
             if subset_cond || other_cond
                 answer = ""
                 invalid_answer = true
