@@ -184,21 +184,22 @@ function moment_tables(m::AbstractDSGEModel; percent::AbstractFloat = 0.90,
                        groupings::AbstractDict{String, Vector{Parameter}} = Dict{String, Vector{Parameter}}(),
                        tables = [:prior_posterior_means, :moments, :prior, :posterior],
                        caption = true, outdir = "",
-                       verbose::Symbol = :low, use_mode::Bool = false)
+                       verbose::Symbol = :low, use_mode::Bool = false,
+                       params::Array{Float64}=Array{Float64}(undef,0))
 
     ### 1. Load parameter draws from Metropolis-Hastings
-
-    params = if !isempty(subset_inds)
-        # Use subset of draws
-        if isempty(subset_string)
-            error("Must supply a nonempty subset_string if subset_inds is nonempty")
+    if length(params) == 0
+        params = if !isempty(subset_inds)
+            # Use subset of draws
+            if isempty(subset_string)
+                error("Must supply a nonempty subset_string if subset_inds is nonempty")
+            end
+            load_draws(m, :subset; subset_inds = subset_inds, verbose = verbose)
+        else
+            # Use all draws
+            load_draws(m, :full; verbose = verbose)
         end
-        load_draws(m, :subset; subset_inds = subset_inds, verbose = verbose)
-    else
-        # Use all draws
-        load_draws(m, :full; verbose = verbose)
     end
-
     ### 2. Compute posterior moments
 
     if use_mode
