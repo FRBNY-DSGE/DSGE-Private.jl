@@ -22,7 +22,7 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     gdp_rev_transform = loggrowthtopct_annualized_percapita
 
     observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
-                                       gdp_fwd_transform, gdp_rev_transform,
+                                       gdp_fwd_transform, identity,
                                        "Real GDP Growth", "Real GDP Growth Per Capita")
 
     ############################################################################
@@ -42,7 +42,7 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     consumption_rev_transform = loggrowthtopct_annualized_percapita
 
     observables[:obs_consumption] = Observable(:obs_consumption, [:PCE__FRED, population_mnemonic],
-                                               consumption_fwd_transform, consumption_rev_transform,
+                                               consumption_fwd_transform, identity,
                                                "Consumption growth per capita",
                                                "Consumption growth adjusted for population filtering")
 
@@ -63,7 +63,7 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     investment_rev_transform  = loggrowthtopct_annualized_percapita
 
     observables[:obs_investment] = Observable(:obs_investment, [:FPI__FRED, population_mnemonic],
-                                              investment_fwd_transform, investment_rev_transform,
+                                              investment_fwd_transform, identity,
                                               "Real Investment per capita",
                                               "Real investment per capita, adjusted for population filtering")
 
@@ -81,7 +81,7 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     wages_rev_transform = loggrowthtopct_annualized
 
     observables[:obs_wages] = Observable(:obs_wages, [:COMPNFB__FRED, :GDPDEF__FRED],
-                                         wages_fwd_transform, wages_rev_transform,
+                                         wages_fwd_transform, identity,
                                          "Percent Change in Wages",
                                          "Q-to-Q Percent Change of Real Compensation (using GDP deflator)")
 
@@ -101,7 +101,7 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     hrs_rev_transform = logleveltopct_annualized_percapita
 
     observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__FRED, :CE16OV__FRED],
-                                         hrs_fwd_transform, hrs_rev_transform,
+                                         hrs_fwd_transform, identity,
                                          "Hours Per Capita", "Log Hours Per Capita")
 
     ############################################################################
@@ -120,7 +120,7 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     gdpdeflator_rev_transform = loggrowthtopct_annualized
 
     observables[:obs_gdpdeflator] = Observable(:obs_gdpdeflator, [:GDPDEF__FRED],
-                                               gdpdeflator_fwd_transform, gdpdeflator_rev_transform,
+                                               gdpdeflator_fwd_transform, identity,
                                                "GDP Deflator",
                                                "Q-to-Q Percent Change of GDP Deflator")
 
@@ -131,7 +131,7 @@ function init_observable_mappings!(m::BayerBornLuetticke)
     nomrate_rev_transform = quartertoannual
 
     observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:RB__BBL],
-                                               x -> iden_fwd_transform(x, :RB), nomrate_rev_transform,
+                                               x -> iden_fwd_transform(x, :RB), identity,
                                                "Nominal Interest Rate",
                                                "Nominal Interest Rate, augmented by shadow rate from Wu and Xia (2016) during ZLB")
 
@@ -188,7 +188,7 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     gdp_rev_transform = loggrowthtopct_annualized_percapita
 
     observables[:obs_gdp] = Observable(:obs_gdp, [:Ygrowth__BBL, population_mnemonic], # add population_mnenomic here just to make pop data available
-                                       x -> iden_fwd_transform(x, :Ygrowth), gdp_rev_transform,
+                                       x -> iden_fwd_transform(x, :Ygrowth), identity,
                                        "Real GDP Growth", "Real GDP Growth Per Capita")
 
     ############################################################################
@@ -198,7 +198,7 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     cons_rev_transform = loggrowthtopct_annualized_percapita
 
     observables[:obs_consumption] = Observable(:obs_consumption, [:Cgrowth__BBL],
-                                               x -> iden_fwd_transform(x, :Cgrowth), cons_rev_transform,
+                                               x -> iden_fwd_transform(x, :Cgrowth), identity,
                                                "Real Consumption Growth", "Real Consumption Growth Per Capita")
 
     ############################################################################
@@ -208,7 +208,7 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     invst_rev_transform = loggrowthtopct_annualized_percapita
 
     observables[:obs_investment] = Observable(:obs_investment, [:Igrowth__BBL],
-                                              x -> iden_fwd_transform(x, :Igrowth), invst_rev_transform,
+                                              x -> iden_fwd_transform(x, :Igrowth), identity,
                                               "Real Investment Growth",
                                               "Real Investment Growth Per Capita")
 
@@ -219,7 +219,7 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     wages_rev_transform = loggrowthtopct_annualized
 
     observables[:obs_wages] = Observable(:obs_wages, [:wgrowth__BBL],
-                                         x -> iden_fwd_transform(x, :wgrowth), wages_rev_transform,
+                                         x -> iden_fwd_transform(x, :wgrowth), identity,
                                          "Real Wage Growth",
                                          "Real Wage Growth in Non-Farm Business Sector")
 
@@ -230,7 +230,7 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     hrs_rev_transform = logleveltopct_annualized_percapita
 
     observables[:obs_hours] = Observable(:obs_hours, [:N__BBL],
-                                         x -> iden_fwd_transform(x, :N), hrs_rev_transform,
+                                         x -> iden_fwd_transform(x, :N), identity,
                                          "Hours",
                                          "Hours Per Capita")
 
@@ -241,7 +241,7 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     gdpdef_rev_transform = loggrowthtopct_annualized
 
     observables[:obs_gdpdeflator] = Observable(:obs_gdpdeflator, [:pi__BBL],
-                                               x -> iden_fwd_transform(x, :pi), gdpdef_rev_transform,
+                                               x -> iden_fwd_transform(x, :pi), identity,
                                                "GDP Deflator",
                                                "GDP Deflator Inflation")
 
@@ -252,7 +252,7 @@ function _init_original_observable_mappings!(m::BayerBornLuetticke, observables:
     nomrate_rev_transform = quartertoannual
 
     observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:RB__BBL],
-                                               x -> iden_fwd_transform(x, :RB), nomrate_rev_transform,
+                                               x -> iden_fwd_transform(x, :RB), identity,
                                                "Nominal Interest Rate",
                                                "Nominal Interest Rate, augmented by shadow rate from Wu and Xia (2016) during ZLB")
 

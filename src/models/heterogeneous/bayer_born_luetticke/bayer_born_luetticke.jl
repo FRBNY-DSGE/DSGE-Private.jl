@@ -1295,3 +1295,25 @@ function setup_indices!(m::BayerBornLuetticke)
         aggr_eqconds[name] = i
     end=#
 end
+
+
+function parameter_groupings(m::BayerBornLuetticke)
+    all_keys = [:ξ, :γ, :β, :λ, :γ_scale, #preferences
+                  :ρ_h, :σ_h, :ι, :ζ, #individual income processes
+                  :α, :δ_0, # technology
+                  :δ_s, :ϕ,
+                  :μ_p, :κ_p, :μ_w, :κ_w,#nk phillips
+                  :ψ, :τ_lev, :τ_prog,
+                  :ρ_A, :σ_A, :ρ_Z,
+                  :σ_Z, :ρ_Ψ, :σ_Ψ,
+                  :ρ_μ_p, :σ_μ_p, :ρ_μ_w, :σ_μ_w,
+                  :ρ_S]
+
+    all_keys = Vector[all_keys]
+    all_params = map(keys -> [m[θ]::Parameter for θ in keys], all_keys)
+    descriptions = ["Parameters"]
+
+    groupings = OrderedDict{String, Vector{Parameter}}(zip(descriptions, all_params))
+
+    return groupings
+end
