@@ -324,6 +324,7 @@ function prior_table(m::AbstractDSGEModel; subset_string::String = "",
     distid(::Distributions.Gamma)   = "Gamma"
     distid(::Distributions.Normal)  = "Normal"
     distid(::RootInverseGamma)      = "InvG"
+    distid(::InverseGamma)          = "InvG"
 
     # Write priors
     for group_desc in keys(groupings)
@@ -468,25 +469,46 @@ function posterior_table(m::AbstractDSGEModel, post_means::Vector, post_bands::M
             # Write left column
             θ = params[i]
             j = m.keys[θ.key]
-            @printf fid "\$%s\$ &" θ.tex_label
-            @printf fid " %0.2f &" post_means[j]
-            if θ.fixed
-                @printf fid " \\scriptsize{fixed} &"
+            println(θ.tex_label)
+            if occursin("sigma",θ.tex_label)
+                @printf fid "\$%s\$ &" θ.tex_label
+                @printf fid " %0.4f &" post_means[j]*100
+                if θ.fixed
+                    @printf fid " \\scriptsize{fixed} &"
+                else
+                    @printf fid " (%0.4f, %0.4f) &" 100 .* post_bands[j, :]...
+                end
             else
-                @printf fid " (%0.2f, %0.2f) &" post_bands[j, :]...
+                @printf fid "\$%s\$ &" θ.tex_label
+                @printf fid " %0.4f &" post_means[j]
+                if θ.fixed
+                    @printf fid " \\scriptsize{fixed} &"
+                else
+                    @printf fid " (%0.4f, %0.4f) &" post_bands[j, :]...
+                end
             end
-
             # Write right column if it exists
             if n_rows + i <= n_params
                 θ = params[n_rows + i]
                 j = m.keys[θ.key]
                 (prior_mean, prior_std) = moments(θ)
-                @printf fid " \$%s\$ &" θ.tex_label
-                @printf fid " %0.2f &" post_means[j]
-                if θ.fixed
-                    @printf fid " \\scriptsize{fixed}"
+                println(θ.tex_label)
+                if occursin("sigma",θ.tex_label)
+                    @printf fid " \$%s\$ &" θ.tex_label
+                    @printf fid " %0.4f &" post_means[j]*100
+                    if θ.fixed
+                        @printf fid " \\scriptsize{fixed}"
+                    else
+                        @printf fid " (%0.4f, %0.4f)" 100 .* post_bands[j, :]...
+                    end
                 else
-                    @printf fid " (%0.2f, %0.2f)" post_bands[j, :]...
+                    @printf fid " \$%s\$ &" θ.tex_label
+                    @printf fid " %0.4f &" post_means[j]
+                    if θ.fixed
+                        @printf fid " \\scriptsize{fixed}"
+                    else
+                        @printf fid " (%0.4f, %0.4f)" post_bands[j, :]...
+                    end
                 end
             else
                 @printf fid " & &"

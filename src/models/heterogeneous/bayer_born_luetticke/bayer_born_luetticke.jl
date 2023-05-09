@@ -879,12 +879,12 @@ m <= parameter(:ρ_P, 0.5, (1e-5, 1. - 1e-5), (1e-5, 1. - 1e-5), SquareRoot(),
        params[free_para_inds] = bbl_mode_values
        ModelConstructors.update!(m.parameters,params)
     end
-    if get_setting(m,:smc_fix_at_mode)
-       m[:δ_s].fixed = true
-       println(m.parameters[12])
-       m[:ϕ].fixed = true
-       println(m.parameters[13])
-    end
+    # if get_setting(m,:smc_fix_at_mode)
+    #    m[:δ_s].fixed = true
+    #    println(m.parameters[12])
+    #    m[:ϕ].fixed = true
+    #    println(m.parameters[13])
+    # end
 
 end
 
@@ -1227,4 +1227,30 @@ function setup_indices!(m::BayerBornLuetticke)
         eqconds[name] = (n_distr_states_idio_jumps + i):(n_distr_states_idio_jumps + i)
         aggr_eqconds[name] = i
     end=#
+end
+
+function parameter_groupings(m::BayerBornLuetticke)
+    all_keys = [:ξ, :γ, :β, :λ, :γ_scale, #preferences
+                :ρ_h, :σ_h, :ι, :ζ, #individual income processes
+                :α, :δ_0, # technology
+                :δ_s, :ϕ,
+                :μ_p, :κ_p, :μ_w, :κ_w,#nk phillips
+                :ψ, :τ_lev, :τ_prog,
+                :π, :RB, :Rbar,
+                :ρ_A, :σ_A, :ρ_Z,
+                :σ_Z, :ρ_Ψ, :σ_Ψ,
+                :ρ_μ_p, :σ_μ_p, :ρ_μ_w, :σ_μ_w,
+                :ρ_S, :σ_S, :ρ_R, :σ_R,
+                :θ_π, :θ_Y, :γ_B, :γ_π,
+                :γ_Y, :ρ_G, :σ_G,
+                :ρ_τ, :γ_B_τ, :γ_Y_τ,
+                :ρ_P, :σ_P, :γ_B_P,
+                :γ_Y_P]
+    all_keys = Vector[all_keys]
+    all_params = map(keys -> [m[θ]::Parameter for θ in keys], all_keys)
+    descriptions = ["Parameters"]
+
+    groupings = OrderedDict{String, Vector{Parameter}}(zip(descriptions, all_params))
+
+    return groupings
 end
