@@ -1307,7 +1307,9 @@ function parameter_groupings(m::BayerBornLuetticke)
                   :ρ_A, :σ_A, :ρ_Z,
                   :σ_Z, :ρ_Ψ, :σ_Ψ,
                   :ρ_μ_p, :σ_μ_p, :ρ_μ_w, :σ_μ_w,
-                  :ρ_S]
+                  :ρ_S, :σ_S, :ρ_R, :σ_R, :θ_π, :θ_Y,
+                  :γ_B, :γ_π, :γ_Y, :ρ_G, :σ_G, :ρ_τ,
+                 :γ_B_τ, :γ_Y_τ, :ρ_P, :σ_P, :γ_B_P, :γ_Y_P]
 
     all_keys = Vector[all_keys]
     all_params = map(keys -> [m[θ]::Parameter for θ in keys], all_keys)

@@ -188,7 +188,6 @@ function moment_tables(m::AbstractDSGEModel; percent::AbstractFloat = 0.90,
                        params::Array{Float64} = Array{Float64}(undef, 0))
 
     ### 1. Load parameter draws from Metropolis-Hastings
-
     if length(params) == 0
         params = if !isempty(subset_inds)
             # Use subset of draws
@@ -327,6 +326,8 @@ function prior_table(m::AbstractDSGEModel; subset_string::String = "",
     distid(::RootInverseGamma)      = "InvG"
     distid(::InverseGamma)          = "RootInvG"
 
+    sigma_group = [:σ_h, :σ_A, :σ_Z, :σ_Ψ, :σ_S, :σ_μ_p, :σ_μ_w, :σ_R, :σ_G, :σ_P]
+
     # Write priors
     for group_desc in keys(groupings)
         params = groupings[group_desc]
@@ -364,11 +365,19 @@ function prior_table(m::AbstractDSGEModel; subset_string::String = "",
             (prior_mean, prior_std) = moments(θ)
             @printf fid "\$%s\$ &" θ.tex_label
             @printf fid " %s &" (θ.fixed ? "-" : distid(get(θ.prior)))
-            @printf fid " %0.2f &" prior_mean
+            if θ.key in sigma_group
+               prior_mean_scaled = prior_mean * 100
+               @printf fid " %0.4f &" prior_mean_scaled
+            else
+                @printf fid " %0.4f &" prior_mean
+            end
             if θ.fixed
                 @printf fid " \\scriptsize{fixed} &"
+            elseif θ.key in sigma_group
+                 prior_std_scaled = prior_std * 100
+                 @printf fid " %0.4f &" prior_std_scaled
             else
-                @printf fid " %0.2f &" prior_std
+                @printf fid " %0.4f &" prior_std
             end
             anticipated_shock_footnote(θ)
 
@@ -378,11 +387,19 @@ function prior_table(m::AbstractDSGEModel; subset_string::String = "",
                 (prior_mean, prior_std) = moments(θ)
                 @printf fid " \$%s\$ &" θ.tex_label
                 @printf fid " %s &" (θ.fixed ? "-" : distid(get(θ.prior)))
-                @printf fid " %0.2f &" prior_mean
+                if θ.key in sigma_group
+                    prior_mean_scaled = prior_mean * 100
+                    @printf fid " %0.4f &" prior_mean_scaled
+                else
+                  @printf fid " %0.4f &" prior_mean
+                end
                 if θ.fixed
                     @printf fid " \\scriptsize{fixed}"
+                elseif θ.key in sigma_group
+                 prior_std_scaled = prior_std * 100
+                 @printf fid " %0.4f &" prior_std_scaled
                 else
-                    @printf fid " %0.2f" prior_std
+                    @printf fid " %0.4f" prior_std
                 end
                 anticipated_shock_footnote(θ)
             else
@@ -455,7 +472,8 @@ function posterior_table(m::AbstractDSGEModel, post_means::Vector, post_bands::M
     @printf fid "\\hline \\\\\n"
     @printf fid "\\endfoot\n"
 
-    # Write priors
+    sigma_group = [:σ_h, :σ_A, :σ_Z, :σ_Ψ, :σ_S, :σ_μ_p, :σ_μ_w, :σ_R, :σ_G, :σ_P]
+    # Write posteriors
     for group_desc in keys(groupings)
         params = groupings[group_desc]
         n_params = length(params)
@@ -471,11 +489,19 @@ function posterior_table(m::AbstractDSGEModel, post_means::Vector, post_bands::M
             θ = params[i]
             j = m.keys[θ.key]
             @printf fid "\$%s\$ &" θ.tex_label
-            @printf fid " %0.2f &" post_means[j]
+            if θ.key in sigma_group
+                scaled_post_means = post_means[j] * 100
+                @printf fid " %0.4f &" scaled_post_means
+            else
+                @printf fid " %0.4f &" post_means[j]
+            end
             if θ.fixed
                 @printf fid " \\scriptsize{fixed} &"
+            elseif θ.key in sigma_group
+                scaled_post_bands = post_bands[j, :] * 100
+                @printf fid " (%0.4f, %0.4f) &" scaled_post_bands...
             else
-                @printf fid " (%0.2f, %0.2f) &" post_bands[j, :]...
+                @printf fid " (%0.4f, %0.4f) &" post_bands[j, :]...
             end
 
             # Write right column if it exists
@@ -484,11 +510,19 @@ function posterior_table(m::AbstractDSGEModel, post_means::Vector, post_bands::M
                 j = m.keys[θ.key]
                 (prior_mean, prior_std) = moments(θ)
                 @printf fid " \$%s\$ &" θ.tex_label
-                @printf fid " %0.2f &" post_means[j]
+                if θ.key in sigma_group
+                    scaled_post_means = post_means[j] * 100
+                    @printf fid " %0.4f &" scaled_post_means
+                else
+                    @printf fid " %0.4f &" post_means[j]
+                end
                 if θ.fixed
                     @printf fid " \\scriptsize{fixed}"
+                elseif θ.key in sigma_group
+                    scaled_post_bands = post_bands[j, :] * 100
+                    @printf fid " (%0.4f, %0.4f)" scaled_post_bands...
                 else
-                    @printf fid " (%0.2f, %0.2f)" post_bands[j, :]...
+                    @printf fid " (%0.4f, %0.4f)" post_bands[j, :]...
                 end
             else
                 @printf fid " & &"
