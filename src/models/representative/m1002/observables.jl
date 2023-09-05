@@ -264,16 +264,26 @@ function init_observable_mappings!(m::Model1002)
         # Note: We subtract 0.5 because 0.5% inflation corresponds to
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
-
-        annualtoquarter(levels[!,:ASACX10]  .- 0.5)
+        if subspec(m) == "ss102"
+           annualtoquarter(levels[!,:PCE10])
+        else
+           annualtoquarter(levels[!,:ASACX10]  .- 0.5)
+        end
     end
 
     longinflation_rev_transform = loggrowthtopct_annualized
 
-    observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX],
+    if subspec(m) == "ss102"
+        observables[:obs_longinflation] = Observable(:obs_longinflation, [:PCE10__DLX],
                                                  longinflation_fwd_transform, longinflation_rev_transform,
                                                  "10-year average inflation expectations",
                                                  "10-year average yr/yr CPI inflation expectations")
+    else
+        observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX],
+                                                 longinflation_fwd_transform, longinflation_rev_transform,
+                                                 "10-year average inflation expectations",
+                                                 "10-year average yr/yr CPI inflation expectations")
+    end
 
 
     ############################################################################

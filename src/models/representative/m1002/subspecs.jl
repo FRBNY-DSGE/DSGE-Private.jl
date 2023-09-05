@@ -127,6 +127,8 @@ function init_subspec!(m::Model1002)
         return ss100!(m)
     elseif subspec(m) == "ss101"
         return ss101!(m)
+    elseif subspec(m) == "ss102"
+        return ss102!(m)
     else
         error("This subspec is not defined.")
     end
@@ -7019,4 +7021,8 @@ end
 # ss100 w/ estimated expected ZLB length in 2020Q4 ## not yet: estimated imperfect cred wts
 function ss101!(m)
     ss100!(m)
+end
+
+function ss102!(m)
+    ss97!(m) #but with change to which series is used for long-run inflation expectations
 end
