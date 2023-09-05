@@ -162,9 +162,8 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                 #                                             skipnan = skipnan,
                 #                                             transform_gdp = transform_gdp,
                 #                                             kwargs...)
-               indices = load("you_filepath_here","indices")
-               indices = BitArray(indices)
-
+              # indices = load("your_filename_here","indices")
+              # indices = BitArray(indices)
            end
             mb_vec = map_fcn(var_name -> compute_meansbands(m, input_type, cond_type, output_var, var_name, df;
                                                             pop_growth = pop_growth, forecast_string = forecast_string,
@@ -172,9 +171,10 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                                                             bdd_fcast = bdd_fcast,
                                                             skipnan = skipnan,
                                                             transform_gdp = transform_gdp,
-                                                            indices = indices,
+                                                            #indices = indices,
                                                             kwargs...),
                              variable_names)
+
         end
 
         # Re-assemble pmap outputs
@@ -186,7 +186,6 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
             bands[var_name] = typeof(var_bands) == Dict{Symbol, DataFrame} ? DataFrame() : var_bands
             bands[var_name][!,:date] = date_list
         end
-
     elseif product in [:shockdec, :irf, :shockdecseq, :shockdecqtrs]
         means = product == :irf ? DataFrame() : DataFrame(date = date_list)
         bands = Dict{Symbol, DataFrame}()
@@ -216,7 +215,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
     end
 
     mb = MeansBands(metadata, means, bands)
-    forecast_string = forecast_string * "aidan_test_less1"
+   #= forecast_string = forecast_string * "" #add-on at end to prevent overwriting original meanbands
     # Write to file
     filepath = get_meansbands_output_file(m, input_type, cond_type, output_var,
                                           forecast_string = forecast_string)
@@ -229,7 +228,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
 
     sep = prod in [:shockdec, :irf, :shockdecseq, :shockdecqtrs] ? "  " : ""
     println(verbose, :high, sep * "wrote " * basename(filepath))
-
+   =#
     return mb
 end
 
@@ -245,7 +244,8 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                             compute_shockdec_bands::Bool = false,
                             bdd_fcast::Bool = true,
                             transform_gdp::Bool = true,
-                            indices = [])
+                            #indices = [])
+                            )
 
     # Return only one set of bands if we read in only one draw
     if input_type in [:init, :mode, :mean]
@@ -290,7 +290,12 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
         if output_var in [:histobs, :hist4qobs]
             #do nothing
         else
-            transformed_series = transformed_series[indices,:]
+         if var_name == :PseudoGDP
+          save("your_filepath_here/filename.jld2", "transformed_series", transformed_series)
+         end
+#            file_indices = JLD2.jldopen("your_filepath_here/filename.jld2", "r")
+#            indices = deepcopy(file_indices["indices"])
+#            transformed_series = transformed_series[indices,:]
         end
     end
     # Compute means and bands
@@ -778,7 +783,6 @@ function mb_reverse_transform(fcast_series::AbstractArray, transform::Function,
     if product in [:hist4q, :forecast4q, :bddforecast4q]
         transform4q = get_transform4q(transform)
         use_data = use_data ? true : (class == :obs && product != :hist4q)
-
         y0s = if use_data && transform4q in [loggrowthtopct_4q_percapita, loggrowthtopct_4q]
             # Sum growth rates y_{t-3}, y_{t-2}, y_{t-1}, and y_t
             data[y0_index+1:y0_index + 3]
