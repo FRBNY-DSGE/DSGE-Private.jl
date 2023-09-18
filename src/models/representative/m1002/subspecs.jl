@@ -7035,4 +7035,31 @@ end
 
 function ss103!(m)
     ss97!(m) #Will change to do something about the alt policy things
+
+    #Alternative policy 1
+    altpol1 = default_policy()
+
+    #Alternative Policy 2: ZLB starting in regime 3 and ending in regime 5, and flexible AIT starting in regime 6
+    weights = [1,0]
+    reg3_weights = weights
+    reg4_weights = weights
+    reg5_weights = weights
+    reg6_weights = weights
+    new_reg_eqcond_info = Dict(3 => EqcondEntry(zlb_rule(), reg3_weights),
+                               4 => EqcondEntry(zlb_rule(), reg4_weights),
+                               5 => EqcondEntry(zlb_rule(), reg5_weights),
+                               6 => EqcondEntry(zlb_rule(), reg6_weights))
+
+    new_infoset = [1:1, 2:2, [i:6 for i in 3:6]..., [i:i for i in 7:get_setting(m, :n_regimes)]...]
+
+    delete!(m.settings, :alternative_policies)
+
+    altpol2 = MultiPeriodAltPolicy(:temporary_zlb, get_setting(m, :n_regimes),
+                                   new_reg_eqcond_info, gensys2 = true,
+                                   temporary_altpolicy_names = [:zlb_rule],
+                                   temporary_altpolicy_length = 3,
+                                   infoset = new_infoset)
+
+
+    m <= Setting(:alternative_policies, DSGE.AbstractAltPolicy[altpol1, altpol2])
 end
