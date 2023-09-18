@@ -129,6 +129,8 @@ function init_subspec!(m::Model1002)
         return ss101!(m)
     elseif subspec(m) == "ss102"
         return ss102!(m)
+    elseif subspec(m) == "ss103"
+        return ss103!(m)
     else
         error("This subspec is not defined.")
     end
@@ -7029,4 +7031,8 @@ end
 
 function ss102!(m)
     ss97!(m) #but with change to long run inflation series and no reduction of bps
+end
+
+function ss103!(m)
+    ss97!(m) #Will change to do something about the alt policy things
 end
