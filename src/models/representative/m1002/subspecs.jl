@@ -424,6 +424,10 @@ function ss3!(m::Model1002)
         end
     end
 
+
+
+
+
     m <= parameter(:η_gz, 0.8400, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.50, 0.20), fixed=false,
                    description="η_gz: Correlate g and z shocks.",
                    tex_label="\\eta_{gz}")
@@ -6859,6 +6863,7 @@ function expected_nominal_rates!(m)
     # iid measurement error on expected AIT shock
     for i in expected_ffr(m)
         symb_i = Symbol("σ_exp_rm$(i)")
+        print(symb_i)
         get_setting(m, :model2para_regime)[symb_i] = Dict(1 => 1)
         for j in 1:15
             if j < 10
@@ -7036,6 +7041,91 @@ end
 function ss103!(m)
     ss97!(m) #Will change to do something about the alt policy things
 
+#=
+    #Monetary Policy Shocks
+    m <= parameter(:ρ_rm, 0.2135, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), Uniform(0., 1.), fixed=false,
+                   description="ρ_rm: AR(1) coefficient in the monetary policy shock process.",
+                   tex_label="\\rho_{r^m}")
+
+    m <= parameter(:ρ_σ_w, 0.9898, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), Uniform(0., 1.0), fixed=false,
+                   description="ρ_σ_w: The standard deviation of entrepreneurs' capital productivity follows an exogenous process with mean ρ_σ_w. Innovations to the process are called _spread shocks_.",
+                   tex_label="\\rho_{\\sigma_\\omega}")
+
+    m <= parameter(:ρ_μ_e, 0.7500, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), Uniform(0., 1.0), fixed=true,
+                   description="ρ_μ_e: AR(1) coefficient in the exogenous bankruptcy cost process.",
+                   tex_label="\\rho_{\\mu_e}")
+
+    m <= parameter(:ρ_γ, 0.7500, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), Uniform(0., 1.0), fixed=true,
+                   description="ρ_γ: AR(1) coefficient in the process describing the fraction of entrepreneurs surviving period t.",
+                   tex_label="\\rho_{\\gamma}")
+
+    m <= parameter(:ρ_π_star, 0.9900, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), Uniform(0., 1.), fixed=true,
+                   description="ρ_π_star: AR(1) coefficient in the time-varying inflation target process.",
+                   tex_label="\\rho_{\\pi_*}")
+
+    m <= parameter(:ρ_lr, 0.6936, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), Uniform(0., 1.), fixed=false,
+                   tex_label="\\rho_{10y}")
+
+    m <= parameter(:ρ_z_p, 0.8910, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), Uniform(0., 1.), fixed=false,
+                   description="ρ_z_p: AR(1) coefficient in the process describing the permanent component of productivity.",
+                   tex_label="\\rho_{z^p}")
+
+    m <= parameter(:ρ_tfp, 0.1953, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), Uniform(0., 1.), fixed=false,
+                   tex_label="\\rho_{tfp}")
+
+    m <= parameter(:ρ_gdpdef, 0.5379, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), Uniform(0., 1.), fixed=false,
+                   tex_label="\\rho_{gdpdef}")
+
+    m <= parameter(:ρ_corepce, 0.2320, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), Uniform(0., 1.), fixed=false,
+                   tex_label="\\rho_{pce}")
+
+    m <= parameter(:ρ_gdp, 0., (-0.999, 0.999), (-0.999, 0.999), ModelConstructors.SquareRoot(), Normal(0.0, 0.2), fixed=false,
+                   tex_label="\\rho_{gdp}")
+
+    m <= parameter(:ρ_gdi, 0., (-0.999, 0.999), (-0.999, 0.999), ModelConstructors.SquareRoot(), Normal(0.0, 0.2), fixed=false,
+                   tex_label="\\rho_{gdi}")
+
+    m <= parameter(:ρ_gdpvar, 0., (-0.999, 0.999), (-0.999, 0.999), ModelConstructors.SquareRoot(), Normal(0.0, 0.4), fixed=false,
+                   tex_label="\\varrho_{gdp}")
+
+    m <= parameter(:me_level, 1., (-0.999, 0.999), (-0.999, 0.999), ModelConstructors.Untransformed(), Normal(0.0, 0.4), fixed=true,
+                   description="me_level: Indicator of cointegration of GDP and GDI.",
+                   tex_label="\\mathcal{C}_{me}")
+
+
+
+  # standard deviations of the anticipated policy shocks
+    for i = 1:n_mon_anticipated_shocks_padding(m)
+        if i <= n_mon_anticipated_shocks(m)
+            m <= parameter(Symbol("σ_r_m$i"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
+                           description="σ_r_m$i: Standard deviation of the $i-period-ahead anticipated policy shock.",
+                           tex_label=@sprintf("\\sigma_{ant%d}",i))
+        else
+            m <= parameter(Symbol("σ_r_m$i"), .0, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=true,
+                           description="σ_r_m$i: Standard deviation of the $i-period-ahead anticipated policy shock.",
+                           tex_label=@sprintf("\\sigma_{ant%d}",i))
+        end
+    end
+
+=#
+
+
+temp_dict = Dict(zip(Array(10:26), [10 for i in range(1,17; step=1)]))
+for para in [:σ_r_m1, :σ_r_m2, :σ_r_m3, :σ_r_m4, :σ_r_m5, :σ_r_m6, :σ_exp_rm1,  :σ_exp_rm2,  :σ_exp_rm3,  :σ_exp_rm4,  :σ_exp_rm5,  :σ_exp_rm6, :σ_r_m]
+    set_regime_val!(m[para],10, 0.0)
+    set_regime_fixed!(m[para],10,true)
+    set_regime_prior!(m[para], 10,get(m[para].prior))
+    set_regime_prior!(m[para], 1, RootInverseGamma(4.0,0.2))
+    set_regime_valuebounds!(m[para], 10, (0.0,0.0))
+    for i in Array(10:26)
+        get_setting(m, :model2para_regime)[para][i] = 10
+    end
+    #toggle_regime!(m[para], 10, temp_dict)
+end
+
+
+#=
+
     #Alternative policy 1
     altpol1 = default_policy()
 
@@ -7054,12 +7144,13 @@ function ss103!(m)
 
     delete!(m.settings, :alternative_policies)
 
-    altpol2 = MultiPeriodAltPolicy(:temporary_zlb, get_setting(m, :n_regimes),
-                                   new_reg_eqcond_info, gensys2 = true,
-                                   temporary_altpolicy_names = [:zlb_rule],
-                                   temporary_altpolicy_length = 3,
-                                   infoset = new_infoset)
+    #altpol2 = MultiPeriodAltPolicy(:temporary_zlb, get_setting(m, :n_regimes),
+                                   #new_reg_eqcond_info, gensys2 = true,
+                                   #temporary_altpolicy_names = [:zlb_rule],
+                                   #temporary_altpolicy_length = 3,
+                                   #infoset = new_infoset)
 
 
-    m <= Setting(:alternative_policies, DSGE.AbstractAltPolicy[altpol1, altpol2])
+    m <= Setting(:alternative_policies, DSGE.AbstractAltPolicy[altpol1]) #, altpol2])
+=#
 end

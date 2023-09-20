@@ -559,7 +559,6 @@ buted to steady-state inflation.",
                    description="ρ_λ_w: AR(1) coefficient in the wage mark-up shock process.",
                    tex_label="\\rho_{\\lambda_w}")
 
-
     # monetary policy shock - see eqcond
     m <= parameter(:ρ_rm, 0.2135, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                    description="ρ_rm: AR(1) coefficient in the monetary policy shock process.",
