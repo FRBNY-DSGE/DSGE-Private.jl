@@ -92,7 +92,7 @@ function smooth(m::AbstractDSGEModel, df::DataFrame, system::System{S},
     if draw_states && smoother in [hamilton_smoother, koopman_smoother]
         @warn "$smoother called with draw_states = true"
     end
-    print(smoother)
+
     testing = try #states, shocks = try
         if smoother == hamilton_smoother
             smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
@@ -106,7 +106,7 @@ function smooth(m::AbstractDSGEModel, df::DataFrame, system::System{S},
                      s_0, P_0; draw_states = draw_states)
         elseif smoother == durbin_koopman_smoother
 
-            println(inds_shocks_no_ant(m))
+
 
             smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
                      s_0, P_0; draw_states = draw_states)
@@ -123,7 +123,7 @@ function smooth(m::AbstractDSGEModel, df::DataFrame, system::System{S},
 
     states = testing[1]
     shocks = testing[2]
-    print(shocks)
+
     if testing_carter_kohn && smoother == carter_kohn_smoother
         conded = testing[3]
     end
@@ -171,7 +171,7 @@ function smooth(m::AbstractDSGEModel, df::DataFrame, system::RegimeSwitchingSyst
     # Note that the post-ZLB regime may be empty if we do not impose the ZLB
     start_date = max(date_presample_start(m), df[1, :date])
     regime_inds, i_zlb_start, splice_zlb_regime = zlb_plus_regime_indices(m, data, start_date)
-    println("regime indices" , regime_inds)
+
 
     # Get system matrices for each regime. Use n_regimes to omit unneeded regimes
     TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs = zlb_plus_regime_matrices(m, system, length(regime_inds),
@@ -181,7 +181,6 @@ function smooth(m::AbstractDSGEModel, df::DataFrame, system::RegimeSwitchingSyst
 
     # Initialize s_0 and P_0
     if isempty(s_0) || isempty(P_0)
-        println("Initializing s_0 and p_0")
         s_0, P_0 = init_stationary_states(TTTs[1], RRRs[1], CCCs[1], QQs[1])
     end
 

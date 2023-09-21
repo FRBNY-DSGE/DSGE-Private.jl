@@ -1,0 +1,112 @@
+NEWS.md[36m:[m+ Time-varying [1;31mimperfect[m awareness/credibility
+docs/src/MatlabToJuliaTransition.md[36m:[mthough still [1;31mimperfect[m, measurements of performance. The reduction of 1/5th to
+docs/src/advanced_usage.md[36m:[mor [1;31mimperfect[m awareness/credibility about the policy change. This approach can also partially address the concern
+docs/src/advanced_usage.md[36m:[mWe model [1;31mimperfect[m awareness by assuming there are ``n`` possible alternative policies
+docs/src/advanced_usage.md[36m:[mTo apply [1;31mimperfect[m awareness, the user needs to specify the possible alternative policies
+docs/src/advanced_usage.md[36m:[mTo use [1;31mimperfect[m awareness with a temporary altpolicy (eg. ZLB), the user needs to also add the following lines to
+docs/src/advanced_usage.md[36m:[mThe first line tells that a temporary altpolicy with [1;31mimperfect[m awareness should apply.
+docs/src/advanced_usage.md[36m:[mFor further guidance on adding [1;31mimperfect[m awareness, please see the script
+docs/src/advanced_usage.md[36m:[mThe measurement equations for these observables are therefore affected when [1;31mimperfect[m awareness is assumed.
+docs/src/advanced_usage.md[36m:[mpolicies. However, it is possible that agents are [1;31mimperfect[mly aware
+docs/src/advanced_usage.md[36m:[m[[1;31mimperfect[m_awareness_tempzlb_ait.jl](https://github.com/FRBNY-DSGE/DSGE.jl/tree/main/examples/[1;31mimperfect[m_awareness_tempzlb_ait.jl) with the keyword endozlb set to true.
+docs/src/altpolicy.md[36m:[m[1;31mimperfect[m credibility to alternative policies (both permanent and temporary).
+docs/src/altpolicy.md[36m:[m## [`MultiPeriodAltPolicy`](@ref [1;31mimperfect[m-awareness-multiperaltpol)
+docs/src/running_existing_model.md[36m:[m  [1;31mimperfect[m awareness about the credibility of a policy switch to flexible AIT.
+examples/imperfect_awareness_tempzlb_ait.jl[36m:[m# to enact a temporary ZLB with [1;31mimperfect[m awareness, followed by an
+examples/imperfect_awareness_tempzlb_ait.jl[36m:[m# alternative policy with [1;31mimperfect[m awareness (in this case, AIT).
+examples/imperfect_awareness_tempzlb_ait.jl[36m:[m# We sometimes also call policies with [1;31mimperfect[m awareness as "uncertain" policies.
+examples/imperfect_awareness_tempzlb_ait.jl[36m:[m    # Following two settings turn [1;31mimperfect[m awareness
+examples/imperfect_awareness_tempzlb_ait.jl[36m:[m    m <= Setting(:uncertain_altpolicy, true) # turns [1;31mimperfect[m awareness on
+examples/imperfect_awareness_tempzlb_ait.jl[36m:[m    m <= Setting(:uncertain_temporary_altpolicy, true) # needed to allow a temporary alternative policy with [1;31mimperfect[m awareness
+examples/imperfect_awareness_tempzlb_ait.jl[36m:[m    # set the "alternative" rule for [1;31mimperfect[m awareness
+src/abstractdsgemodel.jl[36m:[m# Function for getting the alternative policy. Note that, in the case of [1;31mimperfect[m awareness,
+src/altpolicy/altpolicy.jl[36m:[malternative policies, regime switching, and [1;31mimperfect[m awareness.
+src/forecast/drivers.jl[36m:[m            if haskey(get_settings(m), :[1;31mimperfect[m_awareness_weights) # does not work currently, need to update
+src/forecast/drivers.jl[36m:[m                println("Credibility weights: ", get_setting(m, :[1;31mimperfect[m_awareness_weights))
+src/forecast/drivers.jl[36m:[m                # Only other way to specify [1;31mimperfect[m awareness is regime_eqcond_info, so it must exist
+src/forecast/drivers.jl[36m:[m    The user should also be careful and make sure `update_regime_eqcond_info!` handles [1;31mimperfect[m awareness properly
+src/forecast/drivers.jl[36m:[m    if they want to implement an [1;31mimperfect[mly credible ZLB. For an example, see `?default_update_regime_eqcond_info`.
+src/models/representative/m1002/subspecs.jl[36m:[m        # Set up [1;31mimperfect[m credibility of flexible AIT rule
+src/models/representative/m1002/subspecs.jl[36m:[m        if !haskey(get_settings(m), :[1;31mimperfect[m_credibility_weights)
+src/models/representative/m1002/subspecs.jl[36m:[m            m <= Setting(:[1;31mimperfect[m_credibility_weights, [1., 0.]) # default to perfect credibility
+src/models/representative/m1002/subspecs.jl[36m:[m        if !haskey(get_settings(m), :[1;31mimperfect[m_credibility_historical_policy)
+src/models/representative/m1002/subspecs.jl[36m:[m            m <= Setting(:[1;31mimperfect[m_credibility_historical_policy, taylor_rule())
+src/models/representative/m1002/subspecs.jl[36m:[m        # Set up [1;31mimperfect[m credibility of flexible AIT rule
+src/models/representative/m1002/subspecs.jl[36m:[m        if !haskey(get_settings(m), :[1;31mimperfect[m_credibility_weights)
+src/models/representative/m1002/subspecs.jl[36m:[m            m <= Setting(:[1;31mimperfect[m_credibility_weights, [1., 0.]) # default to perfect credibility
+src/models/representative/m1002/subspecs.jl[36m:[m        if !haskey(get_settings(m), :[1;31mimperfect[m_credibility_historical_policy)
+src/models/representative/m1002/subspecs.jl[36m:[m            m <= Setting(:[1;31mimperfect[m_credibility_historical_policy, taylor_rule())
+src/models/representative/m1002/subspecs.jl[36m:[m        # Set up [1;31mimperfect[m credibility of flexible AIT rule
+src/models/representative/m1002/subspecs.jl[36m:[m        if !haskey(get_settings(m), :[1;31mimperfect[m_credibility_weights)
+src/models/representative/m1002/subspecs.jl[36m:[m            m <= Setting(:[1;31mimperfect[m_credibility_weights, [1., 0.]) # default to perfect credibility
+src/models/representative/m1002/subspecs.jl[36m:[m        if !haskey(get_settings(m), :[1;31mimperfect[m_credibility_historical_policy)
+src/models/representative/m1002/subspecs.jl[36m:[m            m <= Setting(:[1;31mimperfect[m_credibility_historical_policy, taylor_rule())
+src/models/representative/m1002/subspecs.jl[36m:[m        # Set up [1;31mimperfect[m credibility of flexible AIT rule
+src/models/representative/m1002/subspecs.jl[36m:[m        if !haskey(get_settings(m), :[1;31mimperfect[m_credibility_weights)
+src/models/representative/m1002/subspecs.jl[36m:[m            m <= Setting(:[1;31mimperfect[m_credibility_weights, [1., 0.]) # default to perfect credibility
+src/models/representative/m1002/subspecs.jl[36m:[m        if !haskey(get_settings(m), :[1;31mimperfect[m_credibility_historical_policy)
+src/models/representative/m1002/subspecs.jl[36m:[m            m <= Setting(:[1;31mimperfect[m_credibility_historical_policy, taylor_rule())
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m    # TODO: Set up with temporary ZLB + flexible AIT rule and [1;31mimperfect[m awareness
+src/models/representative/m1002/subspecs.jl[36m:[m# ss100 w/ estimated expected ZLB length in 2020Q4 ## not yet: estimated [1;31mimperfect[m cred wts
+src/solve/gensys2_uncertain_altpol.jl[36m:[mcalculates the transition matrices when there is a temporary alternative policy with [1;31mimperfect[m awareness.
+src/solve/solve.jl[36m:[m        # AND for implementing [1;31mimperfect[m awareness via uncertain_altpolicy
+src/solve/solve.jl[36m:[m                # AND for implementing [1;31mimperfect[m awareness via uncertain_altpolicy
+src/solve/solve.jl[36m:[mcomputes the regime-switching state space transition matrices when agents have [1;31mimperfect[m awareness
+src/statespace/statespace_functions.jl[36m:[mthe system) and then in the case of [1;31mimperfect[m but positive credibility,
+src/statespace/statespace_functions.jl[36m:[m    # AND for implementing [1;31mimperfect[m awareness via uncertain_altpolicy
+src/statespace/statespace_functions.jl[36m:[m        # # in the case that uncertain_altpolicy is true (hence [1;31mimperfect[m awareness is one
+src/statespace/statespace_functions.jl[36m:[mcalculates a state-space system with [1;31mimperfect[m awareness and possibly multi-period alternative policies.
+src/statespace/statespace_functions.jl[36m:[m    assert_str = "To use [1;31mimperfect[m awareness, " *
+src/statespace/statespace_functions.jl[36m:[m    # Form measurement and pseudo-measurement equations for [1;31mimperfect[m awareness state space system
+test/forecast/multiple_altpol_imperfect_awareness.jl[36m:[m[1;31mimperfect[m_cred_flexait = .33
+test/forecast/multiple_altpol_imperfect_awareness.jl[36m:[m[1;31mimperfect[m_cred_taylor  = 1. - [1;31mimperfect[m_cred_flexait
+test/forecast/multiple_altpol_imperfect_awareness.jl[36m:[m     cred = [1;31mimperfect[m_cred_flexait,
+test/forecast/multiple_altpol_imperfect_awareness.jl[36m:[m    h5open(joinpath(dirname(@__FILE__), "../reference/multiple_altpol_[1;31mimperfect[m_awareness_output_version=$(ver).h5"), "w") do file
+test/forecast/multiple_altpol_imperfect_awareness.jl[36m:[m@testset "Multiple alternative policies, incl. MultiPeriodAltPolicy, with [1;31mimperfect[m awareness" begin
+test/forecast/multiple_altpol_imperfect_awareness.jl[36m:[m        @test out_taylor_temp_taylor[k] ≈ out1[k] # with 2 alternative policies and [1;31mimperfect[m awareness
+test/forecast/multiple_altpol_imperfect_awareness.jl[36m:[m        h5read(joinpath(dirname(@__FILE__), "../reference/multiple_altpol_[1;31mimperfect[m_awareness_output_version=$(ver).h5"), string(k))
+test/forecast/time_varying_credibility.jl[36m:[m[1;31mimperfect[m_cred_flexait = .33
+test/forecast/time_varying_credibility.jl[36m:[m[1;31mimperfect[m_cred_taylor  = 1. - [1;31mimperfect[m_cred_flexait
+test/forecast/time_varying_credibility.jl[36m:[m     cred = [1;31mimperfect[m_cred_flexait,
+test/runtests.jl[36m:[m            "forecast/multiple_altpol_[1;31mimperfect[m_awareness",
+test/solve/gensys2_uncertain_altpol_test2.jl[36m:[m    m <= Setting(:[1;31mimperfect[m_awareness_varying_weights,
+test/statespace/statespace.jl[36m:[m    [1;31mimperfect[m_cred_new = 1.
+test/statespace/statespace.jl[36m:[m    [1;31mimperfect[m_cred_old = 1. - [1;31mimperfect[m_cred_new
+test/statespace/statespace.jl[36m:[m                  Setting(:[1;31mimperfect[m_awareness_weight, [[1;31mimperfect[m_cred_new, [1;31mimperfect[m_cred_old]),
+test/statespace/statespace.jl[36m:[m    regime_eqcond_info[8] = DSGE.EqcondEntry(DSGE.flexible_ait(), [[1;31mimperfect[m_cred_new, [1;31mimperfect[m_cred_old])
+test/statespace/statespace.jl[36m:[m    [1;31mimperfect[m_cred_new = .5
+test/statespace/statespace.jl[36m:[m    [1;31mimperfect[m_cred_old = 1. - [1;31mimperfect[m_cred_new
+test/statespace/statespace.jl[36m:[m                  Setting(:[1;31mimperfect[m_awareness_weights, [[1;31mimperfect[m_cred_new, [1;31mimperfect[m_cred_old]),
+test/statespace/statespace.jl[36m:[m            regime_eqcond_info[regind] = DSGE.EqcondEntry(DSGE.zlb_rule(), [[1;31mimperfect[m_cred_new, [1;31mimperfect[m_cred_old])
+test/statespace/statespace.jl[36m:[m    regime_eqcond_info[8] = DSGE.EqcondEntry(DSGE.flexible_ait(), [[1;31mimperfect[m_cred_new, [1;31mimperfect[m_cred_old])
+test/statespace/statespace.jl[36m:[m        @test sys_unczlb_uncalt[i, :ZZ] ≈ [1;31mimperfect[m_cred_new * sys_perfcred[i, :ZZ] +
+test/statespace/statespace.jl[36m:[m            [1;31mimperfect[m_cred_old * sys_taylor[:ZZ]
+test/statespace/statespace.jl[36m:[m        @test sys_unczlb_uncalt[i, :ZZ_pseudo] ≈ [1;31mimperfect[m_cred_new * sys_perfcred[i, :ZZ_pseudo] +
+test/statespace/statespace.jl[36m:[m            [1;31mimperfect[m_cred_old * sys_taylor[:ZZ_pseudo]
+test/statespace/statespace.jl[36m:[m        @test sys_unczlb_uncalt[i, :DD] ≈ [1;31mimperfect[m_cred_new * sys_perfcred[i, :DD] +
+test/statespace/statespace.jl[36m:[m            [1;31mimperfect[m_cred_old * sys_taylor[:DD]
+test/statespace/statespace.jl[36m:[m        @test sys_unczlb_uncalt[i, :DD_pseudo] ≈ [1;31mimperfect[m_cred_new * sys_perfcred[i, :DD_pseudo] +
+test/statespace/statespace.jl[36m:[m            [1;31mimperfect[m_cred_old * sys_taylor[:DD_pseudo]

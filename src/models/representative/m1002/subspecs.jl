@@ -7092,36 +7092,39 @@ function ss103!(m)
                    description="me_level: Indicator of cointegration of GDP and GDI.",
                    tex_label="\\mathcal{C}_{me}")
 
-
-
-  # standard deviations of the anticipated policy shocks
-    for i = 1:n_mon_anticipated_shocks_padding(m)
-        if i <= n_mon_anticipated_shocks(m)
-            m <= parameter(Symbol("σ_r_m$i"), .2, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=false,
-                           description="σ_r_m$i: Standard deviation of the $i-period-ahead anticipated policy shock.",
-                           tex_label=@sprintf("\\sigma_{ant%d}",i))
-        else
-            m <= parameter(Symbol("σ_r_m$i"), .0, (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(4, .2), fixed=true,
-                           description="σ_r_m$i: Standard deviation of the $i-period-ahead anticipated policy shock.",
-                           tex_label=@sprintf("\\sigma_{ant%d}",i))
-        end
-    end
-
 =#
 
 
-temp_dict = Dict(zip(Array(10:26), [10 for i in range(1,17; step=1)]))
-for para in [:σ_r_m1, :σ_r_m2, :σ_r_m3, :σ_r_m4, :σ_r_m5, :σ_r_m6, :σ_exp_rm1,  :σ_exp_rm2,  :σ_exp_rm3,  :σ_exp_rm4,  :σ_exp_rm5,  :σ_exp_rm6, :σ_r_m]
-    set_regime_val!(m[para],10, 0.0)
-    set_regime_fixed!(m[para],10,true)
-    set_regime_prior!(m[para], 10,get(m[para].prior))
-    set_regime_prior!(m[para], 1, RootInverseGamma(4.0,0.2))
-    set_regime_valuebounds!(m[para], 10, (0.0,0.0))
-    for i in Array(10:26)
-        get_setting(m, :model2para_regime)[para][i] = 10
-    end
+#temp_dict = Dict(zip(Array(11:26), [10 f]))
+    for para in [:σ_r_m1, :σ_r_m2, :σ_r_m3, :σ_r_m4, :σ_r_m5, :σ_r_m6]
+        #set_regime_val!(m[para],10, 0.0)
+        #set_regime_fixed!(m[para],10,true)
+        #set_regime_prior!(m[para], 10,get(m[para].prior))
+        #set_regime_prior!(m[para], 1, RootInverseGamma(4.0,0.2))
+        #set_regime_valuebounds!(m[para], 10, (0.0,0.0))
+        for i in Array(7:11)
+            get_setting(m, :model2para_regime)[para][i] = 2
+        end
+        for i in Array(11:26)
+            get_setting(m, :model2para_regime)[para][i] = 1
+        end
     #toggle_regime!(m[para], 10, temp_dict)
-end
+    end
+
+    for para in [:σ_exp_rm1,  :σ_exp_rm2,  :σ_exp_rm3,  :σ_exp_rm4,  :σ_exp_rm5,  :σ_exp_rm6, :σ_r_m , :σ_ait_rm,
+                 :σ_ait_r_m1, :σ_ait_r_m2, :σ_ait_r_m3, :σ_ait_r_m4, :σ_ait_r_m5, :σ_ait_r_m6]
+    #set_regime_val!(m[para],10, 0.0)
+    #set_regime_fixed!(m[para],10,true)
+    #set_regime_prior!(m[para], 10,get(m[para].prior))
+    #set_regime_prior!(m[para], 1, RootInverseGamma(4.0,0.2))
+    #set_regime_valuebounds!(m[para], 10, (0.0,0.0))
+        for i in Array(7:11)
+            get_setting(m, :model2para_regime)[para][i] = 1
+        end
+        for i in Array(11:26)
+            get_setting(m, :model2para_regime)[para][i] = 2
+        end
+    end
 
 
 #=

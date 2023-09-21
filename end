@@ -1,0 +1,105 @@
+eqcond.jl[36m:[m    Γ0[eq[:eq_Ez], endo[:zp_t]]   = -m[:ρ[1;31m_z_p[m]
+eqcond.jl[36m:[m    Γ1[eq[:eq_zp], endo[:zp_t]] = m[:ρ[1;31m_z_p[m]
+eqcond.jl[36m:[m        Γ1[eq[:eq_zp_covid], endo[:zp_covid_t]] = m[:ρ[1;31m_z_p[m_covid]
+m1002.jl[36m:[m    m <= parameter(:ρ[1;31m_z_p[m, 0.8910, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+m1002.jl[36m:[m                   description="ρ[1;31m_z_p[m: AR(1) coefficient in the process describing the permanent component of productivity.",
+m1002.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+m1002.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+m1002.jl[36m:[m        m <= parameter(:ρ[1;31m_z_p[m_covid, 0.8910, (0., 0.999), (0., 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+m1002.jl[36m:[m                       description="ρ[1;31m_z_p[m: AR(1) coefficient in the process describing the permanent component of productivity.",
+m1002.jl[36m:[m        m <= parameter(:σ[1;31m_z_p[m_covid, 0.1662, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+m1002.jl[36m:[m                       description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+m1002.jl[36m:[m    processes  = [:ρ_g, :ρ_b, :ρ_μ, :ρ_ztil, :ρ_σ_w, :ρ_π_star, :ρ[1;31m_z_p[m, :ρ_λ_f, :ρ_λ_w, :η_λ_f, :η_λ_w,
+m1002.jl[36m:[m                  :σ_g, :σ_b, :σ_μ, :σ_ztil, :σ_σ_ω, :σ_π_star, :σ[1;31m_z_p[m, :σ_λ_f, :σ_λ_w, :η_gz]
+measurement.jl[36m:[m    QQ[exo[:zp_sh], exo[:zp_sh]]           = m[:σ[1;31m_z_p[m]^2
+measurement.jl[36m:[m        QQ[exo[:zp_covid_sh], exo[:zp_covid_sh]]   = m[:σ[1;31m_z_p[m_covid]^2
+measurement.jl[36m:[m        # QQ[exo[:zp_sh], exo[:zp_sh]]           = m[:σ[1;31m_z_p[m]^2 # σ[1;31m_z_p[m is handled on its own via regime-switching
+subspecs.jl[36m:[m    m <= parameter(:ρ[1;31m_z_p[m, 0.8910, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), Uniform(0., 1.), fixed=false,
+subspecs.jl[36m:[m                   description="ρ[1;31m_z_p[m: AR(1) coefficient in the process describing the permanent component of productivity.",
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m    m <= parameter(:ρ[1;31m_z_p[m, 0.8910, (0.0, 1.0), (0.0, 1.0), SquareRoot(), BetaAlt(0.5, 0.2), fixed = false,
+subspecs.jl[36m:[m                   description = "ρ[1;31m_z_p[m: AR(1) coefficient in the process describing the permanent component of productivity.",
+subspecs.jl[36m:[m    ModelConstructors.set_regime_val!(m[:σ[1;31m_z_p[m], 2, 0., override_bounds = true)
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m        ModelConstructors.set_regime_val!(m[:σ[1;31m_z_p[m], i, adj * m[:σ[1;31m_z_p[m].value)
+subspecs.jl[36m:[m    ModelConstructors.set_regime_val!(m[:σ[1;31m_z_p[m], 2, 0.)
+subspecs.jl[36m:[m    ModelConstructors.set_regime_val!(m[:σ[1;31m_z_p[m], 3, 0.)
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m        ModelConstructors.set_regime_val!(m[:σ[1;31m_z_p[m], i, m[:σ[1;31m_z_p[m].value)
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m        ModelConstructors.set_regime_val!(m[:σ[1;31m_z_p[m], i, m[:σ[1;31m_z_p[m].value)
+subspecs.jl[36m:[m    # Need to allow a zero value for sigma[1;31m_z_p[m
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m        # Set σ[1;31m_z_p[m
+subspecs.jl[36m:[m        m2p[:σ[1;31m_z_p[m] = Dict(1 => 1, 2 => 2, 3 => 2) # map 1959:Q3-2019:Q4 to parameter regime 1, 2020:Q1-Q2 to para regime 2
+subspecs.jl[36m:[m            m2p[:σ[1;31m_z_p[m][i] = 1
+subspecs.jl[36m:[m        set_regime_val!(m[:σ[1;31m_z_p[m], 1, m[:σ[1;31m_z_p[m].value)
+subspecs.jl[36m:[m        set_regime_val!(m[:σ[1;31m_z_p[m], 2, 0.)
+subspecs.jl[36m:[m        set_regime_fixed!(m[:σ[1;31m_z_p[m], 1, false)
+subspecs.jl[36m:[m        set_regime_fixed!(m[:σ[1;31m_z_p[m], 2, true) # Fix σ[1;31m_z_p[m = 0 in para regime 2
+subspecs.jl[36m:[m    # Need to allow a zero value for sigma[1;31m_z_p[m
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m                   :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m            if pk == :σ[1;31m_z_p[m
+subspecs.jl[36m:[m                set_regime_val!(m[:σ[1;31m_z_p[m], 1, m[:σ[1;31m_z_p[m].value)
+subspecs.jl[36m:[m                set_regime_val!(m[:σ[1;31m_z_p[m], 2, 0.)
+subspecs.jl[36m:[m                # Fix σ[1;31m_z_p[m = 0 in para regime 2
+subspecs.jl[36m:[m                set_regime_fixed!(m[:σ[1;31m_z_p[m], 1, false)
+subspecs.jl[36m:[m                set_regime_fixed!(m[:σ[1;31m_z_p[m], 2, true)
+subspecs.jl[36m:[m                   :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m                   :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m                   :ρ_gdp, :ρ_gdi, :ρ[1;31m_z_p[m, :ρ_rm, :ρ_gdpdef, :ρ_corepce]
+subspecs.jl[36m:[m        for pk in [:σ_g, :σ_μ, :σ_λ_f, :σ_σ_ω, :σ_lr, :σ_tfp, :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m                   :σ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :ρ_gdpvar_covid, :ρ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :σ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :ρ_gdpvar_covid, :ρ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m        for pk in [:σ_g, :σ_μ, :σ_λ_f, :σ_σ_ω, :σ_lr, :σ_tfp, :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m                   :σ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :ρ_gdpvar_covid, :ρ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :σ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :ρ_gdpvar_covid, :ρ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m        for pk in [:σ_g, :σ_μ, :σ_λ_f, :σ_σ_ω, :σ_lr, :σ_tfp, :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m                   :σ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :ρ_gdpvar_covid, :ρ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :σ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m                   :ρ_gdpvar_covid, :ρ[1;31m_z_p[m_covid]
+subspecs.jl[36m:[m    # Need to allow a zero value for sigma[1;31m_z_p[m
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m                   :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m            if pk == :σ[1;31m_z_p[m
+subspecs.jl[36m:[m                set_regime_val!(m[:σ[1;31m_z_p[m], 1, m[:σ[1;31m_z_p[m].value)
+subspecs.jl[36m:[m                set_regime_val!(m[:σ[1;31m_z_p[m], 2, 0.)
+subspecs.jl[36m:[m                # Fix σ[1;31m_z_p[m = 0 in para regime 2
+subspecs.jl[36m:[m                set_regime_fixed!(m[:σ[1;31m_z_p[m], 1, false)
+subspecs.jl[36m:[m                set_regime_fixed!(m[:σ[1;31m_z_p[m], 2, true)
+subspecs.jl[36m:[m        for pk in [:σ_g, :σ_μ, :σ_λ_f, :σ_σ_ω, :σ_lr, :σ_tfp, :σ_gdp, :σ_gdi, :σ_b, :σ_ztil, :σ[1;31m_z_p[m, :σ_λ_w]
+subspecs.jl[36m:[m                   :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m    # Need to allow a zero value for sigma[1;31m_z_p[m
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m                   :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m            if pk == :σ[1;31m_z_p[m
+subspecs.jl[36m:[m                set_regime_val!(m[:σ[1;31m_z_p[m], 1, m[:σ[1;31m_z_p[m].value)
+subspecs.jl[36m:[m                set_regime_val!(m[:σ[1;31m_z_p[m], 2, 0.)
+subspecs.jl[36m:[m                # Fix σ[1;31m_z_p[m = 0 in para regime 2
+subspecs.jl[36m:[m                set_regime_fixed!(m[:σ[1;31m_z_p[m], 1, false)
+subspecs.jl[36m:[m                set_regime_fixed!(m[:σ[1;31m_z_p[m], 2, true)
+subspecs.jl[36m:[m    # Need to allow a zero value for sigma[1;31m_z_p[m
+subspecs.jl[36m:[m    m <= parameter(:σ[1;31m_z_p[m, 0.1662, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+subspecs.jl[36m:[m                   description="σ[1;31m_z_p[m: The standard deviation of the shock to the permanent component of productivity.",
+subspecs.jl[36m:[m                   :σ_gdp, :σ_gdi, :σ[1;31m_z_p[m]
+subspecs.jl[36m:[m            if pk == :σ[1;31m_z_p[m
+subspecs.jl[36m:[m                set_regime_val!(m[:σ[1;31m_z_p[m], 1, m[:σ[1;31m_z_p[m].value)
+subspecs.jl[36m:[m                set_regime_val!(m[:σ[1;31m_z_p[m], 2, 0.)
+subspecs.jl[36m:[m                # Fix σ[1;31m_z_p[m = 0 in para regime 2
+subspecs.jl[36m:[m                m[:σ[1;31m_z_p[m].fixed = false
+subspecs.jl[36m:[m                set_regime_fixed!(m[:σ[1;31m_z_p[m], 1, false)
+subspecs.jl[36m:[m                set_regime_fixed!(m[:σ[1;31m_z_p[m], 2, true)
