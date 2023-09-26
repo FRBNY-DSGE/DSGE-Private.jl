@@ -582,14 +582,12 @@ Returns `out::Dict{Symbol, Array{Float64}}`, which has keys determined as follow
                                   T::Int, k::Int, H::Int; apply_altpolicy::Bool = false,
                                   outputs::Vector{Symbol} = [:forecast, :shockdec], check::Bool = false,
                                   catch_smoother_lapack::Bool = false, enforce_zlb::Bool = false,
-                                  endogenous_zlb::Bool = false, set_zlb_regime_vals::Function = identity, no_update::Bool = false)
+                                  endogenous_zlb::Bool = false, set_zlb_regime_vals::Function = identity)
 
       regime_switching = haskey(m.settings, :regime_switching) ? get_setting(m, :regime_switching) : false
 
-      if !no_update
-          # Compute state space
-          DSGE.update!(m, params)
-      end
+      # Compute state space
+      DSGE.update!(m, params)
       system = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set))
 
       # Initialize output dictionary
