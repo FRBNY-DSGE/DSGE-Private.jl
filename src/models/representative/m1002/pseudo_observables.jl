@@ -4,7 +4,7 @@ function init_pseudo_observable_mappings!(m::Model1002)
 
     pseudo_names = [:y_t, :y_f_t, :NaturalRate, :π_t, :OutputGap, :ExAnteRealRate, :LongRunInflation,
                     :MarginalCost, :Wages, :FlexibleWages, :Hours, :FlexibleHours, :z_t,
-                    :Expected10YearRateGap, :NominalFFR, :Expected10YearRate,
+                    :Expected10YearRateGap, :Econometricians10YearRateGap, :NominalFFR, :Expected10YearRate,
                     :Expected10YearNaturalRate, :ExpectedNominalNaturalRate, :NominalRateGap, :LaborProductivityGrowth, :u_t]
                     # :i_f_t, :R_t, :c_f_t, :qk_f_t, :k_f_t, :kbar_f_t, :u_f_t, :rk_f_t, :w_f_t, :L_f_t, :rktil_f_t, :n_f_t, :c_t,
                     # :b_t, :r_f_t]
@@ -205,6 +205,10 @@ function init_pseudo_observable_mappings!(m::Model1002)
     pseudo[:Expected10YearRateGap].name     = "Expected 10-Year Rate Gap"
     pseudo[:Expected10YearRateGap].longname = "Expected 10-Year Rate Gap"
     pseudo[:Expected10YearRateGap].rev_transform = quartertoannual
+
+    pseudo[:Econometricians10YearRateGap].name     = "Econometrician's 10-Year Rate Gap"
+    pseudo[:Econometricians10YearRateGap].longname = "Expected 10-Year Rate Gap from the perspective of the econometrician who has no forward looking uncertain beliefs about the implemented monetary policy."
+    pseudo[:Econometricians10YearRateGap].rev_transform = quartertoannual
 
     pseudo[:NominalFFR].name     = "Nominal FFR"
     pseudo[:NominalFFR].longname = "Nominal FFR at an annual rate"

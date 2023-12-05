@@ -1,0 +1,26 @@
+DSGE.jl[36m:[m        find_density_bands, moment_tables, [1;31mcompute_meansbands[m, MeansBands,
+DSGE.jl[36m:[m    include("analysis/[1;31mcompute_meansbands[m.jl")
+analysis/compute_meansbands.jl[36m:[m[1;31mcompute_meansbands[m(m, input_type, cond_type, output_vars; forecast_string = "",
+analysis/compute_meansbands.jl[36m:[m[1;31mcompute_meansbands[m(m, input_type, cond_type, output_var, df; forecast_string = "",
+analysis/compute_meansbands.jl[36m:[m[1;31mcompute_meansbands[m(m, input_type, cond_type, output_var, var_name, df;
+analysis/compute_meansbands.jl[36m:[mfunction [1;31mcompute_meansbands[m(m::AbstractDSGEModel, input_type::Symbol,
+analysis/compute_meansbands.jl[36m:[m            mb = [1;31mcompute_meansbands[m(m, input_type, cond_type, output_var, df;
+analysis/compute_meansbands.jl[36m:[mfunction [1;31mcompute_meansbands[m(m::AbstractDSGEModel, input_type::Symbol, cond_type::Symbol,
+analysis/compute_meansbands.jl[36m:[m                mb_vec[i] = [1;31mcompute_meansbands[m(m, input_type, cond_type, output_var,
+analysis/compute_meansbands.jl[36m:[m            mb_vec = map_fcn(var_name -> [1;31mcompute_meansbands[m(m, input_type, cond_type, output_var, var_name, df;
+analysis/compute_meansbands.jl[36m:[m            mb_vec = pmap(var_name -> [1;31mcompute_meansbands[m(m, input_type, cond_type, output_var, var_name, df;
+analysis/compute_meansbands.jl[36m:[mfunction [1;31mcompute_meansbands[m(m::AbstractDSGEModel, input_type::Symbol, cond_type::Symbol,
+analysis/compute_meansbands.jl[36m:[m# function [1;31mcompute_meansbands[m(m::AbstractDSGEModel, input_type::Symbol, cond_type::Symbol,
+analysis/compute_meansbands.jl[36m:[m[1;31mcompute_meansbands[m(models, input_types, cond_types, output_vars; forecast_strings = [],
+analysis/compute_meansbands.jl[36m:[m[1;31mcompute_meansbands[m(models, input_types, cond_types, output_vars, df; forecast_strings = [],
+analysis/compute_meansbands.jl[36m:[m[1;31mcompute_meansbands[m(models, input_types, cond_types, output_var, var_name, df;
+analysis/compute_meansbands.jl[36m:[mfunction [1;31mcompute_meansbands[m(models::Vector{<: AbstractDSGEModel},
+analysis/compute_meansbands.jl[36m:[m            mb = [1;31mcompute_meansbands[m(models, input_types,
+analysis/compute_meansbands.jl[36m:[mfunction [1;31mcompute_meansbands[m(models::Vector{<: AbstractDSGEModel},
+analysis/compute_meansbands.jl[36m:[m                mb_vec[i] = [1;31mcompute_meansbands[m(models, input_types,
+analysis/compute_meansbands.jl[36m:[m            mb_vec = pmap(var_name -> [1;31mcompute_meansbands[m(models, input_types, cond_types, output_var, var_name, df;
+analysis/compute_meansbands.jl[36m:[m            mb_vec = pmap(var_name -> [1;31mcompute_meansbands[m(models, input_types,
+analysis/compute_meansbands.jl[36m:[mfunction [1;31mcompute_meansbands[m(models::Vector,
+decomp/drivers.jl[36m:[moutput variable (see `?shock_decompositions`, `forecast_one`, and `[1;31mcompute_meansbands[m`).
+forecast/util.jl[36m:[m    # during [1;31mcompute_meansbands[m
+packet/drivers.jl[36m:[m    [1;31mcompute_meansbands[m(m, input_type, cond_type, output_vars; forecast_string = forecast_string,

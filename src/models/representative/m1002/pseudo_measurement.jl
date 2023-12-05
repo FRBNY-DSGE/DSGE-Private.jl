@@ -78,7 +78,7 @@ function pseudo_measurement(m::Model1002{T},
     end
     integ_series = length(no_integ_inds) != n_states_augmented(m) # Are the series integrated?
 
-    # Compute TTT^10, used for Expected10YearRateGap, Expected10YearRate, and Expected10YearNaturalRate
+    # Compute TTT^10, used for Expected10YearRateGap, Econometricians10YearRateGap, Expected10YearRate, and Expected10YearNaturalRate
     TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 40, permanent_t;
                                                  integ_series = integ_series,
                                                  memo = use_fwd_exp_sum ? memo : nothing)
@@ -258,6 +258,9 @@ function pseudo_measurement(m::Model1002{T},
     # ZZ_pseudo[pseudo[:Expected10YearRateGap], :] = TTT10[endo[:R_t], :] - TTT10[endo[:r_f_t], :] - TTT10[endo[:Eπ_t], :]
     ZZ_pseudo[pseudo[:Expected10YearRateGap], :] = view(TTT10, endo[:R_t], :) - view(TTT10, endo[:r_f_t], :) - view(TTT10, endo[:Eπ_t], :)
     DD_pseudo[pseudo[:Expected10YearRateGap]]    = CCC10[endo[:R_t]] - CCC10[endo[:r_f_t]] - CCC10[endo[:Eπ_t]]
+
+    ZZ_pseudo[pseudo[:Econometricians10YearRateGap], :] = view(TTT10, endo[:R_t], :) - view(TTT10, endo[:r_f_t], :) - view(TTT10, endo[:Eπ_t], :)
+    DD_pseudo[pseudo[:Econometricians10YearRateGap]]    = CCC10[endo[:R_t]] - CCC10[endo[:r_f_t]] - CCC10[endo[:Eπ_t]]
 
     ## Nominal FFR
     ZZ_pseudo[pseudo[:NominalFFR], endo[:R_t]] = 1.
