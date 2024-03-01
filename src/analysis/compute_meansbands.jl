@@ -290,8 +290,9 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
         if output_var in [:histobs, :hist4qobs]
             #do nothing
         else
-         if var_name == :PseudoGDP
-          save("your_filepath_here/filename.jld2", "transformed_series", transformed_series)
+            if var_name == :PseudoGDP
+                println("SAVING RELEVANT FILE AS meanrecessionprobabilities.jld2 IN CURRENT DIRECTORY")
+                save("meanrecessionprobabilities.jld2", "transformed_series", transformed_series)
          end
 #            file_indices = JLD2.jldopen("your_filepath_here/filename.jld2", "r")
 #            indices = deepcopy(file_indices["indices"])
