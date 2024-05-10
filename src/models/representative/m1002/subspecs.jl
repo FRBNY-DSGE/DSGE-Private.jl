@@ -7149,6 +7149,9 @@ function ss103!(m)
     set_regime_prior!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].prior)
     set_regime_prior!(m[:κ_std_bcshocks], 2, m[:κ_std_bcshocks].prior)
 
+    set_regime_valuebounds!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].valuebounds)
+    set_regime_valuebounds!(m[:κ_std_bcshocks], 2, m[:κ_std_bcshocks].valuebounds)
+
     m2p_dict = Dict(1 => 1, 2 => 2, 3 => 2)
     for i in 4:get_setting(m, :n_regimes)
         m2p_dict[:κ_std_bcshocks][i] = 1
@@ -7169,6 +7172,9 @@ function ss103!(m)
     set_regime_prior!(m[:κ_pce], 1, m[:κ_pce].prior)
     set_regime_prior!(m[:κ_pce], 2, m[:κ_pce].prior)
 
+    set_regime_valuebounds!(m[:κ_pce], 1, m[:κ_pce].valuebounds)
+    set_regime_valuebounds!(m[:κ_pce], 2, m[:κ_pce].valuebounds)
+
     m2p_dict = Dict()
     for i in vcat(1:4, 10:get_setting(m, :n_regimes))
         m2p_dict[:κ_pce][i] = 1
@@ -7178,9 +7184,11 @@ function ss103!(m)
         m2p_dict[:κ_pce][i] = 2
     end
 
+    #get_setting(m, :model2para_regime)[:ρ_meas_π][10] = 1
+    #get_setting(m, :model2para_regime)[:ρ_meas_π][11] = 1
 
-    get_setting(m, :model2para_regime)[:ρ_meas_π][10] = 1
     get_setting(m, :model2para_regime)[:σ_meas_π][10] = 1
+    get_setting(m, :model2para_regime)[:σ_meas_π][11] = 1
 
     get_setting(m, :model2para_regime)[:κ_pce] = m2p_dict
 
