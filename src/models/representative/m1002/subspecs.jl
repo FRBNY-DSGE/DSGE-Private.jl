@@ -7123,4 +7123,73 @@ Implementation by RAs Brian Pacula and Pranay Gundam
 
 function ss103!(m)
     ss100!(m)
+
+    # Covid Shocks changed to turn off one period before they do in ss100
+
+    get_setting(m, :model2para_regime)[:κ_covid][10] = 1
+
+    # Remove 2020 Q2 and 2020 Q3 Anticipated Covid Shocks
+
+    for i = 4:5
+        get_setting(m, :model2para_regime)[:σ_biddc1][i] = 1
+    end
+
+    # Measurement Error shocks (everything but core pce) go straight back to pre-covid regimes in 2020Q3
+
+    get_setting(m, :model2para_regime)[:σ_gdpdef][4] = 1
+
+    # Standard Shocks: still uncertain but potentially implement a κ_standardcovid (either estimated or fixed it tbd) during 2020Q1 and 2020Q2 rather than estimating a different regime
+
+    set_regime_val!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].value)
+    set_regime_val!(m[:κ_std_bcshocks], 2, m[:κ_std_bcshocks].value)
+
+    set_regime_fixed!(m[:κ_std_bcshocks], 1, true)
+    set_regime_fixed!(m[:κ_std_bcshocks], 2, false)
+
+    set_regime_prior!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].prior)
+    set_regime_prior!(m[:κ_std_bcshocks], 2, m[:κ_std_bcshocks].prior)
+
+    m2p_dict = Dict(1 => 1, 2 => 2, 3 => 2)
+    for i in 4:get_setting(m, :n_regimes)
+        m2p_dict[:κ_std_bcshocks][i] = 1
+    end
+
+    get_setting(m, :model2para_regime)[:κ_std_bcshocks] = m2p_dict
+
+    toggle_regime!(m[:κ_std_bcshocks], 1)
+
+    # Add κ_pce, return model back to pre-covid regimes starting in 2022 Q1, IS THIS ESTIMATED?
+
+    set_regime_val!(m[:κ_pce], 1, m[:κ_pce].value)
+    set_regime_val!(m[:κ_pce], 2, 0.5)
+
+    set_regime_fixed!(m[:κ_pce], 1, true)
+    set_regime_fixed!(m[:κ_pce], 2, false)
+
+    set_regime_prior!(m[:κ_pce], 1, m[:κ_pce].prior)
+    set_regime_prior!(m[:κ_pce], 2, m[:κ_pce].prior)
+
+    m2p_dict = Dict()
+    for i in vcat(1:4, 10:get_setting(m, :n_regimes))
+        m2p_dict[:κ_pce][i] = 1
+    end
+
+    for i in 5:9
+        m2p_dict[:κ_pce][i] = 2
+    end
+
+
+    get_setting(m, :model2para_regime)[:ρ_meas_π][10] = 1
+    get_setting(m, :model2para_regime)[:σ_meas_π][10] = 1
+
+    get_setting(m, :model2para_regime)[:κ_pce] = m2p_dict
+
+    toggle_regime!(m[:κ_pce], 1)
+
+    # Inflation Target tbd
+
+
+    # Taylor Shocks both cont and ant are as is in either SS97 or SS100, one thing to clear up DO PEOPLE WITH IMPERFECT CRED BELIEFS ON TAYLOR STILL NEED TAYLOR SHOCKS IN THE MODEL TO STAY TRUE TO THEIR BELIEF EXPERIENCE
+
+
 end
