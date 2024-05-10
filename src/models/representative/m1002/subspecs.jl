@@ -129,6 +129,8 @@ function init_subspec!(m::Model1002)
         return ss101!(m)
     elseif subspec(m) == "ss102"
         return ss102!(m)
+    elseif subspec(m) == "ss103"
+        return ss103!(m)
     else
         error("This subspec is not defined.")
     end
@@ -7105,4 +7107,20 @@ end
 
 function ss102!(m)
     ss97!(m) #but with different series (:PCE10) used instead of the usual :ASACX10 and without subtraction of 50 bps
+end
+
+
+
+"""
+'''
+ss103!(m::Model1002)
+'''
+
+ss103 builds on a combination of 10, 97, and 103 in simplifying and estimating post covid, as of 05/24. Changes include introducing and estimating a κ_pce/business_cycle parameter, estimating AIT parameters (as in ss100), and simplifying other regime changes made during covid so that we are not estimating regimes on minimal quarters of data.
+
+Implementation by RAs Brian Pacula and Pranay Gundam
+"""
+
+function ss103!(m)
+    ss100!(m)
 end
