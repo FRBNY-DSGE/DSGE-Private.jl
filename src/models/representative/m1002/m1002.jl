@@ -828,9 +828,9 @@ buted to steady-state inflation.",
         m <= parameter(:κ_std_bcshocks, 1.0, (0.0, 1.0), (0.0, 1.0), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
                        description="κ_std_bcshocks: scaling factor for standard business cycle shocks during covid",
                        tex_label="\\kappa_{bcshocks}")
-        #m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
-        #               description="Fraction of regime 2 value used in regime 3 for σ_{covid}",
-        #               tex_label = "\\kappa_{covid}")
+        m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
+                       description="Fraction of regime 2 value used in regime 3 for σ_{covid}",
+                       tex_label = "\\kappa_{covid}")
         m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
                        description="Fraction of regime 2 value used in regime 3 for σ_{meas,π}",
                        tex_label = "\\kappa_{pce}")
