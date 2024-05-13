@@ -7126,6 +7126,35 @@ function ss103!(m)
 
     # Covid Shocks changed to turn off one period before they do in ss100
 
+    m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), ModelConstructors.SquareRoot(), Uniform(0.0, 1.0), fixed = false,
+          description = "Fraction of regime 2 value used in regime 3 for σ_{covid}",
+          tex_label = "\\kappa_{covid}")
+
+    set_regime_val!(m[:κ_covid], 1, m[:κ_covid].value)
+    set_regime_val!(m[:κ_covid], 2, 0.5)
+
+    set_regime_fixed!(m[:κ_covid], 1, true)
+    set_regime_fixed!(m[:κ_covid], 2, false)
+
+    set_regime_prior!(m[:κ_covid], 1, m[:κ_covid].prior)
+    set_regime_prior!(m[:κ_covid], 2, m[:κ_covid].prior)
+
+    set_regime_valuebounds!(m[:κ_covid], 1, m[:κ_covid].valuebounds)
+    set_regime_valuebounds!(m[:κ_covid], 2, m[:κ_covid].valuebounds)
+
+    m2p_dict = Dict()
+    for i in vcat(1:4, 10:get_setting(m, :n_regimes))
+        m2p_dict[i] = 1
+    end
+
+    for i in 5:9
+        m2p_dict[i] = 2
+    end
+
+    get_setting(m, :model2para_regime)[:κ_covid] = m2p_dict
+
+    toggle_regime!(m[:κ_covid], 1)
+
     get_setting(m, :model2para_regime)[:κ_covid][10] = 1
 
     # Remove 2020 Q2 and 2020 Q3 Anticipated Covid Shocks
@@ -7139,6 +7168,10 @@ function ss103!(m)
     get_setting(m, :model2para_regime)[:σ_gdpdef][4] = 1
 
     # Standard Shocks: still uncertain but potentially implement a κ_standardcovid (either estimated or fixed it tbd) during 2020Q1 and 2020Q2 rather than estimating a different regime
+
+    m <= parameter(:κ_std_bcshocks, 1.0, (0.0, 1.0), (0.0, 1.0), ModelConstructors.SquareRoot(), Uniform(0.0, 1.0), fixed = false,
+          description = "Scaling factor for standard business cycle shocks during covid",
+          tex_label = "\\kappa_{bcshocks}")
 
     set_regime_val!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].value)
     set_regime_val!(m[:κ_std_bcshocks], 2, m[:κ_std_bcshocks].value)
@@ -7154,7 +7187,7 @@ function ss103!(m)
 
     m2p_dict = Dict(1 => 1, 2 => 2, 3 => 2)
     for i in 4:get_setting(m, :n_regimes)
-        m2p_dict[:κ_std_bcshocks][i] = 1
+        m2p_dict[i] = 1
     end
 
     get_setting(m, :model2para_regime)[:κ_std_bcshocks] = m2p_dict
@@ -7162,6 +7195,10 @@ function ss103!(m)
     toggle_regime!(m[:κ_std_bcshocks], 1)
 
     # Add κ_pce, return model back to pre-covid regimes starting in 2022 Q1, IS THIS ESTIMATED?
+
+    m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0.0, 1.0), fixed = false,
+          description = "Fraction of regime 2 value used in regime 3 for σ_{meas_π}",
+          tex_label = "\\kappa_{pce}")
 
     set_regime_val!(m[:κ_pce], 1, m[:κ_pce].value)
     set_regime_val!(m[:κ_pce], 2, 0.5)
@@ -7177,11 +7214,11 @@ function ss103!(m)
 
     m2p_dict = Dict()
     for i in vcat(1:4, 10:get_setting(m, :n_regimes))
-        m2p_dict[:κ_pce][i] = 1
+        m2p_dict[i] = 1
     end
 
     for i in 5:9
-        m2p_dict[:κ_pce][i] = 2
+        m2p_dict[i] = 2
     end
 
     #get_setting(m, :model2para_regime)[:ρ_meas_π][10] = 1
