@@ -828,12 +828,12 @@ buted to steady-state inflation.",
         m <= parameter(:κ_std_bcshocks, 1.0, (0.0, 1.0), (0.0, 1.0), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
                        description="κ_std_bcshocks: scaling factor for standard business cycle shocks during covid",
                        tex_label="\\kappa_{bcshocks}")
-        #m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
-                       #description="Fraction of regime 2 value used in regime 3 for σ_{covid}",
-                       #tex_label = "\\kappa_{covid}")
-        #m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
-                       #description="Fraction of regime 2 value used in regime 3 for σ_{meas,π}",
-                       #tex_label = "\\kappa_{pce}")
+        m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
+                       description="Fraction of regime 2 value used in regime 3 for σ_{covid}",
+                       tex_label = "\\kappa_{covid}")
+        m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
+                       description="Fraction of regime 2 value used in regime 3 for σ_{meas,π}",
+                       tex_label = "\\kappa_{pce}")
     end
 
     if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
@@ -1392,7 +1392,7 @@ function shock_groupings(m::Model1002)
 
         rm_vec = vcat([:rm_sh], [Symbol("rm_shl$i") for i = 1:n_mon_anticipated_shocks(m)])
         if haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
-            append!(rm_vec, :rm_ait_sh)
+            append!(rm_vec, [:rm_ait_sh])
         end
 
         pol = ShockGroup("pol", rm_vec, RGB(1.0, 0.84, 0.0)) # gold
