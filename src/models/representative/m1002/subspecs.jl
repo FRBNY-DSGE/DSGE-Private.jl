@@ -7159,6 +7159,12 @@ function ss103!(m)
         get_setting(m, :model2para_regime)[:σ_biidc1][i] = 1
     end
 
+    for i = 5:9
+        get_setting(m, :model2para_regime)[:σ_biidc][i] = 2
+        get_setting(m, :model2para_regime)[:σ_ziid][i] = 2
+        get_setting(m, :model2para_regime)[:σ_φ][i] = 2
+    end
+
     # Measurement Error shocks (everything but core pce) go straight back to pre-covid regimes in 2020Q3
 
     get_setting(m, :model2para_regime)[:σ_gdpdef][4] = 1
@@ -7221,12 +7227,15 @@ function ss103!(m)
     #get_setting(m, :model2para_regime)[:ρ_meas_π][10] = 1
     #get_setting(m, :model2para_regime)[:ρ_meas_π][11] = 1
 
-    get_setting(m, :model2para_regime)[:σ_meas_π][10] = 1
-    get_setting(m, :model2para_regime)[:σ_meas_π][11] = 1
+    for i = 2:9
+        get_setting(m, :model2para_regime)[:σ_meas_π][i] = 2
+        get_setting(m, :model2para_regime)[:σ_corepce][i] = 2
+    end
 
-    get_setting(m, :model2para_regime)[:σ_corepce][10] = 1
-    get_setting(m, :model2para_regime)[:σ_corepce][11] = 1
-
+    for i = 10:get_setting(m, :n_regimes)
+        get_setting(m, :model2para_regime)[:σ_meas_π][i] = 1
+        get_setting(m, :model2para_regime)[:σ_corepce][i] = 1
+    end
 
     toggle_regime!(m[:κ_pce], 1)
 
