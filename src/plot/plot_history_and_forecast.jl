@@ -215,6 +215,7 @@ histforecast
     combined = cat(hist, forecast)
     dates = combined.means[!, :date]
 
+
     # Assign date ticks
     date_ticks = Base.filter(x -> start_date <= x <= end_date,    dates)
     date_ticks = Base.filter(x -> Dates.month(x) == 3,            date_ticks)
@@ -333,8 +334,9 @@ histforecast
         if save_as_csv
 	        df_mean_forecast.dates = combined.means[inds, :date]
 	        df_mean_forecast.mean_forecast = combined.means[inds, var]
+
 	        df_means = outerjoin(df_mean_hist, df_mean_forecast, on = :dates)
-            sort!(df_means, [:dates])
+            sort!(df_means)
 
     	    if size(df_means) != (0, 0)
         	    df_plot_data.mean_history = df_means.mean_history

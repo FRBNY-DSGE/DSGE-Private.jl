@@ -82,6 +82,9 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
             spd_data = transform_spd_data(spd_data, fomc_dates = fomc_dates)
             CSV.write(inpath(m, "raw", "spd_$(data_vintage(m)).csv"), spd_data)
 
+
+            #spd_data = CSV.read("/data/dsge_data_dir/dsgejl/input_data/raw/spd_$(data_vintage(m))_change.csv",  DataFrame, copycols = true)
+
             dates = DSGE.get_quarter_ends(iterate_quarters(date_mainsample_end(m), 1), date_conditional_end(m))
             n_cond = length(dates)
 

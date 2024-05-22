@@ -19,7 +19,12 @@ function make_decomp_mbs(m_new::M, m_old::M, input_type::Symbol,
     end
 
     # Common metadata
-    comps = [:policyait, :policyeqcond, :release, :cond, :revise, :param]
+    # comps = [:policyait, :policyeqcond, :release, :cond, :revise, :param, :spd]
+    if (get_setting(m_new, :date_forecast_start) != get_setting(m_old, :date_forecast_start))
+        comps = [:release, :cond, :revise, :param, :spd]
+    else
+        comps = [:cond, :revise, :param, :spd]
+    end
     comps = model_decomp ? vcat(comps, :model) : comps
     dates = decomps[collect(keys(decomps))[1]][!,:date]
     vars  = collect(keys(get_dict(m_new, class)))
@@ -52,6 +57,8 @@ function make_decomp_mbs(m_new::M, m_old::M, input_type::Symbol,
         for var in vars
             for comp in comps
                 varcomp = Symbol(var, "__", comp)
+                if var == :NominalFFR
+                end
                 shockdec_mb.means[!,varcomp] = decomps[var][!,comp]
                 shockdec_mb.bands[varcomp] = DataFrame(date = dates)
             end
@@ -147,21 +154,41 @@ function plot_forecast_decomposition(m_new::M, m_old::M, vars::Vector{Symbol}, c
                                      model_decomp::Bool = false, trend_nostates::DataFrame = DataFrame(),
                                      shockdec_data_only::Bool = false,
                                      kwargs...) where M<:AbstractDSGEModel
+    @show "in second plot_forecast_dec"
     # Create MeansBands
     mbs = make_decomp_mbs(m_new, m_old, input_type, cond_new, cond_old, class,
                           individual_shocks = individual_shocks, forecast_string_new = forecast_string_new, forecast_string_old = forecast_string_old, model_decomp = model_decomp, shockdec_data_only = shockdec_data_only)
 
     # Create shock grouping
+    #this gets used for the forecast decs but not the relative shock decs
     if !individual_shocks
-        groups = [ShockGroup("Policy-AIT", [:policyait], colorant"#9DE0AD"), # sea foam green
-                  ShockGroup("Policy-eqcond", [:policyeqcond], colorant"#45ADA8"), # turquoise
-                  ShockGroup("Params", [:param], colorant"green"), # turquoise
-                  ShockGroup("Data-Revisions", [:revise], colorant"orange"), # turquoise
-                  ShockGroup("Data-Conditional", [:cond], colorant"blue"), # turquoise
-                  ShockGroup("Data-Release", [:release], colorant"#547980")] # blue gray
-        if model_decomp
-            push!(groups, ShockGroup("model", [:model], colorant"red"))
+        #setting up groups so that the groupings are displayed in the order they are formed in in decomp/drivers.jl,
+        #and setting up cases for label variation
+        groups = [ShockGroup("SPD", [:spd], colorant"purple")]
+
+        #new addition, for when forecast quarter does not change
+        if get_setting(m_new, :date_forecast_start) == get_setting(m_old, :date_forecast_start)
+            push!(groups, ShockGroup("New Data In Current Conditional Quarter (T+1)", [:cond], colorant"blue"))
+            push!(groups,  ShockGroup("Historical Data Revisions (1,...T)", [:revise], colorant"orange"))
+        else
+             push!(groups, ShockGroup("New Conditional Data (T+1)", [:release], colorant"#547980"))
+             n_periods_gap = DSGE.subtract_quarters(get_setting(m_new, :date_forecast_start), get_setting(m_old, :date_forecast_start))
+            if n_periods_gap == 1
+                push!(groups,ShockGroup("New Data In Previous Conditional Quarter (T)", [:cond], colorant"blue"))
+            else
+                prev_conditional_q = n_periods_gap - 1
+                push!(groups,ShockGroup("New Data In Previous Conditional Quarter (T - $(prev_conditional_q))", [:cond], colorant"blue"))
+            end
+            push!(groups,  ShockGroup("Historical Data Revisions (1,...T-$(n_periods_gap))", [:revise], colorant"orange"))
         end
+        #since major changes to these have not been made in a while,
+        #commenting out the actual policy parameters and credibility + zlb
+        # ShockGroup("Actual Policy Parameters", [:policyait], colorant"#9DE0AD"),
+        # ShockGroup("Credibility + ZLB", [:policyeqcond], colorant"#45ADA8"))
+        if model_decomp
+            push!(groups, ShockGroup("Other", [:model], colorant"red"))
+        end
+        push!(groups, ShockGroup("Parameters", [:param], colorant"green"))
     end
 
     # Get titles if not provided
