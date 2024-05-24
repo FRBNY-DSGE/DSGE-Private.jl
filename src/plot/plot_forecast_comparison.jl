@@ -150,11 +150,15 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
 
     # Loop through variables
     plots = OrderedDict{Symbol, Plots.Plot}()
+    println("In forecast_comparison")
+    println(end_date)
+    println(start_date)
     for (var, title) in zip(vars, titles)
     	# Setup for saving to CSV
     	df_plot_data = DataFrame()
 
         # Call recipe
+
         plots[var] = histforecast(var, histold, forecastold;
 		     		              df_plot_data = df_plot_data, save_as_csv = save_as_csv,
                                   names = old_names, colors = old_colors,
@@ -241,6 +245,9 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
     end
 
     # Loop through variables
+    println("In forecast_comparison 2")
+    println(end_date)
+    println(start_date)
     plots = OrderedDict{Symbol, Plots.Plot}()
     for (var, var_old, title) in zip(vars, vars_old, titles)
     	# Setup for saving to CSV

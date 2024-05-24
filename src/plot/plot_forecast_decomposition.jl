@@ -154,7 +154,7 @@ function plot_forecast_decomposition(m_new::M, m_old::M, vars::Vector{Symbol}, c
                                      model_decomp::Bool = false, trend_nostates::DataFrame = DataFrame(),
                                      shockdec_data_only::Bool = false,
                                      kwargs...) where M<:AbstractDSGEModel
-    @show "in second plot_forecast_dec"
+
     # Create MeansBands
     mbs = make_decomp_mbs(m_new, m_old, input_type, cond_new, cond_old, class,
                           individual_shocks = individual_shocks, forecast_string_new = forecast_string_new, forecast_string_old = forecast_string_old, model_decomp = model_decomp, shockdec_data_only = shockdec_data_only)

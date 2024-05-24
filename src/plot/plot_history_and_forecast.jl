@@ -197,6 +197,9 @@ histforecast
                    tick_size = 2)
 
     # Error checking
+    println("In histforecast")
+    println(end_date)
+    println(start_date)
     if length(hf.args) != 3 || typeof(hf.args[1]) != Symbol ||
         typeof(hf.args[2]) != MeansBands || typeof(hf.args[3]) != MeansBands
 
