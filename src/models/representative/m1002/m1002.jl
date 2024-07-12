@@ -824,6 +824,19 @@ buted to steady-state inflation.",
                        tex_label="\\rho_{smooth}")
     end
 
+
+if subspec(m) == "ss103"
+    m <= parameter(:κ_std_bcshocks, 1.0, (0.0, 1.0), (0.0, 1.0), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
+                   description = "κ_std_bcshocks: scaling factor for standard business cycle shocks during covid",
+                   tex_label = "\\kappa_{std_bcshocks}")
+    m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
+                   description = "κ_std_bcshocks: Fraction of regime 2 value used in regime 3 for σ_{covid}",
+                   tex_label = "\\kappa_{covid}")
+    m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
+                   description = "κ_std_bcshocks: Fraction of regime 2 value used in regime 3 for σ_{meas, π}",
+                   tex_label = "\\kappa_{pce}")
+    end
+
     if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
         get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false
         m <= parameter(:σ_pgap, 0., (0., 1e2), (0., 5.), ModelConstructors.Exponential(),
