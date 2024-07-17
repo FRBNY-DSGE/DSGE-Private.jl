@@ -7057,7 +7057,7 @@ function ss103!(m)
     set_regime_prior!(m[:κ_covid], 1, m[:κ_covid].prior)
     set_regime_prior!(m[:κ_covid], 2, m[:κ_covid].prior)
 
-    set_regime_valuebounds!(m[:κ_covid], 1, (0.0, 1.0))
+    set_regime_valuebounds!(m[:κ_covid], 1, (1.0, 1.0))
     set_regime_valuebounds!(m[:κ_covid], 2, (0.0, 1.0))
 
     m2p_dict = Dict()
@@ -7073,7 +7073,6 @@ function ss103!(m)
 
     toggle_regime!(m[:κ_covid], 1)
 
-    get_setting(m, :model2para_regime)[:κ_covid][10] = 1
 
     # Remove 2020 Q2 and 2020 Q3 Anticipated Covid Shocks and set all covid shocks to regime 2 from 2020 Q1-2021 Q4 (scaled by kappa_covid from 2020 Q4- 2021 Q4)
 
@@ -7109,7 +7108,7 @@ function ss103!(m)
     set_regime_prior!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].prior)
     set_regime_prior!(m[:κ_std_bcshocks], 2, m[:κ_std_bcshocks].prior)
 
-    set_regime_valuebounds!(m[:κ_std_bcshocks], 1, (0.0, 1.0))
+    set_regime_valuebounds!(m[:κ_std_bcshocks], 1, (1.0, 1.0))
     set_regime_valuebounds!(m[:κ_std_bcshocks], 2, (0.0, 1.0))
 
     m2p_dict = Dict(1 => 1, 2 => 2, 3 => 2)
@@ -7132,7 +7131,7 @@ function ss103!(m)
     set_regime_prior!(m[:κ_pce], 1, m[:κ_pce].prior)
     set_regime_prior!(m[:κ_pce], 2, m[:κ_pce].prior)
 
-    set_regime_valuebounds!(m[:κ_pce], 1, (0.0, 1.0))
+    set_regime_valuebounds!(m[:κ_pce], 1, (1.0, 1.0))
     set_regime_valuebounds!(m[:κ_pce], 2, (0.0, 1.0))
 
     m2p_dict = Dict()
