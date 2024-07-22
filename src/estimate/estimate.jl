@@ -73,6 +73,7 @@ not directly related to the behavior of the sampling algorithms
     user is certain that the likelihood is written properly.
 - `log_prob_old_data::Float64 = 0.0`:Log p(\tilde y) which is the log marginal data density
     of the bridge estimation.
+- `check_empty_columns::Bool = true`: Whether to check empty columns in load_data
 """
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   verbose::Symbol = :low,
@@ -120,9 +121,10 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
 		          save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
                   toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
-                  add_zlb_duration::Tuple{Bool, Int} = (false, 1))
+                  add_zlb_duration::Tuple{Bool, Int} = (false, 1),
+                  check_empty_columns::Bool = true)
     # Load data
-    df = load_data(m; verbose = verbose)
+    df = load_data(m; verbose = verbose, check_empty_columns = check_empty_columns)
     estimate(m, df; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
              old_data = old_data, old_cloud = old_cloud,
