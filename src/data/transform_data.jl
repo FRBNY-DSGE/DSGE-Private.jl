@@ -30,6 +30,7 @@ function transform_data(m::AbstractDSGEModel, levels::DataFrame;
 
     n_obs, _ = size(levels)
 
+
     # Step 1: HP filter (including population forecasts, if they're being used)
     population_mnemonic = parse_population_mnemonic(m)[1]
     if !isnull(population_mnemonic)
@@ -38,6 +39,7 @@ function transform_data(m::AbstractDSGEModel, levels::DataFrame;
         else
             DataFrame()
         end
+
 
         population_data, _ = transform_population_data(levels, population_forecast_levels,
                                                        get(population_mnemonic);
@@ -137,10 +139,13 @@ function transform_population_data(population_data::DataFrame, population_foreca
     # Unfiltered population data
     population_recorded = population_data[:, [:date, population_mnemonic]]
 
+
     # Make sure first period of unfiltered population forecast is the first forecast quarter
     if !isempty(population_forecast) && !pad_forecast_start
         last_recorded_date = population_recorded[end, :date]
+
         if population_forecast[1, :date] <= last_recorded_date
+
             last_recorded_ind   = findall(population_forecast[!,:date] .== last_recorded_date)[1]
             population_forecast = population_forecast[(last_recorded_ind+1):end, :]
         end
