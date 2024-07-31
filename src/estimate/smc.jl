@@ -116,6 +116,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
               add_zlb_duration::Tuple{Bool, Int} = (false, 1))
 
+    println("In DSGE's estimation")
     parallel    = get_setting(m, :use_parallel_workers)
     n_parts     = get_setting(m, :n_particles)
     n_blocks    = get_setting(m, :n_smc_blocks)
@@ -149,7 +150,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     use_chand_recursion = get_setting(m, :use_chand_recursion)
 
     old_regime_switching = haskey(old_model.settings, :regime_switching) && get_setting(m, :regime_switching)
-
+    println("Defining likelihoods...")
     my_likelihood = if isa(m, AbstractDSGEModel)
         function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
             update!(m, parameters, regime_switching = regime_switching)
@@ -173,7 +174,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     reg_del = Dict{Int, Vector{Int}}()
 
     toggle_regime!(m.parameters, 1)
-
+    println("Before loop")
     for i in 1:length(m.parameters)
         keyed = m.parameters[i].key
         if !(keyed in old_model_para_keys)
@@ -200,6 +201,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
             end
         end
     end
+    println("After loop")
 
     @assert isnothing(findfirst(x -> !(x in m_para_keys), old_model_para_keys))
 
@@ -257,7 +259,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
     # This step is purely for backwards compatibility purposes
     old_cloud_conv = isempty(old_cloud) ? SMC.Cloud(0,0) : SMC.Cloud(old_cloud)
-
+println("About to initialize paths")
     # Initialize Paths
     loadpath = ""
     if tempered_update
