@@ -233,7 +233,6 @@ function solve_regime_switching(m::AbstractDSGEModel{T};
             # Solve for gensys2 regimes
             if gensys2
                 for reg_range in gensys2_regimes
-                    @show reg_range
                     solve_gensys2!(m, Γ0s, Γ1s, Cs, Ψs, Πs,
                                    TTTs, RRRs, CCCs; gensys2_regimes = collect(reg_range),
                                    uncertain_altpolicy = uncertain_altpolicy,
@@ -423,8 +422,6 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
     end
     if isnothing(TTT_final)
         altpolicy_solve = alternative_policy(m).solve
-        @show altpolicy_solve
-        @show last(gensys2_regimes)
         TTT_final, RRR_final, CCC_final = altpolicy_solve(m; regime_switching = true,
                                                           regimes = Int[last(gensys2_regimes)])
     end

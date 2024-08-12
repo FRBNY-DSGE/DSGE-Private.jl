@@ -284,6 +284,12 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
         RRR_aug[endo_new[:e_meas_π_t], exo[:meas_π_sh]] = 1.0
     end
 
+#BP -- add in meas error in levels on PCE and GDP Def
+if subspec(m) == "ss103"
+    RRR_aug[endo_new[:e_meas_π_t], exo[:meas_π_sh]] = m[:κ_pce]
+end
+
+
     if subspec(m) in ["ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83"]
         # COVID counterparts to measurement errors
         RRR_aug[endo_new[:e_lr_t], exo[:lr_covid_sh]]   = 1.0

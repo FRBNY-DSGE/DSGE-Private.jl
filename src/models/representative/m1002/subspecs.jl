@@ -7045,6 +7045,7 @@ Implementation by RAs Brian Pacula and Pranay Gundam
 
 function ss103!(m)
     ss100!(m)
+    #ss97!(m)
 
     # Covid Shocks changed to turn off one period before they do in ss100
 
@@ -7145,8 +7146,9 @@ function ss103!(m)
 
     get_setting(m, :model2para_regime)[:κ_pce] = m2p_dict
 
-    #get_setting(m, :model2para_regime)[:ρ_meas_π][10] = 1
-    #get_setting(m, :model2para_regime)[:ρ_meas_π][11] = 1
+
+    get_setting(m, :model2para_regime)[:ρ_meas_π][10] = 1
+    get_setting(m, :model2para_regime)[:ρ_meas_π][11] = 1
 
     get_setting(m, :model2para_regime)[:σ_meas_π][10] = 1
     get_setting(m, :model2para_regime)[:σ_meas_π][11] = 1

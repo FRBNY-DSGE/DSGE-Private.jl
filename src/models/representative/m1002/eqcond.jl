@@ -686,6 +686,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ1[eq[:eq_Eπ], endo[:Eπ_t]] = 1.
     Π[eq[:eq_Eπ], ex[:Eπ_sh]]   = 1.
 
+
     ### E(l)
 
     # Sticky prices and wages
@@ -917,6 +918,10 @@ function eqcond(m::Model1002, reg::Int)
        Ψ[eq[:eq_μ_e], exo[:μ_e_sh]] = m[:κ_std_bcshocks]
        Ψ[eq[:eq_γ], exo[:γ_sh]] = m[:κ_std_bcshocks]
        Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_std_bcshocks])
+
+
+       ## Add ones for PCE???
+       #Π[eq[:eq_Eπ], ex[:Eπ_sh]]   = m[:κ_pce] #BP -- not sure if I need this. I changed the R matrix in augment states, that feels right?
    end
 
    for para in m.parameters

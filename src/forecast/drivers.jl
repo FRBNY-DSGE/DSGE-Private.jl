@@ -212,7 +212,6 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
     if isempty(input_file_name)
         input_file_name = get_forecast_input_file(m, input_type, filestring_addl = filestring_addl)
     end
-
     # Load single draw
     if input_type in [:mean, :mode, :mode_draw_shocks]
         if get_setting(m, :sampling_method) == :MH
@@ -226,6 +225,7 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
                     # If not, load it from the cloud
                 elseif (occursin("smc_paramsmode", input_file_name) &&
                         !use_highest_posterior_value && input_type == :mode)
+                    println("In else if")
                     params = convert(Vector{Float64}, h5read(input_file_name, "params"))
                 else
                     # Check that input_file_name is correct. Note that if
@@ -236,7 +236,6 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
                                                   ".h5" => ".jld2")
                         println(verbose, :low, "Switching estimation file of draws to $input_file_name")
                     end
-
                     cloud = load(input_file_name, "cloud")
                     params = if typeof(cloud) <: Union{DSGE.Cloud,SMC.Cloud}
                         SMC.get_highest_posterior_particle_value(SMC.Cloud(cloud))
@@ -244,6 +243,7 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
                         cloud.particles[argmax(get_logpost(cloud))].value
                     end
                 end
+                @show length(params)
             else
                 error("SMC mean not implemented yet")
             end
