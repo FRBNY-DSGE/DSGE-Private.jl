@@ -192,19 +192,20 @@ function forecast(m::AbstractDSGEModel, system::Union{RegimeSwitchingSystem{S}, 
     =#
 
     # Get variables necessary to enforce the zero lower bound in the forecast
-    ind_r = m.observables[get_setting(m, :nominal_rate_observable)]
+    ind_r = haskey(get_settings(m), :nominal_rate_observable) ? m.observables[get_setting(m, :nominal_rate_observable)] : -1
     if haskey(get_settings(m), :add_ait_rm) ? get_setting(m,:add_ait_rm) : false
         ind_r_sh = [m.exogenous_shocks[get_setting(m, :monetary_policy_shock)],
                     m.exogenous_shocks[get_setting(m, :monetary_policy_ait_shock)]]
     else
-        ind_r_sh = [m.exogenous_shocks[get_setting(m, :monetary_policy_shock)]]
+        ind_r_sh = haskey(get_settings(m), :monetary_policy_shock) ? [m.exogenous_shocks[get_setting(m, :monetary_policy_shock)]] : [-1]
     end
-    zlb_value = forecast_zlb_value(m)
+    zlb_value = haskey(get_settings(m), :forecast_zlb_value) ? forecast_zlb_value(m) : 0.1/4
 
     if isa(system, RegimeSwitchingSystem)
         forecast(m, system, z0, shocks; cond_type = cond_type, enforce_zlb = enforce_zlb,
                  ind_r = ind_r, ind_r_sh = ind_r_sh, zlb_value = zlb_value)
     else
+        @show enforce_zlb
         forecast(system, z0, shocks; enforce_zlb = enforce_zlb,
                  ind_r = ind_r, ind_r_sh = ind_r_sh, zlb_value = zlb_value)
     end
@@ -275,6 +276,7 @@ function forecast(system::System{S}, z0::Vector{S},
     end
 
     # Apply measurement and pseudo-measurement equations
+
     obs    = D .+ Z*states
     pseudo = D_pseudo .+ Z_pseudo * states
 

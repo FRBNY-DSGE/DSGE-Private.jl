@@ -71,6 +71,7 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
         println(verbose, :low, "Creating dataset...")
 
         levels = load_data_levels(m; verbose=verbose, add_vals = add_vals)
+
         if cond_type in [:semi, :full]
             cond_levels = load_cond_data_levels(m; verbose=verbose)
             levels, cond_levels = reconcile_column_names(levels, cond_levels)
@@ -314,7 +315,7 @@ function load_data_levels(m::AbstractDSGEModel; verbose::Symbol=:low,
     if !m.testing
         filename = inpath(m, "raw", "population_data_levels_$vint.csv")
         mnemonic = parse_population_mnemonic(m)[1]
-        if !isnull(mnemonic)
+        if !isnull(mnemonic) && get(mnemonic) ∈ names(df)
             CSV.write(filename, df[!,[:date, get(mnemonic)]])
         end
     end
