@@ -33,7 +33,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     N = get_setting(m, :n_model_states) #+ get_setting(m, :n_exo_states)
     n = get_setting(m, :n_sectors)
 
-    @show N, n
+
 
     A = zeros(N,N)
     B = zeros(N,N)
@@ -70,17 +70,21 @@ function eqcond(m::OnionModel) #m::OnionModel
         sec_shock = zeros(size(m[:taxshare].value))
         sec_shock[Int(m[:oil].value)] = 1.
     else
-        sec_shock = -m[:taxshare].value
+        sec_shock = m[:taxshare].value
     end
 
     # Phillips curve
     B[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("π_1")]:endo[Symbol("π_$n")]]    = diagm(m[:invkap].value)
     B[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:τ]]  = - sec_shock #-m[:taxshare].value For oil kanzig IRFs, vector of 0 with 1 at oil index.
     A[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:lw]] =  m[:labshare].value
+    #if subspec(m) ∉ ["ss0", "ss1"]
+        B[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:a_t]] =  -m[:labshare].value #Common TFP shock process, for later model
+    #end
     A[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("ls_1")]:endo[Symbol("ls_$n")]]  = inpshare - eye(n)
     A[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("π_1")]:endo[Symbol("π_$n")]]    = m[:bet]*diagm(m[:invkap].value)
 
-     B[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_1")]:endo[Symbol("mkup_$(n)")]] = eye(n) #Add mkup process
+    B[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_1")]:endo[Symbol("mkup_$n")]] = eye(n) #Add term for markup shocks
+
     Π[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], exp_sh[Symbol("Eπ_1_sh")]:exp_sh[Symbol("Eπ_$(n)_sh")]] =  eye(n)
     #Ψ[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], exo[Symbol("μ_1_sh")]:exo[Symbol("μ_$(n)_sh")]] = eye(n)
 
@@ -97,21 +101,70 @@ function eqcond(m::OnionModel) #m::OnionModel
     # cpi definition
     B[eq[:eq_cpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = m[:gam].value'
     B[eq[:eq_cpi],endo[:πc]] = -1.
-    Π[eq[:eq_cpi],exp_sh[:Eπc_sh]] = 1.
+    Π[eq[:eq_cpi],exp_sh[:Eπc_t_sh]] = 1.
 
-
-    # wage phillips curve: -lw_t+1 + bet*(1/kap)*piw_t+1 = (1/kap)*piw_t - c_t
+#=
+    # Nominal wage phillips curve: -lw_t+1 + bet*(1/kap)*piw_t+1 = (1/kap)*piw_t - c_t
     B[eq[:eq_wpc],endo[:πw]] = m[:invkapw]
     B[eq[:eq_wpc],endo[:c]]   = -1.
     A[eq[:eq_wpc],endo[:lw]]  = -1.
     A[eq[:eq_wpc],endo[:πw]] = m[:bet]*m[:invkapw]
     Π[eq[:eq_wpc],exp_sh[:Eπw_sh]] = 1.
+=#
+
+
+
+     #New implementation of Wage phillips curve
+    B[eq[:eq_wpc],endo[:πw]] = m[:invkapw]
+    A[eq[:eq_wpc],endo[:πw]] = m[:bet]*m[:invkapw]
+    B[eq[:eq_wpc],endo[:c]]   = -1.
+    A[eq[:eq_wpc],endo[:lw]]  = -1.
+    B[eq[:eq_wpc], endo[:lc]] = -m[:h] * exp(-m[:γ]) #Habit persistence term, I believe γ refers to growth rate of the economy here.
+    B[eq[:eq_wpc], endo[:μw]] = 1. # Should really be m[:invkapw], but this feels isomorphic to scaling the size of the shock
+
+
+    #AR(1) shock
+    A[eq[:eq_μw], endo[:μw]] = 1.
+    B[eq[:eq_μw], endo[:μw]] = m[:ρ_μw]
+    Ψ[eq[:eq_μw], exo[:μw_sh]] = 1.
+
+
 
     # real wage recursion lw_t+1 = lw_t + piw_t - pic_t
     B[eq[:eq_wrec],endo[:lw]] =  1.
     B[eq[:eq_wrec],endo[:πc]] = -1.
     B[eq[:eq_wrec],endo[:πw]] =  1.
     A[eq[:eq_wrec],endo[:lw]] =  1.
+
+
+    # euler eq: c_t = c_{t+1} - (li_{t+1} - pic_{t+1})
+#=
+    A[eq[:eq_euler],endo[:c]]   = 1.
+    A[eq[:eq_euler],endo[:li]]  = -1.
+    A[eq[:eq_euler],endo[:πc]]  = 1.
+    B[eq[:eq_euler],endo[:c]]   = 1.
+    Π[eq[:eq_euler],exp_sh[:Ec_sh]] = 1.
+=#
+
+    #=
+    # Rewritten Euler equation with lagged c:
+    A[eq[:eq_euler], endo[:lc]] = - 1.
+    A[eq[:eq_euler], endo[:li]] = -1.
+    A[eq[:eq_euler], endo[:c]] = 1.
+    A[eq[:eq_euler], endo[:πc]] = 1.
+    =#
+
+
+
+     #New Euler equation
+    A[eq[:eq_euler],endo[:lc]]   = 1.
+    A[eq[:eq_euler], endo[:li]] = -(1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ]))) #Verify sign
+    B[eq[:eq_euler], endo[:Eπ_t]] = (1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ])))
+    B[eq[:eq_euler],endo[:lc]]   = m[:h] * exp(-m[:γ]) / (1. + m[:h] * exp(-m[:γ]))
+    B[eq[:eq_euler], endo[:Ec_t]] = 1. / (1. + m[:h] * exp(-m[:γ]))
+    B[eq[:eq_euler], endo[:b_t]] = 1.
+Π[eq[:eq_euler],exp_sh[:Ec_t_sh]] = 1.
+
 
 
     # monetary policy li_{t+1} = rho_i*li_t + (1-rho_i)*(mp_cpi_infl*pic_t +
@@ -121,30 +174,116 @@ function eqcond(m::OnionModel) #m::OnionModel
     numer = -m[:gam].value' * ((eye(n)-inpshare)\m[:taxshare].value)
     denom = m[:gam].value' * ((eye(n)-inpshare)\m[:taxshare].value)
     dcstar_dτ = numer/denom
-
-    A[eq[:eq_monpol],endo[:li]] = 1.
-    B[eq[:eq_monpol],endo[:li]] = m[:ρ_i]
+#=
+A[eq[:eq_monpol],endo[:li]] = 1. #R_t
+#B[eq[:eq_monpol],endo[:i]] = - 1.
+    B[eq[:eq_monpol],endo[:li]] = m[:ρ_i] #ρ_R R_{t-1}
     B[eq[:eq_monpol],endo[:πc]] = (1. -m[:ρ_i])*m[:mp_cpi_infl]
     B[eq[:eq_monpol],endo[:c]]  = (1. -m[:ρ_i])*m[:mp_cons]
     B[eq[:eq_monpol],endo[:τ]]  = (1. -m[:ρ_i])*m[:mp_cstar] * dcstar_dτ
+=#
+     #New monetary policy rule:
+    A[eq[:eq_monpol],endo[:li]] = 1.
+    B[eq[:eq_monpol],endo[:li]] = m[:ρ_i]
+    B[eq[:eq_monpol],endo[:πc]] = (1. -m[:ρ_i])*m[:mp_cpi_infl]
+    B[eq[:eq_monpol],endo[:πstar]] = - (1. -m[:ρ_i])*m[:mp_cpi_infl]
+B[eq[:eq_monpol],endo[:c]]  = (1. -m[:ρ_i])*m[:mp_cons] + (1. -m[:ρ_i])*m[:mp_habit]
+#B[eq[:eq_monpol],endo[:c]]  = (1. -m[:ρ_i])*m[:mp_habit] #not convinced by this
+B[eq[:eq_monpol],endo[:lc]]  = -(1. -m[:ρ_i])*m[:mp_habit]
 
-    ## Exogenous Shocks ##
+#This isn't on c star -- it is on c_t - c_{t-1}. Not sure where the dcstar_dτ comes in either, but guessing it shouldn't be there.
+    #B[eq[:eq_monpol],endo[:τ]]  = (1. -m[:ρ_i])*m[:mp_cstar] * dcstar_dτ
 
-    # tau recursion -- AR(2) process for τ shock
-    A[eq[:eq_τrec],endo[:τ]]  = 1.
-    B[eq[:eq_τrec],endo[:τ]]  = m[:ρ_τ]
-    B[eq[:eq_τrec],endo[:lτ]] = m[:ρ_τ2]
-    Ψ[eq[:eq_τrec],exo[:τ_sh]] = 1.
+    #IID shock
+    Ψ[eq[:eq_monpol], exo[:mp_sh]] = 1.
 
 
+    #Time varying inflation target with iid shock
+    A[eq[:eq_πstar], endo[:πstar]] = 1.
+B[eq[:eq_πstar], endo[:πstar]] = m[:ρ_πstar]
+Ψ[eq[:eq_πstar], exo[:πstar_sh]] = 1.
+
+## Exogenous Shocks ##
+
+# tau recursion -- AR(2) process for τ shock
+A[eq[:eq_τrec],endo[:τ]]  = 1.
+B[eq[:eq_τrec],endo[:τ]]  = m[:ρ_τ]
+B[eq[:eq_τrec],endo[:lτ]] = m[:ρ_τ2]
+Ψ[eq[:eq_τrec],exo[:τ_sh]] = 1.
+
+
+# lag tau definition
+A[eq[:eq_lτdef],endo[:lτ]] = 1.
+B[eq[:eq_lτdef],endo[:τ]]  = 1.
+
+#Lag consumption definition:
+A[eq[:eq_lcdef], endo[:lc]] = 1.
+B[eq[:eq_lcdef], endo[:c]] = 1.
+
+
+#Expected consumption defintion -- defining E_t[c_{t+1}] = c_{t+1} + ξ_c
+
+A[eq[:eq_Ec], endo[:c]] = 1.
+B[eq[:eq_Ec], endo[:Ec_t]] = 1.
+Π[eq[:eq_Ec], exp_sh[:Ec_sh]] = 1.
+
+
+A[eq[:eq_Eπ], endo[:πc]] = 1.
+B[eq[:eq_Eπ], endo[:Eπ_t]] = 1.
+Π[eq[:eq_Eπ], exp_sh[:Eπc_sh]] = 1.
+
+
+#=
+#Lagged CPI inflation:
+A[eq[:eq_πc], endo[:lπc]] = 1.
+B[eq[:eq_πc], endo[:πc]] = 1.
+Π[eq[:eq_πc], exp_sh[:Eπc_sh]] = 1.
+=#
+
+
+
+
+
+#Adding to jump variables here:
+
+
+
+
+#Discount rate shock
+A[eq[:eq_b_t], endo[:b_t]] = 1.
+B[eq[:eq_b_t], endo[:b_t]] = m[:ρ_b_t]
+Ψ[eq[:eq_b_t], exo[:b_sh]] = 1.
+
+#Common TFP shock
+A[eq[:eq_a_t], endo[:a_t]] = 1.
+B[eq[:eq_a_t], endo[:a_t]] = m[:ρ_a_t]
+Ψ[eq[:eq_a_t], exo[:a_sh]] = 1.
+
+    #=
     #Markup shock
     #Markup is the sum of the stochastic trends ̅μ^i_t and iid markup shocks σ_μ^i ε_t^{μ^i}
-    A[eq[:eq_mkup_1]:eq[Symbol("eq_mkup_$(n)")], endo[:mkup_1]: endo[Symbol("mkup_$(n)")]] = eye(n)
-    B[eq[:eq_mkup_1]:eq[Symbol("eq_mkup_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = eye(n)
-    #IID: σ_μ^i ε_t^{μ^i}
-    Ψ[eq[:eq_mkup_1]:eq[Symbol("eq_mkup_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] = eye(n)
+    A[eq[:eq_mkup], endo[:mkup]] = 1.
+    B[eq[:eq_mkup], endo[:mkup_trend]] = 1.
+
 
     #Stochastic trend:
+    #μ^i_t = ρ_̅μ^i ̅μ^i_{t-1} + σ_̅μ^i ε_t^{̅μ^i}
+    A[eq[:eq_mkup_trend], endo[:mkup_trend]] = 1.
+    B[eq[:eq_mkup_trend], endo[:mkup_trend]] = m[:ρ_μ_trend]
+    Ψ[eq[:eq_mkup_trend], exo[:μ_trend_sh]] = 1.
+
+    #IID: σ_μ^i ε_t^{μ^i}
+    Ψ[eq[:eq_mkup], exo[:μ_iid_sh]] = 1. #Not sure this should be here -- revisit shortly
+    =#
+
+#Markup shock
+#Markup is the sum of the stochastic trends ̅μ^i_t and iid markup shocks σ_μ^i ε_t^{μ^i}
+A[eq[:eq_mkup_1]:eq[Symbol("eq_mkup_$(n)")], endo[:mkup_1]: endo[Symbol("mkup_$(n)")]] = eye(n)
+B[eq[:eq_mkup_1]:eq[Symbol("eq_mkup_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = eye(n)
+#IID: σ_μ^i ε_t^{μ^i}
+Ψ[eq[:eq_mkup_1]:eq[Symbol("eq_mkup_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] = eye(n)
+
+#Stochastic trend:
 #μ^i_t = ρ_̅μ^i ̅μ^i_{t-1} + σ_̅μ^i ε_t^{̅μ^i}
 A[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = eye(n)
 B[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = diagm(m[:ρ_μ_trend].value)
@@ -152,17 +291,33 @@ B[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: en
 
 
 
+### Expectational Errors ###
+#=
+#E[π^i_{t+1}]
+A[eq[Symbol("eq_π_1")]:eq[Symbol("eq_π_$n")], endo[Symbol("π_1")]:endo[Symbol("π_$(n)")]] = eye(n)
+B[eq[Symbol("eq_π_1")]:eq[Symbol("eq_π_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$(n)")]] = eye(n)
+Π[eq[Symbol("eq_π_1")]:eq[Symbol("eq_π_$n")], exp_sh[Symbol("Eπ_1_sh")]:exp_sh[Symbol("Eπ_$(n)_sh")]] =  eye(n)
 
-    # euler eq: c_t = c_{t+1} - (li_{t+1} - pic_{t+1})
-    A[eq[:eq_euler],endo[:c]]   = 1.
-    A[eq[:eq_euler],endo[:li]]  = -1.
-    A[eq[:eq_euler],endo[:πc]]  = 1.
-    B[eq[:eq_euler],endo[:c]]   = 1.
-    Π[eq[:eq_euler],exp_sh[:Ec_sh]] = 1.
+# E[πw_{t+1}]
+A[eq[:eq_πw], endo[:πw]] = 1.0
+B[eq[:eq_πw], endo[:Eπw]] = 1.0
+Π[eq[:eq_πw],exp_sh[:Eπw_sh]] = 1.
 
-    # lag tau definition
-    A[eq[:eq_lτdef],endo[:lτ]] = 1.
-    B[eq[:eq_lτdef],endo[:τ]]  = 1.
+
+# E[πc_{t+1}]
+A[eq[:eq_πc], endo[:πc]] = 1.0
+B[eq[:eq_πc], endo[:Eπc]] = 1.0
+Π[eq[:eq_πc],exp_sh[:Eπc_sh]] = 1.
+
+
+# E[c{t+1}]
+A[eq[:eq_c], endo[:c]] = 1.0
+B[eq[:eq_c], endo[:Ec]] = 1.0
+Π[eq[:eq_c],exp_sh[:Ec_sh]] = 1.
+
+=#
+
+
 
 
     #= enforce normalization that gam'*s = 0 to remove unit eigenvalue

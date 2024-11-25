@@ -65,7 +65,7 @@ end
 function shock_decompositions(system::System{S},
     forecast_horizons::Int, histshocks::Matrix{S},
     start_index::Int, end_index::Int) where {S<:AbstractFloat}
-
+    @show start_index, end_index
     # Setup
     nshocks      = size(system[:RRR], 2)
     nstates      = size(system[:TTT], 2)
