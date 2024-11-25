@@ -6,7 +6,6 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     n_endo = n_states(m)
     n_exo  = n_shocks_exogenous(m)
 
-    @show size(TTT), n_endo
     @assert (n_endo, n_endo) == size(TTT)
     @assert (n_endo, n_exo)  == size(RRR)
     @assert (n_endo,)        == size(CCC)
@@ -19,7 +18,16 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     RRR_aug = [RRR; zeros(n_states_add, n_exo)]
     CCC_aug = [CCC; zeros(n_states_add)]
 
-    TTT_aug[endo_new[:c_1], endo[:c]] = 1.0
+    # Lagged
+    TTT_aug[endo_new[:i_1], endo[:li]] = - m[:ρ_i]
+    TTT_aug[endo_new[:i_1], endo[:πc]] = - (1. - m[:ρ_i])*m[:mp_cpi_infl]
+    TTT_aug[endo_new[:i_1], endo_new[:i_1]] = 1.
+
+
+    TTT_aug[endo_new[:w_1], endo[:lw]] = -1.
+    TTT_aug[endo_new[:w_1], endo[:πw]] = 1.
+    TTT_aug[endo_new[:w_1], endo[:πc]] = -1.
+    TTT_aug[endo_new[:w_1], endo_new[:w_1]] = 1.
 
     return TTT_aug, RRR_aug, CCC_aug
 end

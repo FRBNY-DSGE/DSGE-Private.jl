@@ -33,7 +33,6 @@ function eqcond(m::OnionModel) #m::OnionModel
     N = get_setting(m, :n_model_states) #+ get_setting(m, :n_exo_states)
     n = get_setting(m, :n_sectors)
 
-    @show N, n
 
     A = zeros(N,N)
     B = zeros(N,N)
@@ -113,6 +112,12 @@ function eqcond(m::OnionModel) #m::OnionModel
     B[eq[:eq_wrec],endo[:πw]] =  1.
     A[eq[:eq_wrec],endo[:lw]] =  1.
 
+    # Rewritten Euler equation with lagged c:
+    A[eq[:eq_euler], endo[:lc]] = - 1.
+    A[eq[:eq_euler], endo[:li]] = -1.
+    A[eq[:eq_euler], endo[:c]] = 1.
+    A[eq[:eq_euler], endo[:πc]] = 1.
+
 
     # monetary policy li_{t+1} = rho_i*li_t + (1-rho_i)*(mp_cpi_infl*pic_t +
     #                                                   mp_cons*c_t + mp_cstar*cstar_t)
@@ -150,19 +155,14 @@ A[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: en
 B[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = diagm(m[:ρ_μ_trend].value)
 Ψ[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], exo[:μ_trend_1_sh]:exo[Symbol("μ_trend_$(n)_sh")]] = eye(n)
 
-
-
-
-    # euler eq: c_t = c_{t+1} - (li_{t+1} - pic_{t+1})
-    A[eq[:eq_euler],endo[:c]]   = 1.
-    A[eq[:eq_euler],endo[:li]]  = -1.
-    A[eq[:eq_euler],endo[:πc]]  = 1.
-    B[eq[:eq_euler],endo[:c]]   = 1.
-    Π[eq[:eq_euler],exp_sh[:Ec_sh]] = 1.
-
     # lag tau definition
     A[eq[:eq_lτdef],endo[:lτ]] = 1.
     B[eq[:eq_lτdef],endo[:τ]]  = 1.
+
+    #Lag consumption definition:
+    A[eq[:eq_lcdef], endo[:lc]] = 1.
+    B[eq[:eq_lcdef], endo[:c]] = 1.
+    Π[eq[:eq_lcdef], exp_sh[:Ec_sh]] = 1.
 
 
     #= enforce normalization that gam'*s = 0 to remove unit eigenvalue

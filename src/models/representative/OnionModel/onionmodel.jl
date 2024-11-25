@@ -10,6 +10,7 @@ mutable struct OnionModel{T} <: AbstractRepModel{T}
     endogenous_states_augmented::OrderedDict{Symbol, Int}
     observables::OrderedDict{Symbol, Int}
     pseudo_observables::OrderedDict{Symbol, Int}
+
     spec::String
     subspec::String
     settings::Dict{Symbol, Setting}
@@ -98,7 +99,7 @@ function init_settings!(m::OnionModel)
         "Mnemonic of FRED data series for computing per-capita values (a Nullable{Symbol})")
     m <= Setting(:data_quarter_or_month, :quarter)
     sectoral_inflation_path = get_setting(m, :dataroot) * "sector_inflation_" * (get_setting(m, :data_quarter_or_month) == :quarter ? "quarterly" : "monthly") * ".csv"
-    m <= Setting(:sector_names, names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])
+    m <= Setting(:sector_names, (names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])[Not([69,70,72,73])])
 
 
     # Relevant for other things such as IRFs, smoothing, and forecasting
@@ -245,82 +246,82 @@ function init_parameters!(m::OnionModel)
                        description="ρ_τ2: ",
                        tex_label="\\rho_\\tau2")
 
-m <= parameter(:ρ_i, 0.85^(1/3), fixed = true,
-               description="ρ_i: policy inertia",
-               tex_label="\\rho_i")
+        m <= parameter(:ρ_i, 0.85^(1/3), fixed = true,
+                       description="ρ_i: policy inertia",
+                       tex_label="\\rho_i")
 
-m <= parameter(:η, paras["η"], fixed = true,
-               description="η: ",
-               tex_label="\\eta")
+        m <= parameter(:η, paras["η"], fixed = true,
+                       description="η: ",
+                       tex_label="\\eta")
 
-m <= parameter(:ζ, paras["ζ"], fixed = true,
-               description="ζ:",
-               tex_label="\\zeta")
+        m <= parameter(:ζ, paras["ζ"], fixed = true,
+                       description="ζ:",
+                       tex_label="\\zeta")
 
-m <= parameter(:ν, paras["ν"], fixed = true,
-               description="ν: ",
-               tex_label="\\nu")
+        m <= parameter(:ν, paras["ν"], fixed = true,
+                       description="ν: ",
+                       tex_label="\\nu")
 
-m <= parameter(:ξ, paras["ξ"], fixed = true,
-               description="ξ: ",
-               tex_label="\\xi")
+        m <= parameter(:ξ, paras["ξ"], fixed = true,
+                       description="ξ: ",
+                       tex_label="\\xi")
 
-m <= parameter(:mp_cpi_infl, 1.01, fixed = true, #paras["mp_cpi_infl"] NEEDS TO BE 1.01 to AVOID EIGENVALUE ISSUE
-               description="weight on cpi inflation in mp rule",
-               tex_label="mp_cpi_infl")
+        m <= parameter(:mp_cpi_infl, 1.01, fixed = true, #paras["mp_cpi_infl"] NEEDS TO BE 1.01 to AVOID EIGENVALUE ISSUE
+                       description="weight on cpi inflation in mp rule",
+                       tex_label="mp_cpi_infl")
 
-m <= parameter(:mp_cons, 0., fixed = true, #paras["mp_cons"]
-               description="weight on consumption in mp rule",
-               tex_label="mp_cons")
+        m <= parameter(:mp_cons, 0., fixed = true, #paras["mp_cons"]
+                       description="weight on consumption in mp rule",
+                       tex_label="mp_cons")
 
-m <= parameter(:mp_cstar, 0., fixed = true, #paras["mp_cstar"]
-               description="weight on potential consumption",
-               tex_label="mp_cstar")
+        m <= parameter(:mp_cstar, 0., fixed = true, #paras["mp_cstar"]
+                       description="weight on potential consumption",
+                       tex_label="mp_cstar")
 
-m <= parameter(:invkapw,paras["invkapw"], fixed = true,
-               description="inverse kappaw",
-               tex_label="invkawp")
+        m <= parameter(:invkapw,paras["invkapw"], fixed = true,
+                       description="inverse kappaw",
+                       tex_label="invkawp")
 
-m <= Setting(:oil, Int(paras["oil"]))
-m <= Setting(:gas, Int(paras["gas"]))
-m <= Setting(:coal, Int(paras["coal"]))
+        m <= Setting(:oil, Int(paras["oil"]))
+        m <= Setting(:gas, Int(paras["gas"]))
+        m <= Setting(:coal, Int(paras["coal"]))
 
-m <= parameter(:oil, paras["oil"], fixed = true,
-               description = "Index of oil",
-                   tex_label="oil")
+        m <= parameter(:oil, paras["oil"], fixed = true,
+                       description = "Index of oil",
+                       tex_label="oil")
 
-    m <= parameter(:gas, paras["gas"], fixed = true,
-                   description = "Index of gas",
-                   tex_label="gas")
+        m <= parameter(:gas, paras["gas"], fixed = true,
+                       description = "Index of gas",
+                       tex_label="gas")
 
-    m <= parameter(:coal, paras["coal"], fixed = true,
-                   description = "Index of coal",
-                   tex_label="coal")
-
-
-#Setting all of these to 1 just to have values down -- to be filled later
-
-    #placeholder = fill(1.0, 396)
-    placeholder_dist = Product(fill(Uniform(1.0, 1.1), 396))
+        m <= parameter(:coal, paras["coal"], fixed = true,
+                       description = "Index of coal",
+                       tex_label="coal")
 
 
-    #fl = JLD2.jldopen("/data/dsge_data_dir/proc/dsge/briefings/202412/Model_Data/matlab_params_oil.jld2", "r")
-    InOut = paras["IO"]
-    InOut2 = paras["IO2"]
-    inpshare = paras["inpshare"]
-    #Let the input output matrix be a setting given this won't get estimated, and creating a parameter which holds a matrix isn't worthwhile
-    m <= Setting(:IO, InOut)
-    m <= Setting(:IO2, InOut2)
+        #Setting all of these to 1 just to have values down -- to be filled later
+
+        #placeholder = fill(1.0, 396)
+        placeholder_dist = Product(fill(Uniform(1.0, 1.1), 396))
 
 
-    #Another matrix, just setting here for convenience. Will fix later? -BP
-    m <= Setting(:ω_tilde, paras["ω_tilde"])
-    m <= Setting(:ωE_tilde, paras["ωE_tilde"])
-    m <= Setting(:ωN_tilde, paras["ωN_tilde"])
-    m <= Setting(:inpshare, paras["inpshare"])
+        #fl = JLD2.jldopen("/data/dsge_data_dir/proc/dsge/briefings/202412/Model_Data/matlab_params_oil.jld2", "r")
+        InOut = paras["IO"]
+        InOut2 = paras["IO2"]
+        inpshare = paras["inpshare"]
+        #Let the input output matrix be a setting given this won't get estimated, and creating a parameter which holds a matrix isn't worthwhile
+        m <= Setting(:IO, InOut)
+        m <= Setting(:IO2, InOut2)
 
-m <= parameter(:labshare, vec(paras["labshare"]))
-m <= parameter(:taxshare, vec(paras["taxshare"]))
+
+        #Another matrix, just setting here for convenience. Will fix later? -BP
+        m <= Setting(:ω_tilde, paras["ω_tilde"])
+        m <= Setting(:ωE_tilde, paras["ωE_tilde"])
+        m <= Setting(:ωN_tilde, paras["ωN_tilde"])
+        m <= Setting(:inpshare, paras["inpshare"])
+
+        m <= parameter(:labshare, vec(paras["labshare"]))
+        m <= parameter(:taxshare, vec(paras["taxshare"]))
         m <= parameter(:totintshare, vec(paras["totintshare"]))
         m <= parameter(:int_totout, vec(paras["ind_totout"]))
         m <= parameter(:invkap, vec(paras["invkap"]))
@@ -334,10 +335,40 @@ m <= parameter(:taxshare, vec(paras["taxshare"]))
         m <= parameter(:pc_px, vec(paras["pc_px"]))
         m <= parameter(:to_mx, vec(paras["to_mx"]))
         m <= parameter(:ei, vec(paras["ei"]))
-m <= parameter(:ς_tilde, vec(paras["varsig_tilde"]))
-m <= parameter(:ρ_μ_trend, vec(0.999 * ones(get_setting(m, :n_sectors))))
+        m <= parameter(:ς_tilde, vec(paras["varsig_tilde"]))
+        m <= parameter(:ρ_μ_trend, vec(0.999 * ones(get_setting(m, :n_sectors))))
 
-end
+        ## Adding model parameters for standard deviation of shocks
+        m <= parameter(:σ_c, 0.8719, fixed = true,
+                       description = "σ_c: Coefficient of relative risk aversion")
+        m <= parameter(:σ_b_t, 0.0292,fixed = true,
+                       description = "σ_b: Standard deviation of the discount rate process")
+        m <= parameter(:ρ_b_t, 0.941, fixed = true,
+                       description = "ρ_b: AR(1) coefficient of the discount rate process")
+        m <= parameter(:σ_μ, 0.1314, fixed = true,
+                       description = "σ_μ: standard deviation of mark up shock process")
+        m <= parameter(:ρ_μ, 0.8827, fixed = true,
+                       description = "ρ_μ: AR(1) coefficient of the mark up shock process")
+        m <= parameter(:σ_wμ, 0.1314, fixed = true,
+                       description = "σ_wμ: standard deviation of wage mark up shock process")
+        m <= parameter(:ρ_μw, 0.3884, fixed = true,
+                       description = "ρ_μw: AR(1) coefficient in the wage mark up shock process")
+        m <= parameter(:σ_πstar, 0.0269, fixed = true,
+                       description = "σ_πstar: standard deviation of the process describing the time varying inflation target")
+        m <= parameter(:ρ_πstar, 0.99, fixed = true,
+                       description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target")
+        m <= parameter(:σ_a_t, 0.6742, fixed = true, #Taken from std dev of stationary comp of prod
+                       description = "σ_a_t: standard deviation of the process describing productivity")
+        m <= parameter(:ρ_a_t, 0.6742, fixed = true,#Taken from std dev of stationary comp of prod
+                       description = "ρ_a_t: AR(1) coefficient of the process describing productivity")
+        m <= parameter(:h, 0.5347, fixed = true,
+                       description = "h: consumption habit persistence")
+        m <= parameter(:γ, 0.0, fixed = true,#Growth rate of economy
+                       description = "γ: growth rate of economy")
+        m <= parameter(:mp_habit, 0.0, fixed = false,
+                       description = ":mp_habit: weight of MP rule on habit formation")
+
+    end
 
 end
 
@@ -356,20 +387,20 @@ function init_model_indices!(m::OnionModel)
 
 
     endogenous_states = [[Symbol("ls_$i") for i in 1:n];
-                         [:lw, :li, :lτ, :τ];
+                         [:lw, :li, :lτ, :lc, :τ];
                          [Symbol("π_$i") for i in 1:n];
                          [:πc, :c, :πw];
                          [Symbol("mkup_trend_$(i)") for i in 1:n];
                          [Symbol("mkup_$(i)") for i in 1:n]]
 
-    endogenous_states_augmented = [:c_1]
+    endogenous_states_augmented = [:i_1, :w_1]
 
     expected_shocks = [[Symbol("Eπ_$(i)_sh") for i in 1:n];
                        [:Eπc_sh, :Ec_sh, :Eπw_sh]]
 
     equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                               [Symbol("eq_srec_$i") for i in 1:n];
-                              [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_τrec, :eq_euler, :eq_lτdef];
+                              [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_τrec, :eq_euler, :eq_lcdef, :eq_lτdef];
                               [Symbol("eq_mkup_trend_$(i)") for i in 1:n];
                               [Symbol("eq_mkup_$(i)") for i in 1:n]]
 
