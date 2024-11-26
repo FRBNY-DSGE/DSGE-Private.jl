@@ -6776,7 +6776,7 @@ function expected_nominal_rates!(m)
         for i in mon_anticipated_ait_shocks(m) ## AIT expected FFR
             symb_i = Symbol("σ_ait_r_m$(i)")
             get_setting(m, :model2para_regime)[symb_i] = Dict(1 => 1)
-            for j in 1:18 #Iterate each new system!!! UPDATE
+            for j in 1:21 #Iterate each new system!!! UPDATE
                 if j < 10
                     get_setting(m, :model2para_regime)[symb_i][j] = 1
                 else
@@ -6799,7 +6799,7 @@ function expected_nominal_rates!(m)
         symb_i = Symbol("σ_r_m$(i)")
         if symb_i in [m.parameters[j].key for j in 1:length(m.parameters)] && !m[symb_i].fixed
             get_setting(m, :model2para_regime)[symb_i] = Dict(1 => 1)
-            for j in 1:18 ##UPDATE!!
+            for j in 1:21 ##UPDATE!!
                 if j < 10
                     get_setting(m, :model2para_regime)[symb_i][j] = 1
                 else
@@ -6824,7 +6824,7 @@ function expected_nominal_rates!(m)
         for i in 1:9
             get_setting(m, :model2para_regime)[:σ_ait_rm][i] = 1
         end
-        for i in 10:18 #UPDATE
+        for i in 10:21 #UPDATE
             get_setting(m, :model2para_regime)[:σ_ait_rm][i] = 2
         end
         set_regime_valuebounds!(m[:σ_ait_rm], 1, m[:σ_ait_rm].valuebounds)
@@ -6843,7 +6843,7 @@ function expected_nominal_rates!(m)
     for i in 1:9
         get_setting(m, :model2para_regime)[:σ_r_m][i] = 1
     end
-    for i in 10:18 #UPDATE!
+    for i in 10:21 #UPDATE!
         get_setting(m, :model2para_regime)[:σ_r_m][i] = 2
     end
     set_regime_valuebounds!(m[:σ_r_m], 1, m[:σ_r_m].valuebounds)
@@ -6860,7 +6860,7 @@ function expected_nominal_rates!(m)
     for i in expected_ffr(m)
         symb_i = Symbol("σ_exp_rm$(i)")
         get_setting(m, :model2para_regime)[symb_i] = Dict(1 => 1)
-        for j in 1:18 #UPDATE!
+        for j in 1:21 #UPDATE!
             if j < 10
                 get_setting(m, :model2para_regime)[symb_i][j] = 1
             else
