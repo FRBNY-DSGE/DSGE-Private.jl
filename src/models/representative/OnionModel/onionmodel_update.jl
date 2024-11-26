@@ -30,7 +30,7 @@ function Base.show(io::IO, m::OnionModel)
 end
 
 function OnionModel(subspec::String = "ss1";
-                    custom_settings::Array{S} where S<:Setting = Array{Setting{Bool}}(undef, 0),
+                    custom_settings::Array{S} where S<:Setting = Array{Setdting{Bool}}(undef, 0),
                     testing = false)
 
     spec             = split(basename(@__FILE__), '.')[1]
@@ -186,9 +186,7 @@ function init_parameters!(m::OnionModel)
                        description = "Index of coal",
                        tex_label="coal")
 
-        #Setting all of these to 1 just to have values down -- to be filled later
 
-        #placeholder = fill(1.0, 396)
         placeholder_dist = Product(fill(Uniform(1.0, 1.1), get_setting(m, :n_sectors)))
 
         if irf_type == "oil"
@@ -203,9 +201,9 @@ function init_parameters!(m::OnionModel)
         inpshare = fl["inpshare"]
         #Let the input output matrix be a setting given this won't get estimated, and creating a parameter which holds a matrix isn't worthwhile
         m <= Setting(:IO, InOut)
-        #m[:IO] = InOut #Feels dubious but maybe?
+
         m <= Setting(:IO2, InOut2)
-        #m[:IO2] = IO2 #Feels dubious but maybe?
+
 
         #Another matrix, just setting here for convenience. Will fix later? -BP
         m <= Setting(:ω_tilde, fl["omega_tilde"])
@@ -316,7 +314,8 @@ m <= parameter(:oil, paras["oil"], fixed = true,
     #fl = JLD2.jldopen("/data/dsge_data_dir/proc/dsge/briefings/202412/Model_Data/matlab_params_oil.jld2", "r")
     InOut = paras["IO"]
     InOut2 = paras["IO2"]
-    inpshare = paras["inpshare"]
+inpshare = paras["inpshare"]
+
     #Let the input output matrix be a setting given this won't get estimated, and creating a parameter which holds a matrix isn't worthwhile
     m <= Setting(:IO, InOut)
     m <= Setting(:IO2, InOut2)
@@ -374,7 +373,7 @@ m <= parameter(:ρ_a_t, 0.6742, fixed = true,#Taken from std dev of stationary c
 
 m <= parameter(:h, 0.5347, fixed = true,
                description = "h: consumption habit persistence")
-m <= parameter(:γ, 0.0, fixed=true, #0.3673, fixed = true,#Growth rate of economy
+m <= parameter(:γ, 0.3673, fixed = true,#Growth rate of economy
                description = "γ: Log of the steady-state growth rate of technology")
 
 m <= parameter(:mp_habit, 0.0, fixed = true,
