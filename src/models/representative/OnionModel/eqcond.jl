@@ -10,13 +10,7 @@
 equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                           [Symbol("eq_srec_$i"] for i in 1:n];
                           [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_τrec, :eq_euler, :eq_lτdef]]
-
-for (i,k) in enumerate(endogenous_states)
-    m.endogenous_states[k] = i
-end
-for (i,k) in enumerate(equilibrium_conditions)
-    m.equilibrium_conditions[k] = i
-end=#
+=#
 
 
 function eqcond(m::OnionModel) #m::OnionModel
@@ -101,7 +95,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     # cpi definition
     B[eq[:eq_cpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = m[:gam].value'
     B[eq[:eq_cpi],endo[:πc]] = -1.
-    Π[eq[:eq_cpi],exp_sh[:Eπc_t_sh]] = 1.
+    Π[eq[:eq_cpi],exp_sh[:Eπc_sh]] = 1.
 
 #=
     # Nominal wage phillips curve: -lw_t+1 + bet*(1/kap)*piw_t+1 = (1/kap)*piw_t - c_t
@@ -113,15 +107,15 @@ function eqcond(m::OnionModel) #m::OnionModel
 =#
 
 
-
-     #New implementation of Wage phillips curve
-    B[eq[:eq_wpc],endo[:πw]] = m[:invkapw]
-    A[eq[:eq_wpc],endo[:πw]] = m[:bet]*m[:invkapw]
-    B[eq[:eq_wpc],endo[:c]]   = -1.
-    A[eq[:eq_wpc],endo[:lw]]  = -1.
-    B[eq[:eq_wpc], endo[:lc]] = -m[:h] * exp(-m[:γ]) #Habit persistence term, I believe γ refers to growth rate of the economy here.
+    #NOTE: This only replicates kanzig IRFs with habit formation set to 0
+    #New implementation of Wage phillips curve
+    A[eq[:eq_wpc],endo[:πw]] = m[:bet]*m[:invkapw] #SAME
+    B[eq[:eq_wpc],endo[:πw]] = m[:invkapw] #SAME
+    B[eq[:eq_wpc],endo[:c]]   = - 1. #SAME
+    A[eq[:eq_wpc],endo[:lw]]  = - 1.
+    B[eq[:eq_wpc], endo[:lc]] = m[:h] * exp(-m[:γ]) #Habit persistence term, I believe γ refers to growth rate of the economy here but it's not explicit.
     B[eq[:eq_wpc], endo[:μw]] = 1. # Should really be m[:invkapw], but this feels isomorphic to scaling the size of the shock
-
+    Π[eq[:eq_wpc],exp_sh[:Eπw_sh]] = 1.
 
     #AR(1) shock
     A[eq[:eq_μw], endo[:μw]] = 1.
@@ -146,25 +140,22 @@ function eqcond(m::OnionModel) #m::OnionModel
     Π[eq[:eq_euler],exp_sh[:Ec_sh]] = 1.
 =#
 
-    #=
+#=
     # Rewritten Euler equation with lagged c:
-    A[eq[:eq_euler], endo[:lc]] = - 1.
-    A[eq[:eq_euler], endo[:li]] = -1.
-    A[eq[:eq_euler], endo[:c]] = 1.
-    A[eq[:eq_euler], endo[:πc]] = 1.
-    =#
+    A[eq[:eq_euler], endo[:lc]] = - 1. #c_t
+    A[eq[:eq_euler], endo[:li]] = -1. #R_t
+    A[eq[:eq_euler], endo[:c]] = 1. #
+A[eq[:eq_euler], endo[:πc]] = 1.
+=#
 
 
-
-     #New Euler equation
-    A[eq[:eq_euler],endo[:lc]]   = 1.
-    A[eq[:eq_euler], endo[:li]] = -(1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ]))) #Verify sign
-    B[eq[:eq_euler], endo[:Eπ_t]] = (1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ])))
-    B[eq[:eq_euler],endo[:lc]]   = m[:h] * exp(-m[:γ]) / (1. + m[:h] * exp(-m[:γ]))
-    B[eq[:eq_euler], endo[:Ec_t]] = 1. / (1. + m[:h] * exp(-m[:γ]))
-    B[eq[:eq_euler], endo[:b_t]] = 1.
-Π[eq[:eq_euler],exp_sh[:Ec_t_sh]] = 1.
-
+#New Euler equation
+A[eq[:eq_euler], endo[:lc]] = - 1. #c_t
+A[eq[:eq_euler], endo[:li]] = - (1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ]))) #R_t
+A[eq[:eq_euler], endo[:c]] = 1. / (1. +  m[:h] * exp(-m[:γ])) #Et[c_{t+1}]
+B[eq[:eq_euler], endo[:lc]] = - (m[:h] * exp(-m[:γ]))/(1 +  m[:h] * exp(-m[:γ])) #c_{t-1}
+A[eq[:eq_euler], endo[:πc]] = (1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ]))) #Et[π_{t+1}]
+B[eq[:eq_euler], endo[:b_t]] = - 1.
 
 
     # monetary policy li_{t+1} = rho_i*li_t + (1-rho_i)*(mp_cpi_infl*pic_t +
@@ -182,24 +173,21 @@ A[eq[:eq_monpol],endo[:li]] = 1. #R_t
     B[eq[:eq_monpol],endo[:c]]  = (1. -m[:ρ_i])*m[:mp_cons]
     B[eq[:eq_monpol],endo[:τ]]  = (1. -m[:ρ_i])*m[:mp_cstar] * dcstar_dτ
 =#
-     #New monetary policy rule:
-    A[eq[:eq_monpol],endo[:li]] = 1.
-    B[eq[:eq_monpol],endo[:li]] = m[:ρ_i]
-    B[eq[:eq_monpol],endo[:πc]] = (1. -m[:ρ_i])*m[:mp_cpi_infl]
-    B[eq[:eq_monpol],endo[:πstar]] = - (1. -m[:ρ_i])*m[:mp_cpi_infl]
-B[eq[:eq_monpol],endo[:c]]  = (1. -m[:ρ_i])*m[:mp_cons] + (1. -m[:ρ_i])*m[:mp_habit]
-#B[eq[:eq_monpol],endo[:c]]  = (1. -m[:ρ_i])*m[:mp_habit] #not convinced by this
-B[eq[:eq_monpol],endo[:lc]]  = -(1. -m[:ρ_i])*m[:mp_habit]
-
-#This isn't on c star -- it is on c_t - c_{t-1}. Not sure where the dcstar_dτ comes in either, but guessing it shouldn't be there.
-    #B[eq[:eq_monpol],endo[:τ]]  = (1. -m[:ρ_i])*m[:mp_cstar] * dcstar_dτ
-
-    #IID shock
-    Ψ[eq[:eq_monpol], exo[:mp_sh]] = 1.
 
 
-    #Time varying inflation target with iid shock
-    A[eq[:eq_πstar], endo[:πstar]] = 1.
+#New monetary policy rule:
+A[eq[:eq_monpol],endo[:li]] = 1.
+B[eq[:eq_monpol],endo[:li]] = m[:ρ_i]
+B[eq[:eq_monpol],endo[:πc]] = (1. -m[:ρ_i])*m[:mp_cpi_infl]
+B[eq[:eq_monpol],endo[:πstar]] = -(1. -m[:ρ_i])*m[:mp_cpi_infl]
+B[eq[:eq_monpol],endo[:c]]  = (1. -m[:ρ_i])*m[:mp_cons] + m[:mp_habit]
+B[eq[:eq_monpol],endo[:lc]]  = -m[:mp_habit]
+
+#IID shock
+Ψ[eq[:eq_monpol], exo[:mp_sh]] = 1.
+
+#Time varying inflation target with iid shock
+A[eq[:eq_πstar], endo[:πstar]] = 1.
 B[eq[:eq_πstar], endo[:πstar]] = m[:ρ_πstar]
 Ψ[eq[:eq_πstar], exo[:πstar_sh]] = 1.
 
@@ -219,34 +207,27 @@ B[eq[:eq_lτdef],endo[:τ]]  = 1.
 #Lag consumption definition:
 A[eq[:eq_lcdef], endo[:lc]] = 1.
 B[eq[:eq_lcdef], endo[:c]] = 1.
+Π[eq[:eq_lcdef], exp_sh[:Ec_sh]] = 1.
 
+A[eq[:eq_lidef], endo[:li]] = 1.
+B[eq[:eq_lidef], endo[:i]] = 1.
+Π[eq[:eq_lidef], exp_sh[:Ei_sh]] = 1.
 
-#Expected consumption defintion -- defining E_t[c_{t+1}] = c_{t+1} + ξ_c
+#Lag wage definition
+A[eq[:eq_lwdef], endo[:lw]] = 1.
+B[eq[:eq_lwdef], endo[:w_t]] = 1.
+Π[eq[:eq_lwdef], exp_sh[:Ew_sh]] = 1.
 
+#=
 A[eq[:eq_Ec], endo[:c]] = 1.
-B[eq[:eq_Ec], endo[:Ec_t]] = 1.
+B[eq[:eq_Ec], endo[:Ec]] = 1.
 Π[eq[:eq_Ec], exp_sh[:Ec_sh]] = 1.
 
 
-A[eq[:eq_Eπ], endo[:πc]] = 1.
-B[eq[:eq_Eπ], endo[:Eπ_t]] = 1.
-Π[eq[:eq_Eπ], exp_sh[:Eπc_sh]] = 1.
-
-
-#=
-#Lagged CPI inflation:
-A[eq[:eq_πc], endo[:lπc]] = 1.
-B[eq[:eq_πc], endo[:πc]] = 1.
-Π[eq[:eq_πc], exp_sh[:Eπc_sh]] = 1.
+A[eq[:eq_Eπc], endo[:πc]] = 1.
+B[eq[:eq_Eπc], endo[:Eπc]] = 1.
+Π[eq[:eq_Ec], exp_sh[:Eπc_sh]] = 1.
 =#
-
-
-
-
-
-#Adding to jump variables here:
-
-
 
 
 #Discount rate shock
@@ -254,29 +235,14 @@ A[eq[:eq_b_t], endo[:b_t]] = 1.
 B[eq[:eq_b_t], endo[:b_t]] = m[:ρ_b_t]
 Ψ[eq[:eq_b_t], exo[:b_sh]] = 1.
 
+
+
 #Common TFP shock
 A[eq[:eq_a_t], endo[:a_t]] = 1.
 B[eq[:eq_a_t], endo[:a_t]] = m[:ρ_a_t]
 Ψ[eq[:eq_a_t], exo[:a_sh]] = 1.
 
-    #=
-    #Markup shock
-    #Markup is the sum of the stochastic trends ̅μ^i_t and iid markup shocks σ_μ^i ε_t^{μ^i}
-    A[eq[:eq_mkup], endo[:mkup]] = 1.
-    B[eq[:eq_mkup], endo[:mkup_trend]] = 1.
 
-
-    #Stochastic trend:
-    #μ^i_t = ρ_̅μ^i ̅μ^i_{t-1} + σ_̅μ^i ε_t^{̅μ^i}
-    A[eq[:eq_mkup_trend], endo[:mkup_trend]] = 1.
-    B[eq[:eq_mkup_trend], endo[:mkup_trend]] = m[:ρ_μ_trend]
-    Ψ[eq[:eq_mkup_trend], exo[:μ_trend_sh]] = 1.
-
-    #IID: σ_μ^i ε_t^{μ^i}
-    Ψ[eq[:eq_mkup], exo[:μ_iid_sh]] = 1. #Not sure this should be here -- revisit shortly
-    =#
-
-#Markup shock
 #Markup is the sum of the stochastic trends ̅μ^i_t and iid markup shocks σ_μ^i ε_t^{μ^i}
 A[eq[:eq_mkup_1]:eq[Symbol("eq_mkup_$(n)")], endo[:mkup_1]: endo[Symbol("mkup_$(n)")]] = eye(n)
 B[eq[:eq_mkup_1]:eq[Symbol("eq_mkup_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = eye(n)
@@ -289,33 +255,6 @@ A[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: en
 B[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = diagm(m[:ρ_μ_trend].value)
 Ψ[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], exo[:μ_trend_1_sh]:exo[Symbol("μ_trend_$(n)_sh")]] = eye(n)
 
-
-
-### Expectational Errors ###
-#=
-#E[π^i_{t+1}]
-A[eq[Symbol("eq_π_1")]:eq[Symbol("eq_π_$n")], endo[Symbol("π_1")]:endo[Symbol("π_$(n)")]] = eye(n)
-B[eq[Symbol("eq_π_1")]:eq[Symbol("eq_π_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$(n)")]] = eye(n)
-Π[eq[Symbol("eq_π_1")]:eq[Symbol("eq_π_$n")], exp_sh[Symbol("Eπ_1_sh")]:exp_sh[Symbol("Eπ_$(n)_sh")]] =  eye(n)
-
-# E[πw_{t+1}]
-A[eq[:eq_πw], endo[:πw]] = 1.0
-B[eq[:eq_πw], endo[:Eπw]] = 1.0
-Π[eq[:eq_πw],exp_sh[:Eπw_sh]] = 1.
-
-
-# E[πc_{t+1}]
-A[eq[:eq_πc], endo[:πc]] = 1.0
-B[eq[:eq_πc], endo[:Eπc]] = 1.0
-Π[eq[:eq_πc],exp_sh[:Eπc_sh]] = 1.
-
-
-# E[c{t+1}]
-A[eq[:eq_c], endo[:c]] = 1.0
-B[eq[:eq_c], endo[:Ec]] = 1.0
-Π[eq[:eq_c],exp_sh[:Ec_sh]] = 1.
-
-=#
 
 
 

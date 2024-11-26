@@ -374,7 +374,7 @@ m <= parameter(:ρ_a_t, 0.6742, fixed = true,#Taken from std dev of stationary c
 
 m <= parameter(:h, 0.5347, fixed = true,
                description = "h: consumption habit persistence")
-m <= parameter(:γ, 0.3673, fixed = true,#Growth rate of economy
+m <= parameter(:γ, 0.0, fixed=true, #0.3673, fixed = true,#Growth rate of economy
                description = "γ: Log of the steady-state growth rate of technology")
 
 m <= parameter(:mp_habit, 0.0, fixed = true,
@@ -406,21 +406,21 @@ function init_model_indices!(m::OnionModel)
 
     endogenous_states = [[Symbol("ls_$i") for i in 1:n];
                          [:lw, :li, :lτ, :lc, :τ];
-                          [:Ec_t, :Eπ_t, :μw, :b_t, :a_t, :πstar]; #Eπ_t
+                          [:μw, :b_t, :a_t, :πstar]; #Eπ_t
                          [Symbol("π_$i") for i in 1:n];
-                         [:πc, :c, :πw];
+                         [:πc, :c, :πw, :i, :w_t];
                          [Symbol("mkup_trend_$(i)") for i in 1:n];
                          [Symbol("mkup_$(i)") for i in 1:n]]
 
     endogenous_states_augmented = [:i_1, :w_1]
 
     expected_shocks = [[Symbol("Eπ_$(i)_sh") for i in 1:n];
-                       [:Eπc_sh, :Ec_sh, :Eπw_sh, :Ec_t_sh, :Eπc_t_sh]]
+                       [:Eπc_sh, :Ec_sh, :Eπw_sh, :Ei_sh, :Ew_sh]]
 
     equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                               [Symbol("eq_srec_$i") for i in 1:n];
-                              [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_τrec, :eq_euler,:eq_lcdef, :eq_lτdef];
-                              [:eq_Ec, :eq_Eπ,:eq_μw, :eq_πstar, :eq_b_t, :eq_a_t];
+                              [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_τrec, :eq_euler,:eq_lcdef, :eq_lτdef, :eq_lidef, :eq_lwdef];
+                              [:eq_μw, :eq_πstar, :eq_b_t, :eq_a_t];
                               [Symbol("eq_mkup_trend_$(i)") for i in 1:n];
                               [Symbol("eq_mkup_$(i)") for i in 1:n]]
 

@@ -32,9 +32,9 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     TTT_aug[endo_new[:w_1], endo[:πc]] = 1.
     TTT_aug[endo_new[:w_1], endo_new[:w_1]] = 1.
     =#
-     TTT_aug[endo_new[:w_1], endo[:lw]] = -1.
-    TTT_aug[endo_new[:w_1], endo[:πc]] = 1.
-    TTT_aug[endo_new[:w_1], endo[:πc]] = -1.
+     TTT_aug[endo_new[:w_1], endo[:lw]] = - 1.
+    TTT_aug[endo_new[:w_1], endo[:πc]] =  1.
+    TTT_aug[endo_new[:w_1], endo[:πw]] = - 1.
     TTT_aug[endo_new[:w_1], endo_new[:w_1]] = 1.
 
 #=

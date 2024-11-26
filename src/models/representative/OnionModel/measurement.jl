@@ -21,19 +21,15 @@ function measurement(m::OnionModel{T},
     QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
 
     ## Demeaned Consumption Growth
-    ZZ[obs[:consumption_growth], endo[:c]]       = 1.0
+    ZZ[obs[:consumption_growth], endo[:c]]  = 1.0
     ZZ[obs[:consumption_growth], endo[:lc]] = -1.0
 
     ## Demeaned Real Wage Growth
     jump_ind_start = get_setting(m, :n_back_states) - 1 + get_setting(m, :n_exo_states)
     #Note current implementation is NOT demeaned
-
-    ZZ[obs[:real_wage_growth], endo[:lw]]   = 1.0
-    ZZ[obs[:real_wage_growth], endo[:πc]]   = -1.0
-    ZZ[obs[:real_wage_growth], endo[:πw]]   = 1.0
-
-
-    ZZ[obs[:real_wage_growth], endo_new[:w_1]] = 1.
+    ZZ[obs[:real_wage_growth], endo[:w_t]] = 1.
+    ZZ[obs[:real_wage_growth], endo[:lw]] = - 1.
+    #ZZ[obs[:real_wage_growth], endo_new[:w_1]] = 1.
 
 
     ## Demeaned CPI Inflation
@@ -49,10 +45,10 @@ function measurement(m::OnionModel{T},
 
     ## Demeaned FFR
     # Note: Current value is NOT demeaned
-    #ZZ[obs[:NominalFFR], endo[:li]] = 1.
-ZZ[obs[:NominalFFR], endo_new[:i_1]] = 1.
+    ZZ[obs[:NominalFFR], endo[:i]] = 1.
+#ZZ[obs[:NominalFFR], endo_new[:i_1]] = 1.
 
-    QQ[exo[:τ_sh], exo[:τ_sh]] = 1.0 #This should be m[:σ_τ]^2
+    QQ[exo[:τ_sh], exo[:τ_sh]] = 1.0 #This works to replicate the Kanzig oil IRFs
     QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = eye(_n)
     QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] = eye(_n)
 
