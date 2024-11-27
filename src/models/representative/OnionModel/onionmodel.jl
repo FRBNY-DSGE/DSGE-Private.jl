@@ -406,9 +406,10 @@ function init_model_indices!(m::OnionModel)
     endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
                          [Symbol("π_$i") for i in 1:n]; #sectoral inflation
                          [:r_t, :c_t, :πc_t, :πw_t, :w_t] ; #interest rate, cons, CPI, wage Infl, wages
-                         [:a_t, :b_t, :μw, :lτ, :τ, :πstar];
+                         [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t];
+                         [Symbol("mkup_iid_$(i)") for i in 1:n];
                          [Symbol("mkup_trend_$(i)") for i in 1:n]]
 
     endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1]
@@ -419,9 +420,10 @@ function init_model_indices!(m::OnionModel)
     equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                               [Symbol("eq_srec_$i") for i in 1:n];
                               [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
-                              [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar];
+                              [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt];
                               [Symbol("eq_Eπ_$i") for i in 1:n];
+                              [Symbol("eq_mkup_iid_$(i)") for i in 1:n];
                               [Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
 
 

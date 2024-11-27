@@ -68,11 +68,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     #Addl term for markup stochastic trend
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_trend_1")]:endo[Symbol("mkup_trend_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
     #IID markup shock shock
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = - diagm(m[:invkap].value)
-
-    # IID MKUP PROCESS (for clarity)
-    Γ0[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = eye(n)
-    Ψ[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] =  eye(n) #Was negative BP
+    Ψ[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] = diagm(m[:invkap].value) #eye(n) #Was negative
 
 
     # s recursion #Dyanmics of relative prices EQ
@@ -163,12 +159,9 @@ dcstar_dτ = numer/denom
 Γ0[eq[:eq_monpol],endo[:πstar]] = (1. -m[:ρ_i])*m[:mp_cpi_infl]
 Γ0[eq[:eq_monpol],endo[:c_t]]  = - (1. -m[:ρ_i])*m[:mp_cons] + m[:mp_habit]
 Γ1[eq[:eq_monpol],endo[:c_t]]  = -m[:mp_habit]
-Γ0[eq[:eq_monpol], endo[:mp_t]] = -1.
-
 
 #IID M.P. shock
-Γ0[eq[:eq_mp_t], endo[:mp_t]] = 1.
-Ψ[eq[:eq_mp_t], exo[:mp_sh]] = 1. #Was +1 BP
+Ψ[eq[:eq_monpol], exo[:mp_sh]] = 1. #Was +1
 
 #Time varying inflation target with iid shock
 Γ0[eq[:eq_πstar], endo[:πstar]] = 1.

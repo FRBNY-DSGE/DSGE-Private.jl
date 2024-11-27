@@ -48,18 +48,18 @@ function measurement(m::OnionModel{T},
 
 
 
-    QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = eye(_n) * m[:σ_πstar]^2 * 0.0
+    QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = eye(_n) * m[:σ_πstar]^2
 
 
     if get_setting(m, :override_stds)
         #std_devs = [x^2 for x in get_setting(m, :std_overrides)
         QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] = diagm(get_setting(m,:std_overrides))
 
-
-
+    else
+        QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] = eye(n)
     end
 
-    QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
+    QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2 * 0.0
     QQ[exo[:mp_sh], exo[:mp_sh]] = m[:σ_r_m]^2
     QQ[exo[:a_sh], exo[:a_sh]] = m[:σ_a_t]^2
     QQ[exo[:b_sh], exo[:b_sh]] = m[:σ_b_t]^2

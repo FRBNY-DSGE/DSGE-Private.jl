@@ -248,7 +248,7 @@ shockdec
                    hist_color = :black,
                    forecast_color = :red,
                    tick_size = 5,
-                   legend = :bottomleft,
+                   legend = :topleft, #Was bottom left
                    legendfontsize = 6,
                    vert_line = quartertodate("0000-Q1"),
                    vert_line2 = quartertodate("0000-Q1"),
