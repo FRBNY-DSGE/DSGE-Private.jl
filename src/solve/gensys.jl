@@ -102,7 +102,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         end
     end
     nunstab = n - sum(select)
-    @show nunstab
+
 
     if zxz == 1
         @warn "Coincident zeros. Indeterminacy and/or nonexistence."
@@ -138,9 +138,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         bigev = 0
     else
         etawtsvd = svd!(etawt)
-        @show etawtsvd
         bigev = (LinearIndices(etawtsvd.S))[findall(etawtsvd.S .> ϵ)]
-
         ueta  = etawtsvd.U[:, bigev]
         veta  = etawtsvd.V[:, bigev]
         deta  = Matrix(Diagonal(etawtsvd.S[bigev]))

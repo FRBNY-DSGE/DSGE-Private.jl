@@ -411,7 +411,7 @@ function init_model_indices!(m::OnionModel)
                          [:Ec_t, :Eπc_t, :Eπw_t];
                          [Symbol("mkup_trend_$(i)") for i in 1:n]]
 
-    endogenous_states_augmented = []
+    endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1]
 
     expected_shocks =[[Symbol("Eπ_$(i)_sh") for i in 1:n];
                       [:Ec_sh, :Eπc_sh, :Eπw_sh]]

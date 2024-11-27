@@ -55,10 +55,6 @@ function eqcond(m::OnionModel) #m::OnionModel
         sec_shock = m[:taxshare].value
     end
 
-#=
-    m[:labshare].value = ones(n)
-    inpshare = zeros(n,n)
-=#
 
 
     # Phillips curve
@@ -72,7 +68,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     #Addl term for markup stochastic trend
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_trend_1")]:endo[Symbol("mkup_trend_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
     #IID markup shock shock
-    Ψ[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] = eye(n)
+    Ψ[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] = diagm(m[:invkap].value) #eye(n) #Was negative
 
 
     # s recursion #Dyanmics of relative prices EQ
@@ -165,7 +161,7 @@ dcstar_dτ = numer/denom
 Γ1[eq[:eq_monpol],endo[:c_t]]  = -m[:mp_habit]
 
 #IID M.P. shock
-Ψ[eq[:eq_monpol], exo[:mp_sh]] = 1.
+Ψ[eq[:eq_monpol], exo[:mp_sh]] = 1. #Was +1
 
 #Time varying inflation target with iid shock
 Γ0[eq[:eq_πstar], endo[:πstar]] = 1.

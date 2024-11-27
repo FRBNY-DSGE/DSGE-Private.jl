@@ -17,25 +17,13 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     TTT_aug = zeros(n_endo + n_states_add, n_endo + n_states_add)
     TTT_aug[1:n_endo, 1:n_endo] = TTT
 
-    #TTT_aug[endo_new[:
 
-    #TTT_aug[endo_new[:i_1], endo_new[:i_1]] =
+    ### Track lags
 
-
-    TTT_aug[endo_new[:i_1], endo[:li]] = - m[:ρ_i]
-    TTT_aug[endo_new[:i_1], endo[:πc]] = - (1. - m[:ρ_i])*m[:mp_cpi_infl]
-    TTT_aug[endo_new[:i_1], endo_new[:i_1]] = 1.
-
-#=
-    TTT_aug[endo_new[:w_1], endo[:lw]] = 1.
-    TTT_aug[endo_new[:w_1], endo[:πc]] = -1.
-    TTT_aug[endo_new[:w_1], endo[:πc]] = 1.
-    TTT_aug[endo_new[:w_1], endo_new[:w_1]] = 1.
-    =#
-     TTT_aug[endo_new[:w_1], endo[:lw]] = - 1.
-    TTT_aug[endo_new[:w_1], endo[:πc]] =  1.
-    TTT_aug[endo_new[:w_1], endo[:πw]] = - 1.
-    TTT_aug[endo_new[:w_1], endo_new[:w_1]] = 1.
+    TTT_aug[endo_new[:w_t1], endo[:w_t]] = 1.
+    TTT_aug[endo_new[:c_t1], endo[:c_t]] = 1.
+    TTT_aug[endo_new[:r_t1], endo[:r_t]] = 1.
+    TTT_aug[endo_new[:πc_t1], endo[:πc_t]] = 1.
 
 #=
     #Measurement errors:
