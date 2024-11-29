@@ -80,11 +80,12 @@ exit()
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_trend_1")]:endo[Symbol("mkup_trend_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
     #IID markup shock shock
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = - diagm(m[:invkap].value)
+    #Ψ[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] = diagm(m[:invkap].value)
 
     # IID MKUP PROCESS (for clarity)
-    Γ0[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = eye(n)
+    Γ0[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = eye(n) #Comment out when line 83 is uncommented
     Γ1[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = 0.0 * eye(n) #m[:ρ_μ_iid]
-    Ψ[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] =  eye(n) #Was negative BP
+    Ψ[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] =  eye(n) #Was negative BP #Comment out when line 83 is uncommented
 
 
     # s recursion #Dyanmics of relative prices EQ

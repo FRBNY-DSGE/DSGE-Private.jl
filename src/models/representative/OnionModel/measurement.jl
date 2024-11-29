@@ -39,8 +39,10 @@ function measurement(m::OnionModel{T},
     for i in 1:get_setting(m, :n_sectors)
         if i ∉ get_setting(m, :nan_sects)
             ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = 1.0
+            #QQ[exo[Symbol("μ_trend_$(i)_sh")], exo[Symbol("μ_trend_$(i)_sh")] = (m[:σ_πstar]/100)^2
         else
             ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = NaN
+            #QQ[exo[Symbol("μ_trend_$(i)_sh")], exo[Symbol("μ_trend_$(i)_sh")] = 0.0
         end
 
     end
@@ -59,13 +61,21 @@ function measurement(m::OnionModel{T},
     if get_setting(m, :override_stds)
         #std_devs = [x^2 for x in get_setting(m, :std_overrides)
         QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] = diagm(get_setting(m,:std_overrides))
+        #=for i in 1:get_setting(m, :n_sectors)
+            if i ∉ get_setting(m, :nan_sects)
+                QQ[exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] = diagm(get_setting(m,:std_overrides))
+            else
+                QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] = diagm(get_setting(m,:std_overrides)) * 0.0
+            end
+
+        end=#
 
     else
         #QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] = eye(n)
         QQ[exo[Symbol("μ_1_sh")]:exo[Symbol("μ_$(_n)_sh")], exo[Symbol("μ_1_sh")]:exo[Symbol("μ_$(_n)_sh")]] = eye(n)
     end
 
-    #QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2 * 0.0
+    QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2 * 0.0
     QQ[exo[:mp_sh], exo[:mp_sh]] = m[:σ_r_m]^2
     QQ[exo[:a_sh], exo[:a_sh]] = m[:σ_a_t]^2
     QQ[exo[:b_sh], exo[:b_sh]] = m[:σ_b_t]^2

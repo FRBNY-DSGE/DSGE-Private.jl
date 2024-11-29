@@ -457,11 +457,11 @@ function shock_groupings(m::OnionModel)
     pmu_iid = ShockGroup("mkp_iid", [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.5, 0.5, 0.0))
     wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
     tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
-    #pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
+    pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
     pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
     tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
 
     #[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
-    return [pmu_trend, pmu_iid,wage_pmu,tax, pol, tfp, bet]
+    return [pmu_trend, pmu_iid,wage_pmu,tax, pis, pol, tfp, bet]
 end
