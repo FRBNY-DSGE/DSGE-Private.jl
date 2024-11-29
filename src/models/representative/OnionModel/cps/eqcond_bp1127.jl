@@ -64,17 +64,6 @@ function eqcond(m::OnionModel) #m::OnionModel
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:a_t]] =  m[:labshare].value
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("s_1")]:endo[Symbol("s_$n")]]  = - (inpshare - eye(n))
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$n")]]    = - m[:bet]*diagm(m[:invkap].value)
-    #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_1")]:endo[Symbol("mkup_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
-
-    ##MKUP Process:
-    #=
-
-exit()
-
-    Γ0[eq[Symbol("eq_mkup_1")]:eq[Symbol("eq_mkup_$n")], endo[Symbol("mkup_1")]:endo[Symbol("mkup_$n")]] = eye(n)
-    Γ1[eq[Symbol("eq_mkup_1")]:eq[Symbol("eq_mkup_$n")], endo[Symbol("mkup_1")]:endo[Symbol("mkup_$n")]] = m[:ρ_μ] * eye(n)
-    Ψ[eq[Symbol("eq_mkup_1")]:eq[Symbol("eq_mkup_$n")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(n)_sh")]] = eye(n)
-=#
 
     #Addl term for markup stochastic trend
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_trend_1")]:endo[Symbol("mkup_trend_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
@@ -83,7 +72,6 @@ exit()
 
     # IID MKUP PROCESS (for clarity)
     Γ0[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = eye(n)
-    Γ1[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = 0.0 * eye(n) #m[:ρ_μ_iid]
     Ψ[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] =  eye(n) #Was negative BP
 
 
@@ -182,12 +170,10 @@ dcstar_dτ = numer/denom
 Γ0[eq[:eq_mp_t], endo[:mp_t]] = 1.
 Ψ[eq[:eq_mp_t], exo[:mp_sh]] = 1. #Was +1 BP
 
-
 #Time varying inflation target with iid shock
 Γ0[eq[:eq_πstar], endo[:πstar]] = 1.
 Γ1[eq[:eq_πstar], endo[:πstar]] = m[:ρ_πstar]
 Ψ[eq[:eq_πstar], exo[:πstar_sh]] = 1.
-
 
 
 ## Lag Definitions, Expectational Errors ##
@@ -228,7 +214,6 @@ dcstar_dτ = numer/denom
 Γ1[eq[:eq_lτdef],endo[:τ]]  = 1.
 
 
-
 #Discount rate shock
 Γ0[eq[:eq_b_t], endo[:b_t]] = 1.
 Γ1[eq[:eq_b_t], endo[:b_t]] = m[:ρ_b_t]
@@ -246,6 +231,7 @@ dcstar_dτ = numer/denom
 Γ0[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = eye(n)
 Γ1[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = diagm(m[:ρ_μ_trend].value)
 Ψ[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], exo[:μ_trend_1_sh]:exo[Symbol("μ_trend_$(n)_sh")]] = eye(n)
+
 
 
 

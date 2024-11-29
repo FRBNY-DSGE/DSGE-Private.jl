@@ -106,9 +106,7 @@ function init_settings!(m::OnionModel)
         "Mnemonic of FRED data series for computing per-capita values (a Nullable{Symbol})")
     m <= Setting(:data_quarter_or_month, :quarter)
     sectoral_inflation_path = get_setting(m, :dataroot) * "sector_inflation_" * (get_setting(m, :data_quarter_or_month) == :quarter ? "quarterly" : "monthly") * ".csv"
-    tmp_names =  (names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])[Not([69,70,72,73])]
-
-    m <= Setting(:sector_names,tmp_names)
+    m <= Setting(:sector_names, names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])
 
 
     # Relevant for other things such as IRFs, smoothing, and forecasting
@@ -359,7 +357,7 @@ m <= parameter(:ρ_b_t, 0.941, fixed = true,
                description = "ρ_b: AR(1) coefficient of the discount rate process")
 m <= parameter(:σ_μ, 0.1314, fixed = true,
                description = "σ_μ: standard deviation of mark up shock process")
-m <= parameter(:ρ_μ, 0.6, fixed = true, #0.8827, fixed = true,
+m <= parameter(:ρ_μ, 0.8827, fixed = true,
                description = "ρ_μ: AR(1) coefficient of the mark up shock process")
 m <= parameter(:σ_μw, 0.1314, fixed = true,
                description = "σ_wμ: standard deviation of wage mark up shock process")
@@ -373,10 +371,12 @@ m <= parameter(:σ_a_t, 0.6742, fixed = true, #Taken from std dev of stationary 
                description = "σ_a_t: standard deviation of the process describing productivity")
 m <= parameter(:ρ_a_t, 0.6742, fixed = true,#Taken from std dev of stationary comp of prod
                description = "ρ_a_t: AR(1) coefficient of the process describing productivity")
+
 m <= parameter(:h, 0.5347, fixed = true,
                description = "h: consumption habit persistence")
 m <= parameter(:γ, 0.0, fixed=true, #0.3673, fixed = true,#Growth rate of economy
                description = "γ: Log of the steady-state growth rate of technology")
+
 m <= parameter(:mp_habit, 0.0, fixed = true,
                description = ":mp_habit: weight of MP rule on habit formation")
 m <= parameter(:σ_r_m, 0.2380, fixed = true,
@@ -395,25 +395,18 @@ function init_model_indices!(m::OnionModel)
 
     n = get_setting(m, :n_sectors)
 
+
     exogenous_shocks            = [[Symbol("μ_trend_$(i)_sh") for i in 1:n];
                                    [Symbol("μ_iid_$(i)_sh") for i in 1:n];
-                                   [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh];
+                                   [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
                                    [:τ_sh]]
-
-
-    #=
-    exogenous_shocks            = [[Symbol("μ_iid_$(i)_sh") for i in 1:n];
-                                   #[Symbol("μ_iid_$(i)_sh") for i in 1:n];
-                                   [:μw_sh, :mp_sh, :b_sh, :a_sh, :πstar_sh];
-                                   [:τ_sh]]
-=#
 
     observables                 = keys(m.observable_mappings)
 
     endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
                          [Symbol("π_$i") for i in 1:n]; #sectoral inflation
                          [:r_t, :c_t, :πc_t, :πw_t, :w_t] ; #interest rate, cons, CPI, wage Infl, wages
-                         [:a_t, :b_t, :μw, :mp_t, :πstar, :τ, :lτ];
+                         [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t];
                          [Symbol("mkup_iid_$(i)") for i in 1:n];
@@ -427,10 +420,10 @@ function init_model_indices!(m::OnionModel)
     equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                               [Symbol("eq_srec_$i") for i in 1:n];
                               [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
-                              [:eq_a_t,:eq_b_t,:eq_μw, :eq_mp_t, :eq_πstar, :eq_τ, :eq_lτdef];
+                              [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt];
                               [Symbol("eq_Eπ_$i") for i in 1:n];
-                              [Symbol("eq_mkup_iid_$(i)") for i in 1:n]
+                              [Symbol("eq_mkup_iid_$(i)") for i in 1:n];
                               [Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
 
 
@@ -453,15 +446,14 @@ function shock_groupings(m::OnionModel)
     #Ignore subspecs for now:
 
     pmu_trend = ShockGroup("mkp_trend", [Symbol("μ_trend_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.0, 0.8, 0.0))
-    #pmu= ShockGroup("mkp", [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.0, 0.8, 0.0))
     pmu_iid = ShockGroup("mkp_iid", [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.5, 0.5, 0.0))
     wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
-    tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
+   # tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
     #pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
     pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
     tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
 
     #[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
-    return [pmu_trend, pmu_iid,wage_pmu,tax, pol, tfp, bet]
+    return [pmu_trend, pmu_iid,wage_pmu, pol, tfp, bet]
 end
