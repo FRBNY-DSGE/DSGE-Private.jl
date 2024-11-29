@@ -19,7 +19,6 @@ mutable struct OnionModel{T} <: AbstractRepModel{T}
     testing::Bool
 
     observable_mappings::OrderedDict{Symbol, Observable}
-    pseudo_observable_mappings::OrderedDict{Symbol, PseudoObservable}
 end
 
 
@@ -55,7 +54,6 @@ function OnionModel(subspec::String = "ss1";
         test_settings,
         rng,
         testing,
-        OrderedDict{Symbol,Observable}(),
         OrderedDict{Symbol,PseudoObservable}())
 
     for setting in custom_settings
@@ -64,7 +62,6 @@ function OnionModel(subspec::String = "ss1";
 
     init_settings!(m)
     init_observable_mappings!(m)
-    init_pseudo_observable_mappings!(m)
     init_model_indices!(m)
     init_parameters!(m)
     init_subspec!(m)
@@ -83,7 +80,6 @@ function init_settings!(m::OnionModel)
         m <= Setting(:n_sectors, 396)
     elseif subspec_int >= 1
         m <= Setting(:n_sectors, 69)
-
 
         energy_sectors = [3,4,5,8,26]
         food_sectors   = [1,21,67]
@@ -119,7 +115,7 @@ function init_settings!(m::OnionModel)
         "Mnemonic of FRED data series for computing per-capita values (a Nullable{Symbol})")
     m <= Setting(:data_quarter_or_month, :quarter)
     sectoral_inflation_path = get_setting(m, :dataroot) * "sector_inflation_" * (get_setting(m, :data_quarter_or_month) == :quarter ? "quarterly" : "monthly") * ".csv"
-    m <= Setting(:sector_names, (names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])[Not([69,70,72,73])])
+    m <= Setting(:sector_names, names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])
 
 
     # Relevant for other things such as IRFs, smoothing, and forecasting
@@ -416,15 +412,12 @@ function init_model_indices!(m::OnionModel)
 
     observables                 = keys(m.observable_mappings)
 
-    pseudo_observables = keys(m.pseudo_observable_mappings)
-
     endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
                          [Symbol("π_$i") for i in 1:n]; #sectoral inflation
                          [:r_t, :c_t, :πc_t, :πw_t, :w_t] ; #interest rate, cons, CPI, wage Infl, wages
-                         [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
+                         [:a_t, :b_t, :μw, :lτ, :τ, :πstar];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t];
-                         [Symbol("mkup_iid_$(i)") for i in 1:n];
                          [Symbol("mkup_trend_$(i)") for i in 1:n]]
 
     endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1]
@@ -435,15 +428,13 @@ function init_model_indices!(m::OnionModel)
     equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                               [Symbol("eq_srec_$i") for i in 1:n];
                               [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
-                              [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
+                              [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt];
                               [Symbol("eq_Eπ_$i") for i in 1:n];
-                              [Symbol("eq_mkup_iid_$(i)") for i in 1:n];
                               [Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
 
 
     for (i,k) in enumerate(observables); m.observables[k] = i end
-    for (i,k) in enumerate(pseudo_observables); m.pseudo_observables[k] = i end
     for (i,k) in enumerate(exogenous_shocks); m.exogenous_shocks[k] = i end
     for (i,k) in enumerate(expected_shocks); m.expected_shocks[k] = i end
     for (i,k) in enumerate(equilibrium_conditions); m.equilibrium_conditions[k] = i end
@@ -460,6 +451,9 @@ end
 
 function shock_groupings(m::OnionModel)
     #Ignore subspecs for now:
+
+
+
     core_trends   = Vector{Symbol}()
     energy_trends = Vector{Symbol}()
     food_trends   = Vector{Symbol}()
@@ -501,9 +495,8 @@ function shock_groupings(m::OnionModel)
     food_iid_mkp   = ShockGroup("mkp_iid_food", food_iids, RGB(0.8, 0.5, 0.0))
 
 
-
-    pmu_trend = ShockGroup("mkp_trend", [Symbol("μ_trend_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.0, 0.8, 0.0))
-    pmu_iid = ShockGroup("mkp_iid", [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.5, 0.5, 0.0))
+    #pmu_trend = ShockGroup("mkp_trend", [Symbol("μ_trend_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.0, 0.8, 0.0))
+    #pmu_iid = ShockGroup("mkp_iid", [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.5, 0.5, 0.0))
     wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
     tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
     pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
@@ -512,6 +505,5 @@ function shock_groupings(m::OnionModel)
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
 
     #[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
-    return [pmu_trend, pmu_iid,wage_pmu, tax, pis, pol, tfp, bet]
-    #return [core_trend_mkp, energy_trend_mkp, food_trend_mkp, core_iid_mkp, energy_iid_mkp, food_iid_mkp ,wage_pmu, tax, pis, pol, tfp, bet]
+    return [core_trend_mkp, energy_trend_mkp, food_trend_mkp, core_iid_mkp, energy_iid_mkp, food_iid_mkp ,wage_pmu, tax, pis, pol, tfp, bet]
 end

@@ -371,6 +371,8 @@ module DSGE
     include("models/representative/OnionModel/eqcond.jl")
     include("models/representative/OnionModel/observables.jl")
     include("models/representative/OnionModel/measurement.jl")
+    include("models/representative/OnionModel/pseudo_observables.jl")
+    include("models/representative/OnionModel/pseudo_measurement.jl")
     include("models/representative/OnionModel/augment_states.jl")
     include("models/representative/OnionModel/InOutData.jl")
 
