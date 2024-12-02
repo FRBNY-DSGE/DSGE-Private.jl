@@ -513,5 +513,7 @@ function shock_groupings(m::OnionModel)
 
     #[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
     return [pmu_trend, pmu_iid,wage_pmu, tax, pis, pol, tfp, bet]
+    #return [pmu_trend, pmu_iid,wage_pmu, pol, tfp, bet]
+    #return [wage_pmu, pol, tfp, bet]
     #return [core_trend_mkp, energy_trend_mkp, food_trend_mkp, core_iid_mkp, energy_iid_mkp, food_iid_mkp ,wage_pmu, tax, pis, pol, tfp, bet]
 end
