@@ -357,8 +357,17 @@ m <= parameter(:pc_px, vec(paras["pc_px"]))
 m <= parameter(:to_mx, vec(paras["to_mx"]))
 m <= parameter(:ei, vec(paras["ei"]))
 m <= parameter(:ς_tilde, vec(paras["varsig_tilde"]))
-m <= parameter(:ρ_μ_trend, vec(0.999 * ones(get_setting(m, :n_sectors))))
-
+if get_setting(m, :marco_test_num) == 5 || get_setting(m, :marco_test_num) == 10
+    m <= parameter(:ρ_μ_trend, vec(0.0 * ones(get_setting(m, :n_sectors))))
+elseif get_setting(m, :marco_test_num) == 6
+    #setting m[:ρ_μ_trend] = m[:ρ_μ] (from DSGE model)
+    m <= parameter(:ρ_μ_trend, vec(0.8827 * ones(get_setting(m, :n_sectors))))
+elseif get_setting(m, :marco_test_num) == 8 || get_setting(m, :marco_test_num) == 11
+    #setting m[:ρ_μ_trend] = m[:ρ_μ] (from DSGE model)
+    m <= parameter(:ρ_μ_trend, vec(0.7 * ones(get_setting(m, :n_sectors))))
+else
+    m <= parameter(:ρ_μ_trend, vec(0.999 * ones(get_setting(m, :n_sectors))))
+end
 
 
 ## Adding model parameters for standard deviation of shocks
@@ -382,7 +391,7 @@ m <= parameter(:ρ_πstar, 0.99, fixed = true,
                description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target")
 m <= parameter(:σ_a_t, 0.6742, fixed = true, #Taken from std dev of stationary comp of prod
                description = "σ_a_t: standard deviation of the process describing productivity")
-m <= parameter(:ρ_a_t, 0.6742, fixed = true,#Taken from std dev of stationary comp of prod
+m <= parameter(:ρ_a_t, 0.9446, fixed = true,#Taken from std dev of stationary comp of prod 0.9446
                description = "ρ_a_t: AR(1) coefficient of the process describing productivity")
 
 m <= parameter(:h, 0.5347, fixed = true,
@@ -394,6 +403,12 @@ m <= parameter(:mp_habit, 0.0, fixed = true,
                description = ":mp_habit: weight of MP rule on habit formation")
 m <= parameter(:σ_r_m, 0.2380, fixed = true,
                description = "Standard deviation of process describing iid monetary policy shock")
+
+m <= parameter(:ρ_meas_πc, 0.0, fixed = true,
+               description = "AR(1) coefficient for CPI inflation measurement error process")
+
+m <= parameter(:σ_meas_πc, 0.0999, fixed = true,
+               description = "AR(1) coefficient for CPI inflation measurement error process")
 
 
 end
@@ -427,7 +442,7 @@ function init_model_indices!(m::OnionModel)
                          [Symbol("mkup_iid_$(i)") for i in 1:n];
                          [Symbol("mkup_trend_$(i)") for i in 1:n]]
 
-    endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1]
+    endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
 
     expected_shocks =[[Symbol("Eπ_$(i)_sh") for i in 1:n];
                       [:Ec_sh, :Eπc_sh, :Eπw_sh]]

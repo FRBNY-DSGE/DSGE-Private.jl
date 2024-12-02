@@ -16,6 +16,13 @@ function pseudo_measurement(m::OnionModel{T},
     DD_pseudo = zeros(_n_pseudo)
 
 
+    #Gamma weighted sum of CPI
+    #no_nan_sects = setdiff(1:get_setting(m, :n_sectors), get_setting(m, :nan_sects))
+    #gam_sum = sum(m[:gam].value[no_nan_sects])
+    for i in 1:get_setting(m, :n_sectors) #no_nan_sects
+        ZZ_pseudo[pseudo[:pseudo_CPI], endo[Symbol("π_$i")]] = m[:gam].value[i] #/gam_sum
+    end
+
 
     # Core CPI
     core_gam_sum = sum(m[:gam].value[get_setting(m, :core_sectors)])

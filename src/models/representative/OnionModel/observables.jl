@@ -44,7 +44,8 @@ function init_observable_mappings!(m::OnionModel)
         oneqtrpctchange(levels[!,:CPIAUCSL])
     end
 
-    cpi_rev_transform = loggrowthtopct_annualized
+    #cpi_rev_transform = loggrowthtopct_annualized
+    cpi_rev_transform = identity
 
     # CPI Inflation -
     observables[:cpi_inflation] = Observable(:cpi_inflation, [:CPIAUCSL__FRED],

@@ -222,6 +222,10 @@ dcstar_dτ = numer/denom
 
 #Common TFP shock -- within PC
 Γ0[eq[:eq_a_t], endo[:a_t]] = 1.
+
+#Print new TFP Persistence
+@show m[:ρ_a_t].value
+
 Γ1[eq[:eq_a_t], endo[:a_t]] = m[:ρ_a_t]
 Ψ[eq[:eq_a_t], exo[:a_sh]] = 1.
 
@@ -230,6 +234,9 @@ dcstar_dτ = numer/denom
 #μ^i_t = ρ_̅μ^i ̅μ^i_{t-1} + σ_̅μ^i ε_t^{̅μ^i}
 Γ0[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = eye(n)
 Γ1[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = diagm(m[:ρ_μ_trend].value)
+#Print to make sure we are using the correct markup persistence
+@show m[:ρ_μ_trend].value
+
 Ψ[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], exo[:μ_trend_1_sh]:exo[Symbol("μ_trend_$(n)_sh")]] = eye(n)
 
 
