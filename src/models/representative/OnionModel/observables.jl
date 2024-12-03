@@ -10,6 +10,15 @@ function init_observable_mappings!(m::OnionModel)
         levels
     end
 
+    #Auxillary function to subtract 2.3 annualized from CPI rather than the mean
+    demean2 = function (levels)
+        cons = 2.3/4        #all(ismissing.(levels)) ? missing : mean(skipmissing(levels))
+        for i in 1:length(levels)
+            levels[i] = ismissing(levels[i]) ? levels[i] : levels[i] - cons
+        end
+        levels
+    end
+
     consumption_fwd_transform = function (levels)
         # FROM: Nominal consumption
         # TO:   Real consumption, approximate quarter-to-quarter percent change,
@@ -49,7 +58,7 @@ function init_observable_mappings!(m::OnionModel)
 
 
     cpi_fwd_transform = function(levels)
-        demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
+        demean2(oneqtrpctchange(levels[!,:CPIAUCSL]))
     end
 
     #cpi_rev_transform = loggrowthtopct_annualized
@@ -60,7 +69,35 @@ function init_observable_mappings!(m::OnionModel)
                                    cpi_fwd_transform,
                                    cpi_rev_transform,
                                    "CPI Inflation",
-                                   "CPI Inflation")
+                                             "CPI Inflation")
+
+
+    #Core servies
+     core_service_cpi_fwd_transform = function(levels)
+        demean2(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
+    end
+
+    core_service_cpi_rev_transform = identity
+    observables[:cpi_core_services] = Observable(:cpi_core_services, [:CUSR0000SASLE__FRED],    #[:CUSR0000SACL1E__FRED],
+                                   core_service_cpi_fwd_transform,
+                                   core_service_cpi_rev_transform,
+                                   "CPI Core Services",
+                                             "CPI Core Services")
+
+    #Core goods
+     core_goods_cpi_fwd_transform = function(levels)
+        demean2(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
+    end
+
+    core_goods_cpi_rev_transform = identity
+    observables[:cpi_core_goods] = Observable(:cpi_core_goods, [:CUSR0000SACL1E__FRED],
+                                   core_goods_cpi_fwd_transform,
+                                   core_goods_cpi_rev_transform,
+                                   "CPI Core Goods",
+                                             "CPI Core Goods")
+
+
+
 
     nominalrate_fwd_transform = function (levels)
         # FROM: Nominal effective federal funds rate (aggregate daily data at a
@@ -87,7 +124,7 @@ function init_observable_mappings!(m::OnionModel)
     for i in 1:get_setting(m, :n_sectors)
 
         cpisector_fwd_transform = function(levels)
-            demean(100 * levels[!, Symbol("$(inflation_sector_names[i])")])
+            demean2(100 * levels[!, Symbol("$(inflation_sector_names[i])")])
         end
 
         if get_setting(m, :data_quarter_or_month) == :quarter
@@ -108,10 +145,68 @@ function init_observable_mappings!(m::OnionModel)
     end
 
     #m <= Setting(:forward_looking_observables, [:inflation_expectations_10year])
-    #observables[:inflation_expectations_10year] = Observable(:inflation_expectations_10year, [])
+#observables[:inflation_expectations_10year] = Observable(:inflation_expectations_10year, [])
 
 
 
-    m.observable_mappings = observables
+#=
+m <= Setting(:forward_looking_observables,
+                 vcat([:obs_longinflation, :obs_longrate],
+                      [Symbol("obs_nominalrate$i") for i in 1:n_mon_anticipated_shocks(m)],
+                      haskey(get_settings(m), :add_anticipated_obs_gdp) && get_setting(m, :add_anticipated_obs_gdp) ?
+                      [Symbol("obs_gdp$i") for i in 1:get_setting(m, :n_anticipated_obs_gdp)] : []))
+=#
+
+
+#=
+    ############################################################################
+    # 10. Long term inflation expectations
+    ############################################################################
+
+    longinflation_fwd_transform = function (levels)
+        # FROM: SPF: 10-Year average yr/yr CPI inflation expectations (annual percent)
+        # TO:   FROM, less 0.5
+        # Note: We subtract 0.5 because 0.5% inflation corresponds to
+        #       the assumed long-term rate of 2 percent inflation, but the
+        #       data are measuring expectations of actual inflation.
+
+        annualtoquarter(levels[!,:ASACX10]  .- 0.5) #Should maybe be 0.5/4? Was .-0.5
+
+    end
+
+longinflation_rev_transform = identity         #loggrowthtopct_annualized
+
+observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX],
+                                                 longinflation_fwd_transform, longinflation_rev_transform,
+                                                 "10-year average inflation expectations",
+                                                 "10-year average yr/yr CPI inflation expectations")
+
+=#
+
+
+m.observable_mappings = observables
+
+
+#Leave commented out for now:
+#=
+############################################################################
+    ## Expected FFR from SPD
+    ############################################################################
+    for i = expected_ffr(m)
+        # FROM: SPD median expectations of $i-period-ahead interest rates at a quarterly rate
+        # TO:   Same
+
+        ant_fwd_transform = function (levels)
+            levels[:, Symbol("exp_ant$i")]
+        end
+
+        ant_rev_transform = quartertoannual
+
+        observables[Symbol("obs_exp_nominalrate$i")] = Observable(Symbol("obs_exp_ant$i"), [Symbol("exp_ant$(i)__SPD")],
+                                                                  ant_fwd_transform, ant_rev_transform,
+                                                                  "Anticipated FFR $i",
+                                                                  "$i-period ahead anticipated federal funds rate")
+    end
+=#
 
 end

@@ -31,7 +31,25 @@ function measurement(m::OnionModel{T},
 
 
     ## Demeaned CPI Inflation
-    ZZ[obs[:cpi_inflation], endo[:πc_t]] = 1.
+    #ZZ[obs[:cpi_inflation], endo[:πc_t]] = 1.
+
+    #Demeaned Core Services:
+    core_services_sum = sum(m[:Kgam].value[get_setting(m, :core_service_sectors)])
+    for i in get_setting(m, :core_service_sectors)
+        ZZ[obs[:cpi_core_services], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_services_sum
+    end
+
+
+    #Demeaned Core Goods:
+    core_goods_sum = sum(m[:Kgam].value[get_setting(m, :core_goods_sectors)])
+    for i in get_setting(m, :core_goods_sectors)
+        ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_goods_sum
+    end
+
+
+
+    #Add Keshav Observable here:
+    ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
 
 
     ## Demeaned Sector "i" CPI
@@ -45,6 +63,37 @@ function measurement(m::OnionModel{T},
 
     ## Demeaned FFR
     ZZ[obs[:NominalFFR], endo[:r_t]] = 1.
+
+
+
+
+#=
+    memo = nothing
+    use_fwd_exp_sum = haskey(get_settings(m), :use_forward_expected_sum_memo) && get_setting(m, :use_forward_expected_sum_memo)
+    use_fwd_exp     = haskey(get_settings(m), :use_forward_expectations_memo) && get_setting(m, :use_forward_expectations_memo)
+
+    ## 10 yrs infl exp
+    TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 40, permanent_t;
+                                                 integ_series = integ_series,
+                                                 memo = use_fwd_exp_sum ? memo : nothing)
+    TTT10        = TTT10 ./ 40. # divide by 40 to average across 10 years
+    CCC10        = CCC10 ./ 40.
+    #Long run inflation expectations
+    ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πc_t], :) #Was π_t before.. make sure this is fine.
+    DD[obs[:obs_longinflation]]    = 100*(m[:π_star]-1) + CCC10[endo[:πc_t]]
+=#
+    ## Long Rate
+    #= Leave out long rate for now
+    ZZ[obs[:obs_longrate], :]                 =  view(TTT10, endo[:R_t], :)
+    ZZ[obs[:obs_longrate], endo_new[:e_lr_t]] = 1.0
+    DD[obs[:obs_longrate]]                    = m[:Rstarn] + CCC10[endo[:R_t]]
+    =#
+
+
+
+
+
+
 
     ## Populating QQ Matrix
     # Until this point, all iid shocks are off -- QQs are initialized as the 0 matrix

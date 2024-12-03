@@ -87,6 +87,11 @@ function eqcond(m::OnionModel) #m::OnionModel
     Γ0[eq[:eq_cpi],endo[:πc_t]] = -1.
 
 
+    #Keshav's CPI
+    Γ0[eq[:eq_Kcpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = m[:Kgam].value'  #Replace with Keshav's gamma.
+    Γ0[eq[:eq_Kcpi],endo[:πKc_t]] = -1.
+
+
 
     # Old implementation of N-WPC
 #=
@@ -159,7 +164,8 @@ dcstar_dτ = numer/denom
 #New monetary policy rule:
 Γ0[eq[:eq_monpol],endo[:r_t]] = 1.
 Γ1[eq[:eq_monpol],endo[:r_t]] = m[:ρ_i]
-Γ0[eq[:eq_monpol],endo[:πc_t]] = - (1. -m[:ρ_i])*m[:mp_cpi_infl]
+#Γ0[eq[:eq_monpol],endo[:πc_t]] = - (1. -m[:ρ_i])*m[:mp_cpi_infl]
+Γ0[eq[:eq_monpol],endo[:πKc_t]] = - (1. -m[:ρ_i])*m[:mp_cpi_infl] #Replace with Keshav's CPI measure
 Γ0[eq[:eq_monpol],endo[:πstar]] = (1. -m[:ρ_i])*m[:mp_cpi_infl]
 Γ0[eq[:eq_monpol],endo[:c_t]]  = - (1. -m[:ρ_i])*m[:mp_cons] + m[:mp_habit]
 Γ1[eq[:eq_monpol],endo[:c_t]]  = -m[:mp_habit]

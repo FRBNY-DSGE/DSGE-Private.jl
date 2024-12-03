@@ -17,23 +17,32 @@ function pseudo_measurement(m::OnionModel{T},
 
 
     #Gamma weighted sum of CPI
-    #no_nan_sects = setdiff(1:get_setting(m, :n_sectors), get_setting(m, :nan_sects))
-    #gam_sum = sum(m[:gam].value[no_nan_sects])
-    for i in 1:get_setting(m, :n_sectors) #no_nan_sects
-        ZZ_pseudo[pseudo[:pseudo_CPI], endo[Symbol("π_$i")]] = m[:gam].value[i] #/gam_sum
+    for i in 1:get_setting(m, :n_sectors)
+        ZZ_pseudo[pseudo[:pseudo_CPI], endo[Symbol("π_$i")]] = m[:gam].value[i]
     end
 
+
+
+    for i in 1:get_setting(m, :n_sectors)
+        ZZ_pseudo[pseudo[:pseudo_KCPI], endo[Symbol("π_$i")]] = m[:Kgam].value[i]
+    end
 
     # Core CPI
     core_gam_sum = sum(m[:gam].value[get_setting(m, :core_sectors)])
 
     for i in get_setting(m, :core_sectors)
-        println("------------------------")
-        println(i)
-        println(m[:gam].value[i])
-        println(m[:gam].value[i]/core_gam_sum)
         ZZ_pseudo[pseudo[:core_cpi], endo[Symbol("π_$i")]] = m[:gam].value[i]/core_gam_sum
     end
+
+
+    # Core CPI
+    core_gam_sum = sum(m[:Kgam].value[get_setting(m, :core_sectors)])
+
+    for i in get_setting(m, :core_sectors)
+        ZZ_pseudo[pseudo[:core_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_gam_sum
+    end
+
+
     # Energy CPI
 
 
@@ -41,5 +50,30 @@ function pseudo_measurement(m::OnionModel{T},
 
 
     # Services CPI
+    core_serve_gam_sum = sum(m[:Kgam].value[get_setting(m, :core_service_sectors)])
+
+    for i in get_setting(m, :core_service_sectors)
+        ZZ_pseudo[pseudo[:core_services_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_serve_gam_sum
+    end
+
+    # Core Goods CPI
+    core_good_gam_sum = sum(m[:Kgam].value[get_setting(m, :core_goods_sectors)])
+
+    for i in get_setting(m, :core_goods_sectors)
+        ZZ_pseudo[pseudo[:core_goods_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_good_gam_sum
+    end
+
+
+
+
+
+
+
+     ## Long Run Inflation
+    #=
+    ZZ_pseudo[pseudo[:LongRunInflation],endo[:π_star_t]] = 1.
+    DD_pseudo[pseudo[:LongRunInflation]]                 = 100. *(m[:π_star]-1.)
+    =#
+
     return PseudoMeasurement(ZZ_pseudo, DD_pseudo)
 end

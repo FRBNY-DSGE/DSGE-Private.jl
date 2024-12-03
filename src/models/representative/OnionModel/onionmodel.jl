@@ -86,14 +86,22 @@ function init_settings!(m::OnionModel)
 
 
         energy_sectors = [3,4,5,8,26]
-        food_sectors   = [1,21,67]
-        core_sectors   = setdiff(1:69, vcat(energy_sectors, food_sectors))
+        food_sectors   = [1,21]
+        core_service = 42:69
+        core_goods   = setdiff(1:69, vcat(energy_sectors, vcat(food_sectors, core_service)))
+
+        core = vcat(core_service, core_goods)
+
     end
 
     # Sectoral Discrimination
     m <= Setting(:energy_sectors, energy_sectors)
     m <= Setting(:food_sectors, food_sectors)
-    m <= Setting(:core_sectors, core_sectors)
+    m <= Setting(:core_service_sectors, core_service)
+    m <= Setting(:core_goods_sectors, core_goods)
+    m <= Setting(:core_sectors, core)
+
+
 
     # Relevant for Model Building (sizes of matrices and such)
     m <= Setting(:n_back_states, get_setting(m, :n_sectors)+3)
@@ -403,13 +411,22 @@ m <= parameter(:mp_habit, 0.0, fixed = true,
                description = ":mp_habit: weight of MP rule on habit formation")
 m <= parameter(:σ_r_m, 0.2380, fixed = true,
                description = "Standard deviation of process describing iid monetary policy shock")
-
+#= we don't use for now
 m <= parameter(:ρ_meas_πc, 0.0, fixed = true,
                description = "AR(1) coefficient for CPI inflation measurement error process")
 
 m <= parameter(:σ_meas_πc, 0.0999, fixed = true,
                description = "AR(1) coefficient for CPI inflation measurement error process")
+=#
 
+m <= parameter(:π_star, 0.5, fixed = true,
+               description = "Steady state rate of inflation")
+
+
+Kgam = DataFrame(CSV.File("/data/dsge_data_dir/proc/dsge/briefings/202412/gamma_vs_true_gamma.csv"))
+Kgam_vec = vec(Kgam[!, :true_gamma])
+
+m <= parameter(:Kgam, Kgam_vec)
 
 end
 
@@ -435,7 +452,7 @@ function init_model_indices!(m::OnionModel)
 
     endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
                          [Symbol("π_$i") for i in 1:n]; #sectoral inflation
-                         [:r_t, :c_t, :πc_t, :πw_t, :w_t] ; #interest rate, cons, CPI, wage Infl, wages
+                         [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
                          [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t];
@@ -451,7 +468,7 @@ function init_model_indices!(m::OnionModel)
                               [Symbol("eq_srec_$i") for i in 1:n];
                               [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
                               [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
-                              [:eq_Ect, :eq_Eπct, :eq_Eπwt];
+                              [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
                               [Symbol("eq_Eπ_$i") for i in 1:n];
                               [Symbol("eq_mkup_iid_$(i)") for i in 1:n];
                               [Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
