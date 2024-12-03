@@ -2,6 +2,14 @@ function init_observable_mappings!(m::OnionModel)
     observables = OrderedDict{Symbol, Observable}()
     population_mnemonic = get(get_setting(m, :population_mnemonic))
 
+    demean = function (levels)
+        cons = all(ismissing.(levels)) ? missing : mean(skipmissing(levels))
+        for i in 1:length(levels)
+            levels[i] = ismissing(levels[i]) ? levels[i] : levels[i] - cons
+        end
+        levels
+    end
+
     consumption_fwd_transform = function (levels)
         # FROM: Nominal consumption
         # TO:   Real consumption, approximate quarter-to-quarter percent change,
@@ -9,7 +17,7 @@ function init_observable_mappings!(m::OnionModel)
 
         levels[!,:temp] = percapita(m, :PCE, levels)
         cons = 1000 * nominal_to_real(:temp, levels)
-        oneqtrpctchange(cons)
+        demean(oneqtrpctchange(cons))
     end
 
     consumption_rev_transform = loggrowthtopct_annualized_percapita
@@ -26,7 +34,7 @@ function init_observable_mappings!(m::OnionModel)
             # FROM: Nominal compensation per hour (:COMPNFB from FRED)
             # TO: quarter to quarter percent change of real compensation (using GDP deflator)
 
-            oneqtrpctchange(nominal_to_real(:COMPNFB, levels))
+            demean(oneqtrpctchange(nominal_to_real(:COMPNFB, levels)))
         end
 
     wages_rev_transform = loggrowthtopct_annualized
@@ -41,7 +49,7 @@ function init_observable_mappings!(m::OnionModel)
 
 
     cpi_fwd_transform = function(levels)
-        oneqtrpctchange(levels[!,:CPIAUCSL])
+        demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
     end
 
     #cpi_rev_transform = loggrowthtopct_annualized
@@ -59,7 +67,7 @@ function init_observable_mappings!(m::OnionModel)
         #       quarterly frequency at an annual rate)
         # TO:   Nominal effective fed funds rate, at a quarterly rate
 
-        annualtoquarter(levels[!,:DFF])
+        demean(annualtoquarter(levels[!,:DFF]))
     end
 
     nominalrate_rev_transform = quartertoannual
@@ -79,7 +87,7 @@ function init_observable_mappings!(m::OnionModel)
     for i in 1:get_setting(m, :n_sectors)
 
         cpisector_fwd_transform = function(levels)
-            100 * levels[!, Symbol("$(inflation_sector_names[i])")]
+            demean(100 * levels[!, Symbol("$(inflation_sector_names[i])")])
         end
 
         if get_setting(m, :data_quarter_or_month) == :quarter
