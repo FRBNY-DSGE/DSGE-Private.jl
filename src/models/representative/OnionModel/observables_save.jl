@@ -56,14 +56,14 @@ function init_observable_mappings!(m::OnionModel)
                                                 "Demeaned Real Wage Growth",
                                                 "Demeaned Real Wage Growth")
 
-#=
+
     cpi_fwd_transform = function(levels)
         demean2(oneqtrpctchange(levels[!,:CPIAUCSL]))
     end
 
     #cpi_rev_transform = loggrowthtopct_annualized
     cpi_rev_transform = identity
-
+#=
     # CPI Inflation -
     observables[:cpi_inflation] = Observable(:cpi_inflation, [:CPIAUCSL__FRED],
                                    cpi_fwd_transform,
@@ -96,7 +96,7 @@ function init_observable_mappings!(m::OnionModel)
                                    "CPI Core Goods",
                                               "CPI Core Goods")
 
-
+#=
     #Energy
     energy_cpi_fwd_transform = function(levels)
         demean2(oneqtrpctchange(levels[!, :CPIENGSL]))
@@ -110,7 +110,7 @@ function init_observable_mappings!(m::OnionModel)
                                           "CPI Energy",
                                           "CPI Energy")
 
-
+=#
 
 
     nominalrate_fwd_transform = function (levels)
@@ -131,7 +131,7 @@ function init_observable_mappings!(m::OnionModel)
                                    "Demeaned Nominal FFR",
                                    "Demeaned Nominal FFR")
 
-#=
+
     # CPI Sectoral Inflation
     inflation_sector_names = get_setting(m, :sector_names)
 
@@ -157,7 +157,7 @@ function init_observable_mappings!(m::OnionModel)
                                                                                         "CPI Sector $(i) Inflation, $(inflation_sector_names[i])")
         end
     end
-=#
+
     #m <= Setting(:forward_looking_observables, [:inflation_expectations_10year])
 #observables[:inflation_expectations_10year] = Observable(:inflation_expectations_10year, [])
 

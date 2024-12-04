@@ -65,53 +65,11 @@ function eqcond(m::OnionModel) #m::OnionModel
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("s_1")]:endo[Symbol("s_$n")]]  = - (inpshare - eye(n))
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$n")]]    = - m[:bet]*diagm(m[:invkap].value)
     #Addl term for markup stochastic trend
-    #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_trend_1")]:endo[Symbol("mkup_trend_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
+    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_trend_1")]:endo[Symbol("mkup_trend_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
     #IID markup shock shock
     #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = - diagm(m[:invkap].value)
 
-
-
-
-
-
-    #Need to be careful here. I want to define this such that the invkap is 0 for sectors not in the relevant category.
-    #e.g. if sector 50 is a service, the value of Γ0[eq[:eq_pc_50], endo[:μ_com_cgood]] =  Γ0[eq[:eq_pc_50], endo[:μ_com_energy]] = 0.
-    #However, Γ0[eq[:eq_pc_50], endo[:μ_com_cservice]] = -,[:invkap].value[50]
-
-    #Leaving common shock for now
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - m[:invkap].value
-
-
-    for i in get_setting(m, :core_goods_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_goods]] = - m[:invkap].value[i]
-    end
-
-    for i in get_setting(m, :core_service_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_services]] = - m[:invkap].value[i]
-    end
-
-    for i in get_setting(m, :energy_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_energy]] = - m[:invkap].value[i]
-    end
-
-
-    #Define processes for each markup:
-    Γ0[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = 1.
-    Γ1[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = m[:ρ_μ_trend].value[1]
-    Ψ[eq[:eq_μ_com_goods], exo[:μ_com_goods_sh]] = 1.
-
-    Γ0[eq[:eq_μ_com_services], endo[:μ_com_services]] = 1.
-    Γ1[eq[:eq_μ_com_services], endo[:μ_com_services]] = m[:ρ_μ_trend].value[1]
-    Ψ[eq[:eq_μ_com_services], exo[:μ_com_services_sh]] = 1.
-
-    Γ0[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = 1.
-    Γ1[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = m[:ρ_μ_trend].value[1]
-    Ψ[eq[:eq_μ_com_energy], exo[:μ_com_energy_sh]] = 1.
-
-    #Common markup shock process
-    Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
-    Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_trend].value[1]
-    Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
 
 
 
@@ -285,8 +243,6 @@ dcstar_dτ = numer/denom
 
 #Markup stochastic trend:
 #μ^i_t = ρ_̅μ^i ̅μ^i_{t-1} + σ_̅μ^i ε_t^{̅μ^i}
-
-#=
 Γ0[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = eye(n)
 Γ1[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], endo[:mkup_trend_1]: endo[Symbol("mkup_trend_$(n)")]] = diagm(m[:ρ_μ_trend].value)
 
@@ -294,9 +250,12 @@ dcstar_dτ = numer/denom
 @show m[:ρ_μ_trend].value
 
 Ψ[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], exo[:μ_trend_1_sh]:exo[Symbol("μ_trend_$(n)_sh")]] = eye(n)
-=#
 
 
+#Common markup shock process
+Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
+Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_trend].value[1]
+Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
 
 
 

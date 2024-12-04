@@ -48,19 +48,19 @@ function measurement(m::OnionModel{T},
         ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_goods_sum
     end
 
-
+#=
     #Demeaned Energy
     energy_sum = sum(m[:Kgam].value[get_setting(m, :energy_sectors)])
     for i in get_setting(m, :energy_sectors)
         ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / energy_sum
     end
-
+=#
 
 
     #Add Keshav Observable here:
     #ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
 
-#=
+
     ## Demeaned Sector "i" CPI
     inflation_sector_names = get_setting(m, :sector_names)
     for i in 1:get_setting(m, :n_sectors)
@@ -69,7 +69,6 @@ function measurement(m::OnionModel{T},
             ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = NaN
         end
     end
-=#
 
     ## Demeaned FFR
     ZZ[obs[:NominalFFR], endo[:r_t]] = 1.
@@ -116,20 +115,6 @@ function measurement(m::OnionModel{T},
 
 
     QQ[exo[:τ_sh], exo[:τ_sh]] = 0.0 #This is just here to be explicit. Was 1.0 to replciate Kanzig IRFs
-
-
-## Populating aggregate shocks ####
-
-#QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2 * 0.0
-#Monetary policy
-QQ[exo[:mp_sh], exo[:mp_sh]] = m[:σ_r_m]^2
-#TFP
-QQ[exo[:a_sh], exo[:a_sh]] = m[:σ_a_t]^2
-#Discount rate
-QQ[exo[:b_sh], exo[:b_sh]] = m[:σ_b_t]^2
-#Wage markup
-QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
-
 
 
     if get_setting(m, :marco_test_num) == 0
@@ -179,53 +164,17 @@ QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
         #Same as 5, but ρ_μ_trend markup is set to DSGE value, not 0.999 (0.88ish)
         #m[:ρ_μ_trend] = m[:ρ_μ]
 
-        #QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2  #0.0
+        QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2  #0.0
         QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = diagm(get_setting(m,:std_overrides)) * m[:σ_μ]^2
         #QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = eye(_n)* m[:σ_μ]^2
 
-
-
-
-        #Populate common and categorical shocks
         QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ]^2
 
 
-
         #QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] .= 0.0
         for i in 1:get_setting(m, :n_sectors)
             ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = 1.0
         end
-
-
-
-    elseif get_setting(m, :marco_test_num) == 66
-        #Same as 5, but ρ_μ_trend markup is set to DSGE value, not 0.999 (0.88ish)
-        #m[:ρ_μ_trend] = m[:ρ_μ]
-        #No π⋆
-
-        #QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2  #0.0
-        #QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = diagm(get_setting(m,:std_overrides)) * m[:σ_μ]^2
-        #QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = eye(_n)* m[:σ_μ]^2
-        #QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] .= 0.0
-
-
-
-        #Populate common and categorical shocks
-        QQ[exo[:μ_com_sh], exo[:μ_com_sh]] =  0.0  #m[:σ_μ]^2
-        QQ[exo[:μ_com_goods_sh], exo[:μ_com_goods_sh]] = m[:σ_μ]^2
-        QQ[exo[:μ_com_services_sh], exo[:μ_com_services_sh]] = m[:σ_μ]^2
-        QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
-
-        #Kill prodcutivity:
-        QQ[exo[:a_sh], exo[:a_sh]] = 0.0
-
-
-#= #No observables in sectors
-        for i in 1:get_setting(m, :n_sectors)
-            ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = 1.0
-        end
-=#
-
 
 
     elseif get_setting(m, :marco_test_num) == 7
@@ -305,6 +254,14 @@ QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ
             ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = 1.0
         end
     end
+
+## Populating aggregate shocks ####
+
+    #QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2 * 0.0
+    QQ[exo[:mp_sh], exo[:mp_sh]] = m[:σ_r_m]^2
+    QQ[exo[:a_sh], exo[:a_sh]] = m[:σ_a_t]^2
+    QQ[exo[:b_sh], exo[:b_sh]] = m[:σ_b_t]^2
+    QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
 
 
     ## Demeaned 10Y Inflation Expectations

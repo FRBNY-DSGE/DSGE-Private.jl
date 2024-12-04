@@ -31,7 +31,7 @@ function pseudo_measurement(m::OnionModel{T},
     core_gam_sum = sum(m[:gam].value[get_setting(m, :core_sectors)])
 
     for i in get_setting(m, :core_sectors)
-        ZZ_pseudo[pseudo[:Pseudo_core_cpi], endo[Symbol("π_$i")]] = m[:gam].value[i]/core_gam_sum
+        ZZ_pseudo[pseudo[:core_cpi], endo[Symbol("π_$i")]] = m[:gam].value[i]/core_gam_sum
     end
 
 
@@ -39,7 +39,7 @@ function pseudo_measurement(m::OnionModel{T},
     core_gam_sum = sum(m[:Kgam].value[get_setting(m, :core_sectors)])
 
     for i in get_setting(m, :core_sectors)
-        ZZ_pseudo[pseudo[:Pseudo_core_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_gam_sum
+        ZZ_pseudo[pseudo[:core_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_gam_sum
     end
 
 
@@ -53,14 +53,14 @@ function pseudo_measurement(m::OnionModel{T},
     core_serve_gam_sum = sum(m[:Kgam].value[get_setting(m, :core_service_sectors)])
 
     for i in get_setting(m, :core_service_sectors)
-        ZZ_pseudo[pseudo[:Pseudo_core_services_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_serve_gam_sum
+        ZZ_pseudo[pseudo[:core_services_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_serve_gam_sum
     end
 
     # Core Goods CPI
     core_good_gam_sum = sum(m[:Kgam].value[get_setting(m, :core_goods_sectors)])
 
     for i in get_setting(m, :core_goods_sectors)
-        ZZ_pseudo[pseudo[:Pseudo_core_goods_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_good_gam_sum
+        ZZ_pseudo[pseudo[:core_goods_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_good_gam_sum
     end
 
 
