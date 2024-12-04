@@ -56,7 +56,7 @@ function init_observable_mappings!(m::OnionModel)
                                                 "Demeaned Real Wage Growth",
                                                 "Demeaned Real Wage Growth")
 
-#=
+if get_setting(m, :marco_test_num) == 69
     cpi_fwd_transform = function(levels)
         demean2(oneqtrpctchange(levels[!,:CPIAUCSL]))
     end
@@ -70,8 +70,10 @@ function init_observable_mappings!(m::OnionModel)
                                    cpi_rev_transform,
                                    "CPI Inflation",
                                              "CPI Inflation")
+end
 
-=#
+
+
     #Core servies
      core_service_cpi_fwd_transform = function(levels)
         demean2(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
@@ -129,7 +131,43 @@ function init_observable_mappings!(m::OnionModel)
                                    nominalrate_fwd_transform,
                                    nominalrate_rev_transform,
                                    "Demeaned Nominal FFR",
-                                   "Demeaned Nominal FFR")
+                                          "Demeaned Nominal FFR")
+
+
+############################################################################
+#Fernald TFP
+############################################################################
+if get_setting(m, :marco_test_num) == 68
+    tfp_rev_transform = quartertoannual
+    tfp_fwd_transform =  function (levels)
+        # FROM: Fernald's unadjusted TFP series
+        # TO:   De-meaned unadjusted TFP series, adjusted by Fernald's estimated alpha
+        # Note: We only want to calculate the mean of unadjusted/adjusted TFP over the
+        #       periods between date_presample_start(m) - 1 and
+        #       date_mainsample_end(m), though we may end up transforming
+        #       additional periods of data.
+
+        start_date = Dates.lastdayofquarter(date_presample_start(m) - Dates.Month(3))
+        end_date   = date_mainsample_end(m)
+        date_range = start_date .<= levels[1:end, :date] .<= end_date
+        tfp_unadj_inrange = levels[date_range, :TFPKQ]
+
+        tfp_unadj      = levels[!,:TFPKQ]
+        tfp_unadj_inrange_nonmissing = tfp_unadj_inrange[.!ismissing.(tfp_unadj_inrange)]
+        tfp_unadj_inrange_nonmissing = tfp_unadj_inrange_nonmissing[.!isnan.(tfp_unadj_inrange_nonmissing)]
+        tfp_unadj_mean = isempty(tfp_unadj_inrange_nonmissing) ? missing : mean(tfp_unadj_inrange_nonmissing)
+        (tfp_unadj .- tfp_unadj_mean) ./ (4*(1 .- levels[!,:TFPJQ]))
+    end
+
+    observables[:obs_tfp] = Observable(:obs_tfp, [:TFPKQ__DLX, :TFPJQ__DLX],
+                                       tfp_fwd_transform, tfp_rev_transform,
+                                       "Total Factor Productivity Growth (Fernald)",
+                                       "Fernald's TFP, adjusted by Fernald's estimated alpha")
+end
+
+
+
+
 
 #=
     # CPI Sectoral Inflation

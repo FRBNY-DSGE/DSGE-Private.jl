@@ -76,22 +76,26 @@ function eqcond(m::OnionModel) #m::OnionModel
 
     #Need to be careful here. I want to define this such that the invkap is 0 for sectors not in the relevant category.
     #e.g. if sector 50 is a service, the value of Γ0[eq[:eq_pc_50], endo[:μ_com_cgood]] =  Γ0[eq[:eq_pc_50], endo[:μ_com_energy]] = 0.
-    #However, Γ0[eq[:eq_pc_50], endo[:μ_com_cservice]] = -,[:invkap].value[50]
+    #However, Γ0[eq[:eq_pc_50], endo[:μ_com_cservice]] = -m[:invkap].value[50]
+
+    #If the test number is 69, we want to use a vector of all 200s for inv slopes of sectoral phillips curves. Otherwise, use the model values.
+    invkap_value = get_setting(m, :marco_test_num) == 69 ? 200.0 * ones(length(m[:invkap].value)) : m[:invkap].value
+    @show invkap_value[1]
 
     #Leaving common shock for now
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - m[:invkap].value
+    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value     # - m[:invkap].value
 
 
     for i in get_setting(m, :core_goods_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_goods]] = - m[:invkap].value[i]
+        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
     end
 
     for i in get_setting(m, :core_service_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_services]] = - m[:invkap].value[i]
+        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_services]] = - invkap_value[i]    #-m[:invkap].value[i]
     end
 
     for i in get_setting(m, :energy_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_energy]] = - m[:invkap].value[i]
+        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_energy]] = -invkap_value[i]  #-m[:invkap].value[i]
     end
 
 
@@ -112,6 +116,8 @@ function eqcond(m::OnionModel) #m::OnionModel
     Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
     Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
+
+
 
 
 

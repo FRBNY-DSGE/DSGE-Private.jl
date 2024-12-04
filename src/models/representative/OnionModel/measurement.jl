@@ -57,6 +57,7 @@ function measurement(m::OnionModel{T},
 
 
 
+
     #Add Keshav Observable here:
     #ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
 
@@ -200,7 +201,7 @@ QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
 
     elseif get_setting(m, :marco_test_num) == 66
         #Same as 5, but ρ_μ_trend markup is set to DSGE value, not 0.999 (0.88ish)
-        #m[:ρ_μ_trend] = m[:ρ_μ]
+        #m[:ρ_μ_trend] = 0.95 (was 0.8827)
         #No π⋆
 
         #QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2  #0.0
@@ -211,10 +212,11 @@ QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
 
 
         #Populate common and categorical shocks
-        QQ[exo[:μ_com_sh], exo[:μ_com_sh]] =  0.0  #m[:σ_μ]^2
+        QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #m[:σ_μ]^2
         QQ[exo[:μ_com_goods_sh], exo[:μ_com_goods_sh]] = m[:σ_μ]^2
         QQ[exo[:μ_com_services_sh], exo[:μ_com_services_sh]] = m[:σ_μ]^2
         QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
+
 
         #Kill prodcutivity:
         QQ[exo[:a_sh], exo[:a_sh]] = 0.0
@@ -224,7 +226,60 @@ QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
         for i in 1:get_setting(m, :n_sectors)
             ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = 1.0
         end
-=#
+        =#
+
+
+
+        elseif get_setting(m, :marco_test_num) == 68
+        #Same as 5, but ρ_μ_trend markup is set to DSGE value, not 0.999 (0.88ish)
+        #m[:ρ_μ_trend] = 0.95 (was 0.8827)
+        #No π⋆
+
+        #QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2  #0.0
+        #QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = diagm(get_setting(m,:std_overrides)) * m[:σ_μ]^2
+        #QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = eye(_n)* m[:σ_μ]^2
+        #QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] .= 0.0
+
+
+
+        #Populate common and categorical shocks
+        QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #m[:σ_μ]^2
+        QQ[exo[:μ_com_goods_sh], exo[:μ_com_goods_sh]] = m[:σ_μ]^2
+        QQ[exo[:μ_com_services_sh], exo[:μ_com_services_sh]] = m[:σ_μ]^2
+        QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
+
+
+        #Bring productivity shocks back
+
+# Include tfp measurement
+ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
+
+
+
+
+        elseif get_setting(m, :marco_test_num) == 69
+        #Same as 5, but ρ_μ_trend markup is set to DSGE value, not 0.999 (0.88ish)
+        #m[:ρ_μ_trend] =  0.8827
+        #No π⋆
+
+        #QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2  #0.0
+        #QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = diagm(get_setting(m,:std_overrides)) * m[:σ_μ]^2
+        #QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")]] = eye(_n)* m[:σ_μ]^2
+        #QQ[exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")], exo[Symbol("μ_iid_1_sh")]:exo[Symbol("μ_iid_$(_n)_sh")]] .= 0.0
+
+
+
+        #Populate common and categorical shocks
+QQ[exo[:μ_com_sh], exo[:μ_com_sh]] =  m[:σ_μ]^2
+QQ[exo[:μ_com_goods_sh], exo[:μ_com_goods_sh]] = m[:σ_μ]^2
+QQ[exo[:μ_com_services_sh], exo[:μ_com_services_sh]] = m[:σ_μ]^2
+QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
+
+#Now, add back observable CPI
+ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
+
+        #Kill prodcutivity:
+        QQ[exo[:a_sh], exo[:a_sh]] = 0.0
 
 
 

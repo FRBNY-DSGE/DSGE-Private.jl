@@ -369,7 +369,7 @@ m <= parameter(:ei, vec(paras["ei"]))
 m <= parameter(:ς_tilde, vec(paras["varsig_tilde"]))
 if get_setting(m, :marco_test_num) == 5 || get_setting(m, :marco_test_num) == 10
     m <= parameter(:ρ_μ_trend, vec(0.0 * ones(get_setting(m, :n_sectors))))
-elseif get_setting(m, :marco_test_num) == 6 || get_setting(m, :marco_test_num) == 66
+elseif get_setting(m, :marco_test_num) == 6 || get_setting(m, :marco_test_num) == 66 || get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 69
     #setting m[:ρ_μ_trend] = m[:ρ_μ] (from DSGE model)
     m <= parameter(:ρ_μ_trend, vec(0.8827 * ones(get_setting(m, :n_sectors)))) #0.8827
 elseif get_setting(m, :marco_test_num) == 8 || get_setting(m, :marco_test_num) == 11
@@ -538,10 +538,10 @@ function shock_groupings(m::OnionModel)
 
 
     core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_com_goods_sh] , RGB(0.0, 0.6, 0.1))    #  RGB(0.1, 0.1, 0.8))
-    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_com_services_sh], RGB(0.4,0.6,0.0))   #RGB(0.3, 0.8, 0.3))
-    energy_mkp = ShockGroup("mkp_energy", [:μ_com_energy_sh], RGB(0.0, 0.6, 0.5))   #RGB(0.0, 0.8, 0.5))
+    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_com_services_sh], RGB(0.6,0.6,0.0))   #RGB(0.3, 0.8, 0.3))
+    energy_mkp = ShockGroup("mkp_energy", [:μ_com_energy_sh], RGB(0.0, 0.6, 0.6))   #RGB(0.0, 0.8, 0.5))
     #food_trend_mkp   = ShockGroup("mkp_trend_food", food_trends, RGB(0.5, 0.8, 0.6))
-    #common_mkup = ShockGroup("common_mkp", [:μ_com_sh], RGB(0.0, 0.2, 0.5))
+    common_mkup = ShockGroup("common_mkp", [:μ_com_sh], RGB(0.0, 0.2, 0.03))  #RGB(0.0, 0.2, 0.5))
 
     #=
 
@@ -565,8 +565,13 @@ function shock_groupings(m::OnionModel)
     #tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
     #pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
     pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
-    #tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
+    tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
+
+
+    if get_setting(m, :marco_test_num) == 68
+        return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
+    else
 
     #[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
     #return [pmu_trend, pmu_iid,wage_pmu, tax, pis, pol, tfp, bet]
@@ -574,5 +579,6 @@ function shock_groupings(m::OnionModel)
     #return [wage_pmu, pol, tfp, bet]
     #return [core_goods_trend_mkp, core_services_trend_mkp, energy_trend_mkp, food_trend_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
     #return [core_goods_mkp, core_services_mkp, energy_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
-    return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet]
+        return [common_mkup, core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet]
+    end
 end
