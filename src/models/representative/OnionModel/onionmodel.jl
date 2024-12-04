@@ -349,9 +349,15 @@ m <= parameter(:oil, paras["oil"], fixed = true,
 m <= Setting(:ω_tilde, paras["ω_tilde"])
 m <= Setting(:ωE_tilde, paras["ωE_tilde"])
 m <= Setting(:ωN_tilde, paras["ωN_tilde"])
-m <= Setting(:inpshare, paras["inpshare"])
 
-m <= parameter(:labshare, vec(paras["labshare"]))
+if get_setting(m, :marco_test_num) == 71
+    #In spec 71, we 0 out the I/O matrix
+    m <= Setting(:inpshare, (paras["inpshare"] .* 0.0))
+    m <= parameter(:labshare, vec(ones(length(paras["labshare"]))))
+else
+    m <= Setting(:inpshare, paras["inpshare"])
+    m <= parameter(:labshare, vec(paras["labshare"]))
+end
 m <= parameter(:taxshare, vec(paras["taxshare"]))
 m <= parameter(:totintshare, vec(paras["totintshare"]))
 m <= parameter(:int_totout, vec(paras["ind_totout"]))
@@ -369,7 +375,7 @@ m <= parameter(:ei, vec(paras["ei"]))
 m <= parameter(:ς_tilde, vec(paras["varsig_tilde"]))
 if get_setting(m, :marco_test_num) == 5 || get_setting(m, :marco_test_num) == 10
     m <= parameter(:ρ_μ_trend, vec(0.0 * ones(get_setting(m, :n_sectors))))
-elseif get_setting(m, :marco_test_num) == 6 || get_setting(m, :marco_test_num) == 66 || get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 69
+elseif get_setting(m, :marco_test_num) == 6 || get_setting(m, :marco_test_num) == 66 || get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 69 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
     #setting m[:ρ_μ_trend] = m[:ρ_μ] (from DSGE model)
     m <= parameter(:ρ_μ_trend, vec(0.8827 * ones(get_setting(m, :n_sectors)))) #0.8827
 elseif get_setting(m, :marco_test_num) == 8 || get_setting(m, :marco_test_num) == 11
@@ -563,7 +569,7 @@ function shock_groupings(m::OnionModel)
     #pmu_iid = ShockGroup("mkp_iid", [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.5, 0.5, 0.0))
     wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
     #tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
-    #pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
+    pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
     pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
     tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
@@ -571,6 +577,8 @@ function shock_groupings(m::OnionModel)
 
     if get_setting(m, :marco_test_num) == 68
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
+    elseif get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
+        return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
     else
 
     #[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]

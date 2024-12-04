@@ -29,7 +29,7 @@ function init_observable_mappings!(m::OnionModel)
         demean(oneqtrpctchange(cons))
     end
 
-    consumption_rev_transform = loggrowthtopct_annualized_percapita
+    consumption_rev_transform = identity     # loggrowthtopct_annualized_percapita
 
     # Consumption - this is currently quarterly, we are still undecided between quarterly and monthly
     observables[:consumption_growth] = Observable(:consumption_growth,
@@ -123,7 +123,7 @@ end
         demean(annualtoquarter(levels[!,:DFF]))
     end
 
-    nominalrate_rev_transform = quartertoannual
+    nominalrate_rev_transform = identity #quartertoannual
 
     # FFR - this is currently quarterly, we are still undecided between quarterly and monthly
     observables[:NominalFFR] = Observable(:NominalFFR,
@@ -137,8 +137,8 @@ end
 ############################################################################
 #Fernald TFP
 ############################################################################
-if get_setting(m, :marco_test_num) == 68
-    tfp_rev_transform = quartertoannual
+if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
+    tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
         # TO:   De-meaned unadjusted TFP series, adjusted by Fernald's estimated alpha
@@ -210,7 +210,7 @@ m <= Setting(:forward_looking_observables,
 =#
 
 
-#=
+if get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################
@@ -222,9 +222,11 @@ m <= Setting(:forward_looking_observables,
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
 
-        annualtoquarter(levels[!,:ASACX10]  .- 0.5) #Should maybe be 0.5/4? Was .-0.5
+        demean2(annualtoquarter(levels[!,:ASACX10]))
 
     end
+
+#Demean here by subtracting 2.3 as well
 
 longinflation_rev_transform = identity         #loggrowthtopct_annualized
 
@@ -233,8 +235,8 @@ observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX]
                                                  "10-year average inflation expectations",
                                                  "10-year average yr/yr CPI inflation expectations")
 
-=#
 
+end
 
 m.observable_mappings = observables
 

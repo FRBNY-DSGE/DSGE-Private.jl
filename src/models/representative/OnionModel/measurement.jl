@@ -78,31 +78,6 @@ function measurement(m::OnionModel{T},
 
 
 
-#=
-    memo = nothing
-    use_fwd_exp_sum = haskey(get_settings(m), :use_forward_expected_sum_memo) && get_setting(m, :use_forward_expected_sum_memo)
-    use_fwd_exp     = haskey(get_settings(m), :use_forward_expectations_memo) && get_setting(m, :use_forward_expectations_memo)
-
-    ## 10 yrs infl exp
-    TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 40, permanent_t;
-                                                 integ_series = integ_series,
-                                                 memo = use_fwd_exp_sum ? memo : nothing)
-    TTT10        = TTT10 ./ 40. # divide by 40 to average across 10 years
-    CCC10        = CCC10 ./ 40.
-    #Long run inflation expectations
-    ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πc_t], :) #Was π_t before.. make sure this is fine.
-    DD[obs[:obs_longinflation]]    = 100*(m[:π_star]-1) + CCC10[endo[:πc_t]]
-=#
-    ## Long Rate
-    #= Leave out long rate for now
-    ZZ[obs[:obs_longrate], :]                 =  view(TTT10, endo[:R_t], :)
-    ZZ[obs[:obs_longrate], endo_new[:e_lr_t]] = 1.0
-    DD[obs[:obs_longrate]]                    = m[:Rstarn] + CCC10[endo[:R_t]]
-    =#
-
-
-
-
 
 
 
@@ -278,13 +253,92 @@ QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
 #Now, add back observable CPI
 ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
 
-        #Kill prodcutivity:
-        QQ[exo[:a_sh], exo[:a_sh]] = 0.0
+#Kill prodcutivity:
+QQ[exo[:a_sh], exo[:a_sh]] = 0.0
 
 
 
-    elseif get_setting(m, :marco_test_num) == 7
-        #Getting closer to the initial model. We have iid and trend markup shocks both on, ρ_μ_trend back to 0.999 for trend.
+elseif get_setting(m, :marco_test_num) == 70
+#Same as 5, but ρ_μ_trend markup is set to DSGE value, not 0.999 (0.88ish)
+#m[:ρ_μ_trend] = 0.95 (was 0.8827)
+#π⋆ ON, long run inflation expectations are on (minus 2.3, divided by 4)
+
+
+
+#Populate common and categorical shocks
+QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
+QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #m[:σ_μ]^2
+QQ[exo[:μ_com_goods_sh], exo[:μ_com_goods_sh]] = m[:σ_μ]^2
+QQ[exo[:μ_com_services_sh], exo[:μ_com_services_sh]] = m[:σ_μ]^2
+QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
+
+
+#Bring productivity shocks back
+
+# Include tfp measurement
+ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
+
+
+#Include long run inflation expectations: Need to calculate 40 quarter ahead inflation
+TTTs = Matrix{T}[]
+CCCs = Matrix{T}[]
+memo = nothing
+permanent_t = 1 #Might be 0 -- need to double check
+#TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs,1, 40;
+ #                                            memo = nothing)
+#Shortcut to avoid calling the function:
+TTT10 = (I - TTT) \ (TTT - TTT^40)
+@show all(CCC .≈ 0.)
+CCC10 = CCC
+
+TTT10        = TTT10 ./ 40. # divide by 40 to average across 10 years
+CCC10        = CCC10 ./ 40.
+
+ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
+#Leave out the constant:
+#DD[obs[:obs_longinflation]]    = 100*(m[:π_star]-1) + CCC10[endo[:π_t]]
+
+
+
+
+elseif get_setting(m, :marco_test_num) == 71
+#Same as 70, but with no I/O matrices -- this is done in the model set up.
+
+#Populate common and categorical shocks
+QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
+QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #m[:σ_μ]^2
+QQ[exo[:μ_com_goods_sh], exo[:μ_com_goods_sh]] = m[:σ_μ]^2
+QQ[exo[:μ_com_services_sh], exo[:μ_com_services_sh]] = m[:σ_μ]^2
+QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
+
+
+#Bring productivity shocks back
+
+# Include tfp measurement
+ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
+
+
+#Include long run inflation expectations: Need to calculate 40 quarter ahead inflation
+TTTs = Matrix{T}[]
+CCCs = Matrix{T}[]
+memo = nothing
+permanent_t = 1 #Might be 0 -- need to double check
+#TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs,1, 40;
+ #                                            memo = nothing)
+#Shortcut to avoid calling the function:
+TTT10 = (I - TTT) \ (TTT - TTT^40)
+@show all(CCC .≈ 0.)
+CCC10 = CCC
+
+TTT10        = TTT10 ./ 40. # divide by 40 to average across 10 years
+CCC10        = CCC10 ./ 40.
+
+ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
+
+
+
+elseif get_setting(m, :marco_test_num) == 7
+#Getting closer to the initial model. We have iid and trend markup shocks both on, ρ_μ_trend back to 0.999 for trend.
 
         #m[ρ_μ_trend] = 0.999 , set where model is initialized
 
@@ -361,10 +415,6 @@ QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ
         end
     end
 
-
-    ## Demeaned 10Y Inflation Expectations
-    # TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, 40)
-    # ZZ[obs[:inflation_expectations_10year], :] = view(TTT10, endo[:li], :)
 
     return Measurement(ZZ, DD, QQ, EE)
 end
