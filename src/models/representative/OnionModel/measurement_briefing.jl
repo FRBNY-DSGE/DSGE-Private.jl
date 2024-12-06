@@ -206,19 +206,12 @@ function measurement(m::OnionModel{T},
         #No π⋆
         #MAIN MODEL FOR THE BRIEFING!!!
 
-#No common shock and categorical shocks
-
-
-#QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #Explicit here for clarity
-
-for i in 1:length(get_setting(m, :subgroup_names))
-    QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
-end
-#=
+        #No common shock and categorical shocks
+        QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #Explicit here for clarity
         QQ[exo[:μ_com_goods_sh], exo[:μ_com_goods_sh]] = m[:σ_μ]^2
         QQ[exo[:μ_com_services_sh], exo[:μ_com_services_sh]] = m[:σ_μ]^2
         QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
-=#
+
 
 #Bring productivity shocks back (Done at the top already)
 
@@ -227,9 +220,8 @@ ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
 
 
 #No observables in individual sectors, but in categorical sectors
-#ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 0.0
+ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 0.0
 
-#=
 #Demeaned Core Services:
 core_services_sum = sum(m[:Kgam].value[get_setting(m, :core_service_sectors)])
 for i in get_setting(m, :core_service_sectors)
@@ -248,12 +240,6 @@ end
 energy_sum = sum(m[:Kgam].value[get_setting(m, :energy_sectors)])
 for i in get_setting(m, :energy_sectors)
     ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / energy_sum
-end
-=#
-
-for (k,v) in get_setting(m, :subgroup_to_sector)
-    sg_sum = sum(m[:Kgam].value[v])
-    ZZ[obs[k], [endo[Symbol("π_$i")] for i in v]] = [m[:Kgam].value[i] for i in v] ./ sg_sum
 end
 
 
@@ -410,34 +396,6 @@ energy_sum = sum(m[:Kgam].value[get_setting(m, :energy_sectors)])
 for i in get_setting(m, :energy_sectors)
     ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / energy_sum
 end
-
-
-
-elseif get_setting(m, :marco_test_sum) == 100
-# Running estimation! n subgroups, (3 for now), pi star and LR inflation expecatations observed, obs tfp
-for i in 1:length(get_setting(m, :subgroup_names))
-    QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
-end
-QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
-
-
-# Include tfp measurement
-ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
-
-#Include long run inflation expectations: Need to calculate 40 quarter ahead inflation
-TTTs = Matrix{T}[]
-CCCs = Matrix{T}[]
-memo = nothing
-permanent_t = 1
-TTT10 = (I - TTT) \ (TTT - TTT^40)
-#Confirm all of my Cs are 0
-@show all(CCC .≈ 0.)
-CCC10 = CCC
-
-TTT10        = TTT10 ./ 40.
-CCC10        = CCC10 ./ 40.
-
-ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
 
 
 

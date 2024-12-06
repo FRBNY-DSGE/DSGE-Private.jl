@@ -100,30 +100,22 @@ function eqcond(m::OnionModel) #m::OnionModel
 
 
     #Define processes for each markup:
-    for i in 1:get_setting(m, :n_subgroups)
-        Γ0[eq[Symbol("eq_μ_com_$(i)")], endo[Symbol("μ_com_$(i)")]] = 1.
-        Γ1[eq[Symbol("eq_μ_com_$(i)")], endo[Symbol("μ_com_$(i)")]] = m[Symbol("ρ_μ_$(i)")].value[1]
-        Ψ[eq[Symbol("eq_μ_com_$(i)")], exo[Symbol("μ_com_$(i)_sh")]] = 1.
-    end
-
-    #=
     Γ0[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = 1.
-    Γ1[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = m[:ρ_μ_goods].value[1]
+    Γ1[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com_goods], exo[:μ_com_goods_sh]] = 1.
 
     Γ0[eq[:eq_μ_com_services], endo[:μ_com_services]] = 1.
-    Γ1[eq[:eq_μ_com_services], endo[:μ_com_services]] = m[:ρ_μ_services].value[1]
+    Γ1[eq[:eq_μ_com_services], endo[:μ_com_services]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com_services], exo[:μ_com_services_sh]] = 1.
 
     Γ0[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = 1.
-    Γ1[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = m[:ρ_μ_energy].value[1]
+    Γ1[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com_energy], exo[:μ_com_energy_sh]] = 1.
 
     #Common markup shock process
     Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
     Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
-=#
 
 
 
