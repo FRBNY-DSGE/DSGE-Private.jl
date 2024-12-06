@@ -264,7 +264,7 @@ function init_parameters!(m::OnionModel)
         paras = InOutData()
 
 
-
+        #In DSGE we have a prior for  1/(1 + x/100)
         m <= parameter(:bet, paras["β"], fixed = true,
                        description="β: temporal discount",
                        tex_label="\\beta")
@@ -276,10 +276,11 @@ function init_parameters!(m::OnionModel)
         m <= parameter(:ρ_τ2, -0.2475, fixed = true,
                        description="ρ_τ2: ",
                        tex_label="\\rho_\\tau2")
-
+#=
 m <= parameter(:ρ_i, 0.85^(1/3), fixed = true,
                description="ρ_i: policy inertia",
-               tex_label="\\rho_i")
+              tex_label="\\rho_i")
+=#
 
 m <= parameter(:η, paras["η"], fixed = true,
                description="η: ",
@@ -345,7 +346,7 @@ m <= parameter(:oil, paras["oil"], fixed = true,
     m <= Setting(:IO2, InOut2)
 
 
-#Another matrix, just setting here for convenience. Will fix later? -BP
+#Another matrix, just setting here for convenience.
 m <= Setting(:ω_tilde, paras["ω_tilde"])
 m <= Setting(:ωE_tilde, paras["ωE_tilde"])
 m <= Setting(:ωN_tilde, paras["ωN_tilde"])
@@ -387,48 +388,62 @@ end
 
 
 ## Adding model parameters for standard deviation of shocks
-m <= parameter(:σ_c, 0.8719, fixed = true,
-               description = "σ_c: Coefficient of relative risk aversion")
-m <= parameter(:σ_b_t, 0.0292,fixed = true,
-               description = "σ_b: Standard deviation of the discount rate process")
-m <= parameter(:ρ_b_t, 0.941, fixed = true,
-               description = "ρ_b: AR(1) coefficient of the discount rate process")
-m <= parameter(:σ_μ, 0.1314, fixed = true,
-               description = "σ_μ: standard deviation of mark up shock process")
-m <= parameter(:ρ_μ, 0.8827, fixed = true, #0.8827
-               description = "ρ_μ: AR(1) coefficient of the mark up shock process")
-m <= parameter(:σ_μw, 0.1314, fixed = true,
-               description = "σ_wμ: standard deviation of wage mark up shock process")
-m <= parameter(:ρ_μw, 0.3884, fixed = true,
-               description = "ρ_μw: AR(1) coefficient in the wage mark up shock process")
+m <= parameter(:σ_c, 0.8719, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), Normal(1.5, 0.37), fixed=false,
+               description = "σ_c: Coefficient of relative risk aversion",
+               tex_label = "\\sigma_c")
+m <= parameter(:σ_b_t, 0.0292, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+               description = "σ_b: Standard deviation of the discount rate process",
+                tex_label = "\\sigma_{b_t}")
+m <= parameter(:ρ_b_t, 0.941, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+               description = "ρ_b: AR(1) coefficient of the discount rate process",
+               tex_label = "\\rho_{b_t}")
+m <= parameter(:σ_μ, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+               description = "σ_μ: standard deviation of mark up shock process",
+               tex_label = "\\sigma_{\\mu}")
+m <= parameter(:ρ_μ, 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+               description = "ρ_μ: AR(1) coefficient of the mark up shock process",
+               tex_label = "\\rho_{\\mu}")
+m <= parameter(:σ_μw,  0.3864, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+               description = "σ_wμ: standard deviation of wage mark up shock process",
+               tex_label = "\\sigma_{\\mu w}")
+m <= parameter(:ρ_μw, 0.3884, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+               description = "ρ_μw: AR(1) coefficient in the wage mark up shock process",
+               tex_label = "\\rho_{\\mu w}")
 m <= parameter(:σ_πstar, 0.0269, fixed = true,
-               description = "σ_πstar: standard deviation of the process describing the time varying inflation target")
-m <= parameter(:ρ_πstar, 0.99, fixed = true,
-               description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target")
-m <= parameter(:σ_a_t, 0.6742, fixed = true, #Taken from std dev of stationary comp of prod
-               description = "σ_a_t: standard deviation of the process describing productivity")
-m <= parameter(:ρ_a_t, 0.9446, fixed = true,#Taken from std dev of stationary comp of prod 0.9446
-               description = "ρ_a_t: AR(1) coefficient of the process describing productivity")
+               description = "σ_πstar: standard deviation of the process describing the time varying inflation target",
+               text_label = "\\sigma_{\\pi^\\star}")
+m <= parameter(:ρ_πstar, 0.99, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=true,
+               description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target",
+               text_label = "\\rho_{\\pi^\\star}")
+m <= parameter(:σ_a_t, 0.6742, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false, #Taken from std dev of stationary comp of prod
+               description = "σ_a_t: standard deviation of the process describing productivity",
+               text_label = "\\sigma_{a_t}")
+m <= parameter(:ρ_a_t, 0.9446,  (0., 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,#Taken from std dev of stationary comp of prod 0.9446
+               description = "ρ_a_t: AR(1) coefficient of the process describing productivity",
+               text_label = "\\rho_{a_t}")
 
-m <= parameter(:h, 0.5347, fixed = true,
-               description = "h: consumption habit persistence")
+m <= parameter(:h, 0.5347,  (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.7, 0.1), fixed=false,
+               description = "h: consumption habit persistence",
+               tex_label="h")
 m <= parameter(:γ, 0.0, fixed=true, #0.3673, fixed = true,#Growth rate of economy
                description = "γ: Log of the steady-state growth rate of technology")
 
 m <= parameter(:mp_habit, 0.0, fixed = true,
                description = ":mp_habit: weight of MP rule on habit formation")
-m <= parameter(:σ_r_m, 0.2380, fixed = true,
-               description = "Standard deviation of process describing iid monetary policy shock")
+m <= parameter(:σ_r_m, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+               description = "Standard deviation of process describing iid monetary policy shock",
+               tex_label="\\sigma_{r^m}")
 #= we don't use for now
 m <= parameter(:ρ_meas_πc, 0.0, fixed = true,
                description = "AR(1) coefficient for CPI inflation measurement error process")
 
 m <= parameter(:σ_meas_πc, 0.0999, fixed = true,
                description = "AR(1) coefficient for CPI inflation measurement error process")
-=#
+
 
 m <= parameter(:π_star, 0.5, fixed = true,
                description = "Steady state rate of inflation")
+=#
 
 
 Kgam = DataFrame(CSV.File("/data/dsge_data_dir/proc/dsge/briefings/202412/gamma_vs_true_gamma.csv"))
@@ -575,9 +590,9 @@ function shock_groupings(m::OnionModel)
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
 
 
-    if get_setting(m, :marco_test_num) == 68
+    if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 71
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
-    elseif get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
+    elseif get_setting(m, :marco_test_num) == 70
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
     else
 

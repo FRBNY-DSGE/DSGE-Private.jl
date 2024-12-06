@@ -46,7 +46,7 @@ function init_observable_mappings!(m::OnionModel)
             demean(oneqtrpctchange(nominal_to_real(:COMPNFB, levels)))
         end
 
-    wages_rev_transform = loggrowthtopct_annualized
+    wages_rev_transform = identity #loggrowthtopct_annualized
 
     # Real Wage Growth - this is currently quarterly, we are still undecided between quarterly and monthly
     observables[:real_wage_growth] = Observable(:real_wage_growth,
@@ -201,16 +201,7 @@ end
 
 
 
-#=
-m <= Setting(:forward_looking_observables,
-                 vcat([:obs_longinflation, :obs_longrate],
-                      [Symbol("obs_nominalrate$i") for i in 1:n_mon_anticipated_shocks(m)],
-                      haskey(get_settings(m), :add_anticipated_obs_gdp) && get_setting(m, :add_anticipated_obs_gdp) ?
-                      [Symbol("obs_gdp$i") for i in 1:get_setting(m, :n_anticipated_obs_gdp)] : []))
-=#
-
-
-if get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
+if get_setting(m, :marco_test_num) == 70 #|| get_setting(m, :marco_test_num) == 71
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################
@@ -239,28 +230,5 @@ observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX]
 end
 
 m.observable_mappings = observables
-
-
-#Leave commented out for now:
-#=
-############################################################################
-    ## Expected FFR from SPD
-    ############################################################################
-    for i = expected_ffr(m)
-        # FROM: SPD median expectations of $i-period-ahead interest rates at a quarterly rate
-        # TO:   Same
-
-        ant_fwd_transform = function (levels)
-            levels[:, Symbol("exp_ant$i")]
-        end
-
-        ant_rev_transform = quartertoannual
-
-        observables[Symbol("obs_exp_nominalrate$i")] = Observable(Symbol("obs_exp_ant$i"), [Symbol("exp_ant$(i)__SPD")],
-                                                                  ant_fwd_transform, ant_rev_transform,
-                                                                  "Anticipated FFR $i",
-                                                                  "$i-period ahead anticipated federal funds rate")
-    end
-=#
 
 end

@@ -349,9 +349,15 @@ m <= parameter(:oil, paras["oil"], fixed = true,
 m <= Setting(:ω_tilde, paras["ω_tilde"])
 m <= Setting(:ωE_tilde, paras["ωE_tilde"])
 m <= Setting(:ωN_tilde, paras["ωN_tilde"])
-m <= Setting(:inpshare, paras["inpshare"])
 
-m <= parameter(:labshare, vec(paras["labshare"]))
+if get_setting(m, :marco_test_num) == 71
+    #In spec 71, we 0 out the I/O matrix
+    m <= Setting(:inpshare, (paras["inpshare"] .* 0.0))
+    m <= parameter(:labshare, vec(ones(length(paras["labshare"]))))
+else
+    m <= Setting(:inpshare, paras["inpshare"])
+    m <= parameter(:labshare, vec(paras["labshare"]))
+end
 m <= parameter(:taxshare, vec(paras["taxshare"]))
 m <= parameter(:totintshare, vec(paras["totintshare"]))
 m <= parameter(:int_totout, vec(paras["ind_totout"]))
@@ -369,7 +375,7 @@ m <= parameter(:ei, vec(paras["ei"]))
 m <= parameter(:ς_tilde, vec(paras["varsig_tilde"]))
 if get_setting(m, :marco_test_num) == 5 || get_setting(m, :marco_test_num) == 10
     m <= parameter(:ρ_μ_trend, vec(0.0 * ones(get_setting(m, :n_sectors))))
-elseif get_setting(m, :marco_test_num) == 6
+elseif get_setting(m, :marco_test_num) == 6 || get_setting(m, :marco_test_num) == 66 || get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 69 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
     #setting m[:ρ_μ_trend] = m[:ρ_μ] (from DSGE model)
     m <= parameter(:ρ_μ_trend, vec(0.8827 * ones(get_setting(m, :n_sectors)))) #0.8827
 elseif get_setting(m, :marco_test_num) == 8 || get_setting(m, :marco_test_num) == 11
@@ -443,9 +449,9 @@ function init_model_indices!(m::OnionModel)
     n = get_setting(m, :n_sectors)
 
 
-    exogenous_shocks            = [[Symbol("μ_trend_$(i)_sh") for i in 1:n];
+    exogenous_shocks            = [#[Symbol("μ_trend_$(i)_sh") for i in 1:n];
                                    #[Symbol("μ_iid_$(i)_sh") for i in 1:n];
-                                   [:μ_com_sh];
+                                   [:μ_com_sh, :μ_com_goods_sh, :μ_com_services_sh, :μ_com_energy_sh];
                                    [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
                                    [:τ_sh]]
 
@@ -459,9 +465,9 @@ function init_model_indices!(m::OnionModel)
                          [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t];
-                         [:μ_com];
+                         [:μ_com, :μ_com_goods, :μ_com_services, :μ_com_energy]]
                          #[Symbol("mkup_iid_$(i)") for i in 1:n];
-                         [Symbol("mkup_trend_$(i)") for i in 1:n]]
+                         #[Symbol("mkup_trend_$(i)") for i in 1:n]]
 
     endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
 
@@ -474,9 +480,9 @@ function init_model_indices!(m::OnionModel)
                               [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
                               [Symbol("eq_Eπ_$i") for i in 1:n];
-                              [:eq_μ_com];
+                              [:eq_μ_com, :eq_μ_com_goods, :eq_μ_com_services, :eq_μ_com_energy]]
                               #[Symbol("eq_mkup_iid_$(i)") for i in 1:n];
-                              [Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
+                              #[Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
 
 
     for (i,k) in enumerate(observables); m.observables[k] = i end
@@ -535,11 +541,23 @@ function shock_groupings(m::OnionModel)
         end
     end
 
+
+
+    core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_com_goods_sh] , RGB(0.0, 0.6, 0.1))    #  RGB(0.1, 0.1, 0.8))
+    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_com_services_sh], RGB(0.6,0.6,0.0))   #RGB(0.3, 0.8, 0.3))
+    energy_mkp = ShockGroup("mkp_energy", [:μ_com_energy_sh], RGB(0.0, 0.6, 0.6))   #RGB(0.0, 0.8, 0.5))
+    #food_trend_mkp   = ShockGroup("mkp_trend_food", food_trends, RGB(0.5, 0.8, 0.6))
+    common_mkup = ShockGroup("common_mkp", [:μ_com_sh], RGB(0.0, 0.2, 0.03))  #RGB(0.0, 0.2, 0.5))
+
+    #=
+
     core_goods_trend_mkp   = ShockGroup("mkp_trend_core_goods", core_goods_trends, RGB(0.1, 0.1, 0.8))
     core_services_trend_mkp   = ShockGroup("mkp_trend_core_services", core_services_trends, RGB(0.3, 0.8, 0.3))
     energy_trend_mkp = ShockGroup("mkp_trend_energy", energy_trends, RGB(0.0, 0.8, 0.5))
     food_trend_mkp   = ShockGroup("mkp_trend_food", food_trends, RGB(0.5, 0.8, 0.6))
     common_mkup = ShockGroup("common_mkp", [:μ_com_sh], RGB(0.0, 0.2, 0.5))
+
+=#
 
     #core_iid_mkp   = ShockGroup("mkp_iid_core", core_iids, RGB(0.8, 0.0, 0.0))
     #energy_iid_mkp = ShockGroup("mkp_iid_energy", energy_iids, RGB(0.8, 0.0, 0.5))
@@ -547,7 +565,7 @@ function shock_groupings(m::OnionModel)
 
 
 
-    pmu_trend = ShockGroup("mkp_trend", [Symbol("μ_trend_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.0, 0.8, 0.0))
+    #pmu_trend = ShockGroup("mkp_trend", [Symbol("μ_trend_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.0, 0.8, 0.0))
     #pmu_iid = ShockGroup("mkp_iid", [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.5, 0.5, 0.0))
     wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
     #tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
@@ -556,9 +574,19 @@ function shock_groupings(m::OnionModel)
     tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
 
+
+    if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 71
+        return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
+    elseif get_setting(m, :marco_test_num) == 70
+        return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
+    else
+
     #[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
     #return [pmu_trend, pmu_iid,wage_pmu, tax, pis, pol, tfp, bet]
     #return [pmu_trend, pmu_iid,wage_pmu, pol, tfp, bet]
     #return [wage_pmu, pol, tfp, bet]
-    return [core_goods_trend_mkp, core_services_trend_mkp, energy_trend_mkp, food_trend_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
+    #return [core_goods_trend_mkp, core_services_trend_mkp, energy_trend_mkp, food_trend_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
+    #return [core_goods_mkp, core_services_mkp, energy_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
+        return [common_mkup, core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet]
+    end
 end
