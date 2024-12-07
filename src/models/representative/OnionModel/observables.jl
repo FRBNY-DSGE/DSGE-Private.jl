@@ -118,8 +118,8 @@ end
 
 
     # CPI Categorical Inflation
-    inflation_subgroup_names = get_setting(m, collect(keys(:subgroup_names)))
-subgroup_data_source = get_setting(m, collect(values(:subgroup_names)))
+    inflation_subgroup_names = collect(keys(get_setting(m,:subgroup_names)))
+subgroup_data_source = collect(values(get_setting(m,:subgroup_names)))
 
     for i in 1:length(inflation_subgroup_names)
 

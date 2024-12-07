@@ -450,16 +450,16 @@ m <= parameter(:ρ_μw, 0.3884, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.
                tex_label = "\\rho_{\\mu w}")
 m <= parameter(:σ_πstar, 0.0269, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(6, 0.03), fixed=false,
                description = "σ_πstar: standard deviation of the process describing the time varying inflation target",
-               text_label = "\\sigma_{\\pi^\\star}")
+               tex_label = "\\sigma_{\\pi^\\star}")
 m <= parameter(:ρ_πstar, 0.99, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=true,
                description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target",
-               text_label = "\\rho_{\\pi^\\star}")
+               tex_label = "\\rho_{\\pi^\\star}")
 m <= parameter(:σ_a_t, 0.6742, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false, #Taken from std dev of stationary comp of prod
                description = "σ_a_t: standard deviation of the process describing productivity",
-               text_label = "\\sigma_{a_t}")
+               tex_label = "\\sigma_{a_t}")
 m <= parameter(:ρ_a_t, 0.9446,  (0., 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,#Taken from std dev of stationary comp of prod 0.9446
                description = "ρ_a_t: AR(1) coefficient of the process describing productivity",
-               text_label = "\\rho_{a_t}")
+               tex_label = "\\rho_{a_t}")
 
 m <= parameter(:h, 0.5347,  (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.7, 0.1), fixed=false,
                description = "h: consumption habit persistence",
@@ -486,7 +486,7 @@ m <= parameter(:π_star, 0.5, fixed = true,
 =#
 
 
-Kgam = DataFrame(CSV.File("/data/dsge_data_dir/proc/dsge/briefings/202412/gamma_vs_true_gamma.csv"))
+Kgam = DataFrame(CSV.File("/data/dsge_data_dir/proc/dsge/briefings/202412/Model_Data/gamma_vs_true_gamma.csv"))
 Kgam_vec = vec(Kgam[!, :true_gamma])
 
 m <= parameter(:Kgam, Kgam_vec)
@@ -504,12 +504,13 @@ function init_model_indices!(m::OnionModel)
     n = get_setting(m, :n_sectors)
 
 
-    exogenous_shocks            = [#[Symbol("μ_trend_$(i)_sh") for i in 1:n];
-                                   #[Symbol("μ_iid_$(i)_sh") for i in 1:n];
-                                   #[:μ_com_sh, :μ_com_goods_sh, :μ_com_services_sh, :μ_com_energy_sh];
-                                   [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh];
-                                   [:τ_sh]]
-    push!(exogenous_shocks, [Symbol("μ_$(i)_sh") for i in 1:length(get_setting(m, :subgroup_names))])
+    exogenous_shocks            = [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh, :τ_sh]
+    #[Symbol("μ_trend_$(i)_sh") for i in 1:n];
+    #[Symbol("μ_iid_$(i)_sh") for i in 1:n];
+    #[:μ_com_sh, :μ_com_goods_sh, :μ_com_services_sh, :μ_com_energy_sh];
+
+
+    vcat(exogenous_shocks, [Symbol("μ_$(i)_sh") for i in 1:length(collect(keys(get_setting(m, :subgroup_names))))])
 
     observables                 = keys(m.observable_mappings)
 
@@ -521,7 +522,7 @@ function init_model_indices!(m::OnionModel)
                          [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t]]
-    push!(endogenous_states, [Symbol("μ_$(i)") for i in 1:length(get_setting(m, :subgroup_names))])
+    vcat(endogenous_states, [Symbol("μ_$(i)") for i in 1:length(collect(keys(get_setting(m, :subgroup_names))))])
 
                          #[:μ_com, :μ_com_goods, :μ_com_services, :μ_com_energy]]
                          #[Symbol("mkup_iid_$(i)") for i in 1:n];
@@ -538,7 +539,7 @@ function init_model_indices!(m::OnionModel)
                               [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
                               [Symbol("eq_Eπ_$i") for i in 1:n]]
-    push!(equilibrium_conditions, [Symbol("eq_μ_$(i)") for i in 1:length(get_setting(m, :subgroup_names))])
+    vcat(equilibrium_conditions, [Symbol("eq_μ_$(i)") for i in 1:length(collect(keys(get_setting(m, :subgroup_names))))])
                               #[:eq_μ_com, :eq_μ_com_goods, :eq_μ_com_services, :eq_μ_com_energy]]
                               #[Symbol("eq_mkup_iid_$(i)") for i in 1:n];
                               #[Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
