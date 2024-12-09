@@ -18,15 +18,15 @@ function pseudo_measurement(m::OnionModel{T},
 
     #Gamma weighted sum of CPI
     for i in 1:get_setting(m, :n_sectors)
-        ZZ_pseudo[pseudo[:pseudo_CPI], endo[Symbol("π_$i")]] = m[:gam].value[i]
+        ZZ_pseudo[pseudo[:pseudo_CPI], endo[Symbol("π_$i")]] = get_setting(m, :gam)[i]  #m[:gam].value[i]
     end
 
 
 
     for i in 1:get_setting(m, :n_sectors)
-        ZZ_pseudo[pseudo[:pseudo_KCPI], endo[Symbol("π_$i")]] = m[:Kgam].value[i]
+        ZZ_pseudo[pseudo[:pseudo_KCPI], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i]   #m[:Kgam].value[i]
     end
-
+#=
     # Core CPI
     core_gam_sum = sum(m[:gam].value[get_setting(m, :core_sectors)])
 
@@ -62,7 +62,7 @@ function pseudo_measurement(m::OnionModel{T},
     for i in get_setting(m, :core_goods_sectors)
         ZZ_pseudo[pseudo[:Pseudo_core_goods_Kcpi], endo[Symbol("π_$i")]] = m[:Kgam].value[i]/core_good_gam_sum
     end
-
+=#
 
 
 

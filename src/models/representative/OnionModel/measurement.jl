@@ -38,7 +38,7 @@ function measurement(m::OnionModel{T},
     ZZ[obs[:NominalFFR], endo[:r_t]] = 1.
 
     #Demeaned CPI Inflation, using Keshav's Gamma (final consumption shares)
-    ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
+    #ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
 
 
     ## Demeaned CPI Inflation -- will leave here commented out. For much of the briefing results, we used the above K-CPI
@@ -413,9 +413,9 @@ end
 
 
 
-elseif get_setting(m, :marco_test_sum) == 100
+elseif get_setting(m, :marco_test_num) == 100
 # Running estimation! n subgroups, (3 for now), pi star and LR inflation expecatations observed, obs tfp
-for i in 1:length(get_setting(m, :subgroup_names))
+for i in collect(keys(get_setting(m, :subgroup_names)))
     QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
 end
 QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
@@ -438,6 +438,15 @@ TTT10        = TTT10 ./ 40.
 CCC10        = CCC10 ./ 40.
 
 ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
+
+#Add observables for each:
+inflation_subgroup_names = collect(keys(get_setting(m, :subgroup_to_sector)))
+for sect in inflation_subgroup_names
+    i_sum = sum(get_setting(m, :Kgam)[get_setting(m, :subgroup_to_sector)[sect]])
+    for i in get_setting(m, :subgroup_to_sector)[sect]
+        ZZ[obs[Symbol(sect)], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+    end
+end
 
 
 
