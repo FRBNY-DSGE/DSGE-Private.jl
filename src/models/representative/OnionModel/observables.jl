@@ -124,10 +124,10 @@ subgroup_data_source = collect(values(get_setting(m,:subgroup_names)))
     for i in 1:length(inflation_subgroup_names)
 
         cpisector_fwd_transform = function(levels)
-            demean(levels[!, Symbol("$(inflation_subgroup_names[i])")])
+            demean(levels[!, subgroup_data_source[i]])  #Symbol("$(inflation_subgroup_names[i])"
         end
-            observables[Symbol("Inflation, $(inflation_subgroup_names[i])")] = Observable(Symbol("$(inflation_subgroup_names[i])"),
-                                                                                        [subgroup_data_source[i]],
+            observables[Symbol("$(inflation_subgroup_names[i])")] = Observable(Symbol("$(inflation_subgroup_names[i])"),
+                                                                                        [Symbol(String(subgroup_data_source[i]) * "__FRED")],
                                                                                         cpisector_fwd_transform,
                                                                                         identity,
                                                                                         "$(inflation_subgroup_names[i])",
@@ -239,7 +239,7 @@ if get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 1
     end
 
 #Demean here by subtracting 2.3 as well
-
+@show "Adding long term inflation expecattions ... "
 longinflation_rev_transform = identity         #loggrowthtopct_annualized
 
 observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX],
