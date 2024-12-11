@@ -8,20 +8,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     if :eq_srec_1 ∉ collect(keys(m.equilibrium_conditions))
         println("Entering if statement in eqcond")
         #This means we have done a normalization. Need to reset.
-        #=
-        exogenous_shocks            = [[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh, :τ_sh];
-                                       [Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))]]
-        #[Symbol("μ_trend_$(i)_sh") for i in 1:n];
-        #[Symbol("μ_iid_$(i)_sh") for i in 1:n];
-        #[:μ_com_sh, :μ_com_goods_sh, :μ_com_services_sh, :μ_com_energy_sh];
 
-
-        #vcat(exogenous_shocks, [Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))])
-
-        observables                 = keys(m.observable_mappings)
-
-        pseudo_observables = keys(m.pseudo_observable_mappings)
-        =#
         endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
                              [Symbol("π_$i") for i in 1:n]; #sectoral inflation
                              [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
@@ -30,15 +17,8 @@ function eqcond(m::OnionModel) #m::OnionModel
                              [:Ec_t, :Eπc_t, :Eπw_t];
                              [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 
-        #[:μ_com, :μ_com_goods, :μ_com_services, :μ_com_energy]]
-        #[Symbol("mkup_iid_$(i)") for i in 1:n];
-        #[Symbol("mkup_trend_$(i)") for i in 1:n]]
-
         endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
-        #=
-        expected_shocks =[[Symbol("Eπ_$(i)_sh") for i in 1:n];
-                          [:Ec_sh, :Eπc_sh, :Eπw_sh]]
-        =#
+
         equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                                   [Symbol("eq_srec_$i") for i in 1:n];
                                   [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
@@ -46,15 +26,7 @@ function eqcond(m::OnionModel) #m::OnionModel
                                   [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
                                   [Symbol("eq_Eπ_$i") for i in 1:n];
                                   [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
-        #[:eq_μ_com, :eq_μ_com_goods, :eq_μ_com_services, :eq_μ_com_energy]]
-        #[Symbol("eq_mkup_iid_$(i)") for i in 1:n];
-                              #[Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
 
-
-        #for (i,k) in enumerate(observables); m.observables[k] = i end
-        #for (i,k) in enumerate(pseudo_observables); m.pseudo_observables[k] = i end
-        #for (i,k) in enumerate(exogenous_shocks); m.exogenous_shocks[k] = i end
-        #for (i,k) in enumerate(expected_shocks); m.expected_shocks[k] = i end
         for (i,k) in enumerate(equilibrium_conditions); m.equilibrium_conditions[k] = i end
         for (i,k) in enumerate(endogenous_states); m.endogenous_states[k] = i end
         for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i + length(endogenous_states) end
@@ -70,18 +42,17 @@ function eqcond(m::OnionModel) #m::OnionModel
     exo    = m.exogenous_shocks
     exp_sh = m.expected_shocks
 
-    N = length(m.endogenous_states) #get_setting(m, :n_model_states) #+ get_setting(m, :n_exo_states)
-    #n = get_setting(m, :n_sectors)
+    N = length(m.endogenous_states)
 
 
-    @show length(m.endogenous_states), length(m.equilibrium_conditions)
+    #@show length(m.endogenous_states), length(m.equilibrium_conditions)
     Γ0 = zeros(N,N)
     Γ1 = zeros(N,N)
     Ψ = zeros(N, length(exo))
     Π = zeros(N, length(exp_sh))
     Const1 = zeros(N-1) #define over N-1 to correct for state reduction in Norm step
 
-    @show size(Γ0), size(Γ1)
+    #@show size(Γ0), size(Γ1)
 
     inpshare = get_setting(m, :inpshare)
 #= OLD MATLAB PARAMETERS
@@ -364,7 +335,7 @@ dcstar_dτ = numer/denom
 Γ0[eq[:eq_a_t], endo[:a_t]] = 1.
 
 #Print new TFP Persistence
-@show m[:ρ_a_t].value
+#@show m[:ρ_a_t].value
 
 Γ1[eq[:eq_a_t], endo[:a_t]] = m[:ρ_a_t]
 Ψ[eq[:eq_a_t], exo[:a_sh]] = 1.
@@ -415,7 +386,7 @@ C[1,:] = -get_setting(m,:gam)[2:end]/get_setting(m,:gam)[1]
 
     norm_mat[1:size(C,1), 1:size(C,2)] = C
 norm_mat[size(C,1)+1:end, size(C,2)+1:end] = eye(N-n)
-@show size(Γ0), size(Γ1)
+#@show size(Γ0), size(Γ1)
     Γ0_norm = Γ0[vcat(1:n,n+2:N),:]*norm_mat # remove redundant equation
     Γ1_norm = Γ1[vcat(1:n,n+2:N),:]*norm_mat
 

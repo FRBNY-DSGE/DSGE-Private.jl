@@ -12,7 +12,7 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     @assert (n_endo,)        == size(CCC)
 
     n_states_add = length(endo_new)
-    @show endo_new
+    #@show endo_new
 
     TTT_aug = zeros(n_endo + n_states_add, n_endo + n_states_add)
     TTT_aug[1:n_endo, 1:n_endo] = TTT
