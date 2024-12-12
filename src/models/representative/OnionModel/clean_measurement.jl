@@ -22,7 +22,7 @@ function measurement(m::OnionModel{T},
     QQ = zeros(_n_shocks_exogenous, _n_shocks_exogenous)
 
 
-    ####Leg work to define functions for subspecs. This allows for us to build off each subspec in an intuitive way
+    ####Doing the hard yards to define functions for subspecs. This allows for us to build off each subspec in an intuitive way
 
     if subspec == "ss0.1"
         ss0_1!(m)
@@ -63,7 +63,7 @@ function measurement(m::OnionModel{T},
 
 
 
-    ######################
+   ######################
     #First, define all aggregate observables. These do not change across models
     #Remember that all ZZ and QQ matrices are initialized as 0's. If no entry is explicitly added for an observable, it remains 0.
     #######################
@@ -642,4 +642,21 @@ QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ
 
 
     return Measurement(ZZ, DD, QQ, EE)
+end
+
+
+
+
+
+function ss0_1!(m)
+
+end
+
+function ss0_2!(m)
+
+end
+
+
+function ss0_3!(m)
+
 end
