@@ -211,7 +211,7 @@ function measurement(m::OnionModel{T},
 
 #QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #Explicit here for clarity
 
-for i in 1:length(get_setting(m, :subgroup_names))
+for i in collect(keys(get_setting(m, :subgroup_names)))
     QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
 end
 #=
@@ -250,10 +250,11 @@ for i in get_setting(m, :energy_sectors)
     ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / energy_sum
 end
 =#
+Kgam = get_setting(m, :Kgam)
 
 for (k,v) in get_setting(m, :subgroup_to_sector)
-    sg_sum = sum(m[:Kgam].value[v])
-    ZZ[obs[k], [endo[Symbol("π_$i")] for i in v]] = [m[:Kgam].value[i] for i in v] ./ sg_sum
+    sg_sum = sum(Kgam[v])
+    ZZ[obs[Symbol(k)], [endo[Symbol("π_$i")] for i in v]] = [Kgam[i] for i in v] ./ sg_sum
 end
 
 
@@ -280,23 +281,23 @@ QQ[exo[:a_sh], exo[:a_sh]] = 0.0
 #No observables in individual sectors, but in categorical sectors
 
 #Demeaned Core Services:
-core_services_sum = sum(m[:Kgam].value[get_setting(m, :core_service_sectors)])
+core_services_sum = sum(Kgam[get_setting(m, :core_service_sectors)])
 for i in get_setting(m, :core_service_sectors)
-    ZZ[obs[:cpi_core_services], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_services_sum
+    ZZ[obs[:cpi_core_services], endo[Symbol("π_$i")]] = Kgam[i] / core_services_sum
 end
 
 
 #Demeaned Core Goods:
-core_goods_sum = sum(m[:Kgam].value[get_setting(m, :core_goods_sectors)])
+core_goods_sum = sum(Kgam[get_setting(m, :core_goods_sectors)])
 for i in get_setting(m, :core_goods_sectors)
-    ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_goods_sum
+    ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = Kgam[i] / core_goods_sum
 end
 
 
 #Demeaned Energy CPI
-energy_sum = sum(m[:Kgam].value[get_setting(m, :energy_sectors)])
+energy_sum = sum(Kgam[get_setting(m, :energy_sectors)])
 for i in get_setting(m, :energy_sectors)
-    ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / energy_sum
+    ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = Kgam[i] / energy_sum
 end
 
 
@@ -326,23 +327,23 @@ ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
 #No observables in individual sectors, but in categorical sectors
 ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
 #Demeaned Core Services:
-core_services_sum = sum(m[:Kgam].value[get_setting(m, :core_service_sectors)])
+core_services_sum = sum(Kgam[get_setting(m, :core_service_sectors)])
 for i in get_setting(m, :core_service_sectors)
-    ZZ[obs[:cpi_core_services], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_services_sum
+    ZZ[obs[:cpi_core_services], endo[Symbol("π_$i")]] = Kgam[i] / core_services_sum
 end
 
 
 #Demeaned Core Goods:
-core_goods_sum = sum(m[:Kgam].value[get_setting(m, :core_goods_sectors)])
+core_goods_sum = sum(Kgam[get_setting(m, :core_goods_sectors)])
 for i in get_setting(m, :core_goods_sectors)
-    ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_goods_sum
+    ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = Kgam[i] / core_goods_sum
 end
 
 
 #Demeaned Energy CPI
-energy_sum = sum(m[:Kgam].value[get_setting(m, :energy_sectors)])
+energy_sum = sum(Kgam[get_setting(m, :energy_sectors)])
 for i in get_setting(m, :energy_sectors)
-    ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / energy_sum
+    ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = Kgam[i] / energy_sum
 end
 
 
@@ -392,23 +393,23 @@ ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
 #No observables in individual sectors, but in categorical sectors
 ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
 #Demeaned Core Services:
-core_services_sum = sum(m[:Kgam].value[get_setting(m, :core_service_sectors)])
+core_services_sum = sum(Kgam[get_setting(m, :core_service_sectors)])
 for i in get_setting(m, :core_service_sectors)
-    ZZ[obs[:cpi_core_services], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_services_sum
+    ZZ[obs[:cpi_core_services], endo[Symbol("π_$i")]] = Kgam[i] / core_services_sum
 end
 
 
 #Demeaned Core Goods:
-core_goods_sum = sum(m[:Kgam].value[get_setting(m, :core_goods_sectors)])
+core_goods_sum = sum(Kgam[get_setting(m, :core_goods_sectors)])
 for i in get_setting(m, :core_goods_sectors)
-    ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / core_goods_sum
+    ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = Kgam[i] / core_goods_sum
 end
 
 
 #Demeaned Energy CPI
-energy_sum = sum(m[:Kgam].value[get_setting(m, :energy_sectors)])
+energy_sum = sum(Kgam[get_setting(m, :energy_sectors)])
 for i in get_setting(m, :energy_sectors)
-    ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = m[:Kgam].value[i] / energy_sum
+    ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = Kgam[i] / energy_sum
 end
 
 

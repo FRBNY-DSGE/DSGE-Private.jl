@@ -63,7 +63,6 @@ function transform_data(m::AbstractDSGEModel, levels::DataFrame;
     for series in keys(data_transforms)
         println(verbose, :high, "Transforming series $series...")
         f = data_transforms[series]
-
         transformed[!, series] = f(levels)
     end
 
