@@ -116,7 +116,6 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
               add_zlb_duration::Tuple{Bool, Int} = (false, 1))
 
-    println("In DSGE's estimation")
     parallel    = get_setting(m, :use_parallel_workers)
     n_parts     = get_setting(m, :n_particles)
     n_blocks    = get_setting(m, :n_smc_blocks)
@@ -127,6 +126,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
     λ    = get_setting(m, :λ)
     n_Φ  = get_setting(m, :n_Φ)
+
 
     # Define tempering settings
     tempered_update_prior_weight = get_setting(m, :tempered_update_prior_weight)
@@ -150,7 +150,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     use_chand_recursion = get_setting(m, :use_chand_recursion)
 
     old_regime_switching = haskey(old_model.settings, :regime_switching) && get_setting(m, :regime_switching)
-    println("Defining likelihoods...")
+
     my_likelihood = if isa(m, AbstractDSGEModel)
         function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
             update!(m, parameters, regime_switching = regime_switching)
@@ -167,14 +167,18 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
         end
     end
 
+
     old_model_para_keys = [old_model.parameters[i].key for i in 1:length(old_model.parameters)]
+
+
     m_para_keys = [m.parameters[i].key for i in 1:length(m.parameters)]
+
     key_del = []
     # reg_del_full = Vector{Int}()
     reg_del = Dict{Int, Vector{Int}}()
 
     toggle_regime!(m.parameters, 1)
-    println("Before loop")
+    ## Change so its by index and not by key!! Won't work if it is by key i suppose??? BP 09/12/24
     for i in 1:length(m.parameters)
         keyed = m.parameters[i].key
         if !(keyed in old_model_para_keys)
@@ -183,58 +187,74 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
             if isempty(old_model[keyed].regimes)
                 # push!(reg_del_full, i)
                 reg_del[i] = [1]
+
                 for j in collect(m.parameters[i].regimes[:value])
-                    push!(reg_del[i], j)
+                    if j[1] != 1
+                        push!(reg_del[i], j[1]) #BP change, was just j but it is a Pair{Int64, Any} and I need it to be just Int64
+                    end
                 end
                 # filter!(x -> x > 1, reg_del[i])
             else
                 @assert length(m.parameters[i].regimes[:value]) > length(old_model[keyed].regimes[:value])
-                for j in collect(m.parameter[i].regimes[:value])
+                for j in collect(m.parameters[i].regimes[:value])
+
                     if !(j in old_model[keyed].regimes[:value])
+
                         if haskey(reg_del, i)
-                            push!(reg_del[i], j)
+
+
+                            push!(reg_del[i], j[1]) #BP change, was j
                         else
-                            reg_del[i] = [j]
+
+                            reg_del[i] = [j[1]] #BP Change, was j
                         end
                     end
                 end
             end
         end
     end
-    println("After loop")
 
     @assert isnothing(findfirst(x -> !(x in m_para_keys), old_model_para_keys))
 
     my_old_likelihood = if isa(m, AbstractDSGEModel)
         function _my_old_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64}; new_model_params::Bool = false)::Float64
             ## Remove parameters and parameter regimes that don't appear in the old model
-            para2 = copy(parameters)
+            ModelConstructors.toggle_regime!(parameters, 1)
+            para2 = deepcopy(parameters)
             if new_model_params
                 for i in collect(keys(reg_del))
                     if length(collect(values(reg_del[i]))) == length(para2[i].regimes[:value])
                         for k in keys(para2[i].regimes)
+
                             delete!(para2[i].regimes, k)
                         end
                     else
+
                         for k in keys(para2[i].regimes)
                             for j in collect(values(reg_del[i]))
+
                                 delete!(para2[i].regimes[k], j)
                             end
                         end
                     end
                 end
-
                 deleteat!(para2, key_del)
             end
 
-            # @show sum(ModelConstructors.n_param_regs(old_model.parameters)), sum(ModelConstructors.n_param_regs(para2))
-            # @show length(old_model.parameters), length(para2)
-            @assert sum(ModelConstructors.n_param_regs(old_model.parameters)) == sum(ModelConstructors.n_param_regs(para2)) ## Delete for speed when testing done
 
+
+
+
+            @assert sum(ModelConstructors.n_param_regs(old_model.parameters)) == sum(ModelConstructors.n_param_regs(para2)) "Sum of old model params is $(sum(ModelConstructors.n_param_regs(old_model.parameters))) and sum of para2 is $(sum(ModelConstructors.n_param_regs(para2))) due to reg del dictionary $(reg_del). Furthermore, the regime switching in the old model is $(old_regime_switching)" ## Delete for speed when testing done
+
+
+            og_keys = [p.key for p in parameters]
+            new_keys = [v.key for v in para2]
             update!(old_model, para2, regime_switching = old_regime_switching)
 
-            # @show "For loop testing"
-            for p in para2 # Test correct params updated b/c update! assumes ordering is the same
+
+
+            for (x,p) in enumerate(para2) # Test correct params updated b/c update! assumes ordering is the same
                 @assert old_model[p.key].value == p.value
                 if haskey(p.regimes, :value)
                     for i in collect(keys(p.regimes[:value]))
@@ -258,8 +278,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     tempered_update = !isempty(old_data)
 
     # This step is purely for backwards compatibility purposes
-    old_cloud_conv = isempty(old_cloud) ? SMC.Cloud(0,0) : SMC.Cloud(old_cloud)
-println("About to initialize paths")
+old_cloud_conv = isempty(old_cloud) ? SMC.Cloud(0,0) : SMC.Cloud(old_cloud)
+
     # Initialize Paths
     loadpath = ""
     if tempered_update
@@ -269,10 +289,8 @@ println("About to initialize paths")
         end
     elseif continue_intermediate
         loadpath = rawpath(m, "estimate", "smc_cloud", filestring_addl) * "_stage=$(intermediate_stage_start).jld2"
-        #loadpath = "/data/dsge_data_dir/SystemwideDSGE/Estimation/System_2024_Q2/estim_stages/m1002_ss100_22Q2estimrep24Q1_stage=$(intermediate_stage_start).jld2"
     end
 savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
-#savepath = "/data/dsge_data_dir/SystemwideDSGE/Estimation/System_2024_Q2/estim_stages/m1002_ss103_22Q2estimrep24Q1_stage=$(intermediate_stage_start).jld2"
     particle_store_path = rawpath(m, "estimate", "smcsave.h5", filestring_addl)
 
     # Calls SMC package's generic SMC

@@ -163,6 +163,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
     regime_switching = haskey(get_settings(m), :regime_switching) &&
         get_setting(m, :regime_switching)
 
+
     ########################################################################################
     ### Step 1: Find posterior/likelihood mode (if reoptimizing, run optimization routine)
     ########################################################################################
@@ -219,6 +220,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
     end
 
     params = ModelConstructors.get_values(get_parameters(m); regime_switching = regime_switching)
+
 
     # Sampling does not make sense if mle=true
     if mle || !sampling

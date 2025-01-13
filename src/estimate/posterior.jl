@@ -128,7 +128,6 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     auto_reject  = try get_setting(m, :auto_reject) catch; false end
 
     if auto_reject
-        println("Auto reject!")
         m <= Setting(:auto_reject, false)
         return -Inf
     end
@@ -138,7 +137,6 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
         for θ in m.parameters
             (left, right) = θ.valuebounds
             if !θ.fixed && !(left <= θ.value <= right)
-                println("Parameter ", θ.key, " not in bounds!")
                 return -Inf
             end
         end
@@ -168,14 +166,14 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     end
 
     # Compute state-space system
+
     system = try
         compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
     catch err
         if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
-            @show err
-            println("Couldn't compute the system")
-            @assert false
             return -Inf
+        #elseif isa(err,KeyError)
+            #@assert false "Key error. Model features: parameters : $(length(m.parameters)), eq conds: $(length(m.equilibrium_conditions))"
         else
             rethrow(err)
         end

@@ -186,6 +186,9 @@ function read_mb(m::Union{AbstractDSGEModel,AbstractVARModel},
     mb_file = get_meansbands_output_file(m, input_type, cond_type, output_var;
                                          forecast_string = forecast_string,
                                          directory = directory)
+
+
+
     modal_file = modal_line ? get_meansbands_output_file(m, :mode, cond_type, output_var;
                                                          forecast_string = forecast_string,
                                                          directory = directory) : ""

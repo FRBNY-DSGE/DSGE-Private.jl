@@ -208,6 +208,7 @@ function impulse_responses(system::System{S}, horizon::Int;
             shocks[i, 1] = -sqrt(system[:QQ][i, i]) # a negative 1 s.d. shock
         end
         # Iterate state space forward
+
         states[:, :, i], obs[:, :, i], pseudo[:, :, i], _ = forecast(system, s_0, shocks)
     end
 

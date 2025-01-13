@@ -36,10 +36,13 @@ function eqcond(m::Model1002, reg::Int)
 
     for para in m.parameters
         if !isempty(para.regimes)
-            if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
-                ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
-            else
-                ModelConstructors.toggle_regime!(para, reg)
+            if length(para.regimes[:value]) > 2 #BP for special case of old model from estimation! Remove later
+                if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
+                    ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
+
+                else
+                    ModelConstructors.toggle_regime!(para, reg)
+                end
             end
         end
     end
@@ -895,6 +898,7 @@ function eqcond(m::Model1002, reg::Int)
    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
        Γ0[eq[:eq_ait_rm], endo[:ait_rm_t]] = 1.0
        Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = m[:ρ_ait_rm]
+       #Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = !get_setting(m, :fix_ρ_ait_rm) ? m[:ρ_ait_rm] : 0.2135
        Ψ[eq[:eq_ait_rm], exo[:rm_ait_sh]] = 1.0
        if haskey(m.settings, :add_taylor_rm) && get_setting(m, :add_taylor_rm)
             # Add AIT shocks

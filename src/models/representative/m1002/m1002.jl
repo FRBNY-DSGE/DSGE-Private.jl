@@ -830,10 +830,10 @@ if subspec(m) == "ss103"
                    description = "κ_std_bcshocks: scaling factor for standard business cycle shocks during covid",
                    tex_label = "\\kappa_{std_bcshocks}")
     m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0.,1.), fixed=false,
-                   description = "κ_std_bcshocks: Fraction of regime 2 value used in regime 3 for σ_{covid}",
+                   description = "κ_covid: Fraction of regime 2 value used in regime 3 for σ_{covid}",
                    tex_label = "\\kappa_{covid}")
     m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0.,1.), fixed=false,
-                   description = "κ_std_bcshocks: Fraction of regime 2 value used in regime 3 for σ_{meas, π}",
+                   description = "κ_pce: Fraction of regime 2 value used in regime 3 for σ_{meas, π}",
                    tex_label = "\\kappa_{pce}")
     end
 
@@ -1262,7 +1262,12 @@ function model_settings!(m::Model1002)
     m <= Setting(:add_nominalgdp_level, false)
     m <= Setting(:add_nominalgdp_growth, false)
     m <= Setting(:add_cumulative, false)
-    m <= Setting(:add_flexible_price_growth, false)
+m <= Setting(:add_flexible_price_growth, false)
+
+
+#Brian additional Setting to accomodate for lost ss97 estimation
+m <= Setting(:fix_ρ_ait_rm, false,
+             "Indicator for whether or not to fix ρ_ait_rm at _ or not")
 
     nothing
 end

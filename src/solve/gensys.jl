@@ -103,6 +103,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     end
     nunstab = n - sum(select)
 
+
     if zxz == 1
         @warn "Coincident zeros. Indeterminacy and/or nonexistence."
         eu=[-2, -2]
@@ -144,6 +145,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     end
 
     existence = length(bigev) >= nunstab
+    @show length(bigev), nunstab
     if existence
         eu[1] = 1
     else

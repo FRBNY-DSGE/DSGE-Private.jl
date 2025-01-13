@@ -243,7 +243,9 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
                     else
                         cloud.particles[argmax(get_logpost(cloud))].value
                     end
+
                 end
+
             else
                 error("SMC mean not implemented yet")
             end

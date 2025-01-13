@@ -45,11 +45,13 @@ function measurement(m::Model1002{T},
 
     for para in m.parameters
         if !isempty(para.regimes)
-            if haskey(get_settings(m), :model2para_regime) && haskey(get_setting(m, :model2para_regime), para.key)
-                ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
-            else
-                ModelConstructors.toggle_regime!(para, reg)
-            end
+            #if length(para.regimes[:value]) > 1 #BP Change for old estimation model, change back
+                if haskey(get_settings(m), :model2para_regime) && haskey(get_setting(m, :model2para_regime), para.key)
+                    ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
+                else
+                    ModelConstructors.toggle_regime!(para, reg)
+                end
+            #end
         end
     end
 

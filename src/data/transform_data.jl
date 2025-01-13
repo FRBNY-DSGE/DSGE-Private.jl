@@ -271,10 +271,12 @@ function transform_spd_data(df::DataFrame; column::Symbol = :MODAL_MEDIAN,
     end
     # Get no. of qtrs ahead
     insertcols!(new_df, :predicted_qtr => predicted_qtr)
+
     insertcols!(new_df, :qtrs_ahead => DSGE.subtract_quarters.(predicted_qtr, new_df[!,:date]))
 
     # Daily implied FFR with interpolated FFR
     if interpolation && !(use_last_meeting && !interpolation_in_data)
+
         insertcols!(new_df, :keep_data => true) ## interpolated qtrs only kept if interpolation_in_data
         fomc_dates = fomc_dates[findall(x -> x < 200301 || x >= 200401, fomc_dates)] ## Remove 2020-03 meetings b/c they were emergencies and thus not reflected in SPD data
         append!(fomc_dates, 200318) ## Add planned mtg date in 2020-03
@@ -285,6 +287,7 @@ function transform_spd_data(df::DataFrame; column::Symbol = :MODAL_MEDIAN,
 
         insertcols!(new_df, :prediction_date => new_df[!,:predicted_qtr]) ## Col for predicted date as Date
         sort!(fomc_date_form)
+
 
         ## Convert qtr/half/yr rows to last mtg date
         for i in 1:nrow(new_df)
@@ -297,10 +300,12 @@ function transform_spd_data(df::DataFrame; column::Symbol = :MODAL_MEDIAN,
             end
         end
 
+
         # Add missing meetings (for interpolation)
         new_df2 = new_df[1:2,:]
         delete!(new_df2, [1,2])
         unique_surveys = unique(new_df, :survey_date)
+
 
         for j in 1:nrow(unique_surveys)
             subset_df = subset(new_df, :survey_date => x -> x .== unique_surveys[j,:survey_date])
@@ -343,6 +348,7 @@ function transform_spd_data(df::DataFrame; column::Symbol = :MODAL_MEDIAN,
             end
             append!(new_df2, subset_df)
         end
+
     end
 
     # Set up connection w/ last meeting's data
@@ -363,7 +369,6 @@ function transform_spd_data(df::DataFrame; column::Symbol = :MODAL_MEDIAN,
             DSGE.iterate_quarters(find_date_qtr[i][1,:predicted_qtr],-1) + Dates.Day(1)
         end
     end
-
     # Combine forecasts that are the same i qtrs ahead from same start qtr
     ## Aggregate using implied daily FFR if !use_last_meeting
     if use_last_meeting
@@ -372,18 +377,21 @@ function transform_spd_data(df::DataFrame; column::Symbol = :MODAL_MEDIAN,
     else
         gd2 = groupby(new_df2, [:date, :qtrs_ahead])
 
+
         for i in 1:length(gd2)
             if nrow(gd2[i]) > 1 && all(occursin.("/", gd2[i][!,:PREDICTION_HORIZON_DATE]))
                 horizon_dates = Date.(gd2[i][!,:PREDICTION_HORIZON_DATE], "m/d/y")
                 fomc_diffs = (horizon_dates[2:end] .- horizon_dates[1:end-1]) ./ Dates.Day(1)
+
 
                 gd2[i][!,:final_vals] .= (sum(fomc_diffs .* gd2[i][1:end-1,column]) +
                                           (gd2[i][end,:predicted_qtr] - horizon_dates[end]) / Dates.Day(1) * gd2[i][end,column] +
                                           (horizon_dates[1] - DSGE.iterate_quarters(gd2[i][1,:predicted_qtr],-1)) / Dates.Day(1) * gd2[i][1,:prev_val]) /
                                           ((gd2[i][1,:predicted_qtr] - DSGE.iterate_quarters(gd2[i][1,:predicted_qtr], -1)) / Dates.Day(1))
 
-        elseif nrow(gd2[i]) > 1 && any(occursin.("/", gd2[i][!,:PREDICTION_HORIZON_DATE]))
+            elseif nrow(gd2[i]) > 1 && any(occursin.("/", gd2[i][!,:PREDICTION_HORIZON_DATE]))
                 if any(occursin.("/", gd2[i][!,:PREDICTION_HORIZON_DATE]))
+
                     ## Find date corresponding to dates expressed as q or h
                     no_date = findall(x -> !occursin.("/", x), gd2[i][!,:PREDICTION_HORIZON_DATE])
                     gd2[i][no_date, :PREDICTION_HORIZON_DATE] = string.(month.(gd2[i][no_date,:last_meeting])) .* "/" .*
@@ -404,11 +412,13 @@ function transform_spd_data(df::DataFrame; column::Symbol = :MODAL_MEDIAN,
 
                     gd2[i][!,:final_vals] .= final_val
                 else
+
                     gd2[i][!,:final_vals] .= mean(gd2[i][!,:final_vals])
                 end
                 # else: Data given for qtr so no change needed
             end
         end
+
         ## Delete qtrs added for interpolation but not in data
         gd2 = DataFrames.filter(x -> any(x[!,:keep_data]), gd2)
         new_df2 = combine(gd2, :final_vals => mean, renamecols = false)
