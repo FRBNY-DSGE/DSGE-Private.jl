@@ -101,7 +101,7 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
 
             spd_data_want = spd_data[date_mainsample_end(m) .< spd_data[!, :date] .<= date_conditional_end(m), [Symbol("exp_ant$i") for i in expected_ffr(m)]]
 
-            df[date_mainsample_end(m) .< df[!, :date] .<= date_conditional_end(m), [Symbol("obs_exp_nominalrate$i") for i in expected_ffr(m)]] .= Matrix{Float64}(spd_data_want)
+            df[date_mainsample_end(m) .< df[!, :date] .<= date_conditional_end(m), [Symbol("obs_exp_nominalrate$i") for i in expected_ffr(m)]] .= Matrix{Union{Float64, Missing}}(spd_data_want)
         end
 
         # Ensure that only appropriate rows make it into the returned DataFrame.
