@@ -19,7 +19,7 @@ function make_decomp_mbs(m_new::M, m_old::M, input_type::Symbol,
     end
 
     # Common metadata
-    # comps = [:policyait, :policyeqcond, :release, :cond, :revise, :param, :spd]
+    #comps = [:policyait, :policyeqcond, :release, :cond, :revise, :param, :spd]
     if (get_setting(m_new, :date_forecast_start) != get_setting(m_old, :date_forecast_start))
         comps = [:release, :cond, :revise, :param, :spd]
     else
@@ -57,8 +57,6 @@ function make_decomp_mbs(m_new::M, m_old::M, input_type::Symbol,
         for var in vars
             for comp in comps
                 varcomp = Symbol(var, "__", comp)
-                if var == :NominalFFR
-                end
                 shockdec_mb.means[!,varcomp] = decomps[var][!,comp]
                 shockdec_mb.bands[varcomp] = DataFrame(date = dates)
             end
@@ -154,7 +152,7 @@ function plot_forecast_decomposition(m_new::M, m_old::M, vars::Vector{Symbol}, c
                                      model_decomp::Bool = false, trend_nostates::DataFrame = DataFrame(),
                                      shockdec_data_only::Bool = false,
                                      kwargs...) where M<:AbstractDSGEModel
-
+    @show "in second plot_forecast_dec"
     # Create MeansBands
     mbs = make_decomp_mbs(m_new, m_old, input_type, cond_new, cond_old, class,
                           individual_shocks = individual_shocks, forecast_string_new = forecast_string_new, forecast_string_old = forecast_string_old, model_decomp = model_decomp, shockdec_data_only = shockdec_data_only)

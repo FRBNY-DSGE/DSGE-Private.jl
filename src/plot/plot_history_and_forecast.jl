@@ -197,7 +197,6 @@ histforecast
                    tick_size = 2)
 
     # Error checking
-    println("In histforecast")
     if length(hf.args) != 3 || typeof(hf.args[1]) != Symbol ||
         typeof(hf.args[2]) != MeansBands || typeof(hf.args[3]) != MeansBands
 
@@ -215,7 +214,6 @@ histforecast
     var, hist, forecast = hf.args
     combined = cat(hist, forecast)
     dates = combined.means[!, :date]
-
 
     # Assign date ticks
     date_ticks = Base.filter(x -> start_date <= x <= end_date,    dates)
@@ -335,8 +333,8 @@ histforecast
         if save_as_csv
 	        df_mean_forecast.dates = combined.means[inds, :date]
 	        df_mean_forecast.mean_forecast = combined.means[inds, var]
-
 	        df_means = outerjoin(df_mean_hist, df_mean_forecast, on = :dates)
+            #sort!(df_means, [:dates])
             sort!(df_means)
 
     	    if size(df_means) != (0, 0)

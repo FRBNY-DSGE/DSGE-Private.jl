@@ -382,6 +382,9 @@ function Model1002(subspec::String = "ss10";
         m <= custom_setting
     end
 
+    # Initialize base settings
+    init_settings!(m)
+
     # Set observable and pseudo-observable transformations
     init_observable_mappings!(m)
     init_pseudo_observable_mappings!(m)
@@ -395,6 +398,33 @@ function Model1002(subspec::String = "ss10";
 
     return m
 end
+
+"""
+```
+init_settings!(m::Model1002)
+```
+
+Initializes the model's settings as per sub specification. These settings are intrinsic to building the rest of the model (as opposed to other settings which may just affect the forecasting or estimation process once the model has been created) and are likely to contain dependencies in `subspecs.jl` or `subspecs_builder.jl`.
+"""
+function init_settings!(m::Model1002)
+    subspec_int = parse(Int, subspec(m)[3:end])
+
+    if subspec_int == 104
+        m <= Setting(:mon_anticipated_ait_shocks, [1, 2, 3, 4, 5, 6])
+        m <= Setting(:expected_ffr, [1, 2, 3, 4, 5, 6])
+        m <= Setting(:all_ffr_qs, [1, 2, 3, 4, 5, 6])
+        m <= Setting(:forecast_horizons, 40)
+        m <= Setting(:add_iid_cond_obs_gdp_meas_err, true)
+        m <= Setting(:add_iid_cond_obs_corepce_meas_err, true)
+        m <= Setting(:add_ait_rm, true)
+        m <= Setting(:add_taylor_rm, true)
+        m <= Setting(:standard_shocks_mode_adjust, 1, false, "modeadj", "")
+        m <= Setting(:standard_shocks_spread_adjust, 2, false, "spreadadj", "")
+        m <= Setting(:add_altpolicy_pgap, true)
+        m <= Setting(:add_altpolicy_ygap, true)
+    end
+end
+
 
 """
 ```
@@ -824,17 +854,16 @@ buted to steady-state inflation.",
                        tex_label="\\rho_{smooth}")
     end
 
-
-if subspec(m) == "ss103"
-    m <= parameter(:κ_std_bcshocks, 1.0, (0.0, 1.0), (0.0, 1.0), ModelConstructors.SquareRoot(), Uniform(0.,1.), fixed=false,
-                   description = "κ_std_bcshocks: scaling factor for standard business cycle shocks during covid",
-                   tex_label = "\\kappa_{std_bcshocks}")
-    m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0.,1.), fixed=false,
-                   description = "κ_covid: Fraction of regime 2 value used in regime 3 for σ_{covid}",
-                   tex_label = "\\kappa_{covid}")
-    m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0.,1.), fixed=false,
-                   description = "κ_pce: Fraction of regime 2 value used in regime 3 for σ_{meas, π}",
-                   tex_label = "\\kappa_{pce}")
+    if subspec(m) == "ss103"
+        m <= parameter(:κ_std_bcshocks, 1.0, (0.0, 1.0), (0.0, 1.0), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
+                       description="κ_std_bcshocks: scaling factor for standard business cycle shocks during covid",
+                       tex_label="\\kappa_{bcshocks}")
+        m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
+                       description="Fraction of regime 2 value used in regime 3 for σ_{covid}",
+                       tex_label = "\\kappa_{covid}")
+        m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
+                       description="Fraction of regime 2 value used in regime 3 for σ_{meas,π}",
+                       tex_label = "\\kappa_{pce}")
     end
 
     if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
@@ -1262,12 +1291,7 @@ function model_settings!(m::Model1002)
     m <= Setting(:add_nominalgdp_level, false)
     m <= Setting(:add_nominalgdp_growth, false)
     m <= Setting(:add_cumulative, false)
-m <= Setting(:add_flexible_price_growth, false)
-
-
-#Brian additional Setting to accomodate for lost ss97 estimation
-m <= Setting(:fix_ρ_ait_rm, false,
-             "Indicator for whether or not to fix ρ_ait_rm at _ or not")
+    m <= Setting(:add_flexible_price_growth, false)
 
     nothing
 end
@@ -1285,6 +1309,7 @@ parameter groupings (e.g. \"Policy Parameters\") to vectors of
 function parameter_groupings(m::Model1002)
     # For parsing model subspec to Int
     subspec_ind = isletter(subspec(m)[end]) ? length(subspec(m)) - 1 : length(subspec(m))
+    subspec_num = parse(Int, SubString(subspec(m),3,subspec_ind))
 
     policy     = [[:ψ1, :ψ2, :ψ3, :ρ, :ρ_rm, :σ_r_m];
                   [Symbol("σ_r_m$i") for i = 1:n_mon_anticipated_shocks(m)];
@@ -1298,10 +1323,10 @@ function parameter_groupings(m::Model1002)
     error      = [:me_level, :ρ_gdp, :ρ_gdi, :ρ_lr, :ρ_tfp, :ρ_gdpdef, :ρ_corepce,
                   :ρ_gdpvar, :σ_gdp, :σ_gdi, :σ_lr, :σ_tfp, :σ_gdpdef, :σ_corepce]
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+    if subspec_num >= 87
         push!(error, :ρ_meas_π, :σ_meas_π)
     end
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 100
+    if subspec_num >= 100 && subspec_num != 104
         push!(policy, :φ_π, :φ_y, :ρ_smooth)
     end
     if haskey(get_settings(m), :add_ait_rm) && get_setting(m, :add_ait_rm)
@@ -1322,7 +1347,7 @@ function parameter_groupings(m::Model1002)
                     "Financial Frictions Parameters", "Exogenous Process Parameters",
                     "Measurement Error Parameters"]
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if subspec_num >= 59
         covid = [:σ_ziid, :σ_biidc, :σ_φ]
         for (sh, ant_num) in get_setting(m, :antshocks)
             for i in 1:ant_num
@@ -1349,7 +1374,7 @@ function parameter_groupings(m::Model1002)
     incl_params    = vcat(collect(values(groupings))...)
     excl_params_sym = vcat([:Upsilon, :ρ_μ_e, :ρ_γ, :σ_μ_e, :σ_γ, :Iendoα, :γ_gdi, :δ_gdi],
                            [Symbol("σ_r_m$i") for i=n_mon_anticipated_shocks(m)+1:n_mon_anticipated_shocks_padding(m)])
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if subspec_num >= 59
         push!(excl_params_sym, :ρ_ziid, :ρ_biidc, :ρ_φ)
     end
     if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
@@ -1414,9 +1439,9 @@ function shock_groupings(m::Model1002)
         if !isempty(expected_ffr(m))
             for i in expected_ffr(m)
                 push!(rm_vec, Symbol("exp_rm_sh$i"))
+                #push!(exogenous_shocks, Symbol("exp_rm_sh$i"))
             end
         end
-
 
         if haskey(get_settings(m), :add_iid_cond_obs_gdp_meas_err) ?
             get_setting(m, :add_iid_cond_obs_gdp_meas_err) : false
