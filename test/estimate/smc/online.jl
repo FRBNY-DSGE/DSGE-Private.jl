@@ -21,7 +21,6 @@ if estimate == true
     myprocs = addprocs_frbny(n_workers)
     @everywhere using DSGE, OrderedCollections
     DSGE.sendto(workers(), USER = USER)
-    @everywhere include("/data/dsge_data_dir/dsgejl/$USER/proc/includeall.jl")
 end
 
 

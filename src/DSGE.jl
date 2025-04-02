@@ -89,7 +89,7 @@ module DSGE
         logleveltopct_annualized_approx, loggrowthtopct_4q_approx, logleveltopct_4q_approx,
         parse_data_series, collect_data_transforms, reverse_transform,
         subtract_quarters, iterate_quarters,
-        simulate_data, simulate_observables, simulate_states,
+        simulate_data, simulate_observables, simulate_states, post_covid_data_mods!,
 
         # solve/
         gensys, solve, klein,
@@ -223,6 +223,7 @@ module DSGE
     include("benchmark/benchmark.jl")
     include("benchmark/io.jl")
 
+    include("data/manual_data_adjustments.jl")
     include("data/load_data.jl")
     include("data/fred_data.jl")
     include("data/transformations.jl")
@@ -331,6 +332,7 @@ module DSGE
     include("models/representative/m990/augment_states.jl")
 
     include("models/representative/m1002/m1002.jl")
+    include("models/representative/m1002/subspecs_builder.jl")
     include("models/representative/m1002/subspecs.jl")
     include("models/representative/m1002/eqcond.jl")
     include("models/representative/m1002/observables.jl")

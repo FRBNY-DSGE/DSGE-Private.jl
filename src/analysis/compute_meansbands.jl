@@ -52,6 +52,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol,
                             bdd_fcast::Bool = true, skipnan::Bool = false,
                             pseudo2data::AbstractDict{Symbol, Symbol} = Dict{Symbol, Symbol}(),
                             variable_names::Vector{Symbol} = Vector{Symbol}(undef, 0),
+                            transform_gdp::Bool = false,
                             kwargs...)
 
     if VERBOSITY[verbose] >= VERBOSITY[:low]
@@ -94,6 +95,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol,
                                     variable_names = variable_names,
                                     verbose = verbose,
                                     bdd_fcast = bdd_fcast,
+                                    transform_gdp = transform_gdp,
                                     kwargs...)
             GC.gc()
         end
@@ -117,6 +119,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                             variable_names::Vector{Symbol} = Vector{Symbol}(undef, 0),
                             verbose::Symbol = :none,
                             bdd_fcast::Bool = true,
+                            transform_gdp::Bool = false,
                             kwargs...)
 
     # Determine class and product
@@ -154,7 +157,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                                                             pop_growth = pop_growth, forecast_string = forecast_string,
                                                             pseudo2data = pseudo2data,
                                                             bdd_fcast = bdd_fcast,
-                                                            skipnan = skipnan, kwargs...),
+                                                            skipnan = skipnan, transform_gdp = transform_gdp, kwargs...),
                              variable_names)
         end
 
@@ -223,6 +226,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                             minimize::Bool = false,
                             pseudo2data::AbstractDict{Symbol, Symbol} = Dict{Symbol, Symbol}(),
                             compute_shockdec_bands::Bool = false,
+                            transform_gdp::Bool = false,
                             bdd_fcast::Bool = true)
 
     # Return only one set of bands if we read in only one draw
@@ -261,6 +265,11 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
         # Remove rows with NaNs
         nanrows = vec(mapslices(x -> all(isnan.(x)), transformed_series, dims = Int[2]))
         transformed_series = transformed_series[.!nanrows, :]
+    end
+
+    if transform_gdp && output_var ∉ [:histobs, :hist4qobs] && var_name == :PseudoGDP
+        println("SAVING RELEVANT FILE AS meanrecessionprobabilities.jld2 IN CURRENT DIRECTORY")
+        save("meanrecessionprobabilities.jld2", "transformed_series", transformed_series)
     end
 
     # Compute means and bands

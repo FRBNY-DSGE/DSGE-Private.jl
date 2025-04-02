@@ -156,6 +156,10 @@ function metropolis_hastings(proposal_dist::Distribution,
         curr_accept = target_accept
     end
 
+    state_tracker = Vector{Float64}[] #New
+    push!(sample_mean_tracker, para_old) #New
+
+
     # Keep track of how long metropolis_hastings has been sampling
     total_sampling_time = 0.
 
@@ -184,7 +188,7 @@ function metropolis_hastings(proposal_dist::Distribution,
             for (k, block_a) in enumerate(blocks_free)
                 # Draw para_new from the proposal distribution
                 para_subset = para_old[block_a]
-                d_subset    = DegenerateMvNormal(propdist.μ[block_a],
+                "d_subset    = DegenerateMvNormal(propdist.μ[block_a],
                                        (propdist.σ[block_a, block_a] +
                                        propdist.σ[block_a, block_a]') / 2.,
                                        inv((propdist.σ[block_a, block_a] +
@@ -194,12 +198,12 @@ function metropolis_hastings(proposal_dist::Distribution,
                 para_draw         = mvnormal_mixture_draw(para_subset, d_subset;
                                                           α = α, c = cc)
                 para_new          = deepcopy(para_old)
-                para_new[block_a] = para_draw
+                para_new[block_a] = para_draw #New
 
                 q0, q1 = if adaptive_accept
                     # NOT DONE YET, we're not actually computing draws from the mixture yet b/c not using mvnormal_mixture_draw
-                    SMC.compute_proposal_densities(para_draw, para_subset, d_subset;
-                                                   α = α, c = cc, catch_near_zeros = true)
+                    SMC.compute_proposal_densities(para_draw, para_subset, sample_mean, propdist.σ[block_a, block_a];
+                                                   α = α, c = cc, catch_near_zeros = true)#Updated
                 else
                     0.0, 0.0
                 end
@@ -232,12 +236,14 @@ function metropolis_hastings(proposal_dist::Distribution,
                     para_old = para_new
                     post_old = post_new
                     propdist.μ = para_new
+                    push!(state_tracker, para_new)#New
 
                     println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
                         "$k/$(n_param_blocks): accept proposed jump")
                 else
                     # Reject proposed jump
                     block_rejections += 1
+                    push!(state_tracker, para_old)#New
 
                     println(verbose, :high, "Block $block, Iteration $j, Parameter Block " *
                         "$k/$(n_param_blocks): reject proposed jump")

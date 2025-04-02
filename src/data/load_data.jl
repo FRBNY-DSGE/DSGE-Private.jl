@@ -1,7 +1,11 @@
 """
 ```
-load_data(m::AbstractDSGEModel; try_disk::Bool = true, verbose::Symbol = :low,
-          check_empty_columns::Bool = true, summary_statistics::Symbol = :low)
+load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bool = true,
+          verbose::Symbol=:low, check_empty_columns::Bool = true,
+          summary_statistics::Symbol = :low, add_vals = (false, Date(2020,12,31)),
+          fomc_dates::Vector{Int64} = Vector{Int64}(), builtin_mods::Vector{Symbol} = [],
+          custom_mods::Vector{Function} = [], cm_ffr::DataFrame = DataFrame(),
+          recreate_data = false)
 ```
 
 Create a DataFrame with all data series for this model, fully transformed.
@@ -29,13 +33,23 @@ in the loaded data set if it is set to true.
 The keyword `summary_statistics` prints out a variety of summary statistics
 on the loaded data. When set to :low, we print only the number of
 missing/NaNs for each data series. When set to :high, we also print
-means, standard deviations,
+means and standard deviations.
+
+Additionally, `builtin_mods` takes in a list of symbols which determine what DataFrame modification
+functions we want to use from the `manual_data_adjustments.jl` file.
+
+`custom_mods` on the other hand takes in a list of functions that map the model object and
+DataFrame back to a DataFrame. This allows the user to have more flexibility with merging their
+personal data loading and transforming routines with DSGE.jl.
 """
 function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bool = true,
                    verbose::Symbol=:low, check_empty_columns::Bool = true,
                    summary_statistics::Symbol = :low, add_vals = (false, Date(2020,12,31)),
-                   fomc_dates::Vector{Int64} = Vector{Int64}())
-    recreate_data = false
+                   fomc_dates::Vector{Int64} = Vector{Int64}(),
+                   builtin_mods::Vector{Symbol} = Vector{Symbol}(),
+                   custom_mods::Vector{Any} = [], cm_ffr::DataFrame = DataFrame(),
+                   recreate_data = false)
+
 
     # Check if already downloaded
     if try_disk && has_saved_data(m; cond_type=cond_type)
@@ -131,6 +145,21 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
                 end
             end
         end
+    end
+
+    # DSGE in-built adjustments to the dataframe.
+    for mod in builtin_mods
+        if mod == :post_covid
+            df = post_covid_data_mods(m, df, cond_type, fomc_dates; cm_ffr)
+        end
+        if mod == :pgbpid_estim
+            df = ss104_estimation(df)
+        end
+    end
+
+    # Custom adjustments to the dataframe
+    for func in custom_mods
+        df = func(m, df)
     end
 
     return df

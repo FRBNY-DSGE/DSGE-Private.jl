@@ -53,12 +53,16 @@ Developers of this package at the
 
 * [Michael Cai](https://github.com/caimichael)
 * [William Chen](https://github.com/chenwilliam77)
+* [Ibrahima Diagne](https://github.com/abediagne)
 * [Shlok Goyal](https://github.com/ShlokG)
+* [Pranay Gundam](https://github.com/pranay-gundam)
 * [Abhi Gupta](https://github.com/abhig94)
 * [Alissa Johnson](https://github.com/alissarjohnson)
 * [Pearl Li](https://github.com/pearlzli)
 * [Ethan Matlin](https://github.com/ethanmatlin)
 * [Erica Moszkowski](https://github.com/emoszkowski)
+* [Ramya Nallamotu](https://github.com/Ramya-N21)
+* [Brian Pacula](https://github.com/Brian-Pacula)
 * [Reca Sarfati](https://github.com/rsarfati)
 * [Micah Smith](https://github.com/micahjsmith)
 
