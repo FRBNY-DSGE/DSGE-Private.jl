@@ -145,7 +145,7 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     # Likelihood penalties
     ψ_l, ψ_p, penalty = 1.0, 1.0, 0.0
     if use_penalty
-        println("Using penalty")
+
         ψ_l         = get_setting(m, :ψ_likelihood)
         ψ_p         = get_setting(m, :ψ_penalty)
         target_vars = get_setting(m, :target_vars)
@@ -191,13 +191,13 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
                 return ψ_l * sum(filter_likelihood(m, data; tol = tol,
                                                    tuning = get_setting(m, :tuning))) + ψ_p * penalty
             elseif use_chand_recursion==false
-                println("Using chand recursion is false")
+
                 return ψ_l * sum(filter_likelihood(m, data, system; add_zlb_duration = add_zlb_duration,
                                                    include_presample = false, tol = tol)) +
                                                        ψ_p * penalty
             else
                 # TODO: extend chand_recursion for a regime-switching system
-                println("Using chand recursion?")
+
                 return ψ_l * chand_recursion(data, system[:TTT], system[:RRR], system[:CCC],
                                              system[:QQ], system[:ZZ], system[:DD], system[:EE];
                                              allout = true, Nt0 = n_presample_periods(m),

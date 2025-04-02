@@ -159,8 +159,8 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verb
             # Determine which regimes should use gensys2/gensys
             gensys_regimes, gensys2_regimes = compute_gensys_gensys2_regimes(m)
 
-            println(gensys_regimes)
-            println(gensys2_regimes)
+            #println(gensys_regimes)
+            #println(gensys2_regimes)
             # Solve!
             TTTs, RRRs, CCCs = solve(m; regime_switching = regime_switching,
                                      regimes = collect(1:n_regimes),

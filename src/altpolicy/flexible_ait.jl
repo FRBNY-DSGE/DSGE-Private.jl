@@ -184,17 +184,7 @@ function flexible_ait_solve(m::AbstractDSGEModel; regime_switching::Bool = false
 
         TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = :low)
 
-        @show eu
 
-        CSV.write("/data/dsge_data_dir/dsgejl/brian/TTTs.csv", Tables.table(TTT_gensys))
-        CSV.write("/data/dsge_data_dir/dsgejl/brian/CCCs.csv", Tables.table(CCC_gensys))
-        CSV.write("/data/dsge_data_dir/dsgejl/brian/RRRs.csv", Tables.table(RRR_gensys))
-
-        CSV.write("/data/dsge_data_dir/dsgejl/brian/Gamma_0.csv", Tables.table(Γ0))
-        CSV.write("/data/dsge_data_dir/dsgejl/brian/Gamma_1.csv", Tables.table(Γ1))
-        CSV.write("/data/dsge_data_dir/dsgejl/brian/C.csv", Tables.table(C))
-        CSV.write("/data/dsge_data_dir/dsgejl/brian/Psi.csv", Tables.table(Ψ))
-        CSV.write("/data/dsge_data_dir/dsgejl/brian/Pi", Tables.table(Π))
         # Check for LAPACK exception, existence and uniqueness
         if eu[1] != 1 || eu[2] != 1
             throw(GensysError())

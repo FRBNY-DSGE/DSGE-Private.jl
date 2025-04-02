@@ -145,7 +145,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     end
 
     existence = length(bigev) >= nunstab
-    @show length(bigev), nunstab
+
     if existence
         eu[1] = 1
     else
