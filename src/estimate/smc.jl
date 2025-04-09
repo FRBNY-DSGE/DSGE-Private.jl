@@ -222,6 +222,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
             ModelConstructors.toggle_regime!(parameters, 1)
             para2 = deepcopy(parameters)
             if new_model_params
+                println("There are new model parameters. I am iterating over $(collect(keys(reg_del)))")
                 for i in collect(keys(reg_del))
                     if length(collect(values(reg_del[i]))) == length(para2[i].regimes[:value])
                         for k in keys(para2[i].regimes)
@@ -241,11 +242,11 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
                 deleteat!(para2, key_del)
             end
 
-            @show length(ModelConstructors.n_param_regs(old_model.parameters)), length(ModelConstructors.n_param_regs(para2))
-            if length(ModelConstructors.n_param_regs(old_model.parameters)) == length(ModelConstructors.n_param_regs(para2))
-                tmp_diffs = ModelConstructors.n_param_regs(para2) - ModelConstructors.n_param_regs(old_model.parameters)
-                @show findall(x -> x > 0, tmp_diffs)
-            end
+            #@show length(ModelConstructors.n_param_regs(old_model.parameters)), length(ModelConstructors.n_param_regs(para2))
+            #if length(ModelConstructors.n_param_regs(old_model.parameters)) == length(ModelConstructors.n_param_regs(para2))
+                #tmp_diffs = ModelConstructors.n_param_regs(para2) - ModelConstructors.n_param_regs(old_model.parameters)
+                #@show findall(x -> x > 0, tmp_diffs)
+            #end
 
 
 
@@ -258,7 +259,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
             og_keys = [p.key for p in parameters]
             new_keys = [v.key for v in para2]
             addl_keys = setdiff(og_keys, new_keys)
-            @show addl_keys
+            #@show addl_keys
             update!(old_model, para2, regime_switching = old_regime_switching)
 
 
