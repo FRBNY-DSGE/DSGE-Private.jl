@@ -923,6 +923,20 @@ function eqcond(m::Model1002, reg::Int)
        Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_std_bcshocks])
    end
 
+   if get_setting(m, :marco_estim_experiment) == 2
+
+       Ψ[eq[:eq_ztil], exo[:ztil_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_g], exo[:g_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_b], exo[:b_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_μ], exo[:μ_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_λ_f], exo[:λ_f_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_λ_w], exo[:λ_w_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_σ_ω], exo[:σ_ω_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_μ_e], exo[:μ_e_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_γ], exo[:γ_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_std_bcshocksf])
+   end
+
    for para in m.parameters
         if !isempty(para.regimes)
             ModelConstructors.toggle_regime!(para, 1)

@@ -1026,6 +1026,12 @@ buted to steady-state inflation.",
                        tex_label = "\\kappa_{pce}")
     end
 
+    if haskey(m.settings, :marco_estim_experiment) && get_setting(m, :marco_estim_experiment) == 2
+        m <= parameter(:κ_std_bcshocksf, 1.0, (0.0, 2.0), (0.0, 2.0), Untransformed(), Uniform(0,1), fixed=false,
+                       description="κ_std_bcshocksf: scaling factor for standard business shocks",
+                       tex_label = "\\kappa_{bcshocksf}")
+    end
+
     # steady states
     m <= SteadyStateParameter(:z_star, NaN, tex_label="\\z_*")
     m <= SteadyStateParameter(:rstar, NaN, tex_label="\\r_*")
