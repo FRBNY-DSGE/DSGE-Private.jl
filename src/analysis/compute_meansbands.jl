@@ -76,6 +76,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol,
             isempty(df) && (df = load_data(m, cond_type = cond_type,
                                            check_empty_columns = check_empty_columns, verbose = :none))
         end
+
         for output_var in output_vars
             prod = get_product(output_var)
             if VERBOSITY[verbose] >= VERBOSITY[:high]
@@ -128,6 +129,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
 
     # Read in forecast metadata
     metadata = get_mb_metadata(m, input_type, cond_type, output_var; forecast_string = forecast_string)
+
 
     date_list      = product == :irf ? Date[] : collect(keys(metadata[:date_inds]))
     if isempty(variable_names)
@@ -204,7 +206,10 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
     # Write to file
     filepath = get_meansbands_output_file(m, input_type, cond_type, output_var,
                                           forecast_string = forecast_string)
-    dirpath = dirname(filepath)
+
+
+dirpath = dirname(filepath)
+
     isdir(dirpath) || mkpath(dirpath)
     JLD2.jldopen(filepath, true, true, true, IOStream) do file
         write(file, "mb", mb)
@@ -512,7 +517,8 @@ function compute_meansbands(models::Vector{<: AbstractDSGEModel},
     filepath = get_meansbands_output_file(models[1], input_types[1], cond_types[1], output_var,
                                           forecast_string = combo_forecast_string)
 
-    dirpath = dirname(filepath)
+dirpath = dirname(filepath)
+
     isdir(dirpath) || mkpath(dirpath)
     JLD2.jldopen(filepath, true, true, true, IOStream) do file
         write(file, "mb", mb)

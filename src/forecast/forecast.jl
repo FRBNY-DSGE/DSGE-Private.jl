@@ -199,6 +199,8 @@ function forecast(m::AbstractDSGEModel, system::Union{RegimeSwitchingSystem{S}, 
     else
         ind_r_sh = haskey(get_settings(m), :monetary_policy_shock) ? [m.exogenous_shocks[get_setting(m, :monetary_policy_shock)]] : [-1]
     end
+
+@show ind_r, ind_r_sh
     zlb_value = haskey(get_settings(m), :forecast_zlb_value) ? forecast_zlb_value(m) : 0.1/4
 
     if isa(system, RegimeSwitchingSystem)

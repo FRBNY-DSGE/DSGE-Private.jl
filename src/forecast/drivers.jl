@@ -72,6 +72,7 @@ function prepare_forecast_inputs!(m::AbstractDSGEModel{S},
     irfs_only = all(prod -> prod == :irf, output_prods)
 
     # Load data if not provided, else check data well-formed
+    @show isempty(df)
     if !irfs_only
         if isempty(df)
             data_verbose = verbose == :none ? :none : :low
@@ -531,10 +532,15 @@ function forecast_one(m::AbstractDSGEModel{Float64},
 
     ### Common Setup
     # Add necessary output_vars and load data
+
+    @show typeof(df)
+    @show size(df)
     output_vars, df = prepare_forecast_inputs!(m, input_type, cond_type, output_vars;
                                                df = df, verbose = verbose, bdd_fcast = bdd_fcast,
                                                subset_inds = subset_inds,
                                                check_empty_columns = check_empty_columns, only_filter = only_filter)
+    @show typeof(df)
+    @show size(df)
 
     # Get output file names
     forecast_output = Dict{Symbol, Array{Float64}}()
@@ -781,7 +787,8 @@ Compute `output_vars` for a single parameter draw, `params`. Called by
 ```
 """
 function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, cond_type::Symbol,
-                           output_vars::Vector{Symbol}, params::Vector{Union{Vector{Float64},Float64}}, df::DataFrame; verbose::Symbol = :low,
+                           output_vars::Vector{Symbol}, params:: Array{Float64, 1}, #Vector{Union{Vector{Float64},Float64}}, #BP
+                           df::DataFrame; verbose::Symbol = :low,
                            use_filtered_shocks_in_shockdec::Bool = false,
                            shock_name::Symbol = :none, shock_var_name::Symbol = :none,
                            shock_var_value::Float64 = 0.0, shock_names::Vector{Symbol} = Vector{Symbol}(undef, 0),

@@ -441,6 +441,27 @@ function update!(m::AbstractDSGEModel, values::AbstractVector{Union{T, Vector{T}
     steadystate!(m)
 end
 
+
+
+#BP (Below)
+"""
+```
+update!(m::AbstractDSGEModel, values::Vector{T}) where T<:AbstractFloat
+```
+
+Update `m.parameters` with `values`, recomputing the steady-state parameter values.
+
+### Arguments:
+- `m`: the model object
+- `values`: the new values to assign to non-steady-state parameters.
+"""
+function update!(m::AbstractDSGEModel, values::Array{Float64, 1})
+    ModelConstructors.update!(m.parameters, values)
+    steadystate!(m)
+end
+
+
+
 """
 ```
 update!(m::AbstractDSGEModel, values::ParameterVector{T};
