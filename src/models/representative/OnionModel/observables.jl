@@ -3,7 +3,7 @@ function init_observable_mappings!(m::OnionModel)
     population_mnemonic = get(get_setting(m, :population_mnemonic))
 
     demean = function (levels)
-        cons = all(ismissing.(levels)) ? missing : mean(skipmissing(levels))
+        cons = all(ismissing.(levels)) ? missing : mean(Base.filter(!isnan,skipmissing(levels)))
         for i in 1:length(levels)
             levels[i] = ismissing(levels[i]) ? levels[i] : levels[i] - cons
         end
@@ -235,6 +235,7 @@ if get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 1
         #       data are measuring expectations of actual inflation.
 
         demean(annualtoquarter(levels[!,:ASACX10]))
+        #annualtoquarter(levels[!,:ASACX10])
 
     end
 
@@ -247,8 +248,8 @@ observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX]
                                                  "10-year average inflation expectations",
                                                  "10-year average yr/yr CPI inflation expectations")
 
-
 end
+
 
 m.observable_mappings = observables
 
