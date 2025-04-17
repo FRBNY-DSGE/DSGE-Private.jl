@@ -6,7 +6,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     n = get_setting(m, :n_sectors)
     # A x_{t+1} = B x_t
     if :eq_srec_1 ∉ collect(keys(m.equilibrium_conditions))
-        println("Entering if statement in eqcond")
+
         #This means we have done a normalization. Need to reset.
 
         endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices

@@ -143,7 +143,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         veta  = etawtsvd.V[:, bigev]
         deta  = Matrix(Diagonal(etawtsvd.S[bigev]))
     end
-    @show (length(bigev), nunstab)
+
     existence = length(bigev) >= nunstab
     if existence
         eu[1] = 1

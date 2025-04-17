@@ -469,7 +469,7 @@ memo = nothing
 permanent_t = 1
 TTT10 = (I - TTT) \ (TTT - TTT^40)
 #Confirm all of my Cs are 0
-@show all(CCC .≈ 0.)
+
 CCC10 = CCC
 
 TTT10        = TTT10 ./ 40.
@@ -547,7 +547,7 @@ memo = nothing
 permanent_t = 1
 TTT10 = (I - TTT) \ (TTT - TTT^40)
 #Confirm all of my Cs are 0
-@show all(CCC .≈ 0.)
+
 CCC10 = CCC
 
 TTT10        = TTT10 ./ 40.
