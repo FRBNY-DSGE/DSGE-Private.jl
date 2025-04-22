@@ -160,7 +160,7 @@ function measurement(m::Model1002{T},
     ## Inflation (GDP Deflator)
     ZZ[obs[:obs_gdpdeflator], endo[:π_t]]            = m[:Γ_gdpdef]
     ZZ[obs[:obs_gdpdeflator], endo_new[:e_gdpdef_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205"
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -169,7 +169,7 @@ function measurement(m::Model1002{T},
     ## Inflation (Core PCE)
     ZZ[obs[:obs_corepce], endo[:π_t]]             = 1.0
     ZZ[obs[:obs_corepce], endo_new[:e_corepce_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205"
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -268,14 +268,42 @@ function measurement(m::Model1002{T},
         QQ[exo[:biidc_sh], exo[:biidc_sh]] = m[:σ_biidc]^2
         QQ[exo[:φ_sh], exo[:φ_sh]]         = m[:σ_φ]^2
     end
+
+if subspec(m) in ["ss206"]
+    QQ[exo[:g_sh], exo[:g_sh]]             = (m[:κ_std_bcshocks] * m[:σ_g])^2
+    QQ[exo[:b_sh], exo[:b_sh]]             = (m[:κ_std_bcshocks] * m[:σ_b])^2
+    QQ[exo[:μ_sh], exo[:μ_sh]]             = (m[:κ_std_bcshocks] * m[:σ_μ])^2
+    QQ[exo[:ztil_sh], exo[:ztil_sh]]       = (m[:κ_std_bcshocks] * m[:σ_ztil])^2
+    QQ[exo[:λ_f_sh], exo[:λ_f_sh]]         = (m[:κ_std_bcshocks] * m[:σ_λ_f])^2
+    QQ[exo[:λ_w_sh], exo[:λ_w_sh]]         = (m[:κ_std_bcshocks] * m[:σ_λ_w])^2
+    QQ[exo[:σ_ω_sh], exo[:σ_ω_sh]]         = (m[:κ_std_bcshocks] * m[:σ_σ_ω])^2
+    QQ[exo[:μ_e_sh], exo[:μ_e_sh]]         = (m[:κ_std_bcshocks] * m[:σ_μ_e])^2
+    QQ[exo[:γ_sh], exo[:γ_sh]]             = (m[:κ_std_bcshocks] * m[:σ_γ])^2
+    #QQ[exo[:π_star_sh], exo[:π_star_sh]]   = m[:σ_π_star]^2
+    #QQ[exo[:lr_sh], exo[:lr_sh]]           = m[:σ_lr]^2
+    QQ[exo[:zp_sh], exo[:zp_sh]]           = (m[:κ_std_bcshocks] * m[:σ_z_p])^2
+    #QQ[exo[:tfp_sh], exo[:tfp_sh]]         = (m[:κ_std_bcshocks] * m[:σ_tfp])^2
+    #QQ[exo[:gdpdef_sh], exo[:gdpdef_sh]]   = m[:σ_gdpdef]^2
+    #QQ[exo[:corepce_sh], exo[:corepce_sh]] = m[:σ_corepce]^2
+    #QQ[exo[:gdp_sh], exo[:gdp_sh]]         = m[:σ_gdp]^2
+    #QQ[exo[:gdi_sh], exo[:gdi_sh]]         = m[:σ_gdi]^2
+
+
+end
+
     if subspec(m) in ["ss86", "ss88", "ss89", "ss90", "ss91", "ss92", "ss94", "ss95", "ss96"]
         QQ[exo[:λ_f_iid_sh], exo[:λ_f_iid_sh]] = m[:σ_λ_f_iid]^2
     end
 
     if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 &&
         haskey(m.settings, :add_κ_pce) && get_setting(m, :add_κ_pce)
-        QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = (m[:κ_pce] * m[:σ_meas_π])^2
-    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+        if subspec(m) == "ss206"
+            QQ[exo[:corepce_sh], exo[:corepce_sh]] = (m[:κ_pce] * m[:σ_corepce])^2
+        else
+            QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = (m[:κ_pce] * m[:σ_meas_π])^2
+        end
+
+    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205"
         QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = m[:σ_meas_π]^2
     end
 

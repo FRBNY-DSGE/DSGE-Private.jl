@@ -906,7 +906,7 @@ function eqcond(m::Model1002, reg::Int)
        end
    end
 
-   if subspec(m) == "ss103"
+   if subspec(m) == "ss103" || subspec(m) == "ss206"
        Ψ[eq[:eq_ziid], exo[:ziid_sh]] = m[:κ_covid]
        Ψ[eq[:eq_biidc], exo[:biidc_sh]] = m[:κ_covid]
        Ψ[eq[:eq_φ], exo[:φ_sh]] = m[:κ_covid]
@@ -920,7 +920,13 @@ function eqcond(m::Model1002, reg::Int)
        Ψ[eq[:eq_σ_ω], exo[:σ_ω_sh]] = m[:κ_std_bcshocks]
        Ψ[eq[:eq_μ_e], exo[:μ_e_sh]] = m[:κ_std_bcshocks]
        Ψ[eq[:eq_γ], exo[:γ_sh]] = m[:κ_std_bcshocks]
-       Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_std_bcshocks])
+       if subspec(m) == "ss206"
+           Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_pce])
+           #Ψ[eq[:eq_corepce], exo[:π_star_sh]] = (nopish * m[:κ_pce])
+       else
+
+           Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_std_bcshocks])
+       end
    end
 
    if haskey(m.settings, :marco_estim_experiment) && get_setting(m, :marco_estim_experiment) == 2
