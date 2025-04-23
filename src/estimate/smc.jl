@@ -222,7 +222,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
             ModelConstructors.toggle_regime!(parameters, 1)
             para2 = deepcopy(parameters)
             if new_model_params
-                println("There are new model parameters. I am iterating over $(collect(keys(reg_del)))")
+                #println("There are new model parameters. I am iterating over $(collect(keys(reg_del)))")
                 for i in collect(keys(reg_del))
                     if length(collect(values(reg_del[i]))) == length(para2[i].regimes[:value])
                         for k in keys(para2[i].regimes)

@@ -160,7 +160,7 @@ function measurement(m::Model1002{T},
     ## Inflation (GDP Deflator)
     ZZ[obs[:obs_gdpdeflator], endo[:π_t]]            = m[:Γ_gdpdef]
     ZZ[obs[:obs_gdpdeflator], endo_new[:e_gdpdef_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205"
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205" && subspec(m) != "ss206"
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -169,7 +169,7 @@ function measurement(m::Model1002{T},
     ## Inflation (Core PCE)
     ZZ[obs[:obs_corepce], endo[:π_t]]             = 1.0
     ZZ[obs[:obs_corepce], endo_new[:e_corepce_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205"
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205" && subspec(m) != "ss206"
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -303,7 +303,7 @@ end
             QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = (m[:κ_pce] * m[:σ_meas_π])^2
         end
 
-    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205"
+    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205" && subspec(m) != "ss206"
         QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = m[:σ_meas_π]^2
     end
 

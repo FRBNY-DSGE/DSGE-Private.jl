@@ -216,7 +216,7 @@ function pseudo_measurement(m::Model1002{T},
             ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_corepce_t]] = 1.0
             DD_pseudo[pseudo[:PseudoCorePCE]]                          = 100. * (m[:π_star] - 1.)
 
-            if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205"
+            if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) != "ss205" && subspec(m) != "ss206"
                 ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t]]  = 1.0
                 ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
             end
