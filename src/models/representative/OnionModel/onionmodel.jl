@@ -496,11 +496,13 @@ m <= parameter(:h, 0.5347,  (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.Squa
 
 m <= parameter(:γ, 0.0, (-5.0, 5.0), (-5., 5.), ModelConstructors.Untransformed(), Normal(0.0, 0.1), fixed=true,
                #scaling = x -> x/100,#Growth rate of economy
-               description = "γ: Log of the steady-state growth rate of technology")
+               description = "γ: Log of the steady-state growth rate of technology",
+               tex_label="\\gamma")
 
 
 m <= parameter(:mp_habit, 0.0, fixed = true,
-               description = ":mp_habit: weight of MP rule on habit formation")
+               description = ":mp_habit: weight of MP rule on habit formation",
+               tex_label="mp-habit")
 m <= parameter(:σ_r_m, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                description = "Standard deviation of process describing iid monetary policy shock",
                tex_label="\\sigma_{r^m}")
