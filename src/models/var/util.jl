@@ -293,7 +293,6 @@ function dsge_to_var!(m::AbstractDSGEModel, observables::Vector{Symbol},
                         n_regimes = n_regimes, regime = regime, zero_DD = zero_DD, MM = MM)
 end
 
-
 function dsge_to_var!(m::AbstractDSGEModel, para::Vector{S},
                       observables::Vector{Symbol},
                       exogenous_shocks::Vector{Symbol}, lags::Int;
