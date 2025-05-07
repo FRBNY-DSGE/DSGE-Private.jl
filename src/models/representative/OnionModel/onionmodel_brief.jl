@@ -431,7 +431,7 @@ m <= parameter(:π_star, 0.5, fixed = true,
                description = "Steady state rate of inflation")
 
 
-Kgam = DataFrame(CSV.File("/data/dsge_data_dir/proc/dsge/briefings/202412/gamma_vs_true_gamma.csv"))
+Kgam = DataFrame(CSV.File("/data/dsge_data_dir/proc/dsge/briefings/202412/Model_Data/gamma_vs_true_gamma.csv"))
 Kgam_vec = vec(Kgam[!, :true_gamma])
 
 m <= parameter(:Kgam, Kgam_vec)

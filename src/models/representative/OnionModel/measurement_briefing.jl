@@ -38,7 +38,7 @@ function measurement(m::OnionModel{T},
     ZZ[obs[:NominalFFR], endo[:r_t]] = 1.
 
     #Demeaned CPI Inflation, using Keshav's Gamma (final consumption shares)
-    ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
+    #ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
 
 
     ## Demeaned CPI Inflation -- will leave here commented out. For much of the briefing results, we used the above K-CPI
@@ -220,7 +220,7 @@ ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
 
 
 #No observables in individual sectors, but in categorical sectors
-ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 0.0
+#ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 0.0
 
 #Demeaned Core Services:
 core_services_sum = sum(m[:Kgam].value[get_setting(m, :core_service_sectors)])

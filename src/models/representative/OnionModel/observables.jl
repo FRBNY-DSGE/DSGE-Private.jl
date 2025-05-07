@@ -3,7 +3,7 @@ function init_observable_mappings!(m::OnionModel)
     population_mnemonic = get(get_setting(m, :population_mnemonic))
 
     demean = function (levels)
-        cons = all(ismissing.(levels)) ? missing : mean(skipmissing(levels))
+        cons = all(ismissing.(levels)) ? missing : mean(Base.filter(!isnan, skipmissing(levels)))
         for i in 1:length(levels)
             levels[i] = ismissing(levels[i]) ? levels[i] : levels[i] - cons
         end
@@ -124,10 +124,12 @@ subgroup_data_source = collect(values(get_setting(m,:subgroup_names)))
     for i in 1:length(inflation_subgroup_names)
 
         cpisector_fwd_transform = function(levels)
-            demean(levels[!, Symbol("$(inflation_subgroup_names[i])")])
+            #demean2(oneqtrpctchange(levels[!, Symbol("$(inflation_subgroup_names[i])")]))
+            demean2(oneqtrpctchange(levels[!, (subgroup_data_source[i])]))
         end
-            observables[Symbol("Inflation, $(inflation_subgroup_names[i])")] = Observable(Symbol("$(inflation_subgroup_names[i])"),
-                                                                                        [subgroup_data_source[i]],
+        observables[Symbol("Inflation, $(inflation_subgroup_names[i])")] = Observable(Symbol("$(inflation_subgroup_names[i])"),
+                                                                                      [Symbol(String(subgroup_data_source[i]) * "__FRED")],
+                                                                                        #[subgroup_data_source[i]],
                                                                                         cpisector_fwd_transform,
                                                                                         identity,
                                                                                         "$(inflation_subgroup_names[i])",

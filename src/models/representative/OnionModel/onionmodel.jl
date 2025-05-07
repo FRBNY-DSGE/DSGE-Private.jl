@@ -196,7 +196,6 @@ function init_parameters!(m::OnionModel)
                        description="inverse kappaw",
                        tex_label="invkawp")
 
-
         m <= parameter(:oil, 14., fixed = true,
                        description = "Index of oil",
                        tex_label="oil")
@@ -510,7 +509,7 @@ function init_model_indices!(m::OnionModel)
     #[:μ_com_sh, :μ_com_goods_sh, :μ_com_services_sh, :μ_com_energy_sh];
 
 
-    vcat(exogenous_shocks, [Symbol("μ_$(i)_sh") for i in 1:length(collect(keys(get_setting(m, :subgroup_names))))])
+    vcat(exogenous_shocks, [Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))])
 
     observables                 = keys(m.observable_mappings)
 
@@ -522,7 +521,7 @@ function init_model_indices!(m::OnionModel)
                          [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t]]
-    vcat(endogenous_states, [Symbol("μ_$(i)") for i in 1:length(collect(keys(get_setting(m, :subgroup_names))))])
+    vcat(endogenous_states, [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))])
 
                          #[:μ_com, :μ_com_goods, :μ_com_services, :μ_com_energy]]
                          #[Symbol("mkup_iid_$(i)") for i in 1:n];
@@ -539,7 +538,7 @@ function init_model_indices!(m::OnionModel)
                               [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
                               [Symbol("eq_Eπ_$i") for i in 1:n]]
-    vcat(equilibrium_conditions, [Symbol("eq_μ_$(i)") for i in 1:length(collect(keys(get_setting(m, :subgroup_names))))])
+    vcat(equilibrium_conditions, [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))])
                               #[:eq_μ_com, :eq_μ_com_goods, :eq_μ_com_services, :eq_μ_com_energy]]
                               #[Symbol("eq_mkup_iid_$(i)") for i in 1:n];
                               #[Symbol("eq_mkup_trend_$(i)") for i in 1:n]]

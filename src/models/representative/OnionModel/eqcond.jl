@@ -83,7 +83,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     @show invkap_value[1]
 
     #Leaving common shock for now
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value     # - m[:invkap].value
+    #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value     # - m[:invkap].value
 
 
     for i in get_setting(m, :core_goods_sectors)
