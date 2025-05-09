@@ -797,6 +797,7 @@ init_settings!(m::Model1002)
 Initializes the model's settings as per sub specification. These settings are intrinsic to building the rest of the model (as opposed to other settings which may just affect the forecasting or estimation process once the model has been created) and are likely to contain dependencies in `subspecs.jl` or `subspecs_builder.jl`.
 """
 function init_subspec_settings!(m::Model1002)
+    ss_num = parse(Int, SubString(subspec(m),3,subspec_ind))
 
     if get_setting(m, :cond_id) in collect(1:5)
         m <= Setting(:cond_full_names, [:obs_gdp, :obs_corepce, :obs_spread, :obs_nominalrate, :obs_longrate],
@@ -812,13 +813,18 @@ function init_subspec_settings!(m::Model1002)
 
 
     # COVID-19 settings
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if ss_num >= 59 && ss_num <= 104
         m <= Setting(:antshocks, Dict{Symbol, Int}(:biidc => 1, :φ => 1, :ziid => 1))
         m <= Setting(:ant_eq_mapping, Dict{Symbol, Symbol}(:biidc => :biidc, :φ => :φ, :ziid => :ziid))
         m <= Setting(:ant_eq_E_mapping, Dict{Symbol, Symbol}(:φ => :Eφ))
         m <= Setting(:proportional_antshocks, Symbol[:biidc, :φ, :ziid])
+
+        m <= Setting(:add_cprod_params, true)
+        m <= Setting(:add_cprod_group, true)
+        m <= Setting(:add_cprod_states, true)
+        m <= Setting(:add_std_shock_group, true)
     end
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 62
+    if ss_num >= 62 && ss_num <= 104
         m <= Setting(:add_pseudo_gdp, true),
         m <= Setting(:add_pseudo_corepce, true)
         m <= Setting(:add_anticipated_obs_gdp, true)
@@ -830,12 +836,23 @@ function init_subspec_settings!(m::Model1002)
         m <= Setting(:add_initialize_pgap_ygap_pseudoobs, true)
     end
 
+    if ss_num >= 87 && ss_num <= 104
+        m <= Setting(:add_meas_pi_states, true)
+        m <= Setting(:add_meas_pi_params, true)
+        m <= Setting(:add_meas_pi_shock_group, true)
+        m <= Setting(:add_meas_pi_error_group, true)
+    end
+
+    if ss_num >= 100 && ss_num <= 103
+        m <= Setting(:add_pol_smooth_group, true)
+    end
+
     if subspec(m) in ["ss30", "ss59", "ss60", "ss61"]
         m <= Setting(:flexible_ait_policy_change, false,
                      "Indicator for whether 2020-Q3 switch in monetary policy rule to AIT is on")
         m <= Setting(:add_pgap, true)
         m <= Setting(:add_ygap, true)
-    elseif parse(Int, SubString(subspec(m),3,subspec_ind)) >= 62
+    elseif ss_num >= 62 && ss_num <= 104
         m <= Setting(:flexible_ait_policy_change, false,
                      "Indicator for whether 2020-Q3 switch in monetary policy rule to AIT is on")
         m <= Setting(:add_pgap, true)
@@ -870,7 +887,7 @@ end
 """
 function init_subspec_params!(m::AbstractDSGEModel)
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if haskey(m.settings, :add_cprod_params) ? get_setting(m, :add_cprod_params) : false # parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
         m <= parameter(:ρ_ziid, 0., (0., 0.999), (0., 0.999), ModelConstructors.Untransformed(), BetaAlt(0.5, 0.2), fixed=true,
                        description="ρ_ziid: AR(1) coefficient in the iid component of the technology process.",
                        tex_label="\\rho_{z, iid}")
@@ -894,14 +911,14 @@ function init_subspec_params!(m::AbstractDSGEModel)
                        tex_label="\\sigma_{\\varphi}") # If σ_φ ∼ RootInverseGamma(ν, τ), then σ_φ² ∼ InverseGamma(ν/2, ντ²/2)
     end
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+    if haskey(m.settings, :add_meas_pi_params) ? get_setting(m, :add_meas_pi_params) : false # parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
         m <= parameter(:ρ_meas_π, 0.2320, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                        tex_label="\\rho_{meas_\\pi}")
         m <= parameter(:σ_meas_π, 0.0999, (0.0, 5.),(0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        tex_label="\\sigma_{meas_\\pi}")
     end
 
-        if subspec(m) in ["ss62"] # TODO: add new specs
+    if subspec(m) in ["ss62"] # TODO: add new specs
         m <= parameter(:damp_standard_shocks, 1., (0., 1e3), (0., 1e3), fixed=false, # will be fixed later in subspec!(m)
                        description="damp_standard_shocks: Damping factor for standard business cycle shocks during COVID-19.",
                        tex_label="damp standard shocks")
@@ -1255,7 +1272,7 @@ function init_subspec_indices(m::AbstractDSGEModel,
     end
 
 
-    if parse(Int, SubString(subspec(m), 3,subspec_ind)) >= 59
+    if haskey(get_settings(m), :add_cprod_states) ? get_setting(m, :add_cprod_states) : false # parse(Int, SubString(subspec(m), 3,subspec_ind)) >= 59
         push!(endogenous_states, :ziid_t)
         push!(equilibrium_conditions, :eq_ziid)
         push!(exogenous_shocks, :ziid_sh)
@@ -1269,7 +1286,7 @@ function init_subspec_indices(m::AbstractDSGEModel,
         push!(exogenous_shocks, :φ_sh)
     end
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+    if haskey(get_settings(m), :add_meas_pi_states) ? get_setting(m, :add_meas_pi_states) : false# parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
         push!(endogenous_states_augmented, :e_meas_π_t, :e_meas_π_t1)
 
         push!(exogenous_shocks, :meas_π_sh)
@@ -1448,15 +1465,185 @@ end
 
 function init_subspec_parameter_groupings(m::Model1002, groupings::OrderedDict{String, Vector{Parameter}})
 
+    subspec_ind = parse(Int, SubString(subspec(m),3,subspec_ind))
 
-
-    if subspec_num >= 87
-        push!(error, :ρ_meas_π, :σ_meas_π)
+    if haskey(get_settings(m), :add_meas_pi_error_group) ? get_setting(m, :add_meas_pi_error_group) : false # subspec_num >= 87
+        push!(groupings["Measurement Error Parameters"], :ρ_meas_π, :σ_meas_π)
     end
-    if subspec_num >= 100 && subspec_num != 104
-        push!(policy, :φ_π, :φ_y, :ρ_smooth)
+    if haskey(get_settings(m), :add_pol_smooth_group) ? get_setting(m, :add_pol_smooth_group) : false # subspec_num >= 100 && subspec_num != 104
+        push!(groupings["Policy Parameters"], :φ_π, :φ_y, :ρ_smooth)
     end
     if haskey(get_settings(m), :add_ait_rm) && get_setting(m, :add_ait_rm)
-        push!(policy, :σ_ait_rm, :ρ_ait_rm)
+        push!(groupings["Policy Parameters"], :σ_ait_rm, :ρ_ait_rm)
     end
+
+    if !isempty(expected_ffr(m))
+        for i in expected_ffr(m)
+            push!(groupings["Measurement Error Parameters"], Symbol("σ_exp_rm$i"))
+        end
+        push!(groupings["Measurement Error Parameters"], Symbol("ρ_exp_rm"))
+    end
+
+    if haskey(get_settings(m), :add_cprod_group) ? get_setting(m, :add_cprod_group) : false # subspec_num >= 59
+        covid = [:σ_ziid, :σ_biidc, :σ_φ]
+        for (sh, ant_num) in get_setting(m, :antshocks)
+            for i in 1:ant_num
+                push!(covid, Symbol("σ_$(sh)$i"))
+            end
+        end
+        for key in get_setting(m, :proportional_antshocks)
+            push!(covid, Symbol(:σ_, key, :_prop))
+        end
+        if haskey(m.settings, :add_κ_covid) && get_setting(m, :add_κ_covid)
+            push!(covid, :κ_covid)
+        end
+        if haskey(m.settings, :add_κ_pce) && get_setting(m, :add_κ_pce)
+            push!(covid, :κ_pce)
+        end
+        push!(all_keys, covid)
+        push!(descriptions, "COVID-19 Parameters")
+    end
+
+    # Ensure no parameters missing
+    incl_params    = vcat(collect(values(groupings))...)
+    excl_params_sym = vcat([:Upsilon, :ρ_μ_e, :ρ_γ, :σ_μ_e, :σ_γ, :Iendoα, :γ_gdi, :δ_gdi],
+                           [Symbol("σ_r_m$i") for i=n_mon_anticipated_shocks(m)+1:n_mon_anticipated_shocks_padding(m)])
+    if haskey(get_settings(m), :add_cprod_group) ? get_setting(m, :add_cprod_group) # subspec_num >= 59
+        push!(excl_params_sym, :ρ_ziid, :ρ_biidc, :ρ_φ)
+    end
+    if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
+        get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false
+        push!(excl_params_sym, :σ_pgap, :σ_ygap)
+    end
+    if haskey(get_settings(m), :add_iid_cond_obs_gdp_meas_err) ?
+        get_setting(m, :add_iid_cond_obs_gdp_meas_err) : false
+        push!(excl_params_sym, :σ_condgdp, :ρ_condgdp)
+    end
+    if haskey(get_settings(m), :add_iid_cond_obs_corepce_meas_err) ?
+        get_setting(m, :add_iid_cond_obs_corepce_meas_err) : false
+        push!(excl_params_sym, :σ_condcorepce, :ρ_condcorepce)
+    end
+    excl_params = [m[θ] for θ in excl_params_sym]
+
+    @assert isempty(setdiff(m.parameters, vcat(incl_params, excl_params)))
+
+    return groupings
+
+end
+
+
+
+function init_subspec_shock_groupings(m::Model1002)
+    # For parsing model subspec to Int
+    subspec_ind = isletter(subspec(m)[end]) ? length(subspec(m)) - 1 : length(subspec(m))
+
+    if haskey(get_settings(m), :add_std_shock_group) ? get_setting(m, :add_std_shock_group) : false # parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+        gov = ShockGroup("g", [:g_sh], RGB(0.70, 0.13, 0.13)) # firebrick
+        bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
+        fin = ShockGroup("FF", [:γ_sh, :μ_e_sh, :σ_ω_sh], RGB(0.29, 0.0, 0.51)) # indigo
+        # tfp = ShockGroup("tfp", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+        tfp = ShockGroup("tfp", [:ztil_sh, :zp_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+        pmu = ShockGroup("mkp", [:λ_f_sh, :λ_w_sh], RGB(0.60, 0.80, 0.20)) # yellowgreen
+        wmu = ShockGroup("w-mkp", [:λ_w_sh], RGB(0.0, 0.5, 0.5)) # teal
+        phi = ShockGroup("phi", [:φ_sh], RGB(0.5, 0.5, 0.))
+
+        rm_vec = vcat([:rm_sh], [Symbol("rm_shl$i") for i = 1:n_mon_anticipated_shocks(m)])
+        if haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
+            append!(rm_vec, [:rm_ait_sh])
+            if !isempty(mon_anticipated_ait_shocks(m))
+                for i in mon_anticipated_ait_shocks(m)
+                    push!(rm_vec, Symbol("ait_rm_sh$i"))
+                end
+            end
+        end
+
+        pol = ShockGroup("pol", rm_vec, RGB(1.0, 0.84, 0.0)) # gold
+        pis = ShockGroup("pi-LR", [:π_star_sh], RGB(1.0, 0.75, 0.793)) # pink
+        mei = ShockGroup("mu", [:μ_sh], :cyan)
+
+        mea_vec = [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh, :gdp_sh, :gdi_sh]
+        if haskey(get_settings(m), :add_meas_pi_shock_group) ? get_setting(m, :add_meas_pi_shock_group) : false # parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+            push!(mea_vec, :meas_π_sh)
+        end
+        if !isempty(expected_ffr(m))
+            for i in expected_ffr(m)
+                push!(rm_vec, Symbol("exp_rm_sh$i"))
+                #push!(exogenous_shocks, Symbol("exp_rm_sh$i"))
+            end
+        end
+
+        if haskey(get_settings(m), :add_iid_cond_obs_gdp_meas_err) ?
+            get_setting(m, :add_iid_cond_obs_gdp_meas_err) : false
+            mea = ShockGroup("me", push!(mea_vec, :condgdp_sh, :condcorepce_sh),
+                             RGB(0.0, 0.8, 0.0))
+        elseif haskey(get_settings(m), :add_iid_anticipated_obs_gdp_meas_err) ?
+            get_setting(m, :add_iid_anticipated_obs_gdp_meas_err) : false
+            mea = ShockGroup("me", push!(mea_vec, :gdpexp_sh),
+                             RGB(0.0, 0.8, 0.0))
+        else
+            mea = ShockGroup("me", mea_vec, RGB(0.0, 0.8, 0.0))
+        end
+
+        zpe = ShockGroup("zp", [:zp_sh], RGB(0.0, 0.3, 0.0))
+        det = ShockGroup("dt", [:dettrend], :gray40)
+        oth = ShockGroup("other", [:dettrend, :g_sh, :π_star_sh, :μ_sh], :gray40) # :dettrend
+
+        # COVID-19 Shocks
+        betcovid = ShockGroup("biidc", haskey(m.exogenous_shocks, :biidc_shl1) ? [:biidc_sh, :biidc_shl1] : [:biidc_sh],
+                              RGB(0.70, 0.13, 0.13))
+        zcovid   = ShockGroup("ziid", [:ziid_sh], RGB(0., 0.5, 0.5))
+        φcovid   = ShockGroup("phi", [:φ_sh], RGB(0.5, 0.5, 0.))
+        ocovid   = ShockGroup("Other COVID", [:ziid_sh, :φ_sh], RGB(0., 0.5, 0.5))
+
+        if haskey(m.exogenous_shocks, :pgap_sh)
+            push!(ocovid.shocks, :pgap_sh)
+        end
+        if haskey(m.exogenous_shocks, :ygap_sh)
+            push!(ocovid.shocks, :ygap_sh)
+        end
+
+        # Time-varying CCC, e.g. from temporary ZLB
+        if haskey(get_settings(m), :gensys2) ? get_setting(m, :gensys2) : false
+            st = ShockGroup("States Trend", [:StatesTrend], :darkgreen) # :dettrend
+            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth, st]
+        else
+            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth]
+        end
+        # return [gov, bet, fin, tfp, pmu, wmu, pol, pis, mei, mea, zpe, det]
+        # return [betcovid, zcovid, φcovid, bet, fin, tfp, pmu, pol, mea, oth]
+    elseif subspec(m) != "ss12"
+        gov = ShockGroup("g", [:g_sh], RGB(0.70, 0.13, 0.13)) # firebrick
+        bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
+        fin = ShockGroup("FF", [:γ_sh, :μ_e_sh, :σ_ω_sh], RGB(0.29, 0.0, 0.51)) # indigo
+        tfp = ShockGroup("z", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+        pmu = ShockGroup("p-mkp", [:λ_f_sh], RGB(0.60, 0.80, 0.20)) # yellowgreen
+        wmu = ShockGroup("w-mkp", [:λ_w_sh], RGB(0.0, 0.5, 0.5)) # teal
+        pol = ShockGroup("pol", vcat([:rm_sh], [Symbol("rm_shl$i") for i = 1:n_mon_anticipated_shocks(m)]),
+                         RGB(1.0, 0.84, 0.0)) # gold
+        pis = ShockGroup("pi-LR", [:π_star_sh], RGB(1.0, 0.75, 0.793)) # pink
+        mei = ShockGroup("mu", [:μ_sh], :cyan)
+        mea = ShockGroup("me", [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh, :gdp_sh, :gdi_sh], RGB(0.0, 0.8, 0.0))
+        zpe = ShockGroup("zp", [:zp_sh], RGB(0.0, 0.3, 0.0))
+        det = ShockGroup("dt", [:dettrend], :gray40)
+
+        return [gov, bet, fin, tfp, pmu, wmu, pol, pis, mei, mea, zpe, det]
+    else
+        # financial, productivity, other, measurement errors
+        fin = ShockGroup("FF", [:γ_sh, :μ_e_sh, :σ_ω_sh], RGB(0.29, 0.0, 0.51)) # indigo
+        prod = ShockGroup("Prod", [:ztil_sh, :zp_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+        mea = ShockGroup("Measurement", [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh,
+                                         :gdp_sh, :gdi_sh], RGB(0.0, 0.8, 0.0))
+        other = ShockGroup("Other", [:g_sh, :b_sh, :λ_f_sh, :λ_w_sh,
+                                     vcat([:rm_sh],
+                                     [Symbol("rm_shl$i") for i = 1:n_mon_anticipated_shocks(m)])...,
+                                     :π_star_sh, :μ_sh,
+                                     :dettrend], RGB(0.70, 0.13, 0.13)) # firebrick
+        return [fin, prod, mea, other]
+    end
+end
+
+
+
+function init_subspec_steadystate!(m::Model1002)
+    println("not implemented yet!")
 end

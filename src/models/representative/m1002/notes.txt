@@ -1,0 +1,27 @@
+This files is just a place to put some thoughts on the cleaning done on this branch. The main impetus for this project
+has been our troubles with creating and estimating new models. Specifically, here are a few of the issues:
+
+1. Statements like `if subspec(m) >= 59` make it such that models that we make in the future often inherent model
+   features that we aren't aware of. If we are consciously aware of everything that gets inherited then this isn't that
+   big of a problem but it's very difficult to keep track of everything.
+
+2. We felt as if having subspec contingent ways to build up the model in m1002.jl was not very clean/organized in the
+   most interpretable way. It should be more like m1002.jl builds the base model and then we call a different subspec
+   focused file that makes all the subspec specific changes. The same thing would ideally be the case for other files
+   that relate to the structure of the model such as augment_states.jl or observables.jl or eqcond.jl.
+
+3. Some old specfiles in the range of 59 to change the model a lot in the specfile itself. This is the same problem that
+   we had for our ss97 model that motivated us to make the ss104 cleanspec.
+
+4. The general organization of all the if statements were a bit intractable. Made it difficult to really pin down which
+   were all the components that applied to our model in question because we had to search in many places.
+
+
+The changes in this branch (that will also be pushed onto the main branch as well) will reflect changes in the codebase
+for building models that addresses each of the problems in some manner. As a summary, the main changes include moving
+all the subspec and setting based if statements from all of the files in the folder into either subspecs.jl or
+subspecs_builder.jl. Each of these if statements are also organized better such that you only need to look at one place
+for all of the settings/changes that are relevant for one given subspec.
+
+To solve the unintended inheritance problem, all the if statements that don't explicitly apply to a finite set of subspecs
+have been changed to only be settings based and the inheritance of this setting has been displaced to init_subspec_settings!

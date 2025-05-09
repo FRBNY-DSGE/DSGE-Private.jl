@@ -582,8 +582,6 @@ Calculates the model's steady-state values. `steadystate!(m)` must be called whe
 the parameters of `m` are updated.
 """
 function steadystate!(m::Model1002)
-    # For parsing model subspec to Int
-    subspec_ind = isletter(subspec(m)[end]) ? length(subspec(m)) - 1 : length(subspec(m))
 
     SIGWSTAR_ZERO = 0.5
 
@@ -796,60 +794,16 @@ function parameter_groupings(m::Model1002)
                   :ρ_gdpvar, :σ_gdp, :σ_gdi, :σ_lr, :σ_tfp, :σ_gdpdef, :σ_corepce]
 
 
-
-
-
     all_keys     = Vector[policy, sticky, other_endo, financial, processes, error]
     descriptions = ["Policy Parameters", "Nominal Rigidities Parameters",
                     "Other Endogenous Propagation and Steady State Parameters",
                     "Financial Frictions Parameters", "Exogenous Process Parameters",
                     "Measurement Error Parameters"]
 
-    if subspec_num >= 59
-        covid = [:σ_ziid, :σ_biidc, :σ_φ]
-        for (sh, ant_num) in get_setting(m, :antshocks)
-            for i in 1:ant_num
-                push!(covid, Symbol("σ_$(sh)$i"))
-            end
-        end
-        for key in get_setting(m, :proportional_antshocks)
-            push!(covid, Symbol(:σ_, key, :_prop))
-        end
-        if haskey(m.settings, :add_κ_covid) && get_setting(m, :add_κ_covid)
-            push!(covid, :κ_covid)
-        end
-        if haskey(m.settings, :add_κ_pce) && get_setting(m, :add_κ_pce)
-            push!(covid, :κ_pce)
-        end
-        push!(all_keys, covid)
-        push!(descriptions, "COVID-19 Parameters")
-    end
-
     all_params = map(keys -> [m[θ]::Parameter for θ in keys], all_keys)
     groupings  = OrderedDict{String, Vector{Parameter}}(zip(descriptions, all_params))
+    groupings  = init_subspec_parameter_groupings(m, groupings)
 
-    # Ensure no parameters missing
-    incl_params    = vcat(collect(values(groupings))...)
-    excl_params_sym = vcat([:Upsilon, :ρ_μ_e, :ρ_γ, :σ_μ_e, :σ_γ, :Iendoα, :γ_gdi, :δ_gdi],
-                           [Symbol("σ_r_m$i") for i=n_mon_anticipated_shocks(m)+1:n_mon_anticipated_shocks_padding(m)])
-    if subspec_num >= 59
-        push!(excl_params_sym, :ρ_ziid, :ρ_biidc, :ρ_φ)
-    end
-    if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
-        get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false
-        push!(excl_params_sym, :σ_pgap, :σ_ygap)
-    end
-    if haskey(get_settings(m), :add_iid_cond_obs_gdp_meas_err) ?
-        get_setting(m, :add_iid_cond_obs_gdp_meas_err) : false
-        push!(excl_params_sym, :σ_condgdp, :ρ_condgdp)
-    end
-    if haskey(get_settings(m), :add_iid_cond_obs_corepce_meas_err) ?
-        get_setting(m, :add_iid_cond_obs_corepce_meas_err) : false
-        push!(excl_params_sym, :σ_condcorepce, :ρ_condcorepce)
-    end
-    excl_params = [m[θ] for θ in excl_params_sym]
-
-    @assert isempty(setdiff(m.parameters, vcat(incl_params, excl_params)))
 
     return groupings
 end
@@ -863,110 +817,7 @@ Returns a `Vector{ShockGroup}`, which must be passed in to
 `plot_shock_decomposition`. See `?ShockGroup` for details.
 """
 function shock_groupings(m::Model1002)
-    # For parsing model subspec to Int
-    subspec_ind = isletter(subspec(m)[end]) ? length(subspec(m)) - 1 : length(subspec(m))
+    groups = init_subspec_shock_groupings(m)
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
-        gov = ShockGroup("g", [:g_sh], RGB(0.70, 0.13, 0.13)) # firebrick
-        bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
-        fin = ShockGroup("FF", [:γ_sh, :μ_e_sh, :σ_ω_sh], RGB(0.29, 0.0, 0.51)) # indigo
-        # tfp = ShockGroup("tfp", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
-        tfp = ShockGroup("tfp", [:ztil_sh, :zp_sh], RGB(1.0, 0.55, 0.0)) # darkorange
-        pmu = ShockGroup("mkp", [:λ_f_sh, :λ_w_sh], RGB(0.60, 0.80, 0.20)) # yellowgreen
-        wmu = ShockGroup("w-mkp", [:λ_w_sh], RGB(0.0, 0.5, 0.5)) # teal
-        phi = ShockGroup("phi", [:φ_sh], RGB(0.5, 0.5, 0.))
-
-        rm_vec = vcat([:rm_sh], [Symbol("rm_shl$i") for i = 1:n_mon_anticipated_shocks(m)])
-        if haskey(get_settings(m), :add_ait_rm) ? get_setting(m, :add_ait_rm) : false
-            append!(rm_vec, [:rm_ait_sh])
-            if !isempty(mon_anticipated_ait_shocks(m))
-                for i in mon_anticipated_ait_shocks(m)
-                    push!(rm_vec, Symbol("ait_rm_sh$i"))
-                end
-            end
-        end
-
-        pol = ShockGroup("pol", rm_vec, RGB(1.0, 0.84, 0.0)) # gold
-        pis = ShockGroup("pi-LR", [:π_star_sh], RGB(1.0, 0.75, 0.793)) # pink
-        mei = ShockGroup("mu", [:μ_sh], :cyan)
-
-        mea_vec = [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh, :gdp_sh, :gdi_sh]
-        if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
-            push!(mea_vec, :meas_π_sh)
-        end
-        if !isempty(expected_ffr(m))
-            for i in expected_ffr(m)
-                push!(rm_vec, Symbol("exp_rm_sh$i"))
-                #push!(exogenous_shocks, Symbol("exp_rm_sh$i"))
-            end
-        end
-
-        if haskey(get_settings(m), :add_iid_cond_obs_gdp_meas_err) ?
-            get_setting(m, :add_iid_cond_obs_gdp_meas_err) : false
-            mea = ShockGroup("me", push!(mea_vec, :condgdp_sh, :condcorepce_sh),
-                             RGB(0.0, 0.8, 0.0))
-        elseif haskey(get_settings(m), :add_iid_anticipated_obs_gdp_meas_err) ?
-            get_setting(m, :add_iid_anticipated_obs_gdp_meas_err) : false
-            mea = ShockGroup("me", push!(mea_vec, :gdpexp_sh),
-                             RGB(0.0, 0.8, 0.0))
-        else
-            mea = ShockGroup("me", mea_vec, RGB(0.0, 0.8, 0.0))
-        end
-
-        zpe = ShockGroup("zp", [:zp_sh], RGB(0.0, 0.3, 0.0))
-        det = ShockGroup("dt", [:dettrend], :gray40)
-        oth = ShockGroup("other", [:dettrend, :g_sh, :π_star_sh, :μ_sh], :gray40) # :dettrend
-
-        # COVID-19 Shocks
-        betcovid = ShockGroup("biidc", haskey(m.exogenous_shocks, :biidc_shl1) ? [:biidc_sh, :biidc_shl1] : [:biidc_sh],
-                              RGB(0.70, 0.13, 0.13))
-        zcovid   = ShockGroup("ziid", [:ziid_sh], RGB(0., 0.5, 0.5))
-        φcovid   = ShockGroup("phi", [:φ_sh], RGB(0.5, 0.5, 0.))
-        ocovid   = ShockGroup("Other COVID", [:ziid_sh, :φ_sh], RGB(0., 0.5, 0.5))
-
-        if haskey(m.exogenous_shocks, :pgap_sh)
-            push!(ocovid.shocks, :pgap_sh)
-        end
-        if haskey(m.exogenous_shocks, :ygap_sh)
-            push!(ocovid.shocks, :ygap_sh)
-        end
-
-        # Time-varying CCC, e.g. from temporary ZLB
-        if haskey(get_settings(m), :gensys2) ? get_setting(m, :gensys2) : false
-            st = ShockGroup("States Trend", [:StatesTrend], :darkgreen) # :dettrend
-            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth, st]
-        else
-            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth]
-        end
-        # return [gov, bet, fin, tfp, pmu, wmu, pol, pis, mei, mea, zpe, det]
-        # return [betcovid, zcovid, φcovid, bet, fin, tfp, pmu, pol, mea, oth]
-    elseif subspec(m) != "ss12"
-        gov = ShockGroup("g", [:g_sh], RGB(0.70, 0.13, 0.13)) # firebrick
-        bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
-        fin = ShockGroup("FF", [:γ_sh, :μ_e_sh, :σ_ω_sh], RGB(0.29, 0.0, 0.51)) # indigo
-        tfp = ShockGroup("z", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
-        pmu = ShockGroup("p-mkp", [:λ_f_sh], RGB(0.60, 0.80, 0.20)) # yellowgreen
-        wmu = ShockGroup("w-mkp", [:λ_w_sh], RGB(0.0, 0.5, 0.5)) # teal
-        pol = ShockGroup("pol", vcat([:rm_sh], [Symbol("rm_shl$i") for i = 1:n_mon_anticipated_shocks(m)]),
-                         RGB(1.0, 0.84, 0.0)) # gold
-        pis = ShockGroup("pi-LR", [:π_star_sh], RGB(1.0, 0.75, 0.793)) # pink
-        mei = ShockGroup("mu", [:μ_sh], :cyan)
-        mea = ShockGroup("me", [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh, :gdp_sh, :gdi_sh], RGB(0.0, 0.8, 0.0))
-        zpe = ShockGroup("zp", [:zp_sh], RGB(0.0, 0.3, 0.0))
-        det = ShockGroup("dt", [:dettrend], :gray40)
-
-        return [gov, bet, fin, tfp, pmu, wmu, pol, pis, mei, mea, zpe, det]
-    else
-        # financial, productivity, other, measurement errors
-        fin = ShockGroup("FF", [:γ_sh, :μ_e_sh, :σ_ω_sh], RGB(0.29, 0.0, 0.51)) # indigo
-        prod = ShockGroup("Prod", [:ztil_sh, :zp_sh], RGB(1.0, 0.55, 0.0)) # darkorange
-        mea = ShockGroup("Measurement", [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh,
-                                         :gdp_sh, :gdi_sh], RGB(0.0, 0.8, 0.0))
-        other = ShockGroup("Other", [:g_sh, :b_sh, :λ_f_sh, :λ_w_sh,
-                                     vcat([:rm_sh],
-                                     [Symbol("rm_shl$i") for i = 1:n_mon_anticipated_shocks(m)])...,
-                                     :π_star_sh, :μ_sh,
-                                     :dettrend], RGB(0.70, 0.13, 0.13)) # firebrick
-        return [fin, prod, mea, other]
-    end
+    return groups
 end
