@@ -137,7 +137,7 @@ end
 ############################################################################
 #Fernald TFP
 ############################################################################
-if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
+if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71 || get_setting(m, :marco_test_num) == 100
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
