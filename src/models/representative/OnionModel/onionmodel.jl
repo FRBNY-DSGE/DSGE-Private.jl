@@ -299,15 +299,15 @@ m <= parameter(:ξ, paras["ξ"], fixed = true,
                description="ξ: ",
                tex_label="\\xi")
 
-m <= parameter(:mp_cpi_infl, 1.01, fixed = true, #paras["mp_cpi_infl"] NEEDS TO BE 1.01 to AVOID EIGENVALUE ISSUE
+m <= parameter(:mp_cpi_infl, 1.01, (1e-5, 10.), (1e-5, 10.00), ModelConstructors.Exponential(), Normal(1.5, 0.25), fixed=false, #paras["mp_cpi_infl"] NEEDS TO BE 1.01 to AVOID EIGENVALUE ISSUE
                description="weight on cpi inflation in mp rule",
                tex_label="mp_cpi_infl")
 
-m <= parameter(:mp_cons, 0., fixed = true, #paras["mp_cons"]
+m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description="weight on consumption in mp rule",
                tex_label="mp_cons")
 
-m <= parameter(:mp_cstar, 0., fixed = true, #paras["mp_cstar"]
+m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description="weight on potential consumption",
                tex_label="mp_cstar")
 
@@ -404,38 +404,61 @@ end
 
 
 ## Adding model parameters for standard deviation of shocks
-m <= parameter(:σ_c, 0.8719, fixed = true,
-               description = "σ_c: Coefficient of relative risk aversion")
-m <= parameter(:σ_b_t, 0.0292,fixed = true,
-               description = "σ_b: Standard deviation of the discount rate process")
-m <= parameter(:ρ_b_t, 0.941, fixed = true,
-               description = "ρ_b: AR(1) coefficient of the discount rate process")
-m <= parameter(:σ_μ, 0.1314, fixed = true,
-               description = "σ_μ: standard deviation of mark up shock process")
-m <= parameter(:ρ_μ, 0.8827, fixed = true, #0.8827
-               description = "ρ_μ: AR(1) coefficient of the mark up shock process")
-m <= parameter(:σ_μw, 0.1314, fixed = true,
-               description = "σ_wμ: standard deviation of wage mark up shock process")
-m <= parameter(:ρ_μw, 0.3884, fixed = true,
-               description = "ρ_μw: AR(1) coefficient in the wage mark up shock process")
-m <= parameter(:σ_πstar, 0.0269, fixed = true,
-               description = "σ_πstar: standard deviation of the process describing the time varying inflation target")
-m <= parameter(:ρ_πstar, 0.99, fixed = true,
-               description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target")
-m <= parameter(:σ_a_t, 0.6742, fixed = true, #Taken from std dev of stationary comp of prod
-               description = "σ_a_t: standard deviation of the process describing productivity")
-m <= parameter(:ρ_a_t, 0.9446, fixed = true,#Taken from std dev of stationary comp of prod 0.9446
-               description = "ρ_a_t: AR(1) coefficient of the process describing productivity")
+m <= parameter(:σ_c, 0.8719, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), Normal(1.5, 0.37), fixed=false,
+               description = "σ_c: Coefficient of relative risk aversion",
+               tex_label = "\\sigma_c")
+m <= parameter(:σ_b_t, 0.0292, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+               description = "σ_b: Standard deviation of the discount rate process",
+               tex_label = "\\sigma_{b_t}")
+m <= parameter(:ρ_b_t, 0.941, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+               description = "ρ_b: AR(1) coefficient of the discount rate process",
+               tex_label = "\\rho_{b_t}")
 
-m <= parameter(:h, 0.5347, fixed = true,
-               description = "h: consumption habit persistence")
-m <= parameter(:γ, 0.0, fixed=true, #0.3673, fixed = true,#Growth rate of economy
-               description = "γ: Log of the steady-state growth rate of technology")
+for i in collect(keys(get_setting(m, :subgroup_names)))
+    m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+               description = "σ_μ: standard deviation of mark up shock process",
+               tex_label = "\\sigma_{\\mu_$i}")
+m <= parameter(Symbol("ρ_μ_$i"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+               description = "ρ_μ: AR(1) coefficient of the mark up shock process",
+               tex_label = "\\rho_{\\mu_$i}")
+end
+
+m <= parameter(:σ_μw, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+               description = "σ_wμ: standard deviation of wage mark up shock process",
+               tex_label = "\\sigma_{\\mu w}")
+m <= parameter(:ρ_μw, 0.3884, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+               description = "ρ_μw: AR(1) coefficient in the wage mark up shock process",
+               tex_label = "\\rho_{\\mu w}")
+
+m <= parameter(:σ_πstar, 0.0269, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(6, 0.03), fixed=false,
+               description = "σ_πstar: standard deviation of the process describing the time varying inflation target",
+               tex_label = "\\sigma_{\\pi^\\star}")
+m <= parameter(:ρ_πstar, 0.99, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=true,
+               description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target",
+               tex_label = "\\rho_{\\pi^\\star}")
+m <= parameter(:σ_a_t, 0.6742, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false, #Taken from std dev of stationary comp of prod
+               description = "σ_a_t: standard deviation of the process describing productivity",
+               tex_label = "\\sigma_{a_t}")
+m <= parameter(:ρ_a_t, 0.9446,  (0., 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,#Taken from std dev of stationary comp of prod 0.9446
+               description = "ρ_a_t: AR(1) coefficient of the process describing productivity",
+               tex_label = "\\rho_{a_t}")
+
+m <= parameter(:h, 0.5347,  (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.7, 0.1), fixed=false,
+               description = "h: consumption habit persistence",
+               tex_label="h")
+
+m <= parameter(:γ, 0.0, (-5.0, 5.0), (-5., 5.), ModelConstructors.Untransformed(), Normal(0.0, 0.1), fixed=true,
+               #scaling = x -> x/100,#Growth rate of economy
+               description = "γ: Log of the steady-state growth rate of technology",
+               tex_label="\\gamma")
 
 m <= parameter(:mp_habit, 0.0, fixed = true,
-               description = ":mp_habit: weight of MP rule on habit formation")
-m <= parameter(:σ_r_m, 0.2380, fixed = true,
-               description = "Standard deviation of process describing iid monetary policy shock")
+               description = ":mp_habit: weight of MP rule on habit formation",
+               tex_label="mp-habit")
+m <= parameter(:σ_r_m, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+               description = "Standard deviation of process describing iid monetary policy shock",
+               tex_label="\\sigma_{r^m}")
+
 #= we don't use for now
 m <= parameter(:ρ_meas_πc, 0.0, fixed = true,
                description = "AR(1) coefficient for CPI inflation measurement error process")
@@ -443,7 +466,6 @@ m <= parameter(:ρ_meas_πc, 0.0, fixed = true,
 m <= parameter(:σ_meas_πc, 0.0999, fixed = true,
                description = "AR(1) coefficient for CPI inflation measurement error process")
 =#
-
 m <= parameter(:π_star, 0.5, fixed = true,
                description = "Steady state rate of inflation")
 
@@ -470,7 +492,7 @@ function init_model_indices!(m::OnionModel)
 
     exogenous_shocks            = [#[Symbol("μ_trend_$(i)_sh") for i in 1:n];
                                    #[Symbol("μ_iid_$(i)_sh") for i in 1:n];
-                                   [:μ_com_sh, :μ_com_goods_sh, :μ_com_services_sh, :μ_com_energy_sh];
+                                   [Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))];
                                    [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
                                    [:τ_sh]]
 
@@ -484,7 +506,7 @@ function init_model_indices!(m::OnionModel)
                          [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t];
-                         [:μ_com, :μ_com_goods, :μ_com_services, :μ_com_energy]]
+                         [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
                          #[Symbol("mkup_iid_$(i)") for i in 1:n];
                          #[Symbol("mkup_trend_$(i)") for i in 1:n]]
 
@@ -499,7 +521,7 @@ function init_model_indices!(m::OnionModel)
                               [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
                               [Symbol("eq_Eπ_$i") for i in 1:n];
-                              [:eq_μ_com, :eq_μ_com_goods, :eq_μ_com_services, :eq_μ_com_energy]]
+                              [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
                               #[Symbol("eq_mkup_iid_$(i)") for i in 1:n];
                               #[Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
 
@@ -534,6 +556,7 @@ function shock_groupings(m::OnionModel)
     cns_trends    = Vector{Symbol}()
     ncns_trends   = Vector{Symbol}()
 
+    #=
     for i in 1:get_setting(m, :n_sectors)
         if i in get_setting(m, :core_goods_sectors)
             println(" Sector $(i) entering core goods shocks")
@@ -559,14 +582,14 @@ function shock_groupings(m::OnionModel)
             throw("sector $(i) is not in a group")
         end
     end
+=#
 
 
-
-    core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_com_goods_sh] , RGB(0.0, 0.6, 0.1))    #  RGB(0.1, 0.1, 0.8))
-    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_com_services_sh], RGB(0.6,0.6,0.0))   #RGB(0.3, 0.8, 0.3))
-    energy_mkp = ShockGroup("mkp_energy", [:μ_com_energy_sh], RGB(0.0, 0.6, 0.6))   #RGB(0.0, 0.8, 0.5))
+    core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_core_goods_sh] , RGB(0.0, 0.6, 0.1))    #  RGB(0.1, 0.1, 0.8))
+    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_core_services_sh], RGB(0.6,0.6,0.0))   #RGB(0.3, 0.8, 0.3))
+    energy_mkp = ShockGroup("mkp_energy", [:μ_cpi_energy_sh], RGB(0.0, 0.6, 0.6))   #RGB(0.0, 0.8, 0.5))
     #food_trend_mkp   = ShockGroup("mkp_trend_food", food_trends, RGB(0.5, 0.8, 0.6))
-    common_mkup = ShockGroup("common_mkp", [:μ_com_sh], RGB(0.0, 0.2, 0.03))  #RGB(0.0, 0.2, 0.5))
+    #common_mkup = ShockGroup("common_mkp", [:μ_com_sh], RGB(0.0, 0.2, 0.03))  #RGB(0.0, 0.2, 0.5))
 
     #=
 

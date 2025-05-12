@@ -83,40 +83,41 @@ function eqcond(m::OnionModel) #m::OnionModel
     #@show invkap_value[1]
 
     #Leaving common shock for now
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value     # - m[:invkap].value
+    #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value     # - m[:invkap].value
 
 
     for i in get_setting(m, :core_goods_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
+        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
     end
 
     for i in get_setting(m, :core_service_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_services]] = - invkap_value[i]    #-m[:invkap].value[i]
+        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_services]] = - invkap_value[i]    #-m[:invkap].value[i]
     end
 
     for i in get_setting(m, :energy_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_com_energy]] = -invkap_value[i]  #-m[:invkap].value[i]
+        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_energy]] = -invkap_value[i]  #-m[:invkap].value[i]
     end
 
 
     #Define processes for each markup:
-    Γ0[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = 1.
-    Γ1[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = m[:ρ_μ_trend].value[1]
-    Ψ[eq[:eq_μ_com_goods], exo[:μ_com_goods_sh]] = 1.
+    Γ0[eq[:eq_μ_core_goods], endo[:μ_core_goods]] = 1.
+    Γ1[eq[:eq_μ_core_goods], endo[:μ_core_goods]] = m[:ρ_μ_core_goods]
+    Ψ[eq[:eq_μ_core_goods], exo[:μ_core_goods_sh]] = 1.
 
-    Γ0[eq[:eq_μ_com_services], endo[:μ_com_services]] = 1.
-    Γ1[eq[:eq_μ_com_services], endo[:μ_com_services]] = m[:ρ_μ_trend].value[1]
-    Ψ[eq[:eq_μ_com_services], exo[:μ_com_services_sh]] = 1.
+    Γ0[eq[:eq_μ_core_services], endo[:μ_core_services]] = 1.
+    Γ1[eq[:eq_μ_core_services], endo[:μ_core_services]] = m[:ρ_μ_core_services]
+    Ψ[eq[:eq_μ_core_services], exo[:μ_core_services_sh]] = 1.
 
-    Γ0[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = 1.
-    Γ1[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = m[:ρ_μ_trend].value[1]
-    Ψ[eq[:eq_μ_com_energy], exo[:μ_com_energy_sh]] = 1.
+    Γ0[eq[:eq_μ_cpi_energy], endo[:μ_cpi_energy]] = 1.
+    Γ1[eq[:eq_μ_cpi_energy], endo[:μ_cpi_energy]] = m[:ρ_μ_cpi_energy]
+    Ψ[eq[:eq_μ_cpi_energy], exo[:μ_cpi_energy_sh]] = 1.
 
     #Common markup shock process
+    #=
     Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
     Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
-
+    =#
 
 
 

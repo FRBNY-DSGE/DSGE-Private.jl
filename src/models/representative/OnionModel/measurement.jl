@@ -207,10 +207,10 @@ function measurement(m::OnionModel{T},
         #MAIN MODEL FOR THE BRIEFING!!!
 
         #No common shock and categorical shocks
-        QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #Explicit here for clarity
-        QQ[exo[:μ_com_goods_sh], exo[:μ_com_goods_sh]] = m[:σ_μ]^2
-        QQ[exo[:μ_com_services_sh], exo[:μ_com_services_sh]] = m[:σ_μ]^2
-        QQ[exo[:μ_com_energy_sh], exo[:μ_com_energy_sh]] = m[:σ_μ]^2
+        #QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = 0.0  #Explicit here for clarity
+        QQ[exo[:μ_core_goods_sh], exo[:μ_core_goods_sh]] = m[:σ_μ_core_goods]^2
+        QQ[exo[:μ_core_services_sh], exo[:μ_core_services_sh]] = m[:σ_μ_core_services]^2
+        QQ[exo[:μ_cpi_energy_sh], exo[:μ_cpi_energy_sh]] = m[:σ_μ_cpi_energy]^2
 
 
 #Bring productivity shocks back (Done at the top already)
@@ -243,8 +243,6 @@ energy_sum = sum(Kgam[get_setting(m, :energy_sectors)])
 for i in get_setting(m, :energy_sectors)
     ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = Kgam[i] / energy_sum
 end
-
-
 
 
 elseif get_setting(m, :marco_test_num) == 69
