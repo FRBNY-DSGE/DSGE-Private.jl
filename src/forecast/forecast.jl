@@ -192,7 +192,9 @@ function forecast(m::AbstractDSGEModel, system::Union{RegimeSwitchingSystem{S}, 
     =#
 
     # Get variables necessary to enforce the zero lower bound in the forecast
-    ind_r = haskey(get_settings(m), :nominal_rate_observable) ? m.observables[get_setting(m, :nominal_rate_observable)] : -1
+#ind_r = haskey(get_settings(m), :nominal_rate_observable) ? m.observables[get_setting(m, :nominal_rate_observable)] : -1
+# [ID] Access nominal rate observable for onion model
+    ind_r = haskey(m.observables, :NominalFFR) ? m.observables[:NominalFFR] : -1
     if haskey(get_settings(m), :add_ait_rm) ? get_setting(m,:add_ait_rm) : false
         ind_r_sh = [m.exogenous_shocks[get_setting(m, :monetary_policy_shock)],
                     m.exogenous_shocks[get_setting(m, :monetary_policy_ait_shock)]]
