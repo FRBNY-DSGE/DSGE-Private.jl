@@ -365,7 +365,7 @@ module DSGE
     include("models/representative/m904/pseudo_observables.jl")
     include("models/representative/m904/pseudo_measurement.jl")
     include("models/representative/m904/augment_states.jl")
-#=
+
     include("models/representative/OnionModel/onionmodel.jl")
     include("models/representative/OnionModel/subspecs.jl")
     include("models/representative/OnionModel/eqcond.jl")
@@ -375,8 +375,8 @@ module DSGE
     include("models/representative/OnionModel/pseudo_measurement.jl")
     include("models/representative/OnionModel/augment_states.jl")
     include("models/representative/OnionModel/InOutData.jl")
-=#
 
+#=
 include("models/representative/OnionModel/onionmodel_brief.jl")
 include("models/representative/OnionModel/subspecs.jl")
 include("models/representative/OnionModel/eqcond_briefing.jl")
@@ -386,7 +386,7 @@ include("models/representative/OnionModel/pseudo_observables.jl")
 include("models/representative/OnionModel/pseudo_measurement.jl")
 include("models/representative/OnionModel/augment_states.jl")
 include("models/representative/OnionModel/InOutData.jl")
-
+=#
     include("models/representative/smets_wouters/smets_wouters.jl")
     include("models/representative/smets_wouters/subspecs.jl")
     include("models/representative/smets_wouters/eqcond.jl")

@@ -49,21 +49,21 @@ function eqcond(m::OnionModel) #m::OnionModel
 
     #-m[:taxshare].value For oil kanzig IRFs, vector of 0 with 1 at oil index.
     if get_setting(m, :irf_type) == "oil"
-        sec_shock = zeros(size(m[:taxshare].value))
-        sec_shock[Int(m[:oil].value)] = 1.
+        sec_shock = zeros(size(get_setting(m, :taxshare)))   #zeros(size(m[:taxshare].value)
+        sec_shock[Int(get_setting(m, :oil))] = 1.
     else
-        sec_shock = m[:taxshare].value
+        sec_shock = get_setting(m, :taxshare)
     end
 
 
 
     # Phillips curve
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("π_1")]:endo[Symbol("π_$n")]]    = diagm(m[:invkap].value)
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:τ]]  = - sec_shock
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:w_t]] =  - m[:labshare].value
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:a_t]] =  m[:labshare].value
+    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("π_1")]:endo[Symbol("π_$n")]]    = diagm(get_setting(m, :invkap))
+    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:τ]]  = - sec_shock'
+    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:w_t]] =  - get_setting(m, :labshare)
+    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:a_t]] =  get_setting(m, :labshare)
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("s_1")]:endo[Symbol("s_$n")]]  = - (inpshare - eye(n))
-    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$n")]]    = - m[:bet]*diagm(m[:invkap].value)
+    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$n")]]    = - m[:bet]*diagm(get_setting(m, :invkap))
     #Addl term for markup stochastic trend
     #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_trend_1")]:endo[Symbol("mkup_trend_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
     #IID markup shock shock
@@ -79,11 +79,11 @@ function eqcond(m::OnionModel) #m::OnionModel
     #However, Γ0[eq[:eq_pc_50], endo[:μ_com_cservice]] = -m[:invkap].value[50]
 
     #If the test number is 69, we want to use a vector of all 200s for inv slopes of sectoral phillips curves. Otherwise, use the model values.
-    invkap_value = get_setting(m, :marco_test_num) == 69 ? 200.0 * ones(length(m[:invkap].value)) : m[:invkap].value
-    @show invkap_value[1]
+    invkap_value = get_setting(m, :marco_test_num) == 69 ? 200.0 * ones(length(get_setting(m, :invkap))) : get_setting(m, :invkap)
+    #@show invkap_value[1]
 
     #Leaving common shock for now
-    #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value     # - m[:invkap].value
+    Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value     # - m[:invkap].value
 
 
     for i in get_setting(m, :core_goods_sectors)
@@ -100,30 +100,22 @@ function eqcond(m::OnionModel) #m::OnionModel
 
 
     #Define processes for each markup:
-    for i in 1:get_setting(m, :n_subgroups)
-        Γ0[eq[Symbol("eq_μ_com_$(i)")], endo[Symbol("μ_com_$(i)")]] = 1.
-        Γ1[eq[Symbol("eq_μ_com_$(i)")], endo[Symbol("μ_com_$(i)")]] = m[Symbol("ρ_μ_$(i)")].value[1]
-        Ψ[eq[Symbol("eq_μ_com_$(i)")], exo[Symbol("μ_com_$(i)_sh")]] = 1.
-    end
-
-    #=
     Γ0[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = 1.
-    Γ1[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = m[:ρ_μ_goods].value[1]
+    Γ1[eq[:eq_μ_com_goods], endo[:μ_com_goods]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com_goods], exo[:μ_com_goods_sh]] = 1.
 
     Γ0[eq[:eq_μ_com_services], endo[:μ_com_services]] = 1.
-    Γ1[eq[:eq_μ_com_services], endo[:μ_com_services]] = m[:ρ_μ_services].value[1]
+    Γ1[eq[:eq_μ_com_services], endo[:μ_com_services]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com_services], exo[:μ_com_services_sh]] = 1.
 
     Γ0[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = 1.
-    Γ1[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = m[:ρ_μ_energy].value[1]
+    Γ1[eq[:eq_μ_com_energy], endo[:μ_com_energy]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com_energy], exo[:μ_com_energy_sh]] = 1.
 
     #Common markup shock process
     Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
     Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_trend].value[1]
     Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
-=#
 
 
 
@@ -145,12 +137,12 @@ function eqcond(m::OnionModel) #m::OnionModel
 
 
     # cpi definition #Definition of CPI
-    Γ0[eq[:eq_cpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = m[:gam].value'
+    Γ0[eq[:eq_cpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = get_setting(m, :gam)'
     Γ0[eq[:eq_cpi],endo[:πc_t]] = -1.
 
 
     #Keshav's CPI
-    Γ0[eq[:eq_Kcpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = m[:Kgam].value'  #Replace with Keshav's gamma.
+    Γ0[eq[:eq_Kcpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = get_setting(m, :Kgam)'  #Replace with Keshav's gamma.
     Γ0[eq[:eq_Kcpi],endo[:πKc_t]] = -1.
 
 
@@ -208,8 +200,8 @@ function eqcond(m::OnionModel) #m::OnionModel
 # NOTE: careful about annualized vs monthly values when calibrating!
 
 #Not convinced we need the following anymore, but leaving for now:
-numer = -m[:gam].value' * ((eye(n)-inpshare)\m[:taxshare].value)
-denom = m[:gam].value' * ((eye(n)-inpshare)\m[:taxshare].value)
+numer = -get_setting(m, :gam)' * ((eye(n)-inpshare)\get_setting(m, :taxshare))
+denom = get_setting(m, :gam)' * ((eye(n)-inpshare)\get_setting(m, :taxshare))
 dcstar_dτ = numer/denom
 
 #=
@@ -291,7 +283,7 @@ dcstar_dτ = numer/denom
 Γ0[eq[:eq_a_t], endo[:a_t]] = 1.
 
 #Print new TFP Persistence
-@show m[:ρ_a_t].value
+#@show m[:ρ_a_t].value
 
 Γ1[eq[:eq_a_t], endo[:a_t]] = m[:ρ_a_t]
 Ψ[eq[:eq_a_t], exo[:a_sh]] = 1.
@@ -332,7 +324,7 @@ dcstar_dτ = numer/denom
 
     C = eye(n)
     C = C[:,2:n]
-    C[1,:] = -m[:gam].value[2:end]/m[:gam].value[1]
+    C[1,:] = -get_setting(m, :gam)[2:end]/get_setting(m, :gam)[1]
 
 
     #norm_mat = blkdiag(C,eye(N-n)) #blkdiag doesn't exist in Julia
@@ -388,8 +380,8 @@ del_ind_st = m.endogenous_states[:s_1]
         end
     end
 
-@show length(m.equilibrium_conditions)
-@show length(m.endogenous_states)
+#@show length(m.equilibrium_conditions)
+#@show length(m.endogenous_states)
 
     return Γ0_norm, Γ1_norm, Const1, Ψ_norm, Π_norm, C, norm_mat
 

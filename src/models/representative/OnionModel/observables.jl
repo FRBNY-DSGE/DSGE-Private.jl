@@ -3,7 +3,7 @@ function init_observable_mappings!(m::OnionModel)
     population_mnemonic = get(get_setting(m, :population_mnemonic))
 
     demean = function (levels)
-        cons = all(ismissing.(levels)) ? missing : mean(Base.filter(!isnan, skipmissing(levels)))
+        cons = all(ismissing.(levels)) ? missing : mean(skipmissing(levels))
         for i in 1:length(levels)
             levels[i] = ismissing(levels[i]) ? levels[i] : levels[i] - cons
         end
@@ -58,7 +58,7 @@ function init_observable_mappings!(m::OnionModel)
 
 if get_setting(m, :marco_test_num) == 69
     cpi_fwd_transform = function(levels)
-        demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
+        demean2(oneqtrpctchange(levels[!,:CPIAUCSL]))
     end
 
     #cpi_rev_transform = loggrowthtopct_annualized
@@ -73,10 +73,10 @@ if get_setting(m, :marco_test_num) == 69
 end
 
 
-#=
+
     #Core servies
      core_service_cpi_fwd_transform = function(levels)
-        demean(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
+        demean2(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
     end
 
     core_service_cpi_rev_transform = identity
@@ -88,7 +88,7 @@ end
 
     #Core goods
      core_goods_cpi_fwd_transform = function(levels)
-        demean(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
+        demean2(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
     end
 
     core_goods_cpi_rev_transform = identity
@@ -101,7 +101,7 @@ end
 
     #Energy
     energy_cpi_fwd_transform = function(levels)
-        demean(oneqtrpctchange(levels[!, :CPIENGSL]))
+        demean2(oneqtrpctchange(levels[!, :CPIENGSL]))
     end
 
 
@@ -113,28 +113,6 @@ end
                                           "CPI Energy")
 
 
-    =#
-
-
-
-    # CPI Categorical Inflation
-    inflation_subgroup_names = collect(keys(get_setting(m,:subgroup_names)))
-subgroup_data_source = collect(values(get_setting(m,:subgroup_names)))
-
-    for i in 1:length(inflation_subgroup_names)
-
-        cpisector_fwd_transform = function(levels)
-            #demean2(oneqtrpctchange(levels[!, Symbol("$(inflation_subgroup_names[i])")]))
-            demean2(oneqtrpctchange(levels[!, (subgroup_data_source[i])]))
-        end
-        observables[Symbol("Inflation, $(inflation_subgroup_names[i])")] = Observable(Symbol("$(inflation_subgroup_names[i])"),
-                                                                                      [Symbol(String(subgroup_data_source[i]) * "__FRED")],
-                                                                                        #[subgroup_data_source[i]],
-                                                                                        cpisector_fwd_transform,
-                                                                                        identity,
-                                                                                        "$(inflation_subgroup_names[i])",
-                                                                                        "CPI: $(inflation_subgroup_names[i])")
-    end
 
 
     nominalrate_fwd_transform = function (levels)
@@ -159,8 +137,7 @@ subgroup_data_source = collect(values(get_setting(m,:subgroup_names)))
 ############################################################################
 #Fernald TFP
 ############################################################################
-if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71 || get_setting(m, :marco_test_num) == 100
-
+if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
@@ -224,7 +201,7 @@ end
 
 
 
-if get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 100
+if get_setting(m, :marco_test_num) == 70 #|| get_setting(m, :marco_test_num) == 71
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################
@@ -236,7 +213,7 @@ if get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 1
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
 
-        demean(annualtoquarter(levels[!,:ASACX10]))
+        demean2(annualtoquarter(levels[!,:ASACX10]))
 
     end
 
