@@ -277,7 +277,13 @@ inflation_subgroup_names = collect(keys(get_setting(m, :subgroup_to_sector)))
 for sect in inflation_subgroup_names
     i_sum = sum(get_setting(m, :Kgam)[get_setting(m, :subgroup_to_sector)[sect]])
     for i in get_setting(m, :subgroup_to_sector)[sect]
-        ZZ[obs[Symbol(sect)], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+        if sect == "core_goods"
+            ZZ[obs[Symbol("cpi_core_goods")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+        elseif sect == "core_services"
+            ZZ[obs[Symbol("cpi_core_services")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+        else
+            ZZ[obs[Symbol("cpi_energy")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+        end
     end
 end
 
