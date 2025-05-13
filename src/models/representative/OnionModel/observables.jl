@@ -201,7 +201,7 @@ end
 
 
 
-if get_setting(m, :marco_test_num) == 70 #|| get_setting(m, :marco_test_num) == 71
+if get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 100 #|| get_setting(m, :marco_test_num) == 71
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################

@@ -4,13 +4,43 @@
 function eqcond(m::OnionModel) #m::OnionModel
 
     # A x_{t+1} = B x_t
+
+    n = get_setting(m, :n_sectors)
+
+    if :eq_srec_1 ∉ collect(keys(m.equilibrium_conditions))
+
+        #This means we have done a normalization. Need to reset.
+
+        endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
+                             [Symbol("π_$i") for i in 1:n]; #sectoral inflation
+                             [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
+                             [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
+                             [Symbol("Eπ_$i") for i in 1:n];
+                             [:Ec_t, :Eπc_t, :Eπw_t];
+                             [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+
+        endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
+
+        equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
+                                  [Symbol("eq_srec_$i") for i in 1:n];
+                                  [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
+                                  [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
+                                  [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
+                                  [Symbol("eq_Eπ_$i") for i in 1:n];
+                                  [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+
+        for (i,k) in enumerate(equilibrium_conditions); m.equilibrium_conditions[k] = i end
+        for (i,k) in enumerate(endogenous_states); m.endogenous_states[k] = i end
+        for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i + length(endogenous_states) end
+    end
+
     eq     = m.equilibrium_conditions
     endo   = m.endogenous_states
     exo    = m.exogenous_shocks
     exp_sh = m.expected_shocks
 
-    N = get_setting(m, :n_model_states) #+ get_setting(m, :n_exo_states)
-    n = get_setting(m, :n_sectors)
+    N = length(m.endogenous_states)
+    #N = get_setting(m, :n_model_states) #+ get_setting(m, :n_exo_states)
 
 
     @show length(m.endogenous_states)
