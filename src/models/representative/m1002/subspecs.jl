@@ -137,6 +137,8 @@ function init_subspec!(m::Model1002)
         return ss205!(m)
     elseif subspec(m) == "ss206"
         return ss206!(m)
+    elseif subspec(m) == "ss207"
+        return ss207!(m)
     elseif subspec(m) == "ss305"
         return ss305!(m)
     elseif subspec(m) == "ss306"
@@ -7371,6 +7373,118 @@ function ss206!(m::Model1002)
 
 
 end
+
+
+
+
+function ss207!(m)
+
+"""
+Continuation of ss206 with additional changes
+
+1) Kappa that scales UP standard business cycle shocks, measurement errors, AND inflation. We use a Γ distribution centered at 1 as the prior
+2) COVID (....)
+3)
+"""
+
+
+        ss205!(m)
+
+    m2p = get_setting(m, :model2para_regime)
+    m <= Setting(:covid_ant_equal_contemp, true)
+
+    #Fix all standard business cycle shocks to regime 1, so that we only use κ_SBC.
+    #Omitting σ_lr, :σ_π_star, :σ_gdp, :σ_gdi, σ_tfp (meas errors)
+     for pk in [:σ_g, :σ_b, :σ_μ, :σ_ztil, :σ_λ_f, :σ_λ_w,
+                :σ_σ_ω, :σ_μ_e, :σ_γ, :σ_z_p,
+                :σ_lr, :σ_gdp, :σ_gdi, :σ_tfp, :σ_gdpdef]
+
+         m2p[pk] = Dict(i => 1 for i in 1:29)
+     end
+
+    #Get rid of regime 3 for all covid parameters:
+    covid_dict = Dict(i => 2 for i in 2:7) #Covid parameters in regime 2 from 2020 Q1-2021 Q4, inclusive
+    covid_dict[1] = 1
+    for per in 8:29
+        covid_dict[per] = 1
+    end
+
+    for pk in [:σ_biidc, :σ_ziid, :σ_ϕ]
+        m2p[pk] = covid_dict
+    end
+
+
+    #Fix all inflation and inflation target σs to regime 1
+    for pk in [:σ_corepce, :σ_π_star]
+         m2p[pk] = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
+    end
+
+    #Alternative implementation where we kill σ_π_star in the spec
+
+
+    #Kill FFR Measurement Error (Always in reg 1, fixed at 0
+    for i in 1:6
+        m2p[Symbol("σ_exp_rm$(i)")] = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
+    end
+
+
+
+
+    ############## KAPPA (XXXX) ##################
+    # Kappa which scales UP the standard deviation of 1) standard business cycle shocks 2) measurement errors on GDP, GDI, GDPDEF, CPI, 10 year rates, etc. from 2020 Q1 to 2020 Q3.
+
+    set_regime_val!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].value)
+    set_regime_val!(m[:κ_std_bcshocks], 2, m[:κ_std_bcshocks].value)
+
+    set_regime_fixed!(m[:κ_std_bcshocks], 1, true)
+    set_regime_fixed!(m[:κ_std_bcshocks], 2, false)
+
+    set_regime_prior!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].prior)
+    set_regime_prior!(m[:κ_std_bcshocks], 2, m[:κ_std_bcshocks].prior)
+
+    set_regime_valuebounds!(m[:κ_std_bcshocks], 1, (0.0, 1.0))
+    set_regime_valuebounds!(m[:κ_std_bcshocks], 2, (0.0, 5.0))
+
+
+    m2p_dict = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2) #Regime 2 2020 Q1 to 2020 Q3:
+    for i in 5:get_settings(m, :n_regimes) #2020 Q4:end
+        m2p_dict[i] = 1
+    end
+
+    m2p[:κ_std_bcshocks] = m2p_dict
+
+    toggle_regime!(m[:κ_std_bcshocks], 1)
+
+
+    ############ KAPPA COVID ##########################
+    #Kappa which scales DOWN the standard deviation of covid shocks from 2020 Q4 - 2021 Q4. This is fixed at 1 otherwise.
+
+    set_regime_val!(m[:κ_covid], 1, m[:κ_covid].value)
+    set_regime_val!(m[:κ_covid], 2, m[:κ_covid].value)
+
+    set_regime_fixed!(m[:κ_covid], 1, true)
+    set_regime_fixed!(m[:κ_covid], 2, false)
+
+    set_regime_prior!(m[:κ_covid], 1, m[:κ_covid].prior)
+    set_regime_prior!(m[:κ_covid], 2, m[:κ_covid].prior)
+
+    set_regime_valuebounds!(m[:κ_covid], 1, (0.0, 1.0))
+    set_regime_valuebounds!(m[:κ_covid], 2, (0.0, 2.0))
+
+    m2p_dict = Dict(1 => 1, 2 => 1, 3 => 1, 4 => 1) #Regime 1 to 2020 Q3:
+    for i in 5:9 #2020 Q4: 2021 Q4
+        m2p_dict[i] = 2
+    end
+    for i in 10:get_setting(m, :n_regimes)
+        m2p[i] = 1
+    end
+
+    m2p[:κ_covid] = m2p_dict
+    toggle_regime!(m[:κ_covid], 1)
+
+
+end
+
 
 
 
