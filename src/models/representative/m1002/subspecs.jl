@@ -7286,7 +7286,7 @@ function ss206!(m::Model1002)
         covid_dict[per] = 1
     end
 
-    for pk in [:σ_biidc, :σ_ziid, :σ_ϕ]
+    for pk in [:σ_biidc, :σ_ziid, :σ_φ]
         m2p[pk] = covid_dict
     end
 
@@ -7409,7 +7409,7 @@ Continuation of ss206 with additional changes
         covid_dict[per] = 1
     end
 
-    for pk in [:σ_biidc, :σ_ziid, :σ_ϕ]
+    for pk in [:σ_biidc, :σ_ziid, :σ_φ]
         m2p[pk] = covid_dict
     end
 
@@ -7447,7 +7447,7 @@ Continuation of ss206 with additional changes
 
 
     m2p_dict = Dict(1 => 1, 2 => 2, 3 => 2, 4 => 2) #Regime 2 2020 Q1 to 2020 Q3:
-    for i in 5:get_settings(m, :n_regimes) #2020 Q4:end
+    for i in 5:get_setting(m, :n_regimes) #2020 Q4:end
         m2p_dict[i] = 1
     end
 
@@ -7476,7 +7476,7 @@ Continuation of ss206 with additional changes
         m2p_dict[i] = 2
     end
     for i in 10:get_setting(m, :n_regimes)
-        m2p[i] = 1
+        m2p_dict[i] = 1
     end
 
     m2p[:κ_covid] = m2p_dict
