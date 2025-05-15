@@ -7382,9 +7382,12 @@ function ss207!(m)
 """
 Continuation of ss206 with additional changes
 
-1) Kappa that scales UP standard business cycle shocks, measurement errors, AND inflation. We use a Γ distribution centered at 1 as the prior
-2) COVID (....)
-3)
+1) κ_std_bcshocks that scales UP standard business cycle shocks, measurement errors, AND inflation. We use a Γ distribution centered at 1 as the prior
+2) κ_covid that scales DOWN covid shocks (σ_biidc, σ_ziid, σ_φ) in later periods from 2020 Q4 - 2021 Q4 to reflect that these shocks were not hitting as hard in these periods. Estimated with prior N(0,1)
+3) Regimes for all parameters affected by κ reverted either to 1) precovid regime (κ_std_bcshocks) or 2) early covid regime (κ_covid)
+4) Removing AIT (all Taylor, all the time) and no expected FFR Measurement error σ_exp_rm(1:6) (fixed at 0)
+5) Alternative specification asserting that std deviation of anticipated covid shocks (σ_biidc1) is equal to the std deviation of contemporaneous shocks (σ_biidc) -- use setting :covid_ant_equal_contemp
+6) π_star shocks left in pre-covid regime, but setting used to kill it after 2020 Q4.
 """
 
 
@@ -7394,7 +7397,7 @@ Continuation of ss206 with additional changes
     m <= Setting(:covid_ant_equal_contemp, true)
 
     #Fix all standard business cycle shocks to regime 1, so that we only use κ_SBC.
-    #Omitting σ_lr, :σ_π_star, :σ_gdp, :σ_gdi, σ_tfp (meas errors)
+
      for pk in [:σ_g, :σ_b, :σ_μ, :σ_ztil, :σ_λ_f, :σ_λ_w,
                 :σ_σ_ω, :σ_μ_e, :σ_γ, :σ_z_p,
                 :σ_lr, :σ_gdp, :σ_gdi, :σ_tfp, :σ_gdpdef]
@@ -7402,7 +7405,7 @@ Continuation of ss206 with additional changes
          m2p[pk] = Dict(i => 1 for i in 1:29)
      end
 
-    #Get rid of regime 3 for all covid parameters:
+    #Get rid of regime 3 for all covid parameters: Regime three is a fossil which was estimated separetely, and we don't want to do that anymore.
     covid_dict = Dict(i => 2 for i in 2:7) #Covid parameters in regime 2 from 2020 Q1-2021 Q4, inclusive
     covid_dict[1] = 1
     for per in 8:29
@@ -7415,14 +7418,12 @@ Continuation of ss206 with additional changes
 
 
     #Fix all inflation and inflation target σs to regime 1
+    #NOTE THAT THERE IS A SETTING (rm_pi_star) that takes in an integer, which denotes in which regime pi_star shocks turn off. This tends to be set as 5 (2020 Q4) in the current specification. (I believe this means they shut off in 2021 Q1, but it should be validated)
     for pk in [:σ_corepce, :σ_π_star]
          m2p[pk] = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
     end
 
-    #Alternative implementation where we kill σ_π_star in the spec
-
-
-    #Kill FFR Measurement Error (Always in reg 1, fixed at 0
+    #Kill FFR Measurement Error (Always in reg 1, fixed at 0)
     for i in 1:6
         m2p[Symbol("σ_exp_rm$(i)")] = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
     end
@@ -7430,7 +7431,7 @@ Continuation of ss206 with additional changes
 
 
 
-    ############## KAPPA (XXXX) ##################
+    ############## KAPPA std_bcshocks ##################
     # Kappa which scales UP the standard deviation of 1) standard business cycle shocks 2) measurement errors on GDP, GDI, GDPDEF, CPI, 10 year rates, etc. from 2020 Q1 to 2020 Q3.
 
     set_regime_val!(m[:κ_std_bcshocks], 1, m[:κ_std_bcshocks].value)
