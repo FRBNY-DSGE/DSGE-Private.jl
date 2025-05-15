@@ -168,7 +168,7 @@ function init_model_indices!(m::Model1002)
     # Pseudo-observables
     pseudo_observables = keys(m.pseudo_observable_mappings)
 
-    endogenous_states, exogenous_shocks, expected_shocks, equilibrium_conditions, observables, pseudo_observables = init_subspec_indices(m, endogenous_states, exogenous_shocks, expected_shocks, equilibrium_conditions, observables, pseudo_observables)
+    endogenous_states, endogenous_states_augmented, exogenous_shocks, expected_shocks, equilibrium_conditions, observables, pseudo_observables = init_subspec_indices(m, endogenous_states, endogenous_states_augmented, exogenous_shocks, expected_shocks, equilibrium_conditions, collect(observables), collect(pseudo_observables))
 
     for (i,k) in enumerate(endogenous_states);           m.endogenous_states[k]           = i end
     for (i,k) in enumerate(exogenous_shocks);            m.exogenous_shocks[k]            = i end
@@ -598,7 +598,7 @@ function steadystate!(m::Model1002)
     m[:cstar]    = (1-m[:g_star])*m[:ystar] - m[:istar]
     m[:wl_c]     = (m[:wstar]*m[:Lstar])/(m[:cstar]*m[:λ_w])
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if parse(Int, SubString(subspec(m),3)) >= 59
         m[:φstar] = 0. # log(1) in steady state
     end
 

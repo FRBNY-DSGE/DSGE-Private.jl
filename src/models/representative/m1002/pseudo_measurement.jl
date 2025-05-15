@@ -197,7 +197,7 @@ function pseudo_measurement(m::Model1002{T},
 
     ## Pseudo GDP Growth
     if haskey(m.settings, :add_pseudo_gdp)
-        if get_setting(m, :add_pseudo_gdp) && parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59
+        if get_setting(m, :add_pseudo_gdp) && haskey(m.settings, :add_pseudomeas_gdpcovid) && get_setting(m, :add_pseudomeas_gdpcovid) # parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59
             ZZ_pseudo[pseudo[:PseudoGDP], endo[:y_t]]          = 1.0
             ZZ_pseudo[pseudo[:PseudoGDP], endo_addl[:y_t1]]     = -1.0
             ZZ_pseudo[pseudo[:PseudoGDP], endo[:z_t]]          = 1.0
@@ -209,12 +209,12 @@ function pseudo_measurement(m::Model1002{T},
 
     ## Pseudo Core PCE # TODO
     if haskey(m.settings, :add_pseudo_corepce)
-        if get_setting(m, :add_pseudo_corepce) && parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59
+        if get_setting(m, :add_pseudo_corepce) && haskey(m.settings, :add_pseudomeas_pcecovid) && get_setting(m, :add_pseudomeas_pcecovid) #&& parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59
             ZZ_pseudo[pseudo[:PseudoCorePCE], endo[:π_t]]              = 1.0
             ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_corepce_t]] = 1.0
             DD_pseudo[pseudo[:PseudoCorePCE]]                          = 100. * (m[:π_star] - 1.)
 
-            if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+            if haskey(m.settings, :add_pseudomeas_pi_measure) && get_setting(m, :add_pseudomeas_pi_measure)#parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
                 ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t]]  = 1.0
                 ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
             end

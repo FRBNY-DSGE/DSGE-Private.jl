@@ -60,7 +60,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ0[eq[:eq_euler], endo[:EL_t]] = (m[:σ_c] - 1)*m[:wl_c]/(m[:σ_c]*(1 + m[:h]*exp(-m[:z_star])))
     Γ1[eq[:eq_euler], endo[:c_t]]  = (m[:h]*exp(-m[:z_star]))/(1 + m[:h]*exp(-m[:z_star]))
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if haskey(m.settings, :ϕ_euler_eqcond) ? get_setting(m, :ϕ_euler_eqcond) : false# parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
         Γ0[eq[:eq_euler], endo[:φ_t]]  = -(m[:σ_c] - 1)*m[:wl_c]/(m[:σ_c]*(1 + m[:h]*exp(-m[:z_star])))
         Γ0[eq[:eq_euler], endo[:Eφ_t]] = (m[:σ_c] - 1)*m[:wl_c]/(m[:σ_c]*(1 + m[:h]*exp(-m[:z_star])))
     end
@@ -76,7 +76,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ0[eq[:eq_euler_f], endo[:EL_f_t]] = (m[:σ_c] - 1)*m[:wl_c]/(m[:σ_c]*(1 + m[:h]*exp(-m[:z_star])))
     Γ1[eq[:eq_euler_f], endo[:c_f_t]]  = (m[:h]*exp(-m[:z_star]))/(1 + m[:h]*exp(-m[:z_star]))
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if haskey(m.settings, :ϕ_euler_eqcond) ? get_setting(m, :ϕ_euler_eqcond) : false# parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
         Γ0[eq[:eq_euler_f], endo[:φ_t]]  = -(m[:σ_c] - 1)*m[:wl_c]/(m[:σ_c]*(1 + m[:h]*exp(-m[:z_star])))
         Γ0[eq[:eq_euler_f], endo[:Eφ_t]] = (m[:σ_c] - 1)*m[:wl_c]/(m[:σ_c]*(1 + m[:h]*exp(-m[:z_star])))
     end
@@ -269,7 +269,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ0[eq[:eq_msub], endo[:z_t]]   = m[:h]*exp(-m[:z_star]) /(1 - m[:h]*exp(-m[:z_star]))
     Γ0[eq[:eq_msub], endo[:w_t]]   = -1.
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if haskey(m.settings, :ϕ_msub_eqcond) ? get_setting(m, :ϕ_msub_eqcond) : false# parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
         Γ0[eq[:eq_msub], endo[:φ_t]] = m[:ν_l]
     end
 
@@ -359,7 +359,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ0[eq[:eq_Ez], endo[:zp_t]]   = -m[:ρ_z_p]
 
     # Eφ_t
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if haskey(m.settings, :ϕ_exp_lag_ecqond) ? get_setting(m, :ϕ_exp_lag_ecqond) : false # parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
         Γ0[eq[:eq_Eφ], endo[:Eφ_t]] = 1.
         Γ0[eq[:eq_Eφ], endo[:φ_t]]  = -m[:ρ_φ]
     end
@@ -376,7 +376,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ1[eq[:eq_ztil], endo[:ztil_t]] = m[:ρ_ztil]
     Ψ[eq[:eq_ztil], exo[:ztil_sh]]     = 1.
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if haskey(m.settings, :cprod_exo_eqcond) ? get_setting(m, :cprod_exo_eqcond) : false # parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
         # Ez_t
         Γ0[eq[:eq_Ez], endo[:ziid_t]] = -(m[:ρ_ziid]-1)/(1-m[:α])
 
@@ -406,7 +406,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ1[eq[:eq_b], endo[:b_t]] = m[:ρ_b]
     Ψ[eq[:eq_b], exo[:b_sh]]  = 1.
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
+    if haskey(m.settings, :cprod_exo_eqcond) ? get_setting(m, :cprod_exo_eqcond) : false # parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
         # iid shock to Euler equation
         Γ0[eq[:eq_biidc], endo[:biidc_t]] = 1.
         Γ1[eq[:eq_biidc], endo[:biidc_t]] = m[:ρ_biidc] # c b/c will only affect consumption
@@ -476,7 +476,7 @@ function eqcond(m::Model1002, reg::Int)
     Ψ[eq[:eq_rm], exo[:rm_sh]]  = noant
 
     # Labor preference shock
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59
+    if haskey(m.settings, :labor_pref_sh_eqcond) ? get_setting(m, :labor_pref_sh_eqcond) : false # parse(Int, SubString(subspec(m),3,subspec_ind)) >= 59
         # Eφ_t
         Γ0[eq[:eq_Eφ], endo[:φ_t]] = -m[:ρ_φ]
 
@@ -487,7 +487,7 @@ function eqcond(m::Model1002, reg::Int)
     end
 
     # COVID counterparts for standard business cycle shocks
-    if subspec(m) in ["ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83"]
+    if subspec(m) in ["ss67", "ss68", "ss71", "ss72", "ss75", "ss76", "ss80", "ss82", "ss83"]
         # TODO: check if there are any expectational terms to which
         # we need to account for (see Eφ_t)
         Γ0[eq[:eq_g_covid], endo[:g_covid_t]] = 1.
@@ -516,6 +516,26 @@ function eqcond(m::Model1002, reg::Int)
         Γ1[eq[:eq_zp_covid], endo[:zp_covid_t]] = m[:ρ_z_p_covid]
         Ψ[eq[:eq_zp_covid], exo[:zp_covid_sh]]  = 1.
         Γ0[eq[:eq_zp], endo[:zp_covid_t]]       = -1.
+
+        Γ0[eq[:eq_g_covid], endo[:g_covid_t]] = 1.
+        Γ1[eq[:eq_g_covid], endo[:g_covid_t]] = m[:ρ_g_covid]
+        Ψ[eq[:eq_g_covid], exo[:g_covid_sh]]  = 1.
+        Γ0[eq[:eq_g], endo[:g_covid_t]]       = -1.
+
+        Γ0[eq[:eq_μ_covid], endo[:μ_covid_t]] = 1.
+        Γ1[eq[:eq_μ_covid], endo[:μ_covid_t]] = m[:ρ_μ_covid]
+        Ψ[eq[:eq_μ_covid],  exo[:μ_covid_sh]] = 1.
+        Γ0[eq[:eq_μ], endo[:μ_covid_t]]       = -1.
+
+        Γ0[eq[:eq_λ_f_covid], endo[:λ_f_covid_t]] = 1.
+        Γ1[eq[:eq_λ_f_covid], endo[:λ_f_covid_t]] = m[:ρ_λ_f_covid]
+        Ψ[eq[:eq_λ_f_covid], exo[:λ_f_covid_sh]]  = 1.
+        Γ0[eq[:eq_λ_f], endo[:λ_f_covid_t]]       = -1.
+
+        Γ0[eq[:eq_σ_ω_covid], endo[:σ_ω_covid_t]] = 1.
+        Γ1[eq[:eq_σ_ω_covid], endo[:σ_ω_covid_t]] = m[:ρ_σ_w_covid]
+        Ψ[eq[:eq_σ_ω_covid], exo[:σ_ω_covid_sh]]  = 1.
+        Γ0[eq[:eq_σ_ω], endo[:σ_ω_covid_t]]       = -1.
     end
 
     ### Financial frictions

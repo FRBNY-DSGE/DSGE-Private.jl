@@ -791,13 +791,13 @@ end
 
 """
 ```
-init_settings!(m::Model1002)
+init_subspec_settings!(m::Model1002)
 ```
 
 Initializes the model's settings as per sub specification. These settings are intrinsic to building the rest of the model (as opposed to other settings which may just affect the forecasting or estimation process once the model has been created) and are likely to contain dependencies in `subspecs.jl` or `subspecs_builder.jl`.
 """
 function init_subspec_settings!(m::Model1002)
-    ss_num = parse(Int, SubString(subspec(m),3,subspec_ind))
+    ss_num = parse(Int, SubString(subspec(m),3))
 
     if get_setting(m, :cond_id) in collect(1:5)
         m <= Setting(:cond_full_names, [:obs_gdp, :obs_corepce, :obs_spread, :obs_nominalrate, :obs_longrate],
@@ -823,6 +823,17 @@ function init_subspec_settings!(m::Model1002)
         m <= Setting(:add_cprod_group, true)
         m <= Setting(:add_cprod_states, true)
         m <= Setting(:add_std_shock_group, true)
+        m <= Setting(:cprod_exo_eqcond, true)
+
+        m <= Setting(:ϕ_euler_eqcond, true)
+        m <= Setting(:ϕ_msub_eqcond, true)
+        m <= Setting(:ϕ_exp_lag_ecqond, true)
+
+        m <= Setting(:labor_pref_sh_eqcond, true)
+
+        m <= Setting(:add_covid_meas, true)
+        m <= Setting(:add_pseudomeas_gdpcovid, true)
+        m <= Setting(:add_pseudomeas_pcecovid, true)
     end
     if ss_num >= 62 && ss_num <= 104
         m <= Setting(:add_pseudo_gdp, true),
@@ -841,6 +852,9 @@ function init_subspec_settings!(m::Model1002)
         m <= Setting(:add_meas_pi_params, true)
         m <= Setting(:add_meas_pi_shock_group, true)
         m <= Setting(:add_meas_pi_error_group, true)
+
+        m <= Setting(:add_meas_pi_measure, true)
+        m <= Setting(:add_pseudomeas_pi_measure, true)
     end
 
     if ss_num >= 100 && ss_num <= 103
@@ -1251,10 +1265,11 @@ There is a lot of easy work that can be done here to make this function more for
 """
 function init_subspec_indices(m::AbstractDSGEModel,
                               endogenous_states::Vector{Symbol},
+                              endogenous_states_augmented::Vector{Symbol},
                               exogenous_shocks::Vector{Symbol},
                               expected_shocks::Vector{Symbol},
                               equilibrium_conditions::Vector{Symbol},
-                              observables::Vector{Symbol}
+                              observables::Vector{Symbol},
                               pseudo_observables::Vector{Symbol})
 
     for (key, val) in get_setting(m, :antshocks)
@@ -1459,13 +1474,13 @@ function init_subspec_indices(m::AbstractDSGEModel,
         push!(exogenous_shocks, :condcorepce_sh)
     end
 
-    return endogenous_states, exogenous_shocks, expected_shocks, equilibrium_conditions, observables, pseudo_observables
+    return endogenous_states, endogenous_states_augmented, exogenous_shocks, expected_shocks, equilibrium_conditions, observables, pseudo_observables
 end
 
 
 function init_subspec_parameter_groupings(m::Model1002, groupings::OrderedDict{String, Vector{Parameter}})
 
-    subspec_ind = parse(Int, SubString(subspec(m),3,subspec_ind))
+    subspec_ind = parse(Int, SubString(subspec(m),3))
 
     if haskey(get_settings(m), :add_meas_pi_error_group) ? get_setting(m, :add_meas_pi_error_group) : false # subspec_num >= 87
         push!(groupings["Measurement Error Parameters"], :ρ_meas_π, :σ_meas_π)
@@ -1508,7 +1523,7 @@ function init_subspec_parameter_groupings(m::Model1002, groupings::OrderedDict{S
     incl_params    = vcat(collect(values(groupings))...)
     excl_params_sym = vcat([:Upsilon, :ρ_μ_e, :ρ_γ, :σ_μ_e, :σ_γ, :Iendoα, :γ_gdi, :δ_gdi],
                            [Symbol("σ_r_m$i") for i=n_mon_anticipated_shocks(m)+1:n_mon_anticipated_shocks_padding(m)])
-    if haskey(get_settings(m), :add_cprod_group) ? get_setting(m, :add_cprod_group) # subspec_num >= 59
+    if haskey(get_settings(m), :add_cprod_group) ? get_setting(m, :add_cprod_group) : false # subspec_num >= 59
         push!(excl_params_sym, :ρ_ziid, :ρ_biidc, :ρ_φ)
     end
     if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
