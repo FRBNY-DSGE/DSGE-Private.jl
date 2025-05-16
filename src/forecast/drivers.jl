@@ -781,7 +781,7 @@ Compute `output_vars` for a single parameter draw, `params`. Called by
 ```
 """
 function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, cond_type::Symbol,
-                           output_vars::Vector{Symbol}, params::Vector{Union{Vector{Float64},Float64}}, df::DataFrame; verbose::Symbol = :low,
+                           output_vars::Vector{Symbol}, params::Array{Float64, 1}, df::DataFrame; verbose::Symbol = :low,
                            use_filtered_shocks_in_shockdec::Bool = false,
                            shock_name::Symbol = :none, shock_var_name::Symbol = :none,
                            shock_var_value::Float64 = 0.0, shock_names::Vector{Symbol} = Vector{Symbol}(undef, 0),
