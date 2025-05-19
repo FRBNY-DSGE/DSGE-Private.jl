@@ -217,6 +217,18 @@ function measurement(m::Model1002{T},
     DD[obs[:obs_longrate]]                    = m[:Rstarn] + CCC10[endo[:R_t]]
     # DD[obs[:obs_longrate]]                    = m[:Rstarn] + ZZ_long_rate * CCC10
 
+
+###### Short run inflation expectations ################
+
+TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 4, permanent_t;
+                                                 integ_series = integ_series,
+                                            memo = use_fwd_exp_sum ? memo : nothing)
+
+ZZ[obs[:obs_shortinflation], :] = view(TTT1, endo[:π_t], :)
+DD[obs[:obs_shortinflation], :] = 100 * m([:π_star] - 1) + CCC1[endo[:π_t]]
+
+
+
     ## TFP
     ZZ[obs[:obs_tfp], endo[:z_t]] = (1-m[:α])*m[:Iendoα] + 1*(1-m[:Iendoα])
     if subspec(m) in ["ss14", "ss15", "ss16", "ss18", "ss19"]
