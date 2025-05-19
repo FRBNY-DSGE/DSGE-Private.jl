@@ -199,7 +199,8 @@ function measurement(m::Model1002{T},
     ## Spreads
     ZZ[obs[:obs_spread], endo[:ERktil_t]] = 1.0
     ZZ[obs[:obs_spread], endo[:R_t]]       = -1.0
-    DD[obs[:obs_spread]]                   = 100*log(m[:spr])
+DD[obs[:obs_spread]]                   = 100*log(m[:spr])
+
 
     ## 10 yrs infl exp
     TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 40, permanent_t;
@@ -237,6 +238,19 @@ function measurement(m::Model1002{T},
         ZZ[obs[:obs_pgap], endo[:pgap_t]] = 1.
         ZZ[obs[:obs_ygap], endo[:ygap_t]] = 1.
     end
+
+
+######## First pass at short run inflation epectations: #########
+#=
+if false
+    #Want to be in q4/q4: i.e. if I am in Q2, then I want inflation at period t-1, t, t+1, t+2.
+    #If I am in Q3: [t-2, t-1, t, t+1]
+    #If I am in Q4: [t-3, t-2, t-1, t]
+    ZZ[obs[:obs_π1], :] =
+
+
+end
+=#
 
     ## Set up structural shocks covariance matrix
     QQ[exo[:g_sh], exo[:g_sh]]             = m[:σ_g]^2
