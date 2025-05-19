@@ -1256,6 +1256,19 @@ function init_subspec_params!(m::AbstractDSGEModel)
                        tex_label="\\sigma_{$(propant_tex_label)}^{prop}")
     end
 
+    if subspec(m) in ["ss97", "ss98", "ss99", "ss100", "ss101", "ss102", "ss103", "ss104"]
+        param_order = [:α, :ζ_p, :ι_p, :δ, :Upsilon, :Φ, :S′′, :h, :ppsi, :ν_l, :ζ_w, :ι_w, :λ_w, :β, :ψ1, :ψ2, :ψ3, :π_star, :σ_c, :ρ, :ϵ_p, :ϵ_w, :Fω, :spr, :ζ_spb, :γ_star, :γ, :Lmean, :g_star, :ρ_g, :ρ_b, :ρ_μ, :ρ_ztil, :ρ_λ_f, :ρ_λ_w, :ρ_rm, :ρ_σ_w, :ρ_μ_e, :ρ_γ, :ρ_π_star, :ρ_lr, :ρ_z_p, :ρ_tfp, :ρ_gdpdef, :ρ_corepce, :ρ_gdp, :ρ_gdi, :ρ_gdpvar, :me_level, :ρ_meas_π, :ρ_ait_rm, :σ_g, :σ_b, :σ_μ, :σ_ztil, :σ_λ_f, :σ_λ_w, :σ_r_m, :σ_σ_ω, :σ_μ_e, :σ_γ, :σ_π_star, :σ_lr, :σ_z_p, :σ_tfp, :σ_gdpdef, :σ_corepce, :σ_gdp, :σ_gdi, :σ_meas_π, :σ_ait_rm, :ρ_ziid, :σ_ziid, :ρ_biidc, :σ_biidc, :ρ_φ, :σ_φ, :σ_pgap, :σ_ygap, :ρ_condgdp, :σ_condgdp, :ρ_condcorepce, :σ_condcorepce, :σ_biidc_prop, :σ_φ_prop, :σ_ziid_prop, :σ_ait_r_m1, :σ_ait_r_m2, :σ_ait_r_m3, :σ_ait_r_m4, :σ_ait_r_m5, :σ_ait_r_m6, :σ_r_m1, :σ_r_m2, :σ_r_m3, :σ_r_m4, :σ_r_m5, :σ_r_m6, :σ_r_m7, :σ_r_m8, :σ_r_m9, :σ_r_m10, :σ_r_m11, :σ_r_m12, :σ_r_m13, :σ_r_m14, :σ_r_m15, :σ_r_m16, :σ_r_m17, :σ_r_m18, :σ_r_m19, :σ_r_m20, :σ_φ1, :σ_biidc1, :σ_ziid1, :η_gz, :η_λ_f, :η_λ_w, :Iendoα, :Γ_gdpdef, :δ_gdpdef, :γ_gdi, :δ_gdi, :σ_exp_rm1, :σ_exp_rm2, :σ_exp_rm3, :σ_exp_rm4, :σ_exp_rm5, :σ_exp_rm6, :ρ_exp_rm]
+
+        model_param_list = []
+        for i in 1:length(param_order)
+            pkey = param_order[i]
+            placer = m[pkey]
+            push!(model_param_list, placer)
+            m.keys[pkey] = i
+        end
+        m.parameters = model_param_list
+
+    end
 end
 
 """

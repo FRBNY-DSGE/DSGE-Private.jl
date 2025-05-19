@@ -158,7 +158,7 @@ function measurement(m::Model1002{T},
     ## Inflation (GDP Deflator)
     ZZ[obs[:obs_gdpdeflator], endo[:π_t]]            = m[:Γ_gdpdef]
     ZZ[obs[:obs_gdpdeflator], endo_new[:e_gdpdef_t]] = 1.0
-    if hasleyparse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
