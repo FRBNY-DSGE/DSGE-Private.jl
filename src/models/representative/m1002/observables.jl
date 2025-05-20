@@ -291,7 +291,7 @@ function init_observable_mappings!(m::Model1002)
     ############################################################################
 
     shortinflation_fwd_transform = function (levels)
-        # FROM: SPF: 10-Year average yr/yr CPI inflation expectations (annual percent)
+        # FROM: SPF: 1-Year average yr/yr CPI inflation expectations (annual percent)
         # TO:   FROM, less 0.5
         # Note: We subtract 0.5 because 0.5% inflation corresponds to
         #       the assumed long-term rate of 2 percent inflation, but the
@@ -303,7 +303,7 @@ function init_observable_mappings!(m::Model1002)
     shortinflation_rev_transform = loggrowthtopct_annualized
 
 
-    observables[:obs_longinflation] = Observable(:obs_shortinflation, [:ASACX1__DLX],
+    observables[:obs_shortinflation] = Observable(:obs_shortinflation, [:ASACX1__DLX],
                                                  shortinflation_fwd_transform, shortinflation_rev_transform,
                                                  "1-year average inflation expectations",
                                                  "1-year average yr/yr CPI inflation expectations")
