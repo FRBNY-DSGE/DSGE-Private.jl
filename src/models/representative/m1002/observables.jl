@@ -286,6 +286,27 @@ function init_observable_mappings!(m::Model1002)
                                                  "10-year average yr/yr CPI inflation expectations")
     end
 
+    ############################################################################
+    # 10.5 Short term inflation expectations
+    ############################################################################
+
+    shortinflation_fwd_transform = function (levels)
+        # FROM: SPF: 10-Year average yr/yr CPI inflation expectations (annual percent)
+        # TO:   FROM, less 0.5
+        # Note: We subtract 0.5 because 0.5% inflation corresponds to
+        #       the assumed long-term rate of 2 percent inflation, but the
+        #       data are measuring expectations of actual inflation.
+
+        annualtoquarter(levels[!,:ASACX1]  .- 0.5)
+    end
+
+    shortinflation_rev_transform = loggrowthtopct_annualized
+
+
+    observables[:obs_longinflation] = Observable(:obs_shortinflation, [:ASACX1__DLX],
+                                                 shortinflation_fwd_transform, shortinflation_rev_transform,
+                                                 "1-year average inflation expectations",
+                                                 "1-year average yr/yr CPI inflation expectations")
 
     ############################################################################
     # 11. Long rate (10-year, zero-coupon)
@@ -480,7 +501,8 @@ function init_observable_mappings!(m::Model1002)
                  vcat([:obs_longinflation, :obs_longrate],
                       [Symbol("obs_nominalrate$i") for i in 1:n_mon_anticipated_shocks(m)],
                       haskey(get_settings(m), :add_anticipated_obs_gdp) && get_setting(m, :add_anticipated_obs_gdp) ?
-                      [Symbol("obs_gdp$i") for i in 1:get_setting(m, :n_anticipated_obs_gdp)] : []))
+                      [Symbol("obs_gdp$i") for i in 1:get_setting(m, :n_anticipated_obs_gdp)] : [],
+                      [:obs_shortinflation]))
 
     m.observable_mappings = observables
 
