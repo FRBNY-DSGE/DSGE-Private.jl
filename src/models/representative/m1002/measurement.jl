@@ -221,13 +221,22 @@ function measurement(m::Model1002{T},
 ###### Short run inflation expectations ################
 
 #This will need to be changed every quarter!
-#=
-    TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, permanent_t;
-                                                integ_series = integ_series,
-                                                memo = use_fwd_exp_sum ? memo : nothing)
-=#
 
-econo_perm_t = if reg >= 11 length(TTTs) else permanent_t end # THIS IS HARD CODED, IF YOU ARE THINKING ABOUT CHANGING IT REACH OUT TO PG/BP
+ TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, 29;
+                                                           integ_series = integ_series,
+                                                         memo = use_fwd_exp_sum ? memo : nothing)
+#Account for current period:
+eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
+TTT1Econo = TTT1Econo .+ eye_tmp
+
+    TTT1Econo   = TTT1Econo ./ 4
+    CCC1Econo   = CCC1Econo ./ 3
+
+
+    ZZ[obs[:obs_shortinflation], :] = view(TTT1Econo, endo[:π_t], :)
+    DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1Econo[endo[:π_t]]
+
+#= #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
     TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, 29;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
@@ -239,7 +248,13 @@ TTT1Econo = TTT1Econo .+ eye_tmp
     CCC1Econo   = CCC1Econo ./ 3
 
 
-#=
+    ZZ[obs[:obs_shortinflation], :] = view(TTT1Econo, endo[:π_t], :)
+    DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1Econo[endo[:π_t]]
+=#
+
+#@show reg, length(TTTs), 100*(m[:π_star]-1),  CCC1Econo[endo[:π_t]]
+
+#= #Past iterations:
 TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, permanent_t;
                                                 integ_series = integ_series,
                                             memo = use_fwd_exp_sum ? memo : nothing)
@@ -254,12 +269,6 @@ TTT1 = TTT1 .+ eye_tmp
 TTT1 = TTT1 ./ 4
 CCC1 = CCC1 ./ 3
 =#
-
-    ZZ[obs[:obs_shortinflation], :] = view(TTT1Econo, endo[:π_t], :)
-    DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1Econo[endo[:π_t]]
-
-#@show reg, length(TTTs), 100*(m[:π_star]-1),  CCC1Econo[endo[:π_t]]
-
 
 
     ## TFP
