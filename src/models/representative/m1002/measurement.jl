@@ -222,13 +222,24 @@ function measurement(m::Model1002{T},
 
 #This will need to be changed every quarter!
 #=
-    TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 4, permanent_t;
+    TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, permanent_t;
                                                 integ_series = integ_series,
                                                 memo = use_fwd_exp_sum ? memo : nothing)
-#Divide by 4 to get average across the year
-TTT1 = TTT1 ./ 4
-CCC1 = CCC1 ./ 4
 =#
+
+econo_perm_t = if reg >= 11 length(TTTs) else permanent_t end # THIS IS HARD CODED, IF YOU ARE THINKING ABOUT CHANGING IT REACH OUT TO PG/BP
+    TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, 29;
+                                                           integ_series = integ_series,
+                                                         memo = use_fwd_exp_sum ? memo : nothing)
+#Account for current period:
+eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
+TTT1Econo = TTT1Econo .+ eye_tmp
+
+    TTT1Econo   = TTT1Econo ./ 4
+    CCC1Econo   = CCC1Econo ./ 3
+
+
+#=
 TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, permanent_t;
                                                 integ_series = integ_series,
                                             memo = use_fwd_exp_sum ? memo : nothing)
@@ -236,15 +247,18 @@ TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, perman
 eye_tmp = Matrix{Float64}(I, size(TTT1, 1), size(TTT1, 2))
 
 TTT1 = TTT1 .+ eye_tmp
-CCC1 = CCC1
+#CCC1[endo[:π_t]] = CCC1[endo[:π_t]] + 100*(m[:π_star]-1)
+
 
 #Divide by 4 to get average across the year
 TTT1 = TTT1 ./ 4
-CCC1 = CCC1 ./ 4
+CCC1 = CCC1 ./ 3
+=#
 
-    ZZ[obs[:obs_shortinflation], :] = view(TTT1, endo[:π_t], :)
-    DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1[endo[:π_t]]
+    ZZ[obs[:obs_shortinflation], :] = view(TTT1Econo, endo[:π_t], :)
+    DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1Econo[endo[:π_t]]
 
+#@show reg, length(TTTs), 100*(m[:π_star]-1),  CCC1Econo[endo[:π_t]]
 
 
 
