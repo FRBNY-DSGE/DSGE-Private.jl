@@ -221,12 +221,30 @@ function measurement(m::Model1002{T},
 ###### Short run inflation expectations ################
 
 #This will need to be changed every quarter!
+#=
     TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 4, permanent_t;
                                                 integ_series = integ_series,
                                                 memo = use_fwd_exp_sum ? memo : nothing)
+#Divide by 4 to get average across the year
+TTT1 = TTT1 ./ 4
+CCC1 = CCC1 ./ 4
+=#
+TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, permanent_t;
+                                                integ_series = integ_series,
+                                            memo = use_fwd_exp_sum ? memo : nothing)
+#Add in current TTT:
+eye_tmp = Matrix{Float64}(I, size(TTT1, 1), size(TTT1, 2))
+
+TTT1 = TTT1 .+ eye_tmp
+CCC1 = CCC1
+
+#Divide by 4 to get average across the year
+TTT1 = TTT1 ./ 4
+CCC1 = CCC1 ./ 4
 
     ZZ[obs[:obs_shortinflation], :] = view(TTT1, endo[:π_t], :)
-    DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC10[endo[:π_t]]
+    DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1[endo[:π_t]]
+
 
 
 

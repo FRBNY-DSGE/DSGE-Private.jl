@@ -298,6 +298,7 @@ function init_observable_mappings!(m::Model1002)
         #       data are measuring expectations of actual inflation.
 
         annualtoquarter(levels[!,:ASACX1]  .- 0.5)
+        #annualtoquarter(levels[!,:ASACX1])
     end
 
     shortinflation_rev_transform = loggrowthtopct_annualized
