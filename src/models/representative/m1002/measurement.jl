@@ -232,20 +232,20 @@ TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 
 
 #Account for current period:
 eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
-idx_π = zeros(size(TTT1Econo,1),1)
-idx_π[endo[:π_t]] = 1.
-idx_π1 = zeros(size(TTT1Econo,1),1)
-idx_π1[endo[:π_t1]] = 1.
+idx_π = zeros(1, size(TTT1Econo,1))
+idx_π[1, endo[:π_t]] = 1.
+idx_π1 = zeros(1, size(TTT1Econo,1))
+idx_π1[1, endo[:π_t1]] = 1.
 
 #TTT1Econo = TTT1Econo .+ eye_tmp
 @show size(TTT1Econo), size(view(TTT1Econo, endo[:π_t], :))
 
-    TTT1_f   = (TTT1Econo + eye_tmp) * idx_π
+    TTT1_f   = idx_π * (TTT1Econo + eye_tmp)
 #CCC1_f   = CCC1Econo ./ 2
 
-CCC1_f = ((2*eye_tmp .+ TTT) * 100*(m[:π_star]-1)) ./ 4
+CCC1_f = (idx_π * (2*eye_tmp .+ TTT) * (100*(m[:π_star]-1))) ./ 4
 
-ZZ[obs[:obs_shortinflation], :] = (TTT1f .+ idx_π1) ./ 4
+ZZ[obs[:obs_shortinflation], :] = (TTT1_f .+ idx_π1) ./ 4
     DD[obs[:obs_shortinflation]] = CCC1_f #100*(m[:π_star]-1) + CCC1_f[endo[:π_t]]
 
 #= #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
