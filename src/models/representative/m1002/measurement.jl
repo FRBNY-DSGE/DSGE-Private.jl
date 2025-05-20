@@ -225,7 +225,7 @@ function measurement(m::Model1002{T},
                                                 memo = use_fwd_exp_sum ? memo : nothing)
 
     ZZ[obs[:obs_shortinflation], :] = view(TTT1, endo[:π_t], :)
-    DD[obs[:obs_shortinflation], :] = 100 * m([:π_star] - 1) + CCC1[endo[:π_t]]
+    DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC10[endo[:π_t]]
 
 
 
