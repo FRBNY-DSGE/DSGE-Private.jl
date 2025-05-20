@@ -220,6 +220,7 @@ function measurement(m::Model1002{T},
 
 ###### Short run inflation expectations ################
 
+#This will need to be changed every quarter!
     TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 4, permanent_t;
                                                 integ_series = integ_series,
                                                 memo = use_fwd_exp_sum ? memo : nothing)
