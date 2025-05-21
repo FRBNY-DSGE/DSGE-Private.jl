@@ -228,15 +228,15 @@ function measurement(m::Model1002{T},
 #This amounts to doing the following:
 # Z [:obs_shortinflation, :] = 1/4 * (π_{t-1} + π_t + E[π_{t+1}] + E[π_{t+2}])
 
-
+#agent's views
 TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, permanent_t;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
-
+#Econometrician's views
 TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
-
+#= #Not needed anymore:
 #Indexes for states of today's inflation π_t and yesterday's inflation π_t1
 eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
 idx_π = zeros(1, size(TTT1Econo,1))
@@ -245,11 +245,12 @@ idx_π1 = zeros(1, size(TTT1Econo,1))
 idx_π1[1, endo[:π_t1]] = 1.
 
 @show size(TTTs)
+=#
+#T_sum = TTT1Econo_1;
+#C_sum = CCC1Econo_1;
 
-T_sum = TTT1Econo_1;
-C_sum = CCC1Econo_1;
-#=
-if length(TTTs) > 0
+#Manually doing K periods ahead for 2 periods
+if size(TTTs,1) > 0
     if reg < 29
         T_sum = (TTTs[reg + 1] * TTTs[reg]) + TTTs[reg]
         C_sum = (TTTs[reg] * CCCs[reg]) + 2 * CCCs[reg]
@@ -261,23 +262,20 @@ else
     T_sum = (TTT * TTT) + TTT
     C_sum = (TTT * CCC) + 2 * CCC
 end
-=#
+
+#Index and divide early by 4 to implement formula
 TTT1_f = view(T_sum, endo[:π_t], :) ./ 4
 CCC1_f = C_sum[endo[:π_t]] ./ 4
 
 
-#@show CCC1_f, C_sum[endo[:π_t1]]
-#@show T_sum ≈ TTT1Econo, C_sum ≈ CCC1Econo
-
 #TTT1_f   = view(TTT1Econo, endo[:π_t], :) ./ 4
 #CCC1_f = ((2 .+ TTT[endo[:π_t], endo[:π_t]]) * CCC[endo[:π_t]]) ./ 4
-#@show size(TTT1_f), size(CCC1_f)
 
-#@show TTT1_f[endo[:π_t]], TTT1_f[endo[:π_t1]]
+#Implementation
 ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 0.25
 ZZ[obs[:obs_shortinflation], endo[:π_t]] = 0.25
 ZZ[obs[:obs_shortinflation], :] .+= TTT1_f
-DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1_f #(CCC1Econo[endo[:π_t]] * 0.25)
+DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1_f
 
 #= #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
     TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, 29;
