@@ -193,6 +193,10 @@ end
 
 ## REVERSE TRANSFORMS
 
+function plus_two(y::AbstractArray)
+    y .+ 2
+end
+
 """
 ```
 loggrowthtopct(y)
@@ -437,6 +441,8 @@ function get_transform4q(transform::Function)
         quartertoannual
     elseif transform == identity
         identity
+    elseif transform == plus_two
+        plus_two
     else
         error("4q equivalent not implemented for $transform")
     end
