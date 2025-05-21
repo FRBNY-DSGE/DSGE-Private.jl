@@ -273,7 +273,7 @@ DD[obs[:obs_shortinflation]] = CCC1_f #+ (4 * 100*(m[:π_star]-1))
 ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
 ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
 ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
-DD[obs[:obs_avgshortinflation]] = CCC1_f ./ 4 #+ (4 * 100*(m[:π_star]-1))
+DD[obs[:obs_avgshortinflation]] = (CCC1_f ./ 4) + 100*(m[:π_star]-1))
 
 #=
  #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
