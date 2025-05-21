@@ -225,28 +225,30 @@ function measurement(m::Model1002{T},
 #We are forecasting Q2: Therefore, we want t-1, t, t+1, t+2
 
 # :obs_shortinflation = (π[t-1] + π[t] + π[t+1] + π[t+2])/4
+#This amounts to doing the following:
+# Z [:obs_shortinflation, :] = 1/4 * (π_{t-1} + π_t + E[π_{t+1}] + E[π_{t+2}])
+
 
 TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
 
-#Account for current period:
+#Indexes for states of today's inflation π_t and yesterday's inflation π_t1
 eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
 idx_π = zeros(1, size(TTT1Econo,1))
 idx_π[1, endo[:π_t]] = 1.
 idx_π1 = zeros(1, size(TTT1Econo,1))
 idx_π1[1, endo[:π_t1]] = 1.
 
-#TTT1Econo = TTT1Econo .+ eye_tmp
-@show size(TTT1Econo), size(view(TTT1Econo, endo[:π_t], :))
 
-    TTT1_f   = idx_π * (TTT1Econo + eye_tmp)
-#CCC1_f   = CCC1Econo ./ 2
+TTT1_f   = view(TTT1Econo, endo[:π_t], :) ./ 4
+CCC1_f = ((2 .+ TTT[endo[:π_t], endo[:π_t]]) * CCC[endo[:π_t]]) ./ 4
+@show size(TTT1_f), size(CCC1_f)
 
-CCC1_f = (idx_π * (2*eye_tmp .+ TTT) * (100*(m[:π_star]-1))) ./ 4
-
-ZZ[obs[:obs_shortinflation], :] = (TTT1_f .+ idx_π1) ./ 4
-    DD[obs[:obs_shortinflation]] = CCC1_f #100*(m[:π_star]-1) + CCC1_f[endo[:π_t]]
+ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 0.25
+ZZ[obs[:obs_shortinflation], endo[:π_t]] = 0.25
+ZZ[obs[:obs_shortinflation], :] .+= TTT1_f
+DD[obs[:obs_shortinflation]] = CCC1_f + 100*(m[:π_star]-1) #100*(m[:π_star]-1) + CCC1_f[endo[:π_t]]
 
 #= #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
     TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, 29;
