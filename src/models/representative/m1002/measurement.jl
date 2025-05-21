@@ -240,15 +240,24 @@ idx_π[1, endo[:π_t]] = 1.
 idx_π1 = zeros(1, size(TTT1Econo,1))
 idx_π1[1, endo[:π_t1]] = 1.
 
+T_sum = (TTT * TTT) + TTT
+C_sum = (TTT * CCC) + 2 * CCC
 
-TTT1_f   = view(TTT1Econo, endo[:π_t], :) ./ 4
+TTT1_f = view(T_sum, endo[:π_t], :) ./ 4
+CCC1_f = C_sum[endo[:π_t]] ./ 4
+
+@show CCC1_f, C_sum[endo[:π_t1]]
+@show T_sum ≈ TTT1Econo, C_sum ≈ CCC1Econo
+
+#TTT1_f   = view(TTT1Econo, endo[:π_t], :) ./ 4
 #CCC1_f = ((2 .+ TTT[endo[:π_t], endo[:π_t]]) * CCC[endo[:π_t]]) ./ 4
 #@show size(TTT1_f), size(CCC1_f)
 
+#@show TTT1_f[endo[:π_t]], TTT1_f[endo[:π_t1]]
 ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 0.25
 ZZ[obs[:obs_shortinflation], endo[:π_t]] = 0.25
 ZZ[obs[:obs_shortinflation], :] .+= TTT1_f
-DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + (CCC1Econo[endo[:π_t]] * 0.25)
+DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1_f #(CCC1Econo[endo[:π_t]] * 0.25)
 
 #= #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
     TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, 29;
