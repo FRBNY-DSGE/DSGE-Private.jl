@@ -160,7 +160,7 @@ function reverse_transform(y::AbstractArray, rev_transform::Function;
             else
                 rev_transform(y, y0s)
             end
-        elseif rev_transform in [quartertoannual, identity]
+        elseif rev_transform in [quartertoannual, identity, plus_two]
             rev_transform(y)
         else
             error("Invalid 4-quarter reverse transform: $rev_transform")
@@ -184,7 +184,7 @@ function reverse_transform(y::AbstractArray, rev_transform::Function;
             rev_transform(y, pop_growth)
         elseif rev_transform in [logleveltopct_annualized, logleveltopct_annualized_approx]
             rev_transform(y, y0)
-        elseif rev_transform in [loggrowthtopct_annualized, loggrowthtopct, quartertoannual, identity]
+        elseif rev_transform in [loggrowthtopct_annualized, loggrowthtopct, quartertoannual, identity, plus_two]
             rev_transform(y)
         else
             error("Invalid reverse transform: $rev_transform")
