@@ -301,7 +301,7 @@ function init_observable_mappings!(m::Model1002)
         #annualtoquarter(levels[!,:ASACX1])
     end
 
-    shortinflation_rev_transform = loggrowthtopct_annualized
+    shortinflation_rev_transform = identity #loggrowthtopct_annualized
 
 
     observables[:obs_shortinflation] = Observable(:obs_shortinflation, [:ASACX1__DLX],
