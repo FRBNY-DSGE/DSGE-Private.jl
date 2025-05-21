@@ -237,18 +237,7 @@ TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, r
 TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
-#= #Not needed anymore:
-#Indexes for states of today's inflation π_t and yesterday's inflation π_t1
-eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
-idx_π = zeros(1, size(TTT1Econo,1))
-idx_π[1, endo[:π_t]] = 1.
-idx_π1 = zeros(1, size(TTT1Econo,1))
-idx_π1[1, endo[:π_t1]] = 1.
-
-@show size(TTTs)
-=#
-eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
-T_sum = TTT1Econo #.+ eye_tmp
+T_sum = TTT1Econo
 C_sum = CCC1Econo
 
 #Manually doing K periods ahead for 2 periods
@@ -273,14 +262,18 @@ TTT1_f = view(T_sum, endo[:π_t], :) #./ 4
 CCC1_f = C_sum[endo[:π_t]] #./ 4
 
 
-#TTT1_f   = view(TTT1Econo, endo[:π_t], :) ./ 4
-#CCC1_f = ((2 .+ TTT[endo[:π_t], endo[:π_t]]) * CCC[endo[:π_t]]) ./ 4
-
 #Implementation
 ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 1 #0.25
 ZZ[obs[:obs_shortinflation], endo[:π_t]] =  1 #0.25
 ZZ[obs[:obs_shortinflation], :] .+= TTT1_f
 DD[obs[:obs_shortinflation]] = CCC1_f #+ (4 * 100*(m[:π_star]-1))
+
+
+#Implementation
+ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
+ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
+ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
+DD[obs[:obs_avgshortinflation]] = CCC1_f ./ 4 #+ (4 * 100*(m[:π_star]-1))
 
 #=
  #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
@@ -298,23 +291,6 @@ TTT1Econo = TTT1Econo .+ eye_tmp
     ZZ[obs[:obs_shortinflation], :] = view(TTT1Econo, endo[:π_t], :)
     DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1Econo[endo[:π_t]]
 
-=#
-#@show reg, length(TTTs), 100*(m[:π_star]-1),  CCC1Econo[endo[:π_t]]
-
-#= #Past iterations:
-TTT1, CCC1 =  k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, permanent_t;
-                                                integ_series = integ_series,
-                                            memo = use_fwd_exp_sum ? memo : nothing)
-#Add in current TTT:
-eye_tmp = Matrix{Float64}(I, size(TTT1, 1), size(TTT1, 2))
-
-TTT1 = TTT1 .+ eye_tmp
-#CCC1[endo[:π_t]] = CCC1[endo[:π_t]] + 100*(m[:π_star]-1)
-
-
-#Divide by 4 to get average across the year
-TTT1 = TTT1 ./ 4
-CCC1 = CCC1 ./ 3
 =#
 
 
