@@ -228,6 +228,7 @@ function measurement(m::Model1002{T},
 #This amounts to doing the following:
 # Z [:obs_shortinflation, :] = 1/4 * (π_{t-1} + π_t + E[π_{t+1}] + E[π_{t+2}])
 
+
 #agent's views
 TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, permanent_t;
                                                            integ_series = integ_series,
@@ -246,10 +247,13 @@ idx_π1[1, endo[:π_t1]] = 1.
 
 @show size(TTTs)
 =#
-#T_sum = TTT1Econo_1;
-#C_sum = CCC1Econo_1;
+eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
+T_sum = TTT1Econo #.+ eye_tmp
+C_sum = CCC1Econo
 
 #Manually doing K periods ahead for 2 periods
+#Worked (same as agent's views)
+#=
 if size(TTTs,1) > 0
     if reg < 29
         T_sum = (TTTs[reg + 1] * TTTs[reg]) + TTTs[reg]
@@ -259,25 +263,27 @@ if size(TTTs,1) > 0
         C_sum = (TTT * CCC) + 2 * CCC
     end
 else
+    @show size(TTTs,1), permanent_t
     T_sum = (TTT * TTT) + TTT
     C_sum = (TTT * CCC) + 2 * CCC
 end
-
+=#
 #Index and divide early by 4 to implement formula
-TTT1_f = view(T_sum, endo[:π_t], :) ./ 4
-CCC1_f = C_sum[endo[:π_t]] ./ 4
+TTT1_f = view(T_sum, endo[:π_t], :) #./ 4
+CCC1_f = C_sum[endo[:π_t]] #./ 4
 
 
 #TTT1_f   = view(TTT1Econo, endo[:π_t], :) ./ 4
 #CCC1_f = ((2 .+ TTT[endo[:π_t], endo[:π_t]]) * CCC[endo[:π_t]]) ./ 4
 
 #Implementation
-ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 0.25
-ZZ[obs[:obs_shortinflation], endo[:π_t]] = 0.25
+ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 1 #0.25
+ZZ[obs[:obs_shortinflation], endo[:π_t]] =  1 #0.25
 ZZ[obs[:obs_shortinflation], :] .+= TTT1_f
 DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1_f
 
-#= #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
+#=
+ #Implementation such that obs_shortinflation at time t is mean of t:t+3 of PseudoCorePCE (Rolling 4 quarter implementation)
     TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 3, 29;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
@@ -286,13 +292,13 @@ eye_tmp = Matrix{Float64}(I, size(TTT1Econo, 1), size(TTT1Econo, 2))
 TTT1Econo = TTT1Econo .+ eye_tmp
 
     TTT1Econo   = TTT1Econo ./ 4
-    CCC1Econo   = CCC1Econo ./ 3
+    CCC1Econo   = CCC1Econo ./ 4 #3
 
 
     ZZ[obs[:obs_shortinflation], :] = view(TTT1Econo, endo[:π_t], :)
     DD[obs[:obs_shortinflation]] = 100*(m[:π_star]-1) + CCC1Econo[endo[:π_t]]
-=#
 
+=#
 #@show reg, length(TTTs), 100*(m[:π_star]-1),  CCC1Econo[endo[:π_t]]
 
 #= #Past iterations:
