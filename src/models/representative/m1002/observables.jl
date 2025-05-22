@@ -301,8 +301,8 @@ function init_observable_mappings!(m::Model1002)
         observables[:obs_shortinflation] = Observable(:obs_shortinflation, [:COREPCE__SPFINFL],
                                                       shortinflation_fwd_transform,
                                                       shortinflation_rev_transform,
-                                                      "Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)",
-                                                      "Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)")
+                                                      "Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
+                                                      "Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
     end
 
 
@@ -321,8 +321,8 @@ function init_observable_mappings!(m::Model1002)
         observables[:obs_avgshortinflation] = Observable(:obs_avgshortinflation, [:COREPCEAVG__SPFINFL],
                                                          avgshortinflation_fwd_transform,
                                                          avgshortinflation_rev_transform,
-                                                         "Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)",
-                                                         "Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)")
+                                                         "Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
+                                                         "Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
     end
     ############################################################################
     # 11. Long rate (10-year, zero-coupon)
