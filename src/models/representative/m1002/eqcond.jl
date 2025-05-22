@@ -456,7 +456,7 @@ function eqcond(m::Model1002, reg::Int)
     end
 
     Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
-Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
+    Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
 
 
 ### Adding anticipated mark-up shocks to accomodate short run inflation expectations ###
@@ -469,24 +469,23 @@ The current mark-up process is an ARMA(1,1) -- we want to add anticipated shocks
 
 =#
 
-if haskey(get_settings(m), :add_ant_markup_shocks) && get_setting(m, :add_ant_markup_shocks)
-    #States to add: sh1-2, _t2, and eq: _f2
-    #functions: n_markup_anticipated_shocks(m)
+    if haskey(get_settings(m), :add_ant_markup_shocks) && get_setting(m, :add_ant_markup_shocks) > 0
+        #States to add: sh1-2, _t2, and eq: _f2
 
-    #I have one big state for the shocks that hit today:
-    #sum_shocks = contemporaneous + anticipated:
+        #I have one big state for the shocks that hit today:
+        #sum_shocks = contemporaneous + anticipated:
+        Γ0[eq[Symbol("eq_λ_fsum")], endo[Symbol("λ_f_tsum")]]     = 1.
 
-
-
-    #All my anticipated shocks that will hit:
-    if n_markup_anticipated_shocks(m) > 1
-        for i = 2:n_markup_anticipated_shocks(m)
+        #All my anticipated shocks that will hit:
+        for i = 2:get_setting(m, :add_ant_markup_shocks)
             Γ1[eq[Symbol("eq_λ_f$(i-1)")], endo[Symbol("λ_f_t$i")]] = 1.
             Γ0[eq[Symbol("eq_λ_f$i")], endo[Symbol("λ_f_t$i")]]     = 1.
             Ψ[eq[Symbol("eq_λ_f$i")], exo[Symbol("λ_f_sh$i")]]      = 1.
+
+            Γ0[eq[Symbol("eq_λ_fsum")], endo[Symbol("λ_f_t$i")]]     = 1.
+
         end
     end
-end
 
 
     # Wage mark-up shock
