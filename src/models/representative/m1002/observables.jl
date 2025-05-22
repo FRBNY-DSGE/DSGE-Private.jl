@@ -260,14 +260,14 @@ function init_observable_mappings!(m::Model1002)
 
     longinflation_fwd_transform = function (levels)
         # FROM: SPF: 10-Year average yr/yr CPI inflation expectations (annual percent)
-        # TO:   FROM, less 0.5
-        # Note: We subtract 0.5 because 0.5% inflation corresponds to
+        # TO:   FROM, less 0.3 as of 2025 Q2 and beyond (was 0.5)
+        # Note: We subtract 0.3 because 0.3% inflation corresponds to
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
         if subspec(m) == "ss102"
             annualtoquarter(levels[!, :PCE10])
         else
-            annualtoquarter(levels[!,:ASACX10]  .- 0.5)
+            annualtoquarter(levels[!,:ASACX10]  .- 0.3)
         end
     end
 
@@ -284,62 +284,46 @@ function init_observable_mappings!(m::Model1002)
                                                  longinflation_fwd_transform, longinflation_rev_transform,
                                                  "10-year average inflation expectations",
                                                  "10-year average yr/yr CPI inflation expectations")
+   end
+
+    ############################################################################
+    # 10.a Short term inflation expectations
+    ############################################################################
+    if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
+        shortinflation_fwd_transform = function (levels)
+            # FROM: SPF: Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)
+
+            annualtoquarter(levels[!,:COREPCE])
+        end
+
+        shortinflation_rev_transform = loggrowthtopct_annualized
+
+        observables[:obs_shortinflation] = Observable(:obs_shortinflation, [:COREPCE__SPFINFL],
+                                                      shortinflation_fwd_transform,
+                                                      shortinflation_rev_transform,
+                                                      "Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)",
+                                                      "Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)")
     end
 
-    ############################################################################
-    # 10.5 Short term inflation expectations
-    ############################################################################
 
-    shortinflation_fwd_transform = function (levels)
-        # FROM: SPF: 1-Year average yr/yr CPI inflation expectations (annual percent)
-        # TO:   FROM, less 0.5
-        # Note: We subtract 0.5 because 0.5% inflation corresponds to
-        #       the assumed long-term rate of 2 percent inflation, but the
-        #       data are measuring expectations of actual inflation.
+    ############################################################################
+    # 10.b AVG Short term inflation expectations
+    ############################################################################
+    if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
+        avgshortinflation_fwd_transform = function (levels)
+            # FROM: SPF: Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)
 
-        #annualtoquarter(levels[!,:ASACX1]  .- 0.5)
-        annualtoquarter(levels[!,:COREPCE])
+            annualtoquarter(levels[!,:COREPCEAVG])
+        end
+
+        avgshortinflation_rev_transform = loggrowthtopct_annualized
+
+        observables[:obs_avgshortinflation] = Observable(:obs_avgshortinflation, [:COREPCEAVG__SPFINFL],
+                                                         avgshortinflation_fwd_transform,
+                                                         avgshortinflation_rev_transform,
+                                                         "Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)",
+                                                         "Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)")
     end
-
-    shortinflation_rev_transform = plus_two #loggrowthtopct #loggrowthtopct_annualized
-
-    observables[:obs_shortinflation] = Observable(:obs_shortinflation, [:COREPCE__SPFINFL], #[:ASACX1__DLX],
-                                                 shortinflation_fwd_transform, shortinflation_rev_transform,
-                                                 "1-year average inflation expectations",
-                                                  "1-year average yr/yr CPI inflation expectations")
-
-
-
-
-
-
-
-
-
-
-
-    ############################################################################
-    # 10.6 AVG Short term inflation expectations
-    ############################################################################
-
-    avgshortinflation_fwd_transform = function (levels)
-        # FROM: SPF: 1-Year average yr/yr CPI inflation expectations (annual percent)
-        # TO:   FROM, less 0.5
-        # Note: We subtract 0.5 because 0.5% inflation corresponds to
-        #       the assumed long-term rate of 2 percent inflation, but the
-        #       data are measuring expectations of actual inflation.
-
-        #annualtoquarter(levels[!,:ASACX1]  .- 0.5)
-        annualtoquarter(levels[!,:COREPCE])
-    end
-
-    avgshortinflation_rev_transform = loggrowthtopct_annualized
-
-    observables[:obs_avgshortinflation] = Observable(:obs_avgshortinflation, [:COREPCE__SPFINFL], #[:ASACX1__DLX],
-                                                 avgshortinflation_fwd_transform, avgshortinflation_rev_transform,
-                                                 "1-year average inflation expectations",
-                                                 "1-year average yr/yr CPI inflation expectations")
-
     ############################################################################
     # 11. Long rate (10-year, zero-coupon)
     ############################################################################
@@ -534,7 +518,10 @@ function init_observable_mappings!(m::Model1002)
                       [Symbol("obs_nominalrate$i") for i in 1:n_mon_anticipated_shocks(m)],
                       haskey(get_settings(m), :add_anticipated_obs_gdp) && get_setting(m, :add_anticipated_obs_gdp) ?
                       [Symbol("obs_gdp$i") for i in 1:get_setting(m, :n_anticipated_obs_gdp)] : [],
-                      [:obs_shortinflation, :obs_avgshortinflation]))
+                      haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl) ?
+                      [:obs_avgshortinflation] : [],
+                      haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl) ?
+                      [:obs_shortinflation] : []))
 
     m.observable_mappings = observables
 
