@@ -474,7 +474,28 @@ The current mark-up process is an ARMA(1,1) -- we want to add anticipated shocks
 
         #I have one big state for the shocks that hit today:
         #sum_shocks = contemporaneous + anticipated:
-        Γ0[eq[Symbol("eq_λ_fsum")], endo[Symbol("λ_f_tsum")]]     = 1.
+        #Γ0[eq[Symbol("eq_λ_fsum")], endo[Symbol("λ_f_tsum")]]     = 1.
+
+
+        #= #Thinking outloud:
+The goal:
+Today's λ: sum of all the normal stuff below
+        Γ0[eq[:eq_λ_f], endo[:λ_f_t]]  = 1.
+        Γ1[eq[:eq_λ_f], endo[:λ_f_t]]  = m[:ρ_λ_f]
+        Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
+        Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
+PLUS:
+        Ψ[eq[:eq_λ_f], exo[:λ_f_(SUM OF ALL ANTICIPATED SHOCKS)]]   = 1.
+
+and when defining what yesterday's shock was, it is the normal stuff below: (the state is just yesterday's contemporaneous shock)
+        Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
+        Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
+PLUS all the anticipated shocks that hit me yesterday:
+        Ψ[eq[:eq_λ_f1], exo[:λ_f_(SUM OF ALL ANTICIPATED SHOCKS)]]   = 1.
+=#
+
+
+
 
         #All my anticipated shocks that will hit:
         for i = 2:get_setting(m, :add_ant_markup_shocks)

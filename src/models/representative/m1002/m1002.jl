@@ -190,13 +190,17 @@ function init_model_indices!(m::Model1002)
         push!(equilibrium_conditions, :eq_biidc_sh)
         push!(endogenous_states, :biidc_sh1)
     end
-    if haskey(get_settings(m), :add_ant_markup_shocks) && get_settings(m, :add_ant_markup_shocks) > 0
-        #push!(endogenous_states, Symbol("λ_f_tsum"))
-        #push!(equilibrium_conditions, Symbol("λ_f_sum"))
 
-        for i in 1:get_setting(m, :n_markup_anticipated_shocks(m))
+    #Adding anticipated (price) mark-up shocks
+    if haskey(get_settings(m), :add_ant_markup_shocks) && get_setting(m, :add_ant_markup_shocks) > 0
+
+        #Note that we already have states and equilibrium conditions for 1 lag given λ_{f,t} follows an ARMA(1,1) process
+        #Do first anticipated shock outside, since we don't have this yet.
+        push!(exogenous_shocks, Symbol("λ_f_ant_sh1")
+        for i in 2:get_setting(m, :add_ant_markup_shocks)
             push!(endogenous_states, Symbol("λ_f_t$i"))
             push!(equilibrium_conditions, Symbol("eq_λ_f_$i"))
+            push!(exogenous_shocks, Symbol("λ_f_ant_sh$i")
         end
     end
     # SPD expected FFR measurement error
