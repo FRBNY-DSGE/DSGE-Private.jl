@@ -190,6 +190,15 @@ function init_model_indices!(m::Model1002)
         push!(equilibrium_conditions, :eq_biidc_sh)
         push!(endogenous_states, :biidc_sh1)
     end
+    if haskey(get_settings(m), :add_ant_markup_shocks) && get_settings(m, :add_ant_markup_shocks) > 0
+        #push!(endogenous_states, Symbol("λ_f_tsum"))
+        #push!(equilibrium_conditions, Symbol("λ_f_sum"))
+
+        for i in 1:get_setting(m, :n_markup_anticipated_shocks(m))
+            push!(endogenous_states, Symbol("λ_f_t$i"))
+            push!(equilibrium_conditions, Symbol("eq_λ_f_$i"))
+        end
+    end
     # SPD expected FFR measurement error
     if !isempty(expected_ffr(m))
         for i in expected_ffr(m)
