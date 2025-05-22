@@ -470,8 +470,22 @@ The current mark-up process is an ARMA(1,1) -- we want to add anticipated shocks
 =#
 
 if haskey(get_settings(m), :add_ant_markup_shocks) && get_setting(m, :add_ant_markup_shocks)
+    #States to add: sh1-2, _t2, and eq: _f2
+    #functions: n_markup_anticipated_shocks(m)
+
+    #I have one big state for the shocks that hit today:
+    #sum_shocks = contemporaneous + anticipated:
 
 
+
+    #All my anticipated shocks that will hit:
+    if n_markup_anticipated_shocks(m) > 1
+        for i = 2:n_markup_anticipated_shocks(m)
+            Γ1[eq[Symbol("eq_λ_f$(i-1)")], endo[Symbol("λ_f_t$i")]] = 1.
+            Γ0[eq[Symbol("eq_λ_f$i")], endo[Symbol("λ_f_t$i")]]     = 1.
+            Ψ[eq[Symbol("eq_λ_f$i")], exo[Symbol("λ_f_sh$i")]]      = 1.
+        end
+    end
 end
 
 
