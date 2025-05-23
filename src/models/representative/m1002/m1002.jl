@@ -203,24 +203,7 @@ function init_model_indices!(m::Model1002)
         end
     end
 
-    #Adding anticipated (price) mark-up shocks
-    if haskey(get_settings(m), :add_ant_markup_shocks_sum) && (get_setting(m, :add_ant_markup_shocks_sum) > 1)
-        push!(endogenous_states, Symbol("λ_f_t$(get_setting(m, :add_ant_markup_shocks_sum))"))
-        push!(equilibrium_conditions, Symbol("eq_λ_f_$(get_setting(m, :add_ant_markup_shocks_sum))"))
 
-        push!(endogenous_states, Symbol("λ_f_tsum"))
-        push!(equilibrium_conditions, Symbol("eq_λ_f_sum"))
-
-        push!(endogenous_states, Symbol("λ_f_t1sum"))
-        push!(equilibrium_conditions, Symbol("eq_λ_f1_sum"))
-
-
-        #push!(exogenous_shocks, Symbol("λ_f_ant_sh"))
-        #push!(exogenous_shocks, Symbol("λ_f_antsum_sh"))
-
-        #push!(exogenous_shocks, Symbol("λ_f1_ant_sh"))
-        #push!(exogenous_shocks, Symbol("λ_f1_antsum_sh"))
-    end
 
     # SPD expected FFR measurement error
     if !isempty(expected_ffr(m))
