@@ -451,13 +451,48 @@ function eqcond(m::Model1002, reg::Int)
     else
         Γ0[eq[:eq_λ_f], endo[:λ_f_t]]  = 1.
         Γ1[eq[:eq_λ_f], endo[:λ_f_t]]  = m[:ρ_λ_f]
-        Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
+
+        if !haskey(get_settings(m), :add_ant_markup_shocks_sum)
+            Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
+        else
+            Γ1[eq[:eq_λ_f], endo[:λ_f_tsum]] = m[:η_λ_f]
+            Γ1[eq[:eq_λ_f], endo[:λ_f_t1sum]] = -m[:η_λ_f]
+            #Γ1[eq[:eq_λ_f], endo[:λ_f_t1sum]] = -m[:η_λ_f] #big kink here!
+        end
+
         Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
     end
 
     Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
     Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
 
+
+    if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 1
+        for i in 2:get_setting(m, :add_ant_markup_shocks_ind)
+            Γ1[eq[Symbol("eq_λ_f")], endo[Symbol("λ_f_t$i")]] = 1.
+            Γ1[eq[Symbol("eq_λ_f")], endo[Symbol("λ_f_t$(i+1)")]] = -m[:η_λ_f]
+
+            Γ1[eq[Symbol("eq_λ_f$(i-1)")], endo[Symbol("λ_f_t$i")]] = 1.
+            Γ0[eq[Symbol("eq_λ_f$i")], endo[Symbol("λ_f_t$i")]]     = 1.
+            Ψ[eq[Symbol("eq_λ_f_$i")], exo[Symbol("λ_f_ant_sh$i")]]      = 1.
+        end
+    end
+
+    if haskey(get_settings(m), :add_ant_markup_shocks_sum) && get_setting(m, :add_ant_markup_shocks_sum) > 1
+        Γ0[eq[:eq_λ_f], endo[:λ_f_t1sum]] = -m[:η_λ_f] # confirm this!
+        Γ0[eq[:eq_λ_f], endo[:λ_f_tsum]] = 1. # confirm this!
+
+        Γ0[eq[:eq_λ_f_sum], endo[:λ_f_tsum]] = 1.
+        Γ1[eq[:eq_λ_f_sum], endo[:λ_f_tsum]] = 1.
+        Γ1[eq[:eq_λ_f_sum], endo[Symbol("λ_f_t$(get_setting(m, :add_ant_markup_shocks_sum))")]] = -1.
+        Ψ[eq[:eq_λ_f_sum], exo[:λ_f_sh]]   = 1.
+
+        Γ0[eq[:eq_λ_f1_sum], endo[:λ_f_t1sum]] = 1.
+        Γ1[eq[:eq_λ_f1_sum], endo[:λ_f_tsum]] = 1.
+
+        Γ0[eq[:eq_λ_f1_sum], endo[:λ_f_t1]] = 1.
+        Ψ[eq[:eq_λ_f1_sum], exo[:λ_f1_ant_sh]]   = 1.
+    end
 
 ### Adding anticipated mark-up shocks to accomodate short run inflation expectations ###
 # only 2 periods for now, can generalize later?
@@ -469,7 +504,7 @@ The current mark-up process is an ARMA(1,1) -- we want to add anticipated shocks
 
 =#
 
-    if haskey(get_settings(m), :add_ant_markup_shocks) && get_setting(m, :add_ant_markup_shocks) > 0
+    #=if haskey(get_settings(m), :add_ant_markup_shocks) && get_setting(m, :add_ant_markup_shocks) > 0
         #States to add: sh1-2, _t2, and eq: _f2
 
         #I have one big state for the shocks that hit today:
@@ -506,7 +541,7 @@ PLUS all the anticipated shocks that hit me yesterday:
             Γ0[eq[Symbol("eq_λ_fsum")], endo[Symbol("λ_f_t$i")]]     = 1.
 
         end
-    end
+    end=#
 
 
     # Wage mark-up shock
