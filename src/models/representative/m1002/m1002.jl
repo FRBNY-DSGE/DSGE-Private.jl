@@ -1522,6 +1522,9 @@ function shock_groupings(m::Model1002)
         if haskey(get_settings(m), :gensys2) ? get_setting(m, :gensys2) : false
             st = ShockGroup("States Trend", [:StatesTrend], :darkgreen) # :dettrend
             return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth, st]
+        elseif haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+            ant_mu = ShockGroup("Ant Markup", [Symbol("λ_f_ant_sh$(i)") for i in 1:get_setting(m, :add_ant_markup_shocks_ind)], :darkgreen)
+            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, ant_mu, oth]
         else
             return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth]
         end
@@ -1540,7 +1543,9 @@ function shock_groupings(m::Model1002)
         mei = ShockGroup("mu", [:μ_sh], :cyan)
         mea = ShockGroup("me", [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh, :gdp_sh, :gdi_sh], RGB(0.0, 0.8, 0.0))
         zpe = ShockGroup("zp", [:zp_sh], RGB(0.0, 0.3, 0.0))
+
         det = ShockGroup("dt", [:dettrend], :gray40)
+
 
         return [gov, bet, fin, tfp, pmu, wmu, pol, pis, mei, mea, zpe, det]
     else
