@@ -192,17 +192,36 @@ function init_model_indices!(m::Model1002)
     end
 
     #Adding anticipated (price) mark-up shocks
-    if haskey(get_settings(m), :add_ant_markup_shocks) && get_setting(m, :add_ant_markup_shocks) > 0
+    if haskey(get_settings(m), :add_ant_markup_shocks_ind) && (get_setting(m, :add_ant_markup_shocks_ind) > 1)
 
         #Note that we already have states and equilibrium conditions for 1 lag given λ_{f,t} follows an ARMA(1,1) process
         #Do first anticipated shock outside, since we don't have this yet.
-        push!(exogenous_shocks, Symbol("λ_f_ant_sh1")
-        for i in 2:get_setting(m, :add_ant_markup_shocks)
+        for i in 2:get_setting(m, :add_ant_markup_shocks) + 1
             push!(endogenous_states, Symbol("λ_f_t$i"))
-            push!(equilibrium_conditions, Symbol("eq_λ_f_$i"))
-            push!(exogenous_shocks, Symbol("λ_f_ant_sh$i")
+            push!(equilibrium_conditions, Symbol("eq_λ_f$i"))
+            #push!(exogenous_shocks, Symbol("λ_f_ant_sh$i"))
         end
     end
+
+    #Adding anticipated (price) mark-up shocks
+    if haskey(get_settings(m), :add_ant_markup_shocks_sum) && (get_setting(m, :add_ant_markup_shocks_sum) > 1)
+        push!(endogenous_states, Symbol("λ_f_t$(get_setting(m, :add_ant_markup_shocks_sum))"))
+        push!(equilibrium_conditions, Symbol("eq_λ_f_$(get_setting(m, :add_ant_markup_shocks_sum))"))
+
+        push!(endogenous_states, Symbol("λ_f_tsum"))
+        push!(equilibrium_conditions, Symbol("eq_λ_f_sum"))
+
+        push!(endogenous_states, Symbol("λ_f_t1sum"))
+        push!(equilibrium_conditions, Symbol("eq_λ_f1_sum"))
+
+
+        #push!(exogenous_shocks, Symbol("λ_f_ant_sh"))
+        #push!(exogenous_shocks, Symbol("λ_f_antsum_sh"))
+
+        #push!(exogenous_shocks, Symbol("λ_f1_ant_sh"))
+        #push!(exogenous_shocks, Symbol("λ_f1_antsum_sh"))
+    end
+
     # SPD expected FFR measurement error
     if !isempty(expected_ffr(m))
         for i in expected_ffr(m)
