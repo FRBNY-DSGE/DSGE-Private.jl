@@ -474,12 +474,12 @@ if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_an
     Γ1[eq[:eq_λ_f], endo[:λ_f_tl1]] = 1
     #What is that?
     Γ0[eq[:eq_λ_f_tl1], endo[:λ_f_tl1]] = 1.
-    Ψ[eq[:eq_λ_f_l1], exo[:λ_f_ant_sh1]] = 1.
+    Ψ[eq[:eq_λ_f_tl1], exo[:λ_f_ant_sh1]] = 1.
     Γ1[eq[:eq_λ_f_tl1], endo[:λ_f_tl2]] = 1
 
     #What is tl2?
     Γ0[eq[:eq_λ_f_tl2], endo[:λ_f_tl2]] = 1.
-    Ψ[eq[:eq_λ_f_l2], exo[:λ_f_ant_sh2]] = 1.
+    Ψ[eq[:eq_λ_f_tl2], exo[:λ_f_ant_sh2]] = 1.
 
     ####
     #Today, I also want my old shocks to hit (redoing some work above)

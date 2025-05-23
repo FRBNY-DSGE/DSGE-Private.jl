@@ -198,7 +198,7 @@ function init_model_indices!(m::Model1002)
         #Do first anticipated shock outside, since we don't have this yet.
         for i in 1:get_setting(m, :add_ant_markup_shocks_ind) # was  2:get_setting(m, :add_ant_markup_shocks_ind) + 1
             push!(endogenous_states, Symbol("λ_f_tl$i"))
-            push!(equilibrium_conditions, Symbol("eq_λ_f_l$i"))
+            push!(equilibrium_conditions, Symbol("eq_λ_f_tl$i"))
             push!(exogenous_shocks, Symbol("λ_f_ant_sh$i"))
         end
     end
