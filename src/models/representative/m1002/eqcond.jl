@@ -455,7 +455,8 @@ function eqcond(m::Model1002, reg::Int)
 
         if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
             #Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1. Goes home! I can do this all with just my lag term:
-            Γ0[eq[:eq_λ_f], endo[:λ_f_t1]] = - 1. #Double check sign here.. I think this should be right? (subtract off to the other side of the cannonical equation
+
+            Γ0[eq[:eq_λ_f], endo[:λ_f_t1]] = -1.0 #Double check sign here.. I think this should be right? (subtract off to the other side of the cannonical equation
         else
             Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
         end
