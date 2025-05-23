@@ -15,130 +15,164 @@ function init_subspec!(m::OnionModel)
         return ss4!(m)
     elseif subspec(m) == "ss5"
         return ss5!(m)
-    elseif subspec(m) == "ss6"
-        return ss6!(m)
-    elseif subspec(m) == "ss7"
-        return ss7!(m)
-    elseif subspec(m) == "ss8"
-        return ss8!(m)
-    elseif subspec(m) == "ss9"
-        return ss9!(m)
-    elseif subspec(m) == "ss10"
-        return ss10!(m)
-    elseif subspec(m) == "ss11"
-        return ss11!(m)
-    elseif subspec(m) == "ss12"
-        return ss12!(m)
-    elseif subspec(m) == "ss13"
-        return ss13!(m)
-    elseif subspec(m) == "ss14"
-        return ss14!(m)
-    elseif subspec(m) == "ss15"
-        return ss15!(m)
-    elseif subspec(m) == "ss16"
-        return ss16!(m)
     else
         error("This subspec has not been defined.")
     end
 end
 
+# This is the version of the model with all ~400 sectors
 function ss0!(m::OnionModel)
-    #This is our base case, as laid out in onionmodel.jl.
-    #=
-    Observables:
-    1. Nominal FFR
-    2. Aggregate CPI Inflation
-    3. Real Wage Growth
-    4. Consumption Growth
-    With 4 associated shocks:
-    1. Monetary Policy (:mp_sh)
-    2. TFP shock (a_sh)
-    3. Wage Markup (μw_sh)
-    4. Discount Rate (b_sh)
-    =#
     return m
 end
 
+# This is the briefing model. The analog for this subspec is marco_test_num = 68.
 function ss1!(m::OnionModel)
-    #We include one sector's iid markup shocks wihtout observing that sector
-    #final_shock_ind = length(m.exogenous_shocks)
-    #m.exogenous_shocks[final_shock_ind + 1] = Symbol("μ_iid_1_sh")
     return m
 end
 
+# This is the model where we estimate the std of differentiated inflation shocks.
 function ss2!(m::OnionModel)
 
+    #1) Shut down inflation targeting process
+    m[:σ_πstar].value = 0
+    m[:ρ_πstar].value = 0
+
+    #2) Specify estimated parameters and fix all others: saves having to add this to forecast and
+    # estimation spec files
+    estimated_params = [:σ_μ_core_goods, :σ_μ_core_services, :σ_μ_cpi_energy, :σ_μw]
+
+    for param in m.parameters
+        if param.key ∈ estimated_params
+            m[param.key].fixed = false
+        else
+            m[param.key].fixed = true
+        end
+    end
+
+    #3) Order of parameters in cloud is same as order of parameters in m.parameters. Since parameter
+    # ordering has changed between model used to estimate and this model, we reorder params accordingly (temp)
+
+    cloud_dict = Dict(
+        :bet               => 1,  :ρ_τ               => 2,
+        :ρ_τ2              => 3,  :ρ_i               => 4,
+        :η                 => 5,
+        :ζ                 => 6,  :ν                 => 7,
+        :ξ                 => 8,  :mp_cpi_infl       => 9,
+        :mp_cons           => 10, :mp_cstar          => 11,
+        :invkapw           => 12, :oil               => 13,
+        :gas               => 14, :σ_c               => 15,
+        :σ_b_t             => 16, :ρ_b_t             => 17,
+        :σ_μ_core_goods    => 18, :ρ_μ_core_goods    => 19,
+        :σ_μ_core_services => 20, :ρ_μ_core_services => 21,
+        :σ_μ_cpi_energy    => 22, :ρ_μ_cpi_energy    => 23,
+        :σ_μw              => 24, :ρ_μw              => 25,
+        :σ_πstar           => 26, :ρ_πstar           => 27,
+        :σ_a_t             => 28, :ρ_a_t             => 29,
+        :h                 => 30, :γ                 => 31,
+        :mp_habit          => 32, :σ_r_m             => 33)
+
+    m <= Setting(:model2cloud_dict, cloud_dict)
+
     return m
 end
 
+# This is the model where we estimate the shock process. Analog is marco_test_num = 100.
 function ss3!(m::OnionModel)
+
+    #=
+    1) We fix all parameters other than
+       a) σ and ρ for core goods, core services, and cpi energy
+       b) σ and ρ for a, b, and μw
+       c) σ_c and σ_πstar
+    =#
+    fixed_params = [:h, :mp_cpi_infl, :mp_cons, :mp_cstar]
+
+    for param in m.parameters
+        if param.key ∈ fixed_params
+            m[param.key].fixed = true
+        end
+    end
+
+    #2) Order of parameters in this model are different than the model used to run estimation.
+    # We adust index of modal draws to match the position of parameters in this model.
+    cloud_dict = Dict(
+        :bet               => 1,  :ρ_τ               => 2,
+        :ρ_τ2              => 3,  :ρ_i               => 4,
+        :η                 => 5,
+        :ζ                 => 6,  :ν                 => 7,
+        :ξ                 => 8,  :mp_cpi_infl       => 9,
+        :mp_cons           => 10, :mp_cstar          => 11,
+        :invkapw           => 12, :oil               => 13,
+        :gas               => 14, :σ_c               => 15,
+        :σ_b_t             => 16, :ρ_b_t             => 17,
+        :σ_μ_core_goods    => 18, :ρ_μ_core_goods    => 19,
+        :σ_μ_core_services => 20, :ρ_μ_core_services => 21,
+        :σ_μ_cpi_energy    => 22, :ρ_μ_cpi_energy    => 23,
+        :σ_μw              => 24, :ρ_μw              => 25,
+        :σ_πstar           => 26, :ρ_πstar           => 27,
+        :σ_a_t             => 28, :ρ_a_t             => 29,
+        :h                 => 30, :γ                 => 31,
+        :mp_habit          => 32, :σ_r_m             => 33,
+        :π_star            => 34)
+
+     m <= Setting(:model2cloud_dict, cloud_dict)
+
     return m
 end
 
 function ss4!(m::OnionModel)
 
-    #final_shock_ind = length(m.exogenous_shocks)
-    #for i in 1:get_setting(m, :n_sectors)
-    #    m.exogenous_shocks[final_shock_ind + i] = Symbol("μ_iid_$(i)_sh")
-    #end
+    #=
+    1) We fix all parameters other than
+       a) σ and ρ for core goods, core services, and cpi energy
+       b) σ and ρ for a, b, and μw
+       c) σ_c
+    and we keep σ_πstar fixed at = 0.01
 
+    2) Estimated using cleaned spec ss4 so no need for model2cloud dictionary
+    =#
+    fixed_params = [:h, :mp_cpi_infl, :mp_cons, :mp_cstar, :σ_πstar]
+
+    m[:σ_πstar].value = 0.01
+
+    for param in m.parameters
+        if param.key ∈ fixed_params
+            m[param.key].fixed = true
+        end
+    end
 
     return m
 end
+
 
 function ss5!(m::OnionModel)
-    #same as ss4, but we make the markup trend set to the iid
-    m[:ρ_μ_trend].value = zeros(get_setting(m, :n_sectors))
-    m[:σ_μ_trend].value = m[:σ_μ_iid].value
 
-    return m
-end
+    #=
+    1) We estimate most parameters except
+       a) Elasticity parameters (ν, ζ, η, ξ)
+       b) σ_πstar fixed to 0.01
+       c) Indexes for oil and gas (should be settings in retrospect)
+       d) Primitives like π_star (already detrend lr inflation), invkapw
+       e) mp_cpi_infl fixed to 1.01 for eigenvalue issue? (estimate for now)
+       f) taus (we do not draw any tau shocks as their std set to 0)
 
-function ss6!(m::OnionModel)
-    return m
-end
+    2) Estimated using cleaned spec ss4 so no need for model2cloud dictionary
+    =#
+    fixed_params = [:ν, :ζ, :η, :ξ,
+                    :σ_πstar,
+                    :oil, :gas,
+                    :invkapw, :π_star,
+                    :ρ_τ, :ρ_τ2]
 
-function ss7!(m::OnionModel)
-    return m
-end
+    m[:σ_πstar].value = 0.01
 
-function ss8!(m::OnionModel)
-    return m
-end
+    for param in m.parameters
+        if param.key ∈ fixed_params
+            m[param.key].fixed = true
+        else
+            m[param.key].fixed = false
+        end
+    end
 
-function ss9!(m::OnionModel)
-    return m
-end
-
-function ss10!(m::OnionModel)
-    return m
-end
-
-function ss11!(m::OnionModel)
-    return m
-end
-
-
-#This is where we start cooking. BMP + PG
-
-function ss12!(m::OnionModel)
-
-    return m
-end
-
-function ss13!(m::OnionModel)
-    m[:ρ_μ_trend].value = ones(get_setting(m, :n_sectors)) * m[:ρ_trend].value
-    return m
-end
-
-function ss14!(m::OnionModel)
-    return m
-end
-
-function ss15!(m::OnionModel)
-    return m
-end
-
-function ss16!(m::OnionModel)
     return m
 end

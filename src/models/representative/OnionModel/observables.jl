@@ -1,6 +1,7 @@
 function init_observable_mappings!(m::OnionModel)
     observables = OrderedDict{Symbol, Observable}()
     population_mnemonic = get(get_setting(m, :population_mnemonic))
+    subspec_int = parse(Int, subspec(m)[3:end])
 
     demean = function (levels)
         cons = all(ismissing.(levels)) ? missing : mean(skipmissing(levels))
@@ -55,7 +56,7 @@ function init_observable_mappings!(m::OnionModel)
                                                 wages_rev_transform,
                                                 "Demeaned Real Wage Growth",
                                                 "Demeaned Real Wage Growth")
-
+#= Not Used
 if get_setting(m, :marco_test_num) == 69
     cpi_fwd_transform = function(levels)
         demean2(oneqtrpctchange(levels[!,:CPIAUCSL]))
@@ -71,7 +72,7 @@ if get_setting(m, :marco_test_num) == 69
                                    "CPI Inflation",
                                              "CPI Inflation")
 end
-
+=#
 
 
     #Core servies
@@ -137,7 +138,7 @@ end
 ############################################################################
 #Fernald TFP
 ############################################################################
-if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71 || get_setting(m, :marco_test_num) == 100
+if subspec_int ∈ [1, 2, 3, 4, 5]
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
@@ -164,10 +165,6 @@ if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 7
                                        "Total Factor Productivity Growth (Fernald)",
                                        "Fernald's TFP, adjusted by Fernald's estimated alpha")
 end
-
-
-
-
 
 #=
     # CPI Sectoral Inflation
@@ -201,7 +198,7 @@ end
 
 
 
-if get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 100 #|| get_setting(m, :marco_test_num) == 71
+if subspec_int ∈ [3, 4, 5]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################
@@ -225,7 +222,6 @@ observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX]
                                                  longinflation_fwd_transform, longinflation_rev_transform,
                                                  "10-year average inflation expectations",
                                                  "10-year average yr/yr CPI inflation expectations")
-
 
 end
 

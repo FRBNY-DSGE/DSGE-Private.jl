@@ -3,6 +3,8 @@
 
 function eqcond(m::OnionModel) #m::OnionModel
 
+    subspec_int = parse(Int, subspec(m)[3:end])
+
     # A x_{t+1} = B x_t
 
     n = get_setting(m, :n_sectors)
@@ -53,6 +55,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     Const1 = zeros(N-1) #define over N-1 to correct for state reduction in Norm step
 
     inpshare = get_setting(m, :inpshare)
+
 #= OLD MATLAB PARAMETERS
     # variable indices (order states first)
     ls  = 1:n      # lagged values of s - endogenous state
@@ -94,27 +97,8 @@ function eqcond(m::OnionModel) #m::OnionModel
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:a_t]] =  get_setting(m, :labshare)
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("s_1")]:endo[Symbol("s_$n")]]  = - (inpshare - eye(n))
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$n")]]    = - m[:bet]*diagm(get_setting(m, :invkap))
-    #Addl term for markup stochastic trend
-    #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_trend_1")]:endo[Symbol("mkup_trend_$n")]] = - diagm(m[:invkap].value) # eye(n) #Addl term for markup shocks
-    #IID markup shock shock
-    #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = - diagm(m[:invkap].value)
 
-
-
-
-
-
-    #Need to be careful here. I want to define this such that the invkap is 0 for sectors not in the relevant category.
-    #e.g. if sector 50 is a service, the value of Γ0[eq[:eq_pc_50], endo[:μ_com_cgood]] =  Γ0[eq[:eq_pc_50], endo[:μ_com_energy]] = 0.
-    #However, Γ0[eq[:eq_pc_50], endo[:μ_com_cservice]] = -m[:invkap].value[50]
-
-    #If the test number is 69, we want to use a vector of all 200s for inv slopes of sectoral phillips curves. Otherwise, use the model values.
-    invkap_value = get_setting(m, :marco_test_num) == 69 ? 200.0 * ones(length(get_setting(m, :invkap))) : get_setting(m, :invkap)
-    #@show invkap_value[1]
-
-    #Leaving common shock for now
-    #Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value     # - m[:invkap].value
-
+    invkap_value = get_setting(m, :invkap)
 
     for i in get_setting(m, :core_goods_sectors)
         Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
@@ -129,35 +113,17 @@ function eqcond(m::OnionModel) #m::OnionModel
     end
 
 
-    #Define processes for each markup:
-    Γ0[eq[:eq_μ_core_goods], endo[:μ_core_goods]] = 1.
-    Γ1[eq[:eq_μ_core_goods], endo[:μ_core_goods]] = m[:ρ_μ_core_goods]
-    Ψ[eq[:eq_μ_core_goods], exo[:μ_core_goods_sh]] = 1.
+    #Define processes for each markup based on subspec:
 
-    Γ0[eq[:eq_μ_core_services], endo[:μ_core_services]] = 1.
-    Γ1[eq[:eq_μ_core_services], endo[:μ_core_services]] = m[:ρ_μ_core_services]
-    Ψ[eq[:eq_μ_core_services], exo[:μ_core_services_sh]] = 1.
-
-    Γ0[eq[:eq_μ_cpi_energy], endo[:μ_cpi_energy]] = 1.
-    Γ1[eq[:eq_μ_cpi_energy], endo[:μ_cpi_energy]] = m[:ρ_μ_cpi_energy]
-    Ψ[eq[:eq_μ_cpi_energy], exo[:μ_cpi_energy_sh]] = 1.
-
-    #Common markup shock process
-    #=
-    Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
-    Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_trend].value[1]
-    Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
-    =#
-
-
-
-
-
-
-
-    # IID MKUP PROCESS (for clarity)
-    #Γ0[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$n")], endo[Symbol("mkup_iid_1")]:endo[Symbol("mkup_iid_$n")]] = eye(n)
-    #Ψ[eq[Symbol("eq_mkup_iid_1")]:eq[Symbol("eq_mkup_iid_$(n)")], exo[:μ_iid_1_sh]: exo[Symbol("μ_iid_$(n)_sh")]] =  eye(n) #Was negative BP
+    for sg in collect(keys(get_setting(m, :subgroup_names)))
+        Γ0[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = 1.
+        Ψ[eq[Symbol("eq_μ_$(sg)")], exo[Symbol("μ_$(sg)_sh")]] = 1.
+        if subspec_int ∈ [0, 1]
+            Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[:ρ_μ_trend]
+        else
+            Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_$(sg)")]
+        end
+    end
 
 
     # s recursion #Dyanmics of relative prices EQ
@@ -351,7 +317,6 @@ dcstar_dτ = numer/denom
     %            s^n_t] is a (n-1)x1 vector
     % let's make a n x (n-1) matrix C such that s_t = C*snorm_t
     =#
-
 
     C = eye(n)
     C = C[:,2:n]

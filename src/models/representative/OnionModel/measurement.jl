@@ -59,11 +59,6 @@ function measurement(m::OnionModel{T},
     end
     =#
 
-
-
-
-
-
     ######################
     #Populating QQ Matrix
     # QQs are initialized as the 0 matrix
@@ -88,7 +83,13 @@ function measurement(m::OnionModel{T},
     #Wage markup
     QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
 
+    #================
+    Remove test_num structure:
+    ================#
 
+    subspec_int = parse(Int, subspec(m)[3:end])
+
+#=
     if get_setting(m, :marco_test_num) == 0
         println("running base case")
         #We have the 4 main aggregate observables and 4 main aggregate shocks. Nothing sectoral to give a baseline.
@@ -200,6 +201,92 @@ function measurement(m::OnionModel{T},
         end
 
 
+    =#
+
+if subspec_int ∈ [1, 2]
+
+    if subspec_int == 1
+        # Different categorical shocks but shared std (main model for briefing)
+        QQ[exo[:μ_core_goods_sh], exo[:μ_core_goods_sh]] = m[:σ_μ]^2
+        QQ[exo[:μ_core_services_sh], exo[:μ_core_services_sh]] = m[:σ_μ]^2
+        QQ[exo[:μ_cpi_energy_sh], exo[:μ_cpi_energy_sh]] = m[:σ_μ]^2
+    else
+        # Different categorical shocks and different std (std_infl estimation model)
+        QQ[exo[:μ_core_goods_sh], exo[:μ_core_goods_sh]] = m[:σ_μ_core_goods]^2
+        QQ[exo[:μ_core_services_sh], exo[:μ_core_services_sh]] = m[:σ_μ_core_services]^2
+        QQ[exo[:μ_cpi_energy_sh], exo[:μ_cpi_energy_sh]] = m[:σ_μ_cpi_energy]^2
+    end
+
+    # Include tfp measurement
+    ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
+
+
+    #No observables in individual sectors, but in categorical sectors
+    #ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 0.0
+
+    Kgam = get_setting(m, :Kgam)
+
+    #Demeaned Core Services:
+    core_services_sum = sum(Kgam[get_setting(m, :core_service_sectors)])
+    for i in get_setting(m, :core_service_sectors)
+        ZZ[obs[:cpi_core_services], endo[Symbol("π_$i")]] = Kgam[i] / core_services_sum
+    end
+
+    #Demeaned Core Goods:
+    core_goods_sum = sum(Kgam[get_setting(m, :core_goods_sectors)])
+    for i in get_setting(m, :core_goods_sectors)
+        ZZ[obs[:cpi_core_goods], endo[Symbol("π_$i")]] = Kgam[i] / core_goods_sum
+    end
+
+    #Demeaned Energy CPI
+    energy_sum = sum(Kgam[get_setting(m, :energy_sectors)])
+    for i in get_setting(m, :energy_sectors)
+        ZZ[obs[:cpi_energy], endo[Symbol("π_$i")]] = Kgam[i] / energy_sum
+    end
+
+elseif subspec_int ∈ [3, 4, 5] # Add LR infl expectations (fix MP estimation)
+
+    # Running estimation! n subgroups, (3 for now), pi star and LR inflation expecatations observed, obs tfp
+    for i in collect(keys(get_setting(m, :subgroup_names)))
+        QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
+    end
+
+    QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
+
+    # Include tfp measurement
+    ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
+
+    #Include long run inflation expectations: Need to calculate 40 quarter ahead inflation
+    TTTs = Matrix{T}[]
+    CCCs = Matrix{T}[]
+    memo = nothing
+    permanent_t = 1
+    TTT10 = (I - TTT) \ (TTT - TTT^40)
+    #Confirm all of my Cs are 0
+    CCC10 = CCC
+
+    TTT10        = TTT10 ./ 40.
+    CCC10        = CCC10 ./ 40.
+
+    ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
+
+    #Add observables for each:
+    inflation_subgroup_names = collect(keys(get_setting(m, :subgroup_to_sector)))
+    for sect in inflation_subgroup_names
+        i_sum = sum(get_setting(m, :Kgam)[get_setting(m, :subgroup_to_sector)[sect]])
+        for i in get_setting(m, :subgroup_to_sector)[sect]
+            if sect == "core_goods"
+                ZZ[obs[Symbol("cpi_core_goods")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+            elseif sect == "core_services"
+                ZZ[obs[Symbol("cpi_core_services")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+            else
+                ZZ[obs[Symbol("cpi_energy")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+            end
+        end
+    end
+end
+
+#=
 
         elseif get_setting(m, :marco_test_num) == 68
         #Same as 5, but ρ_μ_trend markup is set to DSGE value, not 0.999 (0.88ish)
@@ -285,6 +372,8 @@ for sect in inflation_subgroup_names
             ZZ[obs[Symbol("cpi_energy")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
         end
     end
+end
+
 end
 
 
@@ -515,7 +604,7 @@ QQ[exo[Symbol("μ_trend_1_sh")]:exo[Symbol("μ_trend_$(_n)_sh")], exo[Symbol("μ
             ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = 1.0
         end
     end
-
+=#
 
     return Measurement(ZZ, DD, QQ, EE)
 end
