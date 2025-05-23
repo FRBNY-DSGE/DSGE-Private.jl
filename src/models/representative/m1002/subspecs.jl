@@ -7021,8 +7021,10 @@ function ss104!(m)
         m2p = get_setting(m, :model2para_regime)
         m2p_regs = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
         #Turn on std deviation for anticipated markup shocks on in 2025 Q2 and 3.
-        m2p_regs[23] = 2
-        m2p_regs[24] = 2
+        if haskey(get_settings(m), :fix_ant_markup_shocks_0) && !get_setting(m, :fix_ant_markup_shocks_0)
+            m2p_regs[23] = 2
+            m2p_regs[24] = 2
+        end
 
         n_ant_shocks = haskey(get_settings(m), :add_ant_markup_shocks_ind) ? get_setting(m, :add_ant_markup_shocks_ind) : get_setting(m, :add_ant_markup_shocks_sum)
 

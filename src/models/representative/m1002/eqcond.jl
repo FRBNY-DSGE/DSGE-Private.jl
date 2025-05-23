@@ -451,7 +451,9 @@ function eqcond(m::Model1002, reg::Int)
     else
         Γ0[eq[:eq_λ_f], endo[:λ_f_t]]  = 1.
         Γ1[eq[:eq_λ_f], endo[:λ_f_t]]  = m[:ρ_λ_f]
+        Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
 
+        #=
         if !(haskey(get_settings(m), :add_ant_markup_shocks_sum) && get_setting(m, :add_ant_markup_shocks) > 0)
             #Enter in normal times even without any of the anticipated markup things
             Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
@@ -460,7 +462,7 @@ function eqcond(m::Model1002, reg::Int)
             Γ1[eq[:eq_λ_f], endo[:λ_f_t1sum]] = -m[:η_λ_f]
             #Γ1[eq[:eq_λ_f], endo[:λ_f_t1sum]] = -m[:η_λ_f] #big kink here!
         end
-
+=#
         Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
     end
 
@@ -471,11 +473,11 @@ function eqcond(m::Model1002, reg::Int)
 if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
     #Contemporaneous:
     #Today, I get hit with the sum of all the anticipated shocks meant to hit me
-    Γ1[eq[:eq_λ_f], endo[:λ_f_tl1]] = 1
+    Γ1[eq[:eq_λ_f], endo[:λ_f_tl1]] = 1.
     #What is that?
     Γ0[eq[:eq_λ_f_tl1], endo[:λ_f_tl1]] = 1.
     Ψ[eq[:eq_λ_f_tl1], exo[:λ_f_ant_sh1]] = 1.
-    Γ1[eq[:eq_λ_f_tl1], endo[:λ_f_tl2]] = 1
+    Γ1[eq[:eq_λ_f_tl1], endo[:λ_f_tl2]] = 1.
 
     #What is tl2?
     Γ0[eq[:eq_λ_f_tl2], endo[:λ_f_tl2]] = 1.
@@ -488,7 +490,7 @@ if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_an
     #Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
     #Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
     #AND ALSO the ant shocks that hit!
-    Γ1[eq[:eq_λ_f1], endo[:λ_f_tl1]] = 1
+    Γ1[eq[:eq_λ_f1], endo[:λ_f_tl1]] = 1.
 end
 
 #= #scratch work
