@@ -7016,6 +7016,32 @@ function ss104!(m)
     m <= Setting(:baseline_start_reg, [r for (r, d) in get_setting(m, :regime_dates) if d == date_forecast_start(m)][1] + 1)
 
 
+    if (haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 1) || (haskey(get_settings(m), :add_ant_markup_shocks_sum) && get_setting(m, :add_ant_markup_shocks_sum) > 1)
+
+        m2p = get_setting(m, :model2para_regime)
+        m2p_regs = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
+        #Turn on std deviation for anticipated markup shocks on in 2025 Q2 and 3.
+        m2p_regs[23] = 2
+        m2p_regs[24] = 2
+
+        n_ant_shocks = haskey(get_settings(m), :add_ant_markup_shocks_ind) ? get_setting(m, :add_ant_markup_shocks_ind) : get_setting(m, :add_ant_markup_shocks_sum)
+
+        for i in 1:n_ant_shocks
+            set_regime_val!(m[Symbol("σ_λ_f$(i)")], 1, 0.)
+            set_regime_val!(m[Symbol("σ_λ_f$(i)")], 2, m[:σ_λ_f].value)
+
+            set_regime_fixed!(m[Symbol("σ_λ_f$(i)")], 1, true)
+            set_regime_fixed!(m[Symbol("σ_λ_f$(i)")], 2, true) #For now, maybe we estimate in the future
+        end
+
+        m2p[:σ_λ_f1] = m2p_regs
+        m2p[:σ_λ_f2] = m2p_regs
+
+        m <= Setting(:model2para_regime, m2p)
+
+    end
+
+
 
 
 end
