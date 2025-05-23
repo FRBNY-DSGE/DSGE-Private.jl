@@ -452,7 +452,8 @@ function eqcond(m::Model1002, reg::Int)
         Γ0[eq[:eq_λ_f], endo[:λ_f_t]]  = 1.
         Γ1[eq[:eq_λ_f], endo[:λ_f_t]]  = m[:ρ_λ_f]
 
-        if !haskey(get_settings(m), :add_ant_markup_shocks_sum)
+        if !(haskey(get_settings(m), :add_ant_markup_shocks_sum) && get_setting(m, :add_ant_markup_shocks) > 0)
+            #Enter in normal times even without any of the anticipated markup things
             Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
         else
             Γ1[eq[:eq_λ_f], endo[:λ_f_tsum]] = m[:η_λ_f]
@@ -464,10 +465,53 @@ function eqcond(m::Model1002, reg::Int)
     end
 
     Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
-    Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
+Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
 
 
-    if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 1
+if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+    #Contemporaneous:
+    #Today, I get hit with the sum of all the anticipated shocks meant to hit me
+    Γ1[eq[:eq_λ_f], endo[:λ_f_tl1]] = 1
+    #What is that?
+    Γ0[eq[:eq_λ_f_tl1], endo[:λ_f_tl1]] = 1.
+    Ψ[eq[:eq_λ_f_l1], exo[:λ_f_ant_sh1]] = 1.
+    Γ1[eq[:eq_λ_f_tl1], endo[:λ_f_tl2]] = 1
+
+    #What is tl2?
+    Γ0[eq[:eq_λ_f_tl2], endo[:λ_f_tl2]] = 1.
+    Ψ[eq[:eq_λ_f_l2], exo[:λ_f_ant_sh2]] = 1.
+
+    ####
+    #Today, I also want my old shocks to hit (redoing some work above)
+    #Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
+    #What is this old thing? The shock that hit:
+    #Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
+    #Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
+    #AND ALSO the ant shocks that hit!
+    Γ1[eq[:eq_λ_f1], endo[:λ_f_tl1]] = 1
+end
+
+#= #scratch work
+#Also let this object include the ant shocks that hit yesterday:
+# my t-1 lambda is now not just the shock that hit yesterday, but the shock that hit yesteday and the anticipated shocks that hit yesterday
+
+#Yesterday's shock should also hold the anticipated shocks that hit last period.
+Ψ[eq[:eq_λ_f1], exo[:λ_f_ant_sh1]] = 1.
+Ψ[eq[:eq_λ_f1], exo[:λ_f_ant_sh2]] = 1.
+
+#my t-1 lambda is my t-2 lambda + the anticipated shock from t-2
+Γ1[eq[:eq_λ_f1], endo[:λ_f_t2]] = 1.
+Γ0[eq[:eq_λ_f2], endo[:λ_f_t2]]     = 1.
+Ψ[eq[:eq_λ_f2], exo[:λ_f_ant_sh2]]      = 1.
+=#
+
+
+
+
+
+#=
+if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 1
+    #=
         for i in 2:get_setting(m, :add_ant_markup_shocks_ind)
             Γ1[eq[Symbol("eq_λ_f")], endo[Symbol("λ_f_t$i")]] = 1.
             Γ1[eq[Symbol("eq_λ_f")], endo[Symbol("λ_f_t$(i+1)")]] = -m[:η_λ_f]
@@ -476,7 +520,16 @@ function eqcond(m::Model1002, reg::Int)
             Γ0[eq[Symbol("eq_λ_f$i")], endo[Symbol("λ_f_t$i")]]     = 1.
             Ψ[eq[Symbol("eq_λ_f_$i")], exo[Symbol("λ_f_ant_sh$i")]]      = 1.
         end
+    =#
+
+    for i = 2:get_setting(m, :add_ant_markup_shocks_ind)
+            Γ1[eq[Symbol("eq_λ_f$(i-1)")], endo[Symbol("λ_f_t$i")]] = 1.
+            Γ0[eq[Symbol("eq_λ_f$i")], endo[Symbol("λ_f_t$i")]]     = 1.
+            Ψ[eq[Symbol("eq_λ_f$i")], exo[Symbol("λ_f_sh$i")]]      = 1.
+
+
     end
+end
 
     if haskey(get_settings(m), :add_ant_markup_shocks_sum) && get_setting(m, :add_ant_markup_shocks_sum) > 1
         Γ0[eq[:eq_λ_f], endo[:λ_f_t1sum]] = -m[:η_λ_f] # confirm this!
@@ -493,7 +546,7 @@ function eqcond(m::Model1002, reg::Int)
         Γ0[eq[:eq_λ_f1_sum], endo[:λ_f_t1]] = 1.
         Ψ[eq[:eq_λ_f1_sum], exo[:λ_f1_ant_sh]]   = 1.
     end
-
+=#
 ### Adding anticipated mark-up shocks to accomodate short run inflation expectations ###
 # only 2 periods for now, can generalize later?
 
