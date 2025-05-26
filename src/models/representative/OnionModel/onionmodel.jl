@@ -431,7 +431,7 @@ m <= parameter(:h, 0.5347,  (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.Squa
                description = "h: consumption habit persistence",
                tex_label="h")
 
-m <= parameter(:γ, 0.0, (-5.0, 5.0), (-5., 5.), ModelConstructors.Untransformed(), Normal(0.4, 0.1), fixed=true,
+m <= parameter(:γ, 0.0, (-5.0, 5.0), (-5., 5.), ModelConstructors.Untransformed(), Normal(0.4, 0.1), fixed=false,
                scaling = x -> x/100, #Growth rate of economy
                description = "γ: Log of the steady-state growth rate of technology",
                tex_label="\\gamma")
@@ -441,7 +441,7 @@ m <= parameter(:mp_habit, 0.0, fixed = true,
                tex_label="mp-habit")
 =#
 
-m <= parameter(:mp_habit, 0.0, (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = true,
+m <= parameter(:mp_habit, 0.0, (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description = ":mp_habit: weight of MP rule on habit formation",
                tex_label="mp-habit")
 

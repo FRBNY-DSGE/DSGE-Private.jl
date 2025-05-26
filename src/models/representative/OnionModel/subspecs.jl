@@ -85,7 +85,7 @@ function ss3!(m::OnionModel)
        b) σ and ρ for a, b, and μw
        c) σ_c and σ_πstar
     =#
-    fixed_params = [:h, :mp_cpi_infl, :mp_cons, :mp_cstar]
+    fixed_params = [:h, :mp_cpi_infl, :mp_cons, :mp_cstar, :mp_habit, :γ]
 
     for param in m.parameters
         if param.key ∈ fixed_params
@@ -131,7 +131,7 @@ function ss4!(m::OnionModel)
 
     2) Estimated using cleaned spec ss4 so no need for model2cloud dictionary
     =#
-    fixed_params = [:h, :mp_cpi_infl, :mp_cons, :mp_cstar, :σ_πstar]
+    fixed_params = [:h, :mp_cpi_infl, :mp_cons, :mp_cstar, :σ_πstar, :mp_habit, :γ]
 
     m[:σ_πstar].value = 0.01
 
