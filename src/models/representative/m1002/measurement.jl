@@ -222,29 +222,34 @@ function measurement(m::Model1002{T},
 
 
 #agent's views
-#TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, permanent_t;
-#                                                           integ_series = integ_series,
-#                                                         memo = use_fwd_exp_sum ? memo : nothing)
-
+#=
+TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, permanent_t;
+                                                           integ_series = integ_series,
+                                                         memo = use_fwd_exp_sum ? memo : nothing)
+=#
 #Econometrician's views
+
 TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
-T_sum = TTT1Econo
-C_sum = CCC1Econo
+
+T_sum = TTT1Econo #TTT^2 + TTT
+C_sum = CCC1Econo #(TTT * CCC) + 2 * CCC
 
 
-TTT1_f = view(T_sum, endo[:π_t], :) #./ 4
-CCC1_f = C_sum[endo[:π_t]] #./ 4
+TTT1_f = view(T_sum, endo[:π_t], :)
+CCC1_f = C_sum[endo[:π_t]]
 
 
 #Implementation
 
 if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
-    ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 1 #0.25
-    ZZ[obs[:obs_shortinflation], endo[:π_t]] =  1 #0.25
+    ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 1
+    ZZ[obs[:obs_shortinflation], endo[:π_t]] =  1
     ZZ[obs[:obs_shortinflation], :] .+= TTT1_f
-    DD[obs[:obs_shortinflation]] = CCC1_f + (4 * 100*(m[:π_star]-1))
+
+    DD[obs[:obs_shortinflation]] =  CCC1_f + (4 * 100*(m[:π_star]-1))
+
 end
 
 #Implementation

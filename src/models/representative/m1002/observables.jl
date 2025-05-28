@@ -291,18 +291,18 @@ function init_observable_mappings!(m::Model1002)
     ############################################################################
     if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
         shortinflation_fwd_transform = function (levels)
-            # FROM: SPF: Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)
 
-            annualtoquarter(levels[!,:COREPCE])
+            levels[!, :COREPCE]
+            #annualtoquarter(levels[!,:COREPCE])
         end
 
-        shortinflation_rev_transform = loggrowthtopct_annualized
+        shortinflation_rev_transform = identity #loggrowthtopct_annualized
 
         observables[:obs_shortinflation] = Observable(:obs_shortinflation, [:COREPCE__SPFINFL],
                                                       shortinflation_fwd_transform,
                                                       shortinflation_rev_transform,
-                                                      "Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
-                                                      "Average of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
+                                                      "Q4/Q4 value of -1, 0, 1, 2 periods ahead anticipated Core PCE Price Index Level",
+                                                      "Q4/Q4 value of -1, 0, 1, 2 periods ahead anticipated Core PCE Price Index Level")
     end
 
 
