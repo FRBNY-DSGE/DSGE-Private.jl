@@ -56,28 +56,11 @@ function init_observable_mappings!(m::OnionModel)
                                                 wages_rev_transform,
                                                 "Demeaned Real Wage Growth",
                                                 "Demeaned Real Wage Growth")
-#= Not Used
-if get_setting(m, :marco_test_num) == 69
-    cpi_fwd_transform = function(levels)
-        demean2(oneqtrpctchange(levels[!,:CPIAUCSL]))
-    end
-
-    #cpi_rev_transform = loggrowthtopct_annualized
-    cpi_rev_transform = identity
-
-    # CPI Inflation -
-    observables[:cpi_inflation] = Observable(:cpi_inflation, [:CPIAUCSL__FRED],
-                                   cpi_fwd_transform,
-                                   cpi_rev_transform,
-                                   "CPI Inflation",
-                                             "CPI Inflation")
-end
-=#
 
 
     #Core servies
      core_service_cpi_fwd_transform = function(levels)
-        demean2(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
+        demean(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
     end
 
     core_service_cpi_rev_transform = identity
@@ -89,7 +72,7 @@ end
 
     #Core goods
      core_goods_cpi_fwd_transform = function(levels)
-        demean2(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
+        demean(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
     end
 
     core_goods_cpi_rev_transform = identity
@@ -102,7 +85,7 @@ end
 
     #Energy
     energy_cpi_fwd_transform = function(levels)
-        demean2(oneqtrpctchange(levels[!, :CPIENGSL]))
+        demean(oneqtrpctchange(levels[!, :CPIENGSL]))
     end
 
 
@@ -115,6 +98,24 @@ end
 
 
 
+    # CPI Inflation observable
+    #=
+    if subspec_int ∈ [6]
+        cpi_fwd_transform = function(levels)
+            demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
+        end
+
+        #cpi_rev_transform = loggrowthtopct_annualized
+        cpi_rev_transform = identity
+
+        # CPI Inflation -
+        observables[:cpi_inflation] = Observable(:cpi_inflation, [:CPIAUCSL__FRED],
+                                                 cpi_fwd_transform,
+                                                 cpi_rev_transform,
+                                                 "CPI Inflation",
+                                                 "CPI Inflation")
+    end
+=#
 
     nominalrate_fwd_transform = function (levels)
         # FROM: Nominal effective federal funds rate (aggregate daily data at a
@@ -138,7 +139,7 @@ end
 ############################################################################
 #Fernald TFP
 ############################################################################
-if subspec_int ∈ [1, 2, 3, 4, 5]
+if subspec_int ∈ [1, 2, 3, 4, 5, 6]
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
@@ -198,7 +199,7 @@ end
 
 
 
-if subspec_int ∈ [3, 4, 5]
+if subspec_int ∈ [3, 4, 5, 6]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################

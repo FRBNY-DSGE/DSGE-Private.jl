@@ -284,6 +284,51 @@ elseif subspec_int ∈ [3, 4, 5] # Add LR infl expectations (fix MP estimation)
             end
         end
     end
+
+elseif subspec_int ∈ [6] # Add LR infl expectations (fix MP estimation)
+
+    # Running estimation! n subgroups, (3 for now), pi star and LR inflation expecatations observed, obs tfp
+    for i in collect(keys(get_setting(m, :subgroup_names)))
+        QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
+    end
+
+    QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
+
+    # Include tfp measurement
+    ZZ[obs[:obs_tfp], endo[:a_t]] = 1.
+
+    #Include long run inflation expectations: Need to calculate 40 quarter ahead inflation
+    TTTs = Matrix{T}[]
+    CCCs = Matrix{T}[]
+    memo = nothing
+    permanent_t = 1
+    TTT10 = (I - TTT) \ (TTT - TTT^40)
+    #Confirm all of my Cs are 0
+    CCC10 = CCC
+
+    TTT10        = TTT10 ./ 40.
+    CCC10        = CCC10 ./ 40.
+
+    # Add back inflation
+    ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
+
+    # Now, add back observable CPI
+    #ZZ[obs[:cpi_inflation], endo[:πc_t]] = 1.
+
+    #Add observables for each:
+    inflation_subgroup_names = collect(keys(get_setting(m, :subgroup_to_sector)))
+    for sect in inflation_subgroup_names
+        i_sum = sum(get_setting(m, :Kgam)[get_setting(m, :subgroup_to_sector)[sect]])
+        for i in get_setting(m, :subgroup_to_sector)[sect]
+            if sect == "core_goods"
+                ZZ[obs[Symbol("cpi_core_goods")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+            elseif sect == "core_services"
+                ZZ[obs[Symbol("cpi_core_services")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+            else
+                ZZ[obs[Symbol("cpi_energy")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+            end
+        end
+    end
 end
 
 #=
