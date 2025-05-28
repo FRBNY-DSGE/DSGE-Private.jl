@@ -15,6 +15,8 @@ function init_subspec!(m::OnionModel)
         return ss4!(m)
     elseif subspec(m) == "ss5"
         return ss5!(m)
+    elseif subspec(m) == "ss6"
+        return ss6!(m)
     else
         error("This subspec has not been defined.")
     end
@@ -146,6 +148,38 @@ end
 
 
 function ss5!(m::OnionModel)
+
+    #=
+    1) We estimate most parameters except
+       a) Elasticity parameters (ν, ζ, η, ξ)
+       b) σ_πstar fixed to 0.01
+       c) Indexes for oil and gas (should be settings in retrospect)
+       d) Primitives like π_star (already detrend lr inflation), invkapw
+       e) mp_cpi_infl fixed to 1.01 for eigenvalue issue? (estimate for now)
+       f) taus (we do not draw any tau shocks as their std set to 0)
+
+    2) Estimated using cleaned spec ss4 so no need for model2cloud dictionary
+    =#
+    fixed_params = [:ν, :ζ, :η, :ξ,
+                    :σ_πstar,
+                    :oil, :gas,
+                    :invkapw, :π_star,
+                    :ρ_τ, :ρ_τ2]
+
+    m[:σ_πstar].value = 0.01
+
+    for param in m.parameters
+        if param.key ∈ fixed_params
+            m[param.key].fixed = true
+        else
+            m[param.key].fixed = false
+        end
+    end
+
+    return m
+end
+
+function ss6!(m::OnionModel)
 
     #=
     1) We estimate most parameters except
