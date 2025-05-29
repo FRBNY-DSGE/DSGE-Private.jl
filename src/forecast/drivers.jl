@@ -1119,7 +1119,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                 Rht = system[:RRR][:, vcat(shocks[:rm_sh], shocks[:rm_shl1]:shocks[Symbol("rm_shl$H")])]
                 bb = zeros(H+1, 1)
                 MH = zeros(H+1, H+1)
-                @show s_T[m.endogenous_states[:R_t]] + 400*log(m[:Rstarn])
+                #@show s_T[m.endogenous_states[:R_t]] + 400*log(m[:Rstarn])
                 for hh = 1:H+1
                     bb[hh, 1] = (FFRpeg - PsiR1 - PsiR2'*(system[:TTT])^hh*s_T)[1]
                     MH[hh, :] = PsiR2'*(system[:TTT])^(hh-1)*Rht
@@ -1128,8 +1128,8 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                 etpeg = zeros(nshocks, forecast_horizons(m))
                 etpeg[vcat(shocks[:rm_sh], shocks[:rm_shl1]:shocks[Symbol("rm_shl$H")]), 1] = monshocks
                 forecaststates, forecastobs, forecastpseudo, forecastshocks = forecast(system, s_T, etpeg)
-                @show forecaststates[m.endogenous_states[:R_t], :]
-                @show forecastobs[m.observables[:obs_nominalrate], :]
+                #@show forecaststates[m.endogenous_states[:R_t], :]
+                #@show forecastobs[m.observables[:obs_nominalrate], :]
             elseif zlb_method == :temporary_altpolicy
                 # Run the unbounded forecast if they haven't already been computed
                 if isempty(intersect(output_vars, unbddforecast_vars))
