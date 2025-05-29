@@ -17,6 +17,7 @@ function eqcond(m::OnionModel) #m::OnionModel
                              [Symbol("π_$i") for i in 1:n]; #sectoral inflation
                              [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
                              [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
+                             [:μ_com];
                              [Symbol("Eπ_$i") for i in 1:n];
                              [:Ec_t, :Eπc_t, :Eπw_t];
                              [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
@@ -28,6 +29,7 @@ function eqcond(m::OnionModel) #m::OnionModel
                                   [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
                                   [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                                   [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
+                                  [:eq_μ_com];
                                   [Symbol("eq_Eπ_$i") for i in 1:n];
                                   [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 
@@ -100,6 +102,7 @@ function eqcond(m::OnionModel) #m::OnionModel
 
     invkap_value = get_setting(m, :invkap)
 
+    # Sector specific phillips curve
     for i in get_setting(m, :core_goods_sectors)
         Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
     end
@@ -112,9 +115,15 @@ function eqcond(m::OnionModel) #m::OnionModel
         Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_energy]] = -invkap_value[i]  #-m[:invkap].value[i]
     end
 
+    # For ss7 and ss8: Add food sector specific markups
+    if subspec_int ∈ [7, 8]
+        for i in get_setting(m, :food_sectors)
+            Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_foods]] = -invkap_value[i]
+        end
+    end
 
-    #Define processes for each markup based on subspec:
 
+    #Define processes for each subgroup markup based on subspec:
     for sg in collect(keys(get_setting(m, :subgroup_names)))
         Γ0[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = 1.
         Ψ[eq[Symbol("eq_μ_$(sg)")], exo[Symbol("μ_$(sg)_sh")]] = 1.
@@ -125,6 +134,12 @@ function eqcond(m::OnionModel) #m::OnionModel
         end
     end
 
+# For ss7 and ss8, all sectors subject to common shock (transference is function of consumption share)
+
+if subspec_int ∈ [7, 8]
+     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]] = - invkap_value
+end
+
 
     # s recursion #Dyanmics of relative prices EQ
     Γ0[eq[Symbol("eq_srec_1")]:eq[Symbol("eq_srec_$n")], endo[:s_1]:endo[Symbol("s_$n")]] = eye(n)
@@ -134,15 +149,13 @@ function eqcond(m::OnionModel) #m::OnionModel
 
 
     # cpi definition #Definition of CPI
-    Γ0[eq[:eq_cpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = get_setting(m, :gam)'
-    Γ0[eq[:eq_cpi],endo[:πc_t]] = -1.
+    #Γ0[eq[:eq_cpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = get_setting(m, :gam)'
+    #Γ0[eq[:eq_cpi],endo[:πc_t]] = -1.
 
 
     #Keshav's CPI
-    Γ0[eq[:eq_Kcpi],endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = get_setting(m, :Kgam)'  #Replace with Keshav's gamma.
-    Γ0[eq[:eq_Kcpi],endo[:πKc_t]] = -1.
-
-
+    Γ0[eq[:eq_Kcpi], endo[Symbol("π_1")]:endo[Symbol("π_$n")]] = get_setting(m, :Kgam)'  #Replace with Keshav's gamma.
+    Γ0[eq[:eq_Kcpi], endo[:πKc_t]] = -1.
 
     # Old implementation of N-WPC
 #=
@@ -285,6 +298,14 @@ dcstar_dτ = numer/denom
 Γ1[eq[:eq_a_t], endo[:a_t]] = m[:ρ_a_t]
 Ψ[eq[:eq_a_t], exo[:a_sh]] = 1.
 
+# Add a common mark-up shock (ss7 and ss8)
+if subspec_int ∈ [7, 8]
+    Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1
+    Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_com]
+    Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1
+end
+
+
 
 #Markup stochastic trend:
 #μ^i_t = ρ_̅μ^i ̅μ^i_{t-1} + σ_̅μ^i ε_t^{̅μ^i}
@@ -298,14 +319,6 @@ dcstar_dτ = numer/denom
 
 Ψ[eq[:eq_mkup_trend_1]:eq[Symbol("eq_mkup_trend_$(n)")], exo[:μ_trend_1_sh]:exo[Symbol("μ_trend_$(n)_sh")]] = eye(n)
 =#
-
-
-
-
-
-
-
-
 
 
 

@@ -99,8 +99,8 @@ function init_observable_mappings!(m::OnionModel)
 
 
     # CPI Inflation observable
-    #=
-    if subspec_int ∈ [6]
+
+    if subspec_int ∈ [6, 7, 8]
         cpi_fwd_transform = function(levels)
             demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
         end
@@ -115,7 +115,7 @@ function init_observable_mappings!(m::OnionModel)
                                                  "CPI Inflation",
                                                  "CPI Inflation")
     end
-=#
+
 
     nominalrate_fwd_transform = function (levels)
         # FROM: Nominal effective federal funds rate (aggregate daily data at a
@@ -139,7 +139,7 @@ function init_observable_mappings!(m::OnionModel)
 ############################################################################
 #Fernald TFP
 ############################################################################
-if subspec_int ∈ [1, 2, 3, 4, 5, 6]
+if subspec_int ∈ [1, 2, 3, 4, 5, 6, 7, 8]
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
@@ -199,7 +199,7 @@ end
 
 
 
-if subspec_int ∈ [3, 4, 5, 6]
+if subspec_int ∈ [3, 4, 5, 6, 7, 8]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################

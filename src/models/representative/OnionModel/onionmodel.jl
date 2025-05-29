@@ -106,11 +106,13 @@ function init_settings!(m::OnionModel)
         m <= Setting(:subgroup_names,
                      OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
                                                  "core_services" => :CUSR0000SASLE,
-                                                 "cpi_energy" => :CPIENGSL))
+                                                 "cpi_energy" => :CPIENGSL,
+                                                 "core_foods" => :NOTHING))
         m <= Setting(:subgroup_to_sector,
                      OrderedDict{String, Array{Int64,1}}("core_goods" => core_goods,
                                                          "core_services" => core_services,
-                                                         "cpi_energy" =>  energy_sectors))
+                                                         "cpi_energy" =>  energy_sectors,
+                                                         "core_foods" => food_sectors))
     end
 
     # Sectoral Discrimination
@@ -148,7 +150,6 @@ function init_settings!(m::OnionModel)
     m <= Setting(:data_quarter_or_month, :quarter)
     sectoral_inflation_path = get_setting(m, :dataroot) * "sector_inflation_" * (get_setting(m, :data_quarter_or_month) == :quarter ? "quarterly" : "monthly") * ".csv"
     m <= Setting(:sector_names, (names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])[Not([69,70,72,73])])
-
 
     # Relevant for other things such as IRFs, smoothing, and forecasting
     m <= Setting(:n_mon_anticipated_shocks, 0)
@@ -515,7 +516,7 @@ function init_model_indices!(m::OnionModel)
     exogenous_shocks            =
         [[Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))];
          [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
-         [:τ_sh]]
+         [:τ_sh, :μ_com_sh]]
 
     observables                 = keys(m.observable_mappings)
 
@@ -525,6 +526,7 @@ function init_model_indices!(m::OnionModel)
                          [Symbol("π_$i") for i in 1:n]; #sectoral inflation
                          [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
                          [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
+                         [:μ_com];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t];
                          [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
@@ -539,6 +541,7 @@ function init_model_indices!(m::OnionModel)
                               [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
                               [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
+                              [:eq_μ_com];
                               [Symbol("eq_Eπ_$i") for i in 1:n];
                               [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 

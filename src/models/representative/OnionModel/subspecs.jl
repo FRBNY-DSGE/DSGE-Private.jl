@@ -17,6 +17,8 @@ function init_subspec!(m::OnionModel)
         return ss5!(m)
     elseif subspec(m) == "ss6"
         return ss6!(m)
+    elseif subspec(m) == "ss7"
+        return ss7!(m)
     else
         error("This subspec has not been defined.")
     end
@@ -207,6 +209,67 @@ function ss6!(m::OnionModel)
             m[param.key].fixed = false
         end
     end
+
+    return m
+end
+
+function ss7!(m::OnionModel)
+
+    #=
+    In this subspec, we
+    (1) Observables: Remove tfp growth observable and consumption growth observables.
+        We add cpi inflation obs and cpi_inflation shock
+    (2) Shocks: Add a common mark-up shock process while keeping categorical shocks.
+    (3) Add mark-up shock for food w/o specifying observable.
+    =#
+
+    # (1.A) Set std and persistance to 0 to get rid of tfp shock process
+    m[:σ_a_t].value = 0.
+    m[:ρ_a_t].value = 0.
+
+    m[:σ_a_t].fixed = true
+    m[:ρ_a_t].fixed = true
+
+
+    # (1.B) Set std and persistance to 0 to get rid of discount factor shock process
+    m[:σ_b_t].value = 0.
+    m[:ρ_b_t].value = 0.
+
+    m[:σ_b_t].fixed = true
+    m[:ρ_b_t].fixed = true
+
+    # (2) Add common mark-up
+
+    # (1e-8, 5.) (1e-8, 5.)
+    m <= parameter(:σ_μ_com, 0.1314, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+                       description = "σ_μ_com: standard deviation of common mark up shock process",
+                       tex_label = "\\sigma_{\\mu_com}")
+    m <= parameter(:ρ_μ_com, 0.8827, (0., 0.999), (0., 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+                       description = "ρ_μ: AR(1) coefficient of the mark up shock process",
+                       tex_label = "\\rho_{\\mu_com}")
+
+    # Set this to zero (in model but not estimated?)
+    m[:σ_μ_com].value = 0.
+    m[:ρ_μ_com].value = 0.
+
+    # (3.A) Add core_foods to subgroup names
+    m <= Setting(:subgroup_names,
+                 OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
+                                             "core_services" => :CUSR0000SASLE,
+                                             "cpi_energy" => :CPIENGSL,
+                                             "core_foods" => :NOTHING)) # Is it in this dataset?
+    ### Estimation changes ###
+
+    return m
+end
+
+function ss8!(m::OnionModel)
+    #=
+    In this subspec, we
+    (1) Observables: Remove just tfp growth
+    (2) Shocks: Add a common shock process while keeping categorical shocks.
+    (3) Add mark-up shock for food w/o specifying observable
+    =#
 
     return m
 end
