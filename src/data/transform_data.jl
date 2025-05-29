@@ -32,6 +32,7 @@ function transform_data(m::AbstractDSGEModel, levels::DataFrame;
 
     # Step 1: HP filter (including population forecasts, if they're being used)
     population_mnemonic = parse_population_mnemonic(m)[1]
+    @show population_mnemonic
     if !isnull(population_mnemonic)
         population_forecast_levels = if use_population_forecast(m)
             read_population_forecast(m; verbose = verbose)

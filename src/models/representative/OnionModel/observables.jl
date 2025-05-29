@@ -1,7 +1,12 @@
 function init_observable_mappings!(m::OnionModel)
     observables = OrderedDict{Symbol, Observable}()
-    population_mnemonic = get(get_setting(m, :population_mnemonic))
+    if subspec(m) ∉ ["ss7"]
+        population_mnemonic = get(get_setting(m, :population_mnemonic))
+    else
+        population_mnemonic = nothing
+    end
     subspec_int = parse(Int, subspec(m)[3:end])
+    @show population_mnemonic
 
     demean = function (levels)
         cons = all(ismissing.(levels)) ? missing : mean(skipmissing(levels))
@@ -20,25 +25,29 @@ function init_observable_mappings!(m::OnionModel)
         levels
     end
 
-    consumption_fwd_transform = function (levels)
-        # FROM: Nominal consumption
-        # TO:   Real consumption, approximate quarter-to-quarter percent change,
-        #       per capita, adjusted for population filtering
+    if subspec(m) ∉ ["ss7"]
+        consumption_fwd_transform = function (levels)
+            # FROM: Nominal consumption
+            # TO:   Real consumption, approximate quarter-to-quarter percent change,
+            #       per capita, adjusted for population filtering
 
-        levels[!,:temp] = percapita(m, :PCE, levels)
-        cons = 1000 * nominal_to_real(:temp, levels)
-        demean(oneqtrpctchange(cons))
+            levels[!,:temp] = percapita(m, :PCE, levels)
+            cons = 1000 * nominal_to_real(:temp, levels)
+            demean(oneqtrpctchange(cons))
+        end
+
+        consumption_rev_transform = identity     # loggrowthtopct_annualized_percapita
+
+        # Consumption - this is currently quarterly, we are still undecided between quarterly and monthly
+
+        observables[:consumption_growth] = Observable(:consumption_growth,
+                                                      [:PCE__FRED, population_mnemonic],
+                                                      consumption_fwd_transform,
+                                                      consumption_rev_transform,
+                                                      "Demeaned Consumption Growth",
+                                                      "Demeaned Consumption Growth") #adjusted for population filtering as well?
     end
 
-    consumption_rev_transform = identity     # loggrowthtopct_annualized_percapita
-
-    # Consumption - this is currently quarterly, we are still undecided between quarterly and monthly
-    observables[:consumption_growth] = Observable(:consumption_growth,
-                                                  [:PCE__FRED, population_mnemonic],
-                                                  consumption_fwd_transform,
-                                                  consumption_rev_transform,
-                                                  "Demeaned Consumption Growth",
-                                                  "Demeaned Consumption Growth") #adjusted for population filtering as well?
 
     wages_fwd_transform = function (levels)
             # FROM: Nominal compensation per hour (:COMPNFB from FRED)
@@ -139,7 +148,7 @@ function init_observable_mappings!(m::OnionModel)
 ############################################################################
 #Fernald TFP
 ############################################################################
-if subspec_int ∈ [1, 2, 3, 4, 5, 6, 7, 8]
+if subspec_int ∈ [1, 2, 3, 4, 5, 6]
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
