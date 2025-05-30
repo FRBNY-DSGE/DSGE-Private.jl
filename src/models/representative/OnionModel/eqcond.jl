@@ -145,7 +145,7 @@ if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
             Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[:ρ_μ_trend]
         else
             if sg == "cpi_food"
-                Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_energy")]
+                Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_cpi_energy")]
             else
                 Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_$(sg)")]
             end

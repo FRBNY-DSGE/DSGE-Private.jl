@@ -292,7 +292,7 @@ elseif subspec_int ∈ [6,7] # Add LR infl expectations (fix MP estimation)
     # Running estimation! n subgroups, (3 for now), pi star and LR inflation expecatations observed, obs tfp
     for i in collect(keys(get_setting(m, :subgroup_names)))
         if i == "cpi_food"
-            QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_energy")]^2
+            QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_cpi_energy")]^2
         else
             QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
         end
