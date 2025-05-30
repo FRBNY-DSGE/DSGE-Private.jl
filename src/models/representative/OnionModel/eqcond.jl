@@ -113,7 +113,15 @@ function eqcond(m::OnionModel) #m::OnionModel
     end
 
 
+
+
     invkap_value = get_setting(m, :invkap)
+
+if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
+        for i in get_setting(m, :food_sectors)
+            Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_food]] = - invkap_value[i]    # -m[:invkap].value[i]
+        end
+    end
 
     for i in get_setting(m, :core_goods_sectors)
         Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
@@ -136,7 +144,11 @@ function eqcond(m::OnionModel) #m::OnionModel
         if subspec_int ∈ [0, 1]
             Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[:ρ_μ_trend]
         else
-            Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_$(sg)")]
+            if sg == "cpi_food"
+                Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_energy")]
+            else
+                Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_$(sg)")]
+            end
         end
     end
 
