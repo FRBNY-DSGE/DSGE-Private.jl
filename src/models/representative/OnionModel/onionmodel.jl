@@ -103,14 +103,30 @@ function init_settings!(m::OnionModel)
         m <= Setting(:sectoral_nan, true)
         m <= Setting(:n_smc_blocks, 1)
         m <= Setting(:sampling_method, :SMC)
-        m <= Setting(:subgroup_names,
-                     OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
-                                                 "core_services" => :CUSR0000SASLE,
-                                                 "cpi_energy" => :CPIENGSL))
-        m <= Setting(:subgroup_to_sector,
-                     OrderedDict{String, Array{Int64,1}}("core_goods" => core_goods,
-                                                         "core_services" => core_services,
-                                                         "cpi_energy" =>  energy_sectors))
+
+        if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
+            m <= Setting(:subgroup_names,
+                         OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
+                                                     "core_services" => :CUSR0000SASLE,
+                                                     "cpi_energy" => :CPIENGSL,
+                                                     "cpi_food" => :NOTHING))
+            m <= Setting(:subgroup_to_sector,
+                         OrderedDict{String, Array{Int64,1}}("core_goods" => core_goods,
+                                                             "core_services" => core_services,
+                                                             "cpi_energy" =>  energy_sectors,
+                                                             "cpi_food" => food_sectors))
+
+        else
+
+            m <= Setting(:subgroup_names,
+                         OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
+                                                     "core_services" => :CUSR0000SASLE,
+                                                     "cpi_energy" => :CPIENGSL))
+            m <= Setting(:subgroup_to_sector,
+                         OrderedDict{String, Array{Int64,1}}("core_goods" => core_goods,
+                                                             "core_services" => core_services,
+                                                             "cpi_energy" =>  energy_sectors))
+        end
     end
 
     # Sectoral Discrimination
@@ -542,6 +558,11 @@ function init_model_indices!(m::OnionModel)
                               [Symbol("eq_Eπ_$i") for i in 1:n];
                               [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 
+    if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+        push!(endogenous_states, :μ_com)
+        push!(exogenous_shocks, :μ_com_sh)
+        push!(equilibrium_conditions, :eq_μ_com)
+    end
 
     for (i,k) in enumerate(observables); m.observables[k] = i end
     for (i,k) in enumerate(pseudo_observables); m.pseudo_observables[k] = i end

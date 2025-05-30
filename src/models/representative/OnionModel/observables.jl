@@ -19,7 +19,7 @@ function init_observable_mappings!(m::OnionModel)
         end
         levels
     end
-
+if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
     consumption_fwd_transform = function (levels)
         # FROM: Nominal consumption
         # TO:   Real consumption, approximate quarter-to-quarter percent change,
@@ -39,6 +39,7 @@ function init_observable_mappings!(m::OnionModel)
                                                   consumption_rev_transform,
                                                   "Demeaned Consumption Growth",
                                                   "Demeaned Consumption Growth") #adjusted for population filtering as well?
+end
 
     wages_fwd_transform = function (levels)
             # FROM: Nominal compensation per hour (:COMPNFB from FRED)
@@ -99,8 +100,8 @@ function init_observable_mappings!(m::OnionModel)
 
 
     # CPI Inflation observable
-    #=
-    if subspec_int ∈ [6]
+
+    if subspec_int ∈ [7]
         cpi_fwd_transform = function(levels)
             demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
         end
@@ -115,7 +116,7 @@ function init_observable_mappings!(m::OnionModel)
                                                  "CPI Inflation",
                                                  "CPI Inflation")
     end
-=#
+
 
     nominalrate_fwd_transform = function (levels)
         # FROM: Nominal effective federal funds rate (aggregate daily data at a
@@ -139,7 +140,8 @@ function init_observable_mappings!(m::OnionModel)
 ############################################################################
 #Fernald TFP
 ############################################################################
-if subspec_int ∈ [1, 2, 3, 4, 5, 6]
+if !(haskey(get_settings(m), :test_rm_tfp) && get_setting(m, :test_rm_tfp))
+if subspec_int ∈ [1, 2, 3, 4, 5, 6,7]
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
@@ -166,7 +168,7 @@ if subspec_int ∈ [1, 2, 3, 4, 5, 6]
                                        "Total Factor Productivity Growth (Fernald)",
                                        "Fernald's TFP, adjusted by Fernald's estimated alpha")
 end
-
+end
 #=
     # CPI Sectoral Inflation
     inflation_sector_names = get_setting(m, :sector_names)
@@ -199,7 +201,7 @@ end
 
 
 
-if subspec_int ∈ [3, 4, 5, 6]
+if subspec_int ∈ [3, 4, 5, 6,7]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################

@@ -31,6 +31,12 @@ function eqcond(m::OnionModel) #m::OnionModel
                                   [Symbol("eq_Eπ_$i") for i in 1:n];
                                   [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 
+
+        if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+            push!(endogenous_states, :μ_com)
+            push!(equilibrium_conditions, :eq_μ_com)
+        end
+
         for (i,k) in enumerate(equilibrium_conditions); m.equilibrium_conditions[k] = i end
         for (i,k) in enumerate(endogenous_states); m.endogenous_states[k] = i end
         for (i,k) in enumerate(endogenous_states_augmented); m.endogenous_states_augmented[k] = i + length(endogenous_states) end
@@ -97,6 +103,15 @@ function eqcond(m::OnionModel) #m::OnionModel
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:a_t]] =  get_setting(m, :labshare)
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("s_1")]:endo[Symbol("s_$n")]]  = - (inpshare - eye(n))
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$n")]]    = - m[:bet]*diagm(get_setting(m, :invkap))
+
+
+    if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+        Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]]    = get_setting(m, :invkap)
+
+        Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
+        Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
+    end
+
 
     invkap_value = get_setting(m, :invkap)
 
