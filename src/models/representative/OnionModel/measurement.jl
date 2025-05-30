@@ -33,7 +33,7 @@ function measurement(m::OnionModel{T},
     ## Demeaned Real Wage Growth
     #ZZ[obs[:real_wage_growth], endo[:w_t]] = 1.
     #ZZ[obs[:real_wage_growth], endo_new[:w_t1]] = - 1.
-
+s
     ## Demeaned FFR
     #ZZ[obs[:NominalFFR], endo[:r_t]] = 1.
 
@@ -431,7 +431,8 @@ elseif subspec_int ∈ [7]
     #Discount rate
     QQ[exo[:b_sh], exo[:b_sh]] = m[:σ_b_t]^2
     #Wage markup
-    QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
+QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
+QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ_com]^2
 
     #Include long run inflation expectations: Need to calculate 40 quarter ahead inflation
     TTTs = Matrix{T}[]

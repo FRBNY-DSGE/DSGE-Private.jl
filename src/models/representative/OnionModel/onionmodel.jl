@@ -515,7 +515,7 @@ function init_model_indices!(m::OnionModel)
 
     exogenous_shocks            =
         [[Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))];
-         [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
+         [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh];
          [:τ_sh, :μ_com_sh]]
 
     observables                 = keys(m.observable_mappings)
@@ -534,7 +534,7 @@ function init_model_indices!(m::OnionModel)
     endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
 
     expected_shocks =[[Symbol("Eπ_$(i)_sh") for i in 1:n];
-                      [:Ec_sh, :Eπc_sh, :Eπw_sh]]
+                       [:Ec_sh, :Eπc_sh, :Eπw_sh]]
 
     equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                               [Symbol("eq_srec_$i") for i in 1:n];

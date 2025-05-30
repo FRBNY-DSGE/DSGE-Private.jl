@@ -260,9 +260,11 @@ dcstar_dτ = numer/denom
 Π[eq[:eq_Eπct], exp_sh[:Eπc_sh]] = 1.
 
 #Wage inflation
-Γ0[eq[:eq_Eπwt], endo[:πw_t]] = 1.
-Γ1[eq[:eq_Eπwt], endo[:Eπw_t]] = 1.
-Π[eq[:eq_Eπwt], exp_sh[:Eπw_sh]] = 1.
+
+    Γ0[eq[:eq_Eπwt], endo[:πw_t]] = 1.
+    Γ1[eq[:eq_Eπwt], endo[:Eπw_t]] = 1.
+    Π[eq[:eq_Eπwt], exp_sh[:Eπw_sh]] = 1.
+
 
 #Sectoral Inflation
 Γ0[eq[Symbol("eq_Eπ_1")]:eq[Symbol("eq_Eπ_$n")], endo[Symbol("π_1")]:endo[Symbol("π_$n")]]  = eye(n)
@@ -299,6 +301,7 @@ dcstar_dτ = numer/denom
 Ψ[eq[:eq_a_t], exo[:a_sh]] = 1.
 
 # Add a common mark-up shock (ss7 and ss8)
+
 if subspec_int ∈ [7, 8]
     Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1
     Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_com]
