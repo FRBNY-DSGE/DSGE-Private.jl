@@ -19,6 +19,8 @@ function init_subspec!(m::OnionModel)
         return ss6!(m)
     elseif subspec(m) == "ss7"
         return ss7!(m)
+    elseif subspec(m) == "ss8"
+        return ss8!(m)
     else
         error("This subspec has not been defined.")
     end
@@ -216,7 +218,59 @@ end
 
 function ss7!(m::OnionModel)
     ss6!(m)
+    # Estimate all variables except for fixed_params from ss6.
+    # In ss7:
+    # (1) We get rid of the TFP growth process and consumption growth process (including both observables)
+    # (2) We add the CPI inflation observable (no need to add CPI inflation shock)
+    # (3) We add food markup shock process (include an unobserved cpi_foods subgroup) and estimate rho/sigma
+    # (4) We add an iid common markup shock and estimate sigma
 
-#Fill in rest later
+    # Shut down tfp shock process
+    m[:σ_a_t].value = 0.
+    m[:ρ_a_t].value = 0.
+    m[:σ_a_t].valuebounds = (0., 5.)
+    m[:ρ_a_t].valuebounds = (0., 5.)
+
+    # Shut down discout factor shock process
+    m[:σ_b_t].value = 0.
+    m[:ρ_b_t].value = 0.
+    m[:σ_b_t].valuebounds = (0., 5.)
+    m[:ρ_b_t].valuebounds = (0., 5.)
+
+    ss6_to_7_fixed = [:σ_a_t, :ρ_a_t,
+                      :σ_b_t, :ρ_b_t]
+
+    for param in m.parameters
+        if param.key ∈ ss6_to_7_fixed
+            m[param.key].fixed = true
+        end
+    end
+
+end
+
+function ss8!(m::OnionModel)
+    ss6!(m)
+
+    # Estimate all variables except for fixed_params from ss6.
+    # In ss7:
+    # (1) We get rid of the TFP growth process but keep consumption growth process (and obs)
+    # (2) We add the CPI inflation observable (no need to add CPI inflation shock)
+    # (3) We add food markup shock process (include an unobserved cpi_foods subgroup) and estimate rho/sigma
+    # (4) We add an iid common markup shock and estimate sigma
+
+    # Shut down tfp shock process
+    m[:σ_a_t].value = 0.
+    m[:ρ_a_t].value = 0.
+    m[:σ_a_t].valuebounds = (0., 5.)
+    m[:ρ_a_t].valuebounds = (0., 5.)
+
+
+    ss6_to_8_fixed = [:σ_a_t, :ρ_a_t]
+
+    for param in m.parameters
+        if param.key ∈ ss6_to_8_fixed
+            m[param.key].fixed = true
+        end
+    end
 
 end

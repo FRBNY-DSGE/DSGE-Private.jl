@@ -26,11 +26,16 @@ function measurement(m::OnionModel{T},
     #Remember that all ZZ and QQ matrices are initialized as 0's. If no entry is explicitly added for an observable, it remains 0.
     #######################
 
+    subspec_int = parse(Int, subspec(m)[3:end])
+
     ## Demeaned Consumption Growth
-    if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
+    #if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
+    if subspec_int ∉ [7]
         ZZ[obs[:consumption_growth], endo[:c_t]]  = 1.0
         ZZ[obs[:consumption_growth], endo_new[:c_t1]] = -1.0
     end
+
+    #end
 
     ## Demeaned Real Wage Growth
     ZZ[obs[:real_wage_growth], endo[:w_t]] = 1.
@@ -89,7 +94,7 @@ function measurement(m::OnionModel{T},
     Remove test_num structure:
     ================#
 
-    subspec_int = parse(Int, subspec(m)[3:end])
+   # subspec_int = parse(Int, subspec(m)[3:end])
 
 #=
     if get_setting(m, :marco_test_num) == 0
@@ -287,23 +292,22 @@ elseif subspec_int ∈ [3, 4, 5] # Add LR infl expectations (fix MP estimation)
         end
     end
 
-elseif subspec_int ∈ [6,7] # Add LR infl expectations (fix MP estimation)
+elseif subspec_int ∈ [6, 7, 8] # Add LR infl expectations (fix MP estimation)
 
-    # Running estimation! n subgroups, (3 for now), pi star and LR inflation expecatations observed, obs tfp
+    # Specify all subgroup shocks
     for i in collect(keys(get_setting(m, :subgroup_names)))
-        if i == "cpi_food"
-            QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_cpi_energy")]^2
-        else
-            QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
-        end
+        QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
     end
 
     QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
 
     # Include tfp measurement
-    if !(haskey(get_settings(m), :test_rm_tfp) && get_setting(m, :test_rm_tfp))
+    #if !(haskey(get_settings(m), :test_rm_tfp) && get_setting(m, :test_rm_tfp))
+    # ss6 has tfp, consumption, and wage growth
+    if subspec_int ∈ [6]
         ZZ[obs[:obs_tfp], endo[:a_t]]= 1.
     end
+    #end
 
     #Include long run inflation expectations: Need to calculate 40 quarter ahead inflation
     TTTs = Matrix{T}[]
@@ -320,9 +324,10 @@ elseif subspec_int ∈ [6,7] # Add LR infl expectations (fix MP estimation)
     # Add back inflation
     ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
 
-    # Now, add back observable CPI
-    if subspec(m) ∈ ["ss7"]
+    # Now, add back observable CPI and add iid common markup shock std
+    if subspec_int ∈ [7, 8]
         ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
+        QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ_com]^2
     end
 
     #Add observables for each:
@@ -339,11 +344,13 @@ elseif subspec_int ∈ [6,7] # Add LR infl expectations (fix MP estimation)
             end
         end
     end
-
-    if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-        QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_πstar]^2
-    end
+#if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+#=
+if subspec_int ∈ [7, 8]
+    QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ_com]^2
 end
-
+=#
+end
+#end
     return Measurement(ZZ, DD, QQ, EE)
 end

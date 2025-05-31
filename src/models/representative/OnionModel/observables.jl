@@ -19,27 +19,28 @@ function init_observable_mappings!(m::OnionModel)
         end
         levels
     end
-if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
-    consumption_fwd_transform = function (levels)
-        # FROM: Nominal consumption
-        # TO:   Real consumption, approximate quarter-to-quarter percent change,
-        #       per capita, adjusted for population filtering
 
-        levels[!,:temp] = percapita(m, :PCE, levels)
-        cons = 1000 * nominal_to_real(:temp, levels)
-        demean(oneqtrpctchange(cons))
+    if subspec_int ∉ [7]
+        consumption_fwd_transform = function (levels)
+            # FROM: Nominal consumption
+            # TO:   Real consumption, approximate quarter-to-quarter percent change,
+            #       per capita, adjusted for population filtering
+
+            levels[!,:temp] = percapita(m, :PCE, levels)
+            cons = 1000 * nominal_to_real(:temp, levels)
+            demean(oneqtrpctchange(cons))
+        end
+
+        consumption_rev_transform = identity     # loggrowthtopct_annualized_percapita
+
+        # Consumption - this is currently quarterly, we are still undecided between quarterly and monthly
+        observables[:consumption_growth] = Observable(:consumption_growth,
+                                                      [:PCE__FRED, population_mnemonic],
+                                                      consumption_fwd_transform,
+                                                      consumption_rev_transform,
+                                                      "Demeaned Consumption Growth",
+                                                      "Demeaned Consumption Growth") #adjusted for population filtering as well?
     end
-
-    consumption_rev_transform = identity     # loggrowthtopct_annualized_percapita
-
-    # Consumption - this is currently quarterly, we are still undecided between quarterly and monthly
-    observables[:consumption_growth] = Observable(:consumption_growth,
-                                                  [:PCE__FRED, population_mnemonic],
-                                                  consumption_fwd_transform,
-                                                  consumption_rev_transform,
-                                                  "Demeaned Consumption Growth",
-                                                  "Demeaned Consumption Growth") #adjusted for population filtering as well?
-end
 
     wages_fwd_transform = function (levels)
             # FROM: Nominal compensation per hour (:COMPNFB from FRED)
@@ -101,7 +102,7 @@ end
 
     # CPI Inflation observable
 
-    if subspec_int ∈ [7]
+    if subspec_int ∈ [7, 8]
         cpi_fwd_transform = function(levels)
             demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
         end
@@ -140,8 +141,8 @@ end
 ############################################################################
 #Fernald TFP
 ############################################################################
-if !(haskey(get_settings(m), :test_rm_tfp) && get_setting(m, :test_rm_tfp))
-if subspec_int ∈ [1, 2, 3, 4, 5, 6,7]
+#if !(haskey(get_settings(m), :test_rm_tfp) && get_setting(m, :test_rm_tfp))
+if subspec_int ∈ [1, 2, 3, 4, 5, 6]
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
@@ -168,7 +169,7 @@ if subspec_int ∈ [1, 2, 3, 4, 5, 6,7]
                                        "Total Factor Productivity Growth (Fernald)",
                                        "Fernald's TFP, adjusted by Fernald's estimated alpha")
 end
-end
+#end
 #=
     # CPI Sectoral Inflation
     inflation_sector_names = get_setting(m, :sector_names)
@@ -201,7 +202,7 @@ end
 
 
 
-if subspec_int ∈ [3, 4, 5, 6,7]
+if subspec_int ∈ [3, 4, 5, 6, 7, 8]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################

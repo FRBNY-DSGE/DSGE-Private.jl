@@ -104,7 +104,7 @@ function init_settings!(m::OnionModel)
         m <= Setting(:n_smc_blocks, 1)
         m <= Setting(:sampling_method, :SMC)
 
-        if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
+        if subspec_int ∈ [7, 8]
             m <= Setting(:subgroup_names,
                          OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
                                                      "core_services" => :CUSR0000SASLE,
@@ -115,9 +115,7 @@ function init_settings!(m::OnionModel)
                                                              "core_services" => core_services,
                                                              "cpi_energy" =>  energy_sectors,
                                                              "cpi_food" => food_sectors))
-
         else
-
             m <= Setting(:subgroup_names,
                          OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
                                                      "core_services" => :CUSR0000SASLE,
@@ -128,6 +126,7 @@ function init_settings!(m::OnionModel)
                                                              "cpi_energy" =>  energy_sectors))
         end
     end
+
 
     # Sectoral Discrimination
     m <= Setting(:energy_sectors, energy_sectors)
@@ -490,10 +489,13 @@ if subspec_int ∈ [0, 1]
                    description = "ρ_μ: AR(1) coefficient of the mark up shock process")
     m <= parameter(:π_star, 0.5, fixed = true,
                    description = "Steady state rate of inflation")
-else # ss ∈ [2, 3, ...]
+end
 
+if subspec_int >= 2
+
+    #1) Differentiate markup shock std and persistence
+    # For ss 7 and 8, we add food subgroup
     for i in collect(keys(get_setting(m, :subgroup_names)))
-        #1) Differentiate markup shock std and persistence
         m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ: standard deviation of mark up shock process",
                        tex_label = "\\sigma_{\\mu_$i}")
@@ -502,9 +504,17 @@ else # ss ∈ [2, 3, ...]
                        tex_label = "\\rho_{\\mu_$i}")
     end
 
-    if subspec_int ∈ [3, 4, 5]
+    #2) Add pi-star
+    if subspec_int ∈ [3, 4, 5, 7, 8]
         m <= parameter(:π_star, 0.5, fixed = true,
                    description = "Steady state rate of inflation")
+    end
+
+    if subspec_int ∈ [7, 8]
+    #3) Add common shock
+        m <= parameter(:σ_μ_com, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+                       description = "σ_μ_com: standard deviation of mark up shock process",
+                       tex_label = "\\sigma_{\\mu_com}")
     end
 
 end
@@ -558,11 +568,11 @@ function init_model_indices!(m::OnionModel)
                               [Symbol("eq_Eπ_$i") for i in 1:n];
                               [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 
-    if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+    #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
         push!(endogenous_states, :μ_com)
         push!(exogenous_shocks, :μ_com_sh)
         push!(equilibrium_conditions, :eq_μ_com)
-    end
+    #end
 
     for (i,k) in enumerate(observables); m.observables[k] = i end
     for (i,k) in enumerate(pseudo_observables); m.pseudo_observables[k] = i end

@@ -32,10 +32,13 @@ function eqcond(m::OnionModel) #m::OnionModel
                                   [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 
 
-        if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+        #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+        if subspec_int ∈ [7, 8]
             push!(endogenous_states, :μ_com)
             push!(equilibrium_conditions, :eq_μ_com)
         end
+
+        #end
 
         for (i,k) in enumerate(equilibrium_conditions); m.equilibrium_conditions[k] = i end
         for (i,k) in enumerate(endogenous_states); m.endogenous_states[k] = i end
@@ -105,23 +108,26 @@ function eqcond(m::OnionModel) #m::OnionModel
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$n")]]    = - m[:bet]*diagm(get_setting(m, :invkap))
 
 
-    if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+    #   if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+    if subspec_int ∈ [7, 8]
         Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]]    = get_setting(m, :invkap)
 
         Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
         Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
     end
 
-
+ #   end
 
 
     invkap_value = get_setting(m, :invkap)
 
-if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
+    #if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
+    if subspec_int ∈ [7, 8]
         for i in get_setting(m, :food_sectors)
             Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_food]] = - invkap_value[i]    # -m[:invkap].value[i]
         end
     end
+#end
 
     for i in get_setting(m, :core_goods_sectors)
         Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
