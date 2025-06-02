@@ -54,9 +54,9 @@ function eqcond(m::OnionModel) #m::OnionModel
     #N = get_setting(m, :n_model_states) #+ get_setting(m, :n_exo_states)
 
 
-    @show length(m.endogenous_states)
-    @show length(m.equilibrium_conditions)
-    @show N
+    #@show length(m.endogenous_states)
+    #@show length(m.equilibrium_conditions)
+    #@show N
     Γ0 = zeros(N,N)
     Γ1 = zeros(N,N)
     Ψ = zeros(N, length(exo))
@@ -362,7 +362,7 @@ dcstar_dτ = numer/denom
 
     norm_mat[1:size(C,1), 1:size(C,2)] = C
 norm_mat[size(C,1)+1:end, size(C,2)+1:end] = eye(N-n)
-@show size(Γ0), size(Γ1)
+#@show size(Γ0), size(Γ1)
     Γ0_norm = Γ0[vcat(1:n,n+2:N),:]*norm_mat # remove redundant equation
     Γ1_norm = Γ1[vcat(1:n,n+2:N),:]*norm_mat
 

@@ -15,7 +15,7 @@ function klein_BP(m::AbstractModel, A::AbstractMatrix, B::AbstractMatrix)
     # NK is number of predetermined variables
     NK = get_setting(m, :n_back_states)
     n = get_setting(m, :n_model_states) #2 * get_setting(m, :n_sectors) + 6
-    @show NK, n
+    #@show NK, n
 
     # n is number of variables (predet + non-predet)
 	#n = size(Jac1, 1)
@@ -51,7 +51,7 @@ function klein_BP(m::AbstractModel, A::AbstractMatrix, B::AbstractMatrix)
 	T = QZ.T
 	S = QZ.S
 
-    @show n, NK
+    #@show n, NK
 #=
     U11 = Matrix{Float64}(undef, NK, NK)
     U12 = Matrix{Float64}(undef, NK, NK-2)
