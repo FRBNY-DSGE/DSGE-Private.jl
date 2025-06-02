@@ -246,6 +246,7 @@ function ss7!(m::OnionModel)
         end
     end
 
+    return m
 end
 
 function ss8!(m::OnionModel)
@@ -273,4 +274,5 @@ function ss8!(m::OnionModel)
         end
     end
 
+    return m
 end
