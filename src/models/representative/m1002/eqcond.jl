@@ -572,7 +572,8 @@ function eqcond(m::Model1002, reg::Int)
         end
     end
 
-    if !isempty(mon_anticipated_ait_shocks(m))
+#= #Current implementation
+if !isempty(mon_anticipated_ait_shocks(m))
         ## remove this if conditional
         if  haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
             Γ1[eq[:eq_ait_rm], endo[Symbol("rm_ait_tl1")]] = 1.0
@@ -589,6 +590,37 @@ function eqcond(m::Model1002, reg::Int)
                 Γ0[eq[Symbol("eq_ait_rml$i")], endo[Symbol("rm_ait_tl$i")]]     = 1.
                 if i in mon_anticipated_ait_shocks(m)
                     Ψ[eq[Symbol("eq_ait_rml$i")], exo[Symbol("rm_ait_shl$i")]]      = 1.0
+                end
+
+            end
+
+        end
+    end
+=#
+#New implementation for ait_shocks_equal_taylor
+#Below: IF you have the setting to have std devation of ait shocks equal to taylor, and we are past the regime where AIT is live, then set it to 1. Otherwise, it should be 0.
+sh_ait_val = (haskey(get_settings(m), :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor) && reg <= get_setting(m, :ait_liftoff_regime)) ? 0. : 1.
+#3 cases:
+#1. I don't have the setting, so it is always 1
+#2. I have the setting, but the regime is post AIT change so it is 1
+#3. I have the setting, and the regime is pre-AIT so it is 0.
+    if !isempty(mon_anticipated_ait_shocks(m))
+        ## remove this if conditional
+        if  haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+            Γ1[eq[:eq_ait_rm], endo[Symbol("rm_ait_tl1")]] = 1.0
+            Γ0[eq[Symbol("eq_ait_rml1")], endo[Symbol("rm_ait_tl1")]]     = 1.
+            if 1 in mon_anticipated_ait_shocks(m)
+                Ψ[eq[Symbol("eq_ait_rml1")], exo[Symbol("rm_ait_shl1")]]      = sh_ait_val
+            end
+        end
+
+        for i in 2:maximum(mon_anticipated_ait_shocks(m))
+            # we can get rid of these if statements once n_mon... fully implemented for ait
+            if  haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+                Γ1[eq[Symbol("eq_ait_rml$(i-1)")], endo[Symbol("rm_ait_tl$i")]] = 1.0
+                Γ0[eq[Symbol("eq_ait_rml$i")], endo[Symbol("rm_ait_tl$i")]]     = 1.
+                if i in mon_anticipated_ait_shocks(m)
+                    Ψ[eq[Symbol("eq_ait_rml$i")], exo[Symbol("rm_ait_shl$i")]]      = sh_ait_val
                 end
 
             end
@@ -894,12 +926,31 @@ function eqcond(m::Model1002, reg::Int)
            end
        end
    end
-
+#= #Current Implementation:
    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
        Γ0[eq[:eq_ait_rm], endo[:ait_rm_t]] = 1.0
        Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = m[:ρ_ait_rm]
        #Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = !get_setting(m, :fix_ρ_ait_rm) ? m[:ρ_ait_rm] : 0.2135
        Ψ[eq[:eq_ait_rm], exo[:rm_ait_sh]] = 1.0
+       if haskey(m.settings, :add_taylor_rm) && get_setting(m, :add_taylor_rm)
+            # Add AIT shocks
+            Γ0[eq[:eq_mp], endo[:ait_rm_t]]     = -1.
+       end
+   end
+=#
+#New implementation for ait_shocks_equal_taylor
+#Below: IF you have the setting to have std devation of ait shocks equal to taylor, and we are past the regime where AIT is live, then set it to 1. Otherwise, it should be 0.
+sh_ait_val = (haskey(get_settings(m), :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor) && reg <= get_setting(m, :ait_liftoff_regime)) ? 0. : 1.
+#3 cases:
+#1. I don't have the setting, so it is always 1
+#2. I have the setting, but the regime is post AIT change so it is 1
+#3. I have the setting, and the regime is pre-AIT so it is 0.
+
+if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+       Γ0[eq[:eq_ait_rm], endo[:ait_rm_t]] = 1.0
+       Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = m[:ρ_ait_rm]
+       #Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = !get_setting(m, :fix_ρ_ait_rm) ? m[:ρ_ait_rm] : 0.2135
+       Ψ[eq[:eq_ait_rm], exo[:rm_ait_sh]] = sh_ait_val #1.0
        if haskey(m.settings, :add_taylor_rm) && get_setting(m, :add_taylor_rm)
             # Add AIT shocks
             Γ0[eq[:eq_mp], endo[:ait_rm_t]]     = -1.

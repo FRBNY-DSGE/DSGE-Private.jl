@@ -258,8 +258,15 @@ end
     QQ[exo[:μ_sh], exo[:μ_sh]]             = m[:σ_μ]^2
     QQ[exo[:ztil_sh], exo[:ztil_sh]]       = m[:σ_ztil]^2
     QQ[exo[:λ_f_sh], exo[:λ_f_sh]]         = m[:σ_λ_f]^2
-    QQ[exo[:λ_w_sh], exo[:λ_w_sh]]         = m[:σ_λ_w]^2
+QQ[exo[:λ_w_sh], exo[:λ_w_sh]]         = m[:σ_λ_w]^2
+if (haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor))
+    reg_cutoff = (haskey(m.settings, :remove_rm_shocks) && reg <= get_setting(m, :remove_rm_shocks)) ? get_setting(m, :remove_rm_shocks) : get_setting(m, :ait_liftoff_regime)
+    if reg < reg_cutoff
+        QQ[exo[:rm_sh], exo[:rm_sh]]           = m[:σ_r_m]^2
+    end
+else
     QQ[exo[:rm_sh], exo[:rm_sh]]           = m[:σ_r_m]^2
+end
     QQ[exo[:σ_ω_sh], exo[:σ_ω_sh]]         = m[:σ_σ_ω]^2
     QQ[exo[:μ_e_sh], exo[:μ_e_sh]]         = m[:σ_μ_e]^2
     QQ[exo[:γ_sh], exo[:γ_sh]]             = m[:σ_γ]^2
@@ -324,9 +331,13 @@ end
         QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = m[:σ_meas_π]^2
     end
 
-    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm) && reg >= get_setting(m, :ait_liftoff_regime)
+if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm) && reg >= get_setting(m, :ait_liftoff_regime)
+    if haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor)
+        QQ[exo[:rm_ait_sh], exo[:rm_ait_sh]] = m[:σ_r_m]^2
+    else
         QQ[exo[:rm_ait_sh], exo[:rm_ait_sh]] = m[:σ_ait_rm]^2
     end
+end
 
     if subspec(m) in ["ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83"]
         QQ[exo[:g_covid_sh], exo[:g_covid_sh]]   = m[:σ_g_covid]^2
@@ -417,8 +428,16 @@ for (k, v) in get_setting(m, :antshocks)
         if subspec(m) == "ss11"
             QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[:σ_r_m]^2 / n_mon_anticipated_shocks(m)
         else
-            QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[Symbol("σ_r_m$i")]^2
+            if (haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor))
+                reg_cutoff = (haskey(m.settings, :remove_rm_shocks) && reg <= get_setting(m, :remove_rm_shocks)) ? get_setting(m, :remove_rm_shocks) : get_setting(m, :ait_liftoff_regime)
+                if reg < reg_cutoff
+                    QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[Symbol("σ_r_m$i")]^2
+                end
+            else
+                QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[Symbol("σ_r_m$i")]^2
+            end
         end
+
 
         # Expected FFR from SPD - here to minimize expectations computations
         if i in expected_ffr(m)
@@ -432,11 +451,19 @@ for (k, v) in get_setting(m, :antshocks)
         end
     end
 
-    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+    if haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor)
+        if reg >= get_setting(m, :ait_liftoff_regime)
+            for i in mon_anticipated_ait_shocks(m)
+                QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_r_m$i")]^2
+            end
+        end
+    else
         for i in mon_anticipated_ait_shocks(m)
             QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_ait_r_m$i")]^2
         end
     end
+end
 
     spd_left = sort(setdiff(expected_ffr(m), finished_expffr))
     for j in 1:length(spd_left)
