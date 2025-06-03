@@ -605,6 +605,8 @@ function shock_groupings(m::OnionModel)
     pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
     tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
+    food_mkup = ShockGroup("mkp_food", [:μ_cpi_food_sh], RGB(0.6, .99, 0.5))
+    com_mkup = ShockGroup("common_mkup", [:μ_com_sh], RGB(0.9, 0.9, 0.7))
 
 
     #2) Return shock groups based on subspec
@@ -613,7 +615,7 @@ function shock_groupings(m::OnionModel)
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
     elseif subspec_int ∈ [3, 4, 5]
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
-    else
-        return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet]
+    elseif subspec_int ∈ [7]
+        return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
     end
 end
