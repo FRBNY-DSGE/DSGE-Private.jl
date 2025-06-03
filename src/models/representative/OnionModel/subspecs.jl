@@ -21,6 +21,10 @@ function init_subspec!(m::OnionModel)
         return ss7!(m)
     elseif subspec(m) == "ss8"
         return ss8!(m)
+    elseif subspec(m) == "ss9"
+        return ss9!(m)
+    elseif subspec(m) == "ss10"
+        return ss10!(m)
     else
         error("This subspec has not been defined.")
     end
@@ -273,6 +277,30 @@ function ss8!(m::OnionModel)
             m[param.key].fixed = true
         end
     end
+
+    return m
+end
+
+function ss9!(m::OnionModel)
+    ss7!(m)
+
+    # In ss9:
+    # (1) Using ss7, we set gamma to 0 so model is propertly demeaned
+
+    m[:γ].value = 0
+    m[:γ].fixed = true
+
+    return m
+end
+
+function ss10!(m::OnionModel)
+    ss8!(m)
+
+    # In ss10:
+    # (1) Using ss8, we set gamma to 0 so model is propertly demeaned
+
+    m[:γ].value = 0
+    m[:γ].fixed = true
 
     return m
 end

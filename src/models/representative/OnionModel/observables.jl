@@ -20,7 +20,7 @@ function init_observable_mappings!(m::OnionModel)
         levels
     end
 
-    if subspec_int ∉ [7]
+    if subspec_int ∉ [7, 9]
         consumption_fwd_transform = function (levels)
             # FROM: Nominal consumption
             # TO:   Real consumption, approximate quarter-to-quarter percent change,
@@ -102,7 +102,7 @@ function init_observable_mappings!(m::OnionModel)
 
     # CPI Inflation observable
 
-    if subspec_int ∈ [7, 8]
+    if subspec_int ∈ [7, 8, 9, 10]
         cpi_fwd_transform = function(levels)
             demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
         end
@@ -202,7 +202,7 @@ end
 
 
 
-if subspec_int ∈ [3, 4, 5, 6, 7, 8]
+if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################

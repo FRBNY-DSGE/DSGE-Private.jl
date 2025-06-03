@@ -104,7 +104,7 @@ function init_settings!(m::OnionModel)
         m <= Setting(:n_smc_blocks, 1)
         m <= Setting(:sampling_method, :SMC)
 
-        if subspec_int ∈ [7, 8]
+        if subspec_int ∈ [7, 8, 9, 10]
             m <= Setting(:subgroup_names,
                          OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
                                                      "core_services" => :CUSR0000SASLE,
@@ -495,7 +495,7 @@ end
 if subspec_int >= 2
 
     #1) Differentiate markup shock std and persistence
-    # For ss 7 and 8, we add food subgroup
+    # For ss7 and above, we add food subgroup
     for i in collect(keys(get_setting(m, :subgroup_names)))
         m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ: standard deviation of mark up shock process",
@@ -506,13 +506,13 @@ if subspec_int >= 2
     end
 
     #2) Add pi-star
-    if subspec_int ∈ [3, 4, 5, 7, 8]
+    if subspec_int ∈ [3, 4, 5, 7, 8, 9, 10]
         m <= parameter(:π_star, 0.5, fixed = true,
                        description = "Steady state rate of inflation",
                        tex_label = "\\pi^\\star")
     end
 
-    if subspec_int ∈ [7, 8]
+    if subspec_int ∈ [7, 8, 9, 10]
     #3) Add common shock
         m <= parameter(:σ_μ_com, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ_com: standard deviation of mark up shock process",
