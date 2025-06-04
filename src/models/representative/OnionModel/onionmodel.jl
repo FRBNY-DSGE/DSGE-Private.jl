@@ -301,7 +301,7 @@ function init_parameters!(m::OnionModel)
 
         m <= parameter(:bet, paras["β"], (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = true, scaling = x -> 1/(1 + x/100),
                        description="β: temporal discount",
-                       tex_label="\\beta")
+                       tex_label="100(\\beta^{-1} - 1)")
 
         m <= parameter(:ρ_τ, 1.22, fixed = true,
                        description="ρ_τ: ",
@@ -309,7 +309,7 @@ function init_parameters!(m::OnionModel)
 
         m <= parameter(:ρ_τ2, -0.2475, fixed = true,
                        description="ρ_τ2: ",
-                       tex_label="\\rho_\\tau2")
+                       tex_label="\\rho_\{\tau2}")
 #=
 m <= parameter(:ρ_i, 0.85^(1/3), fixed = true,
                description="ρ_i: policy inertia",
@@ -338,15 +338,16 @@ m <= parameter(:ξ, paras["ξ"], fixed = true,
 
 m <= parameter(:mp_cpi_infl, 1.01, (1e-5, 10.), (1e-5, 10.00), ModelConstructors.Exponential(), Normal(1.5, 0.25), fixed=false, #paras["mp_cpi_infl"] NEEDS TO BE 1.01 to AVOID EIGENVALUE ISSUE
                description="weight on cpi inflation in mp rule",
-               tex_label="mp_cpi_infl")
+               tex_label="\\varphi_{\\pi}") #"mp_cpi_infl"
 
 m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description="weight on consumption in mp rule",
-               tex_label="mp_cons")
-
-m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
-               description="weight on potential consumption",
-               tex_label="mp_cstar")
+               tex_label="\\varphi_{c}") #"mp_cons"
+if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10"]
+    m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
+                   description="weight on potential consumption",
+                   tex_label="\\varphi_{c \\star}") #"mp_cstar"
+end
 
 m <= parameter(:invkapw,paras["invkapw"], fixed = true,
                description="inverse kappaw",
@@ -458,7 +459,7 @@ m <= parameter(:mp_habit, 0.0, fixed = true,
 
 m <= parameter(:mp_habit, 0.0, (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description = ":mp_habit: weight of MP rule on habit formation",
-               tex_label="mp-habit")
+               tex_label="\\varphi_{h}") #"mp-habit"
 
 
 m <= parameter(:σ_r_m, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
@@ -498,23 +499,24 @@ if subspec_int >= 2
     for i in collect(keys(get_setting(m, :subgroup_names)))
         m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ: standard deviation of mark up shock process",
-                       tex_label = "\\sigma_{\\mu_$i}")
+                       tex_label = string("\\sigma_{\\mu}", strrep(i, "_", " "))
         m <= parameter(Symbol("ρ_μ_$i"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                        description = "ρ_μ: AR(1) coefficient of the mark up shock process",
-                       tex_label = "\\rho_{\\mu_$i}")
+                       tex_label = string("\\rho_{\\mu}",  strrep(i, "_", " "))
     end
 
     #2) Add pi-star
     if subspec_int ∈ [3, 4, 5, 7, 8]
         m <= parameter(:π_star, 0.5, fixed = true,
-                   description = "Steady state rate of inflation")
+                       description = "Steady state rate of inflation",
+                       tex_label = "\\pi^\\star")
     end
 
     if subspec_int ∈ [7, 8]
     #3) Add common shock
         m <= parameter(:σ_μ_com, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ_com: standard deviation of mark up shock process",
-                       tex_label = "\\sigma_{\\mu_com}")
+                       tex_label = "\\sigma_{\\mu} common}")
     end
 
 end
