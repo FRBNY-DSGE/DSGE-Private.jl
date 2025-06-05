@@ -343,11 +343,12 @@ m <= parameter(:mp_cpi_infl, 1.01, (1e-5, 10.), (1e-5, 10.00), ModelConstructors
 m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description="weight on consumption in mp rule",
                tex_label="\\varphi_{c}") #"mp_cons"
-if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10"]
+#Temp bypass
+#if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10"]
     m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                    description="weight on potential consumption",
                    tex_label="\\varphi_{c \\star}") #"mp_cstar"
-end
+#end
 
 m <= parameter(:invkapw,paras["invkapw"], fixed = true,
                description="inverse kappaw",
@@ -619,7 +620,7 @@ function shock_groupings(m::OnionModel)
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
     elseif subspec_int ∈ [3, 4, 5]
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
-    elseif subspec_int ∈ [7, 8]
+    elseif subspec_int ∈ [7, 8, 9, 10]
         return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
     end
 end
