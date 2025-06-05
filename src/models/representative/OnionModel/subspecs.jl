@@ -197,6 +197,7 @@ function ss6!(m::OnionModel)
        d) Primitives like π_star (already detrend lr inflation), invkapw
        e) mp_cpi_infl fixed to 1.01 for eigenvalue issue? (estimate for now)
        f) taus (we do not draw any tau shocks as their std set to 0)
+       g) Here, we test the CPI inflation observable
 
     2) Estimated using cleaned spec ss4 so no need for model2cloud dictionary
     =#

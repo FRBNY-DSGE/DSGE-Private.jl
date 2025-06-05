@@ -571,9 +571,11 @@ function init_model_indices!(m::OnionModel)
                               [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 
     #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
+    if subspec_int >= 7
         push!(endogenous_states, :μ_com)
         push!(exogenous_shocks, :μ_com_sh)
         push!(equilibrium_conditions, :eq_μ_com)
+    end
     #end
 
     for (i,k) in enumerate(observables); m.observables[k] = i end
@@ -617,7 +619,7 @@ function shock_groupings(m::OnionModel)
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
     elseif subspec_int ∈ [3, 4, 5]
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
-    elseif subspec_int ∈ [7]
+    elseif subspec_int ∈ [7, 8]
         return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
     end
 end
