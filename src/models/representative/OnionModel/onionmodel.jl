@@ -309,7 +309,7 @@ function init_parameters!(m::OnionModel)
 
         m <= parameter(:ρ_τ2, -0.2475, fixed = true,
                        description="ρ_τ2: ",
-                       tex_label="\\rho_\{\tau2}")
+                       tex_label="\\rho_{\\tau2}")
 #=
 m <= parameter(:ρ_i, 0.85^(1/3), fixed = true,
                description="ρ_i: policy inertia",
@@ -499,10 +499,10 @@ if subspec_int >= 2
     for i in collect(keys(get_setting(m, :subgroup_names)))
         m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ: standard deviation of mark up shock process",
-                       tex_label = string("\\sigma_{\\mu}", strrep(i, "_", " "))
+                       tex_label = string("\\sigma_{\\mu}", replace(i, "_" => " ")))
         m <= parameter(Symbol("ρ_μ_$i"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                        description = "ρ_μ: AR(1) coefficient of the mark up shock process",
-                       tex_label = string("\\rho_{\\mu}",  strrep(i, "_", " "))
+                       tex_label = string("\\rho_{\\mu}",  replace(i, "_" => " ")))
     end
 
     #2) Add pi-star
