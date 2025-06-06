@@ -220,9 +220,10 @@ function init_parameters!(m::OnionModel)
                        description="weight on consumption in mp rule",
                        tex_label="mp_cons")
 
-        m <= parameter(:mp_cstar, 0.0, fixed = true,
+            m <= parameter(:mp_cstar, 0.0, fixed = true,
                        description="weight on potential consumption",
                        tex_label="mp_cstar")
+
 
         m <= parameter(:invkapw,740.3277, fixed = true,
                        description="inverse kappaw",
