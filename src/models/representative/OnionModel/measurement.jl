@@ -30,7 +30,7 @@ function measurement(m::OnionModel{T},
 
     ## Demeaned Consumption Growth
     #if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
-    if subspec_int ∉ [7, 9]
+    if subspec_int ∉ [7, 9, 12]
         ZZ[obs[:consumption_growth], endo[:c_t]]  = 1.0
         ZZ[obs[:consumption_growth], endo_new[:c_t1]] = -1.0
     end
@@ -292,7 +292,7 @@ elseif subspec_int ∈ [3, 4, 5] # Add LR infl expectations (fix MP estimation)
         end
     end
 
-elseif subspec_int ∈ [6, 7, 8, 9, 10] # Add LR infl expectations (fix MP estimation)
+elseif subspec_int ∈ [6, 7, 8, 9, 10, 12] # Add LR infl expectations (fix MP estimation)
 
     # Specify all subgroup shocks
     for i in collect(keys(get_setting(m, :subgroup_names)))
@@ -325,7 +325,7 @@ elseif subspec_int ∈ [6, 7, 8, 9, 10] # Add LR infl expectations (fix MP estim
     ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
 
     # Now, add back observable CPI and add iid common markup shock std
-    if subspec_int ∈ [7, 8, 9, 10]
+    if subspec_int ∈ [7, 8, 9, 10, 12]
         ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
         QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ_com]^2
     end
