@@ -20,7 +20,7 @@ function init_observable_mappings!(m::OnionModel)
         levels
     end
 
-    if subspec_int ∉ [7, 9]
+    if subspec_int ∉ [7, 9, 12]
         consumption_fwd_transform = function (levels)
             # FROM: Nominal consumption
             # TO:   Real consumption, approximate quarter-to-quarter percent change,
@@ -102,7 +102,7 @@ function init_observable_mappings!(m::OnionModel)
 
     # CPI Inflation observable
 
-    if subspec_int ∈ [7, 8, 9, 10]
+    if subspec_int ∈ [7, 8, 9, 10, 12]
         cpi_fwd_transform = function(levels)
             demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
         end
@@ -202,7 +202,7 @@ end
 
 
 
-if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10]
+if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################
@@ -213,21 +213,33 @@ if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10]
         # Note: We subtract 0.5 because 0.5% inflation corresponds to
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
-
-        demean2(annualtoquarter(levels[!,:ASACX10]))
+        if subspec_int ∈ [12]
+            demean(annualtoquarter(levels[!, :PCE10]))
+        else
+            demean2(annualtoquarter(levels[!,:ASACX10]))
+        end
 
     end
 
 #Demean here by subtracting 2.3 as well
 
-longinflation_rev_transform = identity         #loggrowthtopct_annualized
-
-observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX],
+    longinflation_rev_transform = identity         #loggrowthtopct_annualized
+    if subspec_int  ∈ [12]
+        observables[:obs_longinflation] = Observable(:obs_longinflation, [:PCE10__PCE10YR],
                                                  longinflation_fwd_transform, longinflation_rev_transform,
-                                                 "10-year average inflation expectations",
-                                                 "10-year average yr/yr CPI inflation expectations")
+                                             "10-year average inflation expectations",
+                                             "10-year average yr/yr PCE inflation expectations")
+    else
+        observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX],
+                                                 longinflation_fwd_transform, longinflation_rev_transform,
+                                             "10-year average inflation expectations",
+                                             "10-year average yr/yr CPI inflation expectations")
+    end
 
 end
+
+
+
 
 m.observable_mappings = observables
 

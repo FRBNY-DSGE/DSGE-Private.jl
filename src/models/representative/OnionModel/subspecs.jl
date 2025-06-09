@@ -312,7 +312,6 @@ end
 function ss12!(m::OnionModel)
     # Subspec for DSGEVAR estimation of onion model where:
 
-    # 1) Keep CPI consumption as the sole observable
     ss9!(m)
 
 
