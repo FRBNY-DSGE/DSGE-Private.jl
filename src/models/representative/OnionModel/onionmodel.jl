@@ -346,11 +346,11 @@ m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untrans
                description="weight on consumption in mp rule",
                tex_label="\\varphi_{c}") #"mp_cons"
 #Temp bypass
-#if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10"]
+if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10"]
     m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                    description="weight on potential consumption",
                    tex_label="\\varphi_{c \\star}") #"mp_cstar"
-#end
+end
 
 m <= parameter(:invkapw,paras["invkapw"], fixed = true,
                description="inverse kappaw",
