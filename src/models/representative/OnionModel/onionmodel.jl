@@ -293,15 +293,16 @@ function init_parameters!(m::OnionModel)
 
         paras = InOutData()
 
-        #=
-        m <= parameter(:bet, paras["β"], fixed = true,
-                       description="β: temporal discount",
-                       tex_label="\\beta")
-        =#
-
-        m <= parameter(:bet, paras["β"], (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = true, scaling = x -> 1/(1 + x/100),
-                       description="β: temporal discount",
-                       tex_label="100(\\beta^{-1} - 1)")
+        # Dont apply scaling for β in briefing model and related subspecs
+        if subspec_int > 4
+            m <= parameter(:bet, paras["β"], (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = true, scaling = x -> 1/(1 + x/100),
+                           description="β: temporal discount",
+                           tex_label="100(\\beta^{-1} - 1)")
+        else
+            m <= parameter(:bet, paras["β"], (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = true,
+                           description="β: temporal discount",
+                           tex_label="\\beta")
+        end
 
         m <= parameter(:ρ_τ, 1.22, fixed = true,
                        description="ρ_τ: ",

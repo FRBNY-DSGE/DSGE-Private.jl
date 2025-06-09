@@ -25,6 +25,8 @@ function init_subspec!(m::OnionModel)
         return ss9!(m)
     elseif subspec(m) == "ss10"
         return ss10!(m)
+    elseif subspec(m) == "ss12"
+        return ss12!(m)
     else
         error("This subspec has not been defined.")
     end
@@ -304,4 +306,15 @@ function ss10!(m::OnionModel)
     m[:γ].fixed = true
 
     return m
+end
+
+
+function ss12!(m::OnionModel)
+    # Subspec for DSGEVAR estimation of onion model where:
+
+    # 1) Keep CPI consumption as the sole observable
+    ss9!(m)
+
+
+
 end
