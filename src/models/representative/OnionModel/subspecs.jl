@@ -27,6 +27,12 @@ function init_subspec!(m::OnionModel)
         return ss10!(m)
     elseif subspec(m) == "ss12"
         return ss12!(m)
+    elseif subspec(m) == "ss12"
+        return ss12!(m)
+    elseif subspec(m) == "ss20"
+        return ss20!(m)
+    elseif subspec(m) == "ss21"
+        return ss21!(m)
     else
         error("This subspec has not been defined.")
     end
@@ -311,9 +317,47 @@ end
 
 function ss12!(m::OnionModel)
     # Subspec for DSGEVAR estimation of onion model where:
-
     ss9!(m)
 
+end
 
+function ss20!(m::OnionModel)
+    # CPI inflation & expectations model (shutting down everything not in sectoral pc)
+    ss9!(m)
+
+    # Shut down discount factor shock process
+    m[:σ_b_t].value = 0.
+    m[:ρ_b_t].value = 0.
+
+    m[:σ_b_t].valuebounds = (0., 0.)
+    m[:ρ_b_t].valuebounds = (0., 0.)
+
+    m[:σ_b_t].fixed = true
+    m[:ρ_b_t].fixed = true
+
+    # Shut down wage growth process
+    m[:σ_μw] = 0.
+    m[:ρ_μw] = 0.
+
+    m[:σ_μw].valuebounds = (0., 0.)
+    m[:ρ_μw].valuebounds = (0., 0.)
+
+    m[:σ_μw].fixed = true
+    m[:ρ_μw].fixed = true
+
+    # Remove tfp process
+    m[:σ_a_t].value = 0.
+    m[:ρ_a_t].value = 0.
+
+    m[:σ_a_t].valuebounds = (0., 0.)
+    m[:ρ_a_t].valuebounds = (0., 0.)
+
+    m[:σ_a_t].fixed = true
+    m[:ρ_a_t].fixed = true
+
+    # Remove mp_shock
+    m[:σ_r_m].value = 0.
+    m[:σ_r_m].valuebounds = (0., 0.)
+    m[:σ_r_m].fixed = true
 
 end

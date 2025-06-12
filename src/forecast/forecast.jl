@@ -234,6 +234,8 @@ function forecast(system::System{S}, z0::Vector{S},
     horizon = size(shocks, 2)
 
     # Define our iteration function
+    # [ID] Temp: do not enforce zlb in forecast
+    enforce_zlb = false
     function iterate(z_t1, ϵ_t)
         z_t = C + T*z_t1 + R*ϵ_t
         if enforce_zlb

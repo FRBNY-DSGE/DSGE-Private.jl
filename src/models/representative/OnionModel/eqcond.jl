@@ -33,7 +33,7 @@ function eqcond(m::OnionModel) #m::OnionModel
 
 
         #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-        if subspec_int ∈ [7, 8, 9, 10, 12]
+        if subspec_int ∈ [7, 8, 9, 10, 12, 20]
             push!(endogenous_states, :μ_com)
             push!(equilibrium_conditions, :eq_μ_com)
         end
@@ -109,7 +109,7 @@ function eqcond(m::OnionModel) #m::OnionModel
 
 
     #   if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-    if subspec_int ∈ [7, 8, 9, 10, 12]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
         Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]]    = get_setting(m, :invkap)
 
         Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
@@ -122,7 +122,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     invkap_value = get_setting(m, :invkap)
 
     #if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
-    if subspec_int ∈ [7, 8, 9, 10, 12]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
         for i in get_setting(m, :food_sectors)
             Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_food]] = - invkap_value[i]    # -m[:invkap].value[i]
         end

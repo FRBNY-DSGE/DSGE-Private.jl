@@ -102,7 +102,7 @@ function init_observable_mappings!(m::OnionModel)
 
     # CPI Inflation observable
 
-    if subspec_int ∈ [7, 8, 9, 10, 12]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
         cpi_fwd_transform = function(levels)
             demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
         end
@@ -202,7 +202,7 @@ end
 
 
 
-if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12]
+if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12, 20]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################
@@ -213,7 +213,7 @@ if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12]
         # Note: We subtract 0.5 because 0.5% inflation corresponds to
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
-        if subspec_int ∈ [12]
+        if subspec_int ∈ [12, 20]
             demean(annualtoquarter(levels[!, :PCE10]))
         else
             demean2(annualtoquarter(levels[!,:ASACX10]))
@@ -224,7 +224,7 @@ if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12]
 #Demean here by subtracting 2.3 as well
 
     longinflation_rev_transform = identity         #loggrowthtopct_annualized
-    if subspec_int  ∈ [12]
+    if subspec_int  ∈ [12, 20]
         observables[:obs_longinflation] = Observable(:obs_longinflation, [:PCE10__PCE10YR],
                                                  longinflation_fwd_transform, longinflation_rev_transform,
                                              "10-year average inflation expectations",
@@ -238,9 +238,12 @@ if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12]
 
 end
 
-
-
-
-m.observable_mappings = observables
+# Temp (For ss20: we only want cpi inflation and expectations)
+if subspec_int ∈ [20]
+    m.observable_mappings[:cpi_inflation] = observables[:cpi_inflation]
+    m.observable_mappings[:obs_longinflation] = observables[:obs_longinflation]
+else
+    m.observable_mappings = observables
+end
 
 end

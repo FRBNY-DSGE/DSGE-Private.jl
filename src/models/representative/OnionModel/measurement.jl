@@ -28,6 +28,8 @@ function measurement(m::OnionModel{T},
 
     subspec_int = parse(Int, subspec(m)[3:end])
 
+    if subspec_int ∉ [20, 21]
+
     ## Demeaned Consumption Growth
     #if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
     if subspec_int ∉ [7, 9, 12]
@@ -344,13 +346,47 @@ elseif subspec_int ∈ [6, 7, 8, 9, 10, 12] # Add LR infl expectations (fix MP e
             end
         end
     end
-#if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-#=
-if subspec_int ∈ [7, 8]
-    QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ_com]^2
+
 end
-=#
+
+elseif subspec_int ∈ [20]
+
+QQ[exo[:τ_sh], exo[:τ_sh]] = 0.0 #This is just here to be explicit. Was 1.0 to replciate Kanzig IRFs
+
+#Monetary policy
+QQ[exo[:mp_sh], exo[:mp_sh]] = 0.0
+#TFP
+QQ[exo[:a_sh], exo[:a_sh]] = 0.0
+#Discount rate
+QQ[exo[:b_sh], exo[:b_sh]] = 0.0
+#Wage markup
+QQ[exo[:μw_sh], exo[:μw_sh]] = 0.0
+
+# Specify all subgroup shocks
+for i in collect(keys(get_setting(m, :subgroup_names)))
+    QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
 end
-#end
+
+# Keep cpi inflation
+ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
+QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ_com]^2
+
+# Keep infl expectations
+#Include long run inflation expectations: Need to calculate 40 quarter ahead inflation
+TTTs = Matrix{T}[]
+CCCs = Matrix{T}[]
+memo = nothing
+permanent_t = 1
+TTT10 = (I - TTT) \ (TTT - TTT^40)
+#Confirm all of my Cs are 0
+CCC10 = CCC
+
+TTT10        = TTT10 ./ 40.
+CCC10        = CCC10 ./ 40.
+
+# Add back inflation
+ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
+
+end
     return Measurement(ZZ, DD, QQ, EE)
 end

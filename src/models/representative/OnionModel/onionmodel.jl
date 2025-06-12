@@ -58,11 +58,10 @@ function OnionModel(subspec::String = "ss1";
         OrderedDict{Symbol,Observable}(),
         OrderedDict{Symbol,PseudoObservable}())
 
+    init_settings!(m)
     for setting in custom_settings
         m <= setting
     end
-
-    init_settings!(m)
     init_observable_mappings!(m)
     init_pseudo_observable_mappings!(m)
     init_model_indices!(m)
@@ -104,7 +103,7 @@ function init_settings!(m::OnionModel)
         m <= Setting(:n_smc_blocks, 1)
         m <= Setting(:sampling_method, :SMC)
 
-        if subspec_int ∈ [7, 8, 9, 10, 12]
+        if subspec_int ∈ [7, 8, 9, 10, 12, 20, 21]
             m <= Setting(:subgroup_names,
                          OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
                                                      "core_services" => :CUSR0000SASLE,
@@ -346,7 +345,7 @@ m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untrans
                description="weight on consumption in mp rule",
                tex_label="\\varphi_{c}") #"mp_cons"
 #Temp bypass
-if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10", "ss12"]
+if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10", "ss12", "ss20"]
     m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                    description="weight on potential consumption",
                    tex_label="\\varphi_{c \\star}") #"mp_cstar"
@@ -509,13 +508,13 @@ if subspec_int >= 2
     end
 
     #2) Add pi-star
-    if subspec_int ∈ [3, 4, 5, 7, 8, 9, 10, 12]
+    if subspec_int ∈ [3, 4, 5, 7, 8, 9, 10, 12, 20]
         m <= parameter(:π_star, 0.5, fixed = true,
                        description = "Steady state rate of inflation",
                        tex_label = "\\pi^\\star")
     end
 
-    if subspec_int ∈ [7, 8, 9, 10, 12]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
     #3) Add common shock
         m <= parameter(:σ_μ_com, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ_com: standard deviation of mark up shock process",

@@ -129,10 +129,12 @@ function compute_system(m::AbstractDSGEVARModel{T}, data::Matrix{T};
                 return out..., YYYY, XXYY, XXXX
             else
                 # Compute prior-weighted population moments
+                #[ID] Weigh lambda by number of observations
+                T_obs = size(data, 2)
                 λ = get_λ(m)
-                YYYYC = YYYY + λ .* out[1]
-                XXYYC = XXYY + λ .* out[2]
-                XXXXC = XXXX + λ .* out[3]
+                YYYYC = YYYY + λ .* T_obs .* out[1]
+                XXYYC = XXYY + λ .* T_obs .* out[2]
+                XXXXC = XXXX + λ .* T_obs .* out[3]
 
                 # Draw stationary VAR system
                 n_periods = size(data, 2) - lags
