@@ -180,7 +180,7 @@ function ss5!(m::OnionModel)
                     :σ_πstar,
                     :oil, :gas,
                     :invkapw, :π_star,
-                    :ρ_τ, :ρ_τ2]
+                    :ρ_τ, :ρ_τ2, :ρ_πstar]
 
     m[:σ_πstar].value = 0.01
 
@@ -359,5 +359,8 @@ function ss20!(m::OnionModel)
     m[:σ_r_m].value = 0.
     m[:σ_r_m].valuebounds = (0., 0.)
     m[:σ_r_m].fixed = true
+
+    #rho pi_star (fix!)
+    m[:ρ_πstar].fixed = true
 
 end
