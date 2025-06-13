@@ -318,6 +318,10 @@ end
 function ss12!(m::OnionModel)
     # Subspec for DSGEVAR estimation of onion model where:
     ss9!(m)
+    if haskey(get_settings(m), :fix_ρ_πstar) && get_setting(m, :fix_ρ_πstar)
+        m[:ρ_πstar].fixed = true
+        m[:ρ_πstar].value  = 0.99
+    end
 
 end
 

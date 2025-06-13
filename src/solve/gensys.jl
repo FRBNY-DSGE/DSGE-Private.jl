@@ -145,12 +145,15 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     end
     #@show (length(bigev), nunstab)
     existence = length(bigev) >= nunstab
+
     if existence
         eu[1] = 1
     else
+        #=
         if VERBOSITY[verbose] >= VERBOSITY[:high]
             @warn "Nonexistence: number of unstable roots exceeds number of jump variables"
         end
+=#
     end
 
     # Note that existence and uniqueness are not just matters of comparing
@@ -185,9 +188,11 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     if unique
         eu[2] = 1
     else
+        #=
         if VERBOSITY[verbose] >= VERBOSITY[:high]
             @warn "Indeterminacy: $(nloose) loose endogenous error(s)"
         end
+=#
     end
 
     tmat = hcat(eye(n - nunstab), -(ueta * (deta \ veta') * veta1 * (deta1 * adjoint(ueta1)))')
