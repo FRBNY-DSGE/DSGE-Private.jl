@@ -354,13 +354,13 @@ elseif subspec_int ∈ [20]
 QQ[exo[:τ_sh], exo[:τ_sh]] = 0.0 #This is just here to be explicit. Was 1.0 to replciate Kanzig IRFs
 
 #Monetary policy
-QQ[exo[:mp_sh], exo[:mp_sh]] = 0.0
+QQ[exo[:mp_sh], exo[:mp_sh]] = m[:σ_r_m]^2
 #TFP
-QQ[exo[:a_sh], exo[:a_sh]] = 0.0
+QQ[exo[:a_sh], exo[:a_sh]] = m[:σ_a_t]^2
 #Discount rate
-QQ[exo[:b_sh], exo[:b_sh]] = 0.0
+QQ[exo[:b_sh], exo[:b_sh]] = m[:σ_b_t]^2
 #Wage markup
-QQ[exo[:μw_sh], exo[:μw_sh]] = 0.0
+QQ[exo[:μw_sh], exo[:μw_sh]] = m[:σ_μw]^2
 
 # Specify all subgroup shocks
 for i in collect(keys(get_setting(m, :subgroup_names)))

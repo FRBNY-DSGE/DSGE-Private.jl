@@ -295,7 +295,8 @@ function init_parameters!(m::OnionModel)
 
         # Dont apply scaling for β in briefing model and related subspecs
         if subspec_int > 4
-            m <= parameter(:bet, paras["β"], (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = true, scaling = x -> 1/(1 + x/100),
+            unscaled_β = 100((1/paras["β"])-1) #This is what we're estimating/scaling
+            m <= parameter(:bet, unscaled_β, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = false, scaling = x -> 1/(1 + x/100),
                            description="β: temporal discount",
                            tex_label="100(\\beta^{-1} - 1)")
         else
@@ -449,7 +450,7 @@ m <= parameter(:h, 0.5347,  (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.Squa
                description = "h: consumption habit persistence",
                tex_label="h")
 
-m <= parameter(:γ, 0.0, (-5.0, 5.0), (-5., 5.), ModelConstructors.Untransformed(), Normal(0.4, 0.1), fixed=false,
+m <= parameter(:γ, 0.0, (-5.0, 5.0), (-5., 5.), ModelConstructors.Untransformed(), Normal(0.4, 0.1), fixed=true,
                scaling = x -> x/100, #Growth rate of economy
                description = "γ: Log of the steady-state growth rate of technology",
                tex_label="\\gamma")

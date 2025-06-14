@@ -168,7 +168,7 @@ function ss5!(m::OnionModel)
     #=
     1) We estimate most parameters except
        a) Elasticity parameters (ν, ζ, η, ξ)
-       b) σ_πstar fixed to 0.01
+       b) σ_πstar fixed to 0.01; ρ_πstar fixed
        c) Indexes for oil and gas (should be settings in retrospect)
        d) Primitives like π_star (already detrend lr inflation), invkapw
        e) mp_cpi_infl fixed to 1.01 for eigenvalue issue? (estimate for now)
@@ -213,7 +213,7 @@ function ss6!(m::OnionModel)
                     :σ_πstar,
                     :oil, :gas,
                     :invkapw, :π_star,
-                    :ρ_τ, :ρ_τ2]
+                    :ρ_τ, :ρ_τ2, :ρ_πstar]
 
     m[:σ_πstar].value = 0.01
 
@@ -332,6 +332,16 @@ function ss12!(m::OnionModel)
 end
 
 function ss20!(m::OnionModel)
+    # Only observe cpi inflation and PCE expectations and no other variables
+    ss5!(m)
+    m[:γ].value = 0
+    m[:γ].fixed = true
+
+end
+
+function ss21!(m::OnionModel)
+    # Previously ss20
+
     # CPI inflation & expectations model (shutting down everything not in sectoral pc)
     ss9!(m)
 
@@ -372,48 +382,4 @@ function ss20!(m::OnionModel)
 
     #rho pi_star (fix!)
     m[:ρ_πstar].fixed = true
-
-end
-
-function ss21!(m::OnionModel)
-    # Estimate the previously shut down shocks
-
-    # Shut down discount factor shock process
-    m[:σ_b_t].value = 0.
-    m[:ρ_b_t].value = 0.
-
-    m[:σ_b_t].valuebounds = (0., 0.)
-    m[:ρ_b_t].valuebounds = (0., 0.)
-
-    m[:σ_b_t].fixed = true
-    m[:ρ_b_t].fixed = true
-
-    # Shut down wage growth process
-    m[:σ_μw] = 0.
-    m[:ρ_μw] = 0.
-
-    m[:σ_μw].valuebounds = (0., 0.)
-    m[:ρ_μw].valuebounds = (0., 0.)
-
-    m[:σ_μw].fixed = true
-    m[:ρ_μw].fixed = true
-
-    # Remove tfp process
-    m[:σ_a_t].value = 0.
-    m[:ρ_a_t].value = 0.
-
-    m[:σ_a_t].valuebounds = (0., 0.)
-    m[:ρ_a_t].valuebounds = (0., 0.)
-
-    m[:σ_a_t].fixed = true
-    m[:ρ_a_t].fixed = true
-
-    # Remove mp_shock
-    m[:σ_r_m].value = 0.
-    m[:σ_r_m].valuebounds = (0., 0.)
-    m[:σ_r_m].fixed = true
-
-    #rho pi_star (fix!)
-    m[:ρ_πstar].fixed = true
-
 end
