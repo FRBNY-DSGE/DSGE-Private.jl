@@ -241,28 +241,14 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
                 end
                 deleteat!(para2, key_del)
             end
-
-            #@show length(ModelConstructors.n_param_regs(old_model.parameters)), length(ModelConstructors.n_param_regs(para2))
-            #if length(ModelConstructors.n_param_regs(old_model.parameters)) == length(ModelConstructors.n_param_regs(para2))
-                #tmp_diffs = ModelConstructors.n_param_regs(para2) - ModelConstructors.n_param_regs(old_model.parameters)
-                #@show findall(x -> x > 0, tmp_diffs)
-            #end
-
-
-
-
-
-
             #@assert sum(ModelConstructors.n_param_regs(old_model.parameters)) == sum(ModelConstructors.n_param_regs(para2)) "Sum of old model params is $(sum(ModelConstructors.n_param_regs(old_model.parameters))) and sum of para2 is $(sum(ModelConstructors.n_param_regs(para2))) due to reg del dictionary $(reg_del). Furthermore, the regime switching in the old model is $(old_regime_switching)" ## Delete for speed when testing done
 
 
             og_keys = [p.key for p in parameters]
             new_keys = [v.key for v in para2]
             addl_keys = setdiff(og_keys, new_keys)
-            #@show addl_keys
+
             update!(old_model, para2, regime_switching = old_regime_switching)
-
-
 
             for (x,p) in enumerate(para2) # Test correct params updated b/c update! assumes ordering is the same
                 @assert old_model[p.key].value == p.value
