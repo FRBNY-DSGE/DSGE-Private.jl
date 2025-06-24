@@ -177,13 +177,12 @@ function return_posterior_hat(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{
     inv_XXXXC = inv(XXXXC)
     β = inv_XXXXC * XXYYC
     inv_Σ_mul_T̄ = inv(YYYYC - XXYYC' * β)
-    inv_Σ_mul_T̄ += inv_Σ_mul_T̄
+    inv_Σ_mul_T̄ += inv_Σ_mul_T̄' # force to be positive definite
     inv_Σ_mul_T̄ ./= 2.
     cholmat = cholesky(inv_Σ_mul_T̄).L
-    Σ = inv(cholmat * cholmat')
-
+    Σ_mat = cholmat * cholmat' #We'd normally scale this by (1+λ)*T-k
     # Return β hat and Σ
-    return β, Σ
+    return β, Σ_mat
 end
 
 """

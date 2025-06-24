@@ -97,7 +97,7 @@ function compute_system(m::AbstractDSGEVARModel{T}, data::Matrix{T};
                         apply_altpolicy::Bool = false,
                         check_system::Bool = false, get_system::Bool = false,
                         get_population_moments::Bool = false,
-                        tvis::Bool = false, verbose::Symbol = :high) where {T<:Real}
+                        tvis::Bool = false, verbose::Symbol = :high, get_posterior_hat = false) where {T<:Real}
 
     if get_λ(m) == Inf
         # Then we just want the VAR approximation of the DSGE
@@ -138,9 +138,17 @@ function compute_system(m::AbstractDSGEVARModel{T}, data::Matrix{T};
 
                 # Draw stationary VAR system
                 n_periods = size(data, 2) - lags
-                β, Σ =  draw_stationary_VAR(YYYYC, XXYYC, XXXXC,
-                                            convert(Int, floor(n_periods + λ * n_periods)),
-                                            size(data, 1), lags)
+
+                # Get β hat and Σ hat as opposed to draws of β and Σ from posterior
+                if get_posterior_hat
+                    β, Σ = return_posterior_hat(YYYYC, XXYYC, XXXXC,
+                                                convert(Int, floor(n_periods + λ * n_periods)),
+                                                size(data, 1), lags)
+                else
+                    β, Σ =  draw_stationary_VAR(YYYYC, XXYYC, XXXXC,
+                                                convert(Int, floor(n_periods + λ * n_periods)),
+                                                size(data, 1), lags)
+                end
 
                 return β, Σ
             end
