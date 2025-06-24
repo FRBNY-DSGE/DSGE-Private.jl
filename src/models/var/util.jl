@@ -150,6 +150,7 @@ function draw_stationary_VAR(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S
     return β_draw, Σ_draw
 end
 
+
 function draw_stationary_VAR(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
                              T̄::Int; standard_orientation::Bool = true, testing::Bool = false,
                              test_Σ_draw_shock::Matrix{S} = Matrix{S}(undef, 0, 0),
@@ -161,6 +162,28 @@ function draw_stationary_VAR(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S
     return draw_stationary_VAR(YYYYC, XXYYC, XXXXC, T̄, n_obs, lags;
                                standard_orientation = standard_orientation, testing = testing,
                                test_Σ_draw_shock = test_Σ_draw_shock, test_β_draw_shock = test_β_draw_shock)
+end
+
+
+# Instead of returing draws from posterior of β and Σ, return β hat and Σ hat
+function return_posterior_hat(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
+                             T̄::Int, n_obs::Int, lags::Int; standard_orientation::Bool = true,
+                             testing::Bool = false,
+                             test_Σ_draw_shock::Matrix{S} = Matrix{S}(undef, 0, 0),
+                             test_β_draw_shock::Vector{S} = Vector{S}(undef, 0)) where {S<:Real}
+
+    # Set up
+    k = 1 + lags * n_obs
+    inv_XXXXC = inv(XXXXC)
+    β = inv_XXXXC * XXYYC
+    inv_Σ_mul_T̄ = inv(YYYYC - XXYYC' * β)
+    inv_Σ_mul_T̄ += inv_Σ_mul_T̄
+    inv_Σ_mul_T̄ ./= 2.
+    cholmat = cholesky(inv_Σ_mul_T̄).L
+    Σ = inv(cholmat * cholmat')
+
+    # Return β hat and Σ
+    return β, Σ
 end
 
 """
