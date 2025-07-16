@@ -307,7 +307,7 @@ function init_observable_mappings!(m::Model1002)
 
 
     ############################################################################
-    # 10.b AVG Short term inflation expectations
+    # 10.b AVG Short term inflation expectations -- what we are currently using. 10a is likely redundant and can be removed.
     ############################################################################
     if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
         avgshortinflation_fwd_transform = function (levels)
