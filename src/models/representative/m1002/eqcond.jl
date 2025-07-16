@@ -475,6 +475,8 @@ The current mark-up process is an ARMA(1,1) -- we want to add anticipated shocks
 1) we add ε^λ_{1, t-1} and ε^λ_{2, t-2} (shocks anticipated 1 and 2 periods ago, respectively, to hit today IN ADDITION TO the contemporaneous shock ε^λ_t
 2) Given the mark-up process is an ARMA, the moving average term, η^λσ^λϵ^λ_{t-1} needs to account for the shocks that really hit, not just the contemporaneous shock!
 
+REMINDER! ANTICIPATED SHOCKS TURN ON WHEN WE BEGIN TO ANTICIPATE THE SHOCK, NOT WHEN THAT ANTICIPATED SHOCK ACTUALLY HITS!
+
 =#
 
 if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
