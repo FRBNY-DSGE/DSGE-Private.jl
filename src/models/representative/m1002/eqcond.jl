@@ -456,7 +456,7 @@ function eqcond(m::Model1002, reg::Int)
         if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
             #Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1. Goes home! I can do this all with just my lag term:
 
-            Γ0[eq[:eq_λ_f], endo[:λ_f_t1]] = -1.0 #Double check sign here.. I think this should be right? (subtract off to the other side of the cannonical equation
+            Γ0[eq[:eq_λ_f], endo[:λ_f_t1]] = -1.0
         else
             Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
         end
@@ -480,21 +480,8 @@ REMINDER! ANTICIPATED SHOCKS TURN ON WHEN WE BEGIN TO ANTICIPATE THE SHOCK, NOT 
 =#
 
 if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
-    #Contemporaneous:
-    #Today, I get hit with the sum of all the anticipated shocks meant to hit me
-    ###Γ1[eq[:eq_λ_f], endo[:λ_f_tl1]] = 1.
-    #What is that?
-    #=
-    Γ0[eq[:eq_λ_f_tl1], endo[:λ_f_tl1]] = 1.
-    Ψ[eq[:eq_λ_f_tl1], exo[:λ_f_ant_sh1]] = 1.
-    Γ1[eq[:eq_λ_f_tl1], endo[:λ_f_tl2]] = 1.
-
-    #What is tl2?
-    Γ0[eq[:eq_λ_f_tl2], endo[:λ_f_tl2]] = 1.
-    Ψ[eq[:eq_λ_f_tl2], exo[:λ_f_ant_sh2]] = 1.
-=#
+    #Deal with case of 1-period ahead anticipated markup shock outside of the loop
     Γ1[eq[:eq_λ_f1], endo[:λ_f_tl1]] = 1.
-
     Γ0[eq[:eq_λ_f_tl1], endo[:λ_f_tl1]] = 1.
     Ψ[eq[:eq_λ_f_tl1], exo[:λ_f_ant_sh1]] = 1.
     for i in 2:get_setting(m, :add_ant_markup_shocks_ind)

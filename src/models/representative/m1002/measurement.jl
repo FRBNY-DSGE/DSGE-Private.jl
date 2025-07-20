@@ -242,7 +242,7 @@ CCC1_f = C_sum[endo[:π_t]]
 
 
 #Implementation
-
+#=
 if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
     ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 1
     ZZ[obs[:obs_shortinflation], endo[:π_t]] =  1
@@ -251,6 +251,7 @@ if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
     DD[obs[:obs_shortinflation]] =  CCC1_f + (4 * 100*(m[:π_star]-1))
 
 end
+=#
 
 #Implementation
 if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
