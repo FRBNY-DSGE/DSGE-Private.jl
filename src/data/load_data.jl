@@ -71,6 +71,7 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
         println(verbose, :low, "Creating dataset...")
 
         levels = load_data_levels(m; verbose=verbose, add_vals = add_vals)
+
         if cond_type in [:semi, :full]
             cond_levels = load_cond_data_levels(m; verbose=verbose)
             levels, cond_levels = reconcile_column_names(levels, cond_levels)

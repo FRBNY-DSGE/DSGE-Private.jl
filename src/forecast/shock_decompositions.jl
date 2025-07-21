@@ -65,7 +65,7 @@ end
 function shock_decompositions(system::System{S},
     forecast_horizons::Int, histshocks::Matrix{S},
     start_index::Int, end_index::Int) where {S<:AbstractFloat}
-
+    @show start_index, end_index
     # Setup
     nshocks      = size(system[:RRR], 2)
     nstates      = size(system[:TTT], 2)
@@ -1128,10 +1128,10 @@ function shock_decompositions_quarters(m::AbstractDSGEModel,
         shock_qtrs = [1:end_ind] ## Defaults to regular shock dec
     end
 
-    shock_decompositions_quarters(system, horizon, histshocks, start_ind, end_ind, shock_qtrs = shock_qtrs, back_shocks = back_shocks)
+    shock_decompositions_quarters(m, system, horizon, histshocks, start_ind, end_ind, shock_qtrs = shock_qtrs, back_shocks = back_shocks)
 end
 
-function shock_decompositions_quarters(system::System{S},
+function shock_decompositions_quarters(m::AbstractDSGEModel, system::System{S},
     forecast_horizons::Int, histshocks::Matrix{S},
     start_index::Int, end_index::Int;
     shock_qtrs::Vector{UnitRange{Int}} = [1:end_index], back_shocks::Vector{Symbol} = Symbol[]) where {S<:AbstractFloat}
@@ -1175,7 +1175,8 @@ function shock_decompositions_quarters(system::System{S},
 
         for k in 1:length(shock_qtrs)
             st_ind = shock_qtrs[k]
-            for j in 1:(length(back_shocks) + size(states,4))
+            #for j in 1:(length(back_shocks) + size(states,4))
+            for j in 1:(length(back_shocks))
                 states3[:,i,(k-1)*shock_len+j+size(states,4)] = sum(states[st_ind,:,i,shock_inds[j]], dims = 1)
                 obs3[:,i,(k-1)*shock_len+j+size(states,4)] = sum(obs[st_ind,:,i,shock_inds[j]], dims = 1)
                 pseudo3[:,i,(k-1)*shock_len+j+size(states,4)] = sum(pseudo[st_ind,:,i,shock_inds[j]], dims = 1)

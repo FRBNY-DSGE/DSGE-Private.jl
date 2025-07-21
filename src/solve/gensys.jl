@@ -91,6 +91,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     n       = size(a, 1)
 
     select = BitArray(undef, n)
+
     for i in 1:n
         # nunstab is the variable name used by Chris Sims, but it seems
         # that nunstab should actually correspond to the number of stable λs
@@ -99,9 +100,12 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         select[i] = !(abs(b[i, i]) > div * abs(a[i, i]))
         if (abs(a[i, i]) < ϵ) && (abs(b[i, i]) < ϵ)
             zxz = 1
+
         end
     end
     nunstab = n - sum(select)
+    @show nunstab, sum(select), n
+
 
 
     if zxz == 1
@@ -143,7 +147,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         veta  = etawtsvd.V[:, bigev]
         deta  = Matrix(Diagonal(etawtsvd.S[bigev]))
     end
-
+    @show (length(bigev), nunstab)
     existence = length(bigev) >= nunstab
 
     if existence

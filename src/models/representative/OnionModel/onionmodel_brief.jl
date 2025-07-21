@@ -1,5 +1,5 @@
 mutable struct OnionModel{T} <: AbstractRepModel{T}
-    parameters::Vector{AbstractParameter{T}}
+    parameters::Vector{Union{AbstractParameter{T}, AbstractVectorParameter{Vector,T}}}
     steady_state::ParameterVector{T}
     keys::OrderedDict{Symbol, Int}
 
@@ -42,7 +42,7 @@ function OnionModel(subspec::String = "ss1";
 
     m = OnionModel{Float64}(
             # model parameters and steady state values
-        Vector{AbstractParameter{Float64}}(),
+        Vector{Union{AbstractParameter{Float64}, VectorParameter{Vector,Float64,Transform}}}(),
         Vector{Float64}(),
         OrderedDict{Symbol,Int}(),
 
@@ -84,44 +84,25 @@ function init_settings!(m::OnionModel)
     elseif subspec_int >= 1
         m <= Setting(:n_sectors, 69)
 
+
         energy_sectors = [3,4,5,8,26]
         food_sectors   = [1,21]
-        core_services = 42:69
-        core_goods = setdiff(1:69, vcat(energy_sectors, core_services, food_sectors))
-        core = vcat(core_services, core_goods)
+        core_service = 42:69
+        core_goods   = setdiff(1:69, vcat(energy_sectors, vcat(food_sectors, core_service)))
 
-        # Settings previously in spec files
-        m <= Setting(:irf_type, "oil")
-        m <= Setting(:expected_ffr, [])
-        m <= Setting(:cond_semi_names, [])
-        m <= Setting(:cond_full_names, [])
-        m <= Setting(:solution_method, :gensys)
-        m <= Setting(:T, 52)
-        m <= Setting(:forecast_horizons, 40)
-        m <= Setting(:impulse_response_horizons, 40)
-        m <= Setting(:use_parallel_workers, true)
-        m <= Setting(:sectoral_nan, true)
-        m <= Setting(:n_smc_blocks, 1)
-        m <= Setting(:sampling_method, :SMC)
-        m <= Setting(:subgroup_names,
-                     OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
-                                                 "core_services" => :CUSR0000SASLE,
-                                                 "cpi_energy" => :CPIENGSL,
-                                                 "core_foods" => :NOTHING))
-        m <= Setting(:subgroup_to_sector,
-                     OrderedDict{String, Array{Int64,1}}("core_goods" => core_goods,
-                                                         "core_services" => core_services,
-                                                         "cpi_energy" =>  energy_sectors,
-                                                         "core_foods" => food_sectors))
+        core = vcat(core_service, core_goods)
+
     end
 
     # Sectoral Discrimination
     m <= Setting(:energy_sectors, energy_sectors)
     m <= Setting(:food_sectors, food_sectors)
-    m <= Setting(:core_service_sectors, core_services)
+    m <= Setting(:core_service_sectors, core_service)
     m <= Setting(:core_goods_sectors, core_goods)
     m <= Setting(:core_sectors, core)
+
     m <= Setting(:no_data_sectors, [2, 7, 9, 25, 38, 39, 41, 47, 49, 51, 54, 56, 65])
+
 
 
     # Relevant for Model Building (sizes of matrices and such)
@@ -135,7 +116,6 @@ function init_settings!(m::OnionModel)
     m <= Setting(:param_data_root, "/data/dsge_data_dir/proc/dsge/briefings/202412/Model_Data/")
     m <= Setting(:dataroot, "/data/dsge_data_dir/proc/dsge/briefings/202412/Model_Data/input_data/")
     m <= Setting(:saveroot, "/data/dsge_data_dir/proc/dsge/briefings/202412/output_data/")
-    m <= Setting(:forecast_input_file_overrides, Dict{Symbol, String}())
 
 
     # Relevant for reading and formatting data
@@ -151,12 +131,14 @@ function init_settings!(m::OnionModel)
     sectoral_inflation_path = get_setting(m, :dataroot) * "sector_inflation_" * (get_setting(m, :data_quarter_or_month) == :quarter ? "quarterly" : "monthly") * ".csv"
     m <= Setting(:sector_names, (names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])[Not([69,70,72,73])])
 
+
     # Relevant for other things such as IRFs, smoothing, and forecasting
     m <= Setting(:n_mon_anticipated_shocks, 0)
     m <= Setting(:forecast_smoother, :durbin_koopman)
+
     m <= Setting(:forecast_uncertainty_override, Nullable{Bool}())
-    m <= Setting(:shockdec_startdate, Nullable{Bool}())
-    m <= Setting(:shockdec_enddate, Nullable{Bool}())
+    #m <= Setting(:shockdec_startdate, Nullable{Bool}())
+    #m <= Setting(:shockdec_enddate, Nullable{Bool}())
 end
 
 
@@ -214,6 +196,7 @@ function init_parameters!(m::OnionModel)
                        description="inverse kappaw",
                        tex_label="invkawp")
 
+
         m <= parameter(:oil, 14., fixed = true,
                        description = "Index of oil",
                        tex_label="oil")
@@ -253,84 +236,76 @@ function init_parameters!(m::OnionModel)
         m <= Setting(:ωN_tilde, fl["omegaN_tilde"])
         m <= Setting(:inpshare, fl["inpshare"])
 
-        m <= Setting(:labshare, vec(fl["labshare"]))
-        m <= Setting(:taxshare, vec(fl["taxshare"]))
-        m <= Setting(:tointshare, vec(fl["tointshare"]))
-        m <= Setting(:int_totout, vec(fl["ind_totout"]))
-        m <= Setting(:invkap, vec(fl["invkap"]))
-        m <= Setting(:food, vec(fl["food"]))
-        m <= Setting(:core, vec(fl["core"]))
-        m <= Setting(:energy, vec(fl["energy"]))
-        m <= Setting(:gam, vec(fl["gam"])) #Expenditure shares
-        m <= Setting(:gam_core, vec(fl["gam_core"]))
-        m <= Setting(:gam_food, vec(fl["gam_food"]))
-        m <= Setting(:gam_energy, vec(fl["gam_energy"]))
-        m <= Setting(:gam_services, vec(fl["gam_services"]))
-        m <= Setting(:gam_coreservices, vec(fl["gam_coreservices"]))
-        m <= Setting(:gam_goods, vec(fl["gam_goods"]))
-        m <= Setting(:gam_coregoods, vec(fl["gam_coregoods"]))
-        m <= Setting(:pc_px, vec(fl["pc_px"]))
-        m <= Setting(:to_mx, vec(fl["to_mx"]))
-        m <= Setting(:ei, vec(fl["ei"]))
-        m <= Setting(:ς_tilde, vec(fl["varsig_tilde"]))
+
+        m <= parameter(:labshare, vec(fl["labshare"]))
+        m <= parameter(:taxshare, vec(fl["taxshare"]))
+        m <= parameter(:tointshare, vec(fl["tointshare"]))
+        m <= parameter(:int_totout, vec(fl["ind_totout"]))
+        m <= parameter(:invkap, vec(fl["invkap"]))
+        m <= parameter(:food, vec(fl["food"]))
+        m <= parameter(:core, vec(fl["core"]))
+        m <= parameter(:energy, vec(fl["energy"]))
+        m <= parameter(:gam, vec(fl["gam"])) #Expenditure shares
+        m <= paramater(:gam_core, vec(fl["gam_core"]))
+        m <= parameter(:gam_food, vec(fl["gam_food"]))
+        m <= parameter(:gam_energy, vec(fl["gam_energy"]))
+        m <= parameter(:gam_services, vec(fl["gam_services"]))
+        m <= parameter(:gam_coreservices, vec(fl["gam_coreservices"]))
+        m <= parameter(:gam_goods, vec(fl["gam_goods"]))
+        m <= parameter(:gam_coregoods, vec(fl["gam_coregoods"]))
+        m <= parameter(:pc_px, vec(fl["pc_px"]))
+        m <= parameter(:to_mx, vec(fl["to_mx"]))
+        m <= parameter(:ei, vec(fl["ei"]))
+        m <= parameter(:ς_tilde, vec(fl["varsig_tilde"]))
 
 
-    elseif subspec_int >= 1
+    elseif subspec_int == 1
 
         paras = InOutData()
 
-        #=
+
+
         m <= parameter(:bet, paras["β"], fixed = true,
                        description="β: temporal discount",
                        tex_label="\\beta")
-        =#
 
-        m <= parameter(:bet, paras["β"], (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = true, scaling = x -> 1/(1 + x/100),
-                       description="β: temporal discount",
-                       tex_label="\\beta")
-
-        m <= parameter(:ρ_τ, 1.22, fixed = true,
+        m <= parameter(:ρ_τ, 1.22, fixed = true, #paras["ρ_τ"]
                        description="ρ_τ: ",
                        tex_label="\\rho_\\tau")
 
         m <= parameter(:ρ_τ2, -0.2475, fixed = true,
                        description="ρ_τ2: ",
                        tex_label="\\rho_\\tau2")
-#=
-m <= parameter(:ρ_i, 0.85^(1/3), fixed = true,
-               description="ρ_i: policy inertia",
-               tex_label="\\rho_i")
-=#
 
-m <= parameter(:ρ_i, 0.85^(1/3), (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.75, 0.10), fixed = true,
+m <= parameter(:ρ_i, 0.85^(1/3), fixed = true,
                description="ρ_i: policy inertia",
                tex_label="\\rho_i")
 
 m <= parameter(:η, paras["η"], fixed = true,
-               description="η: Elasticity of substitution between labor and intermediate inputs.",
+               description="η: ",
                tex_label="\\eta")
 
 m <= parameter(:ζ, paras["ζ"], fixed = true,
-               description="ζ: Elasticity of substitution in CES consumption. ",
+               description="ζ:",
                tex_label="\\zeta")
 
 m <= parameter(:ν, paras["ν"], fixed = true,
-               description="ν: Elasticity of substitution between energy and non-energy inputs.",
+               description="ν: ",
                tex_label="\\nu")
 
 m <= parameter(:ξ, paras["ξ"], fixed = true,
-               description="ξ: Elasticity of substitution between intermediate inputs.",
+               description="ξ: ",
                tex_label="\\xi")
 
-m <= parameter(:mp_cpi_infl, 1.01, (1e-5, 10.), (1e-5, 10.00), ModelConstructors.Exponential(), Normal(1.5, 0.25), fixed=false, #paras["mp_cpi_infl"] NEEDS TO BE 1.01 to AVOID EIGENVALUE ISSUE
+m <= parameter(:mp_cpi_infl, 1.01, fixed = true, #paras["mp_cpi_infl"] NEEDS TO BE 1.01 to AVOID EIGENVALUE ISSUE
                description="weight on cpi inflation in mp rule",
                tex_label="mp_cpi_infl")
 
-m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
+m <= parameter(:mp_cons, 0., fixed = true, #paras["mp_cons"]
                description="weight on consumption in mp rule",
                tex_label="mp_cons")
 
-m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
+m <= parameter(:mp_cstar, 0., fixed = true, #paras["mp_cstar"]
                description="weight on potential consumption",
                tex_label="mp_cstar")
 
@@ -346,11 +321,13 @@ m <= parameter(:oil, paras["oil"], fixed = true,
                description = "Index of oil",
                    tex_label="oil")
 
-m <= parameter(:gas, paras["gas"], fixed = true,
-               description = "Index of gas",
-               tex_label="gas")
+    m <= parameter(:gas, paras["gas"], fixed = true,
+                   description = "Index of gas",
+                   tex_label="gas")
 
-m <= Setting(:coal, paras["coal"])
+    m <= parameter(:coal, paras["coal"], fixed = true,
+                   description = "Index of coal",
+                   tex_label="coal")
 
 
 #Setting all of these to 1 just to have values down -- to be filled later
@@ -373,85 +350,76 @@ m <= Setting(:ω_tilde, paras["ω_tilde"])
 m <= Setting(:ωE_tilde, paras["ωE_tilde"])
 m <= Setting(:ωN_tilde, paras["ωN_tilde"])
 
-m <= Setting(:inpshare, paras["inpshare"])
-m <= Setting(:labshare, vec(paras["labshare"]))
-
-m <= Setting(:taxshare, vec(paras["taxshare"]))
-m <= Setting(:totintshare, vec(paras["totintshare"]))
-m <= Setting(:int_totout, vec(paras["ind_totout"]))
-m <= Setting(:invkap, vec(paras["invkap"]))
-m <= Setting(:food, float(vec(paras["food"])))
-m <= Setting(:core, float(vec(paras["core"])))
-m <= Setting(:energy, float(vec(paras["energy"])))
-m <= Setting(:gam, vec(paras["gam"]))
-m <= Setting(:gam_core, vec(paras["gam_core"]))
-m <= Setting(:gam_food, vec(paras["gam_food"]))
-m <= Setting(:gam_energy, vec(paras["gam_energy"]))
-m <= Setting(:pc_px, vec(paras["pc_px"]))
-m <= Setting(:to_mx, vec(paras["to_mx"]))
-m <= Setting(:ei, vec(paras["ei"]))
-m <= Setting(:ς_tilde, vec(paras["varsig_tilde"]))
+if get_setting(m, :marco_test_num) == 71
+    #In spec 71, we 0 out the I/O matrix
+    m <= Setting(:inpshare, (paras["inpshare"] .* 0.0))
+    m <= parameter(:labshare, vec(ones(length(paras["labshare"]))))
+else
+    m <= Setting(:inpshare, paras["inpshare"])
+    m <= parameter(:labshare, vec(paras["labshare"]))
+end
+m <= parameter(:taxshare, vec(paras["taxshare"]))
+m <= parameter(:totintshare, vec(paras["totintshare"]))
+m <= parameter(:int_totout, vec(paras["ind_totout"]))
+m <= parameter(:invkap, vec(paras["invkap"]))
+m <= parameter(:food, float(vec(paras["food"])))
+m <= parameter(:core, float(vec(paras["core"])))
+m <= parameter(:energy, float(vec(paras["energy"])))
+m <= parameter(:gam, vec(paras["gam"]))
+m <= parameter(:gam_core, vec(paras["gam_core"]))
+m <= parameter(:gam_food, vec(paras["gam_food"]))
+m <= parameter(:gam_energy, vec(paras["gam_energy"]))
+m <= parameter(:pc_px, vec(paras["pc_px"]))
+m <= parameter(:to_mx, vec(paras["to_mx"]))
+m <= parameter(:ei, vec(paras["ei"]))
+m <= parameter(:ς_tilde, vec(paras["varsig_tilde"]))
+if get_setting(m, :marco_test_num) == 5 || get_setting(m, :marco_test_num) == 10
+    m <= parameter(:ρ_μ_trend, vec(0.0 * ones(get_setting(m, :n_sectors))))
+elseif get_setting(m, :marco_test_num) == 6 || get_setting(m, :marco_test_num) == 66 || get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 69 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
+    #setting m[:ρ_μ_trend] = m[:ρ_μ] (from DSGE model)
+    m <= parameter(:ρ_μ_trend, vec(0.8827 * ones(get_setting(m, :n_sectors)))) #0.8827
+elseif get_setting(m, :marco_test_num) == 8 || get_setting(m, :marco_test_num) == 11
+    #setting m[:ρ_μ_trend] = m[:ρ_μ] (from DSGE model)
+    m <= parameter(:ρ_μ_trend, vec(0.7 * ones(get_setting(m, :n_sectors))))
+else
+    m <= parameter(:ρ_μ_trend, vec(0.999 * ones(get_setting(m, :n_sectors))))
+end
 
 
 ## Adding model parameters for standard deviation of shocks
+m <= parameter(:σ_c, 0.8719, fixed = true,
+               description = "σ_c: Coefficient of relative risk aversion")
+m <= parameter(:σ_b_t, 0.0292,fixed = true,
+               description = "σ_b: Standard deviation of the discount rate process")
+m <= parameter(:ρ_b_t, 0.941, fixed = true,
+               description = "ρ_b: AR(1) coefficient of the discount rate process")
+m <= parameter(:σ_μ, 0.1314, fixed = true,
+               description = "σ_μ: standard deviation of mark up shock process")
+m <= parameter(:ρ_μ, 0.8827, fixed = true, #0.8827
+               description = "ρ_μ: AR(1) coefficient of the mark up shock process")
+m <= parameter(:σ_μw, 0.1314, fixed = true,
+               description = "σ_wμ: standard deviation of wage mark up shock process")
+m <= parameter(:ρ_μw, 0.3884, fixed = true,
+               description = "ρ_μw: AR(1) coefficient in the wage mark up shock process")
+m <= parameter(:σ_πstar, 0.0269, fixed = true,
+               description = "σ_πstar: standard deviation of the process describing the time varying inflation target")
+m <= parameter(:ρ_πstar, 0.99, fixed = true,
+               description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target")
+m <= parameter(:σ_a_t, 0.6742, fixed = true, #Taken from std dev of stationary comp of prod
+               description = "σ_a_t: standard deviation of the process describing productivity")
+m <= parameter(:ρ_a_t, 0.9446, fixed = true,#Taken from std dev of stationary comp of prod 0.9446
+               description = "ρ_a_t: AR(1) coefficient of the process describing productivity")
 
-### Shared across all subspecs
-m <= parameter(:σ_c, 0.8719, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), Normal(1.5, 0.37), fixed=false,
-               description = "σ_c: Coefficient of relative risk aversion",
-               tex_label = "\\sigma_c")
-m <= parameter(:σ_b_t, 0.0292, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
-               description = "σ_b: Standard deviation of the discount rate process",
-               tex_label = "\\sigma_{b_t}")
-m <= parameter(:ρ_b_t, 0.941, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
-               description = "ρ_b: AR(1) coefficient of the discount rate process",
-               tex_label = "\\rho_{b_t}")
+m <= parameter(:h, 0.5347, fixed = true,
+               description = "h: consumption habit persistence")
+m <= parameter(:γ, 0.0, fixed=true, #0.3673, fixed = true,#Growth rate of economy
+               description = "γ: Log of the steady-state growth rate of technology")
 
-m <= parameter(:σ_μw, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
-               description = "σ_wμ: standard deviation of wage mark up shock process",
-               tex_label = "\\sigma_{\\mu w}")
-m <= parameter(:ρ_μw, 0.3884, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
-               description = "ρ_μw: AR(1) coefficient in the wage mark up shock process",
-               tex_label = "\\rho_{\\mu w}")
-
-m <= parameter(:σ_πstar, 0.0269, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(6, 0.03), fixed=false,
-               description = "σ_πstar: standard deviation of the process describing the time varying inflation target",
-               tex_label = "\\sigma_{\\pi^\\star}")
-m <= parameter(:ρ_πstar, 0.99, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=true,
-               description = "ρ_πstar: AR(1) coefficient of process describing the time varying inflation target",
-               tex_label = "\\rho_{\\pi^\\star}")
-
-m <= parameter(:σ_a_t, 0.6742, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false, #Taken from std dev of stationary comp of prod
-               description = "σ_a_t: standard deviation of the process describing productivity",
-               tex_label = "\\sigma_{a_t}")
-
-m <= parameter(:ρ_a_t, 0.9446,  (0., 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,#Taken from std dev of stationary comp of prod 0.9446
-               description = "ρ_a_t: AR(1) coefficient of the process describing productivity",
-               tex_label = "\\rho_{a_t}")
-
-m <= parameter(:h, 0.5347,  (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.7, 0.1), fixed=false,
-               description = "h: consumption habit persistence",
-               tex_label="h")
-
-m <= parameter(:γ, 0.0, (-5.0, 5.0), (-5., 5.), ModelConstructors.Untransformed(), Normal(0.4, 0.1), fixed=false,
-               scaling = x -> x/100, #Growth rate of economy
-               description = "γ: Log of the steady-state growth rate of technology",
-               tex_label="\\gamma")
-#=
 m <= parameter(:mp_habit, 0.0, fixed = true,
-               description = ":mp_habit: weight of MP rule on habit formation",
-               tex_label="mp-habit")
-=#
-
-m <= parameter(:mp_habit, 0.0, (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
-               description = ":mp_habit: weight of MP rule on habit formation",
-               tex_label="mp-habit")
-
-
-m <= parameter(:σ_r_m, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
-               description = "Standard deviation of process describing iid monetary policy shock",
-               tex_label="\\sigma_{r^m}")
-
-#= we don't use for now (measurement errors)
+               description = ":mp_habit: weight of MP rule on habit formation")
+m <= parameter(:σ_r_m, 0.2380, fixed = true,
+               description = "Standard deviation of process describing iid monetary policy shock")
+#= we don't use for now
 m <= parameter(:ρ_meas_πc, 0.0, fixed = true,
                description = "AR(1) coefficient for CPI inflation measurement error process")
 
@@ -459,46 +427,14 @@ m <= parameter(:σ_meas_πc, 0.0999, fixed = true,
                description = "AR(1) coefficient for CPI inflation measurement error process")
 =#
 
-#==============
-Subspec specific parameter additions
-==============#
+m <= parameter(:π_star, 0.5, fixed = true,
+               description = "Steady state rate of inflation")
 
-if subspec_int ∈ [0, 1]
 
-    #1) Add common trend persistence for briefing model
-    m <= parameter(:ρ_μ_trend, 0.8827)
-
-    #2) Add common markup shock std and AR(1) coefficient
-    m <= parameter(:σ_μ, 0.1314, fixed = true,
-                   description = "σ_μ: standard deviation of mark up shock process")
-    m <= parameter(:ρ_μ, 0.8827, fixed = true,
-                   description = "ρ_μ: AR(1) coefficient of the mark up shock process")
-    m <= parameter(:π_star, 0.5, fixed = true,
-                   description = "Steady state rate of inflation")
-else # ss ∈ [2, 3, ...]
-
-    for i in collect(keys(get_setting(m, :subgroup_names)))
-        #1) Differentiate markup shock std and persistence
-        m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
-                       description = "σ_μ: standard deviation of mark up shock process",
-                       tex_label = "\\sigma_{\\mu_$i}")
-        m <= parameter(Symbol("ρ_μ_$i"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
-                       description = "ρ_μ: AR(1) coefficient of the mark up shock process",
-                       tex_label = "\\rho_{\\mu_$i}")
-    end
-
-    if subspec_int ∈ [3, 4, 5]
-        m <= parameter(:π_star, 0.5, fixed = true,
-                   description = "Steady state rate of inflation")
-    end
-
-end
-
-# Keshav's inflation shares
 Kgam = DataFrame(CSV.File("/data/dsge_data_dir/proc/dsge/briefings/202412/Model_Data/gamma_vs_true_gamma.csv"))
 Kgam_vec = vec(Kgam[!, :true_gamma])
 
-m <= Setting(:Kgam, Kgam_vec)
+m <= parameter(:Kgam, Kgam_vec)
 
 end
 
@@ -513,10 +449,11 @@ function init_model_indices!(m::OnionModel)
     n = get_setting(m, :n_sectors)
 
 
-    exogenous_shocks            =
-        [[Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))];
-         [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh];
-         [:τ_sh, :μ_com_sh]]
+    exogenous_shocks            = [#[Symbol("μ_trend_$(i)_sh") for i in 1:n];
+                                   #[Symbol("μ_iid_$(i)_sh") for i in 1:n];
+                                   [:μ_com_sh, :μ_com_goods_sh, :μ_com_services_sh, :μ_com_energy_sh];
+                                   [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
+                                   [:τ_sh]]
 
     observables                 = keys(m.observable_mappings)
 
@@ -526,24 +463,26 @@ function init_model_indices!(m::OnionModel)
                          [Symbol("π_$i") for i in 1:n]; #sectoral inflation
                          [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
                          [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
-                         [:μ_com];
                          [Symbol("Eπ_$i") for i in 1:n];
                          [:Ec_t, :Eπc_t, :Eπw_t];
-                         [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+                         [:μ_com, :μ_com_goods, :μ_com_services, :μ_com_energy]]
+                         #[Symbol("mkup_iid_$(i)") for i in 1:n];
+                         #[Symbol("mkup_trend_$(i)") for i in 1:n]]
 
     endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
 
     expected_shocks =[[Symbol("Eπ_$(i)_sh") for i in 1:n];
-                       [:Ec_sh, :Eπc_sh, :Eπw_sh]]
+                      [:Ec_sh, :Eπc_sh, :Eπw_sh]]
 
     equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
                               [Symbol("eq_srec_$i") for i in 1:n];
                               [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
                               [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
-                              [:eq_μ_com];
                               [Symbol("eq_Eπ_$i") for i in 1:n];
-                              [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+                              [:eq_μ_com, :eq_μ_com_goods, :eq_μ_com_services, :eq_μ_com_energy]]
+                              #[Symbol("eq_mkup_iid_$(i)") for i in 1:n];
+                              #[Symbol("eq_mkup_trend_$(i)") for i in 1:n]]
 
 
     for (i,k) in enumerate(observables); m.observables[k] = i end
@@ -563,14 +502,71 @@ end
 
 
 function shock_groupings(m::OnionModel)
+     #Ignore subspecs for now:
+    core_goods_trends   = Vector{Symbol}()
+    core_services_trends   = Vector{Symbol}()
+    energy_trends = Vector{Symbol}()
+    food_trends   = Vector{Symbol}()
+    core_iids     = Vector{Symbol}()
+    energy_iids   = Vector{Symbol}()
+    food_iids     = Vector{Symbol}()
+    cs_trends     = Vector{Symbol}()
+    ncs_trends    = Vector{Symbol}()
+    cns_trends    = Vector{Symbol}()
+    ncns_trends   = Vector{Symbol}()
 
-    subspec_int = parse(Int, subspec(m)[3:end])
+    for i in 1:get_setting(m, :n_sectors)
+        if i in get_setting(m, :core_goods_sectors)
+            println(" Sector $(i) entering core goods shocks")
+            push!(core_goods_trends, Symbol("μ_trend_$(i)_sh"))
+            #push!(core_iids,   Symbol("μ_iid_$(i)_sh"))
+        elseif i in get_setting(m, :core_service_sectors)
+            println(" Sector $(i) entering core services shocks")
+            push!(core_services_trends, Symbol("μ_trend_$(i)_sh"))
+            #push!(core_iids,   Symbol("μ_iid_$(i)_sh"))
+        elseif i in get_setting(m, :energy_sectors)
+            push!(energy_trends, Symbol("μ_trend_$(i)_sh"))
+            #push!(energy_iids,   Symbol("μ_iid_$(i)_sh"))
 
-    #1) Create shock groups
+        elseif i in get_setting(m, :food_sectors)
+            push!(food_trends, Symbol("μ_trend_$(i)_sh"))
+            #push!(food_iids,   Symbol("μ_iid_$(i)_sh"))
 
-    core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_core_goods_sh] , RGB(0.0, 0.6, 0.1))
-    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_core_services_sh], RGB(0.6,0.6,0.0))
-    energy_mkp = ShockGroup("mkp_energy", [:μ_cpi_energy_sh], RGB(0.0, 0.6, 0.6))
+        #elseif i in get_setting(m, :core_services)
+            #push!(cs_trends,   Symbol("μ_trend_$(i)_sh"))
+            #push!(cs_iids,     Symbol("μ_iid_$(i)_sh"))
+
+        else
+            throw("sector $(i) is not in a group")
+        end
+    end
+
+
+
+    core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_com_goods_sh] , RGB(0.0, 0.6, 0.1))    #  RGB(0.1, 0.1, 0.8))
+    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_com_services_sh], RGB(0.6,0.6,0.0))   #RGB(0.3, 0.8, 0.3))
+    energy_mkp = ShockGroup("mkp_energy", [:μ_com_energy_sh], RGB(0.0, 0.6, 0.6))   #RGB(0.0, 0.8, 0.5))
+    #food_trend_mkp   = ShockGroup("mkp_trend_food", food_trends, RGB(0.5, 0.8, 0.6))
+    common_mkup = ShockGroup("common_mkp", [:μ_com_sh], RGB(0.0, 0.2, 0.03))  #RGB(0.0, 0.2, 0.5))
+
+    #=
+
+    core_goods_trend_mkp   = ShockGroup("mkp_trend_core_goods", core_goods_trends, RGB(0.1, 0.1, 0.8))
+    core_services_trend_mkp   = ShockGroup("mkp_trend_core_services", core_services_trends, RGB(0.3, 0.8, 0.3))
+    energy_trend_mkp = ShockGroup("mkp_trend_energy", energy_trends, RGB(0.0, 0.8, 0.5))
+    food_trend_mkp   = ShockGroup("mkp_trend_food", food_trends, RGB(0.5, 0.8, 0.6))
+    common_mkup = ShockGroup("common_mkp", [:μ_com_sh], RGB(0.0, 0.2, 0.5))
+
+=#
+
+    #core_iid_mkp   = ShockGroup("mkp_iid_core", core_iids, RGB(0.8, 0.0, 0.0))
+    #energy_iid_mkp = ShockGroup("mkp_iid_energy", energy_iids, RGB(0.8, 0.0, 0.5))
+    #food_iid_mkp   = ShockGroup("mkp_iid_food", food_iids, RGB(0.8, 0.5, 0.0))
+
+
+
+    #pmu_trend = ShockGroup("mkp_trend", [Symbol("μ_trend_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.0, 0.8, 0.0))
+    #pmu_iid = ShockGroup("mkp_iid", [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)], RGB(0.5, 0.5, 0.0))
     wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
     #tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
     pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
@@ -579,13 +575,18 @@ function shock_groupings(m::OnionModel)
     bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
 
 
-    #2) Return shock groups based on subspec
-
-    if subspec_int ∈ [1, 2]
+    if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 71
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
-    elseif subspec_int ∈ [3, 4, 5]
+    elseif get_setting(m, :marco_test_num) == 70
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
     else
-        return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet]
+
+    #[:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
+    #return [pmu_trend, pmu_iid,wage_pmu, tax, pis, pol, tfp, bet]
+    #return [pmu_trend, pmu_iid,wage_pmu, pol, tfp, bet]
+    #return [wage_pmu, pol, tfp, bet]
+    #return [core_goods_trend_mkp, core_services_trend_mkp, energy_trend_mkp, food_trend_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
+    #return [core_goods_mkp, core_services_mkp, energy_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
+        return [common_mkup, core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet]
     end
 end
