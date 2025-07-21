@@ -220,7 +220,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ0[eq[:eq_capev_f], endo[:i_f_t]]    = -m[:istar]/m[:kbarstar]
     Γ0[eq[:eq_capev_f], endo[:μ_t]]      = -m[:istar]*m[:S′′]*exp(2*m[:z_star])*(1 + m[:β]*exp((1 - m[:σ_c])*m[:z_star]))/m[:kbarstar]
 
-    ### 8. Price Markup
+    ### 8. Price Mark-up
 
     # Sticky prices and wages
     Γ0[eq[:eq_mkupp], endo[:mc_t]] =  1.
@@ -243,7 +243,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ0[eq[:eq_phlps], endo[:Eπ_t]] = -m[:β]*exp((1 - m[:σ_c])*m[:z_star])/(1 + m[:ι_p]*m[:β]*
         exp((1 - m[:σ_c])*m[:z_star]))
 
-    # Comment out for counterfactual with no price mark up shock
+    # Comment out for counterfactual with no price mark-up shock
     Γ0[eq[:eq_phlps], endo[:λ_f_t]] = -1.
 
     # Flexible prices and wages not necessary
@@ -455,11 +455,53 @@ function eqcond(m::Model1002, reg::Int)
         Γ0[eq[:eq_λ_f], endo[:λ_f_t]]  = 1.
         Γ1[eq[:eq_λ_f], endo[:λ_f_t]]  = m[:ρ_λ_f]
         Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
-        Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
+
+        if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+            #Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1. Goes home! I can do this all with just my lag term:
+
+            Γ0[eq[:eq_λ_f], endo[:λ_f_t1]] = -1.0
+        else
+            Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
+        end
+
     end
 
-    Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
-    Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
+Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
+Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
+
+
+### Adding anticipated mark-up shocks to accomodate short run inflation expectations ###
+# only 2 periods for now, can generalize later?
+
+#=
+The current mark-up process is an ARMA(1,1) -- we want to add anticipated shocks (in the flavor of what we do for MP): Note that the lambda superscript does not denote a power, just that lambda denotes the markup process. Here, specifically price but in a general sense it could be λ_{f,t} (prices in period t) or λ_{w,t} (wages in period t)
+1) we add ε^λ_{1, t-1} and ε^λ_{2, t-2} (shocks anticipated 1 and 2 periods ago, respectively, to hit today IN ADDITION TO the contemporaneous shock ε^λ_t
+2) Given the mark-up process is an ARMA, the moving average term, η^λσ^λϵ^λ_{t-1} needs to account for the shocks that really hit, not just the contemporaneous shock!
+
+REMINDER! ANTICIPATED SHOCKS TURN ON WHEN WE BEGIN TO ANTICIPATE THE SHOCK, NOT WHEN THAT ANTICIPATED SHOCK ACTUALLY HITS!
+
+=#
+
+if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+    #Deal with case of 1-period ahead anticipated markup shock outside of the loop
+    Γ1[eq[:eq_λ_f1], endo[:λ_f_tl1]] = 1.
+    Γ0[eq[:eq_λ_f_tl1], endo[:λ_f_tl1]] = 1.
+    Ψ[eq[:eq_λ_f_tl1], exo[:λ_f_ant_sh1]] = 1.
+    for i in 2:get_setting(m, :add_ant_markup_shocks_ind)
+        Γ1[eq[Symbol("eq_λ_f_tl$(i-1)")], endo[Symbol("λ_f_tl$(i)")]] = 1.
+        Γ0[eq[Symbol("eq_λ_f_tl$(i)")], endo[Symbol("λ_f_tl$(i)")]] = 1.
+        Ψ[eq[Symbol("eq_λ_f_tl$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = 1.
+
+    end
+
+
+end
+
+
+
+
+
+
 
     # Wage mark-up shock
     Γ0[eq[:eq_λ_w], endo[:λ_w_t]]  = 1.

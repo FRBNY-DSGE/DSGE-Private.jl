@@ -220,6 +220,52 @@ DD[obs[:obs_spread]]                   = 100*log(m[:spr])
     DD[obs[:obs_longrate]]                    = m[:Rstarn] + CCC10[endo[:R_t]]
     # DD[obs[:obs_longrate]]                    = m[:Rstarn] + ZZ_long_rate * CCC10
 
+
+###### Short run inflation expectations ################
+
+
+#agent's views
+#=
+TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, permanent_t;
+                                                           integ_series = integ_series,
+                                                         memo = use_fwd_exp_sum ? memo : nothing)
+=#
+#Econometrician's views
+
+TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
+                                                           integ_series = integ_series,
+                                                         memo = use_fwd_exp_sum ? memo : nothing)
+
+T_sum = TTT1Econo #TTT^2 + TTT
+C_sum = CCC1Econo #(TTT * CCC) + 2 * CCC
+
+
+TTT1_f = view(T_sum, endo[:π_t], :)
+CCC1_f = C_sum[endo[:π_t]]
+
+
+#Implementation
+#=
+if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
+    ZZ[obs[:obs_shortinflation], endo[:π_t1]] = 1
+    ZZ[obs[:obs_shortinflation], endo[:π_t]] =  1
+    ZZ[obs[:obs_shortinflation], :] .+= TTT1_f
+
+    DD[obs[:obs_shortinflation]] =  CCC1_f + (4 * 100*(m[:π_star]-1))
+
+end
+=#
+
+#Implementation
+if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
+    ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
+    ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
+    ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
+    DD[obs[:obs_avgshortinflation]] = (CCC1_f ./ 4) + 100*(m[:π_star]-1)
+end
+
+
+
     ## TFP
     ZZ[obs[:obs_tfp], endo[:z_t]] = (1-m[:α])*m[:Iendoα] + 1*(1-m[:Iendoα])
     if subspec(m) in ["ss14", "ss15", "ss16", "ss18", "ss19"]
@@ -413,6 +459,13 @@ for (k, v) in get_setting(m, :antshocks)
             end
         end
     end
+
+if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+    for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
+        QQ[exo[Symbol("λ_f_ant_sh$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = m[Symbol("σ_λ_f$(i)")]
+    end
+
+end
 
     ## Anticipated observables
     use_current_regime = haskey(get_settings(m), :measurement_use_current_regime_matrices) ?

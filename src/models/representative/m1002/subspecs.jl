@@ -7025,6 +7025,34 @@ function ss104!(m)
     m <= Setting(:baseline_start_reg, [r for (r, d) in get_setting(m, :regime_dates) if d == date_forecast_start(m)][1] + 1)
 
 
+    if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+
+        m2p = get_setting(m, :model2para_regime)
+        m2p_regs = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
+        #Turn on std deviation for anticipated markup shocks on in 2025 Q2 and 3. To be clear, this means that in 2025 Q2 and Q3, we anticipate 1 period ahead mkup shocks to hit in Q3 and Q4. Likewise, 2 period ahead mkup shocks to hit in Q4 and 2026 Q1.The goal of this was to include short run inflation expectations (and a structural shock to support it) given the tariff announcements and ensuing uncertainty that had yet to materialize in hard inflation data up to this point. This allowed the model to better capture the "stagflation"-like dynamics that were pervasive in narratives and judgemental forecasting models of low growth and high inflation.
+
+        if haskey(get_settings(m), :fix_ant_markup_shocks_0) && !get_setting(m, :fix_ant_markup_shocks_0)
+            #m2p_regs[22] = 2
+            m2p_regs[23] = 2
+            m2p_regs[24] = 2
+        end
+
+        for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
+            set_regime_val!(m[Symbol("σ_λ_f$(i)")], 1, 0.)
+            set_regime_val!(m[Symbol("σ_λ_f$(i)")], 2, m[:σ_λ_f].value)
+
+            set_regime_fixed!(m[Symbol("σ_λ_f$(i)")], 1, true)
+            set_regime_fixed!(m[Symbol("σ_λ_f$(i)")], 2, true) #For now, maybe we estimate in the future
+        end
+
+        m2p[:σ_λ_f1] = m2p_regs
+        m2p[:σ_λ_f2] = m2p_regs
+
+        m <= Setting(:model2para_regime, m2p)
+
+    end
+
+
 
 
 end

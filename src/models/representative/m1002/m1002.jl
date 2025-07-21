@@ -190,6 +190,21 @@ function init_model_indices!(m::Model1002)
         push!(equilibrium_conditions, :eq_biidc_sh)
         push!(endogenous_states, :biidc_sh1)
     end
+
+    #Adding anticipated (price) mark-up shocks
+    if haskey(get_settings(m), :add_ant_markup_shocks_ind) && (get_setting(m, :add_ant_markup_shocks_ind) > 0)
+
+        #Note that we already have states and equilibrium conditions for 1 lag given λ_{f,t} follows an ARMA(1,1) process
+        #Do first anticipated shock outside, since we don't have this yet.
+        for i in 1:get_setting(m, :add_ant_markup_shocks_ind) # was  2:get_setting(m, :add_ant_markup_shocks_ind) + 1
+            push!(endogenous_states, Symbol("λ_f_tl$i"))
+            push!(equilibrium_conditions, Symbol("eq_λ_f_tl$i"))
+            push!(exogenous_shocks, Symbol("λ_f_ant_sh$i"))
+        end
+    end
+
+
+
     # SPD expected FFR measurement error
     if !isempty(expected_ffr(m))
         for i in expected_ffr(m)
@@ -941,6 +956,7 @@ buted to steady-state inflation.",
         end
     end
 
+
     for (sh, ant_num) in get_setting(m, :antshocks)
         ant_tex_label = DSGE.detexify(sh) == sh ? string(sh) : "\\" * string(DSGE.detexify(sh))
         for i in 1:ant_num
@@ -950,6 +966,18 @@ buted to steady-state inflation.",
                            tex_label="\\sigma_{$(ant_tex_label), ant$(i)}")
         end
     end
+
+if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+          for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
+              m <= parameter(Symbol("σ_λ_f$i"),  0.1314, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false, #Fix false for now, but this is just copied from the normal parameter
+                         description="σ_λ_f$i: Standard deviation of the $i-period-ahead anticipated mark-up shock.",
+                         tex_label=@sprintf("\\sigma_λ^f_{ant%d}",i))
+          end
+
+
+end
+
+
 
     m <= parameter(:η_gz, 0.8400, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.50, 0.20), fixed=false,
                    description="η_gz: Correlate g and z shocks.",
@@ -1487,6 +1515,9 @@ function shock_groupings(m::Model1002)
         if haskey(get_settings(m), :gensys2) ? get_setting(m, :gensys2) : false
             st = ShockGroup("States Trend", [:StatesTrend], :darkgreen) # :dettrend
             return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth, st]
+        elseif haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+            ant_mu = ShockGroup("Ant Markup", [Symbol("λ_f_ant_sh$(i)") for i in 1:get_setting(m, :add_ant_markup_shocks_ind)], :darkgreen)
+            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, ant_mu, oth]
         else
             return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth]
         end
@@ -1505,7 +1536,9 @@ function shock_groupings(m::Model1002)
         mei = ShockGroup("mu", [:μ_sh], :cyan)
         mea = ShockGroup("me", [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh, :gdp_sh, :gdi_sh], RGB(0.0, 0.8, 0.0))
         zpe = ShockGroup("zp", [:zp_sh], RGB(0.0, 0.3, 0.0))
+
         det = ShockGroup("dt", [:dettrend], :gray40)
+
 
         return [gov, bet, fin, tfp, pmu, wmu, pol, pis, mei, mea, zpe, det]
     else
