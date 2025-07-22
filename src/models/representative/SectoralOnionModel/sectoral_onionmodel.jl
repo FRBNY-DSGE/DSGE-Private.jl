@@ -1,4 +1,4 @@
-mutable struct OnionModel{T} <: AbstractRepModel{T}
+mutable struct SectoralOnionModel{T} <: AbstractRepModel{T}
     parameters::Vector{AbstractParameter{T}}
     steady_state::ParameterVector{T}
     keys::OrderedDict{Symbol, Int}
@@ -23,14 +23,14 @@ mutable struct OnionModel{T} <: AbstractRepModel{T}
 end
 
 
-description(m::OnionModel) = "December 2024 Briefing Model, Inflation Networks, subspec: $(m.subspec)"
+description(m::SectoralOnionModel) = "December 2024 Briefing Model, Inflation Networks, subspec: $(m.subspec)"
 
-function Base.show(io::IO, m::OnionModel)
-    @printf io "OnionModel, spec %s\n" subspec(m)
+function Base.show(io::IO, m::SectoralOnionModel)
+    @printf io "SectoralOnionModel, spec %s\n" subspec(m)
     @printf io "description: %s\n" description(m)
 end
 
-function OnionModel(subspec::String = "ss1";
+function SectoralOnionModel(subspec::String = "ss1";
                     custom_settings::Array{S} where S<:Setting = Array{Setting{Bool}}(undef, 0),
                     testing = false)
 
@@ -40,7 +40,7 @@ function OnionModel(subspec::String = "ss1";
     test_settings    = Dict{Symbol, Setting}()
     rng              = MersenneTwister(0)
 
-    m = OnionModel{Float64}(
+    m = SectoralOnionModel{Float64}(
             # model parameters and steady state values
         Vector{AbstractParameter{Float64}}(),
         Vector{Float64}(),
@@ -74,7 +74,7 @@ end
 
 
 
-function init_settings!(m::OnionModel)
+function init_settings!(m::SectoralOnionModel)
     # For parsing model subspec to Int
     subspec_int = parse(Int, subspec(m)[3:end])
 
@@ -102,28 +102,6 @@ function init_settings!(m::OnionModel)
         m <= Setting(:sectoral_nan, true)
         m <= Setting(:n_smc_blocks, 1)
         m <= Setting(:sampling_method, :SMC)
-
-        if subspec_int ∈ [7, 8, 9, 10, 12, 20, 21]
-            m <= Setting(:subgroup_names,
-                         OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
-                                                     "core_services" => :CUSR0000SASLE,
-                                                     "cpi_energy" => :CPIENGSL,
-                                                     "cpi_food" => :NOTHING))
-            m <= Setting(:subgroup_to_sector,
-                         OrderedDict{String, Array{Int64,1}}("core_goods" => core_goods,
-                                                             "core_services" => core_services,
-                                                             "cpi_energy" =>  energy_sectors,
-                                                             "cpi_food" => food_sectors))
-        else
-            m <= Setting(:subgroup_names,
-                         OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
-                                                     "core_services" => :CUSR0000SASLE,
-                                                     "cpi_energy" => :CPIENGSL))
-            m <= Setting(:subgroup_to_sector,
-                         OrderedDict{String, Array{Int64,1}}("core_goods" => core_goods,
-                                                             "core_services" => core_services,
-                                                             "cpi_energy" =>  energy_sectors))
-        end
     end
 
 
@@ -174,7 +152,7 @@ end
 
 
 
-function init_parameters!(m::OnionModel)
+function init_parameters!(m::SectoralOnionModel)
     # For parsing model subspec to Int
     subspec_int = parse(Int, subspec(m)[3:end])
 
@@ -294,29 +272,18 @@ function init_parameters!(m::OnionModel)
         paras = InOutData()
 
         # Dont apply scaling for β in briefing model and related subspecs
-        if subspec_int > 4
-            unscaled_β = 100((1/paras["β"])-1) #This is what we're estimating/scaling
-            m <= parameter(:bet, unscaled_β, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = false, scaling = x -> 1/(1 + x/100),
-                           description="β: temporal discount",
-                           tex_label="100(\\beta^{-1} - 1)")
-        else
-            m <= parameter(:bet, paras["β"], (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = true,
-                           description="β: temporal discount",
-                           tex_label="\\beta")
-        end
+        unscaled_β = 100((1/paras["β"])-1) #This is what we're estimating/scaling
+        m <= parameter(:bet, unscaled_β, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(0.25, 0.1), fixed = false, scaling = x -> 1/(1 + x/100),
+                       description="β: temporal discount",
+                       tex_label="100(\\beta^{-1} - 1)")
 
-        m <= parameter(:ρ_τ, 1.22, fixed = true,
-                       description="ρ_τ: ",
-                       tex_label="\\rho_\\tau")
+m <= parameter(:ρ_τ, 1.22, fixed = true,
+               description="ρ_τ: ",
+               tex_label="\\rho_\\tau")
 
-        m <= parameter(:ρ_τ2, -0.2475, fixed = true,
-                       description="ρ_τ2: ",
-                       tex_label="\\rho_{\\tau2}")
-#=
-m <= parameter(:ρ_i, 0.85^(1/3), fixed = true,
-               description="ρ_i: policy inertia",
-               tex_label="\\rho_i")
-=#
+m <= parameter(:ρ_τ2, -0.2475, fixed = true,
+               description="ρ_τ2: ",
+               tex_label="\\rho_{\\tau2}")
 
 m <= parameter(:ρ_i, 0.85^(1/3), (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.75, 0.10), fixed = true,
                description="ρ_i: policy inertia",
@@ -345,12 +312,11 @@ m <= parameter(:mp_cpi_infl, 1.01, (1e-5, 10.), (1e-5, 10.00), ModelConstructors
 m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description="weight on consumption in mp rule",
                tex_label="\\varphi_{c}") #"mp_cons"
-#Temp bypass
-if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10", "ss12", "ss20"]
-    m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
-                   description="weight on potential consumption",
-                   tex_label="\\varphi_{c \\star}") #"mp_cstar"
-end
+
+#m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
+#               description="weight on potential consumption",
+#               tex_label="\\varphi_{c \\star}") #"mp_cstar"
+
 
 m <= parameter(:invkapw,paras["invkapw"], fixed = true,
                description="inverse kappaw",
@@ -454,74 +420,28 @@ m <= parameter(:γ, 0.0, (-5.0, 5.0), (-5., 5.), ModelConstructors.Untransformed
                scaling = x -> x/100, #Growth rate of economy
                description = "γ: Log of the steady-state growth rate of technology",
                tex_label="\\gamma")
-#=
-m <= parameter(:mp_habit, 0.0, fixed = true,
-               description = ":mp_habit: weight of MP rule on habit formation",
-               tex_label="mp-habit")
-=#
 
 m <= parameter(:mp_habit, 0.0, (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description = ":mp_habit: weight of MP rule on habit formation",
                tex_label="\\varphi_{h}") #"mp-habit"
 
-
 m <= parameter(:σ_r_m, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                description = "Standard deviation of process describing iid monetary policy shock",
                tex_label="\\sigma_{r^m}")
-
-#= we don't use for now (measurement errors)
-m <= parameter(:ρ_meas_πc, 0.0, fixed = true,
-               description = "AR(1) coefficient for CPI inflation measurement error process")
-
-m <= parameter(:σ_meas_πc, 0.0999, fixed = true,
-               description = "AR(1) coefficient for CPI inflation measurement error process")
-=#
 
 #==============
 Subspec specific parameter additions
 ==============#
 
-if subspec_int ∈ [0, 1]
+if subspec_int ∈ [1]
 
-    #1) Add common trend persistence for briefing model
-    m <= parameter(:ρ_μ_trend, 0.8827)
-
-    #2) Add common markup shock std and AR(1) coefficient
-    m <= parameter(:σ_μ, 0.1314, fixed = true,
+    #1) Add common markup shock std and AR(1) coefficient [briefing model trend]
+    m <= parameter(:σ_μ_com, 0.1314, fixed = true,
                    description = "σ_μ: standard deviation of mark up shock process")
-    m <= parameter(:ρ_μ, 0.8827, fixed = true,
+    m <= parameter(:ρ_μ_com, 0.8827, fixed = true,
                    description = "ρ_μ: AR(1) coefficient of the mark up shock process")
     m <= parameter(:π_star, 0.5, fixed = true,
                    description = "Steady state rate of inflation")
-end
-
-if subspec_int >= 2
-
-    #1) Differentiate markup shock std and persistence
-    # For ss7 and above, we add food subgroup
-    for i in collect(keys(get_setting(m, :subgroup_names)))
-        m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
-                       description = "σ_μ: standard deviation of mark up shock process",
-                       tex_label = string("\\sigma_{\\mu}", replace(i, "_" => " ")))
-        m <= parameter(Symbol("ρ_μ_$i"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
-                       description = "ρ_μ: AR(1) coefficient of the mark up shock process",
-                       tex_label = string("\\rho_{\\mu}",  replace(i, "_" => " ")))
-    end
-
-    #2) Add pi-star
-    if subspec_int ∈ [3, 4, 5, 7, 8, 9, 10, 12, 20]
-        m <= parameter(:π_star, 0.5, fixed = true,
-                       description = "Steady state rate of inflation",
-                       tex_label = "\\pi^\\star")
-    end
-
-    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
-    #3) Add common shock
-        m <= parameter(:σ_μ_com, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
-                       description = "σ_μ_com: standard deviation of mark up shock process",
-                       tex_label = "\\sigma_{\\mu} common}")
-    end
-
 end
 
 # Keshav's inflation shares
@@ -536,17 +456,16 @@ end
 
 
 
-function init_model_indices!(m::OnionModel)
+function init_model_indices!(m::SectoralOnionModel)
     # For parsing model subspec to Int
     subspec_int = parse(Int, subspec(m)[3:end])
 
     n = get_setting(m, :n_sectors)
 
 
-    exogenous_shocks            =
-        [[Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))];
-         [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
-         [:τ_sh]]
+    exogenous_shocks            = [
+        [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh];
+        [:τ_sh]]
 
     observables                 = keys(m.observable_mappings)
 
@@ -557,8 +476,7 @@ function init_model_indices!(m::OnionModel)
                          [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
                          [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                          [Symbol("Eπ_$i") for i in 1:n];
-                         [:Ec_t, :Eπc_t, :Eπw_t];
-                         [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+                         [:Ec_t, :Eπc_t, :Eπw_t]]
 
     endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
 
@@ -570,16 +488,14 @@ function init_model_indices!(m::OnionModel)
                               [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
                               [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                               [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
-                              [Symbol("eq_Eπ_$i") for i in 1:n];
-                              [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+                              [Symbol("eq_Eπ_$i") for i in 1:n]]
 
-    #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-    if subspec_int >= 7
+    # For baseline subspec, we add common shock process to all sectoral phillips curves
+    if subspec_int >= 1
         push!(endogenous_states, :μ_com)
         push!(exogenous_shocks, :μ_com_sh)
         push!(equilibrium_conditions, :eq_μ_com)
     end
-    #end
 
     for (i,k) in enumerate(observables); m.observables[k] = i end
     for (i,k) in enumerate(pseudo_observables); m.pseudo_observables[k] = i end
@@ -592,20 +508,20 @@ function init_model_indices!(m::OnionModel)
     m <= Setting(:n_model_states, length(m.endogenous_states))
 end
 
-function steadystate!(m::OnionModel)
+function steadystate!(m::SectoralOnionModel)
     return m
 end
 
 
-function shock_groupings(m::OnionModel)
+function shock_groupings(m::SectoralOnionModel)
 
     subspec_int = parse(Int, subspec(m)[3:end])
 
     #1) Create shock groups
 
-    core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_core_goods_sh] , RGB(0.0, 0.6, 0.1))
-    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_core_services_sh], RGB(0.6,0.6,0.0))
-    energy_mkp = ShockGroup("mkp_energy", [:μ_cpi_energy_sh], RGB(0.0, 0.6, 0.6))
+    #core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_core_goods_sh] , RGB(0.0, 0.6, 0.1))
+    #core_services_mkp   = ShockGroup("mkp_core_services", [:μ_core_services_sh], RGB(0.6,0.6,0.0))
+    #energy_mkp = ShockGroup("mkp_energy", [:μ_cpi_energy_sh], RGB(0.0, 0.6, 0.6))
     wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
     #tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
     pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
@@ -618,11 +534,12 @@ function shock_groupings(m::OnionModel)
 
     #2) Return shock groups based on subspec
 
-    if subspec_int ∈ [1, 2]
-        return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
-    elseif subspec_int ∈ [3, 4, 5]
-        return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
-    elseif subspec_int ∈ [7, 8, 9, 10, 12]
-        return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
+    if subspec_int ∈ [1]
+        return [#core_goods_mkp, core_services_mkp, energy_mkp,
+                tfp, wage_pmu, pol, bet]
+    #elseif subspec_int ∈ [3, 4, 5]
+    #    return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
+    #elseif subspec_int ∈ [7, 8, 9, 10, 12]
+   #     return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
     end
 end

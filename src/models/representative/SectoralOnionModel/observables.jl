@@ -1,6 +1,7 @@
-function init_observable_mappings!(m::OnionModel)
+function init_observable_mappings!(m::SectoralOnionModel)
     observables = OrderedDict{Symbol, Observable}()
     population_mnemonic = get(get_setting(m, :population_mnemonic))
+    subspec_int = parse(Int, subspec(m)[3:end])
 
     demean = function (levels)
         cons = all(ismissing.(levels)) ? missing : mean(skipmissing(levels))
@@ -19,25 +20,26 @@ function init_observable_mappings!(m::OnionModel)
         levels
     end
 
-    consumption_fwd_transform = function (levels)
-        # FROM: Nominal consumption
-        # TO:   Real consumption, approximate quarter-to-quarter percent change,
-        #       per capita, adjusted for population filtering
+        consumption_fwd_transform = function (levels)
+            # FROM: Nominal consumption
+            # TO:   Real consumption, approximate quarter-to-quarter percent change,
+            #       per capita, adjusted for population filtering
 
-        levels[!,:temp] = percapita(m, :PCE, levels)
-        cons = 1000 * nominal_to_real(:temp, levels)
-        demean(oneqtrpctchange(cons))
-    end
+            levels[!,:temp] = percapita(m, :PCE, levels)
+            cons = 1000 * nominal_to_real(:temp, levels)
+            demean(oneqtrpctchange(cons))
+        end
 
-    consumption_rev_transform = identity     # loggrowthtopct_annualized_percapita
+        consumption_rev_transform = identity     # loggrowthtopct_annualized_percapita
 
-    # Consumption - this is currently quarterly, we are still undecided between quarterly and monthly
-    observables[:consumption_growth] = Observable(:consumption_growth,
-                                                  [:PCE__FRED, population_mnemonic],
-                                                  consumption_fwd_transform,
-                                                  consumption_rev_transform,
-                                                  "Demeaned Consumption Growth",
-                                                  "Demeaned Consumption Growth") #adjusted for population filtering as well?
+        # Consumption - this is currently quarterly, we are still undecided between quarterly and monthly
+        observables[:consumption_growth] = Observable(:consumption_growth,
+                                                      [:PCE__FRED, population_mnemonic],
+                                                      consumption_fwd_transform,
+                                                      consumption_rev_transform,
+                                                      "Demeaned Consumption Growth",
+                                                      "Demeaned Consumption Growth") #adjusted for population filtering as well?
+
 
     wages_fwd_transform = function (levels)
             # FROM: Nominal compensation per hour (:COMPNFB from FRED)
@@ -56,27 +58,10 @@ function init_observable_mappings!(m::OnionModel)
                                                 "Demeaned Real Wage Growth",
                                                 "Demeaned Real Wage Growth")
 
-if get_setting(m, :marco_test_num) == 69
-    cpi_fwd_transform = function(levels)
-        demean2(oneqtrpctchange(levels[!,:CPIAUCSL]))
-    end
-
-    #cpi_rev_transform = loggrowthtopct_annualized
-    cpi_rev_transform = identity
-
-    # CPI Inflation -
-    observables[:cpi_inflation] = Observable(:cpi_inflation, [:CPIAUCSL__FRED],
-                                   cpi_fwd_transform,
-                                   cpi_rev_transform,
-                                   "CPI Inflation",
-                                             "CPI Inflation")
-end
-
-
 
     #Core servies
      core_service_cpi_fwd_transform = function(levels)
-        demean2(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
+        demean(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
     end
 
     core_service_cpi_rev_transform = identity
@@ -88,7 +73,7 @@ end
 
     #Core goods
      core_goods_cpi_fwd_transform = function(levels)
-        demean2(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
+        demean(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
     end
 
     core_goods_cpi_rev_transform = identity
@@ -101,7 +86,7 @@ end
 
     #Energy
     energy_cpi_fwd_transform = function(levels)
-        demean2(oneqtrpctchange(levels[!, :CPIENGSL]))
+        demean(oneqtrpctchange(levels[!, :CPIENGSL]))
     end
 
 
@@ -113,6 +98,22 @@ end
                                           "CPI Energy")
 
 
+
+    # CPI Inflation observable
+
+        cpi_fwd_transform = function(levels)
+            demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
+        end
+
+        #cpi_rev_transform = loggrowthtopct_annualized
+        cpi_rev_transform = identity
+
+        # CPI Inflation -
+        observables[:cpi_inflation] = Observable(:cpi_inflation, [:CPIAUCSL__FRED],
+                                                 cpi_fwd_transform,
+                                                 cpi_rev_transform,
+                                                 "CPI Inflation",
+                                                 "CPI Inflation")
 
 
     nominalrate_fwd_transform = function (levels)
@@ -137,7 +138,7 @@ end
 ############################################################################
 #Fernald TFP
 ############################################################################
-if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 70 || get_setting(m, :marco_test_num) == 71
+#if !(haskey(get_settings(m), :test_rm_tfp) && get_setting(m, :test_rm_tfp))
     tfp_rev_transform = identity #quartertoannual
     tfp_fwd_transform =  function (levels)
         # FROM: Fernald's unadjusted TFP series
@@ -163,12 +164,7 @@ if get_setting(m, :marco_test_num) == 68 || get_setting(m, :marco_test_num) == 7
                                        tfp_fwd_transform, tfp_rev_transform,
                                        "Total Factor Productivity Growth (Fernald)",
                                        "Fernald's TFP, adjusted by Fernald's estimated alpha")
-end
-
-
-
-
-
+#end
 #=
     # CPI Sectoral Inflation
     inflation_sector_names = get_setting(m, :sector_names)
@@ -200,8 +196,6 @@ end
 #observables[:inflation_expectations_10year] = Observable(:inflation_expectations_10year, [])
 
 
-
-if get_setting(m, :marco_test_num) == 70 #|| get_setting(m, :marco_test_num) == 71
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################
@@ -212,22 +206,33 @@ if get_setting(m, :marco_test_num) == 70 #|| get_setting(m, :marco_test_num) == 
         # Note: We subtract 0.5 because 0.5% inflation corresponds to
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
+        if subspec_int ∉ [1]
+            demean(annualtoquarter(levels[!, :PCE10]))
+        else
+            demean2(annualtoquarter(levels[!,:ASACX10]))
+        end
 
-        demean2(annualtoquarter(levels[!,:ASACX10]))
-
-    end
 
 #Demean here by subtracting 2.3 as well
 
-longinflation_rev_transform = identity         #loggrowthtopct_annualized
-
-observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX],
+    longinflation_rev_transform = identity         #loggrowthtopct_annualized
+    if subspec_int ∉ [1]
+        observables[:obs_longinflation] = Observable(:obs_longinflation, [:PCE10__PCE10YR],
                                                  longinflation_fwd_transform, longinflation_rev_transform,
-                                                 "10-year average inflation expectations",
-                                                 "10-year average yr/yr CPI inflation expectations")
+                                             "10-year average inflation expectations",
+                                             "10-year average yr/yr PCE inflation expectations")
+    else
+        observables[:obs_longinflation] = Observable(:obs_longinflation, [:ASACX10__DLX],
+                                                 longinflation_fwd_transform, longinflation_rev_transform,
+                                             "10-year average inflation expectations",
+                                             "10-year average yr/yr CPI inflation expectations")
+    end
 
 end
-
-m.observable_mappings = observables
-
+if subspec ∈ [1]
+    m.observable_mappings[:consumption_growth] = observables[:consumption_growth]
+    m.observable_mappings[:real_wage_growth] = observables[:real_wage_growth]
+    m.observable_mappings[:NominalFFR] = observables[:NominalFFR]
+    m.observable_mappings[:obs_tfp] = observables[:obs_tfp]
+end
 end

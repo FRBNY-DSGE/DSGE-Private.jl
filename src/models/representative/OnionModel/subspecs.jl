@@ -7,18 +7,34 @@ function init_subspec!(m::OnionModel)
         return ss0!(m)
     elseif subspec(m) == "ss1"
         return ss1!(m)
-    elseif subspec(m) == "ss2"
+        #=
+        elseif subspec(m) == "ss2"
         return ss2!(m)
-    elseif subspec(m) == "ss3"
+        elseif subspec(m) == "ss3"
         return ss3!(m)
-    elseif subspec(m) == "ss4"
+        elseif subspec(m) == "ss4"
         return ss4!(m)
-    elseif subspec(m) == "ss5"
+        elseif subspec(m) == "ss5"
         return ss5!(m)
-    elseif subspec(m) == "ss6"
+        elseif subspec(m) == "ss6"
         return ss6!(m)
-    elseif subspec(m) == "ss7"
+        elseif subspec(m) == "ss7"
         return ss7!(m)
+        elseif subspec(m) == "ss8"
+        return ss8!(m)
+        elseif subspec(m) == "ss9"
+        return ss9!(m)
+        elseif subspec(m) == "ss10"
+        return ss10!(m)
+        elseif subspec(m) == "ss12"
+        return ss12!(m)
+        elseif subspec(m) == "ss12"
+        return ss12!(m)
+        elseif subspec(m) == "ss20"
+        return ss20!(m)
+        elseif subspec(m) == "ss21"
+        return ss21!(m)
+        =#
     else
         error("This subspec has not been defined.")
     end
@@ -154,7 +170,7 @@ function ss5!(m::OnionModel)
     #=
     1) We estimate most parameters except
        a) Elasticity parameters (ν, ζ, η, ξ)
-       b) σ_πstar fixed to 0.01
+       b) σ_πstar fixed to 0.01; ρ_πstar fixed
        c) Indexes for oil and gas (should be settings in retrospect)
        d) Primitives like π_star (already detrend lr inflation), invkapw
        e) mp_cpi_infl fixed to 1.01 for eigenvalue issue? (estimate for now)
@@ -166,7 +182,7 @@ function ss5!(m::OnionModel)
                     :σ_πstar,
                     :oil, :gas,
                     :invkapw, :π_star,
-                    :ρ_τ, :ρ_τ2]
+                    :ρ_τ, :ρ_τ2, :ρ_πstar]
 
     m[:σ_πstar].value = 0.01
 
@@ -191,6 +207,7 @@ function ss6!(m::OnionModel)
        d) Primitives like π_star (already detrend lr inflation), invkapw
        e) mp_cpi_infl fixed to 1.01 for eigenvalue issue? (estimate for now)
        f) taus (we do not draw any tau shocks as their std set to 0)
+       g) Here, we test the CPI inflation observable
 
     2) Estimated using cleaned spec ss4 so no need for model2cloud dictionary
     =#
@@ -198,7 +215,7 @@ function ss6!(m::OnionModel)
                     :σ_πstar,
                     :oil, :gas,
                     :invkapw, :π_star,
-                    :ρ_τ, :ρ_τ2]
+                    :ρ_τ, :ρ_τ2, :ρ_πstar]
 
     m[:σ_πstar].value = 0.01
 
@@ -213,63 +230,158 @@ function ss6!(m::OnionModel)
     return m
 end
 
+
 function ss7!(m::OnionModel)
+    ss6!(m)
+    # Estimate all variables except for fixed_params from ss6.
+    # In ss7:
+    # (1) We get rid of the TFP growth process and consumption growth process (including both observables)
+    # (2) We add the CPI inflation observable (no need to add CPI inflation shock)
+    # (3) We add food markup shock process (include an unobserved cpi_foods subgroup) and estimate rho/sigma
+    # (4) We add an iid common markup shock and estimate sigma
 
-    #=
-    In this subspec, we
-    (1) Observables: Remove tfp growth observable and consumption growth observables.
-        We add cpi inflation obs and cpi_inflation shock
-    (2) Shocks: Add a common mark-up shock process while keeping categorical shocks.
-    (3) Add mark-up shock for food w/o specifying observable.
-    =#
-
-    # (1.A) Set std and persistance to 0 to get rid of tfp shock process
+    # Shut down tfp shock process
     m[:σ_a_t].value = 0.
     m[:ρ_a_t].value = 0.
+    m[:σ_a_t].valuebounds = (0., 5.)
+    m[:ρ_a_t].valuebounds = (0., 5.)
 
-    m[:σ_a_t].fixed = true
-    m[:ρ_a_t].fixed = true
-
-
-    # (1.B) Set std and persistance to 0 to get rid of discount factor shock process
+    # Shut down discout factor shock process
     m[:σ_b_t].value = 0.
     m[:ρ_b_t].value = 0.
+    m[:σ_b_t].valuebounds = (0., 5.)
+    m[:ρ_b_t].valuebounds = (0., 5.)
 
-    m[:σ_b_t].fixed = true
-    m[:ρ_b_t].fixed = true
+    ss6_to_7_fixed = [:σ_a_t, :ρ_a_t,
+                      :σ_b_t, :ρ_b_t]
 
-    # (2) Add common mark-up
-
-    # (1e-8, 5.) (1e-8, 5.)
-    m <= parameter(:σ_μ_com, 0.1314, (0., 5.), (0., 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
-                       description = "σ_μ_com: standard deviation of common mark up shock process",
-                       tex_label = "\\sigma_{\\mu_com}")
-    m <= parameter(:ρ_μ_com, 0.8827, (0., 0.999), (0., 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
-                       description = "ρ_μ: AR(1) coefficient of the mark up shock process",
-                       tex_label = "\\rho_{\\mu_com}")
-
-    # Set this to zero (in model but not estimated?)
-    m[:σ_μ_com].value = 0.
-    m[:ρ_μ_com].value = 0.
-
-    # (3.A) Add core_foods to subgroup names
-    m <= Setting(:subgroup_names,
-                 OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
-                                             "core_services" => :CUSR0000SASLE,
-                                             "cpi_energy" => :CPIENGSL,
-                                             "core_foods" => :NOTHING)) # Is it in this dataset?
-    ### Estimation changes ###
+    for param in m.parameters
+        if param.key ∈ ss6_to_7_fixed
+            m[param.key].fixed = true
+        end
+    end
 
     return m
 end
 
 function ss8!(m::OnionModel)
-    #=
-    In this subspec, we
-    (1) Observables: Remove just tfp growth
-    (2) Shocks: Add a common shock process while keeping categorical shocks.
-    (3) Add mark-up shock for food w/o specifying observable
-    =#
+    ss6!(m)
+
+    # Estimate all variables except for fixed_params from ss6.
+    # In ss7:
+    # (1) We get rid of the TFP growth process but keep consumption growth process (and obs)
+    # (2) We add the CPI inflation observable (no need to add CPI inflation shock)
+    # (3) We add food markup shock process (include an unobserved cpi_foods subgroup) and estimate rho/sigma
+    # (4) We add an iid common markup shock and estimate sigma
+
+    # Shut down tfp shock process
+    m[:σ_a_t].value = 0.
+    m[:ρ_a_t].value = 0.
+    m[:σ_a_t].valuebounds = (0., 5.)
+    m[:ρ_a_t].valuebounds = (0., 5.)
+
+
+    ss6_to_8_fixed = [:σ_a_t, :ρ_a_t]
+
+    for param in m.parameters
+        if param.key ∈ ss6_to_8_fixed
+            m[param.key].fixed = true
+        end
+    end
 
     return m
+end
+
+function ss9!(m::OnionModel)
+    ss7!(m)
+
+    # In ss9:
+    # (1) Using ss7, we set gamma to 0 so model is propertly demeaned
+
+    m[:γ].value = 0
+    m[:γ].fixed = true
+
+    return m
+end
+
+function ss10!(m::OnionModel)
+    ss8!(m)
+
+    # In ss10:
+    # (1) Using ss8, we set gamma to 0 so model is propertly demeaned
+
+    m[:γ].value = 0
+    m[:γ].fixed = true
+
+    return m
+end
+
+
+function ss12!(m::OnionModel)
+    # Subspec for DSGEVAR estimation of onion model where:
+    ss5!(m)
+
+    m[:γ].value = 0
+    m[:γ].fixed = true
+
+#=
+    if haskey(get_settings(m), :fix_ρ_πstar) && get_setting(m, :fix_ρ_πstar)
+        m[:ρ_πstar].fixed = true
+        m[:ρ_πstar].value  = 0.99
+    end
+=#
+
+end
+
+function ss20!(m::OnionModel)
+    # Only observe cpi inflation and PCE expectations and no other variables
+    ss5!(m)
+    m[:γ].value = 0
+    m[:γ].fixed = true
+
+end
+
+function ss21!(m::OnionModel)
+    # Previously ss20
+
+    # CPI inflation & expectations model (shutting down everything not in sectoral pc)
+    ss9!(m)
+
+    # Shut down discount factor shock process
+    m[:σ_b_t].value = 0.
+    m[:ρ_b_t].value = 0.
+
+    m[:σ_b_t].valuebounds = (0., 0.)
+    m[:ρ_b_t].valuebounds = (0., 0.)
+
+    m[:σ_b_t].fixed = true
+    m[:ρ_b_t].fixed = true
+
+    # Shut down wage growth process
+    m[:σ_μw] = 0.
+    m[:ρ_μw] = 0.
+
+    m[:σ_μw].valuebounds = (0., 0.)
+    m[:ρ_μw].valuebounds = (0., 0.)
+
+    m[:σ_μw].fixed = true
+    m[:ρ_μw].fixed = true
+
+    # Remove tfp process
+    m[:σ_a_t].value = 0.
+    m[:ρ_a_t].value = 0.
+
+    m[:σ_a_t].valuebounds = (0., 0.)
+    m[:ρ_a_t].valuebounds = (0., 0.)
+
+    m[:σ_a_t].fixed = true
+    m[:ρ_a_t].fixed = true
+
+    # Remove mp_shock
+    m[:σ_r_m].value = 0.
+    m[:σ_r_m].valuebounds = (0., 0.)
+    m[:σ_r_m].fixed = true
+
+    #rho pi_star (fix!)
+    m[:ρ_πstar].fixed = true
 end

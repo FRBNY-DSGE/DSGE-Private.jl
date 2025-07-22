@@ -1,6 +1,6 @@
 @inline eye(n::Integer) = Matrix{Float64}(I,n,n)
 
-function measurement(m::OnionModel{T},
+function measurement(m::SectoralOnionModel{T},
                      TTT::Matrix{T},
                      RRR::Matrix{T},
                      CCC::Vector{T}) where {T<: AbstractFloat}
@@ -28,16 +28,11 @@ function measurement(m::OnionModel{T},
 
     subspec_int = parse(Int, subspec(m)[3:end])
 
-    if subspec_int ∉ [20, 21]
 
     ## Demeaned Consumption Growth
-    #if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
-    if subspec_int ∉ [7, 9, 12]
-        ZZ[obs[:consumption_growth], endo[:c_t]]  = 1.0
-        ZZ[obs[:consumption_growth], endo_new[:c_t1]] = -1.0
-    end
+    ZZ[obs[:consumption_growth], endo[:c_t]]  = 1.0
+    ZZ[obs[:consumption_growth], endo_new[:c_t1]] = -1.0
 
-    #end
 
     ## Demeaned Real Wage Growth
     ZZ[obs[:real_wage_growth], endo[:w_t]] = 1.
@@ -53,7 +48,16 @@ function measurement(m::OnionModel{T},
     ## Demeaned CPI Inflation -- will leave here commented out. For much of the briefing results, we used the above K-CPI
     #ZZ[obs[:cpi_inflation], endo[:πc_t]] = 1.
 
+    # For full sector specification, we want observed sector i inflation
+    inflation_sector_names = get_setting(m, :sector_names)
 
+    # Instantiate observable for each sector
+    for i in 1:get_setting(m, :n_sectors)
+        ZZ[obs[Symbol("Inflation, $(inflation_sector_names[i])")], endo[Symbol("π_$i")]] = 1.0
+    end
+
+    # Set standard deviation for common shock
+    QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ]^2
 
 
     ##### Demeaned sector i CPI. Left here to show that it is not ignored -- we only add in certain specifications.
@@ -211,7 +215,7 @@ function measurement(m::OnionModel{T},
 
 
     =#
-
+#=
 if subspec_int ∈ [1, 2]
 
     if subspec_int == 1
@@ -388,5 +392,6 @@ CCC10        = CCC10 ./ 40.
 ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
 
 end
+=#
     return Measurement(ZZ, DD, QQ, EE)
 end

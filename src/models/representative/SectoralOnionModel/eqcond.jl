@@ -1,7 +1,7 @@
 #Define eye function for MATLAB compatibility
 @inline eye(n::Integer) = Matrix{Float64}(I,n,n)
 
-function eqcond(m::OnionModel) #m::OnionModel
+function eqcond(m::SectoralOnionModel) #m::OnionModel
 
     subspec_int = parse(Int, subspec(m)[3:end])
 
@@ -18,8 +18,7 @@ function eqcond(m::OnionModel) #m::OnionModel
                              [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
                              [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
                              [Symbol("Eπ_$i") for i in 1:n];
-                             [:Ec_t, :Eπc_t, :Eπw_t];
-                             [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+                             [:Ec_t, :Eπc_t, :Eπw_t]]
 
         endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
 
@@ -28,17 +27,12 @@ function eqcond(m::OnionModel) #m::OnionModel
                                   [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
                                   [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
                                   [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
-                                  [Symbol("eq_Eπ_$i") for i in 1:n];
-                                  [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+                                  [Symbol("eq_Eπ_$i") for i in 1:n]]
 
-
-        #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-        if subspec_int ∈ [7, 8, 9, 10, 12, 20]
+        if subspec_int ∈ [1]
             push!(endogenous_states, :μ_com)
             push!(equilibrium_conditions, :eq_μ_com)
         end
-
-        #end
 
         for (i,k) in enumerate(equilibrium_conditions); m.equilibrium_conditions[k] = i end
         for (i,k) in enumerate(endogenous_states); m.endogenous_states[k] = i end
@@ -108,19 +102,22 @@ function eqcond(m::OnionModel) #m::OnionModel
     Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[Symbol("Eπ_1")]:endo[Symbol("Eπ_$n")]]    = - m[:bet]*diagm(get_setting(m, :invkap))
 
 
-    #   if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
+    invkap_value = get_setting(m, :invkap)
+    # The effect of a common shock to inflation is divided up by sector (dependent on sectoral inflation shares)
+    if subspec_int ∈ [1]
         Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]]    = get_setting(m, :invkap)
 
-        Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
-        Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
+        # Set up AR(1) common shock process for all sectors
+        Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1
+        Γ1[eq[:eq_μ_com], endo[:μ_com]] = m[:ρ_μ_com]
+        Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1
+
+        # IID common shock
+        #Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
+        #Ψ[eq[:eq_μ_com], exo[:μ_com_sh]] = 1.
     end
 
- #   end
-
-
-    invkap_value = get_setting(m, :invkap)
-
+    #=
     #if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
     if subspec_int ∈ [7, 8, 9, 10, 12, 20]
         for i in get_setting(m, :food_sectors)
@@ -154,7 +151,7 @@ function eqcond(m::OnionModel) #m::OnionModel
 
         end
     end
-
+=#
 
     # s recursion #Dyanmics of relative prices EQ
     Γ0[eq[Symbol("eq_srec_1")]:eq[Symbol("eq_srec_$n")], endo[:s_1]:endo[Symbol("s_$n")]] = eye(n)
