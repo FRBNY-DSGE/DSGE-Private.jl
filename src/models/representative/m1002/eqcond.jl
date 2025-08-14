@@ -581,8 +581,13 @@ end
     Ψ[eq[:eq_γ], exo[:γ_sh]]  = 1.
 
     # Long-term inflation expectations
-    nopish = haskey(m.settings, :remove_pistar_shocks) &&
+if subspec_ind >= 207
+    nopish = haskey(m.settings, :rm_pi_star) &&
+        reg >= get_setting(m, :rm_pi_star) && reg < 10 ? 0.0 : 1.0
+else
+     nopish = haskey(m.settings, :remove_pistar_shocks) &&
         reg >= get_setting(m, :remove_pistar_shocks) ? 0.0 : 1.0
+end
 
     Γ0[eq[:eq_π_star], endo[:π_star_t]] = 1.
     Γ1[eq[:eq_π_star], endo[:π_star_t]] = m[:ρ_π_star]
