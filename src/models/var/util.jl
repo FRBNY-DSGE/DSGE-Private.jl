@@ -166,11 +166,11 @@ end
 
 
 # Instead of returing draws from posterior of β and Σ, return β hat and Σ hat
-function return_posterior_hat(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
-                             T̄::Int, n_obs::Int, lags::Int; standard_orientation::Bool = true,
-                             testing::Bool = false,
-                             test_Σ_draw_shock::Matrix{S} = Matrix{S}(undef, 0, 0),
-                             test_β_draw_shock::Vector{S} = Vector{S}(undef, 0)) where {S<:Real}
+function return_posterior_hat_VAR(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
+                                  T̄::Int, n_obs::Int, lags::Int; standard_orientation::Bool = true,
+                                  testing::Bool = false,
+                                  test_Σ_draw_shock::Matrix{S} = Matrix{S}(undef, 0, 0),
+                                  test_β_draw_shock::Vector{S} = Vector{S}(undef, 0)) where {S<:Real}
 
     # Set up
     k = 1 + lags * n_obs
@@ -267,6 +267,26 @@ function draw_VECM(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
     end
 
     return β_draw, Σ_draw
+end
+
+# Instead of returing draws from posterior of β and Σ, return β hat and Σ hat
+function return_posterior_hat_VECM(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
+                                   T̄::Int, n_obs::Int, lags::Int, n_coint::Int; standard_orientation::Bool = true,
+                                   testing::Bool = false,
+                                   test_Σ_draw_shock::Matrix{S} = Matrix{S}(undef, 0, 0),
+                                   test_β_draw_shock::Vector{S} = Vector{S}(undef, 0)) where {S<:Real}
+
+    # Set up
+    k = 1 + lags * n_obs + n_coint
+    inv_XXXXC = inv(XXXXC)
+    β = inv_XXXXC * XXYYC
+    inv_Σ_mul_T̄ = inv(YYYYC - XXYYC' * β)
+    inv_Σ_mul_T̄ += inv_Σ_mul_T̄' # force to be positive definite
+    inv_Σ_mul_T̄ ./= 2.
+    cholmat = cholesky(inv_Σ_mul_T̄).L
+    Σ_mat = cholmat * cholmat'
+
+    return β, Σ_mat
 end
 
 """ (From Brookings PC) """

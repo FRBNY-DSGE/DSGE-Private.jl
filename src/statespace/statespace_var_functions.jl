@@ -191,7 +191,7 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
                         apply_altpolicy::Bool = false,
                         check_system::Bool = false, get_system::Bool = false,
                         get_population_moments::Bool = false,
-                        tvis::Bool = false, verbose::Symbol = :high) where {T<:Real}
+                        tvis::Bool = false, verbose::Symbol = :high, get_posterior_hat = false) where {T<:Real}
 
     if get_λ(m) == Inf
         # Then we just want the VECM approximation of the DSGE
@@ -226,16 +226,25 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
                 return out..., YYYY, XXYY, XXXX
             else
                 # Compute prior-weighted population moments
+                #[ID] Weigh lambda by number of observations
+                T_obs = size(data, 2)
                 λ = get_λ(m)
-                YYYYC = YYYY + λ .* out[1]
-                XXYYC = XXYY + λ .* out[2]
-                XXXXC = XXXX + λ .* out[3]
+                YYYYC = YYYY + λ .* T_obs .* out[1]
+                XXYYC = XXYY + λ .* T_obs .* out[2]
+                XXXXC = XXXX + λ .* T_obs .* out[3]
 
                 # Draw VECM system
                 n_periods = size(data, 2) - lags
-                β, Σ =  draw_VECM(YYYYC, XXYYC, XXXXC,
-                                  convert(Int, n_periods + λ * n_periods),
-                                  size(data, 1), lags, n_cointegrating(m))
+
+                if get_posterior_hat
+                    β, Σ = return_posterior_hat_VECM(YYYYC, XXYYC, XXXXC,
+                                                convert(Int, n_periods + λ * n_periods),
+                                                size(data, 1), lags, n_cointegrating(m))
+                else
+                    β, Σ = draw_VECM(YYYYC, XXYYC, XXXXC,
+                                     convert(Int, n_periods + λ * n_periods),
+                                     size(data, 1), lags, n_cointegrating(m))
+                end
 
                 return β, Σ
             end
