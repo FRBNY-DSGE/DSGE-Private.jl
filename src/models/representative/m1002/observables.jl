@@ -301,8 +301,10 @@ function init_observable_mappings!(m::Model1002)
         observables[:obs_shortinflation] = Observable(:obs_shortinflation, [:COREPCE__SPFINFL],
                                                       shortinflation_fwd_transform,
                                                       shortinflation_rev_transform,
-                                                      "Q4/Q4 value of -1, 0, 1, 2 periods ahead anticipated Core PCE Price Index Level",
-                                                      "Q4/Q4 value of -1, 0, 1, 2 periods ahead anticipated Core PCE Price Index Level")
+                                                      #"Q4/Q4 value of -1, 0, 1, 2 periods ahead anticipated Core PCE Price Index Level",
+                                                      #"Q4/Q4 value of -1, 0, 1, 2 periods ahead anticipated Core PCE Price Index Level")
+                                                      "Q4/Q4 value of -2, -1, 0, 1 periods ahead anticipated Core PCE Price Index Level",
+                                                      "Q4/Q4 value of -2, -1, 0, 1 periods ahead anticipated Core PCE Price Index Level")
     end
 
 
@@ -312,6 +314,7 @@ function init_observable_mappings!(m::Model1002)
     if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
         avgshortinflation_fwd_transform = function (levels)
             # FROM: SPF: Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)
+            # 2025Q3 Change: Sum of -2 , -1, 0, 1 period ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points
 
             annualtoquarter(levels[!,:COREPCEAVG])
         end
@@ -321,8 +324,12 @@ function init_observable_mappings!(m::Model1002)
         observables[:obs_avgshortinflation] = Observable(:obs_avgshortinflation, [:COREPCEAVG__SPFINFL],
                                                          avgshortinflation_fwd_transform,
                                                          avgshortinflation_rev_transform,
-                                                         "Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
-                                                         "Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
+                                                         #"Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
+                                                         #"Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
+                                                         "Sum of -2, -1, 0, 1 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
+                                                         "Sum of -2, -1, 0, 1 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
+
+
     end
     ############################################################################
     # 11. Long rate (10-year, zero-coupon)
