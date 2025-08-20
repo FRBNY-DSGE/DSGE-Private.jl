@@ -229,6 +229,7 @@ TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, r
 =#
 #Econometrician's views
 
+#= (2025Q2)
 TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
@@ -239,7 +240,7 @@ C_sum = CCC1Econo #(TTT * CCC) + 2 * CCC
 
 TTT1_f = view(T_sum, endo[:π_t], :)
 CCC1_f = C_sum[endo[:π_t]]
-
+=#
 
 #Implementation
 #=
@@ -251,15 +252,40 @@ if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
     DD[obs[:obs_shortinflation]] =  CCC1_f + (4 * 100*(m[:π_star]-1))
 
 end
-=#
 
-#Implementation
+
+#Implementation (2025Q2)
 if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
     ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
     ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
     ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
     DD[obs[:obs_avgshortinflation]] = (CCC1_f ./ 4) + 100*(m[:π_star]-1)
 end
+=#
+
+
+# Implementation (2025Q3)
+
+# There is only one quarter left (Q4) in 2025 on which we are taking inflation expectations
+TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 1, 29;
+                                                           integ_series = integ_series,
+                                                         memo = use_fwd_exp_sum ? memo : nothing)
+T_sum = TTT1Econo #TTT
+C_sum = CCC1Econo #CCC
+
+TTT1_f = view(T_sum, endo[:π_t], :)
+CCC1_f = C_sum[endo[:π_t]]
+
+
+if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
+    ZZ[obs[:obs_avgshortinflation], endo[:π_t2]] = 0.25 # Add extra endogenous state to cover 2025Q1 (t-2) observed inflation
+    ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
+    ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
+    ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
+    DD[obs[:obs_avgshortinflation]] = (CCC1_f ./ 4) + 100*(m[:π_star]-1)
+end
+
+
 
 
 
