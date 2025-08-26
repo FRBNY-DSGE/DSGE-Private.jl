@@ -7036,8 +7036,13 @@ function ss104!(m)
             set_regime_fixed!(m[Symbol("σ_λ_f$(i)")], 2, true) #For now, maybe we estimate in the future
         end
 
+        # mp_regs_aug = Set the second period ahead anticipated markup shock to 0 for regime 24 (2025Q3) - Short-term implementation -
+        m2p_regs_aug = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
+        m2p_regs_aug[23] = 2
+
         m2p[:σ_λ_f1] = m2p_regs
-        m2p[:σ_λ_f2] = m2p_regs
+        #m2p[:σ_λ_f2] = m2p_regs
+        m2p[:σ_λ_f2] = m2p_regs_aug
 
         m <= Setting(:model2para_regime, m2p)
 
