@@ -53,6 +53,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol,
                             pseudo2data::AbstractDict{Symbol, Symbol} = Dict{Symbol, Symbol}(),
                             variable_names::Vector{Symbol} = Vector{Symbol}(undef, 0),
                             transform_gdp::Bool = false,
+                            pofr_indic::Bool = false,
                             kwargs...)
 
     if VERBOSITY[verbose] >= VERBOSITY[:low]
@@ -120,6 +121,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                             verbose::Symbol = :none,
                             bdd_fcast::Bool = true,
                             transform_gdp::Bool = false,
+                            pofr_indic::Bool = false,
                             kwargs...)
 
     # Determine class and product
@@ -201,17 +203,20 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
 
     mb = MeansBands(metadata, means, bands)
 
-    # Write to file
-    filepath = get_meansbands_output_file(m, input_type, cond_type, output_var,
-                                          forecast_string = forecast_string)
-    dirpath = dirname(filepath)
-    isdir(dirpath) || mkpath(dirpath)
-    JLD2.jldopen(filepath, true, true, true, IOStream) do file
-        write(file, "mb", mb)
-    end
+    # Write to file if not running probability of recession
+    if !pofr_indic
 
-    sep = prod in [:shockdec, :irf, :shockdecseq, :shockdecqtrs] ? "  " : ""
-    println(verbose, :high, sep * "wrote " * basename(filepath))
+        filepath = get_meansbands_output_file(m, input_type, cond_type, output_var,
+                                              forecast_string = forecast_string)
+        dirpath = dirname(filepath)
+        isdir(dirpath) || mkpath(dirpath)
+        JLD2.jldopen(filepath, true, true, true, IOStream) do file
+            write(file, "mb", mb)
+        end
+
+        sep = prod in [:shockdec, :irf, :shockdecseq, :shockdecqtrs] ? "  " : ""
+        println(verbose, :high, sep * "wrote " * basename(filepath))
+    end
 
     return mb
 end
@@ -222,7 +227,7 @@ function compute_meansbands(m::AbstractDSGEModel, input_type::Symbol, cond_type:
                             pop_growth::AbstractVector{Float64} = Float64[],
                             skipnan::Bool = false,
                             shock_name::Nullable{Symbol} = Nullables.Nullable{Symbol}(),
-                            density_bands::Vector{Float64} = [0.5,0.6,0.7,0.8,0.9],
+                            density_bands::Vector{Float64} = [0.5, 0.6, 0.7, 0.8, 0.9],
                             minimize::Bool = false,
                             pseudo2data::AbstractDict{Symbol, Symbol} = Dict{Symbol, Symbol}(),
                             compute_shockdec_bands::Bool = false,
