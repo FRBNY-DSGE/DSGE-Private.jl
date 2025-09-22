@@ -95,8 +95,7 @@ function compute_vecm_population_moments(data::Matrix{S}, lags::Int, n_coint::In
     XXYY = XX' * YY
     XXXX = XX' * XX
 
-    #return YYYY, XXYY, XXXX
-    return YY, XX
+    return YYYY, XXYY, XXXX
 end
 
 
