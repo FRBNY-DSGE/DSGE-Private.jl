@@ -42,6 +42,38 @@ function lag_data(data::Matrix{S}, lags::Int; use_intercept::Bool = true,
     return XX
 end
 
+function lag_data_VECM(data::Matrix{S}, lags::Int, n_coint::Int, coint_data::Matrix{S}; use_intercept::Bool = true,
+                  pad::Bool = false, padding::Matrix{S} = Matrix{S}(undef, 0, 0)) where {S<:Real}
+    # Assumes data is nobs x T
+    nobs, T = size(data)
+    data = Matrix(data')
+
+    # Construct XX matrix of covariates
+    add_constant = use_intercept ? 1 : 0
+    XX = fill!(Matrix{S}(undef, pad ? T : T - lags, lags * nobs + add_constant + n_coint), NaN)
+    if use_intercept
+        XX[:, 1:lags] .= one(S) # XX is T x n_regressors Be careful with where the intercept is placed (should be after the coint_vec)
+    end
+
+    for i = 1:lags
+        XX[:, add_constant + n_coint + (i - 1) * nobs + 1:add_constant + n_coint + i * nobs] =
+            lag(data, i; pad = pad, T_by_n = true, drop_obs = pad ? 0 : lags - i)
+    end
+
+    # Add coint_data (First 3 cols) {Coint_vec: 3 cols, intercept: 1 col, lagged data: nvars*lags}
+    coint_data_nopresample = coint_data[lags:end-1, :] # Get rid of presample
+    XX[:, 1:n_coint] = coint_data_nopresample # Add coint data to first 3 cols of XX matrix
+
+    @show size(XX)
+
+    if pad && !isempty(padding)
+        XX[1:lags, :] = padding
+    end
+
+    return XX
+end
+
+
 function compute_var_population_moments(data::Matrix{S}, lags::Int;
                                  use_intercept::Bool = false) where {S<:Real}
     # Compute population moments of sample data
@@ -53,6 +85,20 @@ function compute_var_population_moments(data::Matrix{S}, lags::Int;
 
     return YYYY, XXYY, XXXX
 end
+
+function compute_vecm_population_moments(data::Matrix{S}, lags::Int, n_coint::Int, coint_data::Matrix{S};
+                                 use_intercept::Bool = false) where {S<:Real}
+    # Compute population moments of sample data
+    YY = convert(Matrix{S}, data[:, 1 + lags:end]')
+    XX = lag_data_VECM(data, lags, n_coint, coint_data; use_intercept = use_intercept) # Construct XX matrix of covariates
+    YYYY = YY' * YY
+    XXYY = XX' * YY
+    XXXX = XX' * XX
+
+    #return YYYY, XXYY, XXXX
+    return YY, XX
+end
+
 
 """
 ```

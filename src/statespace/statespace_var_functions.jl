@@ -223,6 +223,7 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
                                           use_intercept = true)
 
             if get_population_moments
+
                 return out..., YYYY, XXYY, XXXX
             else
                 # Compute prior-weighted population moments
