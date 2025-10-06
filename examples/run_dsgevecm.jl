@@ -1,4 +1,4 @@
-using DSGE, Plots, FileIO
+using DSGE, Plots, FileIO, JLD2
 using Plots.PlotMeasures
 
 # This script loads in matrices from the DSGE in Del Negro, Schorfheide, Smets, and Wouters (2007)
@@ -17,9 +17,9 @@ using Plots.PlotMeasures
 # with λ = ∞ that are nearly identical to the underlying DSGE IRFs. For IRFs that are
 # not exactly the same, see the IRF of output growth to the z shock. On impact, the
 # IRF is different, but after 5-10 quarters, the impulse responses are almost identical.
-fp = dirname(@__FILE__)
+#fp = dirname(@__FILE__)
 
-matdata     = load(joinpath(fp, "../test/reference/dsgevecm_lambda_irfs.jld2"))
+matdata     = JLD2.jldopen("dsgevecm_lambda_irfs.jld2", "r")#load("dsgevecm_lambda_irfs.jld2")
 horizon     = 20
 nshocks     = size(matdata["RRR"], 2)
 obs_dict    = Dict{Symbol, Int}(:output_growth => 1, :consumption_growth => 2,

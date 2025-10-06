@@ -158,7 +158,7 @@ module DSGE
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
-        PoolModel, OnionModel, eqcond, measurement, pseudo_measurement,
+        PoolModel, OnionModel, SectoralOnionModel, eqcond, measurement, pseudo_measurement,
         shock_groupings, transition, DSGEVAR, DSGEVECM,
 
         # models/heterogeneous/
@@ -366,6 +366,7 @@ module DSGE
     include("models/representative/m904/pseudo_measurement.jl")
     include("models/representative/m904/augment_states.jl")
 
+    # Default Onion Model
     include("models/representative/OnionModel/onionmodel.jl")
     include("models/representative/OnionModel/subspecs.jl")
     include("models/representative/OnionModel/eqcond.jl")
@@ -375,6 +376,17 @@ module DSGE
     include("models/representative/OnionModel/pseudo_measurement.jl")
     include("models/representative/OnionModel/augment_states.jl")
     include("models/representative/OnionModel/InOutData.jl")
+
+    # Sectoral Onion Model
+    include("models/representative/SectoralOnionModel/sectoral_onionmodel.jl")
+    include("models/representative/SectoralOnionModel/subspecs.jl")
+    include("models/representative/SectoralOnionModel/eqcond.jl")
+    include("models/representative/SectoralOnionModel/observables.jl")
+    include("models/representative/SectoralOnionModel/measurement.jl")
+    include("models/representative/SectoralOnionModel/pseudo_observables.jl")
+    include("models/representative/SectoralOnionModel/pseudo_measurement.jl")
+    include("models/representative/SectoralOnionModel/augment_states.jl")
+    include("models/representative/SectoralOnionModel/InOutData.jl")
 
 #=
 include("models/representative/OnionModel/onionmodel_brief.jl")

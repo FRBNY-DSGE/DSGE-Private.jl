@@ -42,6 +42,38 @@ function lag_data(data::Matrix{S}, lags::Int; use_intercept::Bool = true,
     return XX
 end
 
+function lag_data_VECM(data::Matrix{S}, lags::Int, n_coint::Int, coint_data::Matrix{S}; use_intercept::Bool = true,
+                  pad::Bool = false, padding::Matrix{S} = Matrix{S}(undef, 0, 0)) where {S<:Real}
+    # Assumes data is nobs x T
+    nobs, T = size(data)
+    data = Matrix(data')
+
+    # Construct XX matrix of covariates
+    add_constant = use_intercept ? 1 : 0
+    XX = fill!(Matrix{S}(undef, pad ? T : T - lags, lags * nobs + add_constant + n_coint), NaN)
+    if use_intercept
+        XX[:, 1:lags] .= one(S) # XX is T x n_regressors Be careful with where the intercept is placed (should be after the coint_vec)
+    end
+
+    for i = 1:lags
+        XX[:, add_constant + n_coint + (i - 1) * nobs + 1:add_constant + n_coint + i * nobs] =
+            lag(data, i; pad = pad, T_by_n = true, drop_obs = pad ? 0 : lags - i)
+    end
+
+    # Add coint_data (First 3 cols) {Coint_vec: 3 cols, intercept: 1 col, lagged data: nvars*lags}
+    coint_data_nopresample = coint_data[lags:end-1, :] # Get rid of presample
+    XX[:, 1:n_coint] = coint_data_nopresample # Add coint data to first 3 cols of XX matrix
+
+    @show size(XX)
+
+    if pad && !isempty(padding)
+        XX[1:lags, :] = padding
+    end
+
+    return XX
+end
+
+
 function compute_var_population_moments(data::Matrix{S}, lags::Int;
                                  use_intercept::Bool = false) where {S<:Real}
     # Compute population moments of sample data
@@ -53,6 +85,19 @@ function compute_var_population_moments(data::Matrix{S}, lags::Int;
 
     return YYYY, XXYY, XXXX
 end
+
+function compute_vecm_population_moments(data::Matrix{S}, lags::Int, n_coint::Int, coint_data::Matrix{S};
+                                 use_intercept::Bool = false) where {S<:Real}
+    # Compute population moments of sample data
+    YY = convert(Matrix{S}, data[:, 1 + lags:end]')
+    XX = lag_data_VECM(data, lags, n_coint, coint_data; use_intercept = use_intercept) # Construct XX matrix of covariates
+    YYYY = YY' * YY
+    XXYY = XX' * YY
+    XXXX = XX' * XX
+
+    return YYYY, XXYY, XXXX
+end
+
 
 """
 ```
@@ -150,6 +195,7 @@ function draw_stationary_VAR(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S
     return β_draw, Σ_draw
 end
 
+
 function draw_stationary_VAR(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
                              T̄::Int; standard_orientation::Bool = true, testing::Bool = false,
                              test_Σ_draw_shock::Matrix{S} = Matrix{S}(undef, 0, 0),
@@ -161,6 +207,27 @@ function draw_stationary_VAR(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S
     return draw_stationary_VAR(YYYYC, XXYYC, XXXXC, T̄, n_obs, lags;
                                standard_orientation = standard_orientation, testing = testing,
                                test_Σ_draw_shock = test_Σ_draw_shock, test_β_draw_shock = test_β_draw_shock)
+end
+
+
+# Instead of returing draws from posterior of β and Σ, return β hat and Σ hat
+function return_posterior_hat_VAR(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
+                                  T̄::Int, n_obs::Int, lags::Int; standard_orientation::Bool = true,
+                                  testing::Bool = false,
+                                  test_Σ_draw_shock::Matrix{S} = Matrix{S}(undef, 0, 0),
+                                  test_β_draw_shock::Vector{S} = Vector{S}(undef, 0)) where {S<:Real}
+
+    # Set up
+    k = 1 + lags * n_obs
+    inv_XXXXC = inv(XXXXC)
+    β = inv_XXXXC * XXYYC
+    inv_Σ_mul_T̄ = inv(YYYYC - XXYYC' * β)
+    inv_Σ_mul_T̄ += inv_Σ_mul_T̄' # force to be positive definite
+    inv_Σ_mul_T̄ ./= 2.
+    cholmat = cholesky(inv_Σ_mul_T̄).L
+    Σ_mat = cholmat * cholmat' #We'd normally scale this by (1+λ)*T-k
+    # Return β hat and Σ
+    return β, Σ_mat
 end
 
 """
@@ -245,4 +312,172 @@ function draw_VECM(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
     end
 
     return β_draw, Σ_draw
+end
+
+# Instead of returing draws from posterior of β and Σ, return β hat and Σ hat
+function return_posterior_hat_VECM(YYYYC::Matrix{S}, XXYYC::Matrix{S}, XXXXC::Matrix{S},
+                                   T̄::Int, n_obs::Int, lags::Int, n_coint::Int; standard_orientation::Bool = true,
+                                   testing::Bool = false,
+                                   test_Σ_draw_shock::Matrix{S} = Matrix{S}(undef, 0, 0),
+                                   test_β_draw_shock::Vector{S} = Vector{S}(undef, 0)) where {S<:Real}
+
+    # Set up
+    k = 1 + lags * n_obs + n_coint
+    inv_XXXXC = inv(XXXXC)
+    β = inv_XXXXC * XXYYC
+    inv_Σ_mul_T̄ = inv(YYYYC - XXYYC' * β)
+    inv_Σ_mul_T̄ += inv_Σ_mul_T̄' # force to be positive definite
+    inv_Σ_mul_T̄ ./= 2.
+    cholmat = cholesky(inv_Σ_mul_T̄).L
+    Σ_mat = cholmat * cholmat'
+
+    return β, Σ_mat
+end
+
+""" (From Brookings PC) """
+
+function update_system!(m::AbstractDSGEModel{S}, system::System,
+                        observables::Vector{Symbol}, shocks::Vector{Symbol};
+                        zero_DD::Bool = false) where {S<:Real}
+    # Set up indices
+    oid = m.observables # observables indices dictionary
+    pid = m.pseudo_observables # pseudo observables indices dictionary
+
+    # Compute new ZZ and DD matrices
+    Zout = zeros(S, length(observables), n_states_augmented(m))
+    Dout = zeros(S, length(observables))
+    Eout = zeros(S, length(observables), length(observables))
+    for (i,obs) in enumerate(observables)
+        Zout[i,:], Dout[i] = if haskey(oid, obs)
+            system[:ZZ][oid[obs], :], zero_DD ?
+                zero(S) : system[:DD][oid[obs]]
+        elseif haskey(pid, obs)
+            system[:ZZ_pseudo][pid[obs], :], zero_DD ? zero(S) : system[:DD_pseudo][pid[obs]]
+        else
+            error("Observable/PseudoObservable $obs cannot be found in the DSGE model $m")
+        end
+    end
+
+    # Find shocks to keep
+    shock_inds = map(k -> m.exogenous_shocks[k], shocks)
+
+    # Update system
+    system.measurement.ZZ = Zout
+    system.measurement.DD = Dout
+    system.measurement.QQ = system[:QQ][shock_inds, shock_inds]
+    system.measurement.EE = Eout
+    system.transition.RRR = system[:RRR][:, shock_inds]
+end
+
+""" Getting VAR matrices """
+# This script holds functions mapping the solution to a DSGE model
+# to the corresponding VAR system
+
+function dsge_to_var!(m::AbstractDSGEModel, observables::Vector{Symbol},
+                      exogenous_shocks::Vector{Symbol}, lags::Int;
+                      regime_switching::Bool = false, n_regimes::Int = 2,
+                      regime::Int = 1, zero_DD::Bool = false,
+                      MM::Matrix{S} =
+                      zeros(length(observables), length(exogenous_shocks)), get_VAR::Bool = true) where {S<:Real}
+    para = map(x -> x.value, m.parameters)
+    return dsge_to_var!(m, para, observables, exogenous_shocks, lags;
+                        regime_switching = regime_switching,
+                        n_regimes = n_regimes, regime = regime, zero_DD = zero_DD, MM = MM)
+end
+
+function dsge_to_var!(m::AbstractDSGEModel, para::Vector{S},
+                      observables::Vector{Symbol},
+                      exogenous_shocks::Vector{Symbol}, lags::Int;
+                      regime_switching::Bool = false, n_regimes::Int = 2,
+                      regime::Int = 1,
+                      zero_DD::Bool = false,
+                      MM::Matrix{S} =
+                      zeros(length(observables), length(exogenous_shocks)),
+                      get_VAR::Bool = true) where {S<:Real}
+    DSGE.update!(m, para)
+    if regime_switching
+        regime_system = compute_system(m; regime_switching = true, n_regimes = n_regimes)
+        system = System(regime_system, regime)
+        update_system!(m, system, observables, exogenous_shocks, zero_DD = zero_DD)
+    else
+        system = compute_system(m)
+        update_system!(m, system, observables, exogenous_shocks, zero_DD = zero_DD)
+    end
+
+    return dsge_to_var(system[:TTT], system[:RRR], system[:QQ], system[:DD],
+                       system[:ZZ], system[:EE], MM, lags; get_VAR = get_VAR)
+end
+
+function dsge_to_var(TTT::Matrix{S}, RRR::Matrix{S}, QQ::Matrix{S},
+                     DD::Vector{S}, ZZ::Matrix{S}, EE::Matrix{S},
+                     MM::Matrix{S}, nlags::Int; get_VAR::Bool = true) where {S<:Real}
+## description:
+## nlags: number VAR lags desired
+## solution to DSGE model - delivers transition equation for the state variables  S_t
+## transition equation: s_t = C + TTT s_{t-1} +  RRR ϵ_t, where var(ϵ_t) = QQ
+## define the measurement equation: X_t = ZZ s_t + D + u_t
+## where u_t = η_t + MM * ϵ_t with var(η_t) = EE
+## where var(u_t) = HH = EE + MM QQ MM', cov(eps_t,u_t) = VV = QQ * MM'
+## this is for no coint no constant
+
+
+    nobs = size(ZZ,1)
+
+    yyyyd = zeros(nobs,nobs)
+    xxyyd = zeros(nlags*nobs,nobs)
+    xxxxd = zeros(nlags*nobs,nlags*nobs)
+
+    HH = EE+MM*QQ*MM';
+    VV = QQ*MM';
+
+    ## Compute nlags autocovariances
+
+    ## Initialize Autocovariances
+    GAMM0 = zeros((nobs)^2,nlags+1)
+
+    GA0 =  DSGE.solve_discrete_lyapunov(TTT, RRR*QQ*RRR')
+    Gl   = ZZ*GA0*ZZ' + ZZ*RRR*VV + (ZZ*RRR*VV)' + HH
+    GAMM0[:,1] = vec(Gl)
+
+    TTl = copy(TTT)
+    for l = 1:nlags
+        Gl = ZZ*(TTl*GA0)*ZZ' + ZZ*(TTl*RRR*VV)
+        GAMM0[:,l+1] = vec(Gl)
+        TTl = TTl*TTT
+    end
+
+    ## Create limit cross product matrices
+
+    yyyyd = reshape(GAMM0[:,1],nobs,nobs) + DD*DD'
+
+    ## cointadd are treated as the first set of variables in XX
+    ## coint    are treated as the second set of variables in XX
+    ## composition: cointadd - coint - constant - lags
+    yyxxd = zeros(nobs,nlags*nobs)
+    xxxxd = zeros(nlags*nobs,nlags*nobs)
+
+    for rr = 1:nlags;
+        ## E[yy,x(lag rr)]
+        yyxxd[:,nobs*(rr-1)+1:nobs*rr] =  reshape(GAMM0[:,rr+1],nobs,nobs) + DD*DD'
+
+
+        ## E[x(lag rr),x(lag ll)]
+        for ll = rr:nlags;
+            yyyydrrll = reshape(GAMM0[:,ll-rr+1],nobs,nobs)+DD*DD';
+            xxxxd[nobs*(rr-1)+1:nobs*rr,nobs*(ll-1)+1:nobs*ll] =  yyyydrrll
+            xxxxd[nobs*(ll-1)+1:nobs*ll,nobs*(rr-1)+1:nobs*rr] =  yyyydrrll'
+        end
+    end
+
+    xxyyd = convert(Matrix{S}, yyxxd')
+
+    if get_VAR
+        β = \(xxxxd, xxyyd)
+        Σ = yyyyd - xxyyd' * β
+        Σ += Σ'
+        Σ ./= 2.
+        return β, Σ
+    else
+        return yyyyd, xxyyd, xxxxd
+    end
 end
