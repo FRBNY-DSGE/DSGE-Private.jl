@@ -130,7 +130,8 @@ function init_model_indices!(m::DSSW)
 
     endogenous_states = [[
         :y_t, :c_t, :i_t, :k_t, :kbar_t, :L_t, :m_t, :mc_t, :pi_t, :R_t, :rk_t,
-        :u_t, :w_t, :wtil_t, :xi_t, :xik_t]; [:z_t, :phi_t, :mu_t, :b_t, :g_t, :laf_t]] #6 out 7 shocks are states since r_sh is iid while other shocks are processes
+        :u_t, :w_t, :wtil_t, :xi_t, :xik_t]; [:z_t, :phi_t, :mu_t, :b_t, :g_t, :laf_t];  #6 out 7 shocks are states since r_sh is iid while other shocks are processes
+                         [:E_c, :E_pi, :E_rk, :E_w, :E_wtil, :E_xi, :E_xik, :E_i]] #Expectational errors are also states in the model
 
     # Exogenous shocks
     exogenous_shocks = [:z_sh, :phi_sh, :mu_sh, :b_sh, :g_sh, :laf_sh, :r_sh]
@@ -139,7 +140,8 @@ function init_model_indices!(m::DSSW)
     expected_shocks = [:Ec_sh, :Epi_sh, :Erk_sh, :Ew_sh, :Ewtil_sh, :Exi_sh, :Exik_sh, :Ei_sh]
 
     # Equilibrium conditions
-    equilibrium_conditions = [:eq_margcost, :eq_prsett, :eq_capacc, :eq_effcap, :eq_euler, :eq_moneydem, :eq_margut, :eq_invfoc, :eq_rettocap, :eq_utcap, :eq_optwage, :eq_aggwage, :eq_caplabrat, :eq_resources, :eq_prod, :eq_taylor]
+    equilibrium_conditions = [:eq_margcost, :eq_prsett, :eq_capacc, :eq_effcap, :eq_euler, :eq_moneydem, :eq_margut, :eq_invfoc, :eq_rettocap, :eq_utcap, :eq_optwage, :eq_aggwage, :eq_caplabrat, :eq_resources, :eq_prod, :eq_taylor;
+                              [:eq_z, :eq_phi, :eq_mu, :eq_b, :eq_g, :eq_laf]; [:eq_Ec, :eq_Epi, :eq_Erk, :eq_Ew, :eq_Ewtil, :eq_Exi, :eq_Exik, :eq_Ei]]
 
     # Additional states added after solving model
     # Lagged states and observables measurement error

@@ -212,9 +212,18 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
         else
             EE, MM = measurement_error(m)
 
+            n_coint = get_setting(m, :n_coint)
+            coint_data = get_setting(m, :coint_data)
+
             lags = n_lags(m)
-            YYYY, XXYY, XXXX =
-            compute_var_population_moments(data, lags; use_intercept = true)
+
+            if n_coint > 0
+                YYYY, XXYY, XXXX =
+                    compute_vecm_population_moments(data, lags, n_coint, coint_data; use_intercept = true)
+            else
+                YYYY, XXYY, XXXX =
+                    compute_var_population_moments(data, lags; use_intercept = true)
+            end
             out = vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
                                           system[:DD], system[:ZZ], EE, MM, size(data, 1),
                                           n_lags(m), n_cointegrating(m),

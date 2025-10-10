@@ -42,20 +42,184 @@ function eqcond(m::SmetsWouters, reg::Int)
 
     # Price Setting
     Γ0[eq[:eq_prsett], endo[:pi_t]] = 1.
-    Γ0[eq[:eq_prsett], endo[:Epi_sh]] = -m[:bet]/(1+m[:iota_p]*m[:bet])
+    Γ0[eq[:eq_prsett], endo[:E_pi]] = -m[:bet]/(1+m[:iota_p]*m[:bet])
     Γ0[eq[:eq_prsett], endo[:mc_t]] = -(1-m[:zeta_p])*(1-m[:bet]*m[:zeta_p])/(m[:zeta_p]*(1+m[:iota_p]*m[:bet]))
-    Γ0[eq[:eq_prsett], endo[:laf_t]] = -1 #M101
+    Γ0[eq[:eq_prsett], endo[:laf_t]] = -1. #M101
     Γ1[eq[:eq_prsett], endo[:pi_t]] = m[:iota_p]/(1+m[:iota_p]*m[:bet])
 
     # Capital Accumulation
     Γ0[eq[:eq_capacc], endo[:kbar_t]] = 1.
-    Γ0[eq[:eq_capacc], endo[:z_t]]
-    Γ0[eq[:eq_capacc], endo[:i_t]]
-    Γ0[eq[:eq_capacc], endo[:mu_t]] #M101
-    Γ1[eq[:eq_capacc], endo[:mc_t]]
-
+    Γ0[eq[:eq_capacc], endo[:z_t]] = (1-m[:istokbarst])
+    Γ0[eq[:eq_capacc], endo[:i_t]] = -m[:istokbarst]
+    Γ0[eq[:eq_capacc], endo[:mu_t]] = -m[:istokbarst]*(1+m[:bet])*exp(2*m[:zstar])*m[:s2] #m101
+    Γ1[eq[:eq_capacc], endo[:kbar_t]] =  (1-m[:istokbarst])
 
     # Effective Capital
+    Γ0[eq[:eq_effcap], endo[:k_t]] = 1.
+    Γ0[eq[:eq_effcap], endo[:u_t]] = -1.
+    Γ0[eq[:eq_effcap], endo[:z_t]] = 1.
+    Γ1[eq[:eq_effcap], endo[:kbar_t]] = 1.
+
+
+    # Euler Equation
+    Γ0[eq[:eq_euler], endo[:xi_t]] = (exp(m[:zstar])-m[:h]*m[:bet])*(exp(m[:zstar])-m[:h])
+    Γ0[eq[:eq_euler], endo[:b_t]] = -(exp(2*m[:zstar])+(m[:h]^2)*m[:bet]) + (m[:bet]*m[:h]*m[:rho_b]*exp(-m[:zstar])*(exp(2*m[:zstar])+(m[:h]^2)*m[:bet]))
+    Γ0[eq[:eq_euler], endo[:z_t]] = m[:h]*exp(m[:zstar]) - (m[:h]*m[:bet]*exp(m[:zstar])*m[:rho_z])
+    Γ0[eq[:eq_euler], endo[:c_t]] = (exp(2*m[:zstar])+(m[:h]^2)*m[:bet])
+    Γ0[eq[:eq_euler], endo[:E_c]] = -m[:h]*m[:bet]*exp(m[:zstar])
+
+    Γ1[eq[:eq_euler], endo[:c_t]] = m[:h]*exp(m[:zstar])
+
+    # Money demand
+    Γ0[eq[:eq_moneydem], endo[:m_t]] = m[:nu_m]
+    Γ0[eq[:eq_moneydem], endo[:xi_t]] = 1.
+    Γ0[eq[:eq_moneydem], endo[:R_t]] = 1./(m[:Rstarn]-1)
+
+    # Marginal utility
+    Γ0[eq[:eq_margut], endo[:xi_t]] = 1.
+    Γ0[eq[:eq_margut], endo[:E_xi]] = -1.
+    Γ0[eq[:eq_margut], endo[:z_t]] = m[:rho_z]
+    Γ0[eq[:eq_margut], endo[:R_t]] = -1.
+    Γ0[eq[:eq_margut], endo[:E_pi]] = 1.
+
+    # Investment FOC
+    Γ0[eq[:eq_invfoc], endo[:xik_t]] = exp(-2*m[:zstar])/m[:s2]
+    Γ0[eq[:eq_invfoc], endo[:mu_t]] = (1+m[:bet])
+    Γ0[eq[:eq_invfoc], endo[:xi_t]] = -exp(-2*m[:zstar])/m[:s2]
+    Γ0[eq[:eq_invfoc], endo[:i_t]] = -(1+m[:bet])
+    Γ0[eq[:eq_invfoc], endo[:E_i]] = m[:bet]
+    Γ0[eq[:eq_invfoc], endo[:z_t]] = -1.+ m[:bet]*m[:rho_z]
+
+    Γ1[eq[:eq_invfoc], endo[:i_t]] = -1.
+
+    # Return to capital
+    Γ0[eq[:eq_rettocap], endo[:xik_t]] = 1.
+    Γ0[eq[:eq_rettocap], endo[:E_xi]] = -m[:rkstar]/(m[:rkstar]+1-m[:del])
+    Γ0[eq[:eq_rettocap], endo[:E_rk]] = -m[:rkstar]/(m[:rkstar]+1-m[:del])
+    Γ0[eq[:eq_rettocap], endo[:E_xik]] = -(1-m[:del])/(m[:rkstar]+1-m[:del])
+    Γ0[eq[:eq_rettocap], endo[:z_t]] = m[:rho_z]
+
+    # Capital utilization
+    Γ0[eq[:eq_utcap], endo[:u_t]] = m[:a2]
+    Γ0[eq[:eq_utcap], endo[:rk_t]] = -m[:rkstar]
+
+    # Optimal wage
+    Γ0[eq[:eq_optwage], endo[:wtil_t]] = 1.
+    Γ0[eq[:eq_optwage], endo[:w_t]] = 1.
+    Γ0[eq[:eq_optwage], endo[:E_wtil]] = -m[:zeta_w]*m[:bet]
+    Γ0[eq[:eq_optwage], endo[:E_w]] = -m[:zeta_w]*m[:bet]
+    Γ0[eq[:eq_optwage], endo[:b_t]] = -(1-m[:zeta_w]*m[:bet])*(exp(2*m[:zstar])+m[:h]^2*m[:bet])*exp(-m[:zstar])/(exp(m[:zstar])-m[:h])
+    Γ0[eq[:eq_optwage], endo[:phi_t]] = -1.
+    Γ0[eq[:eq_optwage], endo[:L_t]] = -(1-m[:zeta_w]*m[:bet])*m[:nu_l]
+    Γ0[eq[:eq_optwage], endo[:xi_t]] = (1-m[:zeta_w]*m[:bet])
+    Γ0[eq[:eq_optwage], endo[:E_pi]] = -m[:zeta_w]*m[:bet]
+    Γ0[eq[:eq_optwage], endo[:z_t]] = -m[:zeta_w]*m[:bet]*m[:rho_z] + m[:zeta_w]*m[:bet]*m[:iota_w]
+    Γ0[eq[:eq_optwage], endo[:pi_t]] = m[:zeta_w]*m[:bet]*m[:iota_w]
+
+    # Aggregate wage evoluation
+    Γ0[eq[:eq_aggwage], endo[:w_t]] = 1.
+    Γ0[eq[:eq_aggwage], endo[:pi_t]] = 1.
+    Γ0[eq[:eq_aggwage], endo[:z_t]] = 1.
+    Γ0[eq[:eq_aggwage], endo[:wtil_t]] = -(1-m[:zeta_w])/m[:zeta_w]
+
+    Γ1[eq[:eq_aggwage], endo[:w_t]] = 1.
+    Γ1[eq[:eq_aggwage], endo[:pi_t]] = m[:iota_w]
+    Γ1[eq[:eq_aggwage], endo[:z_t]] = m[:iota_w]
+
+
+    # Capital labor ratio
+    Γ0[eq[:eq_caplabrat], endo[:k_t]] = 1.
+    Γ0[eq[:eq_caplabrat], endo[:L_t]] = -1.
+    Γ0[eq[:eq_caplabrat], endo[:w_t]] = -1.
+    Γ0[eq[:eq_caplabrat], endo[:rk_t]] = 1.
+
+# Aggregate resources
+Γ0[eq[:eq_resources], endo[:y_t]] = 1.
+Γ0[eq[:eq_resources], endo[:c_t]] = -m[:cstar]/(m[:cstar]+m[:istar])
+Γ0[eq[:eq_resources], endo[:i_t]] = -m[:istar]/(m[:cstar]+m[:istar])
+Γ0[eq[:eq_resources], endo[:g_t]] = -1.
+Γ0[eq[:eq_resources], endo[:u_t]] = -m[:rkstar]*m[:kstar]/(m[:cstar]+m[:istar])
+
+# Production function
+Γ0[eq[:eq_prod], endo[:y_t]] = 1.
+Γ0[eq[:eq_prod], endo[:k_t]] = -m[:alp]*(m[:ystar]-m[:Bigphi])/m[:ystar]
+Γ0[eq[:eq_prod], endo[:L_t]] = -(1-m[:alp])*(m[:ystar]-m[:Bigphi])/m[:ystar]
+
+# Taylor rule
+Γ0[eq[:eq_taylor], endo[:R_t]] = 1.
+Γ0[eq[:eq_taylor], endo[:pi_t]] = -(1-m[:rho_r])*m[:psi1]
+Γ0[eq[:eq_taylor], endo[:y_t]] = -(1-m[:rho_r])*m[:psi2]
+
+Γ1[eq[:eq_taylor], endo[:R_t]] = 1.
+Ψ[eq[:eq_taylor], endo[:r_sh]] = 1.
+
+
+### EXOGENOUS SHOCKS ###
+# Note, r is exogenous IID so no need to keep track of state
+
+Γ0[eq[:eq_z], endo[:z_t]] = 1.
+Γ1[eq[:eq_z], endo[:z_t]] = m[:rho_z]
+Ψ[eq[:eq_z], exo[:z_sh]] = 1.
+
+Γ0[eq[:eq_phi], endo[:phi_t]] = 1.
+Γ1[eq[:eq_phi], endo[:phi_t]] = m[:rho_phi]
+Ψ[eq[:eq_phi], exo[:phi_sh]] = 1.
+
+Γ0[eq[:eq_mu], endo[:mu_t]] = 1.
+Γ1[eq[:eq_mu], endo[:mu_t]] = m[:rho_mu]
+Ψ[eq[:eq_mu], exo[:mu_sh]] = 1.
+
+Γ0[eq[:eq_b], endo[:b_t]] = 1.
+Γ1[eq[:eq_b], endo[:b_t]] = m[:rho_b]
+Ψ[eq[:eq_b], exo[:b_sh]] = 1.
+
+Γ0[eq[:eq_g], endo[:g_t]] = 1.
+Γ1[eq[:eq_g], endo[:g_t]] = m[:rho_g]
+Ψ[eq[:eq_g], exo[:g_sh]] = 1.
+
+Γ0[eq[:eq_laf], endo[:laf_t]] = 1.
+Γ1[eq[:eq_laf], endo[:laf_t]] = m[:rho_laf]
+Ψ[eq[:eq_laf], exo[:laf_sh]] = 1.
+
+### EXPECTATIONAL ERRORS ###
+
+Γ0[eq[:eq_Ec], endo[:c_t]] = 1.
+Γ1[eq[:eq_Ec], endo[:E_c]] = 1.
+Ψ[eq[:eq_Ec], exo[:Ec_sh]] = 1.
+
+Γ0[eq[:eq_Epi], endo[:pi_t]] = 1.
+Γ1[eq[:eq_Epi], endo[:E_pi]] = 1.
+Ψ[eq[:eq_Epi], exo[:Epi_sh]] = 1.
+
+Γ0[eq[:eq_Erk], endo[:rk_t]] = 1.
+Γ1[eq[:eq_Erk], endo[:E_rk]] = 1.
+Ψ[eq[:eq_Erk], exo[:Erk_sh]] = 1.
+
+Γ0[eq[:eq_Ew], endo[:w_t]] = 1.
+Γ1[eq[:eq_Ew], endo[:E_w]] = 1.
+Ψ[eq[:eq_Ew], exo[:Ew_sh]] = 1.
+
+Γ0[eq[:eq_Ewtil], endo[:wtil_t]] = 1.
+Γ1[eq[:eq_Ewtil], endo[:Ewtil_c]] = 1.
+Ψ[eq[:eq_Ewtil], exo[:Ewtil_sh]] = 1.
+
+Γ0[eq[:eq_Exi], endo[:xi_t]] = 1.
+Γ1[eq[:eq_Exi], endo[:E_xi]] = 1.
+Ψ[eq[:eq_Exi], exo[:Exi_sh]] = 1.
+
+Γ0[eq[:eq_Exik], endo[:xik_t]] = 1.
+Γ1[eq[:eq_Exik], endo[:E_xik]] = 1.
+Ψ[eq[:eq_Exik], exo[:Exik_sh]] = 1.
+
+Γ0[eq[:eq_Ei], endo[:i_t]] = 1.
+Γ1[eq[:eq_Ei], endo[:E_i]] = 1.
+Ψ[eq[:eq_Ei], exo[:Ei_sh]] = 1.
+
+return Γ0, Γ1, C, Ψ, Π
+end
+
+
+
 
 
 
@@ -480,6 +644,3 @@ function eqcond(m::SmetsWouters, reg::Int)
         end
     end
 =#
-
-    return Γ0, Γ1, C, Ψ, Π
-end
