@@ -302,7 +302,7 @@ function init_parameters!(m::DSSW)
                    tex_label="\\sigma_{c}")
     #NOT DEFINED IN PAPER
     #change desc
-    m <= parameter(:wadj, 0, (0., 10.), (0., 10.), ModelConstructors.Exponential(), Normal(0.0, 5.0), fixed=false, tex_label="\\sigma_{c}")
+    m <= parameter(:wadj, 0., (0., 10.), (0., 10.), ModelConstructors.Exponential(), Normal(0.0, 5.0), fixed=false, tex_label="\\sigma_{c}")
 
     #NOT DEFINED IN PAPER
     #change dec
@@ -314,12 +314,12 @@ function init_parameters!(m::DSSW)
                    tex_label="\\sigma_{c}")
 
     #change decr
-    m <= parameter(:Ladj, 252.,(1e-5, 5000), (1e-5, 5000),  ModelConstructors.Untransformed(), Normal(252.0, 10.0), fixed=false, scaling = x -> x/100,
+    m <= parameter(:Ladj, 252.,(1e-5, 5000.), (1e-5, 5000.),  ModelConstructors.Untransformed(), Normal(252.0, 10.0), fixed=false, scaling = x -> x/100,
                    description="γ: The log of the steady-state growth rate of technology.",
                    tex_label="\\gamma")
 
     # exogenous processes - autocorrelation
-    m <= parameter(:rho_z, (0., 0.99999), (0., 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.2, 0.1), fixed=false,
+    m <= parameter(:rho_z, .2, (0., 0.99999), (0., 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.2, 0.1), fixed=false,
                    description="ρ_z: AR(1) coefficient in the technology process.",
                    tex_label="\\rho_z")
     #change desc
@@ -356,7 +356,7 @@ function init_parameters!(m::DSSW)
                    tex_label="\\sigma_{z}")
 
     #change desc
-    m <= parameter(:sig_phi, 4., (1e-7, 100.), (1e-7, 100.), ModelConstructors.Exponential(), RootInverseGamma(2., 4), fixed=false,
+    m <= parameter(:sig_phi, 4., (1e-7, 100.), (1e-7, 100.), ModelConstructors.Exponential(), RootInverseGamma(2., 4.), fixed=false,
                    description="σ_z: The standard deviation of the process describing the stationary component of productivity.",
                    tex_label="\\sigma_{z}")
 
