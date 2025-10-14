@@ -1,4 +1,4 @@
-function augment_states(m::SmetsWouters{T}, TTT::Matrix{T}, RRR::Matrix{T},
+function augment_states(m::DSSW{T}, TTT::Matrix{T}, RRR::Matrix{T},
                         CCC::Vector{T};
                         regime_switching::Bool = false,
                         reg::Int = 1) where {T<:AbstractFloat}

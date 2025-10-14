@@ -1,4 +1,4 @@
-function init_observable_mappings!(m::SmetsWouters)
+function init_observable_mappings!(m::DSSW)
 
     observables = OrderedDict{Symbol,Observable}()
     population_mnemonic = get(get_setting(m, :population_mnemonic))

@@ -7,11 +7,11 @@
 # C  (n_states x 1) is a vector of constants
 # Ψ  (n_states x n_shocks_exogenous) holds coefficients of iid shocks.
 # Π  (n_states x n_states_expectational) holds coefficients of expectational states.
-function eqcond(m::SmetsWouters)
+function eqcond(m::DSSW)
     return eqcond(m, 1)
 end
 
-function eqcond(m::SmetsWouters, reg::Int)
+function eqcond(m::DSSW, reg::Int)
     endo = m.endogenous_states
     exo  = m.exogenous_shocks
     ex   = m.expected_shocks
@@ -73,7 +73,7 @@ function eqcond(m::SmetsWouters, reg::Int)
     # Money demand
     Γ0[eq[:eq_moneydem], endo[:m_t]] = m[:nu_m]
     Γ0[eq[:eq_moneydem], endo[:xi_t]] = 1.
-    Γ0[eq[:eq_moneydem], endo[:R_t]] = 1./(m[:Rstarn]-1)
+    Γ0[eq[:eq_moneydem], endo[:R_t]] = 1. /(m[:Rstarn]-1)
 
     # Marginal utility
     Γ0[eq[:eq_margut], endo[:xi_t]] = 1.
@@ -88,7 +88,7 @@ function eqcond(m::SmetsWouters, reg::Int)
     Γ0[eq[:eq_invfoc], endo[:xi_t]] = -exp(-2*m[:zstar])/m[:s2]
     Γ0[eq[:eq_invfoc], endo[:i_t]] = -(1+m[:bet])
     Γ0[eq[:eq_invfoc], endo[:E_i]] = m[:bet]
-    Γ0[eq[:eq_invfoc], endo[:z_t]] = -1.+ m[:bet]*m[:rho_z]
+    Γ0[eq[:eq_invfoc], endo[:z_t]] = -1. + m[:bet]*m[:rho_z]
 
     Γ1[eq[:eq_invfoc], endo[:i_t]] = -1.
 

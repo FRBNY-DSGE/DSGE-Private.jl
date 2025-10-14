@@ -18,7 +18,7 @@ Var(u_t) = EE
 Cov(ϵ_t, u_t) = 0
 ```
 """
-function measurement(m::SmetsWouters{T},
+function measurement(m::DSSW{T},
                      TTT::Matrix{T},
                      RRR::Matrix{T},
                      CCC::Vector{T}; reg::Int = 1) where {T<:AbstractFloat}

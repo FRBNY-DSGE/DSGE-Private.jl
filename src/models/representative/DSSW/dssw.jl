@@ -140,8 +140,7 @@ function init_model_indices!(m::DSSW)
     expected_shocks = [:Ec_sh, :Epi_sh, :Erk_sh, :Ew_sh, :Ewtil_sh, :Exi_sh, :Exik_sh, :Ei_sh]
 
     # Equilibrium conditions
-    equilibrium_conditions = [:eq_margcost, :eq_prsett, :eq_capacc, :eq_effcap, :eq_euler, :eq_moneydem, :eq_margut, :eq_invfoc, :eq_rettocap, :eq_utcap, :eq_optwage, :eq_aggwage, :eq_caplabrat, :eq_resources, :eq_prod, :eq_taylor;
-                              [:eq_z, :eq_phi, :eq_mu, :eq_b, :eq_g, :eq_laf]; [:eq_Ec, :eq_Epi, :eq_Erk, :eq_Ew, :eq_Ewtil, :eq_Exi, :eq_Exik, :eq_Ei]]
+    equilibrium_conditions = [[:eq_margcost, :eq_prsett, :eq_capacc, :eq_effcap, :eq_euler, :eq_moneydem, :eq_margut, :eq_invfoc, :eq_rettocap, :eq_utcap, :eq_optwage, :eq_aggwage, :eq_caplabrat, :eq_resources, :eq_prod, :eq_taylor];[:eq_z, :eq_phi, :eq_mu, :eq_b, :eq_g, :eq_laf]; [:eq_Ec, :eq_Epi, :eq_Erk, :eq_Ew, :eq_Ewtil, :eq_Exi, :eq_Exik, :eq_Ei]]
 
     # Additional states added after solving model
     # Lagged states and observables measurement error
@@ -164,7 +163,7 @@ function init_model_indices!(m::DSSW)
 end
 
 
-function dwws(subspec::String="ss0";
+function DSSW(subspec::String="ss0";
                       custom_settings::Array{S} where S<:Setting = Array{Setting{Bool}}(undef, 0),
                       testing = false)
 
@@ -246,7 +245,7 @@ function init_parameters!(m::DSSW)
                    description="Φ: Fixed costs.",
                    tex_label="\\Phi")
 
-    m <= parameter(:s2, 4, (0., 20.), (0., 20.), ModelConstructors.Untransformed(), GammaAlt(4, 1.5), fixed=false,
+    m <= parameter(:s2, 4., (0., 20.), (0., 20.), ModelConstructors.Untransformed(), GammaAlt(4.0, 1.5), fixed=false,
                    description="S'': The second derivative of households' cost of adjusting investment.",
                    tex_label="S''")
 
@@ -259,11 +258,11 @@ function init_parameters!(m::DSSW)
                    description="ppsi: Utilization costs.",
                    tex_label="\\psi")
 
-    m <= parameter(:nu_l, 2, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(2, 0.75), fixed=false,
+    m <= parameter(:nu_l, 2., (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(2.0, 0.75), fixed=false,
                    description="ν_l: The coefficient of relative risk aversion on the labor term of households' utility function.", tex_label="\\nu_l")
 
     #NOT DEFINED IN PAPER
-    m <= parameter(:nu_m, 2, (1e-5, 100.), (1e-5, 100.), ModelConstructors.Exponential(), Normal(2, 0.75), fixed=true,                                   description="ν_l: The coefficient of relative risk aversion on the labor term of households' utility function.", tex_label="\\nu_l")
+    m <= parameter(:nu_m, 2., (1e-5, 100.), (1e-5, 100.), ModelConstructors.Exponential(), Normal(2.0, 0.75), fixed=true,                                   description="ν_l: The coefficient of relative risk aversion on the labor term of households' utility function.", tex_label="\\nu_l")
 
     m <= parameter(:zeta_w, 0.6, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ζ_w: (1-ζ_w) is the probability with which households can freely choose wages in each period. With probability ζ_w, wages increase at a geometrically weighted average of the steady state rate of wage increases and last period's productivity times last period's inflation.",
@@ -277,7 +276,7 @@ function init_parameters!(m::DSSW)
                    description="λ_w: The wage markup, which affects the elasticity of substitution between differentiated labor services.",
                    tex_label="\\lambda_w")
     #NOT DEFINED IN PAPER
-    m <= parameter(:bet, 2, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(2, 1), fixed=false, scaling = x -> 1/(1 + x/100),
+    m <= parameter(:bet, 2., (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(), GammaAlt(2.0, 1.0), fixed=false, scaling = x -> 1/(1 + x/100),
                    description="β: Discount rate.",
                    tex_label="\\beta ")
 
@@ -292,14 +291,18 @@ function init_parameters!(m::DSSW)
     m <= parameter(:rho_r, 0.5, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.Untransformed(), BetaAlt(0.5, 0.2), fixed=false,
                    description="ψ₃: Weight on rate of change of output gap in the monetary policy rule.",
                    tex_label="\\psi_3")
+
+    m <= parameter(:pistar, 0.5, (-1., 10.), (-1., 10.), ModelConstructors.Untransformed(), Normal(3.0, 1.5), fixed=false,
+                   description="ψ₃: Weight on rate of change of output gap in the monetary policy rule.",
+                   tex_label="\\psi_3")
     # exogenous processes - level
 
     #change descr!
-    m <= parameter(:gam, 2, (1e-6, 10.), (1e-6, 10.), ModelConstructors.Exponential(), GammaAlt(2, 1), fixed=false,
+    m <= parameter(:gam, 2., (1e-6, 10.), (1e-6, 10.), ModelConstructors.Exponential(), GammaAlt(2.0, 1.0), fixed=false,
                    tex_label="\\sigma_{c}")
     #NOT DEFINED IN PAPER
     #change desc
-    m <= parameter(:wadj,  0, (0., 10.), (0., 10.), ModelConstructors.Exponential(), Normal(0, 5), fixed=false, tex_label="\\sigma_{c}")  
+    m <= parameter(:wadj, 0, (0., 10.), (0., 10.), ModelConstructors.Exponential(), Normal(0.0, 5.0), fixed=false, tex_label="\\sigma_{c}")
 
     #NOT DEFINED IN PAPER
     #change dec
@@ -309,9 +312,9 @@ function init_parameters!(m::DSSW)
     #change desc
     m <= parameter(:laf, 0.15, (1e-5, 50.), (1e-5, 50.),ModelConstructors.Exponential(), GammaAlt(0.15, 0.1), fixed=false,
                    tex_label="\\sigma_{c}")
- 
+
     #change decr
-    m <= parameter(:Ladj, 252,(1e-5, 5000), (1e-5, 5000),  ModelConstructors.Untransformed(), Normal(252, 10), fixed=false, scaling = x -> x/100,
+    m <= parameter(:Ladj, 252.,(1e-5, 5000), (1e-5, 5000),  ModelConstructors.Untransformed(), Normal(252.0, 10.0), fixed=false, scaling = x -> x/100,
                    description="γ: The log of the steady-state growth rate of technology.",
                    tex_label="\\gamma")
 
@@ -323,13 +326,13 @@ function init_parameters!(m::DSSW)
     m <= parameter(:rho_phi, 0.6, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ρ_g: AR(1) coefficient in the government spending process.",
                    tex_label="\\rho_g")
-    
+
     #NOT DEFINED IN PAPER
     #change desc
     m <= parameter(:rho_chi, 0.6, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ρ_g: AR(1) coefficient in the government spending process.",
                    tex_label="\\rho_g")
-    
+
     m <= parameter(:rho_laf, 0.6, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ρ_λ_f: AR(1) coefficient in the price mark-up shock process.",
                    tex_label="\\rho_{\\lambda_f}")
@@ -341,13 +344,13 @@ function init_parameters!(m::DSSW)
     m <= parameter(:rho_b, 0.6, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ρ_b: AR(1) coefficient in the intertemporal preference shifter process.",
                    tex_label="\\rho_b")
-    
-  
+
+
     m <= parameter(:rho_g, 0.8, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.8, 0.05), fixed=false,
                    description="ρ_g: AR(1) coefficient in the government spending process.",
                    tex_label="\\rho_g")
     # exogenous processes - standard deviation
-    
+
     m <= parameter(:sig_z, 0.75, (1e-7, 100.), (1e-7, 100.), ModelConstructors.Exponential(), RootInverseGamma(2., 0.75), fixed=false,
                    description="σ_z: The standard deviation of the process describing the stationary component of productivity.",
                    tex_label="\\sigma_{z}")
@@ -370,17 +373,16 @@ function init_parameters!(m::DSSW)
                    tex_label="\\sigma_{b}")
 
 
-
     m <= parameter(:sig_g, 0.75, (1e-7, 100.), (1e-7, 100.), ModelConstructors.Exponential(), RootInverseGamma(2., 0.75), fixed=false,
                    description="σ_g: The standard deviation of the government spending process.",
                    tex_label="\\sigma_{g}")
     #change desc
     m <= parameter(:sig_r, 0.2, (1e-7, 100.), (1e-7, 100.), ModelConstructors.Exponential(), RootInverseGamma(2., 0.20), fixed=false,
-                   tex_label="\\sigma_{\\lambda_w}")
+                   tex_label="\\sigma_{\\sigma_r}")
 
 
     #end
-  
+
     # steady states
     m <= SteadyStateParameter(:zstar, NaN, description="Steady-state growth rate of productivity", tex_label="\\z_*")
     m <= SteadyStateParameter(:rstar, NaN, tex_label="\\r_*")
@@ -422,7 +424,7 @@ function steadystate!(m::DSSW)
     m[:xistar]   = (1/m[:cstar])*((1/(1-m[:h]*exp(-m[:gam])*m[:ups]^(-m[:alp]/(1-m[:alp]))))-(m[:h]*m[:bet]/(exp(m[:gam])*m[:ups]^(m[:alp]/(1-m[:alp]))-m[:h])))
     m[:phi]      = m[:Lstar]^(-m[:nu_l])*m[:omegastar]*m[:xistar]/(1+m[:law])
     m[:Rstarn]   = m[:pistar]*m[:rstar]
-    m[:wstar]    =  1/(1+m[:laf]) * (m[:alp]^m[:alp]) * (1-m[:alp])^(1-m[:alp]) * m[:rkstar]^(-m[:alp]) )^(1/(1-m[:alp]))
+    m[:wstar]    = (1/(1+m[:laf]) * (m[:alp]^m[:alp]) * (1-m[:alp])^(1-m[:alp]) * m[:rkstar]^(-m[:alp]) )^(1/(1-m[:alp]))
     m[:mstar]    = (m[:chi] * m[:Rstarn]/(1-m[:Rstarn]) * m[:xistar]^(-1) )^(1 / m[:nu_m])
 
 #=
