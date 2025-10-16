@@ -17,7 +17,8 @@ module DSGE
     import Calculus
     import Base.isempty, Base.<, Base.min, Base.max
     import LinearAlgebra: rank
-    import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
+    import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults, LineSearches
+    import BlackBoxOptim
     import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks, solve_discrete_lyapunov
     import ModelConstructors
     import ModelConstructors: posterior!, posterior, <=, n_states,
@@ -96,7 +97,7 @@ module DSGE
         gensys, solve, klein,
 
         # estimate/
-        simulated_annealing, combined_optimizer, lbfgs,
+        simulated_annealing, combined_optimizer, lbfgs, pso, trust_region_newton,
         filter, filter_shocks, likelihood, posterior, posterior!,
         optimize!, csminwel, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance, prior, get_estimation_output_files,
