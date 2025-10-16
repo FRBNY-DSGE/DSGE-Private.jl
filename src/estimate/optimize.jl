@@ -64,6 +64,10 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
         combined_optimizer
     elseif method == :lbfgs
         lbfgs
+    elseif method == :trust_region_newton
+        trust_region_newton
+    elseif method == :pso
+        pso
     else
         error("Method ", method, " is not supported.")
     end
@@ -287,6 +291,25 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
                                extended_trace = extended_trace,
                                verbose = verbose, rng = rng)
         converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
+        out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
+                                  opt_result.iterations)
+    elseif method == :trust_region_newton
+        opt_result = optimizer(f_opt, x_opt;
+                               xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
+                               store_trace = store_trace, show_trace = show_trace,
+                               extended_trace = extended_trace,
+                               verbose = verbose, rng = rng)
+        converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
+        out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
+                                  opt_result.iterations)
+
+    elseif method == :pso
+        opt_result = optimizer(f_opt, x_opt;
+                               xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
+                               store_trace = store_trace, show_trace = show_trace,
+                               extended_trace = extended_trace,
+                               verbose = verbose, rng = rng)
+        converged = opt_result.f_converged || opt_result.x_converged || opt_result.iteration_converged
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
 
