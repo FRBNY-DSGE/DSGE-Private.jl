@@ -13,13 +13,13 @@ function lbfgs(fcn::Function,
                autodiff::Bool       = false,
                kwargs...)
     if autodiff
-        Optim.optimize(fcn, x0, LBFGS(),
+        Optim.optimize(fcn, x0, LBFGS(m=15, linesearch = LineSearches.HagerZhang()),
                        Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,
                                      extended_trace = extended_trace))
     else
-        Optim.optimize(fcn, x0, LBFGS(), autodiff=:forward,
+        Optim.optimize(fcn, x0, LBFGS(m=15, linesearch = LineSearches.HagerZhang()), autodiff=:forward,
                        Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,
