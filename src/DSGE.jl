@@ -259,6 +259,8 @@ module DSGE
     include("estimate/simulated_annealing.jl")
     include("estimate/combined_optimizer.jl")
     include("estimate/lbfgs.jl")
+    include("estimate/trust_region_newton.jl")
+    include("estimate/pso.jl")
     include("estimate/nelder_mead.jl")
     include("estimate/marginal_data_density.jl")
     include("estimate/estimate.jl")
