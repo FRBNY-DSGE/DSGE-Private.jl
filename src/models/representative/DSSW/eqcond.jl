@@ -23,6 +23,7 @@ function eqcond(m::DSSW, reg::Int)
     Ψ  = zeros(n_states(m), n_shocks_exogenous(m))
     Π  = zeros(n_states(m), n_shocks_expectational(m))
 
+    #=
     for para in m.parameters
         if !isempty(para.regimes)
             if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
@@ -32,6 +33,7 @@ function eqcond(m::DSSW, reg::Int)
             end
         end
     end
+    =#
 
     ### ENDOGENOUS STATES ###
 
@@ -108,7 +110,7 @@ function eqcond(m::DSSW, reg::Int)
     Γ0[eq[:eq_optwage], endo[:w_t]] = 1.
     Γ0[eq[:eq_optwage], endo[:E_wtil]] = -m[:zeta_w]*m[:bet]
     Γ0[eq[:eq_optwage], endo[:E_w]] = -m[:zeta_w]*m[:bet]
-    Γ0[eq[:eq_optwage], endo[:b_t]] = -(1-m[:zeta_w]*m[:bet])*(exp(2*m[:zstar])+m[:h]^2*m[:bet])*exp(-m[:zstar])/(exp(m[:zstar])-m[:h])
+    Γ0[eq[:eq_optwage], endo[:b_t]] = -(1-m[:zeta_w]*m[:bet])*(exp(2*m[:zstar])+(m[:h]^2)*m[:bet])*exp(-m[:zstar])/(exp(m[:zstar])-m[:h])
     Γ0[eq[:eq_optwage], endo[:phi_t]] = -1.
     Γ0[eq[:eq_optwage], endo[:L_t]] = -(1-m[:zeta_w]*m[:bet])*m[:nu_l]
     Γ0[eq[:eq_optwage], endo[:xi_t]] = (1-m[:zeta_w]*m[:bet])
@@ -151,7 +153,7 @@ function eqcond(m::DSSW, reg::Int)
 Γ0[eq[:eq_taylor], endo[:y_t]] = -(1-m[:rho_r])*m[:psi2]
 
 Γ1[eq[:eq_taylor], endo[:R_t]] = 1.
-Ψ[eq[:eq_taylor], endo[:r_sh]] = 1.
+Ψ[eq[:eq_taylor], exo[:r_sh]] = 1.
 
 
 ### EXOGENOUS SHOCKS ###
@@ -185,35 +187,35 @@ function eqcond(m::DSSW, reg::Int)
 
 Γ0[eq[:eq_Ec], endo[:c_t]] = 1.
 Γ1[eq[:eq_Ec], endo[:E_c]] = 1.
-Ψ[eq[:eq_Ec], exo[:Ec_sh]] = 1.
+Π[eq[:eq_Ec], ex[:Ec_sh]] = 1.
 
 Γ0[eq[:eq_Epi], endo[:pi_t]] = 1.
 Γ1[eq[:eq_Epi], endo[:E_pi]] = 1.
-Ψ[eq[:eq_Epi], exo[:Epi_sh]] = 1.
+Π[eq[:eq_Epi], ex[:Epi_sh]] = 1.
 
 Γ0[eq[:eq_Erk], endo[:rk_t]] = 1.
 Γ1[eq[:eq_Erk], endo[:E_rk]] = 1.
-Ψ[eq[:eq_Erk], exo[:Erk_sh]] = 1.
+Π[eq[:eq_Erk], ex[:Erk_sh]] = 1.
 
 Γ0[eq[:eq_Ew], endo[:w_t]] = 1.
 Γ1[eq[:eq_Ew], endo[:E_w]] = 1.
-Ψ[eq[:eq_Ew], exo[:Ew_sh]] = 1.
+Π[eq[:eq_Ew], ex[:Ew_sh]] = 1.
 
 Γ0[eq[:eq_Ewtil], endo[:wtil_t]] = 1.
-Γ1[eq[:eq_Ewtil], endo[:Ewtil_c]] = 1.
-Ψ[eq[:eq_Ewtil], exo[:Ewtil_sh]] = 1.
+Γ1[eq[:eq_Ewtil], endo[:E_wtil]] = 1.
+Π[eq[:eq_Ewtil], ex[:Ewtil_sh]] = 1.
 
 Γ0[eq[:eq_Exi], endo[:xi_t]] = 1.
 Γ1[eq[:eq_Exi], endo[:E_xi]] = 1.
-Ψ[eq[:eq_Exi], exo[:Exi_sh]] = 1.
+Π[eq[:eq_Exi], ex[:Exi_sh]] = 1.
 
 Γ0[eq[:eq_Exik], endo[:xik_t]] = 1.
 Γ1[eq[:eq_Exik], endo[:E_xik]] = 1.
-Ψ[eq[:eq_Exik], exo[:Exik_sh]] = 1.
+Π[eq[:eq_Exik], ex[:Exik_sh]] = 1.
 
 Γ0[eq[:eq_Ei], endo[:i_t]] = 1.
 Γ1[eq[:eq_Ei], endo[:E_i]] = 1.
-Ψ[eq[:eq_Ei], exo[:Ei_sh]] = 1.
+Π[eq[:eq_Ei], ex[:Ei_sh]] = 1.
 
 return Γ0, Γ1, C, Ψ, Π
 end

@@ -2,6 +2,21 @@ function augment_states(m::DSSW{T}, TTT::Matrix{T}, RRR::Matrix{T},
                         CCC::Vector{T};
                         regime_switching::Bool = false,
                         reg::Int = 1) where {T<:AbstractFloat}
+
+    # Number of lags to add to state matrices after Gensys solve
+    n_add = length(keys(m.endogenous_states_augmented))
+    endo = m.endogenous_states
+
+    TTT_aug = zeros(n_add, size(TTT, 2))
+    TTT_aug[1, endo[:y_t]] = 1
+    TTT_aug[2, endo[:c_t]] = 1
+    TTT_aug[3, endo[:i_t]] = 1
+    TTT_aug[4, endo[:w_t]] = 1
+    TTT_aug[5, endo[:m_t]] = 1
+    TTT = vcat(hcat(TTT, zeros(size(TTT, 2), n_add)), hcat(TTT_aug, zeros(n_add, n_add))) #horizontal add of 35x5 zeros, vertical add of lags + 5x5 zeros lower right
+    RRR = vcat(RRR, zeros(n_add, size(RRR, 2))) # 5x7 zeros addition to 30x7 matrix
+
+    #=
     endo = m.endogenous_states
     endo_addl = m.endogenous_states_augmented
     exo = m.exogenous_shocks
@@ -64,6 +79,6 @@ function augment_states(m::DSSW{T}, TTT::Matrix{T}, RRR::Matrix{T},
             ModelConstructors.toggle_regime!(para, 1)
         end
     end
-
-    return TTT_aug, RRR_aug, CCC_aug
+    =#
+    return TTT, RRR, CCC
 end
