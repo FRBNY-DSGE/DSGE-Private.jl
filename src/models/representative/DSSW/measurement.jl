@@ -36,17 +36,11 @@ function measurement(m::DSSW{T},
     n_coint = get_setting(m, :n_coint)
     n_lags = get_setting(m, :lags)
 
-    if n_coint > 0
-        ZZ = zeros(n_observables + n_coint, n_states + n_endo_addl)
-        DD = zeros(n_observables + n_coint)
-        EE = zeros(n_observables + n_coint, n_observables + n_coint)
-        QQ = zeros(n_shocks_exogenous, n_shocks_exogenous)
-    else
-        ZZ = zeros(n_observables, n_states + n_endo_addl)
-        DD = zeros(n_observables)
-        EE = zeros(n_observables, n_observables)
-        QQ = zeros(n_shocks_exogenous, n_shocks_exogenous)
-    end
+    ZZ = zeros(n_observables, n_states + n_endo_addl)
+    DD = zeros(n_observables)
+    EE = zeros(n_observables, n_observables)
+    QQ = zeros(n_shocks_exogenous, n_shocks_exogenous)
+
 
     # Output growth - Quarterly!
     ZZ[obs[:output_growth], endo[:y_t]]       = 1.0
@@ -101,16 +95,17 @@ function measurement(m::DSSW{T},
         #real wage - output
         ZZ[obs[:wage_coint], endo[:w_t]] = 1
         ZZ[obs[:wage_coint], endo[:y_t]] = -1
-        DD[obs[:wage_coint]] = 100 * log(m[:wstar] / m[:ystar]- m[:wadj])
+        DD[obs[:wage_coint]] = 100 * (log(m[:wstar] / m[:ystar])- m[:wadj])
     end
 
     #Variance of innovations
     QQ[exo[:g_sh], exo[:g_sh]]           = m[:sig_g]^2
     QQ[exo[:b_sh], exo[:b_sh]]           = m[:sig_b]^2
-    QQ[exo[:μ_sh], exo[:μ_sh]]           = m[:sig_mu]^2
+    QQ[exo[:mu_sh], exo[:mu_sh]]           = m[:sig_mu]^2
     QQ[exo[:z_sh], exo[:z_sh]]           = m[:sig_z]^2
+    QQ[exo[:phi_sh], exo[:phi_sh]]           = m[:sig_phi]^2
     QQ[exo[:laf_sh], exo[:laf_sh]]       = m[:sig_laf]^2
-    QQ[exo[:r_sh], exo[:r_sh]]         = m[:sig_rm]^2
+    QQ[exo[:r_sh], exo[:r_sh]]         = m[:sig_r]^2
 
     for para in m.parameters
         if !isempty(para.regimes)

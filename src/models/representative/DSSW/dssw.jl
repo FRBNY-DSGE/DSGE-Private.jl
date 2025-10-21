@@ -443,12 +443,13 @@ function model_settings!(m::DSSW)
     m <= Setting(:recalculate_hessian, true)
 
     # Data
-    m <= Setting(:data_vintage, "251018")
+    m <= Setting(:data_vintage, "040331")
     m <= Setting(:data_id, 1, "Dataset identifier")
 
     m <= Setting(:lags, 4)
     m <= Setting(:n_coint, 3)
-    m <= Setting(:coint_data, nothing)
+    m <= Setting(:coint_data_inds, 8:10)
+    m <= Setting(:main_data_inds, 1:7)
 end
 
 """
