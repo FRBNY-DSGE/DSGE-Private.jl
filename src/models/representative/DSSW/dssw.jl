@@ -259,7 +259,7 @@ function init_parameters!(m::DSSW)
     m <= parameter(:nu_l, 2., (1e-5, 10.), (1e-5, 10.), ModelConstructors.Untransformed(), GammaAlt(2.0, 0.75), fixed=false,
                    description="ν_l: The coefficient of relative risk aversion on the labor term of households' utility function.", tex_label="\\nu_l")
 
-    m <= parameter(:nu_m, 2., (1e-5, 100.), (1e-5, 100.), ModelConstructors.Untransformed(), Normal(2.0, 0.75), fixed=true,                                   description="ν_l: The coefficient of relative risk aversion on the labor term of households' utility function.", tex_label="\\nu_m")
+    m <= parameter(:nu_m, 2., (1e-5, 100.), (1e-5, 100.), ModelConstructors.Untransformed(), GammaAlt(2.0, 0.75), fixed=true,                                   description="ν_l: The coefficient of relative risk aversion on the labor term of households' utility function.", tex_label="\\nu_m")
 
     m <= parameter(:zeta_w, 0.8, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.Untransformed(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ζ_w: (1-ζ_w) is the probability with which households can freely choose wages in each period. With probability ζ_w, wages increase at a geometrically weighted average of the steady state rate of wage increases and last period's productivity times last period's inflation.",
@@ -299,13 +299,13 @@ function init_parameters!(m::DSSW)
     m <= parameter(:wadj, 5.5, (0., 10.), (0., 10.), ModelConstructors.Untransformed(), Normal(0.0, 5.0), fixed=false,
                    tex_label="\\w_{adj}")
 
-    m <= parameter(:chi, 0.1, (1e-6, 10.), (1e-6, 10.), ModelConstructors.Untransformed(), GammaAlt(0.1, 0.1), fixed=false,
+    m <= parameter(:chi, 0.1, (1e-6, 10.), (1e-6, 10.), ModelConstructors.Untransformed(), GammaAlt(0.1, 0.1), fixed=true,
                    tex_label="\\chi")
 
-    m <= parameter(:laf, 0.3, (1e-5, 50.), (1e-5, 50.), ModelConstructors.Untransformed(), GammaAlt(0.15, 0.1), fixed=false,
+    m <= parameter(:laf, 0.3, (1e-5, 50.), (1e-5, 50.), ModelConstructors.Untransformed(), GammaAlt(0.15, 0.1), fixed=true,
                    tex_label="\\lambda_{f}")
 
-    m <= parameter(:gstar, 0.15, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.Untransformed(), GammaAlt(0.1, 2.), fixed=false, scaling = x -> 1 + x,
+    m <= parameter(:gstar, 0.15, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.Untransformed(), GammaAlt(0.3, 0.1), fixed=false, scaling = x -> 1 + x,
                    tex_label="\\g_{*}")
 
     m <= parameter(:Ladj, 5.,(1e-5, 10.), (1e-5, 10.), ModelConstructors.Untransformed(), Normal(252.0, 10.0), fixed=false,

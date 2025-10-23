@@ -70,8 +70,6 @@ function eqcond(m::DSSW, reg::Int)
     Γ0[eq[:eq_euler], endo[:c_t]] = (exp(2*m[:zstar])+(m[:h]^2)*m[:bet])
     Γ0[eq[:eq_euler], endo[:E_c]] = -m[:h]*m[:bet]*exp(m[:zstar])
 
-    Γ1[eq[:eq_euler], endo[:c_t]] = m[:h]*exp(m[:zstar])
-
     # Money demand
     Γ0[eq[:eq_moneydem], endo[:m_t]] = m[:nu_m]
     Γ0[eq[:eq_moneydem], endo[:xi_t]] = 1.
@@ -152,7 +150,7 @@ function eqcond(m::DSSW, reg::Int)
 Γ0[eq[:eq_taylor], endo[:pi_t]] = -(1-m[:rho_r])*m[:psi1]
 Γ0[eq[:eq_taylor], endo[:y_t]] = -(1-m[:rho_r])*m[:psi2]
 
-Γ1[eq[:eq_taylor], endo[:R_t]] = 1.
+Γ1[eq[:eq_taylor], endo[:R_t]] = m[:rho_r]
 Ψ[eq[:eq_taylor], exo[:r_sh]] = 1.
 
 
@@ -218,6 +216,7 @@ function eqcond(m::DSSW, reg::Int)
 Π[eq[:eq_Ei], ex[:Ei_sh]] = 1.
 
 return Γ0, Γ1, C, Ψ, Π
+
 end
 
 
