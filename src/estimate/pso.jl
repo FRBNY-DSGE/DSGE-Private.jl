@@ -101,7 +101,7 @@ function pso(fcn::Function,
     method = :adaptive_de_rand_1_bin_radiuslimited
 
 
-    #callback
+    #callback - need implement
     frequency = 2
     x_current_minimizer = Vector{Vector{Float64}}()
     time_seconds = Float64[]
