@@ -12,17 +12,29 @@ function trust_region_newton(fcn::Function,
                rng::AbstractRNG     = MersenneTwister(),
                autodiff::Bool       = false,
                kwargs...)
-    if autodiff
+
+    
+    iteration_times = Float64[]
+    start_time = time()
+    callback = function(state)
+        push!(iteration_times, time() - start_time)
+        false
+    end
+
+
+    result = if autodiff
         Optim.optimize(fcn, x0, NewtonTrustRegion(),
                        Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,
                                      extended_trace = extended_trace))
     else
-        Optim.optimize(fcn, x0, NewtonTrustRegion(), autodiff=:forward,
+        Optim.optimize(fcn, x0, NewtonTrustRegion(),
                        Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,
                                      extended_trace = extended_trace))
     end
+
+    return result, iteration_times
 end
