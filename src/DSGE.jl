@@ -12,6 +12,7 @@ module DSGE
     using StatsBase: sample, Weights
     using StatsFuns: chisqinvcdf
     using Statistics: std
+    using MatrixEquations
 
     import Calculus
     import Base.isempty, Base.<, Base.min, Base.max
@@ -160,7 +161,7 @@ module DSGE
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
         PoolModel, OnionModel, SectoralOnionModel, eqcond, measurement, pseudo_measurement,
-        shock_groupings, transition, DSGEVAR, DSGEVECM,
+        shock_groupings, transition, DSGEVAR, DSGEVECM, DSSW,
 
         # models/heterogeneous/
         KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
@@ -424,6 +425,13 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/representative/an_schorfheide/pseudo_observables.jl")
     include("models/representative/an_schorfheide/pseudo_measurement.jl")
     include("models/representative/an_schorfheide/augment_states.jl")
+
+    include("models/representative/DSSW/dssw.jl")
+    include("models/representative/DSSW/subspecs.jl")
+    include("models/representative/DSSW/eqcond.jl")
+    include("models/representative/DSSW/observables.jl")
+    include("models/representative/DSSW/measurement.jl")
+    include("models/representative/DSSW/augment_states.jl")
 
     # PoolModel
     include("models/poolmodel/subspecs.jl")
