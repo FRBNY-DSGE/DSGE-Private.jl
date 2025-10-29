@@ -2,6 +2,7 @@ using DSGE
 using ModelConstructors
 using StateSpaceRoutines
 using HDF5
+using Random
 path = dirname(@__FILE__)
 writing_output = false
  
@@ -16,12 +17,12 @@ custom_settings = [Setting(:date_forecast_start, quartertodate("2015-Q4"))]
 m = AnSchorfheide(custom_settings = custom_settings, testing = true)
 
 
-# Load data
+#load data
 file = "$path/../reference/optimize_in.h5"
 x0   = h5read(file, "params")
 data = h5read(file, "data")'
-  
-# For regenerating test file
+
+#test file
 params_test = deepcopy(x0)
 data_test   = Matrix{Float64}(data)
  
@@ -32,13 +33,27 @@ H_expected = h5read(file, "H")
  
 # See src/estimate/estimate.jl
 DSGE.update!(m, x0)
-n_iterations = 600
+n_iterations = 50
 
-x0 = Float64[p.value for p in m.parameters]
+
+# Set seed for reproducibility
+Random.seed!(42)
+
+#=
+x0 = Float64[]
+for p in m.parameters
+    lower = p.valuebounds[1]
+    upper = p.valuebounds[2]
+    push!(x0, lower + rand() * (upper - lower))
+end
+
+=#
+# Update x0
+DSGE.update!(m, x0)
 
 #start timer
 start_time = time()
-out, H = optimize!(m, data; method = optimizer_config, iterations = n_iterations)
+out, H, callback_data = optimize!(m, data; method = optimizer_config, iterations = n_iterations, show_trace = true)
 seconds = time() - start_time
 
 println(out)
