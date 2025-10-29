@@ -1,3 +1,4 @@
+include("var/dsge_coint_likelihood.jl")
 """
 `prior(m::AbstractDSGEModel{T})`
 
@@ -190,6 +191,8 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
             if isa(m, PoolModel)
                 return ψ_l * sum(filter_likelihood(m, data; tol = tol,
                                                    tuning = get_setting(m, :tuning))) + ψ_p * penalty
+            elseif isa(m, DSSW)
+                return dsge_coint_likelihood(m, data)
             elseif use_chand_recursion==false
 
                 return ψ_l * sum(filter_likelihood(m, data, system; add_zlb_duration = add_zlb_duration,
@@ -286,6 +289,8 @@ function likelihood(m::AbstractVARModel, data::AbstractMatrix;
             return ψ_l * dsgevecm_likelihood(m, data) + ψ_p * penalty
         elseif isa(m, AbstractDSGEVARModel)
             return ψ_l * dsgevar_likelihood(m, data) + ψ_p * penalty
+        elseif isa(m, DSSW)
+            return dsge_coint_likelihood(m, data)
         end
     catch err
         if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
