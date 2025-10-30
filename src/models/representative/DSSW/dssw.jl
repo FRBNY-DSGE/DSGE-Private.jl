@@ -240,7 +240,7 @@ function init_parameters!(m::DSSW)
                    description="Ups",
                    tex_label="\\Upsilon")
 
-    m <= parameter(:bigphi, 0., (0., 2.), (0., 2.), ModelConstructors.Exponential(), GammaAlt(0.5, 0.25), fixed=false,
+    m <= parameter(:bigphi, 0., (0., 2.), (0., 2.), ModelConstructors.Exponential(), GammaAlt(0.5, 0.25), fixed=true,
                    description="Φ: Fixed costs.",
                    tex_label="\\Phi")
 
@@ -265,7 +265,7 @@ function init_parameters!(m::DSSW)
                    description="ζ_w: (1-ζ_w) is the probability with which households can freely choose wages in each period. With probability ζ_w, wages increase at a geometrically weighted average of the steady state rate of wage increases and last period's productivity times last period's inflation.",
                    tex_label="\\zeta_w")
 
-    m <= parameter(:iota_w, 0., (0., 1.), (0., 1.), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.28), fixed=false,
+    m <= parameter(:iota_w, 0., (0., 1.), (0., 1.), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.28), fixed=true,
                    description="ι_w: The weight attributed to last period's wage in wage indexation. (1-ι_w) is the weight attributed to steady-state wages.",
                    tex_label="\\iota_w")
 
@@ -320,7 +320,7 @@ function init_parameters!(m::DSSW)
                    description="ρ_ϕ: AR(1) coefficient in the government spending process.",
                    tex_label="\\rho_{\\phi}")
 
-    m <= parameter(:rho_chi, 0.9, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
+    m <= parameter(:rho_chi, 0.9, (1e-5, 0.99999), (1e-5, 0.99999), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=true,
                    description="ρ_χ: AR(1) coefficient in the government spending process.",
                    tex_label="\\rho_{\\chi}")
 
@@ -348,7 +348,7 @@ function init_parameters!(m::DSSW)
                    description="σ_z: The standard deviation of the process describing the stationary component of productivity.",
                    tex_label="\\sigma_{\\phi}")
 
-    m <= parameter(:sig_chi, 0., (1e-7, 100.), (1e-7, 100.), ModelConstructors.Exponential(), RootInverseGamma(2., 0.75), fixed=false,
+    m <= parameter(:sig_chi, 0., (1e-7, 100.), (1e-7, 100.), ModelConstructors.Exponential(), RootInverseGamma(2., 0.75), fixed=true,
                    description="σ_χ: The mean of the process that generates the price elasticity of the composite good. Specifically, the elasticity is (1+λ_{f,t})/(λ_{f_t}).",
                    tex_label="\\sigma_{\\chi}")
 
