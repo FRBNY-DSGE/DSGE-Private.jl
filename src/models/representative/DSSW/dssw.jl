@@ -228,8 +228,7 @@ function init_parameters!(m::DSSW)
                    description="ζ_p: The Calvo parameter. In every period, intermediate goods producers optimize prices with probability (1-ζ_p). With probability ζ_p, prices are adjusted according to a weighted average of the previous period's inflation (π_t1) and steady-state inflation (π_star).",
                    tex_label="\\zeta_p")
 
-    m <= parameter(:iota_p, 0., (0., 1.), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.28), fixed=true,
-                   description="ι_p: The weight attributed to last period's inflation in price indexation. (1-ι_p) is the weight attributed to steady-state inflation.",
+    m <= parameter(:iota_p, 0., (0., 1.), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.28), fixed=true, description="ι_p: The weight attributed to last period's inflation in price indexation. (1-ι_p) is the weight attributed to steady-state inflation.",
                    tex_label="\\iota_p")
 
     m <= parameter(:del, 0.025, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.025, 0.01), fixed=true,
@@ -240,8 +239,7 @@ function init_parameters!(m::DSSW)
                    description="Ups",
                    tex_label="\\Upsilon")
 
-    m <= parameter(:bigphi, 0., (0., 2.), (1e-5, 0.), ModelConstructors.Exponential(), GammaAlt(0.5, 0.25), fixed=true,
-                   description="Φ: Fixed costs.",
+    m <= parameter(:bigphi, 0., (0., 2.), (1e-5, 0.), ModelConstructors.Exponential(), GammaAlt(0.5, 0.25), fixed=true, description="Φ: Fixed costs.",
                    tex_label="\\Phi")
 
     m <= parameter(:s2, 4., (0., 20.), (1e-5, 0.), ModelConstructors.Exponential(), GammaAlt(4.0, 1.5), fixed=false,
@@ -260,11 +258,9 @@ function init_parameters!(m::DSSW)
                    description="ν_l: The coefficient of relative risk aversion on the labor term of households' utility function.", tex_label="\\nu_l")
 
     m <= parameter(:nu_m, 2., (1e-5, 100.), (1e-5, 0.), ModelConstructors.Exponential(), GammaAlt(2.0, 0.75), fixed=true,                                   description="ν_l: The coefficient of relative risk aversion on the labor term of households' utility function.", tex_label="\\nu_m")
-
-    m <= parameter(:zeta_w, 0.8, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
+   m <= parameter(:zeta_w, 0.8, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ζ_w: (1-ζ_w) is the probability with which households can freely choose wages in each period. With probability ζ_w, wages increase at a geometrically weighted average of the steady state rate of wage increases and last period's productivity times last period's inflation.",
                    tex_label="\\zeta_w")
-
     m <= parameter(:iota_w, 0., (0., 1.), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.28), fixed=true,
                    description="ι_w: The weight attributed to last period's wage in wage indexation. (1-ι_w) is the weight attributed to steady-state wages.",
                    tex_label="\\iota_w")
@@ -324,7 +320,6 @@ function init_parameters!(m::DSSW)
     m <= parameter(:rho_phi, 0.4, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=false,
                    description="ρ_ϕ: AR(1) coefficient in the government spending process.",
                    tex_label="\\rho_{\\phi}")
-
     m <= parameter(:rho_chi, 0.9, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.6, 0.2), fixed=true,
                    description="ρ_χ: AR(1) coefficient in the government spending process.",
                    tex_label="\\rho_{\\chi}")
@@ -352,7 +347,6 @@ function init_parameters!(m::DSSW)
     m <= parameter(:sig_phi, 1., (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(2., 4.), fixed=false,
                    description="σ_z: The standard deviation of the process describing the stationary component of productivity.",
                    tex_label="\\sigma_{\\phi}")
-
     m <= parameter(:sig_chi, 0., (1e-7, 100.), (1e-5, 0.), ModelConstructors.Exponential(), RootInverseGamma(2., 0.75), fixed=true,
                    description="σ_χ: The mean of the process that generates the price elasticity of the composite good. Specifically, the elasticity is (1+λ_{f,t})/(λ_{f_t}).",
                    tex_label="\\sigma_{\\chi}")
