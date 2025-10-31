@@ -7,15 +7,15 @@ path = dirname(@__FILE__)
 writing_output = false
  
 
-#optimizer_config = :csminwel
+optimizer_config = :csminwel
 #optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
-optimizer_config = :pso
+#optimizer_config = :pso
 println(optimizer_config)
 
 custom_settings = [Setting(:date_forecast_start, quartertodate("2015-Q4"))]
 m = AnSchorfheide(custom_settings = custom_settings, testing = true)
-
+#m = DSSW()
 
 #load data
 file = "$path/../reference/optimize_in.h5"
@@ -25,7 +25,9 @@ data = h5read(file, "data")'
 #test file
 params_test = deepcopy(x0)
 data_test   = Matrix{Float64}(data)
- 
+
+data = construct_data()
+
 file = "$path/../reference/optimize_out.h5"
 minimizer  = h5read(file, "minimizer")
 minimum    = h5read(file, "minimum")
@@ -49,7 +51,7 @@ end
 
 =#
 # Update x0
-DSGE.update!(m, x0)
+#DSGE.update!(m, x0)
 
 #start timer
 start_time = time()

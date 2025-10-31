@@ -6,19 +6,23 @@ using Random
 using CSV
 using Dates
 using DataFrames
+#include("../../../../../data/dsge_data_dir/dsgejl/michael/proc/includeall.jl")
 path = dirname(@__FILE__)
 writing_output = false
- 
+file_path = "/data/dsge_data_dir/dsgejl/michael/proc/includeall.jl"
+include(file_path)
 
 #optimizer_config = :csminwel
-optimizer_config = :lbfgs
-#optimizer_config = :trust_region_newton
+#optimizer_config = :lbfgs
+optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println(optimizer_config)
 
 #custom_settings = [Setting(:date_forecast_start, quartertodate("2015-Q4"))]
 #m = AnSchorfheide(custom_settings = custom_settings, testing = true)
-m = DSSW()
+#m = DSSW()
+m = Model1002("ss10")
+
 
 #load data
 #file = "$path/../reference/optimize_in.h5"
@@ -29,11 +33,16 @@ m = DSSW()
 #params_test = deepcopy(x0)
 #data_test   = Matrix{Float64}(data)
 
+m_old_vint = "190829"
+m_old_fcast_date = Date(2019, 09, 30)
+usual_settings!(m, m_old_vint, fcast_date = m_old_fcast_date)
 
-file = "$path/../reference/vecm2007_data_log.csv"
-file2 = "$path/../reference/vecm2007_cointdata_log.csv"
+old_data = df_to_matrix(m, load_data(m))
 
+#file = "$path/../reference/vecm2007_data_log.csv"
+#file2 = "$path/../reference/vecm2007_cointdata_log.csv"
 
+#=
 # Read in matlab dataset
 function construct_data()
      # Load in US dataset #3
@@ -58,11 +67,11 @@ function construct_data()
  
      return data
 end
+=#
 
 
 
-
-data = construct_data()
+#data = construct_data()
 
 #file = "$path/../reference/optimize_out.h5"
 #minimizer  = h5read(file, "minimizer")
@@ -75,7 +84,7 @@ n_iterations = 1000
 
 
 # Set seed for reproducibility
-Random.seed!(42)
+#Random.seed!(42)
 
 #=
 x0 = Float64[]
@@ -91,7 +100,7 @@ end
 
 #start timer
 start_time = time()
-out, H, callback_data = optimize!(m, data; method = optimizer_config, iterations = n_iterations, show_trace = true)
+out, H, callback_data = optimize!(m, old_data; method = optimizer_config, iterations = n_iterations, show_trace = true)
 seconds = time() - start_time
 
 println(out)
