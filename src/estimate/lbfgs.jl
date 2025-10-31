@@ -23,8 +23,8 @@ function lbfgs(fcn::Function,
     end
 
 
-    random_scaling = 0.97
-    x0 = x0 .* random_scaling
+    #random_scaling = 0.97
+    #x0 = x0 .* random_scaling
 
     #wrapper objective fcn replace Inf with large finite value before gradients are computed
     INF_REPLACEMENT = 1e15
@@ -39,9 +39,11 @@ function lbfgs(fcn::Function,
 
     #line search, high iters search
     ls = LineSearches.BackTracking(order=2, maxstep=Inf, iterations=50)
+    #ls_hager = LineSearches.HagerZhang()
+    ls2 = LineSearches.BackTracking(order=2, maxstep=5.0, iterations=100, c_1 = 1e-4, ρ_lo = 0.4)
 
     result = if autodiff
-        Optim.optimize(fcn_wrapped, x0, LBFGS(m=10, linesearch = ls), autodiff=:forward,
+        Optim.optimize(fcn_wrapped, x0, LBFGS(m=20, linesearch = ls2),
                        Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,
@@ -49,7 +51,7 @@ function lbfgs(fcn::Function,
                                      callback = callback,
                                      allow_f_increases = true))
     else
-        Optim.optimize(fcn_wrapped, x0, LBFGS(m=10, linesearch = ls),
+        Optim.optimize(fcn_wrapped, x0, LBFGS(m=20, linesearch = ls2),
                        Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,
