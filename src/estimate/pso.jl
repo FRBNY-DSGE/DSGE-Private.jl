@@ -55,7 +55,7 @@ function pso(fcn::Function,
              verbose::Symbol      = :none,
              rng::AbstractRNG     = MersenneTwister(),
              autodiff::Bool       = false,
-             n_particles::Int     = 500,
+             n_particles::Int     = 10000,
              use_parallel::Bool   = false,
              n_workers::Int       = nworkers(),
              kwargs...)

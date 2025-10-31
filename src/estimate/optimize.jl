@@ -335,7 +335,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
                                extended_trace = extended_trace,
-                               verbose = verbose, rng = rng, autodiff = autodiff)
+                               verbose = verbose, rng = rng, autodiff = false)
         callback_data = (trace = store_trace ? opt_result.trace : nothing,
                         times = iteration_times)
         converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
