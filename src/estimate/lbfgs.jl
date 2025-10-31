@@ -13,12 +13,26 @@ function lbfgs(fcn::Function,
                autodiff::Bool       = false,
                kwargs...)
     
-    #callback time
+    #callback time and parameter trace
     iteration_times = Float64[]
+    posterior_ls = Float64[]
+    x_trace = typeof(x0)[]
     start_time = time()
 
-    callback = function(state)
+    callback = function(trace_or_state)
         push!(iteration_times, time() - start_time)
+        #when store_trace=true, callback receives the full trace (a vector)
+        #get the last state from the trace
+        
+        #extended callback, but currently saving untransformed        
+        if trace_or_state isa AbstractVector
+            current_state = trace_or_state[end]
+        else
+            current_state = trace_or_state
+        end
+        if haskey(current_state.metadata, "x")
+            push!(x_trace, copy(current_state.metadata["x"]))
+        end
         false
     end
 
@@ -31,8 +45,10 @@ function lbfgs(fcn::Function,
     fcn_wrapped = function(x)
         val = fcn(x)
         if isinf(val) || isnan(val) || val > INF_REPLACEMENT
+            #push!(posterior_ls)
             return INF_REPLACEMENT
         else
+            #push!(posterior_ls)
             return val
         end
     end
@@ -60,5 +76,5 @@ function lbfgs(fcn::Function,
                                      allow_f_increases = true))
     end
 
-    return result, iteration_times
+    return result, iteration_times, x_trace
 end

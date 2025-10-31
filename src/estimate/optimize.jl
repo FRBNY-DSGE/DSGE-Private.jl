@@ -43,9 +43,9 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
                    ftol::Float64        = 1e-14,  # Default from csminwel
                    grtol::Real          = 1e-8,   # default from Optim.jl
                    iterations::Int      = 1000,
-                   store_trace::Bool    = false,
-                   show_trace::Bool     = false,
-                   extended_trace::Bool = false,
+                   store_trace::Bool    = true,
+                   show_trace::Bool     = true,
+                   extended_trace::Bool = true,
                    mle::Bool            = false, # default from estimate.jl
                    step_size::Float64   = .01,
                    toggle::Bool         = true,  # default from estimate.jl
@@ -331,13 +331,14 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
                                   opt_result.iterations)
 
     elseif method == :lbfgs
-        opt_result, iteration_times = optimizer(f_opt, x_opt;
+        opt_result, iteration_times, x_trace = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
                                extended_trace = extended_trace,
                                verbose = verbose, rng = rng, autodiff = false)
         callback_data = (trace = store_trace ? opt_result.trace : nothing,
-                        times = iteration_times)
+                        times = iteration_times,
+                        x_trace = store_trace ? x_trace : nothing)
         converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
