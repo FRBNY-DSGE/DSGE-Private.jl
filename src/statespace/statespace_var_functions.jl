@@ -216,8 +216,8 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
             lags = n_lags(m)
 
             if n_coint > 0
-                coint_data = data[:, get_setting(m, :coint_data_inds)]
-                data = data[:, get_setting(m, :main_data_inds)]
+                coint_data = data[get_setting(m, :coint_data_inds), :]
+                data = data[get_setting(m, :main_data_inds), :]
                 YYYY, XXYY, XXXX =
                     compute_vecm_population_moments(data, lags, n_coint, coint_data; use_intercept = true)
             else

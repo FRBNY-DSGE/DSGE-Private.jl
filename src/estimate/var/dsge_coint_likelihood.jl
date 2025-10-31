@@ -4,7 +4,7 @@ dsge_coint_likelihood(m::AbstractDSGEModel{S}, data::Matrix{S}) where {S<:Real}
 ```
 evaluates the likelihood of a DSGE model with cointegrated data
 
-The matrix `data` is assumed an n_coint x T+lags matrix,
+The matrix `data` is assumed an n_coint+n_var x T+lags matrix,
 where the lags indicate we cut off the data for presampling.
 """
 
@@ -17,10 +17,10 @@ function dsge_coint_likelihood(m, data)
         sys = compute_system(m)
 
         # Data preprocessing
-        data_main = data[:, get_setting(m, :main_data_inds)]
-        data_coint = data[:, get_setting(m, :coint_data_inds)]
+        data_main = data[get_setting(m, :main_data_inds), :]
+        data_coint = data[get_setting(m, :coint_data_inds), :]
 
-        lh = dsge_coint_likelihood(data_main, data_coint, sys[:TTT], sys[:RRR], sys[:QQ],
+        lh = dsge_coint_likelihood(data_main', data_coint', sys[:TTT], sys[:RRR], sys[:QQ],
                               sys[:ZZ], sys[:DD], sys[:EE], lags)
     else
         lh = likelihood(m, data)
