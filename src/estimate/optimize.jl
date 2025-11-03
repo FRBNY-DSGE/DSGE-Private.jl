@@ -313,12 +313,13 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
                                   opt_result.iterations)
 
     elseif method == :csminwel
-        opt_result, H_ = optimizer(f_opt, x_opt, H0;
+        opt_result, H_, iteration_times, posterior_ls = optimizer(f_opt, x_opt, H0;
                                    xtol = xtol, ftol = ftol, grtol = grtol,
                                    iterations = iterations,
                                    store_trace = store_trace, show_trace = show_trace,
                                    extended_trace = extended_trace,
                                    verbose = verbose, rng = rng)
+        callback_data = (times = iteration_times, posteriors = posterior_ls)
         converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
@@ -393,6 +394,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
         transform_to_model_space!(m, x_model; regime_switching = regime_switching)
 
         #match original dimensions
+        #@show out.minimizer
         out.minimizer = ModelConstructors.get_values(get_parameters(m); regime_switching = regime_switching)
     end
 
