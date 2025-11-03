@@ -86,6 +86,10 @@ function csminwel(fcn::Function,
                   verbose::Symbol      = :none,
                   rng::AbstractRNG     = MersenneTwister(0),
                   kwargs...)
+    
+    posterior_tracking_ls = Float64[]
+    time_tracking_ls = Float64[]
+    start_time = time()
 
     if show_trace
         @printf "Iter     Function value   Gradient norm \n"
@@ -299,6 +303,9 @@ function csminwel(fcn::Function,
         x = xh
         gr = gh
         badg = badgh
+        
+        push!(time_tracking_ls, time() - start_time)
+        push!(posterior_tracking_ls, f_x)
 
         # Check convergence
         x_converged,
@@ -325,14 +332,14 @@ function csminwel(fcn::Function,
                                                iteration, iteration==iterations, x_converged, xtol, xtol, x_resid, x_resid,
                                                f_converged, ftol, ftol, f_resid, f_resid,
                                                gr_converged, grtol, gr_resid, false, tr, f_calls, g_calls, 0,
-                                               false, NaN, NaN, nothing), H  # also return H
+                                               false, NaN, NaN, nothing), H, time_tracking_ls, posterior_tracking_ls  # also return H
     catch e
         if isa(e, MethodError) # Then likely using an older version of Optim
             return MultivariateOptimizationResults(Csminwel(), x0, x, convert(Float64, f_x),
                                                    iteration, iteration==iterations, x_converged, xtol, xtol, x_resid, x_resid,
                                                    f_converged, ftol, ftol, f_resid, f_resid,
                                                    gr_converged, grtol, gr_resid, false, tr, f_calls, g_calls, 0,
-                                                   false, NaN, NaN), H  # also return H
+                                                   false, NaN, NaN), H, time_tracking_ls, posterior_tracking_ls  # also return H
         else
             rethrow(e)
         end
