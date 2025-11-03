@@ -32,6 +32,7 @@ function lbfgs(fcn::Function,
         end
         if haskey(current_state.metadata, "x")
             push!(x_trace, copy(current_state.metadata["x"]))
+            push!(posterior_ls, current_state.value)
         end
         false
     end
@@ -76,5 +77,5 @@ function lbfgs(fcn::Function,
                                      allow_f_increases = true))
     end
 
-    return result, iteration_times, x_trace
+    return result, iteration_times, posterior_ls, x_trace
 end
