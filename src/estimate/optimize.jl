@@ -336,14 +336,14 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
     elseif method == :trust_region_newton
-        opt_result, iteration_times = optimizer(f_opt, x_opt;
+        opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
                                extended_trace = extended_trace,
                                verbose = verbose, rng = rng)
         converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
         callback_data = (trace = store_trace ? opt_result.trace : nothing,
-                        times = iteration_times)
+                        times = iteration_times, posteriors = posterior_ls, x_trace = store_trace ? x_trace : nothing)
 
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
