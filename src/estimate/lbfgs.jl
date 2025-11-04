@@ -37,10 +37,6 @@ function lbfgs(fcn::Function,
         false
     end
 
-
-    #random_scaling = 0.97
-    #x0 = x0 .* random_scaling
-
     #wrapper objective fcn replace Inf with large finite value before gradients are computed
     INF_REPLACEMENT = 1e15
     fcn_wrapped = function(x)
