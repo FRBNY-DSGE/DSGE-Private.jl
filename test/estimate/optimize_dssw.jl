@@ -10,8 +10,8 @@ path = dirname(@__FILE__)
 writing_output = false
  
 
-#optimizer_config = :csminwel
-optimizer_config = :lbfgs
+optimizer_config = :csminwel
+#optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println(optimizer_config)
@@ -56,13 +56,14 @@ function construct_data()
  
      data = hcat(df_mat, df_coint)
  
-     return data
+     return data'
 end
 
 
 
 
 data = construct_data()
+#data = data'
 
 #file = "$path/../reference/optimize_out.h5"
 #minimizer  = h5read(file, "minimizer")

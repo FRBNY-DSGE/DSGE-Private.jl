@@ -7,8 +7,8 @@ path = dirname(@__FILE__)
 writing_output = false
  
 
-optimizer_config = :csminwel
-#optimizer_config = :lbfgs
+#optimizer_config = :csminwel
+optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println(optimizer_config)
