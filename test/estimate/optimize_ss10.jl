@@ -12,9 +12,9 @@ writing_output = false
 file_path = "/data/dsge_data_dir/dsgejl/michael/proc/includeall.jl"
 include(file_path)
 
-#optimizer_config = :csminwel
+optimizer_config = :csminwel
 #optimizer_config = :lbfgs
-optimizer_config = :trust_region_newton
+#optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println(optimizer_config)
 
