@@ -74,6 +74,8 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         trust_region_newton
     elseif method == :pso
         pso
+    elseif method == :conjugage_gradient
+        conjugate_gradient
     else
         error("Method ", method, " is not supported.")
     end
@@ -331,7 +333,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
 
-    elseif method == :lbfgs
+    elseif method == :lbfgs || method == :conjugate_gradient
         opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
