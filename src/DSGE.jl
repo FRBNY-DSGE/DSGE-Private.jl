@@ -262,6 +262,7 @@ module DSGE
     include("estimate/lbfgs.jl")
     include("estimate/trust_region_newton.jl")
     include("estimate/pso.jl")
+    include("estimate/conjugate_gradient.jl")
     include("estimate/nelder_mead.jl")
     include("estimate/marginal_data_density.jl")
     include("estimate/estimate.jl")
