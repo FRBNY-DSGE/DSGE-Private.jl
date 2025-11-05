@@ -178,12 +178,23 @@ function compute_system(m::AbstractDSGEVECMModel{T}; apply_altpolicy::Bool = fal
     else
         EE, MM = measurement_error(m)
 
-        return vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
+        # if DSGE has cointegrating relationships embedded
+        if haskey(dsge.settings, :n_coint) && get_setting(dsge, :n_coint) > 0
+            n_coint = get_setting(dsge, :n_coint)
+            return vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
+                                       system[:DD], system[:ZZ], EE, MM, n_observables(dsge) - n_coint,
+                                       n_lags(m), n_coint, n_cointegrating_add(m),
+                                       DD_coint_add;
+                                       get_population_moments = get_population_moments,
+                                       use_intercept = use_intercept)
+        else
+            return vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
                                        system[:DD], system[:ZZ], EE, MM, n_observables(m),
                                        n_lags(m), n_cointegrating(m), n_cointegrating_add(m),
                                        DD_coint_add;
                                        get_population_moments = get_population_moments,
                                        use_intercept = use_intercept)
+        end
     end
 end
 
@@ -212,24 +223,33 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
         else
             EE, MM = measurement_error(m)
 
-            n_coint = get_setting(m, :n_coint)
+            n_coint = haskey(m.dsge.settings, :n_coint) ? get_setting(m.dsge, :n_coint) : 0
             lags = n_lags(m)
 
+             # If DSGE matrices take into account cointegrating variables
             if n_coint > 0
-                coint_data = data[get_setting(m, :coint_data_inds), :]
-                data = data[get_setting(m, :main_data_inds), :]
+                coint_data = data[get_setting(m.dsge, :coint_data_inds), :]
+                data = data[get_setting(m.dsge, :main_data_inds), :]
                 YYYY, XXYY, XXXX =
                     compute_vecm_population_moments(data, lags, n_coint, coint_data; use_intercept = true)
+
+                out = vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
+                                              system[:DD], system[:ZZ], EE, MM, size(data, 1) - n_coint,
+                                              n_lags(m), n_coint,
+                                              n_cointegrating_add(m), DD_coint_add;
+                                              get_population_moments = true,
+                                              use_intercept = true)
             else
                 YYYY, XXYY, XXXX =
                     compute_var_population_moments(data, lags; use_intercept = true)
+
+                out = vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
+                                              system[:DD], system[:ZZ], EE, MM, size(data, 1),
+                                              n_lags(m), n_cointegrating(m),
+                                              n_cointegrating_add(m), DD_coint_add;
+                                              get_population_moments = true,
+                                              use_intercept = true)
             end
-            out = vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
-                                          system[:DD], system[:ZZ], EE, MM, size(data, 1),
-                                          n_lags(m), n_cointegrating(m),
-                                          n_cointegrating_add(m), DD_coint_add;
-                                          get_population_moments = true,
-                                          use_intercept = true)
 
             if get_population_moments
 
@@ -416,10 +436,22 @@ function compute_system(m::AbstractDSGEVECMModel{S}, system::System;
     # Cointegrating relationships should exist as observables/pseudo_observables already
     # in the underlying DSGE. We assume cointegrating relationships come after normal observables.
     # Default behavior is to recreate the underlying DSGE's state space representation, however.
-    sys = compute_system(get_dsge(m), system; observables = vcat(observables, cointegrating),
+    dsge = get_dsge(m)
+
+    # If cointegrating relationships already exist in the underlying DSGE, then compute DSGE system w/o adding coints again
+    if get_setting(dsge, :n_coint) > 0
+        sys = compute_system(dsge, system; observables = observables,
+                             pseudo_observables = pseudo_observables,
+                             states = states, shocks = shocks, zero_DD = zero_DD,
+                             zero_DD_pseudo = zero_DD_pseudo, check_system = check_system)
+    else
+        sys = compute_system(dsge, system; observables = vcat(observables, cointegrating),
                          pseudo_observables = pseudo_observables,
                          states = states, shocks = shocks, zero_DD = zero_DD,
                          zero_DD_pseudo = zero_DD_pseudo, check_system = check_system)
+    end
+
+    # Won't go through this block if the underlying DSGE already has cointegrating observables
     if get_DD_coint_add
         mtype = typeof(m)
         DD_coint_add = if hasmethod(compute_DD_coint_add, (mtype, Vector{Symbol}))

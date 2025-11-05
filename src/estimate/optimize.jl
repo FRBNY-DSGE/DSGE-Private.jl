@@ -34,7 +34,7 @@ optimize!(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix;
 ```
 Wrapper function to send a model to csminwel (or another optimization routine).
 """
-function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
+function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECMModel},
                    data::AbstractArray;
                    method::Symbol       = :csminwel,
                    xtol::Real           = 1e-32,  # default from Optim.jl
@@ -84,7 +84,13 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
     function f_opt(x_opt)
         try
             x_model[para_free_inds] = x_opt
-            transform_to_model_space!(m, x_model; regime_switching = regime_switching)
+
+            if typeof(m) <: AbstractDSGEVARModel
+                transform_to_model_space!(m, x_model)
+            else
+                transform_to_model_space!(m, x_model; regime_switching = regime_switching)
+            end
+
         catch
             return Inf
         end
@@ -93,6 +99,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
             out = -likelihood(m, data; catch_errors = true)
         else
             out = -posterior(m, data; catch_errors = true)
+            @show out
         end
 
         out = !isnan(out) ? out : Inf
@@ -185,7 +192,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
 
             return
         end
-    elseif isa(m, AbstractDSGEVARModel)
+    elseif isa(m, AbstractDSGEVARModel) || isa(m, AbstractDSGEVECMModel)
         function _neighbor_dsgevar!(x, x_proposal)
             T = eltype(x)
             npara = length(x)
@@ -308,8 +315,11 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel},
     ########################################################################################
 
     x_model[para_free_inds] = out.minimizer
-    transform_to_model_space!(m, x_model; regime_switching = regime_switching)
-
+    if typeof(m) <: AbstractDSGEVARModel
+        transform_to_model_space!(m, x_model)
+    else
+        transform_to_model_space!(m, x_model; regime_switching = regime_switching)
+    end
     # Match original dimensions
     out.minimizer = ModelConstructors.get_values(get_parameters(m); regime_switching = regime_switching)
 

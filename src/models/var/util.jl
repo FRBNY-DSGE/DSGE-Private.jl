@@ -47,6 +47,7 @@ function lag_data_VECM(data::Matrix{S}, lags::Int, n_coint::Int, coint_data::Mat
     # Assumes data is nobs x T
     nobs, T = size(data)
     data = Matrix(data')
+    coint_data = Matrix(coint_data')
 
     # Construct XX matrix of covariates
     add_constant = use_intercept ? 1 : 0
@@ -61,6 +62,8 @@ function lag_data_VECM(data::Matrix{S}, lags::Int, n_coint::Int, coint_data::Mat
     end
 
     # Add coint_data (First 3 cols) {Coint_vec: 3 cols, intercept: 1 col, lagged data: nvars*lags}
+    @show size(coint_data)
+    @show size(XX)
     coint_data_nopresample = coint_data[lags:end-1, :] # Get rid of presample
     XX[:, 1:n_coint] = coint_data_nopresample # Add coint data to first 3 cols of XX matrix
 

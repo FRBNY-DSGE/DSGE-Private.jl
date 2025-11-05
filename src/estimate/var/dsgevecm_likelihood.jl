@@ -34,11 +34,11 @@ function dsgevecm_likelihood(m::AbstractDSGEVECMModel{S}, data::Matrix{S};
         get_setting(m, :regime_switching) : false # if n_regimes == 1, then no switching needed
 
     # Get population moments
-    n_coint = get_setting(m, :n_coint)
+    n_coint = get_setting(m.dsge, :n_coint)
 
     if n_coint > 0
-        coint_data = data[get_setting(m, :coint_data_inds), :]
-        data = data[get_setting(m, :main_data_inds), :]
+        coint_data = data[get_setting(m.dsge, :coint_data_inds), :]
+        data = data[get_setting(m.dsge, :main_data_inds), :]
 
         YYYY, XXYY, XXXX = compute_vecm_population_moments(data, lags, n_coint, coint_data; use_intercept = use_intercept)
     else
