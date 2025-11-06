@@ -9,7 +9,9 @@ using DataFrames
 path = dirname(@__FILE__)
 writing_output = false
  
-optimizer_config = :conjugate_gradient
+
+optimizer_config = :cmaes
+#optimizer_config = :conjugate_gradient
 #optimizer_config = :csminwel
 #optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton

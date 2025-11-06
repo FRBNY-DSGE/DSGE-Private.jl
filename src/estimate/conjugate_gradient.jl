@@ -54,7 +54,7 @@ function conjugate_gradient(fcn::Function,
 
     #line search, high iters search
     ls = LineSearches.BackTracking(order=2, maxstep=Inf, iterations=50)
-    ls_hager = LineSearches.HagerZhang()
+    #ls_hager = LineSearches.HagerZhang()
     ls2 = LineSearches.BackTracking(order=2, maxstep=5.0, iterations=100, c_1 = 1e-4, ρ_lo = 0.4)
 
     result = if autodiff
@@ -66,7 +66,7 @@ function conjugate_gradient(fcn::Function,
                                      callback = callback,
                                      allow_f_increases = true))
     else
-        Optim.optimize(fcn_wrapped, x0, ConjugateGradient(linesearch = ls_hager),
+        Optim.optimize(fcn_wrapped, x0, ConjugateGradient(linesearch = ls2),
                        Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,

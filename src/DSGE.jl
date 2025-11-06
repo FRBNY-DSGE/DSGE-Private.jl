@@ -19,6 +19,7 @@ module DSGE
     import LinearAlgebra: rank
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults, LineSearches
     import BlackBoxOptim
+    import CMAEvolutionStrategy
     import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks, solve_discrete_lyapunov
     import ModelConstructors
     import ModelConstructors: posterior!, posterior, <=, n_states,
@@ -98,7 +99,7 @@ module DSGE
 
         # estimate/
         simulated_annealing, combined_optimizer, lbfgs, pso, trust_region_newton,
-        filter, filter_shocks, likelihood, posterior, posterior!,
+        conjugate_gradient, cmaes, xnes, filter, filter_shocks, likelihood, posterior, posterior!,
         optimize!, csminwel, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance, prior, get_estimation_output_files,
         find_density_bands, mutation, resample, smc,
@@ -263,6 +264,8 @@ module DSGE
     include("estimate/trust_region_newton.jl")
     include("estimate/pso.jl")
     include("estimate/conjugate_gradient.jl")
+    include("estimate/cmaes.jl")
+    include("estimate/xnes.jl")
     include("estimate/nelder_mead.jl")
     include("estimate/marginal_data_density.jl")
     include("estimate/estimate.jl")

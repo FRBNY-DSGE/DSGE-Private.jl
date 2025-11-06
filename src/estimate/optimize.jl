@@ -74,8 +74,12 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         trust_region_newton
     elseif method == :pso
         pso
-    elseif method == :conjugage_gradient
+    elseif method == :conjugate_gradient
         conjugate_gradient
+    elseif method == :cmaes
+        cmaes
+    elseif method == :xnes
+        xnes
     else
         error("Method ", method, " is not supported.")
     end
@@ -333,7 +337,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
 
-    elseif method == :lbfgs || method == :conjugate_gradient
+    elseif method == :lbfgs || method == :conjugate_gradient || method == :cmaes || method == :xnes
         opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
@@ -357,7 +361,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
 
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
-
     elseif method == :pso
         global f_opt_global = f_opt
         opt_result = optimizer(f_opt2, x_opt, m;
@@ -368,7 +371,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         converged = opt_result.f_converged || opt_result.x_converged || opt_result.iteration_converged
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
-
     elseif method == :combined_optimizer
         opt_result = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
