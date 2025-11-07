@@ -569,6 +569,7 @@ include("models/representative/OnionModel/InOutData.jl")
     include("forecast/var/impulse_responses.jl")
     include("forecast/var/dsgevar/impulse_responses.jl")
     include("forecast/var/dsgevecm/impulse_responses.jl")
+    include("forecast/var/dsgevecm/impulse_responses_2.jl")
     include("forecast/drivers.jl")
 
     # include("dsgevar/dsgevar.jl")

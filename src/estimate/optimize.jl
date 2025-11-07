@@ -387,7 +387,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     ########################################################################################
     ### Step 4: transform output, populate Hessian
     ########################################################################################
-
     x_model[para_free_inds] = out.minimizer
     if typeof(m) <: AbstractDSGEVARModel
         transform_to_model_space!(m, x_model)
