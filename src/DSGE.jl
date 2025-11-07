@@ -183,7 +183,7 @@ module DSGE
         solve_static_conditions,
 
         # estimate
-        hessizero, hess_diag_element, hess_offdiag_element, transform_transition_matrices,
+        hessizero, hessiopg, hess_diag_element, hess_offdiag_element, transform_transition_matrices,
 
         # estimate/ct_filters
         BlockKalmanFilter, init_stationary_states, block_kalman_filter, CTBlockKalmanFilter,
@@ -258,6 +258,7 @@ module DSGE
     include("estimate/csminwel.jl")
     include("estimate/hessian.jl")
     include("estimate/hessizero.jl")
+    include("estimate/hessiopg.jl")
     include("estimate/simulated_annealing.jl")
     include("estimate/combined_optimizer.jl")
     include("estimate/lbfgs.jl")

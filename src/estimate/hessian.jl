@@ -8,7 +8,7 @@ hessian!(m::Union{AbstractDSGEModel,AbstractVARModel}, x::Vector{T}, data::Abstr
 Compute Hessian of DSGE/VAR posterior function evaluated at x.
 """
 function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
-                  x::Vector{T}, data::AbstractArray; check_neg_diag::Bool = true,
+                  x::Vector{T}, data::AbstractArray; hessian_method = :outer_product_gradient, check_neg_diag::Bool = true,
                   toggle::Bool = true, verbose::Symbol = :none) where T<:AbstractFloat
 
     regime_switching = haskey(get_settings(m), :regime_switching) &&
@@ -41,9 +41,14 @@ function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
     end
 
     distr = use_parallel_workers(m)
-    hessian_free, has_errors = hessizero(f_hessian, x_hessian;
-        check_neg_diag = check_neg_diag, verbose = verbose, distr = distr)
-
+    if hessian_method == :finite_difference
+        hessian_free, has_errors = hessizero(f_hessian, x_hessian;
+            check_neg_diag = check_neg_diag, verbose = verbose, distr = distr)
+    elseif hessian_method == :outer_product_gradient
+        println("tring the outer product gradient")
+        hessian_free, has_errors = hessiopg(f_hessian, x_hessian;
+            check_neg_diag = check_neg_diag, verbose = verbose, distr = distr)
+    end
     # Fill in rows/cols of zeros corresponding to location of fixed parameters
     # For each row corresponding to a free parameter, fill in columns corresponding to free
     # parameters. Everything else is 0.
