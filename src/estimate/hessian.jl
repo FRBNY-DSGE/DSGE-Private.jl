@@ -35,10 +35,21 @@ function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
     x_model = copy(x)
     x_hessian = x_model[para_free_inds]
 
+    function f_hessian_likelihood(x_hessian)
+        x_model[para_free_inds] = x_hessian
+        sampler = false
+        catch_errors = false
+        lh, lh_t = likelihood(m, data; sampler = sampler, catch_errors = catch_errors)
+        println("SIZE LH_T: $(size(lh_t))")
+        return lh_t
+    end
+
     function f_hessian(x_hessian)
         x_model[para_free_inds] = x_hessian
         return -posterior!(m, x_model, data)
     end
+
+
 
     distr = use_parallel_workers(m)
     if hessian_method == :finite_difference
@@ -46,7 +57,7 @@ function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
             check_neg_diag = check_neg_diag, verbose = verbose, distr = distr)
     elseif hessian_method == :outer_product_gradient
         println("tring the outer product gradient")
-        hessian_free, has_errors = hessiopg(f_hessian, x_hessian;
+        hessian_free, has_errors = hessiopg(f_hessian_likelihood, x_hessian;
             check_neg_diag = check_neg_diag, verbose = verbose, distr = distr)
     end
     # Fill in rows/cols of zeros corresponding to location of fixed parameters
