@@ -13,6 +13,7 @@ module DSGE
     using StatsFuns: chisqinvcdf
     using Statistics: std
     using MatrixEquations
+    using CMAEvolutionStrategy
 
     import Calculus
     import Base.isempty, Base.<, Base.min, Base.max

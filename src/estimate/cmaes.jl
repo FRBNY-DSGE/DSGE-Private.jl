@@ -104,10 +104,16 @@ function cmaes(fcn::Function,
         if verbose!= :none
             println("Running CMAES with $(nworkers) workers")
         end
+        ENV["frbnyjuliamemory"] = "8G"
+        n_workers = 4
+        myprocs = addprocs_frbny(n_workers)
+        @everywhere using DSGE, SMC, OrderedCollections, CMAEvolutionStrategy
+
        
         cma_result = CMAEvolutionStrategy.minimize(fcn_batch, x0, σ;
                              maxfevals = iterations * λ,
                              popsize = λ,
+                             parllel_evaluation = true,
                              #μ = μ,
                              #verb_disp = show_trace ? 10 : 0,
                              #parallel_objective = true,  # Tell CMA-ES we're providing batch evaluation
@@ -127,6 +133,10 @@ function cmaes(fcn::Function,
                              #verb_disp = show_trace ? 10 : 0,
                              seed = rand(rng, UInt32))
     end
+
+
+    Main.xx[] = cma_result
+
 
     x_best = cma_result.logger.xbest
     f_best = minimum(cma_result.logger.fbest)

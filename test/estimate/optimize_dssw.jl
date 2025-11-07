@@ -8,7 +8,7 @@ using Dates
 using DataFrames
 path = dirname(@__FILE__)
 writing_output = false
- 
+xx = Ref{Any}()
 
 #optimizer_config = :cmaes
 #optimizer_config = :conjugate_gradient
