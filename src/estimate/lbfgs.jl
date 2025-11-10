@@ -51,12 +51,23 @@ function lbfgs(fcn::Function,
     end
 
     #line search, high iters search
-    ls = LineSearches.BackTracking(order=2, maxstep=Inf, iterations=50)
-    #ls_hager = LineSearches.HagerZhang()
-    ls2 = LineSearches.BackTracking(order=2, maxstep=5.0, iterations=100, c_1 = 1e-4, ρ_lo = 0.4)
+    #ls = LineSearches.BackTracking(order=2, maxstep=Inf, iterations=50)
+    #ls2 = LineSearches.HagerZhang(c1=1e-4, c2=0.9, linesearchmax=50)
+    ls2 = LineSearches.BackTracking(order=2, maxstep=2.0, iterations=150, c_1 = 1e-4, ρ_lo = 0.4)
+    #ls2 = LineSearches.BackTracking(order=2, maxstep=3.0, iterations=150, c_1 = 1e-4, ρ_lo = 0.05, ρ_hi = 0.95)
+    #ls2 = LineSearches.BackTracking(order=2, maxstep=3.0, iterations=500, c_1 = 1e-4, ρ_lo = 0.05, ρ_hi = 0.95)
 
+    #=
+    ls2 = LineSearches.HagerZhang(;
+    c1 = 1e-4,       # sufficient decrease
+    c2 = 0.9,        # curvature condition
+    αmax = 2.0,      # (optional) max step length
+    ρ = 0.5,         # shrink factor for backtracking
+    ψ = 0.1          # safeguard parameter
+)
+=#
     result = if autodiff
-        Optim.optimize(fcn_wrapped, x0, LBFGS(m=20, linesearch = ls2),
+        Optim.optimize(fcn_wrapped, x0, LBFGS(m=20, linesearch = ls2, damping = true),
                        Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,
