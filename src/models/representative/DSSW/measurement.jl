@@ -69,7 +69,7 @@ function measurement(m::DSSW{T},
     ZZ[obs[:wage_growth], endo[:w_t]]       = 1.0
     ZZ[obs[:wage_growth], endo_addl[:w_t1]] = -1.0
     ZZ[obs[:wage_growth], endo[:z_t]]       = 1.0
-    DD[obs[:wage_growth]]                   = 100*(m[:gam] + (m[:alp] * log(m[:ups])/(1-m[:alp])) + log(m[:pistar]))
+    DD[obs[:wage_growth]]                   = 100*(m[:gam] + (m[:alp] * log(m[:ups])/(1-m[:alp])))
 
 
     ## Inflation
