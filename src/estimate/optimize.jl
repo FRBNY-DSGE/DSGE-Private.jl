@@ -337,7 +337,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
 
-    elseif method == :lbfgs || method == :conjugate_gradient || method == :cmaes || method == :xnes
+    elseif method == :lbfgs || method == :conjugate_gradient || method == :xnes
         opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
@@ -349,6 +349,44 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
+    elseif method == :cmaes
+
+        n_free_params = length(para_free_inds)
+        lb = zeros(n_free_params)
+        ub = zeros(n_free_params)
+
+        for i in 1:n_free_params
+            lb[i] = m.parameters[para_free_inds[i]].valuebounds[1]
+            ub[i] = m.parameters[para_free_inds[i]].valuebounds[2]
+        end
+
+        # Create bounds matrix for Metaheuristics
+        bounds = [lb'; ub']
+
+        start_time = time()
+
+        lower_bounds = vec(bounds[1, :])  # First row as vector
+        upper_bounds = vec(bounds[2, :])  # Second row as vector
+
+        # Set initial step size (typically 1/3 of the search space)
+        s0 = mean(upper_bounds - lower_bounds) / 3 
+        popsize = 100
+        x_opt = clamp.(x_opt, lower_bounds, upper_bounds)
+        
+        opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt, s0; lower = lower_bounds, upper = upper_bounds, popsize = popsize, 
+                                                                       parallel_evaluation = false, store_trace = store_trace, show_trace = show_trace, 
+                                                                       extended_trace = extended_trace, verbose = verbose, rng = rng)
+        
+
+        callback_data = (trace = store_trace ? opt_result[5] : nothing, times = iteration_times, posteriors = posterior_ls,
+                         x_trace = store_trace ? x_trace : nothing)
+        
+
+        converged = opt_result.g_converged || opt_result.f_converged
+
+        out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
+                                  opt_result.iterations)
+
     elseif method == :trust_region_newton
         opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,

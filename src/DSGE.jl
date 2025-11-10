@@ -20,7 +20,6 @@ module DSGE
     import LinearAlgebra: rank
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults, LineSearches
     import BlackBoxOptim
-    import CMAEvolutionStrategy
     import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks, solve_discrete_lyapunov
     import ModelConstructors
     import ModelConstructors: posterior!, posterior, <=, n_states,

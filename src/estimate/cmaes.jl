@@ -1,46 +1,70 @@
+#= function cmaes(fcn::Function,
+               x0::Vector,
+               s0::Float64,
+               args...;
+               lower::Array{Float64}       = nothing, #default from CMAEvolutionStrategy.jl
+               upper::Array{Float64}       = nothing, 
+               popsize::Int     = 4 + floor(Int, 3*log(length(x0))), #default from CMAEvolutionStrategy.jl
+               callback:Union{Int, Nothing} = nothing,
+               parallel_evaluation::Bool = false,
+               maxiter::Union{Int, Nothing}         = nothing,
+               maxfevals::Union{Int, Nothing}            = nothing,
+               store_trace::Bool = false,
+               show_trace::Bool =false,
+               extended_trace::Bool = false,
+               verbose::Symbol = nothing,
+               rng::AbstractRNG = Random.default_rng(),
+               kwargs...) =#
+   
+
 function cmaes(fcn::Function,
                x0::Vector,
+               s0::Float64,
                args...;
-               #xtol::Real           = 1e-32, # default from Optim.jl
-               ftol::Float64        = 1e-14, # Default from csminwel
-               grtol::Real          = 1e-8,  # default from Optim.jl
-               iterations::Int      = 1000,
-               store_trace::Bool    = true,
-               show_trace::Bool     = true,
-               extended_trace::Bool = true,
-               verbose::Symbol      = :none,
-               rng::AbstractRNG     = MersenneTwister(),
-               autodiff::Bool       = false,
-               σ::Float64           = 1.0,
-               μ::Union{Int, Nothing} = 10,
-               λ::Union{Int, Nothing} = 2*μ,
-               nworkers::Int          =10,
+               lower = nothing,
+               upper = nothing,
+               popsize = 4 + floor(Int, 3*log(length(x0))),
+               callback = nothing,
+               parallel_evaluation = false,
+               maxiter = nothing,
+               maxfevals = nothing,
+               store_trace = false,
+               show_trace = false,
+               extended_trace = false,
+               verbose = :none,
+               rng = Random.default_rng(),
                kwargs...)
-    
+
+
+
+
     #callback time and parameter trace
     iteration_times = Float64[]
     posterior_ls = Float64[]
     x_trace = typeof(x0)[]
     start_time = time()
 
-    #=
-    callback = function(trace_or_state)
-        push!(iteration_times, time() - start_time)
-        #when store_trace=true, callback receives the full trace (a vector)
-        #get the last state from the trace
-        
-        #extended callback, but currently saving untransformed        
-        if trace_or_state isa AbstractVector
-            current_state = trace_or_state[end]
-        else
-            current_state = trace_or_state
+
+    callback = (o, y, fvals, perm) -> begin
+        it     = o.stop.it
+        fbest  = minimum(fvals)
+        σ      = o.p.sigma.σ
+        elapsed = time() - start_time
+        push!(iteration_times, elapsed)
+
+        # store trace if requested
+        if store_trace
+            push!(x_trace, copy(o.logger.xbest[end]))
+            push!(posterior_ls, fbest)
         end
-        if haskey(current_state.metadata, "x")
-            push!(x_trace, copy(current_state.metadata["x"]))
-            push!(posterior_ls, current_state.value)
+
+        if show_trace
+            @printf("Iter %4d | fbest = %10.4e | σ = %.5f | elapsed %.2fs\n",
+                    it, fbest, σ, elapsed)
+            flush(stdout)
         end
-        false
-    end =#
+        nothing
+    end
 
     #wrapper objective fcn replace Inf with large finite value before gradients are computed
     INF_REPLACEMENT = 1e15
@@ -55,36 +79,6 @@ function cmaes(fcn::Function,
         end
     end
     
-    n = length(x0)
-    if isnothing(λ)
-        λ = 4 + floor(Int, 3 * log(n))
-    end
-    if isnothing(μ)
-        μ = floor(Int, λ / 2)
-    end
-    addprocs(nworkers)
-    #line search, high iters search
-    #ls = LineSearches.BackTracking(order=2, maxstep=Inf, iterations=50)
-    #ls_hager = LineSearches.HagerZhang()
-    #ls2 = LineSearches.BackTracking(order=2, maxstep=5.0, iterations=100, c_1 = 1e-4, ρ_lo = 0.4)
-#=
-    result = if autodiff
-        Optim.optimize(fcn_wrapped, x0, LBFGS(m=20, linesearch = ls2),
-                       Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
-                                     iterations = iterations, store_trace = store_trace,
-                                     show_trace = show_trace,
-                                     extended_trace = extended_trace,
-                                     callback = callback,
-                                     allow_f_increases = true))
-    else
-        Optim.optimize(fcn_wrapped, x0, ConjugateGradient(linesearch = ls2),
-                       Optim.Options(g_tol = grtol, f_tol = ftol, x_tol = xtol,
-                                     iterations = iterations, store_trace = store_trace,
-                                     show_trace = show_trace,
-                                     extended_trace = extended_trace,
-                                     callback = callback,
-                                     allow_f_increases = true))
-    end=#
 
 
     function fcn_batch(X::Matrix{Float64})
@@ -100,47 +94,40 @@ function cmaes(fcn::Function,
 
     Random.seed!(rng)
 
-    if nworkers > 1
+    if parallel_evaluation
         if verbose!= :none
             println("Running CMAES with $(nworkers) workers")
         end
-        ENV["frbnyjuliamemory"] = "8G"
-        n_workers = 4
-        myprocs = addprocs_frbny(n_workers)
-        @everywhere using DSGE, SMC, OrderedCollections, CMAEvolutionStrategy
-
-       
-        cma_result = CMAEvolutionStrategy.minimize(fcn_batch, x0, σ;
-                             maxfevals = iterations * λ,
-                             popsize = λ,
-                             parllel_evaluation = true,
-                             #μ = μ,
-                             #verb_disp = show_trace ? 10 : 0,
-                             #parallel_objective = true,  # Tell CMA-ES we're providing batch evaluation
-                             seed = rand(rng, UInt32))
+               
+        cma_result = CMAEvolutionStrategy.minimize(fcn_batch, x0, s0;
+                                                   lower = lower,
+                                                   upper = upper,
+                                                   popsize = popsize,
+                                                   callback = callback,
+                                                   parallel_evaluation = parallel_evaluation,
+                                                   seed = rand(rng, UInt32))
         #Main.xx = cma_result
     else
-        if verbose != :none
-            println("Running CMA-ES in serial mode (no workers detected)")
-            println("Add workers with: addprocs(n) before calling this function")
-        end
-        
+
         # Fallback to serial evaluation
-        cma_result = CMAEvolutionStrategy.minimize(fcn_wrapped, x0, σ;
-                             maxfevals = iterations * λ,
-                             popsize = λ,
-                             #μ = μ,
-                             #verb_disp = show_trace ? 10 : 0,
-                             seed = rand(rng, UInt32))
-    end
+        cma_result = CMAEvolutionStrategy.minimize(fcn_batch, x0, s0;
+                                                   lower = lower,
+                                                   upper = upper,
+                                                   popsize = popsize,
+                                                   callback = callback,
+                                                   parallel_evaluation = parallel_evaluation,
+                                                   seed = rand(rng, UInt32))
+
+       
+   end
 
 
     Main.xx[] = cma_result
 
 
-    x_best = cma_result.logger.xbest
-    f_best = minimum(cma_result.logger.fbest)
-    n_evals = cma_result.p.λ * cma_result.stop.it
+    x_best = xbest(cma_result)
+    f_best = fbest(cma_result)
+    n_evals = sum(cma_result.logger.times)
     stop_flag = cma_result.stop.reason
 
 
@@ -181,30 +168,15 @@ println("\n========================================\n")
 
 
     
-    # Store trace (at least the final result)
-    if store_trace
-        push!(iteration_times, time() - start_time)
-        push!(x_trace, x_best)
-        push!(posterior_ls, f_best)
-    end
-    
-    # Determine convergence based on stop flag
-    converged = (stop_flag != :maxfevals)
-    
-    # Create result object similar to Optim.jl output structure
-    result = (
-        minimizer = x_best,
-        minimum = f_best,
-        iterations = floor(Int, n_evals / λ),
-        iteration_converged = !converged,
-        #x_converged = stop_flag == :tolx,
-        f_converged = stop_flag == :tolfun,
-        g_converged = false,
-        converged = converged,
-        x_trace = store_trace ? x_trace : nothing,
-        f_trace = store_trace ? posterior_ls : nothing,
-        time_run = time() - start_time
-    )
+   # Create result object similar to Optim.jl output structure
+    result = (minimizer  = xbest(cma_result),
+        minimum    = fbest(cma_result),
+        iterations = cma_result.stop.it,
+        converged  = cma_result.stop.reason != :maxiter,
+        x_trace    = store_trace ? x_trace : nothing,
+        f_trace    = store_trace ? posterior_ls : nothing,
+        time_run   = time() - start_time
+   )
 
 
     return result, iteration_times, posterior_ls, x_trace

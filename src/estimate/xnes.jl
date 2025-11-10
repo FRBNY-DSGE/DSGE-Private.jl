@@ -24,15 +24,23 @@ function xnes(fcn::Function,
     start_time = time()
 
     # Wrapper objective fcn - replace Inf with large finite value
+
     INF_REPLACEMENT = 1e15
+
     fcn_wrapped = function(x)
-        val = fcn(x)
-        if isinf(val) || isnan(val) || val > INF_REPLACEMENT
+        try
+            val = fcn(x)
+            if !isfinite(val) || val > INF_REPLACEMENT
+                return INF_REPLACEMENT
+            else
+                return val
+            end
+        catch e
+            # Catches domain errors (e.g. log of negative number, singular matrix)
             return INF_REPLACEMENT
-        else
-            return val
         end
     end
+
 
     n = length(x0)
 
