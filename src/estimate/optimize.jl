@@ -134,26 +134,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
 
 
 
-    function f_opt2(x_opt)
-        try
-           x_model[para_free_inds] = x
-           DSGE.update!(m, para_vals)
-        catch
-            return Inf
-        end
-
-        if mle
-            out = -likelihood(m, data; catch_errors = true)
-        else
-            out = -posterior(m, data; catch_errors = true)
-        end
-
-        out = !isnan(out) ? out : Inf
-        return out
-    end
-
-
-
     ########################################################################################
     ### Step 3: Optimizer-specific setup, call optimizer
     ########################################################################################
