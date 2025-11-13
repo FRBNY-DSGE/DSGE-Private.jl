@@ -91,10 +91,11 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
                                                           regime_switching = regime_switching, toggle = toggle)
     H0             = 1e-4 * eye(length(para_free_inds))
     
-    if method == :pso
-        x_model = [p for p in m.parameters]
+    if method == :pso || method == :cmaes || method == :xnes
+        x_model = [p.value for p in m.parameters]
         n_params = length(x_model)
-        x_opt = [p.value for p in x_model]
+        x_opt = x_model[para_free_inds]
+        println("THIS IS WHERE WE DEFINE X_OPT")
     else
 
         x_model        = transform_to_real_line(get_parameters(m); regime_switching = regime_switching)
@@ -131,6 +132,30 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         out = !isnan(out) ? out : Inf
         return out
     end
+
+    function f_opt_particle(x_opt::AbstractVector{<: Real})::Float64
+    try
+        regime_switching = false
+        x_model[para_free_inds] = x_opt
+        DSGE.update!(m, x_model)
+    catch
+        return Inf
+    end
+
+    if mle
+        out = -likelihood(m, data; catch_errors = true)
+    else
+        try
+            out = -posterior(m, data; catch_errors = true)
+        catch
+            out = Inf
+        end
+    end
+
+    out = !isnan(out) ? out : Inf
+    return out
+end
+
 
 
 
@@ -317,7 +342,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
 
-    elseif method == :lbfgs || method == :conjugate_gradient || method == :xnes
+    elseif method == :lbfgs || method == :conjugate_gradient
         opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
@@ -332,40 +357,69 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     elseif method == :cmaes
 
         n_free_params = length(para_free_inds)
+
         lb = zeros(n_free_params)
         ub = zeros(n_free_params)
 
         for i in 1:n_free_params
-            lb[i] = m.parameters[para_free_inds[i]].valuebounds[1]
+            lb[i] = m.parameters[para_free_inds[i]].valuebounds[1] #otw, transformation_smth check again
             ub[i] = m.parameters[para_free_inds[i]].valuebounds[2]
         end
 
-        # Create bounds matrix for Metaheuristics
+        # Create bounds matrix for cmaes
         bounds = [lb'; ub']
+        lower_bounds = vec(bounds[1,:])
+        upper_bounds = vec(bounds[2, :])
 
-        start_time = time()
+        
 
-        lower_bounds = vec(bounds[1, :])  # First row as vector
-        upper_bounds = vec(bounds[2, :])  # Second row as vector
 
         # Set initial step size (typically 1/3 of the search space)
-        s0 = mean(upper_bounds - lower_bounds) / 3 
+        s0 = 0.001
         popsize = 100
-        x_opt = clamp.(x_opt, lower_bounds, upper_bounds)
         
-        opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt, s0; lower = lower_bounds, upper = upper_bounds, popsize = popsize, 
+        opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt_particle, x_opt, s0; lower = lower_bounds, upper = upper_bounds, popsize = popsize, 
                                                                        parallel_evaluation = false, store_trace = store_trace, show_trace = show_trace, 
                                                                        extended_trace = extended_trace, verbose = verbose, rng = rng)
-        
 
-        callback_data = (trace = store_trace ? opt_result[5] : nothing, times = iteration_times, posteriors = posterior_ls,
+        callback_data = (trace = store_trace ? x_trace : nothing,times = iteration_times,
+                         posteriors = posterior_ls,
                          x_trace = store_trace ? x_trace : nothing)
         
-
-        converged = opt_result.g_converged || opt_result.f_converged
+        converged = opt_result.converged
 
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
+    elseif method == :xnes
+
+        n_free_params = length(para_free_inds)
+
+        lb = zeros(n_free_params)
+        ub = zeros(n_free_params)
+
+        for i in 1:n_free_params
+            lb[i] = m.parameters[para_free_inds[i]].valuebounds[1] #otw, transformation_smth check again
+            ub[i] = m.parameters[para_free_inds[i]].valuebounds[2]
+        end
+
+        # Create bounds matrix for cmaes
+        bounds = [lb'; ub']
+        lower_bounds = vec(bounds[1,:])
+        upper_bounds = vec(bounds[2, :]) 
+
+
+        opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt;
+                               xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
+                               store_trace = store_trace, show_trace = show_trace,
+                               extended_trace = extended_trace,
+                               verbose = verbose, rng = rng, autodiff = false)
+        callback_data = (trace = store_trace ? opt_result.trace : nothing,
+                        times = iteration_times, posteriors = posterior_ls,
+                        x_trace = store_trace ? x_trace : nothing)
+        converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
+        out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
+                                  opt_result.iterations)
+
 
     elseif method == :trust_region_newton
         opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt, x_opt;
@@ -406,7 +460,9 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     ### Step 4: transform output, populate Hessian
     ########################################################################################
     x_model[para_free_inds] = out.minimizer
-    if typeof(m) <: AbstractDSGEVARModel
+    if method == :cmaes || method == :xnes
+        break
+    elseif typeof(m) <: AbstractDSGEVARModel
         transform_to_model_space!(m, x_model)
     else
         transform_to_model_space!(m, x_model; regime_switching = regime_switching)

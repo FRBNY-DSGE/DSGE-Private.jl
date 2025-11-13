@@ -80,7 +80,7 @@ function cmaes(fcn::Function,
     end
     
 
-
+#=
     function fcn_batch(X::Matrix{Float64})
         population = [X[:, i] for i ∈ 1:size(X, 2)]
 
@@ -91,9 +91,8 @@ function cmaes(fcn::Function,
     function fcn_batch(x::AbstractVector{<:Real})
         return fcn_wrapped(x)
     end
-
-    Random.seed!(rng)
-
+=#
+#=
     if parallel_evaluation
         if verbose!= :none
             println("Running CMAES with $(nworkers) workers")
@@ -120,8 +119,11 @@ function cmaes(fcn::Function,
 
        
    end
-
-
+=#
+parallel_evaluation = false
+    cma_result = CMAEvolutionStrategy.minimize(fcn, x0, s0, lower=lower, upper = upper,
+                                               popsize=popsize, callback=callback, parallel_evaluation=parallel_evaluation,
+                                               seed = 123, maxiter = 1000, maxfevals = 10000)
     Main.xx[] = cma_result
 
 
