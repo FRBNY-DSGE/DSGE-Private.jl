@@ -92,7 +92,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     H0             = 1e-4 * eye(length(para_free_inds))
     
     if method == :pso || method == :cmaes || method == :xnes
-        x_model = [p.value for p in m.parameters]
+        x_model = [p.value for p in get_parameters(m)]
         n_params = length(x_model)
         x_opt = x_model[para_free_inds]
         println("THIS IS WHERE WE DEFINE X_OPT")
@@ -360,10 +360,11 @@ end
 
         lb = zeros(n_free_params)
         ub = zeros(n_free_params)
-
+        
+        params = get_parameters(m)
         for i in 1:n_free_params
-            lb[i] = m.parameters[para_free_inds[i]].valuebounds[1] #otw, transformation_smth check again
-            ub[i] = m.parameters[para_free_inds[i]].valuebounds[2]
+            lb[i] = params[para_free_inds[i]].valuebounds[1] #otw, transformation_smth check again
+            ub[i] = params[para_free_inds[i]].valuebounds[2] 
         end
 
         # Create bounds matrix for cmaes
@@ -461,7 +462,7 @@ end
     ########################################################################################
     x_model[para_free_inds] = out.minimizer
     if method == :cmaes || method == :xnes
-        break
+        println("")
     elseif typeof(m) <: AbstractDSGEVARModel
         transform_to_model_space!(m, x_model)
     else
