@@ -12,11 +12,11 @@ path = dirname(@__FILE__)
 writing_output = false
 xx = Ref{Any}()
 
-optimizer_config = :xnes
+#optimizer_config = :xnes
 #optimizer_config = :cmaes
 #optimizer_config = :conjugate_gradient
 #optimizer_config = :csminwel
-#optimizer_config = :lbfgs
+optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println(optimizer_config)
@@ -24,6 +24,18 @@ println(optimizer_config)
 #custom_settings = [Setting(:date_forecast_start, quartertodate("2015-Q4"))]
 #m = AnSchorfheide(custom_settings = custom_settings, testing = true)
 m = DSSW()
+
+λ = Inf
+lags = 4
+horizon = 16
+
+vecm = DSGE.DSGEVECM(m)
+DSGE.update!(vecm,
+              shocks = collect(keys(m.exogenous_shocks)),
+              observables = collect(keys(m.observables)),
+              λ = λ,
+              lags = lags)
+
 
 #load data
 #file = "$path/../reference/optimize_in.h5"
@@ -109,7 +121,8 @@ end
 
 #start timer
 start_time = time()
-out, H, callback_data = optimize!(m, data; method = optimizer_config, iterations = n_iterations, show_trace = true)
+#out, H, callback_data = optimize!(m, data; method = optimizer_config, iterations = n_iterations, show_trace = true)
+out, H, callback_data = optimize!(vecm, Matrix(data); method = optimizer_config, iterations = n_iterations, show_trace = true)
 seconds = time() - start_time
 
 println(out)
