@@ -307,9 +307,14 @@ function init_parameters!(m::DSSW)
 
     m <= parameter(:gstar, 0.15, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), GammaAlt(0.3, 0.1), fixed=false, scaling = x -> 1 + x,
                    tex_label="\\g_{*}")
-
+    #=
     m <= parameter(:Ladj, 5., (1e-5, 10.), (0., 0.), ModelConstructors.Untransformed(), Normal(252.0, 10.0), fixed=false,
-                   description="γ: The log of the steady-state growth rate of technology.",
+                   description="Ladj: Units of measured hours worked.",
+                   tex_label="\\L_{adj}")
+=#
+    # Note that in m-files, parameter is calibrated at 5 in paras.mat Previous parameter bounds were too restrictive. Calibration is possibly 252 but distribution is N(252, 10).
+    m <= parameter(:Ladj, 5., (1e-6, 5000.), (0., 0.), ModelConstructors.Untransformed(), Normal(252.0, 10.0), fixed=false,
+                   description="Ladj: Units of measured hours worked.",
                    tex_label="\\L_{adj}")
 
     # exogenous processes - autocorrelation
@@ -450,6 +455,8 @@ function model_settings!(m::DSSW)
     m <= Setting(:n_coint, 3)
     m <= Setting(:coint_data_inds, 8:10)
     m <= Setting(:main_data_inds, 1:7)
+
+    m <= Setting(:saveroot, "/data/dsge_data_dir/dsgejl/ibrahima/vecm_2007/dsgevecm/")
 end
 
 """
@@ -512,4 +519,3 @@ function shock_groupings(m::DSSW)
 
     return nothing #[gov, bet, tfp, pmu, wmu, pol, mei, det]
 end
-

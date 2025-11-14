@@ -62,12 +62,12 @@ function lag_data_VECM(data::Matrix{S}, lags::Int, n_coint::Int, coint_data::Mat
     end
 
     # Add coint_data (First 3 cols) {Coint_vec: 3 cols, intercept: 1 col, lagged data: nvars*lags}
-    @show size(coint_data)
+    #@show size(coint_data)
     @show size(XX)
     coint_data_nopresample = coint_data[lags:end-1, :] # Get rid of presample
     XX[:, 1:n_coint] = coint_data_nopresample # Add coint data to first 3 cols of XX matrix
 
-    @show size(XX)
+    #@show size(XX)
 
     if pad && !isempty(padding)
         XX[1:lags, :] = padding
@@ -94,6 +94,7 @@ function compute_vecm_population_moments(data::Matrix{S}, lags::Int, n_coint::In
     # Compute population moments of sample data
     YY = convert(Matrix{S}, data[:, 1 + lags:end]')
     XX = lag_data_VECM(data, lags, n_coint, coint_data; use_intercept = use_intercept) # Construct XX matrix of covariates
+    #@show XX
     YYYY = YY' * YY
     XXYY = XX' * YY
     XXXX = XX' * XX

@@ -149,7 +149,12 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
     use_chand_recursion = get_setting(m, :use_chand_recursion)
 
-    old_regime_switching = haskey(old_model.settings, :regime_switching) && get_setting(m, :regime_switching)
+    if typeof(m) <: AbstractVARModel # Account for Brian's testing code causing an error with vecm object
+        old_regime_switching = haskey(DSGE.get_dsge(old_model).settings, :regime_switching) && get_setting(m, :regime_switching)
+    else
+        old_regime_switching = haskey(old_model.settings, :regime_switching) && get_setting(m, :regime_switching)
+    end
+
 
     my_likelihood = if isa(m, AbstractDSGEModel)
         function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
@@ -168,53 +173,56 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     end
 
 
-    old_model_para_keys = [old_model.parameters[i].key for i in 1:length(old_model.parameters)]
 
+    if isa(m, AbstractDSGEModel) #This is Brian's testing code. Added if statement to prevent issues with reading in vecm obj
+        old_model_para_keys = [old_model.parameters[i].key for i in 1:length(old_model.parameters)]
 
-    m_para_keys = [m.parameters[i].key for i in 1:length(m.parameters)]
+        m_para_keys = [m.parameters[i].key for i in 1:length(m.parameters)]
 
-    key_del = []
-    # reg_del_full = Vector{Int}()
-    reg_del = Dict{Int, Vector{Int}}()
+        key_del = []
+        # reg_del_full = Vector{Int}()
+        reg_del = Dict{Int, Vector{Int}}()
 
-    toggle_regime!(m.parameters, 1)
-    ## Change so its by index and not by key!! Won't work if it is by key i suppose??? BP 09/12/24
-    for i in 1:length(m.parameters)
-        keyed = m.parameters[i].key
-        if !(keyed in old_model_para_keys)
-            push!(key_del, i)
-        elseif haskey(m.parameters[i].regimes, :value) && (isempty(old_model[keyed].regimes) || length(old_model[keyed].regimes[:value]) != length(m.parameters[i].regimes[:value]))
-            if isempty(old_model[keyed].regimes)
-                # push!(reg_del_full, i)
-                reg_del[i] = [1]
+        toggle_regime!(m.parameters, 1)
+        ## Change so its by index and not by key!! Won't work if it is by key i suppose??? BP 09/12/24
+        for i in 1:length(m.parameters)
+            keyed = m.parameters[i].key
+            if !(keyed in old_model_para_keys)
+                push!(key_del, i)
+            elseif haskey(m.parameters[i].regimes, :value) && (isempty(old_model[keyed].regimes) || length(old_model[keyed].regimes[:value]) != length(m.parameters[i].regimes[:value]))
+                if isempty(old_model[keyed].regimes)
+                    # push!(reg_del_full, i)
+                    reg_del[i] = [1]
 
-                for j in collect(m.parameters[i].regimes[:value])
-                    if j[1] != 1
-                        push!(reg_del[i], j[1]) #BP change, was just j but it is a Pair{Int64, Any} and I need it to be just Int64
+                    for j in collect(m.parameters[i].regimes[:value])
+                        if j[1] != 1
+                            push!(reg_del[i], j[1]) #BP change, was just j but it is a Pair{Int64, Any} and I need it to be just Int64
+                        end
                     end
-                end
-                # filter!(x -> x > 1, reg_del[i])
-            else
-                @assert length(m.parameters[i].regimes[:value]) > length(old_model[keyed].regimes[:value])
-                for j in collect(m.parameters[i].regimes[:value])
+                    # filter!(x -> x > 1, reg_del[i])
+                else
+                    @assert length(m.parameters[i].regimes[:value]) > length(old_model[keyed].regimes[:value])
+                    for j in collect(m.parameters[i].regimes[:value])
 
-                    if !(j in old_model[keyed].regimes[:value])
+                        if !(j in old_model[keyed].regimes[:value])
 
-                        if haskey(reg_del, i)
+                            if haskey(reg_del, i)
 
 
-                            push!(reg_del[i], j[1]) #BP change, was j
-                        else
+                                push!(reg_del[i], j[1]) #BP change, was j
+                            else
 
-                            reg_del[i] = [j[1]] #BP Change, was j
+                                reg_del[i] = [j[1]] #BP Change, was j
+                            end
                         end
                     end
                 end
             end
         end
+
+        @assert isnothing(findfirst(x -> !(x in m_para_keys), old_model_para_keys))
     end
 
-    @assert isnothing(findfirst(x -> !(x in m_para_keys), old_model_para_keys))
 
     my_old_likelihood = if isa(m, AbstractDSGEModel)
         function _my_old_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64}; new_model_params::Bool = false)::Float64
