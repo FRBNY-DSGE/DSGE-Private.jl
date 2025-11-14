@@ -4,7 +4,7 @@
                args...;
                lower::Array{Float64}       = nothing, #default from CMAEvolutionStrategy.jl
                upper::Array{Float64}       = nothing, 
-               popsize::Int     = 4 + floor(Int, 3*log(length(x0))), #default from CMAEvolutionStrategy.jl
+               popsize::Int     =4 + floor(Int, 3*log(length(x0))), #default from CMAEvolutionStrategy.jl
                callback:Union{Int, Nothing} = nothing,
                parallel_evaluation::Bool = false,
                maxiter::Union{Int, Nothing}         = nothing,
@@ -23,11 +23,11 @@ function cmaes(fcn::Function,
                args...;
                lower = nothing,
                upper = nothing,
-               popsize = 4 + floor(Int, 3*log(length(x0))),
+               popsize = 3*length(x0),  #4 + floor(Int, 3*log(length(x0))),
                callback = nothing,
                parallel_evaluation = false,
-               maxiter = nothing,
-               maxfevals = nothing,
+               maxiter = 10000,
+               maxfevals = 500000,
                store_trace = false,
                show_trace = false,
                extended_trace = false,
@@ -121,10 +121,23 @@ function cmaes(fcn::Function,
    end
 =#
 parallel_evaluation = false
-    cma_result = CMAEvolutionStrategy.minimize(fcn, x0, s0, lower=lower, upper = upper,
-                                               popsize=popsize, callback=callback, parallel_evaluation=parallel_evaluation,
-                                               seed = 123, maxiter = 1000, maxfevals = 10000)
-    Main.xx[] = cma_result
+  
+cma_result = CMAEvolutionStrategy.minimize(
+    fcn, x0, s0;
+    lower = lower,
+    upper = upper,
+    popsize = popsize,
+    callback = callback,
+    parallel_evaluation = parallel_evaluation,
+    seed = 123,
+    maxiter = maxiter,
+    maxfevals = maxfevals,
+    active = true,               
+    diagonal_covariance = 100,   
+    tolx = 1e-12,             
+    tolfun = 1e-12             
+)
+
 
 
     x_best = xbest(cma_result)
