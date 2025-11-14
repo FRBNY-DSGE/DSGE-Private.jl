@@ -310,7 +310,7 @@ function init_parameters!(m::DSSW)
     # Note that in m-files, parameter is calibrated at 5 in paras.mat Previous parameter bounds were too restrictive. Calibration is possibly 252 but distribution is N(252, 10).
     m <= parameter(:Ladj, 5., (1e-6, 5000.), (0., 0.), ModelConstructors.Untransformed(), Normal(252.0, 10.0), fixed=false,
                    description="Ladj: Units of measured hours worked.",
-                   tex_label="\\L_{adj}")
+                 tex_label="\\L_{adj}")
 
     # exogenous processes - autocorrelation
     m <= parameter(:rho_z, .2, (0., 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.2, 0.1), fixed=false,
