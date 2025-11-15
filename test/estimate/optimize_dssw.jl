@@ -9,49 +9,53 @@ using DataFrames
 using Distributed
 
 path = dirname(@__FILE__)
-writing_output = false
-xx = Ref{Any}()
+#writing_output = false
 
+
+#===============config======================#
+calculate_posterior_mode = true
+calculate_hessian = true
+
+save_output_hessian = true
+#===============configure optimizer=================#
 #optimizer_config = :xnes
-#optimizer_config = :cmaes
+optimizer_config = :cmaes
 #optimizer_config = :conjugate_gradient
 #optimizer_config = :csminwel
-optimizer_config = :lbfgs
+#optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println(optimizer_config)
 
-#custom_settings = [Setting(:date_forecast_start, quartertodate("2015-Q4"))]
-#m = AnSchorfheide(custom_settings = custom_settings, testing = true)
-m = DSSW()
-
+#===============DSGE-VECM configuration=============#
+vecm_object = true
 λ = Inf
 lags = 4
 horizon = 16
 
-vecm = DSGE.DSGEVECM(m)
-DSGE.update!(vecm,
+
+
+#load model
+m = DSSW()
+
+if vecm_object == true
+    vecm = DSGE.DSGEVECM(m)
+    DSGE.update!(vecm,
               shocks = collect(keys(m.exogenous_shocks)),
               observables = collect(keys(m.observables)),
               λ = λ,
               lags = lags)
 
+end
+xx = Ref{Any}()
 
+
+
+if calculate_posterior_mode == true
 #load data
-#file = "$path/../reference/optimize_in.h5"
-#x0   = h5read(file, "params")
-#data = h5read(file, "data")'
-
-#test file
-#params_test = deepcopy(x0)
-#data_test   = Matrix{Float64}(data)
-
-
 file = "$path/../reference/vecm2007_data_log.csv"
 file2 = "$path/../reference/vecm2007_cointdata_log.csv"
 
-
-# Read in matlab dataset
 function construct_data()
      # Load in US dataset #3
      df = DataFrame(CSV.File(file))
@@ -80,6 +84,8 @@ end
 
 
 data = construct_data()
+else
+
 #data = data'
 
 #file = "$path/../reference/optimize_out.h5"
@@ -89,8 +95,8 @@ data = construct_data()
  
 # See src/estimate/estimate.jl
 #DSGE.update!(m, x0)
+end
 n_iterations = 1000
-
 
 # Set seed for reproducibility
 Random.seed!(42)
@@ -119,11 +125,36 @@ end
 =#
 
 
-#start timer
-start_time = time()
-#out, H, callback_data = optimize!(m, data; method = optimizer_config, iterations = n_iterations, show_trace = true)
-out, H, callback_data = optimize!(vecm, Matrix(data); method = optimizer_config, iterations = n_iterations, show_trace = true)
-seconds = time() - start_time
+if calculate_posterior_mode == true
+    start_time_optimizer = time()
+
+    if vecm_object == false
+        out, H, callback_data = optimize!(m, data; method = optimizer_config, iterations = n_iterations, show_trace = true)
+
+    else
+        out, H, callback_data = optimize!(vecm, Matrix(data); method = optimizer_config, iterations = n_iterations, show_trace = true)
+    end
+seconds_optimizer = time() - start_time_optimizer
+end
+    
+if calculate_hessian == true
+    start_time_hessian = time()
+    
+    if vecm_object == false
+        hessian, _ = hessian!(m, out.minimizer, data; toggle = true, verbose = :low) 
+    else
+        hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :low)        
+    end
+
+
+#=
+h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
+                 file["hessian"] = hessian
+             end
+=#
+    seconds_hessian = time() - seconds_hessian
+end
 
 println(out)
-println(seconds)
+println("optimizer time: $(seconds_optimizer)")
+println("hessian time: $(seconds_hessian)")
