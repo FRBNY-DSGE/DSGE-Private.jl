@@ -13,17 +13,17 @@ path = dirname(@__FILE__)
 
 
 #===============config======================#
-calculate_posterior_mode = true
+calculate_posterior_mode = false
 calculate_hessian = true
 
-save_output_posterior_mode = true
-save_output_hessian = true
+save_output_posterior_mode = false
+save_output_hessian = false
 #===============configure optimizer=================#
 #optimizer_config = :xnes
-optimizer_config = :cmaes
+#optimizer_config = :cmaes
 #optimizer_config = :conjugate_gradient
 #optimizer_config = :csminwel
-#optimizer_config = :lbfgs
+optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println("running $(optimizer_config)...")
@@ -94,7 +94,7 @@ data = construct_data()
  
 # See src/estimate/estimate.jl
 #DSGE.update!(m, x0)
-end
+
 n_iterations = 1000
 
 # Set seed for reproducibility
@@ -122,6 +122,13 @@ addprocs_frbny(n_workers)
     using DSGE, SMC, OrderedCollections, CMAEvolutionStrategy
 end
 =#
+ref_dir = "$path/../reference"
+if vecm_object == false
+    output_file = "$ref_dir/optimize_dssw_dsge_$(optimizer_config)_minimizer.h5"
+else 
+    output_file = "$ref_dir/optimize_dssw_$(λ)_$(optimizer_config)_minimizer.h5"
+end
+
 
 
 if calculate_posterior_mode == true
@@ -134,19 +141,23 @@ if calculate_posterior_mode == true
         out, H, callback_data = optimize!(vecm, Matrix(data); method = optimizer_config, iterations = n_iterations, show_trace = true)
     end
 seconds_optimizer = time() - start_time_optimizer
-    if save_posterior_mode == true
+    if save_output_posterior_mode == true
 
     #TODO: output posterior mode
-    
+        h5write(output_file, "minimizer", out.minimizer)
+        println("Saved minimizer to $output_file")
+ 
     end
 
 
 
 else
-    if vecm_object == true
-        #minimized_x = #read in 
-    end
-    #TODO: read in posterior mode from reference/xxx.h5
+    #read in posterior mode from reference h5 file
+    minimizer = h5read(output_file, "minimizer")
+    println("Loaded minimizer from $output_file")
+
+    # Create a simple named tuple to match the structure expected later
+    out = (minimizer = minimizer,)
 end
     
 if calculate_hessian == true
@@ -158,7 +169,7 @@ if calculate_hessian == true
         hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :low)        
     end
 
-    if save_hessian == true
+    if save_output_hessian == true
     #TODO: save hessian
 #=
 h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
