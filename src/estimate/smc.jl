@@ -166,7 +166,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
         end
     else isa(m, AbstractVARModel)
         function _my_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
-            update!(m, parameters, regime_switching = regime_switchin)
+            #update!(m, parameters, regime_switching = regime_switching)
+            update!(m, parameters)
             m <= Setting(:preprocessed_transitions, Dict())
             likelihood(m, data; sampler = false, catch_errors = true, verbose = verbose)
         end
@@ -273,7 +274,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
         end
     else isa(m, AbstractVARModel)
         function _my_old_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
-            update!(old_model, parameters, regime_switching = old_regime_switching)
+            #update!(old_model, parameters, regime_switching = old_regime_switching)
+            update!(old_model, parameters)
             m <= Setting(:preprocessed_transitions, Dict())
             likelihood(old_model, data; sampler = false, catch_errors = true, verbose = verbose)
         end
