@@ -12,8 +12,8 @@ writing_output = false
 file_path = "/data/dsge_data_dir/dsgejl/michael/proc/includeall.jl"
 include(file_path)
 
-optimizer_config = :csminwel
-#optimizer_config = :lbfgs
+#optimizer_config = :csminwel
+optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println(optimizer_config)
@@ -80,7 +80,7 @@ end
  
 # See src/estimate/estimate.jl
 #DSGE.update!(m, x0)
-n_iterations = 1000
+n_iterations = 50
 
 
 # Set seed for reproducibility
@@ -105,3 +105,12 @@ seconds = time() - start_time
 
 println(out)
 println(seconds)
+
+# Save minimizer to h5 file
+ref_dir = "$path/../reference"
+if !isdir(ref_dir)
+    mkdir(ref_dir)
+end
+output_file = "$ref_dir/optimize_ss10_minimizer.h5"
+h5write(output_file, "minimizer", out.minimizer)
+println("Saved minimizer to $output_file")

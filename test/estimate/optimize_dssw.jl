@@ -16,6 +16,7 @@ path = dirname(@__FILE__)
 calculate_posterior_mode = true
 calculate_hessian = true
 
+save_output_posterior_mode = true
 save_output_hessian = true
 #===============configure optimizer=================#
 #optimizer_config = :xnes
@@ -25,7 +26,7 @@ optimizer_config = :cmaes
 #optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
-println(optimizer_config)
+println("running $(optimizer_config)...")
 
 #===============DSGE-VECM configuration=============#
 vecm_object = true
@@ -47,11 +48,10 @@ if vecm_object == true
               lags = lags)
 
 end
-xx = Ref{Any}()
+#xx = Ref{Any}()
 
 
 
-if calculate_posterior_mode == true
 #load data
 file = "$path/../reference/vecm2007_data_log.csv"
 file2 = "$path/../reference/vecm2007_cointdata_log.csv"
@@ -84,7 +84,6 @@ end
 
 
 data = construct_data()
-else
 
 #data = data'
 
@@ -135,6 +134,19 @@ if calculate_posterior_mode == true
         out, H, callback_data = optimize!(vecm, Matrix(data); method = optimizer_config, iterations = n_iterations, show_trace = true)
     end
 seconds_optimizer = time() - start_time_optimizer
+    if save_posterior_mode == true
+
+    #TODO: output posterior mode
+    
+    end
+
+
+
+else
+    if vecm_object == true
+        #minimized_x = #read in 
+    end
+    #TODO: read in posterior mode from reference/xxx.h5
 end
     
 if calculate_hessian == true
@@ -146,12 +158,15 @@ if calculate_hessian == true
         hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :low)        
     end
 
-
+    if save_hessian == true
+    #TODO: save hessian
 #=
 h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
                  file["hessian"] = hessian
              end
 =#
+    end
+
     seconds_hessian = time() - seconds_hessian
 end
 
