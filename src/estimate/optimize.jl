@@ -16,6 +16,8 @@ mutable struct optimization_result{T}
     iterations::Int
 end
 
+global f_opt_global
+
 """
 ```
 optimize!(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix;
@@ -47,12 +49,16 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
                    mle::Bool            = false, # default from estimate.jl
                    step_size::Float64   = .01,
                    toggle::Bool         = true,  # default from estimate.jl
-                   verbose::Symbol      = :none)
+                   verbose::Symbol      = :none,
+                   autodiff::Bool       = false)
 
     ########################################################################################
     ### Step 1: Setup
     ########################################################################################
 
+
+    #global f_opt_global
+    
     # For now, only csminwel should be used
     optimizer = if method == :csminwel
         csminwel
@@ -78,9 +84,19 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     para_free_inds = ModelConstructors.get_free_para_inds(get_parameters(m);
                                                           regime_switching = regime_switching, toggle = toggle)
     H0             = 1e-4 * eye(length(para_free_inds))
-    x_model        = transform_to_real_line(get_parameters(m); regime_switching = regime_switching)
-    x_opt          = x_model[para_free_inds]
+    
+    if method == :pso
+        x_model = [p for p in m.parameters]
+        n_params = length(x_model)
+        x_opt = [p.value for p in x_model]
+    else
 
+        x_model        = transform_to_real_line(get_parameters(m); regime_switching = regime_switching)
+        x_opt          = x_model[para_free_inds]
+
+    end
+
+    
     ########################################################################################
     ### Step 2: Initialize f_opt
     ########################################################################################
@@ -110,6 +126,28 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         return out
     end
 
+
+
+    function f_opt2(x_opt)
+        try
+           x_model[para_free_inds] = x
+           DSGE.update!(m, para_vals)
+        catch
+            return Inf
+        end
+
+        if mle
+            out = -likelihood(m, data; catch_errors = true)
+        else
+            out = -posterior(m, data; catch_errors = true)
+        end
+
+        out = !isnan(out) ? out : Inf
+        return out
+    end
+
+
+
     ########################################################################################
     ### Step 3: Optimizer-specific setup, call optimizer
     ########################################################################################
@@ -120,6 +158,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     max_cycles  = get_setting(m, :combined_optimizer_max_cycles)
     block_frac  = get_setting(m, :simulated_annealing_block_proportion)
     H_ = nothing
+    callback_data = nothing
 
     neighbor! = if isa(m, AbstractDSGEModel)
         function _neighbor_dsge!(x, x_proposal)
@@ -292,26 +331,32 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
                                   opt_result.iterations)
 
     elseif method == :lbfgs
-        opt_result = optimizer(f_opt, x_opt;
+        opt_result, iteration_times = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
                                extended_trace = extended_trace,
-                               verbose = verbose, rng = rng)
+                               verbose = verbose, rng = rng, autodiff = autodiff)
+        callback_data = (trace = store_trace ? opt_result.trace : nothing,
+                        times = iteration_times)
         converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
     elseif method == :trust_region_newton
-        opt_result = optimizer(f_opt, x_opt;
+        opt_result, iteration_times = optimizer(f_opt, x_opt;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
                                extended_trace = extended_trace,
                                verbose = verbose, rng = rng)
         converged = opt_result.g_converged || opt_result.f_converged #|| opt_result.x_converged
+        callback_data = (trace = store_trace ? opt_result.trace : nothing,
+                        times = iteration_times)
+
         out = optimization_result(opt_result.minimizer, opt_result.minimum, converged,
                                   opt_result.iterations)
 
     elseif method == :pso
-        opt_result = optimizer(f_opt, x_opt;
+        global f_opt_global = f_opt
+        opt_result = optimizer(f_opt2, x_opt, m;
                                xtol = xtol, ftol = ftol, grtol = grtol, iterations = iterations,
                                store_trace = store_trace, show_trace = show_trace,
                                extended_trace = extended_trace,
@@ -345,7 +390,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     end
     # Match original dimensions
     out.minimizer = ModelConstructors.get_values(get_parameters(m); regime_switching = regime_switching)
-
     npara = regime_switching ? n_parameters_regime_switching(m) : n_parameters(m)
     H = zeros(npara, npara)
     if H_ != nothing
@@ -359,5 +403,5 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
 
     end
 
-    return out, H
+    return out, H, callback_data
 end
