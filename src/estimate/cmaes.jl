@@ -27,7 +27,7 @@ function cmaes(fcn::Function,
                callback = nothing,
                parallel_evaluation = false,
                maxiter = 10000,
-               maxfevals = 500000,
+               maxfevals = 100000,
                store_trace = false,
                show_trace = false,
                extended_trace = false,
@@ -131,11 +131,8 @@ cma_result = CMAEvolutionStrategy.minimize(
     parallel_evaluation = parallel_evaluation,
     seed = 123,
     maxiter = maxiter,
-    maxfevals = maxfevals,
-    active = true,               
-    diagonal_covariance = 100,   
-    tolx = 1e-12,             
-    tolfun = 1e-12             
+    maxfevals = maxfevals               
+            
 )
 
 
