@@ -62,8 +62,13 @@ function measurement(m::DSSW{T},
 
 
     # Hours growth
-    ZZ[obs[:hours], endo[:L_t]] = 1/100
-    DD[obs[:hours]]             = m[:Ladj] + log(m[:Lstar])
+    if subspec(m) in ["ss0"]
+        ZZ[obs[:hours], endo[:L_t]] = 1/100
+        DD[obs[:hours]] = m[:Ladj] + log(m[:Lstar])
+    elseif subspec(m) in ["ss1"]
+        ZZ[obs[:hours], endo[:L_t]] = 1.
+        DD[obs[:hours]] = 100. * log(m[:Ladj])
+    end
 
     # wage growth
     ZZ[obs[:wage_growth], endo[:w_t]]       = 1.0
@@ -73,8 +78,13 @@ function measurement(m::DSSW{T},
 
 
     ## Inflation
-    ZZ[obs[:inflation], endo[:pi_t]]  = 1.0
-    DD[obs[:inflation]]              = 100* log(m[:pistar])
+    if subspec(m) in ["ss0"]
+        ZZ[obs[:inflation], endo[:pi_t]]  = 1.0
+        DD[obs[:inflation]]              = 100* log(m[:pistar])
+    elseif subspec(m) in ["ss1"]
+        ZZ[obs[:inflation], endo[:pi_t]]  = 4.0
+        DD[obs[:inflation]]              = 400* log(m[:pistar])
+    end
 
     ## Nominal interest rate
     ZZ[obs[:nominal_rate], endo[:R_t]]       = 4.
@@ -95,7 +105,11 @@ function measurement(m::DSSW{T},
         #real wage - output
         ZZ[obs[:wage_coint], endo[:w_t]] = 1
         ZZ[obs[:wage_coint], endo[:y_t]] = -1
-        DD[obs[:wage_coint]] = 100 * (log(m[:wstar] / m[:ystar])- m[:wadj])
+        if subspec(m) in ["ss0"]
+            DD[obs[:wage_coint]] = 100 * (log(m[:wstar] / m[:ystar])- m[:wadj])
+        elseif subspec(m) in ["ss1"]
+            DD[obs[:wage_coint]] = 100 * log(m[:wstar] / (m[:ystar]* m[:Ladj]))
+        end
     end
 
     #Variance of innovations
