@@ -121,7 +121,7 @@ function hess_diag_element(fcn::Function,
         parad2y[i] = parady[i] - dx[k]*dxscale[i]
         #parad3y[i] = parad2y[i] - dx[k]*dxscale[i]
         
-        #do backward difference
+        #do backward difference O(h)
         if parad2x[i] > ub[i]
           
             
@@ -133,7 +133,7 @@ function hess_diag_element(fcn::Function,
 
             hessdiag[k]  = (fd2y - 2*fdy + fx) / (dx[k]*dxscale[i])^2
     
-        #do forward difference
+        #do forward difference O(h)
         elseif parad2y[i] < lb[i]
             fx  = fcn(x)
             fdx = fcn(paradx)
@@ -142,7 +142,7 @@ function hess_diag_element(fcn::Function,
             
             hessdiag[k]  = (fx - 2fdx + fd2x) / (dx[k]*dxscale[i])^2
     
-        #do center difference
+        #do center difference O(h^2)
         else
             fx  = fcn(x)
             fdx = fcn(paradx)
@@ -188,15 +188,67 @@ function hess_offdiag_element(fcn::Function,
         parady      = copy(x)
         paradx[i]   = paradx[i] + dx[k]*dxscale[i]
         parady[j]   = parady[j] - dx[k]*dxscale[j]
-        paradxdy    = copy(paradx)
-        paradxdy[j] = paradxdy[j] - dx[k]*dxscale[j]
+        
+        #do forward(j)-backwards(i) O(h^2)
+        if paradx[i] > ub[i] && parady[j] < lb[j]
+            paradx      = copy(x)
+            parady      = copy(x)
+            paradx[j]   = paradx[j] + dx[k]*dxscale[j]
+            parady[i]   = parady[i] - dx[k]*dxscale[i]
+        
+            paradxdy    = copy(paradx)
+            paradxdy[i] = paradxdy[i] - dx[k]*dxscale[i]
 
-        fx    = fcn(x)
-        fdx   = fcn(paradx)
-        fdy   = fcn(parady)
-        fdxdy = fcn(paradxdy)
+            fx    = fcn(x)
+            fdx   = fcn(paradx)
+            fdy   = fcn(parady)
+            fdxdy = fcn(paradxdy)
 
-        hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
+        #do backward-backward O(h^2)
+        elseif paradx[i] > ub[i] && parady[j] > lb[j]
+            paradx = copy(x)
+            paradx[i] = paradx[i] -  dx[k]*dxscale[i]
+
+            paradxdy    = copy(paradx)
+            paradxdy[j] = paradxdy[j] - dx[k]*dxscale[j]
+
+            fx    = fcn(x)
+            fdx   = fcn(paradx)
+            fdy   = fcn(parady)
+            fdxdy = fcn(paradxdy)
+
+            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
+        
+        #do forward-forward O(h^2)
+        elseif paradx[i] < ub[i] && parady[j] <  lb[j]
+            parady = copy(x)
+            parady[j] = parady[j] + dx[k]*dxscale[j]
+
+            paradxdy    = copy(paradx)
+            paradxdy[j] = paradxdy[j] + dx[k]*dxscale[j]
+
+            fx    = fcn(x)
+            fdx   = fcn(paradx)
+            fdy   = fcn(parady)
+            fdxdy = fcn(paradxdy)
+
+            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
+        #do forward(i)-backwards(j) O(h^2)
+        else
+            paradxdy    = copy(paradx)
+            paradxdy[j] = paradxdy[j] - dx[k]*dxscale[j]
+
+            fx    = fcn(x)
+            fdx   = fcn(paradx)
+            fdy   = fcn(parady)
+            fdxdy = fcn(paradxdy)
+
+            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+        end
     end
 
     println(verbose, :high, "Values: $(hessdiag)")
