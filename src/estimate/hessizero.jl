@@ -223,7 +223,7 @@ function hess_offdiag_element(fcn::Function,
             fdy   = fcn(parady)
             fdxdy = fcn(paradxdy)
 
-
+            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
 
         #do forward(j)-backwards(i) O(h^2)
         elseif forward_j_valid && backward_i_valid
@@ -231,7 +231,7 @@ function hess_offdiag_element(fcn::Function,
             parady      = copy(x)
             paradx[j]   += hj
             parady[i]   -= hi
-        
+
             paradxdy    = copy(paradx)
             paradxdy[i] -= hi
 
@@ -240,11 +240,13 @@ function hess_offdiag_element(fcn::Function,
             fdy   = fcn(parady)
             fdxdy = fcn(paradxdy)
 
+            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
         #do backward-backward O(h^2)
         elseif backward_i_valid && backward_j_valid
             paradx = copy(x)
             parady = copy(x)
-            
+
             paradx[i] -= hi
             parady[j] -= hj
 
@@ -255,7 +257,9 @@ function hess_offdiag_element(fcn::Function,
             fdx   = fcn(paradx)
             fdy   = fcn(parady)
             fdxdy = fcn(paradxdy)
-        
+
+            hessdiag[k]  = (fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
         #do forward-forward O(h^2)
         elseif forward_i_valid && forward_j_valid
             paradx = copy(x)
@@ -272,9 +276,9 @@ function hess_offdiag_element(fcn::Function,
             fdy   = fcn(parady)
             fdxdy = fcn(paradxdy)
 
-        end
+            hessdiag[k]  = (fdxdy - fdx - fdy + fx) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
 
-        hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+        end
 
     end
 
