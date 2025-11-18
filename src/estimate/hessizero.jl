@@ -14,7 +14,9 @@ Compute Hessian of function `fcn` evaluated at `x`.
 - `distr`: Use available parallel workers to increase performance.
 """
 function hessizero(fcn::Function,
-                   x::Vector{T};
+                   x::Vector{T},
+                   lb,
+                   ub;
                    check_neg_diag::Bool=false,
                    verbose::Symbol=:none,
                    distr::Bool=true) where T<:AbstractFloat
@@ -24,12 +26,12 @@ function hessizero(fcn::Function,
     # Compute diagonal elements first
     if distr && nworkers() > 1
         diag_elements = @sync @distributed (vcat) for i = 1:n_para
-            hess_diag_element(fcn, x, i; check_neg_diag = check_neg_diag, verbose = verbose)
+            hess_diag_element(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag, verbose = verbose)
         end
         hessian = diagm(diag_elements)
     else
         for i = 1:n_para
-            hessian[i,i] = hess_diag_element(fcn, x, i; check_neg_diag = check_neg_diag,
+            hessian[i,i] = hess_diag_element(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,
                                              verbose = verbose)
         end
     end
@@ -89,7 +91,9 @@ end
 # Compute diag element
 function hess_diag_element(fcn::Function,
                            x::Vector{T},
-                           i::Int;
+                           i::Int,
+                           lb,
+                           ub;
                            ndx::Int=6,
                            check_neg_diag::Bool=false,
                            verbose::Symbol=:none) where T<:AbstractFloat
@@ -105,14 +109,48 @@ function hess_diag_element(fcn::Function,
     for k = 3:4
         paradx    = copy(x)
         parady    = copy(x)
+        parad2x   = copy(x)
+        parad2y   = copy(x)
+
         paradx[i] = paradx[i] + dx[k]*dxscale[i]
         parady[i] = parady[i] - dx[k]*dxscale[i]
 
-        fx  = fcn(x)
-        fdx = fcn(paradx)
-        fdy = fcn(parady)
+        parad2x[i] = paradx[i] +  dx[k]*dxscale[i]
+        #parad3x[i] = parad2x[i] +  dx[k]*dxscale[i]
 
-        hessdiag[k]  = -(2fx - fdx - fdy) / (dx[k]*dxscale[i])^2
+        parad2y[i] = parady[i] - dx[k]*dxscale[i]
+        #parad3y[i] = parad2y[i] - dx[k]*dxscale[i]
+        
+        #do backward difference
+        if parad2x[i] > ub[i]
+          
+            
+            fx  = fcn(x)
+            fdy = fcn(parady)
+            fd2y = fcn(parad2y)
+            #fd3y = fcn(parad3y)
+
+
+            hessdiag[k]  = (fd2y - 2*fdy + fx) / (dx[k]*dxscale[i])^2
+    
+        #do forward difference
+        elseif parad2y[i] < lb[i]
+            fx  = fcn(x)
+            fdx = fcn(paradx)
+            fd2x = fcn(parad2x)
+            #fd3x = fcn(parad3x)
+            
+            hessdiag[k]  = (fx - 2fdx + fd2x) / (dx[k]*dxscale[i])^2
+    
+        #do center difference
+        else
+            fx  = fcn(x)
+            fdx = fcn(paradx)
+            fdy = fcn(parady)
+
+            hessdiag[k]  = -(2fx - fdx - fdy) / (dx[k]*dxscale[i])^2
+    
+        end
     end
 
     println(verbose, :high, "Values: $(hessdiag)")

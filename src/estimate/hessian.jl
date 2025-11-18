@@ -41,7 +41,21 @@ function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
     end
 
     distr = use_parallel_workers(m)
-    hessian_free, has_errors = hessizero(f_hessian, x_hessian;
+
+    #get bounds 
+    n_free_params = length(para_free_inds)
+    lb = zeros(n_free_params)
+    ub = zeros(n_free_params)
+    
+    params = get_parameters(m)
+    for (i, idx) in enumerate(para_free_inds)
+        lb[i] = params[idx].valuebounds[1]
+        ub[i] = params[idx].valuebounds[2]
+    end
+
+
+
+    hessian_free, has_errors = hessizero(f_hessian, x_hessian, lb, ub;
         check_neg_diag = check_neg_diag, verbose = verbose, distr = distr)
 
     # Fill in rows/cols of zeros corresponding to location of fixed parameters
