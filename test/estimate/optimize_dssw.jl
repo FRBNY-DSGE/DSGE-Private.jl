@@ -178,9 +178,10 @@ h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
 =#
     end
 
-    seconds_hessian = time() - seconds_hessian
+    seconds_hessian = time() - start_time_hessian
+    println("hessian time: $(seconds_hessian)") 
 end
 
 println(out)
 println("optimizer time: $(seconds_optimizer)")
-println("hessian time: $(seconds_hessian)")
+

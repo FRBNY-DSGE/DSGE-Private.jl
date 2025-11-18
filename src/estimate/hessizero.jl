@@ -107,49 +107,62 @@ function hess_diag_element(fcn::Function,
 
     # Diagonal element computation
     for k = 3:4
-        paradx    = copy(x)
-        parady    = copy(x)
-        parad2x   = copy(x)
-        parad2y   = copy(x)
+        hi = dx[k]*dxscale[i]
 
-        paradx[i] = paradx[i] + dx[k]*dxscale[i]
-        parady[i] = parady[i] - dx[k]*dxscale[i]
-
-        parad2x[i] = paradx[i] +  dx[k]*dxscale[i]
-        #parad3x[i] = parad2x[i] +  dx[k]*dxscale[i]
-
-        parad2y[i] = parady[i] - dx[k]*dxscale[i]
-        #parad3y[i] = parad2y[i] - dx[k]*dxscale[i]
+        forward_i_valid = (x[i] + 2 * hi <= ub[i])
+        backward_i_valid = (x[i] - 2* hi >= lb[i])
         
-        #do backward difference O(h)
-        if parad2x[i] > ub[i]
-          
-            
-            fx  = fcn(x)
-            fdy = fcn(parady)
-            fd2y = fcn(parad2y)
-            #fd3y = fcn(parad3y)
 
-
-            hessdiag[k]  = (fd2y - 2*fdy + fx) / (dx[k]*dxscale[i])^2
-    
-        #do forward difference O(h)
-        elseif parad2y[i] < lb[i]
-            fx  = fcn(x)
-            fdx = fcn(paradx)
-            fd2x = fcn(parad2x)
-            #fd3x = fcn(parad3x)
-            
-            hessdiag[k]  = (fx - 2fdx + fd2x) / (dx[k]*dxscale[i])^2
-    
+       
+         
         #do center difference O(h^2)
-        else
+        if forward_i_valid && backward_i_valid
+            paradx = copy(x)
+            parady = copy(x)
+
+            paradx[i] += hi
+            parady[i] -= hi
+
             fx  = fcn(x)
             fdx = fcn(paradx)
             fdy = fcn(parady)
 
             hessdiag[k]  = -(2fx - fdx - fdy) / (dx[k]*dxscale[i])^2
     
+
+        #do backward difference O(h)
+        elseif backward_i_valid
+            parady = copy(x)
+            para2dy = copy(x)
+            #para3dy = copy(x)
+            
+            parady[i] -= hi
+            para2dy[i] -= (2*hi)
+            
+            fx  = fcn(x)
+            fdy = fcn(parady)
+            f2dy = fcn(para2dy)
+            #fd3y = fcn(para3dy)
+
+
+            hessdiag[k]  = (f2dy - 2*fdy + fx) / (dx[k]*dxscale[i])^2
+    
+        #do forward difference O(h)
+        elseif forward_i_valid
+            paradx = copy(x)
+            para2dx = copy(x)
+            #para3dy = copy(x)
+            
+            paradx[i] += hi
+            para2dx[i] += (2*hi)
+
+            fx  = fcn(x)
+            fdx = fcn(paradx)
+            f2dx = fcn(para2dx)
+            #fd3x = fcn(para3dx)
+            
+            hessdiag[k]  = (fx - 2fdx + f2dx) / (dx[k]*dxscale[i])^2
+   
         end
     end
 
