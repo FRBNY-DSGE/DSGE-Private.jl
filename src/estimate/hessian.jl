@@ -40,7 +40,9 @@ function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
         return -posterior!(m, x_model, data)
     end
 
-    distr = use_parallel_workers(m)
+    #TESTING purposes, change later
+    #distr = use_parallel_workers(m)
+    distr = false
 
     #get bounds 
     n_free_params = length(para_free_inds)
