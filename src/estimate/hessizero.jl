@@ -26,12 +26,12 @@ function hessizero(fcn::Function,
     # Compute diagonal elements first
     if distr && nworkers() > 1
         diag_elements = @sync @distributed (vcat) for i = 1:n_para
-            hess_diag_element(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag, verbose = verbose)
+            hess_diag_element_o4(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag, verbose = verbose)
         end
         hessian = diagm(diag_elements)
     else
         for i = 1:n_para
-            hessian[i,i] = hess_diag_element(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,
+            hessian[i,i] = hess_diag_element_o4(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,
                                              verbose = verbose)
         end
     end
@@ -54,7 +54,7 @@ function hessizero(fcn::Function,
     if distr
         off_diag_out = @sync @distributed (hcat) for (i,j) in off_diag_inds
             σ_xσ_y = sqrt(abs(hessian[i, i]*hessian[j, j]))
-            hess_offdiag_element(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
+            hess_offdiag_element_o4(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
         end
         # Ensure off_diag_out is array
         off_diag_out = hcat(off_diag_out)
@@ -62,7 +62,7 @@ function hessizero(fcn::Function,
         off_diag_out = Array{Tuple{T, T},1}(undef, n_off_diag_els)
         for (k,(i,j)) in enumerate(off_diag_inds)
             σ_xσ_y = sqrt(abs(hessian[i, i]*hessian[j, j]))
-            off_diag_out[k] = hess_offdiag_element(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
+            off_diag_out[k] = hess_offdiag_element_o4(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
         end
     end
 
@@ -87,6 +87,236 @@ function hessizero(fcn::Function,
 
     return hessian, has_errors
 end
+
+
+# Compute diag element
+function hess_diag_element_o4(fcn::Function,
+                           x::Vector{T},
+                           i::Int,
+                           lb,
+                           ub;
+                           ndx::Int=6,
+                           check_neg_diag::Bool=false,
+                           verbose::Symbol=:none) where T<:AbstractFloat
+    # Setup
+    n_para = length(x)
+    dxscale  = ones(n_para, 1)
+    dx       = exp.(-(6:2:(6+(ndx-1)*2))')
+    hessdiag = zeros(ndx, 1)
+
+    println(verbose, :low, "Hessian element: ($i, $i)")
+
+    # Diagonal element computation
+    for k = 3:4
+        hi = dx[k]*dxscale[i]
+
+        forward_i_valid = (x[i] + 4 * hi <= ub[i])
+        backward_i_valid = (x[i] - 4 * hi >= lb[i])
+        
+
+       
+         
+        #do center difference O(h^4)
+        if forward_i_valid && backward_i_valid
+            paradx = copy(x)
+            parady = copy(x)
+            para2dx = copy(x)
+            para2dy = copy(x)
+
+            paradx[i] += hi
+            parady[i] -= hi
+            para2dx[i] += (2*hi)
+            para2dy[i] -= (2*hi)
+
+            fx  = fcn(x)
+            fdx = fcn(paradx)
+            fdy = fcn(parady)
+            f2dx = fcn(para2dx)
+            f2dy = fcn(para2dy)
+
+            hessdiag[k]  = (-f2dx + 16*fdx - 30*fx + 16*fdy - f2dy) / (12*hi^2)
+            println(hessdiag[k]) 
+
+        #do backward difference O(h^4)
+        elseif backward_i_valid
+            parady = copy(x)
+            para2dy = copy(x)
+            para3dy = copy(x)
+            para4dy = copy(x)
+
+            parady[i] -= hi
+            para2dy[i] -= (2*hi)
+            para3dy[i] -= (3*hi)
+            para4dy[i] -= (4*hi)
+
+            fx  = fcn(x)
+            fdy = fcn(parady)
+            f2dy = fcn(para2dy)
+            f3dy = fcn(para3dy)
+            f4dy = fcn(para4dy)
+
+            hessdiag[k]  = (-25*fx + 48*fdy - 36*f2dy + 16*f3dy - 3*f4dy) / (12*hi^2)
+    
+        #do forward difference O(h^4)
+        elseif forward_i_valid
+            paradx = copy(x)
+            para2dx = copy(x)
+            para3dx = copy(x)
+            
+            paradx[i] += hi
+            para2dx[i] += (2*hi)
+            para3dx[i] += (3*hi)
+
+            fx  = fcn(x)
+            fdx = fcn(paradx)
+            f2dx = fcn(para2dx)
+            f3dx = fcn(para3dx)
+            
+            hessdiag[k]  = (25*fx - 48*fdx + 36*f2dx - 16*f3dx + 3*f4dx) / (12*hi^2)
+   
+        end
+    end
+
+    println(verbose, :high, "Values: $(hessdiag)")
+
+    value = (hessdiag[3]+hessdiag[4])/2
+
+    if check_neg_diag && value < 0
+        value = hess_diag_element(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,verbose = verbose)
+        #error("Negative diagonal in Hessian")
+    end
+
+    println(verbose, :high, "Value used: $value")
+
+    return value
+end
+
+# Compute off diag element
+function hess_offdiag_element_o4(fcn::Function,
+                              x::Vector{T},
+                              i::Int,
+                              j::Int,
+                              σ_xσ_y::T,
+                              lb,
+                              ub;
+                              ndx::Int=6,
+                              verbose::Symbol=:none) where T<:AbstractFloat
+    # Setup
+    n_para = length(x)
+    dxscale  = ones(n_para, 1)
+    dx       = exp.(-(6:2:(6+(ndx-1)*2))')
+    hessdiag = zeros(ndx, 1)
+
+    # Computation
+    println(verbose, :low, "Hessian element: ($i, $j)")
+
+    for k = 3:4
+        hi = dx[k]*dxscale[i]
+        hj = dx[k]*dxscale[j]
+
+        forward_i_valid = (x[i] + hi <= ub[i])
+        forward_j_valid = (x[j] + hj <= ub[j])
+        backward_i_valid = (x[i] - hi >= lb[i])
+        backward_j_valid = (x[j] - hj >= lb[j])
+        
+
+        #do forward(i)-backwards(j) O(h^2)
+        if forward_i_valid && backward_j_valid
+            paradx = copy(x)
+            parady = copy(x)
+            paradx[i] += hi
+            parady[j] -= hj
+
+            paradxdy    = copy(paradx)
+            paradxdy[j] -= hj
+
+            fx    = fcn(x)
+            fdx   = fcn(paradx)
+            fdy   = fcn(parady)
+            fdxdy = fcn(paradxdy)
+
+            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
+        #do forward(j)-backwards(i) O(h^2)
+        elseif forward_j_valid && backward_i_valid
+            paradx      = copy(x)
+            parady      = copy(x)
+            paradx[j]   += hj
+            parady[i]   -= hi
+
+            paradxdy    = copy(paradx)
+            paradxdy[i] -= hi
+
+            fx    = fcn(x)
+            fdx   = fcn(paradx)
+            fdy   = fcn(parady)
+            fdxdy = fcn(paradxdy)
+
+            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
+        #do backward-backward O(h^2)
+        elseif backward_i_valid && backward_j_valid
+            paradx = copy(x)
+            parady = copy(x)
+
+            paradx[i] -= hi
+            parady[j] -= hj
+
+            paradxdy    = copy(paradx)
+            paradxdy[j] -= hj
+
+            fx    = fcn(x)
+            fdx   = fcn(paradx)
+            fdy   = fcn(parady)
+            fdxdy = fcn(paradxdy)
+
+            hessdiag[k]  = (fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
+        #do forward-forward O(h^2)
+        elseif forward_i_valid && forward_j_valid
+            paradx = copy(x)
+            parady = copy(x)
+
+            paradx[i] += hi
+            parady[j] += hj
+
+            paradxdy    = copy(paradx)
+            paradxdy[j] += hj
+
+            fx    = fcn(x)
+            fdx   = fcn(paradx)
+            fdy   = fcn(parady)
+            fdxdy = fcn(paradxdy)
+
+            hessdiag[k]  = (fdxdy - fdx - fdy + fx) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+
+        end
+
+    end
+
+    println(verbose, :high, "Values: $(hessdiag)")
+
+    value = (hessdiag[3]+hessdiag[4])/2
+
+    if value == 0 || σ_xσ_y == 0
+        ρ_xy = 0
+    else
+        ρ_xy = value / σ_xσ_y
+    end
+
+    if ρ_xy < -1 || 1 < ρ_xy
+        value = 0
+    end
+
+    println(verbose, :high, "Value used: $value")
+    println(verbose, :high, "Correlation: $ρ_xy")
+
+    return value, ρ_xy
+end
+
+
+
+
 
 # Compute diag element
 function hess_diag_element(fcn::Function,
@@ -130,38 +360,40 @@ function hess_diag_element(fcn::Function,
             hessdiag[k]  = -(2fx - fdx - fdy) / (dx[k]*dxscale[i])^2
     
 
-        #do backward difference O(h)
+        #do backward difference O(h^2)
         elseif backward_i_valid
             parady = copy(x)
             para2dy = copy(x)
-            #para3dy = copy(x)
+            para3dy = copy(x)
             
             parady[i] -= hi
             para2dy[i] -= (2*hi)
-            
+            para3dy[i] -= (3*hi)
+
             fx  = fcn(x)
             fdy = fcn(parady)
             f2dy = fcn(para2dy)
-            #fd3y = fcn(para3dy)
+            f3dy = fcn(para3dy)
 
 
-            hessdiag[k]  = (f2dy - 2*fdy + fx) / (dx[k]*dxscale[i])^2
+            hessdiag[k]  = (2*fx - 5*fdy + 4*f2dy - f3dy) / (dx[k]*dxscale[i])^2
     
-        #do forward difference O(h)
+        #do forward difference O(h^2)
         elseif forward_i_valid
             paradx = copy(x)
             para2dx = copy(x)
-            #para3dy = copy(x)
+            para3dx = copy(x)
             
             paradx[i] += hi
             para2dx[i] += (2*hi)
+            para3dx[i] += (3*hi)
 
             fx  = fcn(x)
             fdx = fcn(paradx)
             f2dx = fcn(para2dx)
-            #fd3x = fcn(para3dx)
+            f3dx = fcn(para3dx)
             
-            hessdiag[k]  = (fx - 2fdx + f2dx) / (dx[k]*dxscale[i])^2
+            hessdiag[k]  = (-2*fx + 5*fdx - 4*f2dx + f3dx) / (dx[k]*dxscale[i])^2
    
         end
     end
