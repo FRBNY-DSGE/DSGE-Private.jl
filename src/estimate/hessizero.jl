@@ -238,29 +238,11 @@ function hess_offdiag_element_o4(fcn::Function,
             para_i2dy_j2dy[j] -= (2*hj)
             f_i2dy_j2dy = fcn(para_i2dy_j2dy)
 
-            #f(x_i - h_i, x_j - 2h_j)
-            para_idy_j2dy = copy(x)
-            para_idy_j2dy[i] -= hi
-            para_idy_j2dy[j] -= (2*hj)
-            f_idy_j2dy = fcn(para_idy_j2dy)
-
-            #f(x_i + h_i, x_j - 2h_j)
-            para_idx_j2dy = copy(x)
-            para_idx_j2dy[i] += hi
-            para_idx_j2dy[j] -= (2*hj)
-            f_idx_j2dy = fcn(para_idx_j2dy)
-
             #f(x_i + 2h_i, x_j - 2h_j)
             para_i2dx_j2dy = copy(x)
             para_i2dx_j2dy[i] += (2*hi)
             para_i2dx_j2dy[j] -= (2*hj)
             f_i2dx_j2dy = fcn(para_i2dx_j2dy)
-
-            #f(x_i - 2h_i, x_j - h_j)
-            para_i2dy_jdy = copy(x)
-            para_i2dy_jdy[i] -= (2*hi)
-            para_i2dy_jdy[j] -= hj
-            f_i2dy_jdy = fcn(para_i2dy_jdy)
 
             #f(x_i - h_i, x_j - h_j)
             para_idy_jdy = copy(x)
@@ -268,25 +250,13 @@ function hess_offdiag_element_o4(fcn::Function,
             para_idy_jdy[j] -= hj
             f_idy_jdy = fcn(para_idy_jdy)
 
-            #f(x_i + h_i, x_j - h_j)
+            #f(x_i + h_i, x_j - h_j) 
             para_idx_jdy = copy(x)
             para_idx_jdy[i] += hi
             para_idx_jdy[j] -= hj
             f_idx_jdy = fcn(para_idx_jdy)
 
-            #f(x_i + 2h_i, x_j - h_j)
-            para_i2dx_jdy = copy(x)
-            para_i2dx_jdy[i] += (2*hi)
-            para_i2dx_jdy[j] -= hj
-            f_i2dx_jdy = fcn(para_i2dx_jdy)
-
-            #f(x_i - 2h_i, x_j + h_j)
-            para_i2dy_jdx = copy(x)
-            para_i2dy_jdx[i] -= (2*hi)
-            para_i2dy_jdx[j] += hj
-            f_i2dy_jdx = fcn(para_i2dy_jdx)
-
-            #f(x_i - h_i, x_j + h_j)
+            #f(x_i - h_i, x_j + h_j) 
             para_idy_jdx = copy(x)
             para_idy_jdx[i] -= hi
             para_idy_jdx[j] += hj
@@ -298,29 +268,11 @@ function hess_offdiag_element_o4(fcn::Function,
             para_idx_jdx[j] += hj
             f_idx_jdx = fcn(para_idx_jdx)
 
-            #f(x_i + 2h_i, x_j + h_j)
-            para_i2dx_jdx = copy(x)
-            para_i2dx_jdx[i] += (2*hi)
-            para_i2dx_jdx[j] += hj
-            f_i2dx_jdx = fcn(para_i2dx_jdx)
-
-            #f(x_i - 2h_i, x_j + 2h_j)
+            #f(x_i - 2h_i, x_j + 2h_j) 
             para_i2dy_j2dx = copy(x)
             para_i2dy_j2dx[i] -= (2*hi)
             para_i2dy_j2dx[j] += (2*hj)
             f_i2dy_j2dx = fcn(para_i2dy_j2dx)
-
-            #f(x_i - h_i, x_j + 2h_j)
-            para_idy_j2dx = copy(x)
-            para_idy_j2dx[i] -= hi
-            para_idy_j2dx[j] += (2*hj)
-            f_idy_j2dx = fcn(para_idy_j2dx)
-
-            #f(x_i + h_i, x_j + 2h_j)
-            para_idx_j2dx = copy(x)
-            para_idx_j2dx[i] += hi
-            para_idx_j2dx[j] += (2*hj)
-            f_idx_j2dx = fcn(para_idx_j2dx)
 
             #f(x_i + 2h_i, x_j + 2h_j)
             para_i2dx_j2dx = copy(x)
@@ -328,13 +280,15 @@ function hess_offdiag_element_o4(fcn::Function,
             para_i2dx_j2dx[j] += (2*hj)
             f_i2dx_j2dx = fcn(para_i2dx_j2dx)
 
-            hessdiag[k] = (f_i2dy_j2dy - 8*f_idy_j2dy + 8*f_idx_j2dy - f_i2dx_j2dy
-                           - 8*f_i2dy_jdy + 64*f_idy_jdy - 64*f_idx_jdy + 8*f_i2dx_jdy
-                           + 8*f_i2dy_jdx - 64*f_idy_jdx + 64*f_idx_jdx - 8*f_i2dx_jdx
-                           - f_i2dy_j2dx + 8*f_idy_j2dx - 8*f_idx_j2dx + f_i2dx_j2dx) / (144*hi*hj*dxscale[i]*dxscale[j])
+            # Richardson extrapolation: O(h^4) using 8 corner points
+            hessdiag[k] = (16*(f_idx_jdx - f_idx_jdy - f_idy_jdx + f_idy_jdy) -
+                           (f_i2dx_j2dx - f_i2dx_j2dy - f_i2dy_j2dx + f_i2dy_j2dy)) / (48*hi*hj)
 
+        
+        else
+            hess_offdiag_element(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
 
-
+        #=
         #do forward(j)-backwards(i) O(h^2)
         elseif forward_j_valid && backward_i_valid
             paradx      = copy(x)
@@ -387,7 +341,7 @@ function hess_offdiag_element_o4(fcn::Function,
             fdxdy = fcn(paradxdy)
 
             hessdiag[k]  = (fdxdy - fdx - fdy + fx) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
-
+        =#
         end
 
     end
