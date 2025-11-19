@@ -110,8 +110,8 @@ function hess_diag_element_o4(fcn::Function,
     for k = 3:4
         hi = dx[k]*dxscale[i]
 
-        forward_i_valid = (x[i] + 4 * hi <= ub[i])
-        backward_i_valid = (x[i] - 4 * hi >= lb[i])
+        forward_i_valid = (x[i] + 5 * hi <= ub[i])
+        backward_i_valid = (x[i] - 5 * hi >= lb[i])
         
 
        
@@ -143,36 +143,45 @@ function hess_diag_element_o4(fcn::Function,
             para2dy = copy(x)
             para3dy = copy(x)
             para4dy = copy(x)
+            para5dy = copy(x)
 
             parady[i] -= hi
             para2dy[i] -= (2*hi)
             para3dy[i] -= (3*hi)
             para4dy[i] -= (4*hi)
+            para5dy[i] -= (5*hi)
 
             fx  = fcn(x)
             fdy = fcn(parady)
             f2dy = fcn(para2dy)
             f3dy = fcn(para3dy)
             f4dy = fcn(para4dy)
+            f5dy = fcn(para5dy)
 
-            hessdiag[k]  = (-25*fx + 48*fdy - 36*f2dy + 16*f3dy - 3*f4dy) / (12*hi^2)
+            hessdiag[k]  = (45*fx - 154*fdy + 214*f2dy - 156*f3dy + 61*f4dy - 10*f5dy) / (12*hi^2)
     
         #do forward difference O(h^4)
         elseif forward_i_valid
             paradx = copy(x)
             para2dx = copy(x)
             para3dx = copy(x)
-            
+            para4dx = copy(x)
+            para5dx = copy(x)
+
             paradx[i] += hi
             para2dx[i] += (2*hi)
             para3dx[i] += (3*hi)
+            para4dx[i] += (4*hi)
+            para5dx[i] += (5*hi)
 
             fx  = fcn(x)
             fdx = fcn(paradx)
             f2dx = fcn(para2dx)
             f3dx = fcn(para3dx)
-            
-            hessdiag[k]  = (25*fx - 48*fdx + 36*f2dx - 16*f3dx + 3*f4dx) / (12*hi^2)
+            f4dx = fcn(para4dx)
+            f5dx = fcn(para5dx)
+
+            hessdiag[k]  = (45*fx - 154*fdx + 214*f2dx - 156*f3dx + 61*f4dx - 10*f5dx) / (12*hi^2)
    
         end
     end
@@ -218,24 +227,113 @@ function hess_offdiag_element_o4(fcn::Function,
         forward_j_valid = (x[j] + hj <= ub[j])
         backward_i_valid = (x[i] - hi >= lb[i])
         backward_j_valid = (x[j] - hj >= lb[j])
-        
 
-        #do forward(i)-backwards(j) O(h^2)
-        if forward_i_valid && backward_j_valid
-            paradx = copy(x)
-            parady = copy(x)
-            paradx[i] += hi
-            parady[j] -= hj
 
-            paradxdy    = copy(paradx)
-            paradxdy[j] -= hj
+        #do centered difference O(h^4)
+        if forward_i_valid && backward_i_valid && forward_j_valid && backward_j_valid
 
-            fx    = fcn(x)
-            fdx   = fcn(paradx)
-            fdy   = fcn(parady)
-            fdxdy = fcn(paradxdy)
+            #f(x_i - 2h_i, x_j - 2h_j)
+            para_i2dy_j2dy = copy(x)
+            para_i2dy_j2dy[i] -= (2*hi)
+            para_i2dy_j2dy[j] -= (2*hj)
+            f_i2dy_j2dy = fcn(para_i2dy_j2dy)
 
-            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
+            #f(x_i - h_i, x_j - 2h_j)
+            para_idy_j2dy = copy(x)
+            para_idy_j2dy[i] -= hi
+            para_idy_j2dy[j] -= (2*hj)
+            f_idy_j2dy = fcn(para_idy_j2dy)
+
+            #f(x_i + h_i, x_j - 2h_j)
+            para_idx_j2dy = copy(x)
+            para_idx_j2dy[i] += hi
+            para_idx_j2dy[j] -= (2*hj)
+            f_idx_j2dy = fcn(para_idx_j2dy)
+
+            #f(x_i + 2h_i, x_j - 2h_j)
+            para_i2dx_j2dy = copy(x)
+            para_i2dx_j2dy[i] += (2*hi)
+            para_i2dx_j2dy[j] -= (2*hj)
+            f_i2dx_j2dy = fcn(para_i2dx_j2dy)
+
+            #f(x_i - 2h_i, x_j - h_j)
+            para_i2dy_jdy = copy(x)
+            para_i2dy_jdy[i] -= (2*hi)
+            para_i2dy_jdy[j] -= hj
+            f_i2dy_jdy = fcn(para_i2dy_jdy)
+
+            #f(x_i - h_i, x_j - h_j)
+            para_idy_jdy = copy(x)
+            para_idy_jdy[i] -= hi
+            para_idy_jdy[j] -= hj
+            f_idy_jdy = fcn(para_idy_jdy)
+
+            #f(x_i + h_i, x_j - h_j)
+            para_idx_jdy = copy(x)
+            para_idx_jdy[i] += hi
+            para_idx_jdy[j] -= hj
+            f_idx_jdy = fcn(para_idx_jdy)
+
+            #f(x_i + 2h_i, x_j - h_j)
+            para_i2dx_jdy = copy(x)
+            para_i2dx_jdy[i] += (2*hi)
+            para_i2dx_jdy[j] -= hj
+            f_i2dx_jdy = fcn(para_i2dx_jdy)
+
+            #f(x_i - 2h_i, x_j + h_j)
+            para_i2dy_jdx = copy(x)
+            para_i2dy_jdx[i] -= (2*hi)
+            para_i2dy_jdx[j] += hj
+            f_i2dy_jdx = fcn(para_i2dy_jdx)
+
+            #f(x_i - h_i, x_j + h_j)
+            para_idy_jdx = copy(x)
+            para_idy_jdx[i] -= hi
+            para_idy_jdx[j] += hj
+            f_idy_jdx = fcn(para_idy_jdx)
+
+            #f(x_i + h_i, x_j + h_j)
+            para_idx_jdx = copy(x)
+            para_idx_jdx[i] += hi
+            para_idx_jdx[j] += hj
+            f_idx_jdx = fcn(para_idx_jdx)
+
+            #f(x_i + 2h_i, x_j + h_j)
+            para_i2dx_jdx = copy(x)
+            para_i2dx_jdx[i] += (2*hi)
+            para_i2dx_jdx[j] += hj
+            f_i2dx_jdx = fcn(para_i2dx_jdx)
+
+            #f(x_i - 2h_i, x_j + 2h_j)
+            para_i2dy_j2dx = copy(x)
+            para_i2dy_j2dx[i] -= (2*hi)
+            para_i2dy_j2dx[j] += (2*hj)
+            f_i2dy_j2dx = fcn(para_i2dy_j2dx)
+
+            #f(x_i - h_i, x_j + 2h_j)
+            para_idy_j2dx = copy(x)
+            para_idy_j2dx[i] -= hi
+            para_idy_j2dx[j] += (2*hj)
+            f_idy_j2dx = fcn(para_idy_j2dx)
+
+            #f(x_i + h_i, x_j + 2h_j)
+            para_idx_j2dx = copy(x)
+            para_idx_j2dx[i] += hi
+            para_idx_j2dx[j] += (2*hj)
+            f_idx_j2dx = fcn(para_idx_j2dx)
+
+            #f(x_i + 2h_i, x_j + 2h_j)
+            para_i2dx_j2dx = copy(x)
+            para_i2dx_j2dx[i] += (2*hi)
+            para_i2dx_j2dx[j] += (2*hj)
+            f_i2dx_j2dx = fcn(para_i2dx_j2dx)
+
+            hessdiag[k] = (f_i2dy_j2dy - 8*f_idy_j2dy + 8*f_idx_j2dy - f_i2dx_j2dy
+                           - 8*f_i2dy_jdy + 64*f_idy_jdy - 64*f_idx_jdy + 8*f_i2dx_jdy
+                           + 8*f_i2dy_jdx - 64*f_idy_jdx + 64*f_idx_jdx - 8*f_i2dx_jdx
+                           - f_i2dy_j2dx + 8*f_idy_j2dx - 8*f_idx_j2dx + f_i2dx_j2dx) / (144*hi*hj*dxscale[i]*dxscale[j])
+
+
 
         #do forward(j)-backwards(i) O(h^2)
         elseif forward_j_valid && backward_i_valid
