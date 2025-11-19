@@ -373,15 +373,49 @@ end
         upper_bounds = vec(bounds[2, :])
 
         
+        if get_setting(m, :use_parallel_workers) 
+            println("Hello, parallel workers true")
+            @everywhere function f_opt_part_par(x_opt::AbstractVector{<:Real})::Float64
+                println("Hello from worker ", myid())
+                local m_local = deepcopy(m)
+                para_free_inds = ModelConstructors.get_free_para_inds(DSGE.get_parameters(m_local))
 
+                x_model = [p.value for p in m_local.parameters]
+                x_model[para_free_inds] .= x_opt
+                try
+                    regime_switching = false
+                    x_model[para_free_inds] = x_opt
+                    #DSGE.update!(m, x_model)
+                    DSGE.update!(m_local, x_model)
+                catch
+                    return Inf
+                end
 
-        # Set initial step size (typically 1/3 of the search space)
-        s0 = 0.001
-        popsize = 100
-        
-        opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt_particle, x_opt, s0; lower = lower_bounds, upper = upper_bounds, popsize = popsize, 
-                                                                       parallel_evaluation = false, store_trace = store_trace, show_trace = show_trace, 
-                                                                       extended_trace = extended_trace, verbose = verbose, rng = rng)
+                if mle
+                    out = -likelihood(m, data; catch_errors = true)
+                else
+                    try
+                        #out = -posterior(m, data; catch_errors = true)
+                        out = -posterior(m_local, data; catch_errors = true)
+                    catch
+                        out = Inf
+                    end
+                end
+
+                out = !isnan(out) ? out : Inf
+                return out
+            end
+            popsize = 15000
+            s0 = 0.02
+            opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt_particle, x_opt, s0; lower = lower_bounds, upper = upper_bounds, popsize = popsize, 
+                                                                           parallel_evaluation = true, store_trace = store_trace, show_trace = show_trace, 
+                                                                           extended_trace = extended_trace, verbose = verbose, rng = rng)
+        else
+            opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt_particle, x_opt, s0; lower = lower_bounds, upper = upper_bounds, popsize = popsize, 
+            parallel_evaluation = false, store_trace = store_trace, show_trace = show_trace, 
+            extended_trace = extended_trace, verbose = verbose, rng = rng)
+        end
+
 
         callback_data = (trace = store_trace ? x_trace : nothing,times = iteration_times,
                          posteriors = posterior_ls,

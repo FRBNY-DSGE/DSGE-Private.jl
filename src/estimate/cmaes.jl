@@ -44,7 +44,7 @@ function cmaes(fcn::Function,
     x_trace = typeof(x0)[]
     start_time = time()
 
-
+#=
     callback = (o, y, fvals, perm) -> begin
         it     = o.stop.it
         fbest  = minimum(fvals)
@@ -63,79 +63,59 @@ function cmaes(fcn::Function,
                     it, fbest, σ, elapsed)
             flush(stdout)
         end
-        nothing
-    end
 
-    #wrapper objective fcn replace Inf with large finite value before gradients are computed
-    INF_REPLACEMENT = 1e15
-    fcn_wrapped = function(x)
-        val = fcn(x)
-        if isinf(val) || isnan(val) || val > INF_REPLACEMENT
-            #push!(posterior_ls)
-            return INF_REPLACEMENT
-        else
-            #push!(posterior_ls)
-            return val
+        if σ > 1.0
+            pritnlin("\n WARNING: σ has grwon to $σ - stopping optimization")
+            return true
         end
+        return false
+        
+
     end
-    
+=# ##^CALLBACK FN FOR LIMITING THE STEP SIZE GROWTH
 
-#=
-    function fcn_batch(X::Matrix{Float64})
-        population = [X[:, i] for i ∈ 1:size(X, 2)]
+callback = (o, y, fvals, perm) -> begin
+    it     = o.stop.it
+    fbest  = minimum(fvals)
+    σ      = o.p.sigma.σ
+    elapsed = time() - start_time
+    push!(iteration_times, elapsed)
 
-        results = pmap(fcn_wrapped, population)
-        return results
+    # store trace if requested
+    if store_trace
+        push!(x_trace, copy(o.logger.xbest[end]))
+        push!(posterior_ls, fbest)
     end
 
-    function fcn_batch(x::AbstractVector{<:Real})
-        return fcn_wrapped(x)
+    if show_trace
+        ("Iter %4d | fbest = %10.4e | σ = %.5f | elapsed %.2fs\n",
+                it, fbest, σ, elapsed)
+        flush(stdout)
     end
-=#
-#=
-    if parallel_evaluation
-        if verbose!= :none
-            println("Running CMAES with $(nworkers) workers")
-        end
-               
-        cma_result = CMAEvolutionStrategy.minimize(fcn_batch, x0, s0;
-                                                   lower = lower,
-                                                   upper = upper,
-                                                   popsize = popsize,
-                                                   callback = callback,
-                                                   parallel_evaluation = parallel_evaluation,
-                                                   seed = rand(rng, UInt32))
-        #Main.xx = cma_result
-    else
-
-        # Fallback to serial evaluation
-        cma_result = CMAEvolutionStrategy.minimize(fcn_batch, x0, s0;
-                                                   lower = lower,
-                                                   upper = upper,
-                                                   popsize = popsize,
-                                                   callback = callback,
-                                                   parallel_evaluation = parallel_evaluation,
-                                                   seed = rand(rng, UInt32))
-
-       
-   end
-=#
-parallel_evaluation = false
-  
-cma_result = CMAEvolutionStrategy.minimize(
-    fcn, x0, s0;
-    lower = lower,
-    upper = upper,
-    popsize = popsize,
-    callback = callback,
-    parallel_evaluation = parallel_evaluation,
-    seed = 123,
-    maxiter = maxiter,
-    maxfevals = maxfevals               
-            
-)
+    nothing
+end
 
 
+    function f_batch(X::Matrix)
+        pop = [X[:, i] for i ∈ 1:size(X, 2)]
+        return pmap(fcn, pop)
+    end
+
+    f_batch(x::AbstractVector) = fcn(x)
+
+    cma_result = CMAEvolutionStrategy.minimize(
+        f_batch, x0, s0;
+        lower = lower,
+        upper = upper,
+        popsize = popsize,
+        callback = callback,
+        parallel_evaluation = parallel_evaluation,
+        seed = 123,
+        maxiter = maxiter,
+        maxfevals = maxfevals               
+    )
+
+    Main.xx[] = cma_result
 
     x_best = xbest(cma_result)
     f_best = fbest(cma_result)
