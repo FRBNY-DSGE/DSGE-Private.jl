@@ -13,17 +13,17 @@ path = dirname(@__FILE__)
 
 
 #===============config======================#
-calculate_posterior_mode = false
-calculate_hessian = true
+calculate_posterior_mode = true
+calculate_hessian = false
 
-save_output_posterior_mode = false
+save_output_posterior_mode = true
 save_output_hessian = false
 #===============configure optimizer=================#
 #optimizer_config = :xnes
-#optimizer_config = :cmaes
+optimizer_config = :cmaes
 #optimizer_config = :conjugate_gradient
 #optimizer_config = :csminwel
-optimizer_config = :lbfgs
+#optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
 println("running $(optimizer_config)...")
@@ -95,7 +95,7 @@ data = construct_data()
 # See src/estimate/estimate.jl
 #DSGE.update!(m, x0)
 
-n_iterations = 1000
+n_iterations = 5000
 
 # Set seed for reproducibility
 Random.seed!(42)
@@ -144,9 +144,11 @@ seconds_optimizer = time() - start_time_optimizer
     if save_output_posterior_mode == true
 
     #TODO: output posterior mode
+        # Remove existing file to ensure overwrite
+        isfile(output_file) && rm(output_file)
         h5write(output_file, "minimizer", out.minimizer)
         println("Saved minimizer to $output_file")
- 
+
     end
 
 
