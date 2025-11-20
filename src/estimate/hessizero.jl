@@ -209,7 +209,8 @@ function hess_offdiag_element_o4(fcn::Function,
                               lb,
                               ub;
                               ndx::Int=6,
-                              verbose::Symbol=:none) where T<:AbstractFloat
+                              verbose::Symbol=:none) where T<:AbstractFloat,
+                              method::Symbol=:richardson
     # Setup
     n_para = length(x)
     dxscale  = ones(n_para, 1)
@@ -229,20 +230,15 @@ function hess_offdiag_element_o4(fcn::Function,
         backward_j_valid = (x[j] - hj >= lb[j])
 
 
-        #do centered difference O(h^4)
-        if forward_i_valid && backward_i_valid && forward_j_valid && backward_j_valid
+        #taking O(h^2) centered difference and doing Richard extrapolation
+        #A = 4/3 f_xy(h/2) + 1/3 f_xy(h)
+        if method == :richardson && forward_i_valid && backward_i_valid && forward_j_valid && backward_j_valid
+            step_sizes = [1, 0.5]
+            A = []
 
-            #f(x_i - 2h_i, x_j - 2h_j)
-            para_i2dy_j2dy = copy(x)
-            para_i2dy_j2dy[i] -= (2*hi)
-            para_i2dy_j2dy[j] -= (2*hj)
-            f_i2dy_j2dy = fcn(para_i2dy_j2dy)
-
-            #f(x_i + 2h_i, x_j - 2h_j)
-            para_i2dx_j2dy = copy(x)
-            para_i2dx_j2dy[i] += (2*hi)
-            para_i2dx_j2dy[j] -= (2*hj)
-            f_i2dx_j2dy = fcn(para_i2dx_j2dy)
+            for (i, t) in enumerate(step_sizes)
+            hi = hi * t
+            hj = hj * t
 
             #f(x_i - h_i, x_j - h_j)
             para_idy_jdy = copy(x)
@@ -250,13 +246,88 @@ function hess_offdiag_element_o4(fcn::Function,
             para_idy_jdy[j] -= hj
             f_idy_jdy = fcn(para_idy_jdy)
 
-            #f(x_i + h_i, x_j - h_j) 
+            #f(x_i + h_i, x_j - h_j)
+            para_idx_jdy = copy(x)
+            para_idx_jdy[i] += hi
+            para_idx_jdy[j] -= hj
+            f_idx_jdy = fcn(para_idx_jdy)
+ 
+            #f(x_i - h_i, x_j - h_j)
+            para_idy_jdy = copy(x)
+            para_idy_jdy[i] -= hi
+            para_idy_jdy[j] -= hj
+            f_idy_jdy = fcn(para_idy_jdy)
+
+            #f(x_i + h_i, x_j - h_j)
             para_idx_jdy = copy(x)
             para_idx_jdy[i] += hi
             para_idx_jdy[j] -= hj
             f_idx_jdy = fcn(para_idx_jdy)
 
-            #f(x_i - h_i, x_j + h_j) 
+            A[i] = (f_idy_jdy + f_idx_jdx - f_idx_jdy - f_idy_jdx) / (4*(hi * hj))
+
+            end
+
+            hessdiag[k] = -(1/3) * A[1] + (4/3) * A[2]
+
+         #4x4 stencil
+        elseif method == :sixteenstencil && forward_i_valid && backward_i_valid && forward_j_valid && backward_j_valid
+
+            #f(x_i - 2h_i, x_j - 2h_j)
+            para_i2dy_j2dy = copy(x)
+            para_i2dy_j2dy[i] -= (2*hi)
+            para_i2dy_j2dy[j] -= (2*hj)
+            f_i2dy_j2dy = fcn(para_i2dy_j2dy)
+
+            #f(x_i - h_i, x_j - 2h_j)
+            para_idy_j2dy = copy(x)
+            para_idy_j2dy[i] -= hi
+            para_idy_j2dy[j] -= (2*hj)
+            f_idy_j2dy = fcn(para_idy_j2dy)
+
+            #f(x_i + h_i, x_j - 2h_j)
+            para_idx_j2dy = copy(x)
+            para_idx_j2dy[i] += hi
+            para_idx_j2dy[j] -= (2*hj)
+            f_idx_j2dy = fcn(para_idx_j2dy)
+
+            #f(x_i + 2h_i, x_j - 2h_j)
+            para_i2dx_j2dy = copy(x)
+            para_i2dx_j2dy[i] += (2*hi)
+            para_i2dx_j2dy[j] -= (2*hj)
+            f_i2dx_j2dy = fcn(para_i2dx_j2dy)
+
+            #f(x_i - 2h_i, x_j - h_j)
+            para_i2dy_jdy = copy(x)
+            para_i2dy_jdy[i] -= (2*hi)
+            para_i2dy_jdy[j] -= hj
+            f_i2dy_jdy = fcn(para_i2dy_jdy)
+
+            #f(x_i - h_i, x_j - h_j)
+            para_idy_jdy = copy(x)
+            para_idy_jdy[i] -= hi
+            para_idy_jdy[j] -= hj
+            f_idy_jdy = fcn(para_idy_jdy)
+
+            #f(x_i + h_i, x_j - h_j)
+            para_idx_jdy = copy(x)
+            para_idx_jdy[i] += hi
+            para_idx_jdy[j] -= hj
+            f_idx_jdy = fcn(para_idx_jdy)
+
+            #f(x_i + 2h_i, x_j - h_j)
+            para_i2dx_jdy = copy(x)
+            para_i2dx_jdy[i] += (2*hi)
+            para_i2dx_jdy[j] -= hj
+            f_i2dx_jdy = fcn(para_i2dx_jdy)
+
+            #f(x_i - 2h_i, x_j + h_j)
+            para_i2dy_jdx = copy(x)
+            para_i2dy_jdx[i] -= (2*hi)
+            para_i2dy_jdx[j] += hj
+            f_i2dy_jdx = fcn(para_i2dy_jdx)
+
+            #f(x_i - h_i, x_j + h_j)
             para_idy_jdx = copy(x)
             para_idy_jdx[i] -= hi
             para_idy_jdx[j] += hj
@@ -268,11 +339,29 @@ function hess_offdiag_element_o4(fcn::Function,
             para_idx_jdx[j] += hj
             f_idx_jdx = fcn(para_idx_jdx)
 
-            #f(x_i - 2h_i, x_j + 2h_j) 
+            #f(x_i + 2h_i, x_j + h_j)
+            para_i2dx_jdx = copy(x)
+            para_i2dx_jdx[i] += (2*hi)
+            para_i2dx_jdx[j] += hj
+            f_i2dx_jdx = fcn(para_i2dx_jdx)
+
+            #f(x_i - 2h_i, x_j + 2h_j)
             para_i2dy_j2dx = copy(x)
             para_i2dy_j2dx[i] -= (2*hi)
             para_i2dy_j2dx[j] += (2*hj)
             f_i2dy_j2dx = fcn(para_i2dy_j2dx)
+
+            #f(x_i - h_i, x_j + 2h_j)
+            para_idy_j2dx = copy(x)
+            para_idy_j2dx[i] -= hi
+            para_idy_j2dx[j] += (2*hj)
+            f_idy_j2dx = fcn(para_idy_j2dx)
+
+            #f(x_i + h_i, x_j + 2h_j)
+            para_idx_j2dx = copy(x)
+            para_idx_j2dx[i] += hi
+            para_idx_j2dx[j] += (2*hj)
+            f_idx_j2dx = fcn(para_idx_j2dx)
 
             #f(x_i + 2h_i, x_j + 2h_j)
             para_i2dx_j2dx = copy(x)
@@ -280,68 +369,15 @@ function hess_offdiag_element_o4(fcn::Function,
             para_i2dx_j2dx[j] += (2*hj)
             f_i2dx_j2dx = fcn(para_i2dx_j2dx)
 
-            # Richardson extrapolation: O(h^4) using 8 corner points
-            hessdiag[k] = (16*(f_idx_jdx - f_idx_jdy - f_idy_jdx + f_idy_jdy) -
-                           (f_i2dx_j2dx - f_i2dx_j2dy - f_i2dy_j2dx + f_i2dy_j2dy)) / (48*hi*hj)
-
+            #O(h^4) with 4x4 stencil via Pavel Holoborodko
+            hessdiag[k] = (f_i2dy_j2dy - 8*f_idy_j2dy + 8*f_idx_j2dy - f_i2dx_j2dy
+                           - 8*f_i2dy_jdy + 64*f_idy_jdy - 64*f_idx_jdy + 8*f_i2dx_jdy
+                           + 8*f_i2dy_jdx - 64*f_idy_jdx + 64*f_idx_jdx - 8*f_i2dx_jdx
+                           - f_i2dy_j2dx + 8*f_idy_j2dx - 8*f_idx_j2dx + f_i2dx_j2dx) / (144*hi*hj*dxscale[i]*dxscale[j])
         
+
         else
-            hess_offdiag_element(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
-
-        #=
-        #do forward(j)-backwards(i) O(h^2)
-        elseif forward_j_valid && backward_i_valid
-            paradx      = copy(x)
-            parady      = copy(x)
-            paradx[j]   += hj
-            parady[i]   -= hi
-
-            paradxdy    = copy(paradx)
-            paradxdy[i] -= hi
-
-            fx    = fcn(x)
-            fdx   = fcn(paradx)
-            fdy   = fcn(parady)
-            fdxdy = fcn(paradxdy)
-
-            hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
-
-        #do backward-backward O(h^2)
-        elseif backward_i_valid && backward_j_valid
-            paradx = copy(x)
-            parady = copy(x)
-
-            paradx[i] -= hi
-            parady[j] -= hj
-
-            paradxdy    = copy(paradx)
-            paradxdy[j] -= hj
-
-            fx    = fcn(x)
-            fdx   = fcn(paradx)
-            fdy   = fcn(parady)
-            fdxdy = fcn(paradxdy)
-
-            hessdiag[k]  = (fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
-
-        #do forward-forward O(h^2)
-        elseif forward_i_valid && forward_j_valid
-            paradx = copy(x)
-            parady = copy(x)
-
-            paradx[i] += hi
-            parady[j] += hj
-
-            paradxdy    = copy(paradx)
-            paradxdy[j] += hj
-
-            fx    = fcn(x)
-            fdx   = fcn(paradx)
-            fdy   = fcn(parady)
-            fdxdy = fcn(paradxdy)
-
-            hessdiag[k]  = (fdxdy - fdx - fdy + fx) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
-        =#
+            hessdiag[k] = hess_offdiag_element_o2(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
         end
 
     end
@@ -367,11 +403,95 @@ function hess_offdiag_element_o4(fcn::Function,
 end
 
 
+# Compute off diag element
+function hess_offdiag_element_o2(fcn::Function,
+                              x::Vector{T},
+                              i::Int,
+                              j::Int,
+                              σ_xσ_y::T,
+                              lb,
+                              ub;
+                              ndx::Int=6,
+                              verbose::Symbol=:none) where T<:AbstractFloat
+    # Setup
+    n_para = length(x)
+    dxscale  = ones(n_para, 1)
+    dx       = exp.(-(6:2:(6+(ndx-1)*2))')
+    hessdiag = zeros(ndx, 1)
 
+    # Computation
+    println(verbose, :low, "Hessian element: ($i, $j)")
+
+    for k = 3:4
+        hi = dx[k]*dxscale[i]
+        hj = dx[k]*dxscale[j]
+
+        forward_i_valid = (x[i] + hi <= ub[i])
+        forward_j_valid = (x[j] + hj <= ub[j])
+        backward_i_valid = (x[i] - hi >= lb[i])
+        backward_j_valid = (x[j] - hj >= lb[j])
+        
+
+        #do forward(i)-backwards(j) O(h)
+        if forward_i_valid && forward_j_valid && backward_i_valid && backward_j_valid
+            
+            #f(x_i - h_i, x_j - h_j)
+            para_idy_jdy = copy(x)
+            para_idy_jdy[i] -= hi
+            para_idy_jdy[j] -= hj
+            f_idy_jdy = fcn(para_idy_jdy)
+
+            #f(x_i + h_i, x_j - h_j)
+            para_idx_jdy = copy(x)
+            para_idx_jdy[i] += hi
+            para_idx_jdy[j] -= hj
+            f_idx_jdy = fcn(para_idx_jdy)
+ 
+            #f(x_i - h_i, x_j - h_j)
+            para_idy_jdy = copy(x)
+            para_idy_jdy[i] -= hi
+            para_idy_jdy[j] -= hj
+            f_idy_jdy = fcn(para_idy_jdy)
+
+            #f(x_i + h_i, x_j - h_j)
+            para_idx_jdy = copy(x)
+            para_idx_jdy[i] += hi
+            para_idx_jdy[j] -= hj
+            f_idx_jdy = fcn(para_idx_jdy)
+
+            hessdiag[k] = (f_idy_jdy + f_idx_jdx - f_idx_jdy - f_idy_jdx) / (4*(hi * hj))
+        else
+            hessdiag[k] = hess_offdiag_element_o1(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
+ 
+
+
+        end
+
+    end
+
+    println(verbose, :high, "Values: $(hessdiag)")
+
+    value = (hessdiag[3]+hessdiag[4])/2
+
+    if value == 0 || σ_xσ_y == 0
+        ρ_xy = 0
+    else
+        ρ_xy = value / σ_xσ_y
+    end
+
+    if ρ_xy < -1 || 1 < ρ_xy
+        value = 0
+    end
+
+    println(verbose, :high, "Value used: $value")
+    println(verbose, :high, "Correlation: $ρ_xy")
+
+    return value, ρ_xy
+end
 
 
 # Compute diag element
-function hess_diag_element(fcn::Function,
+function hess_diag_element_o2(fcn::Function,
                            x::Vector{T},
                            i::Int,
                            lb,
@@ -409,7 +529,7 @@ function hess_diag_element(fcn::Function,
             fdx = fcn(paradx)
             fdy = fcn(parady)
 
-            hessdiag[k]  = -(2fx - fdx - fdy) / (dx[k]*dxscale[i])^2
+            hessdiag[k]  = (-2fx + fdx + fdy) / (dx[k]*dxscale[i])^2
     
 
         #do backward difference O(h^2)
@@ -445,7 +565,7 @@ function hess_diag_element(fcn::Function,
             f2dx = fcn(para2dx)
             f3dx = fcn(para3dx)
             
-            hessdiag[k]  = (-2*fx + 5*fdx - 4*f2dx + f3dx) / (dx[k]*dxscale[i])^2
+            hessdiag[k]  = (2*fx - 5*fdx + 4*f2dx - f3dx) / (dx[k]*dxscale[i])^2
    
         end
     end
@@ -464,7 +584,7 @@ function hess_diag_element(fcn::Function,
 end
 
 # Compute off diag element
-function hess_offdiag_element(fcn::Function,
+function hess_offdiag_element_o1(fcn::Function,
                               x::Vector{T},
                               i::Int,
                               j::Int,
@@ -492,7 +612,7 @@ function hess_offdiag_element(fcn::Function,
         backward_j_valid = (x[j] - hj >= lb[j])
         
 
-        #do forward(i)-backwards(j) O(h^2)
+        #do forward(i)-backwards(j) O(h)
         if forward_i_valid && backward_j_valid
             paradx = copy(x)
             parady = copy(x)
@@ -509,7 +629,7 @@ function hess_offdiag_element(fcn::Function,
 
             hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
 
-        #do forward(j)-backwards(i) O(h^2)
+        #do forward(j)-backwards(i) O(h)
         elseif forward_j_valid && backward_i_valid
             paradx      = copy(x)
             parady      = copy(x)
@@ -526,7 +646,7 @@ function hess_offdiag_element(fcn::Function,
 
             hessdiag[k]  = -(fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
 
-        #do backward-backward O(h^2)
+        #do backward-backward O(h)
         elseif backward_i_valid && backward_j_valid
             paradx = copy(x)
             parady = copy(x)
@@ -544,7 +664,7 @@ function hess_offdiag_element(fcn::Function,
 
             hessdiag[k]  = (fx - fdx - fdy + fdxdy) / (dx[k]*dx[k]*dxscale[i]*dxscale[j])
 
-        #do forward-forward O(h^2)
+        #do forward-forward O(h)
         elseif forward_i_valid && forward_j_valid
             paradx = copy(x)
             parady = copy(x)
