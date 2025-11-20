@@ -191,7 +191,7 @@ function hess_diag_element_o4(fcn::Function,
     value = (hessdiag[3]+hessdiag[4])/2
 
     if check_neg_diag && value < 0
-        value = hess_diag_element(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,verbose = verbose)
+        value = hess_diag_element_o2(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,verbose = verbose)
         #error("Negative diagonal in Hessian")
     end
 
@@ -234,37 +234,37 @@ function hess_offdiag_element_o4(fcn::Function,
         #A = 4/3 f_xy(h/2) + 1/3 f_xy(h)
         if method == :richardson && forward_i_valid && backward_i_valid && forward_j_valid && backward_j_valid
             step_sizes = [1, 0.5]
-            A = []
+            A = [0,0]
 
-            for (i, t) in enumerate(step_sizes)
-            hi = hi * t
-            hj = hj * t
+            for (l, t) in enumerate(step_sizes)
+            hit = hi * t
+            hjt = hj * t
 
             #f(x_i - h_i, x_j - h_j)
             para_idy_jdy = copy(x)
-            para_idy_jdy[i] -= hi
-            para_idy_jdy[j] -= hj
+            para_idy_jdy[i] -= hit
+            para_idy_jdy[j] -= hjt
             f_idy_jdy = fcn(para_idy_jdy)
 
             #f(x_i + h_i, x_j - h_j)
             para_idx_jdy = copy(x)
-            para_idx_jdy[i] += hi
-            para_idx_jdy[j] -= hj
+            para_idx_jdy[i] += hit
+            para_idx_jdy[j] -= hjt
             f_idx_jdy = fcn(para_idx_jdy)
  
-            #f(x_i - h_i, x_j - h_j)
-            para_idy_jdy = copy(x)
-            para_idy_jdy[i] -= hi
-            para_idy_jdy[j] -= hj
-            f_idy_jdy = fcn(para_idy_jdy)
+            #f(x_i - h_i, x_j + h_j)
+            para_idy_jdx = copy(x)
+            para_idy_jdx[i] -= hit
+            para_idy_jdx[j] += hjt
+            f_idy_jdx = fcn(para_idy_jdx)
 
-            #f(x_i + h_i, x_j - h_j)
-            para_idx_jdy = copy(x)
-            para_idx_jdy[i] += hi
-            para_idx_jdy[j] -= hj
-            f_idx_jdy = fcn(para_idx_jdy)
+            #f(x_i + h_i, x_j + h_j)
+            para_idx_jdx = copy(x)
+            para_idx_jdx[i] += hit
+            para_idx_jdx[j] += hjt
+            f_idx_jdx = fcn(para_idx_jdx)
 
-            A[i] = (f_idy_jdy + f_idx_jdx - f_idx_jdy - f_idy_jdx) / (4*(hi * hj))
+            A[l] = (f_idy_jdy + f_idx_jdx - f_idx_jdy - f_idy_jdx) / (4*(hit * hjt))
 
             end
 
@@ -373,7 +373,7 @@ function hess_offdiag_element_o4(fcn::Function,
             hessdiag[k] = (f_i2dy_j2dy - 8*f_idy_j2dy + 8*f_idx_j2dy - f_i2dx_j2dy
                            - 8*f_i2dy_jdy + 64*f_idy_jdy - 64*f_idx_jdy + 8*f_i2dx_jdy
                            + 8*f_i2dy_jdx - 64*f_idy_jdx + 64*f_idx_jdx - 8*f_i2dx_jdx
-                           - f_i2dy_j2dx + 8*f_idy_j2dx - 8*f_idx_j2dx + f_i2dx_j2dx) / (144*hi*hj*dxscale[i]*dxscale[j])
+                           - f_i2dy_j2dx + 8*f_idy_j2dx - 8*f_idx_j2dx + f_i2dx_j2dx) / (144*hi*hj)
         
 
         else
@@ -447,19 +447,19 @@ function hess_offdiag_element_o2(fcn::Function,
             para_idx_jdy[j] -= hj
             f_idx_jdy = fcn(para_idx_jdy)
  
-            #f(x_i - h_i, x_j - h_j)
-            para_idy_jdy = copy(x)
-            para_idy_jdy[i] -= hi
-            para_idy_jdy[j] -= hj
-            f_idy_jdy = fcn(para_idy_jdy)
+            #f(x_i - h_i, x_j + h_j)
+            para_idy_jdx = copy(x)
+            para_idy_jdx[i] -= hi
+            para_idy_jdx[j] += hj
+            f_idy_jdx = fcn(para_idy_jdx)
 
-            #f(x_i + h_i, x_j - h_j)
-            para_idx_jdy = copy(x)
-            para_idx_jdy[i] += hi
-            para_idx_jdy[j] -= hj
-            f_idx_jdy = fcn(para_idx_jdy)
+            #f(x_i + h_i, x_j + h_j)
+            para_idx_jdx = copy(x)
+            para_idx_jdx[i] += hi
+            para_idx_jdx[j] += hj
+            f_idx_jdx = fcn(para_idx_jdx)
 
-            hessdiag[k] = (f_idy_jdy + f_idx_jdx - f_idx_jdy - f_idy_jdx) / (4*(hi * hj))
+             hessdiag[k] = (f_idy_jdy + f_idx_jdx - f_idx_jdy - f_idy_jdx) / (4*(hi * hj))
         else
             hessdiag[k] = hess_offdiag_element_o1(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
  
