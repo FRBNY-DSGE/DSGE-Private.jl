@@ -11,7 +11,9 @@ using Distributed
 path = dirname(@__FILE__)
 #writing_output = false
 
-
+#==============parallel====================#
+parallel = true
+n_workers = 3
 #===============config======================#
 calculate_posterior_mode = true
 calculate_hessian = false
@@ -38,6 +40,17 @@ horizon = 16
 
 #load model
 m = DSSW()
+
+if parallel == true
+    m <= Setting(:auto_add_procs, true)
+    ENV["frbnyjuliamemory"] = "8G"
+    #n_workers = 3
+    addprocs_frbny(n_workers)
+    @everywhere using DSGE, SMC, OrderedCollections, CMAEvolutionStrategy, Random, ModelConstructors
+    @everywhere global m = $m
+    @everywhere global data = $data
+    @everywhere global mle = false
+end
 
 if vecm_object == true
     vecm = DSGE.DSGEVECM(m)
