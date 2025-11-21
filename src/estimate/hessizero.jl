@@ -17,21 +17,42 @@ function hessizero(fcn::Function,
                    x::Vector{T},
                    lb,
                    ub;
+                   diag_order_error::Int  = 4,
+                   offdiag_order_error::Int = 4,
+                   offdiag_method::Symbol = :richardson,
                    check_neg_diag::Bool=false,
                    verbose::Symbol=:none,
                    distr::Bool=true) where T<:AbstractFloat
+    
+
+    hess_diag_element_fcn = if diag_order_error == 2
+        hess_diag_element_o2
+    elseif diag_order_error == 4
+        hess_diag_element_o4
+    end
+
+    hess_offdiag_element_fcn = if offdiag_order_error == 1
+        hess_offdiag_element_o1
+    elseif offdiag_order_error == 2
+        hess_offdiag_element_o2
+    elseif offdiag_order_error == 4
+        hess_offdiag_element_o4
+    end
+
+
+
     n_para = length(x)
     hessian  = zeros(n_para, n_para)
 
     # Compute diagonal elements first
     if distr && nworkers() > 1
         diag_elements = @sync @distributed (vcat) for i = 1:n_para
-            hess_diag_element_o4(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag, verbose = verbose)
+            hess_diag_element_fcn(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag, verbose = verbose)
         end
         hessian = diagm(diag_elements)
     else
         for i = 1:n_para
-            hessian[i,i] = hess_diag_element_o4(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,
+            hessian[i,i] = hess_diag_element_fcn(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,
                                              verbose = verbose)
         end
     end
@@ -54,7 +75,7 @@ function hessizero(fcn::Function,
     if distr
         off_diag_out = @sync @distributed (hcat) for (i,j) in off_diag_inds
             σ_xσ_y = sqrt(abs(hessian[i, i]*hessian[j, j]))
-            hess_offdiag_element_o4(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
+            hess_offdiag_element_fcn(fcn, x, i, j, σ_xσ_y, lb, ub; method = offdiag_method, verbose=verbose)
         end
         # Ensure off_diag_out is array
         off_diag_out = hcat(off_diag_out)
@@ -62,7 +83,7 @@ function hessizero(fcn::Function,
         off_diag_out = Array{Tuple{T, T},1}(undef, n_off_diag_els)
         for (k,(i,j)) in enumerate(off_diag_inds)
             σ_xσ_y = sqrt(abs(hessian[i, i]*hessian[j, j]))
-            off_diag_out[k] = hess_offdiag_element_o4(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
+            off_diag_out[k] = hess_offdiag_element_fcn(fcn, x, i, j, σ_xσ_y, lb, ub; method = offdiag_method, verbose=verbose)
         end
     end
 
@@ -118,6 +139,8 @@ function hess_diag_element_o4(fcn::Function,
          
         #do center difference O(h^4)
         if forward_i_valid && backward_i_valid
+            println("CENTER DIFF o4")
+
             paradx = copy(x)
             parady = copy(x)
             para2dx = copy(x)
@@ -139,6 +162,7 @@ function hess_diag_element_o4(fcn::Function,
 
         #do backward difference O(h^4)
         elseif backward_i_valid
+            println("BWARD DIFF O4")
             parady = copy(x)
             para2dy = copy(x)
             para3dy = copy(x)
@@ -159,9 +183,11 @@ function hess_diag_element_o4(fcn::Function,
             f5dy = fcn(para5dy)
 
             hessdiag[k]  = (45*fx - 154*fdy + 214*f2dy - 156*f3dy + 61*f4dy - 10*f5dy) / (12*hi^2)
-    
+     println(hessdiag[k]) 
+
         #do forward difference O(h^4)
         elseif forward_i_valid
+            println("FWARD DIFF O4")
             paradx = copy(x)
             para2dx = copy(x)
             para3dx = copy(x)
@@ -182,7 +208,8 @@ function hess_diag_element_o4(fcn::Function,
             f5dx = fcn(para5dx)
 
             hessdiag[k]  = (45*fx - 154*fdx + 214*f2dx - 156*f3dx + 61*f4dx - 10*f5dx) / (12*hi^2)
-   
+    println(hessdiag[k]) 
+
         end
     end
 
@@ -191,8 +218,10 @@ function hess_diag_element_o4(fcn::Function,
     value = (hessdiag[3]+hessdiag[4])/2
 
     if check_neg_diag && value < 0
+        println("ORIGINAL o4")
+        println(value)
         value = hess_diag_element_o2(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,verbose = verbose)
-        #error("Negative diagonal in Hessian")
+               #error("Negative diagonal in Hessian")
     end
 
     println(verbose, :high, "Value used: $value")
@@ -209,8 +238,8 @@ function hess_offdiag_element_o4(fcn::Function,
                               lb,
                               ub;
                               ndx::Int=6,
-                              verbose::Symbol=:none) where T<:AbstractFloat,
-                              method::Symbol=:richardson
+                              method::Symbol=:richardson,
+                              verbose::Symbol=:none) where T<:AbstractFloat
     # Setup
     n_para = length(x)
     dxscale  = ones(n_para, 1)
@@ -234,7 +263,7 @@ function hess_offdiag_element_o4(fcn::Function,
         #A = 4/3 f_xy(h/2) + 1/3 f_xy(h)
         if method == :richardson && forward_i_valid && backward_i_valid && forward_j_valid && backward_j_valid
             step_sizes = [1, 0.5]
-            A = [0,0]
+            A = [0.,0.]
 
             for (l, t) in enumerate(step_sizes)
             hit = hi * t
@@ -377,7 +406,7 @@ function hess_offdiag_element_o4(fcn::Function,
         
 
         else
-            hessdiag[k] = hess_offdiag_element_o2(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
+            hessdiag[k], _ = hess_offdiag_element_o2(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
         end
 
     end
@@ -412,6 +441,7 @@ function hess_offdiag_element_o2(fcn::Function,
                               lb,
                               ub;
                               ndx::Int=6,
+                              method::Symbol=:none,
                               verbose::Symbol=:none) where T<:AbstractFloat
     # Setup
     n_para = length(x)
@@ -461,7 +491,7 @@ function hess_offdiag_element_o2(fcn::Function,
 
              hessdiag[k] = (f_idy_jdy + f_idx_jdx - f_idx_jdy - f_idy_jdx) / (4*(hi * hj))
         else
-            hessdiag[k] = hess_offdiag_element_o1(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
+            hessdiag[k], _ = hess_offdiag_element_o1(fcn, x, i, j, σ_xσ_y, lb, ub; verbose=verbose)
  
 
 
@@ -592,6 +622,7 @@ function hess_offdiag_element_o1(fcn::Function,
                               lb,
                               ub;
                               ndx::Int=6,
+                              method::Symbol=:none,
                               verbose::Symbol=:none) where T<:AbstractFloat
     # Setup
     n_para = length(x)
