@@ -12,13 +12,13 @@ path = dirname(@__FILE__)
 #writing_output = false
 
 #==============parallel====================#
-parallel = true
+parallel = false
 n_workers = 3
 #===============config======================#
-calculate_posterior_mode = true
-calculate_hessian = false
+calculate_posterior_mode = false
+calculate_hessian = true
 
-save_output_posterior_mode = true
+save_output_posterior_mode = false
 save_output_hessian = false
 #===============configure optimizer=================#
 #optimizer_config = :xnes
@@ -36,10 +36,10 @@ vecm_object = true
 lags = 4
 horizon = 16
 
-
+ss = "ss1"
 
 #load model
-m = DSSW()
+m = DSSW("ss1")
 
 if parallel == true
     m <= Setting(:auto_add_procs, true)
@@ -137,9 +137,9 @@ end
 =#
 ref_dir = "$path/../reference"
 if vecm_object == false
-    output_file = "$ref_dir/optimize_dssw_dsge_$(optimizer_config)_minimizer.h5"
+    output_file = "$ref_dir/optimize_dssw_dsge_$(optimizer_config)_$(ss)_minimizer.h5"
 else 
-    output_file = "$ref_dir/optimize_dssw_$(λ)_$(optimizer_config)_minimizer.h5"
+    output_file = "$ref_dir/optimize_dssw_$(λ)_$(optimizer_config)_$(ss)_minimizer.h5"
 end
 
 
@@ -179,9 +179,9 @@ if calculate_hessian == true
     start_time_hessian = time()
     
     if vecm_object == false
-        hessian, _ = hessian!(m, out.minimizer, data; toggle = true, verbose = :low) 
+        hessian, _ = hessian!(m, out.minimizer, data; toggle = true, verbose = :low, check_neg_diag = false) 
     else
-        hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :low)        
+        hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :low, check_neg_diag = false)        
     end
 
     if save_output_hessian == true
