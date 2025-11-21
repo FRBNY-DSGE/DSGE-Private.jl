@@ -43,11 +43,21 @@ function eqcond(m::DSSW, reg::Int)
     Γ0[eq[:eq_margcost], endo[:rk_t]] = -m[:alp]
 
     # Price Setting
-    Γ0[eq[:eq_prsett], endo[:pi_t]] = 1.
-    Γ0[eq[:eq_prsett], endo[:E_pi]] = -m[:bet]/(1+m[:iota_p]*m[:bet])
-    Γ0[eq[:eq_prsett], endo[:mc_t]] = -(1-m[:zeta_p])*(1-m[:bet]*m[:zeta_p])/(m[:zeta_p]*(1+m[:iota_p]*m[:bet]))
-    Γ0[eq[:eq_prsett], endo[:laf_t]] = -1. #M101
-    Γ1[eq[:eq_prsett], endo[:pi_t]] = m[:iota_p]/(1+m[:iota_p]*m[:bet])
+    if subspec(m) in ["ss0"]
+        Γ0[eq[:eq_prsett], endo[:pi_t]] = 1.
+        Γ0[eq[:eq_prsett], endo[:E_pi]] = -m[:bet]/(1+m[:iota_p]*m[:bet])
+        Γ0[eq[:eq_prsett], endo[:mc_t]] = -(1-m[:zeta_p])*(1-m[:bet]*m[:zeta_p])/(m[:zeta_p]*(1+m[:iota_p]*m[:bet]))
+        Γ0[eq[:eq_prsett], endo[:laf_t]] = -1. #M101
+        Γ1[eq[:eq_prsett], endo[:pi_t]] = m[:iota_p]/(1+m[:iota_p]*m[:bet])
+    elseif subspec(m) in ["ss1"]
+        Γ0[eq[:eq_prsett], endo[:pi_t]] = (1. + m[:iota_p] * m[:bet])*m[:zeta_p]
+        Γ0[eq[:eq_prsett], endo[:E_pi]] = -m[:bet]*m[:zeta_p]
+        Γ0[eq[:eq_prsett], endo[:mc_t]] = -(1-m[:zeta_p])*(1-m[:bet]*m[:zeta_p])
+        Γ0[eq[:eq_prsett], endo[:laf_t]] = -1. #M101
+        Γ1[eq[:eq_prsett], endo[:pi_t]] = m[:iota_p]*m[:zeta_p]
+    end
+
+
 
     # Capital Accumulation
     Γ0[eq[:eq_capacc], endo[:kbar_t]] = 1.
@@ -69,6 +79,11 @@ function eqcond(m::DSSW, reg::Int)
     Γ0[eq[:eq_euler], endo[:z_t]] = m[:h]*exp(m[:zstar]) - (m[:h]*m[:bet]*exp(m[:zstar])*m[:rho_z])
     Γ0[eq[:eq_euler], endo[:c_t]] = (exp(2*m[:zstar])+(m[:h]^2)*m[:bet])
     Γ0[eq[:eq_euler], endo[:E_c]] = -m[:h]*m[:bet]*exp(m[:zstar])
+
+    if subspec(m) in ["ss1"]
+        Γ1[eq[:eq_euler], endo[:c_t]] = m[:h]*exp(m[:zstar])
+    end
+
 
     # Money demand
     Γ0[eq[:eq_moneydem], endo[:m_t]] = m[:nu_m]
@@ -104,27 +119,44 @@ function eqcond(m::DSSW, reg::Int)
     Γ0[eq[:eq_utcap], endo[:rk_t]] = -m[:rkstar]
 
     # Optimal wage
-    Γ0[eq[:eq_optwage], endo[:wtil_t]] = 1.
-    Γ0[eq[:eq_optwage], endo[:w_t]] = 1.
-    Γ0[eq[:eq_optwage], endo[:E_wtil]] = -m[:zeta_w]*m[:bet]
-    Γ0[eq[:eq_optwage], endo[:E_w]] = -m[:zeta_w]*m[:bet]
-    Γ0[eq[:eq_optwage], endo[:b_t]] = -(1-m[:zeta_w]*m[:bet])*(exp(2*m[:zstar])+(m[:h]^2)*m[:bet])*exp(-m[:zstar])/(exp(m[:zstar])-m[:h])
-    Γ0[eq[:eq_optwage], endo[:phi_t]] = -1.
-    Γ0[eq[:eq_optwage], endo[:L_t]] = -(1-m[:zeta_w]*m[:bet])*m[:nu_l]
-    Γ0[eq[:eq_optwage], endo[:xi_t]] = (1-m[:zeta_w]*m[:bet])
-    Γ0[eq[:eq_optwage], endo[:E_pi]] = -m[:zeta_w]*m[:bet]
-    Γ0[eq[:eq_optwage], endo[:z_t]] = -m[:zeta_w]*m[:bet]*m[:rho_z] + m[:zeta_w]*m[:bet]*m[:iota_w]
-    Γ0[eq[:eq_optwage], endo[:pi_t]] = m[:zeta_w]*m[:bet]*m[:iota_w]
+    if subspec(m) in ["ss0"]
+        Γ0[eq[:eq_optwage], endo[:wtil_t]] = 1.
+        Γ0[eq[:eq_optwage], endo[:w_t]] = 1.
+        Γ0[eq[:eq_optwage], endo[:E_wtil]] = -m[:zeta_w]*m[:bet]
+        Γ0[eq[:eq_optwage], endo[:E_w]] = -m[:zeta_w]*m[:bet]
+        Γ0[eq[:eq_optwage], endo[:b_t]] = -(1-m[:zeta_w]*m[:bet])*(exp(2*m[:zstar])+(m[:h]^2)*m[:bet])*exp(-m[:zstar])/(exp(m[:zstar])-m[:h])
+        Γ0[eq[:eq_optwage], endo[:phi_t]] = -1.
+        Γ0[eq[:eq_optwage], endo[:L_t]] = -(1-m[:zeta_w]*m[:bet])*m[:nu_l]
+        Γ0[eq[:eq_optwage], endo[:xi_t]] = (1-m[:zeta_w]*m[:bet])
+        Γ0[eq[:eq_optwage], endo[:E_pi]] = -m[:zeta_w]*m[:bet]
+        Γ0[eq[:eq_optwage], endo[:z_t]] = -m[:zeta_w]*m[:bet]*m[:rho_z] + m[:zeta_w]*m[:bet]*m[:iota_w]
+        Γ0[eq[:eq_optwage], endo[:pi_t]] = m[:zeta_w]*m[:bet]*m[:iota_w]
+    elseif subspec(m) in ["ss1"]
+        Γ0[eq[:eq_optwage], endo[:wtil_t]] = 1 + m[:nu_l]*(1 + m[:law])/m[:law]
+        Γ0[eq[:eq_optwage], endo[:w_t]] = 1 + m[:zeta_w] * m[:bet] * m[:nu_l] * ((1+m[:law])/m[:law])
+        Γ0[eq[:eq_optwage], endo[:E_wtil]] = -m[:zeta_w]*m[:bet] *(1 + m[:nu_l] *(1 + m[:law]) /m[:law])
+        Γ0[eq[:eq_optwage], endo[:E_w]] = -m[:zeta_w]*m[:bet]*(1 + m[:nu_l] *(1 + m[:law]) /m[:law])
+        Γ0[eq[:eq_optwage], endo[:b_t]] = -(1-m[:zeta_w]*m[:bet])*(exp(2*m[:zstar])+m[:h]^2*m[:bet])*exp(-m[:zstar])/(exp(m[:zstar])-m[:h])
+        Γ0[eq[:eq_optwage], endo[:phi_t]] = -1.
+        Γ0[eq[:eq_optwage], endo[:L_t]] = -(1-m[:zeta_w]*m[:bet])*m[:nu_l]
+        Γ0[eq[:eq_optwage], endo[:xi_t]] = (1-m[:zeta_w]*m[:bet])
+        Γ0[eq[:eq_optwage], endo[:E_pi]] = -m[:zeta_w]*m[:bet]*(1 + m[:nu_l] *(1 + m[:law]) /m[:law])
+        Γ0[eq[:eq_optwage], endo[:z_t]] = -m[:zeta_w]*m[:bet]*m[:rho_z]*(1 + m[:nu_l] *(1 + m[:law]) /m[:law])
+        Γ0[eq[:eq_optwage], endo[:pi_t]] = m[:zeta_w]*m[:bet]*m[:iota_w] *(1 + m[:nu_l] *(1 + m[:law]) /m[:law])
+
+    end
 
     # Aggregate wage evoluation
-    Γ0[eq[:eq_aggwage], endo[:w_t]] = 1.
-    Γ0[eq[:eq_aggwage], endo[:pi_t]] = 1.
-    Γ0[eq[:eq_aggwage], endo[:z_t]] = 1.
-    Γ0[eq[:eq_aggwage], endo[:wtil_t]] = -(1-m[:zeta_w])/m[:zeta_w]
+Γ0[eq[:eq_aggwage], endo[:w_t]] = 1.
+Γ0[eq[:eq_aggwage], endo[:pi_t]] = 1.
+Γ0[eq[:eq_aggwage], endo[:z_t]] = 1.
+Γ0[eq[:eq_aggwage], endo[:wtil_t]] = -(1-m[:zeta_w])/m[:zeta_w]
 
-    Γ1[eq[:eq_aggwage], endo[:w_t]] = 1.
-    Γ1[eq[:eq_aggwage], endo[:pi_t]] = m[:iota_w]
+Γ1[eq[:eq_aggwage], endo[:w_t]] = 1.
+Γ1[eq[:eq_aggwage], endo[:pi_t]] = m[:iota_w]
+if subspec(m) in ["ss0"]
     Γ1[eq[:eq_aggwage], endo[:z_t]] = m[:iota_w]
+end
 
 
     # Capital labor ratio
@@ -142,8 +174,15 @@ function eqcond(m::DSSW, reg::Int)
 
 # Production function
 Γ0[eq[:eq_prod], endo[:y_t]] = 1.
-Γ0[eq[:eq_prod], endo[:k_t]] = -m[:alp]*(m[:ystar]-m[:Bigphi])/m[:ystar]
-Γ0[eq[:eq_prod], endo[:L_t]] = -(1-m[:alp])*(m[:ystar]-m[:Bigphi])/m[:ystar]
+
+if subspec(m) in ["ss0"]
+    Γ0[eq[:eq_prod], endo[:k_t]] = -m[:alp]*(m[:ystar]-m[:Bigphi])/m[:ystar]
+    Γ0[eq[:eq_prod], endo[:L_t]] = -(1-m[:alp])*(m[:ystar]-m[:Bigphi])/m[:ystar]
+elseif subspec(m) in ["ss1"]
+    Γ0[eq[:eq_prod], endo[:k_t]] = -m[:alp]*(m[:ystar]-m[:bigphi])/m[:ystar]
+    Γ0[eq[:eq_prod], endo[:L_t]] = -(1-m[:alp])*(m[:ystar]-m[:bigphi])/m[:ystar]
+end
+
 
 # Taylor rule
 Γ0[eq[:eq_taylor], endo[:R_t]] = 1.

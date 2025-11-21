@@ -14,16 +14,40 @@ function init_subspec!(m::DSSW)
 end
 
 function ss1!(m::DSSW)
-    # We estimate the same parameters in Table 1 (as opposed to the matlab code) except for r-star (indirectly estimated)
-    newly_estim = [:iota_p, :iota_w, :laf]
-    newly_fixed = [:bet, :wadj]
-    for p in m.parameters
-        if p.key ∈ newly_estim
-            p.fixed = false
-        elseif p.key ∈ newly_fixed
-            p.fixed = true
-        end
+    # This model corresponds to the m106 model in the DSSW
+
+    # Calibrated parameter values
+    m[:alp].value = 0.33
+    m[:iota_p].value = 0.5
+    m[:iota_w].value = 0.5
+    m[:bet].value = 2.0
+    m[:pistar].value = 3.0
+    m[:gam].value = 2.0
+    m[:wadj].value = 0.0
+    m[:laf].value = 0.15
+    m[:gstar].value = 0.15
+    m[:Ladj].value = 252.
+
+    # Valuebounds
+    m[:ups].valuebounds = (0., 10.)
+    m[:bigphi].valuebounds = (0., 5.)
+
+    # Transformation
+    m[:wadj].transform_parameterization = (0., 0.)
+
+    # Scaling
+    m[:ups].scaling = x -> exp(x/400)
+    m[:bet].scaling = x -> exp(-x/400)
+    m[:pistar].scaling = x -> exp(x/400)
+    m[:gam].scaling = x -> x/400
+    m[:gstar].scaling = x -> 1 + x
+
+    # Fixing parameters (from matlab: para_mask) - Lazy, I'm sorry
+    fixed_list = [0;0;0;1;1;1;0;0;0;0;1;0;0;1;0;0;0;0;0;0;1;1;0;0;0;0;0;1;0;0;0;0;0;0;1;0;0;0;0;0]
+    for (i, f_val) in enumerate(fixed_list)
+        f_val == 0 ? m.parameters[i].fixed = false : m.parameters[i].fixed = true
     end
+
 end
 
 

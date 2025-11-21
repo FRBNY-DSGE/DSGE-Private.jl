@@ -284,15 +284,25 @@ function init_parameters!(m::DSSW)
                    description="ρ_r",
                    tex_label="\\rho_r")
 
-    m <= parameter(:pistar, 0.65, (-1., 10.), (0., 0.), ModelConstructors.Untransformed(), Normal(3.0, 1.5), fixed=false, scaling = x -> exp(x/100),
+if subspec(m) in ["ss0"]
+      m <= parameter(:pistar, 0.65, (-1., 10.), (0., 0.), ModelConstructors.Untransformed(), Normal(3.0, 1.5), fixed=false, scaling = x -> exp(x/100),
                    description="π_*",
                    tex_label="\\pi_{*}")
+elseif subspec(m) in ["ss1"]
+      m <= parameter(:pistar, 3.0, (-1., 10.), (0., 0.), ModelConstructors.Untransformed(), Normal(3.0, 1.5), fixed=false, scaling = x -> exp(x/400),
+                   description="π_*",
+                   tex_label="\\pi_{*}")
+end
 
     m <= parameter(:gam, 0.5, (1e-6, 10.), (1e-5, 0.), ModelConstructors.Exponential(), GammaAlt(2.0, 1.0), fixed=false, scaling = x -> x/100,
                    tex_label="\\gamma")
-
+if subspec(m) in ["ss0"]
     m <= parameter(:wadj, 5.5, (0., 10.), (1e-5, 0.), ModelConstructors.Exponential(), Normal(0.0, 5.0), fixed=false,
                    tex_label="\\w_{adj}")
+elseif subspec(m) in ["ss1"]
+    m <= parameter(:wadj, 5.5, (0., 10.), (1e-5, 0.), ModelConstructors.Untransformed(), Normal(0.0, 5.0), fixed=false,
+                   tex_label="\\w_{adj}")
+end
 
     m <= parameter(:chi, 0.1, (1e-6, 10.), (1e-5, 0.), ModelConstructors.Exponential(), GammaAlt(0.1, 0.1), fixed=true,
                    tex_label="\\chi")
@@ -403,30 +413,28 @@ function steadystate!(m::DSSW)
     m[:rstar]    = (1/m[:bet])*exp(m[:gam]) * (m[:ups])^(m[:alp]/(1-m[:alp]))
     m[:rkstar]   = (1/m[:bet])*exp((m[:gam]))*m[:ups]^(1/(1-m[:alp]))-(1-m[:del])
     m[:omegastar]= (m[:alp]^(m[:alp])*(1-m[:alp])^(1-m[:alp])*m[:rkstar]^(-m[:alp])/(1+m[:laf]))^(1/(1-m[:alp]))
-    m[:Bigphi]   = m[:laf]*m[:omegastar]*m[:Lstar]/(1-m[:alp])
+
+    if subspec(m) in ["ss0"]
+        m[:Bigphi]   = m[:laf]*m[:omegastar]*m[:Lstar]/(1-m[:alp])
+    end
+
     m[:kstar]    = (m[:alp]/(1-m[:alp]))*m[:omegastar]*m[:Lstar]/m[:rkstar]
     m[:kbarstar] = m[:kstar]*exp(m[:gam])*m[:ups]^(1/(1-m[:alp]))
     m[:istokbarst] = 1-((1-m[:del])/(exp(m[:gam])*m[:ups]^(1/(1-m[:alp]))))
     m[:istar]    = m[:kbarstar]*m[:istokbarst]
-    m[:ystar]    = (m[:kstar]^m[:alp])*(m[:Lstar]^(1-m[:alp]))-m[:Bigphi]
+
+    if subspec(m) in ["ss0"]
+        m[:ystar]    = (m[:kstar]^m[:alp])*(m[:Lstar]^(1-m[:alp]))-m[:Bigphi]
+    elseif subspec(m) in ["ss1"] #Big phi is a non-ss param in m106
+         m[:ystar]    = (m[:kstar]^m[:alp])*(m[:Lstar]^(1-m[:alp]))-m[:bigphi]
+    end
+
     m[:cstar]    = (m[:ystar]/(m[:gstar]))-m[:istar]
     m[:xistar]   = (1/m[:cstar])*((1/(1-m[:h]*exp(-m[:gam])*m[:ups]^(-m[:alp]/(1-m[:alp]))))-(m[:h]*m[:bet]/(exp(m[:gam])*m[:ups]^(m[:alp]/(1-m[:alp]))-m[:h])))
     m[:phi]      = m[:Lstar]^(-m[:nu_l])*m[:omegastar]*m[:xistar]/(1+m[:law])
     m[:Rstarn]   = m[:pistar]*m[:rstar]
     m[:wstar]    = (1/(1+m[:laf]) * (m[:alp]^m[:alp]) * (1-m[:alp])^(1-m[:alp]) * m[:rkstar]^(-m[:alp]) )^(1/(1-m[:alp]))
     #m[:mstar]    = Complex((m[:chi] * (m[:Rstarn]/(1-m[:Rstarn])) * (1/m[:xistar]) ))^(1/m[:nu_m]) # Come back to this [ID]
-#=
-    m[:Rstarn]   = m[:pistar]*m[:rstar]
-    m[:rkstar]   = m[:rstar]*m[:Upsilon] - (1-m[:δ])
-    m[:wstar]    = (m[:α]^m[:α] * (1-m[:α])^(1-m[:α]) * m[:rkstar]^(-m[:α]) / m[:Φ])^(1/(1-m[:α]))
-    m[:Lstar]    = 1.
-    m[:kstar]    = (m[:α]/(1-m[:α])) * m[:wstar] * m[:Lstar] / m[:rkstar]
-    m[:kbarstar] = m[:kstar] * (1+m[:γ]) * m[:Upsilon]^(1 / (1-m[:α]))
-    m[:istar]    = m[:kbarstar] * (1-((1-m[:δ])/((1+m[:γ]) * m[:Upsilon]^(1/(1-m[:α])))))
-    m[:ystar]    = (m[:kstar]^m[:α]) * (m[:Lstar]^(1-m[:α])) / m[:Φ]
-    m[:cstar]    = (1-m[:g_star])*m[:ystar] - m[:istar]
-    m[:wl_c]     = (m[:wstar]*m[:Lstar])/(m[:cstar]*m[:λ_w])
-=#
     return m
 end
 
