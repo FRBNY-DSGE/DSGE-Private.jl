@@ -11,15 +11,13 @@ using Distributed
 path = dirname(@__FILE__)
 #writing_output = false
 
-#==============parallel====================#
-parallel = false
-n_workers = 3
+
 #===============config======================#
-calculate_posterior_mode = false
+calculate_posterior_mode = true
 calculate_hessian = true
 
-save_output_posterior_mode = false
-save_output_hessian = false
+save_output_posterior_mode = true
+save_output_hessian = true
 #===============configure optimizer=================#
 #optimizer_config = :xnes
 optimizer_config = :cmaes
@@ -36,21 +34,10 @@ vecm_object = true
 lags = 4
 horizon = 16
 
-ss = "ss1"
+
 
 #load model
-m = DSSW("ss1")
-
-if parallel == true
-    m <= Setting(:auto_add_procs, true)
-    ENV["frbnyjuliamemory"] = "8G"
-    #n_workers = 3
-    addprocs_frbny(n_workers)
-    @everywhere using DSGE, SMC, OrderedCollections, CMAEvolutionStrategy, Random, ModelConstructors
-    @everywhere global m = $m
-    @everywhere global data = $data
-    @everywhere global mle = false
-end
+m = DSSW()
 
 if vecm_object == true
     vecm = DSGE.DSGEVECM(m)
@@ -107,8 +94,8 @@ data = construct_data()
  
 # See src/estimate/estimate.jl
 #DSGE.update!(m, x0)
-
-n_iterations = 5000
+#end
+n_iterations = 1000
 
 # Set seed for reproducibility
 Random.seed!(42)
@@ -135,13 +122,6 @@ addprocs_frbny(n_workers)
     using DSGE, SMC, OrderedCollections, CMAEvolutionStrategy
 end
 =#
-ref_dir = "$path/../reference"
-if vecm_object == false
-    output_file = "$ref_dir/optimize_dssw_dsge_$(optimizer_config)_$(ss)_minimizer.h5"
-else 
-    output_file = "$ref_dir/optimize_dssw_$(λ)_$(optimizer_config)_$(ss)_minimizer.h5"
-end
-
 
 
 if calculate_posterior_mode == true
@@ -154,37 +134,31 @@ if calculate_posterior_mode == true
         out, H, callback_data = optimize!(vecm, Matrix(data); method = optimizer_config, iterations = n_iterations, show_trace = true)
     end
 seconds_optimizer = time() - start_time_optimizer
-    if save_output_posterior_mode == true
+    if save_posterior_mode == true
 
     #TODO: output posterior mode
-        # Remove existing file to ensure overwrite
-        isfile(output_file) && rm(output_file)
-        h5write(output_file, "minimizer", out.minimizer)
-        println("Saved minimizer to $output_file")
-
+    
     end
 
 
 
 else
-    #read in posterior mode from reference h5 file
-    minimizer = h5read(output_file, "minimizer")
-    println("Loaded minimizer from $output_file")
-
-    # Create a simple named tuple to match the structure expected later
-    out = (minimizer = minimizer,)
+    if vecm_object == true
+        #minimized_x = #read in 
+    end
+    #TODO: read in posterior mode from reference/xxx.h5
 end
     
 if calculate_hessian == true
     start_time_hessian = time()
     
     if vecm_object == false
-        hessian, _ = hessian!(m, out.minimizer, data; toggle = true, verbose = :low, check_neg_diag = false) 
+        hessian, _ = hessian!(m, out.minimizer, data; toggle = true, verbose = :low) 
     else
-        hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :low, check_neg_diag = false)        
+        hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :low)        
     end
 
-    if save_output_hessian == true
+    if save_hessian == true
     #TODO: save hessian
 #=
 h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
@@ -193,10 +167,9 @@ h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
 =#
     end
 
-    seconds_hessian = time() - start_time_hessian
-    println("hessian time: $(seconds_hessian)") 
+    seconds_hessian = time() - seconds_hessian
 end
 
 println(out)
 println("optimizer time: $(seconds_optimizer)")
-
+println("hessian time: $(seconds_hessian)")

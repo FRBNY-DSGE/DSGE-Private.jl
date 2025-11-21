@@ -134,27 +134,27 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     end
 
     function f_opt_particle(x_opt::AbstractVector{<: Real})::Float64
-    try
-        regime_switching = false
-        x_model[para_free_inds] = x_opt
-        DSGE.update!(m, x_model)
-    catch
-        return Inf
-    end
-
-    if mle
-        out = -likelihood(m, data; catch_errors = true)
-    else
         try
-            out = -posterior(m, data; catch_errors = true)
+            regime_switching = false
+            x_model[para_free_inds] = x_opt
+            DSGE.update!(m, x_model)
         catch
-            out = Inf
+            return Inf
         end
-    end
 
-    out = !isnan(out) ? out : Inf
-    return out
-end
+        if mle
+            out = -likelihood(m, data; catch_errors = true)
+        else
+            try
+                out = -posterior(m, data; catch_errors = true)
+            catch
+                out = Inf
+            end
+        end
+
+        out = !isnan(out) ? out : Inf
+        return out
+    end
 
 
 
@@ -411,6 +411,8 @@ end
                                                                            parallel_evaluation = true, store_trace = store_trace, show_trace = show_trace, 
                                                                            extended_trace = extended_trace, verbose = verbose, rng = rng)
         else
+            popsize = 100
+            s0 = 0.02
             opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt_particle, x_opt, s0; lower = lower_bounds, upper = upper_bounds, popsize = popsize, 
             parallel_evaluation = false, store_trace = store_trace, show_trace = show_trace, 
             extended_trace = extended_trace, verbose = verbose, rng = rng)

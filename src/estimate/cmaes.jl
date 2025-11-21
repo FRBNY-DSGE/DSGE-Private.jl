@@ -115,7 +115,6 @@ end
         maxfevals = maxfevals               
     )
 
-    Main.xx[] = cma_result
 
     x_best = xbest(cma_result)
     f_best = fbest(cma_result)
