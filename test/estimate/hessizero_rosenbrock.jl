@@ -38,7 +38,10 @@ for diag_order in diag_order_ls
             else
 
                 hessian_expected = rosenbrock_hessian(x0)
+                
+                start = time()
                 hessian, = DSGE.hessizero(rosenbrock, x0, lb, ub; diag_order_error = diag_order, offdiag_order_error = offdiag_order, offdiag_method = method, check_neg_diag=true)
+                endt = time()-start
 
                 inf_norm = norm(hessian_expected - hessian, Inf)
                 l2_norm = norm(hessian_expected - hessian)
@@ -53,7 +56,7 @@ for diag_order in diag_order_ls
 
                 println("inf norm = $(inf_norm)")
                 println("l2_norm = $(l2_norm)")
-
+                println("seconds = $(endt)")
             end
         end
     end
