@@ -18,7 +18,7 @@ function hessizero(fcn::Function,
                    lb,
                    ub;
                    diag_order_error::Int  = 4,
-                   offdiag_order_error::Int = 4,
+                   offdiag_order_error::Int = 2,
                    offdiag_method::Symbol = :richardson,
                    check_neg_diag::Bool=false,
                    verbose::Symbol=:none,
@@ -139,7 +139,7 @@ function hess_diag_element_o4(fcn::Function,
          
         #do center difference O(h^4)
         if forward_i_valid && backward_i_valid
-            println("CENTER DIFF o4")
+            #println("CENTER DIFF o4")
 
             paradx = copy(x)
             parady = copy(x)
@@ -158,11 +158,11 @@ function hess_diag_element_o4(fcn::Function,
             f2dy = fcn(para2dy)
 
             hessdiag[k]  = (-f2dx + 16*fdx - 30*fx + 16*fdy - f2dy) / (12*hi^2)
-            println(hessdiag[k]) 
+            #println(hessdiag[k]) 
 
         #do backward difference O(h^4)
         elseif backward_i_valid
-            println("BWARD DIFF O4")
+            #println("BWARD DIFF O4")
             parady = copy(x)
             para2dy = copy(x)
             para3dy = copy(x)
@@ -183,11 +183,11 @@ function hess_diag_element_o4(fcn::Function,
             f5dy = fcn(para5dy)
 
             hessdiag[k]  = (45*fx - 154*fdy + 214*f2dy - 156*f3dy + 61*f4dy - 10*f5dy) / (12*hi^2)
-     println(hessdiag[k]) 
+     #println(hessdiag[k]) 
 
         #do forward difference O(h^4)
         elseif forward_i_valid
-            println("FWARD DIFF O4")
+            #println("FWARD DIFF O4")
             paradx = copy(x)
             para2dx = copy(x)
             para3dx = copy(x)
@@ -208,18 +208,18 @@ function hess_diag_element_o4(fcn::Function,
             f5dx = fcn(para5dx)
 
             hessdiag[k]  = (45*fx - 154*fdx + 214*f2dx - 156*f3dx + 61*f4dx - 10*f5dx) / (12*hi^2)
-    println(hessdiag[k]) 
+    #println(hessdiag[k]) 
 
         end
     end
 
-    println(verbose, :high, "Values: $(hessdiag)")
+    #println(verbose, :high, "Values: $(hessdiag)")
 
     value = (hessdiag[3]+hessdiag[4])/2
 
     if check_neg_diag && value < 0
-        println("ORIGINAL o4")
-        println(value)
+        #println("ORIGINAL o4")
+        #println(value)
         value = hess_diag_element_o2(fcn, x, i, lb, ub; check_neg_diag = check_neg_diag,verbose = verbose)
                #error("Negative diagonal in Hessian")
     end
