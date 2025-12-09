@@ -303,6 +303,10 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
         cc0 = get_setting(m, :mh_cc0)
         cc  = get_setting(m, :mh_cc)
 
+        #@show hessian
+        #@show hessian_inv
+        #@show params
+        #@assert false
         metropolis_hastings(propdist, m, data, cc0, cc; regime_switching = regime_switching,
                             toggle = toggle, verbose = verbose, filestring_addl = filestring_addl);
 

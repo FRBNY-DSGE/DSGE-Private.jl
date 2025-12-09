@@ -541,6 +541,7 @@ function df_to_matrix(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFram
     cols = collect(keys(get_observables(m)))
     sort!(cols, by = x -> get_observables(m)[x])
     df1 = df1[!,cols]
+    df1 = Matrix{Union{Missing, Float64}}(df1)
 
     return permutedims(Float64.(collect(Missings.replace(Matrix{Union{Missing, Float64}}(df1), NaN))))
 end
