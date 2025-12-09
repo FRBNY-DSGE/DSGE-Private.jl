@@ -241,7 +241,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
         hessian = if calculate_hessian(m)
             println(verbose, :low, "Recalculating Hessian...")
 
-            hessian, _ = hessian!(m, params, data; toggle = toggle, verbose = verbose)
+            hessian, _ = hessian!(m, params, data; toggle = toggle, verbose = verbose, check_neg_diag = false)
 
             h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
                 file["hessian"] = hessian
