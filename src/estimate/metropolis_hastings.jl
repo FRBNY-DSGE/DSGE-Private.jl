@@ -214,7 +214,6 @@ function metropolis_hastings(proposal_dist::Distribution,
                 d_subset = MvNormal(propdist.μ[block_a], d_Σ)
                 #d_subset = DegenerateMvNormal(propdist.μ[block_a], d_Σ, stdev = false)
 
-
                 para_draw         = mvnormal_mixture_draw(para_subset, d_subset;
                                                           α = α, c = cc)
                 para_new          = deepcopy(para_old)

@@ -37,6 +37,8 @@ function init_subspec!(m::Model1002)
         return ss19!(m)
     elseif subspec(m) == "ss20"
         return ss20!(m)
+    elseif subspec(m) == "ss21"
+        return ss21!(m)
     elseif subspec(m) == "ss30"
         return ss30!(m)
     elseif subspec(m) == "ss51"
@@ -133,6 +135,8 @@ function init_subspec!(m::Model1002)
         return ss103!(m)
     elseif subspec(m) == "ss104"
         return ss104!(m)
+    elseif subspec(m) == "ss110"
+        return ss110!(m)
     elseif subspec(m) == "ss205"
         return ss205!(m)
     elseif subspec(m) == "ss206"
@@ -775,6 +779,21 @@ but the coefficient on markup shocks in the price Phillips curve is re-scaled.
 function ss20!(m::Model1002)
     ss10!(m)
 end
+
+"""
+```
+ss21!(m::Model1002)
+```
+
+Initializes subspec 21 of `Model1002`. This subspecification is the same as ss10,
+but we remove observed TFP from the model.
+"""
+function ss21!(m::Model1002)
+    ss10!(m)
+end
+
+
+
 
 """
 ```
@@ -7068,6 +7087,16 @@ function ss105!(m)
     ss97!(m)
 end
 
+"""
+'''
+ss110!(m::Model1002)
+'''
+
+ss110 is a version of ss10 (pre-covid model) where we remove observed TFP.
+"""
+function ss110!(m)
+    ss10!(m)
+end
 
 
 """

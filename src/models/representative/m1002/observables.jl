@@ -373,7 +373,7 @@ function init_observable_mappings!(m::Model1002)
                                            tfp_fwd_transform, tfp_rev_transform,
                                            "Total Factor Productivity Growth (Fernald)",
                                            "Fernald's TFP, adjusted by Fernald's estimated alpha and utilization capacity")
-    else
+    elseif subspec(m) ∉ ["ss15", "ss16", "ss21"]
         tfp_fwd_transform =  function (levels)
             # FROM: Fernald's unadjusted TFP series
             # TO:   De-meaned unadjusted TFP series, adjusted by Fernald's estimated alpha

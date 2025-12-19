@@ -131,22 +131,22 @@ function compute_system(m::AbstractDSGEVARModel{T}, data::Matrix{T};
                 # Compute prior-weighted population moments
                 #[ID] Weigh lambda by number of observations
                 T_obs = size(data, 2)
+                T_adj = T_obs - lags
                 λ = get_λ(m)
-                YYYYC = YYYY + λ .* T_obs .* out[1]
-                XXYYC = XXYY + λ .* T_obs .* out[2]
-                XXXXC = XXXX + λ .* T_obs .* out[3]
+                λT = λ * T_adj
 
-                # Draw stationary VAR system
-                n_periods = size(data, 2) - lags
+                YYYYC = YYYY + λT .* out[1]
+                XXYYC = XXYY + λT .* out[2]
+                XXXXC = XXXX + λT .* out[3]
 
                 # Get β hat and Σ hat as opposed to draws of β and Σ from posterior
                 if get_posterior_hat
                     β, Σ = return_posterior_hat(YYYYC, XXYYC, XXXXC,
-                                                convert(Int, floor(n_periods + λ * n_periods)),
+                                                convert(Int, floor(T_adj + λT)),
                                                 size(data, 1), lags)
                 else
                     β, Σ =  draw_stationary_VAR(YYYYC, XXYYC, XXXXC,
-                                                convert(Int, floor(n_periods + λ * n_periods)),
+                                                convert(Int, floor(T_adj + λT)),
                                                 size(data, 1), lags)
                 end
 
@@ -258,21 +258,22 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
                 # Compute prior-weighted population moments
                 #[ID] Weigh lambda by number of observations
                 T_obs = size(data, 2)
+                T_adj = T_obs - lags
                 λ = get_λ(m)
-                YYYYC = YYYY + λ .* T_obs .* out[1]
-                XXYYC = XXYY + λ .* T_obs .* out[2]
-                XXXXC = XXXX + λ .* T_obs .* out[3]
+                λT = λ * T_adj
 
-                # Draw VECM system
-                n_periods = size(data, 2) - lags
+                YYYYC = YYYY + λT .* out[1]
+                XXYYC = XXYY + λT .* out[2]
+                XXXXC = XXXX + λT .* out[3]
+
 
                 if get_posterior_hat
                     β, Σ = return_posterior_hat_VECM(YYYYC, XXYYC, XXXXC,
-                                                convert(Int, n_periods + λ * n_periods),
+                                                convert(Int, T_adj + λT),
                                                 size(data, 1), lags, n_cointegrating(m))
                 else
                     β, Σ = draw_VECM(YYYYC, XXYYC, XXXXC,
-                                     convert(Int, n_periods + λ * n_periods),
+                                     convert(Int, T_adj + λT),
                                      size(data, 1), lags, n_cointegrating(m))
                 end
 

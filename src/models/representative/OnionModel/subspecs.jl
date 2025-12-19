@@ -7,7 +7,6 @@ function init_subspec!(m::OnionModel)
         return ss0!(m)
     elseif subspec(m) == "ss1"
         return ss1!(m)
-        #=
         elseif subspec(m) == "ss2"
         return ss2!(m)
         elseif subspec(m) == "ss3"
@@ -28,13 +27,12 @@ function init_subspec!(m::OnionModel)
         return ss10!(m)
         elseif subspec(m) == "ss12"
         return ss12!(m)
-        elseif subspec(m) == "ss12"
-        return ss12!(m)
+        #=
         elseif subspec(m) == "ss20"
         return ss20!(m)
         elseif subspec(m) == "ss21"
         return ss21!(m)
-        =#
+=#
     else
         error("This subspec has not been defined.")
     end
