@@ -20,7 +20,7 @@ function init_observable_mappings!(m::OnionModel)
         levels
     end
 
-    if subspec_int ∉ [7, 9, 12]
+    if subspec_int ∉ [7, 9, 12, 13, 113, 114, 115, 116, 117]
         consumption_fwd_transform = function (levels)
             # FROM: Nominal consumption
             # TO:   Real consumption, approximate quarter-to-quarter percent change,
@@ -61,6 +61,7 @@ function init_observable_mappings!(m::OnionModel)
 
 
     #Core servies
+    if subspec_int ∉ [117]
      core_service_cpi_fwd_transform = function(levels)
         demean(oneqtrpctchange(levels[!,:CUSR0000SASLE]))
     end
@@ -70,39 +71,162 @@ function init_observable_mappings!(m::OnionModel)
                                    core_service_cpi_fwd_transform,
                                    core_service_cpi_rev_transform,
                                    "CPI Core Services",
-                                             "CPI Core Services")
+                                                 "CPI Core Services")
+    else
+        # CPI Sectoral Inflation (services)
+        inflation_sector_names_short = get_setting(m, :sector_names_short)
+        inflation_sector_names_data = get_setting(m, :sector_names)
 
-    #Core goods
-     core_goods_cpi_fwd_transform = function(levels)
-        demean(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
+        for i in get_setting(m, :subgroup_to_sector)["core_services"]
+
+            cpisector_fwd_transform = function(levels)
+                demean(100 * levels[!, Symbol("$(inflation_sector_names_data[i])")])
+            end
+
+            observables[Symbol("π_$(inflation_sector_names_short[i])")] = Observable(Symbol("π_$(inflation_sector_names_short[i])"),
+                                                                                     [Symbol("$(inflation_sector_names_data[i])__CPIQUARTER")],
+                                                                                     cpisector_fwd_transform,
+                                                                                     identity,
+                                                                                     "CPI Sector $(i) Inflation, $(inflation_sector_names_short[i])",
+                                                                                     "CPI Sector $(i) Inflation, $(inflation_sector_names_short[i])")
+        end
     end
 
-    core_goods_cpi_rev_transform = identity
-    observables[:cpi_core_goods] = Observable(:cpi_core_goods, [:CUSR0000SACL1E__FRED],
-                                   core_goods_cpi_fwd_transform,
-                                   core_goods_cpi_rev_transform,
-                                   "CPI Core Goods",
-                                              "CPI Core Goods")
+
+    #Core goods
+    if subspec_int ∉ [116, 117]
+        core_goods_cpi_fwd_transform = function(levels)
+            demean(oneqtrpctchange(levels[!,:CUSR0000SACL1E]))
+        end
+
+        core_goods_cpi_rev_transform = identity
+        observables[:cpi_core_goods] = Observable(:cpi_core_goods, [:CUSR0000SACL1E__FRED],
+                                                  core_goods_cpi_fwd_transform,
+                                                  core_goods_cpi_rev_transform,
+                                                  "CPI Core Goods",
+                                                  "CPI Core Goods")
+    else
+
+        # CPI Sectoral Inflation (goods)
+        inflation_sector_names_short = get_setting(m, :sector_names_short)
+        inflation_sector_names_data = get_setting(m, :sector_names)
+
+        for i in get_setting(m, :subgroup_to_sector)["core_goods"]
+
+            cpisector_fwd_transform = function(levels)
+                demean(100 * levels[!, Symbol("$(inflation_sector_names_data[i])")])
+            end
+
+            observables[Symbol("π_$(inflation_sector_names_short[i])")] = Observable(Symbol("π_$(inflation_sector_names_short[i])"),
+                                                                                     [Symbol("$(inflation_sector_names_data[i])__CPIQUARTER")],
+                                                                                     cpisector_fwd_transform,
+                                                                                     identity,
+                                                                                     "CPI Sector $(i) Inflation, $(inflation_sector_names_short[i])",
+                                                                                     "CPI Sector $(i) Inflation, $(inflation_sector_names_short[i])")
+        end
+    end
+
 
 
     #Energy
-    energy_cpi_fwd_transform = function(levels)
-        demean(oneqtrpctchange(levels[!, :CPIENGSL]))
+    if subspec_int ∉ [114, 115, 116, 117] #114
+        energy_cpi_fwd_transform = function(levels)
+            demean(oneqtrpctchange(levels[!, :CPIENGSL]))
+        end
+
+
+        energy_cpi_rev_transform = identity
+        observables[:cpi_energy] = Observable(:cpi_energy, [:CPIENGSL__FRED],
+                                              energy_cpi_fwd_transform,
+                                              energy_cpi_rev_transform,
+                                              "CPI Energy",
+                                              "CPI Energy")
+    else
+        # CPI Sectoral Inflation (energy)
+        inflation_sector_names_short = get_setting(m, :sector_names_short)
+        inflation_sector_names_data = get_setting(m, :sector_names)
+
+        for i in get_setting(m, :subgroup_to_sector)["cpi_energy"]
+
+            cpisector_fwd_transform = function(levels)
+                demean(100 * levels[!, Symbol("$(inflation_sector_names_data[i])")])
+            end
+
+            observables[Symbol("π_$(inflation_sector_names_short[i])")] = Observable(Symbol("π_$(inflation_sector_names_short[i])"),
+                                                                                     [Symbol("$(inflation_sector_names_data[i])__CPIQUARTER")],
+                                                                                     cpisector_fwd_transform,
+                                                                                     identity,
+                                                                                     "CPI Sector $(i) Inflation, $(inflation_sector_names_short[i])",
+                                                                                     "CPI Sector $(i) Inflation, $(inflation_sector_names_short[i])")
+        end
     end
 
+#=
+    # CPI Sectoral Inflation
+    inflation_sector_names = get_setting(m, :sector_names)
 
-    energy_cpi_rev_transform = identity
-    observables[:cpi_energy] = Observable(:cpi_energy, [:CPIENGSL__FRED],
-                                          energy_cpi_fwd_transform,
-                                          energy_cpi_rev_transform,
-                                          "CPI Energy",
-                                          "CPI Energy")
+    for i in 1:get_setting(m, :n_sectors)
 
+        cpisector_fwd_transform = function(levels)
+            demean2(100 * levels[!, Symbol("$(inflation_sector_names[i])")])
+        end
+
+        if get_setting(m, :data_quarter_or_month) == :quarter
+            observables[Symbol("Inflation, $(inflation_sector_names[i])")] = Observable(Symbol("Inflation, $(inflation_sector_names[i])"),
+                                                                                        [Symbol("$(inflation_sector_names[i])__CPIQUARTER")],
+                                                                                        cpisector_fwd_transform,
+                                                                                        identity,
+                                                                                        "CPI Sector $(i) Inflation, $(inflation_sector_names[i])",
+                                                                                        "CPI Sector $(i) Inflation, $(inflation_sector_names[i])")
+        else
+            observables[Symbol("Inflation, $(inflation_sector_names[i])")] = Observable(Symbol("Inflation, $(inflation_sector_names[i])"),
+                                                                                        [Symbol("$(inflation_sector_names[i])__CPIMONTH")],
+                                                                                        cpisector_fwd_transform,
+                                                                                        identity,
+                                                                                        "CPI Sector $(i) Inflation, $(inflation_sector_names[i])",
+                                                                                        "CPI Sector $(i) Inflation, $(inflation_sector_names[i])")
+        end
+    end
+=#
+
+    # Add food observable
+    if subspec_int ∈ [13, 113, 114]
+
+        food_cpi_fwd_transform = function(levels)
+            demean(oneqtrpctchange(levels[!,:CPIFABSL]))
+        end
+
+        food_cpi_rev_transform = identity
+        observables[:cpi_food] = Observable(:cpi_food, [:CPIFABSL__FRED],
+                                                     food_cpi_fwd_transform,
+                                                     food_cpi_rev_transform,
+                                                     "CPI Food",
+                                                     "CPI Food")
+    elseif subspec_int ∈ [115, 116, 117]
+        # CPI Sectoral Inflation (food)
+        inflation_sector_names_short = get_setting(m, :sector_names_short)
+        inflation_sector_names_data = get_setting(m, :sector_names)
+
+        for i in get_setting(m, :subgroup_to_sector)["cpi_food"]
+
+            cpisector_fwd_transform = function(levels)
+                demean(100 * levels[!, Symbol("$(inflation_sector_names_data[i])")])
+            end
+
+            observables[Symbol("π_$(inflation_sector_names_short[i])")] = Observable(Symbol("π_$(inflation_sector_names_short[i])"),
+                                                                                     [Symbol("$(inflation_sector_names_data[i])__CPIQUARTER")],
+                                                                                     cpisector_fwd_transform,
+                                                                                     identity,
+                                                                                     "CPI Sector $(i) Inflation, $(inflation_sector_names_short[i])",
+                                                                                     "CPI Sector $(i) Inflation, $(inflation_sector_names_short[i])")
+        end
+
+    end
 
 
     # CPI Inflation observable
 
-    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
         cpi_fwd_transform = function(levels)
             demean(oneqtrpctchange(levels[!,:CPIAUCSL]))
         end
@@ -202,7 +326,7 @@ end
 
 
 
-if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12, 20]
+if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
     ############################################################################
     # 10. Long term inflation expectations
     ############################################################################
@@ -213,7 +337,7 @@ if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12, 20]
         # Note: We subtract 0.5 because 0.5% inflation corresponds to
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
-        if subspec_int ∈ [12, 20]
+        if subspec_int ∈ [12, 13, 20, 113, 114, 115, 116, 117]
             demean(annualtoquarter(levels[!, :PCE10]))
         else
             demean2(annualtoquarter(levels[!,:ASACX10]))
@@ -224,7 +348,7 @@ if subspec_int ∈ [3, 4, 5, 6, 7, 8, 9, 10, 12, 20]
 #Demean here by subtracting 2.3 as well
 
     longinflation_rev_transform = identity         #loggrowthtopct_annualized
-    if subspec_int  ∈ [12, 20]
+    if subspec_int  ∈ [12, 13, 20, 113, 114, 115, 116, 117]
         observables[:obs_longinflation] = Observable(:obs_longinflation, [:PCE10__PCE10YR],
                                                  longinflation_fwd_transform, longinflation_rev_transform,
                                              "10-year average inflation expectations",

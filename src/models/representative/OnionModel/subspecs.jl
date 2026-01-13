@@ -7,32 +7,42 @@ function init_subspec!(m::OnionModel)
         return ss0!(m)
     elseif subspec(m) == "ss1"
         return ss1!(m)
-        elseif subspec(m) == "ss2"
+    elseif subspec(m) == "ss2"
         return ss2!(m)
-        elseif subspec(m) == "ss3"
+    elseif subspec(m) == "ss3"
         return ss3!(m)
-        elseif subspec(m) == "ss4"
+    elseif subspec(m) == "ss4"
         return ss4!(m)
-        elseif subspec(m) == "ss5"
+    elseif subspec(m) == "ss5"
         return ss5!(m)
-        elseif subspec(m) == "ss6"
+    elseif subspec(m) == "ss6"
         return ss6!(m)
-        elseif subspec(m) == "ss7"
+    elseif subspec(m) == "ss7"
         return ss7!(m)
-        elseif subspec(m) == "ss8"
+    elseif subspec(m) == "ss8"
         return ss8!(m)
-        elseif subspec(m) == "ss9"
+    elseif subspec(m) == "ss9"
         return ss9!(m)
-        elseif subspec(m) == "ss10"
+    elseif subspec(m) == "ss10"
         return ss10!(m)
-        elseif subspec(m) == "ss12"
+    elseif subspec(m) == "ss12"
         return ss12!(m)
-        #=
-        elseif subspec(m) == "ss20"
+    elseif subspec(m) == "ss13"
+        return ss13!(m)
+    elseif subspec(m) == "ss20"
         return ss20!(m)
-        elseif subspec(m) == "ss21"
+    elseif subspec(m) == "ss21"
         return ss21!(m)
-=#
+    elseif subspec(m) == "ss113"
+        return ss113!(m)
+    elseif subspec(m) == "ss114"
+        return ss114!(m)
+    elseif subspec(m) == "ss115"
+        return ss115!(m)
+    elseif subspec(m) == "ss116"
+        return ss116!(m)
+    elseif subspec(m) == "ss117"
+        return ss117!(m)
     else
         error("This subspec has not been defined.")
     end
@@ -331,6 +341,94 @@ function ss12!(m::OnionModel)
 
 end
 
+function ss13!(m::OnionModel)
+    # Subspec for DSGEVAR estimation of onion model where:
+    ss12!(m)
+
+    # Addition:
+    # Add cpi_food as an observable
+    # Add meas err process to CPI inflation
+
+    # Fix rho_meas_cpi to 0
+    m[:ρ_meas_cpi].fixed = true
+    m[:ρ_meas_cpi].value = 0.0
+
+    m[:σ_meas_cpi].fixed = false
+end
+
+function ss113!(m::OnionModel)
+    # Subspec for DSGEVAR estimation of onion model where:
+    ss13!(m)
+
+    # Addition:
+    # We keep the four main subgroups (goods, services, energy, food)
+    # We have sector specific markup shock persistence and std (no longer subgroup specific)
+end
+
+function ss114!(m::OnionModel)
+    # Subspec for DSGEVAR estimation of onion model where:
+    ss113!(m)
+
+    # Addition:
+    # We keep the four main subgroups (goods, services, energy, food) but try decomposing energy
+    # We have sector specific markup shock persistence and std (no longer subgroup specific)
+    # In raw data, renamed cpiquarter_241023 to be cpiquarter_241122 to match data vints
+
+    # Create setting for which subgroup to decompose into sectoral observables
+    decomp_subgroup = ["cpi_energy"]
+    m <= Setting(:decomp_subgroup, decomp_subgroup)
+
+end
+
+function ss115!(m::OnionModel)
+    # Subspec for DSGEVAR estimation of onion model where:
+    ss113!(m)
+
+    # Addition:
+    # We keep the four main subgroups (goods, services, energy, food) but try decomposing energy
+    # We have sector specific markup shock persistence and std (no longer subgroup specific)
+    # In raw data, renamed cpiquarter_241023 to be cpiquarter_241122 to match data vints
+
+    # Create setting for which subgroup to decompose into sectoral observables
+    decomp_subgroup = ["cpi_energy", "cpi_food"]
+    m <= Setting(:decomp_subgroup, decomp_subgroup)
+
+end
+
+function ss116!(m::OnionModel)
+    # Subspec for DSGEVAR estimation of onion model where:
+    ss113!(m)
+
+    # Addition:
+    # We keep the four main subgroups (goods, services, energy, food) but try decomposing energy
+    # We have sector specific markup shock persistence and std (no longer subgroup specific)
+    # In raw data, renamed cpiquarter_241023 to be cpiquarter_241122 to match data vints
+
+    # Create setting for which subgroup to decompose into sectoral observables
+    decomp_subgroup = ["cpi_energy", "cpi_food", "core_goods"]
+    m <= Setting(:decomp_subgroup, decomp_subgroup)
+
+end
+
+function ss117!(m::OnionModel)
+    # Subspec for DSGEVAR estimation of onion model where:
+    ss113!(m)
+
+    # Addition:
+    # We keep the four main subgroups (goods, services, energy, food) but try decomposing energy
+    # We have sector specific markup shock persistence and std (no longer subgroup specific)
+    # In raw data, renamed cpiquarter_241023 to be cpiquarter_241122 to match data vints
+
+    # Create setting for which subgroup to decompose into sectoral observables
+    decomp_subgroup = ["cpi_energy", "cpi_food", "core_goods", "core_services"]
+    m <= Setting(:decomp_subgroup, decomp_subgroup)
+
+end
+
+
+
+
+#=
 function ss20!(m::OnionModel)
     # Only observe cpi inflation and PCE expectations and no other variables
     ss5!(m)
@@ -383,3 +481,4 @@ function ss21!(m::OnionModel)
     #rho pi_star (fix!)
     m[:ρ_πstar].fixed = true
 end
+=#

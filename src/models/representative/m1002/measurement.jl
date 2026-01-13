@@ -218,7 +218,41 @@ DD[obs[:obs_spread]]                   = 100*log(m[:spr])
     ZZ[obs[:obs_longrate], :]                 =  view(TTT10, endo[:R_t], :) # TODO: this is slightly inefficient, do what we do with long inflation
     ZZ[obs[:obs_longrate], endo_new[:e_lr_t]] = 1.0
     DD[obs[:obs_longrate]]                    = m[:Rstarn] + CCC10[endo[:R_t]]
-    # DD[obs[:obs_longrate]]                    = m[:Rstarn] + ZZ_long_rate * CCC10
+# DD[obs[:obs_longrate]]                    = m[:Rstarn] + ZZ_long_rate * CCC10
+
+if subspec(m) ∈ ["ss22", "ss23"]
+    # Add one year yield
+    TTT1, CCC1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 4, permanent_t;
+                                               integ_series = integ_series,
+                                               memo = use_fwd_exp_sum ? memo : nothing)
+    TTT1 = TTT1 ./ 4.
+    CCC1 = CCC1 ./ 4.
+
+    ZZ[obs[:obs_oneyear], :] = view(TTT1, endo[:R_t], :)
+    DD[obs[:obs_oneyear]] = m[:Rstarn] + CCC1[endo[:R_t]]
+
+    # Add two year yield
+    TTT2, CCC2 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 8, permanent_t;
+                                               integ_series = integ_series,
+                                               memo = use_fwd_exp_sum ? memo : nothing)
+    TTT2 = TTT2 ./ 8.
+    CCC2 = CCC2 ./ 8.
+
+    ZZ[obs[:obs_twoyear], :] = view(TTT2, endo[:R_t], :)
+    DD[obs[:obs_twoyear]] = m[:Rstarn] + CCC2[endo[:R_t]]
+
+    # Add three year yield
+    TTT3, CCC3 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 12, permanent_t;
+                                               integ_series = integ_series,
+                                               memo = use_fwd_exp_sum ? memo : nothing)
+    TTT3 = TTT3 ./ 12.
+    CCC3 = CCC3 ./ 12.
+
+    ZZ[obs[:obs_threeyear], :] = view(TTT3, endo[:R_t], :)
+    DD[obs[:obs_threeyear]] = m[:Rstarn] + CCC3[endo[:R_t]]
+
+end
+
 
 
 ###### Short run inflation expectations ################
@@ -267,7 +301,7 @@ end
 
 
 ## TFP
-if subspec(m) ∉ ["ss21"]
+if subspec(m) ∉ ["ss21", "ss23"]
     ZZ[obs[:obs_tfp], endo[:z_t]] = (1-m[:α])*m[:Iendoα] + 1*(1-m[:Iendoα])
     if subspec(m) in ["ss14", "ss15", "ss16", "ss18", "ss19"]
         ZZ[obs[:obs_tfp], endo_new[:e_tfp_t]]  = 1.0
@@ -473,13 +507,17 @@ end
     use_current_regime = haskey(get_settings(m), :measurement_use_current_regime_matrices) ?
         get_setting(m, :measurement_use_current_regime_matrices) : true
 
-    # Anticipated monetary policy shocks
+# Anticipated monetary policy shocks
     finished_expffr = []
-    TTT_accums, CCC_accums = one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, n_mon_anticipated_shocks(m), permanent_t)
+    if n_mon_anticipated_shocks(m) > 0
+        TTT_accums, CCC_accums = one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, n_mon_anticipated_shocks(m), permanent_t)
+    end
 
     for i in 1:n_mon_anticipated_shocks(m)
-        ZZ[obs[Symbol("obs_nominalrate$i")], :] = view(TTT_accums[i], endo[:R_t], :)
-        DD[obs[Symbol("obs_nominalrate$i")]]    = m[:Rstarn] + CCC_accums[i][endo[:R_t]]
+        if subspec(m) ∉ ["ss22", "ss23"]
+            ZZ[obs[Symbol("obs_nominalrate$i")], :] = view(TTT_accums[i], endo[:R_t], :)
+            DD[obs[Symbol("obs_nominalrate$i")]]    = m[:Rstarn] + CCC_accums[i][endo[:R_t]]
+        end
         if subspec(m) == "ss11"
             QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[:σ_r_m]^2 / n_mon_anticipated_shocks(m)
         else

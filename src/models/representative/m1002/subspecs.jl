@@ -39,6 +39,10 @@ function init_subspec!(m::Model1002)
         return ss20!(m)
     elseif subspec(m) == "ss21"
         return ss21!(m)
+    elseif subspec(m) == "ss22"
+        return ss22!(m)
+    elseif subspec(m) == "ss23"
+        return ss23!(m)
     elseif subspec(m) == "ss30"
         return ss30!(m)
     elseif subspec(m) == "ss51"
@@ -792,6 +796,30 @@ function ss21!(m::Model1002)
     ss10!(m)
 end
 
+"""
+```
+ss22!(m::Model1002)
+```
+
+Initializes subspec 22 of `Model1002`. This subspecification is the same as ss10,
+but we add one/two/three-year yield instead of using expected ffr for short rate expectations"""
+
+function ss22!(m::Model1002)
+    ss10!(m)
+end
+
+
+"""
+```
+ss23!(m::Model1002)
+```
+
+Initializes subspec 23 of `Model1002`. This subspecification is the same as ss10,
+but we remove TFP and add one/two/three-year yield instead of using expected ffr for short-rate expectations
+"""
+function ss23!(m::Model1002)
+    ss10!(m)
+end
 
 
 

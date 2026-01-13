@@ -245,7 +245,7 @@ function init_parameters!(m::DSSW)
                    description="S'': The second derivative of households' cost of adjusting investment.",
                    tex_label="S''")
 
-    m <= parameter(:h, 0.7, (1e-5, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.7, 0.05), fixed=false,
+    m <= parameter(:h, 0.7, (0.0, 0.99999), (1e-5, 0.99), ModelConstructors.SquareRoot(), BetaAlt(0.7, 0.05), fixed=false,
                    description="h: Consumption habit persistence.",
                    tex_label="h")
 
@@ -520,4 +520,3 @@ function shock_groupings(m::DSSW)
 
     return nothing #[gov, bet, tfp, pmu, wmu, pol, mei, det]
 end
-

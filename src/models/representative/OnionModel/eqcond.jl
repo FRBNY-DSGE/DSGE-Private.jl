@@ -13,29 +13,56 @@ function eqcond(m::OnionModel) #m::OnionModel
 
         #This means we have done a normalization. Need to reset.
 
-        endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
-                             [Symbol("π_$i") for i in 1:n]; #sectoral inflation
-                             [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
-                             [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
-                             [Symbol("Eπ_$i") for i in 1:n];
-                             [:Ec_t, :Eπc_t, :Eπw_t];
-                             [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+        if subspec_int ∈ [113, 114, 115, 116, 117]
+            endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
+                                 [Symbol("π_$i") for i in 1:n]; #sectoral inflation
+                                 [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
+                                 [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
+                                 [Symbol("Eπ_$i") for i in 1:n];
+                                 [:Ec_t, :Eπc_t, :Eπw_t];
+                                 [Symbol("μ_$(i)") for i in 1:n]]
 
-        endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
+            endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
 
-        equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
-                                  [Symbol("eq_srec_$i") for i in 1:n];
-                                  [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
-                                  [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
-                                  [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
-                                  [Symbol("eq_Eπ_$i") for i in 1:n];
-                                  [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+            equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
+                                      [Symbol("eq_srec_$i") for i in 1:n];
+                                      [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
+                                      [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
+                                      [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
+                                      [Symbol("eq_Eπ_$i") for i in 1:n];
+                                      [Symbol("eq_μ_$(i)") for i in 1:n]]
+        else
+            endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
+                                 [Symbol("π_$i") for i in 1:n]; #sectoral inflation
+                                 [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
+                                 [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
+                                 [Symbol("Eπ_$i") for i in 1:n];
+                                 [:Ec_t, :Eπc_t, :Eπw_t];
+                                 [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+
+            endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
+
+            equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
+                                      [Symbol("eq_srec_$i") for i in 1:n];
+                                      [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
+                                      [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
+                                      [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
+                                      [Symbol("eq_Eπ_$i") for i in 1:n];
+                                      [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+        end
+
 
 
         #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-        if subspec_int ∈ [7, 8, 9, 10, 12, 20]
+
+        # Add back new states and equilibrium conditions
+        if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
             push!(endogenous_states, :μ_com)
             push!(equilibrium_conditions, :eq_μ_com)
+        end
+
+        if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+            push!(endogenous_states_augmented, :e_meas_cpi_t)
         end
 
         #end
@@ -109,7 +136,7 @@ function eqcond(m::OnionModel) #m::OnionModel
 
 
     #   if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
         Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]]    = get_setting(m, :invkap)
 
         Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
@@ -121,37 +148,50 @@ function eqcond(m::OnionModel) #m::OnionModel
 
     invkap_value = get_setting(m, :invkap)
 
-    #if haskey(get_settings(m), :test_food) && get_setting(m, :test_food)
-    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
-        for i in get_setting(m, :food_sectors)
-            Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_food]] = - invkap_value[i]    # -m[:invkap].value[i]
+    # For subspecs above 100, we now have SECTOR specific endogenous state for price markup process
+    if subspec_int ∈ [113, 114, 115, 116, 117]
+        for i in 1:get_setting(m, :n_sectors)
+            Γ0[eq[Symbol("eq_pc_$(i)")], endo[Symbol("μ_$(i)")]] = - invkap_value[i]
+        end
+    else
+
+        if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20]
+            for i in get_setting(m, :food_sectors)
+                Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_food]] = - invkap_value[i]    # -m[:invkap].value[i]
+            end
+        end
+
+        for i in get_setting(m, :core_goods_sectors)
+            Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
+        end
+
+        for i in get_setting(m, :core_service_sectors)
+            Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_services]] = - invkap_value[i]    #-m[:invkap].value[i]
+        end
+
+        for i in get_setting(m, :energy_sectors)
+            Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_energy]] = -invkap_value[i]  #-m[:invkap].value[i]
         end
     end
-#end
-
-    for i in get_setting(m, :core_goods_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_goods]] = - invkap_value[i]    # -m[:invkap].value[i]
-    end
-
-    for i in get_setting(m, :core_service_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_core_services]] = - invkap_value[i]    #-m[:invkap].value[i]
-    end
-
-    for i in get_setting(m, :energy_sectors)
-        Γ0[eq[Symbol("eq_pc_$(i)")], endo[:μ_cpi_energy]] = -invkap_value[i]  #-m[:invkap].value[i]
-    end
-
 
     #Define processes for each markup based on subspec:
 
-    for sg in collect(keys(get_setting(m, :subgroup_names)))
-        Γ0[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = 1.
-        Ψ[eq[Symbol("eq_μ_$(sg)")], exo[Symbol("μ_$(sg)_sh")]] = 1.
-        if subspec_int ∈ [0, 1]
-            Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[:ρ_μ_trend]
-        else
-                Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_$(sg)")]
+    if subspec_int ∈ [113, 114, 115, 116, 117]
+        for i in 1:get_setting(m, :n_sectors)
+            Γ0[eq[Symbol("eq_μ_$(i)")], endo[Symbol("μ_$(i)")]] = 1.
+            Ψ[eq[Symbol("eq_μ_$(i)")], exo[Symbol("μ_$(i)_sh")]] = 1.
+            Γ1[eq[Symbol("eq_μ_$(i)")], endo[Symbol("μ_$(i)")]] = m[Symbol("ρ_μ_$(i)")]
+        end
 
+    else
+        for sg in collect(keys(get_setting(m, :subgroup_names)))
+            Γ0[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = 1.
+            Ψ[eq[Symbol("eq_μ_$(sg)")], exo[Symbol("μ_$(sg)_sh")]] = 1.
+            if subspec_int ∈ [0, 1]
+               Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[:ρ_μ_trend]
+            else
+                Γ1[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = m[Symbol("ρ_μ_$(sg)")]
+            end
         end
     end
 

@@ -191,7 +191,7 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
             if isa(m, PoolModel)
                 return ψ_l * sum(filter_likelihood(m, data; tol = tol,
                                                    tuning = get_setting(m, :tuning))) + ψ_p * penalty
-            elseif isa(m, DSSW)
+            elseif haskey(m.settings, :n_coint) && get_setting(m, :n_coint) > 0
                 return dsge_coint_likelihood(m, data)
             elseif use_chand_recursion==false
 

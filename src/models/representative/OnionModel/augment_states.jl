@@ -1,4 +1,6 @@
 function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vector{T}) where {T<:AbstractFloat}
+    subspec_int = parse(Int, subspec(m)[3:end])
+
     endo     = m.endogenous_states
     endo_new = m.endogenous_states_augmented
     exo      = m.exogenous_shocks
@@ -16,6 +18,7 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
 
     TTT_aug = zeros(n_endo + n_states_add, n_endo + n_states_add)
     TTT_aug[1:n_endo, 1:n_endo] = TTT
+    RRR_aug = [RRR; zeros(n_states_add, n_exo)]
 
 
     ### Track lags
@@ -24,6 +27,11 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     TTT_aug[endo_new[:c_t1], endo[:c_t]] = 1.
     TTT_aug[endo_new[:r_t1], endo[:r_t]] = 1.
     TTT_aug[endo_new[:πc_t1], endo[:πc_t]] = 1.
+
+    ### Add cpi measurement error
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+        TTT_aug[endo_new[:e_meas_cpi_t], endo_new[:e_meas_cpi_t]] = m[:ρ_meas_cpi]
+    end
 
 
     #Add measurement error:
@@ -36,8 +44,11 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     RRR_aug[endo_new[:e_πstar], exo[:
 =#
 
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+        RRR_aug[endo_new[:e_meas_cpi_t], exo[:meas_cpi_sh]] = 1.0
+    end
 
-    RRR_aug = [RRR; zeros(n_states_add, n_exo)]
+
     CCC_aug = [CCC; zeros(n_states_add)]
 
     return TTT_aug, RRR_aug, CCC_aug

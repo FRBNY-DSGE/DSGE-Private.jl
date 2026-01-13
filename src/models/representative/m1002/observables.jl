@@ -373,7 +373,7 @@ function init_observable_mappings!(m::Model1002)
                                            tfp_fwd_transform, tfp_rev_transform,
                                            "Total Factor Productivity Growth (Fernald)",
                                            "Fernald's TFP, adjusted by Fernald's estimated alpha and utilization capacity")
-    elseif subspec(m) ∉ ["ss15", "ss16", "ss21"]
+    elseif subspec(m) ∉ ["ss15", "ss16", "ss21", "ss23"]
         tfp_fwd_transform =  function (levels)
             # FROM: Fernald's unadjusted TFP series
             # TO:   De-meaned unadjusted TFP series, adjusted by Fernald's estimated alpha
@@ -424,6 +424,7 @@ function init_observable_mappings!(m::Model1002)
     # Columns 14 - 14 + n_mon_anticipated_shocks
     ############################################################################
 
+if subspec(m) ∉ ["ss22", "ss23"]
     for i = 1:n_mon_anticipated_shocks(m)
         # FROM: OIS expectations of $i-period-ahead interest rates at a quarterly rate
         # TO:   Same
@@ -439,6 +440,48 @@ function init_observable_mappings!(m::Model1002)
                                                       "Anticipated Shock $i",
                                                       "$i-period ahead anticipated monetary policy shock")
     end
+
+else
+    oneyear_fwd_transform = function (levels)
+        # FROM: pre-computed long rate at an annual rate
+        # TO:   1T yield at a quarterly rate
+        annualtoquarter(levels[!,:obs_oneyear]) #Doesn't transform the data since manually loaded in (presuming pre-transformed)
+    end
+
+    oneyear_rev_transform = quartertoannual
+
+    observables[:obs_oneyear] = Observable(:obs_oneyear, [:obs_oneyear],
+                                           oneyear_fwd_transform, oneyear_rev_transform,
+                                           "1-year average interest rate expectations",
+                                           "1T yield")
+
+    twoyear_fwd_transform = function (levels)
+        # FROM: pre-computed long rate at an annual rate
+        # TO:   2T yield at a quarterly rate
+        annualtoquarter(levels[!,:obs_twoyear]) #Doesn't transform the data since manually loaded in (presuming pre-transformed)
+    end
+
+    twoyear_rev_transform = quartertoannual
+
+    observables[:obs_twoyear] = Observable(:obs_twoyear, [:obs_twoyear],
+                                           twoyear_fwd_transform, twoyear_rev_transform,
+                                           "2-year average interest rate expectations",
+                                           "2T yield")
+
+    threeyear_fwd_transform = function (levels)
+        # FROM: pre-computed long rate at an annual rate
+        # TO:   2T yield at a quarterly rate
+        annualtoquarter(levels[!,:obs_threeyear]) #Doesn't transform the data since manually loaded in (presuming pre-transformed)
+    end
+
+    threeyear_rev_transform = quartertoannual
+
+    observables[:obs_threeyear] = Observable(:obs_threeyear, [:obs_threeyear],
+                                             threeyear_fwd_transform, threeyear_rev_transform,
+                                             "3-year average interest rate expectations",
+                                             "3T yield")
+end
+
 
     ############################################################################
     # Other anticipated data

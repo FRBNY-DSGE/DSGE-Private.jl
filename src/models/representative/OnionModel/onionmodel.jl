@@ -103,12 +103,12 @@ function init_settings!(m::OnionModel)
         m <= Setting(:n_smc_blocks, 1)
         m <= Setting(:sampling_method, :SMC)
 
-        if subspec_int ∈ [7, 8, 9, 10, 12, 20, 21]
+        if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 21, 113, 114, 115, 116, 117]
             m <= Setting(:subgroup_names,
                          OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
                                                      "core_services" => :CUSR0000SASLE,
                                                      "cpi_energy" => :CPIENGSL,
-                                                     "cpi_food" => :NOTHING))
+                                                     "cpi_food" => :CPIFABSL))
             m <= Setting(:subgroup_to_sector,
                          OrderedDict{String, Array{Int64,1}}("core_goods" => core_goods,
                                                              "core_services" => core_services,
@@ -162,6 +162,30 @@ function init_settings!(m::OnionModel)
     m <= Setting(:data_quarter_or_month, :quarter)
     sectoral_inflation_path = get_setting(m, :dataroot) * "sector_inflation_" * (get_setting(m, :data_quarter_or_month) == :quarter ? "quarterly" : "monthly") * ".csv"
     m <= Setting(:sector_names, (names(CSV.read(sectoral_inflation_path, DataFrame))[3:end])[Not([69,70,72,73])])
+
+    # Add cleaned sector names (move this to a seperate CSV and load in the future)
+    energy_sector_names = ["oil_extraction", "gas_extraction", "coal_mining", "utilities", "petroleum_coal"]
+    food_sector_names = ["farms", "food_bev_tobacco"]
+    goods_sector_names = ["forestry_fishing", "mining", "mining_support", "construction", "wood_prods",
+                          "nonmetal_mineral_prods", "primary_metals", "fab_metal_prods", "machinery", "computer_elec",
+                          "elec_appliances_components", "vehicles_trailers_parts", "transport_equip", "furniture",
+                          "misc_manufacturing", "textiles", "apparel_leather_prods", "paper_prods", "printing", "chemical_prods", "plastics_rubber",
+                          "wholesale_trade", "vehicle_parts_dealers", "food_bev_stores", "general_merch_stores", "other_retail",
+                          "air_transport", "rail_transport", "water_transport", "truck_transport", "transit_ground_transport",
+                          "pipline_transport", "other_transport", "warehouse_storage"]
+    services_sector_names = ["publishing", "motion_picture_sound", "broadcasting_telecoms", "data_processing_info_services", "frb_credit_intermediation",
+                         "securities_commodities", "insurance", "funds_trusts_fin_vehicles", "housing", "other_real_estate", "rental_leasing_services",
+                         "legal_services", "computer_systems_design", "misc_prof_sci_technical_services", "company_management", "admin_support", "waste_management",
+                         "education", "ambulatory_care", "hospitals", "nursing_community_care", "social_assistance", "arts_sports_museums", "amusements_gambling",
+                         "accommodation", "food_services", "other_services", "fed_govt_defence"]
+    names_list = [goods_sector_names, services_sector_names, energy_sector_names, food_sector_names]
+    sector_names = Dict()
+    for (i, sect) in enumerate(collect(keys(get_setting(m, :subgroup_to_sector))))
+        sector_dict_map = Dict(zip(get_setting(m, :subgroup_to_sector)[sect], names_list[i]))
+        merge!(sector_names, sector_dict_map)
+    end
+    sorted_sector_names = OrderedDict(sort(collect(sector_names)))
+    m <= Setting(:sector_names_short, sorted_sector_names)
 
 
     # Relevant for other things such as IRFs, smoothing, and forecasting
@@ -346,7 +370,7 @@ m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untrans
                description="weight on consumption in mp rule",
                tex_label="\\varphi_{c}") #"mp_cons"
 #Temp bypass
-if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10", "ss12", "ss20"]
+if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10", "ss12", "ss13", "ss20", "ss113", "ss114", "ss115", "ss116", "ss117"]
     m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                    description="weight on potential consumption",
                    tex_label="\\varphi_{c \\star}") #"mp_cstar"
@@ -498,29 +522,50 @@ end
 if subspec_int >= 2
 
     #1) Differentiate markup shock std and persistence
-    # For ss7 and above, we add food subgroup
-    for i in collect(keys(get_setting(m, :subgroup_names)))
-        m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
-                       description = "σ_μ: standard deviation of mark up shock process",
-                       tex_label = string("\\sigma_{\\mu}", replace(i, "_" => " ")))
-        m <= parameter(Symbol("ρ_μ_$i"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
-                       description = "ρ_μ: AR(1) coefficient of the mark up shock process",
-                       tex_label = string("\\rho_{\\mu}",  replace(i, "_" => " ")))
+
+    # For ss7-ss13, we add food subgroup and subgroup markup process
+    if subspec_int <= 13
+        for i in collect(keys(get_setting(m, :subgroup_names)))
+            m <= parameter(Symbol("σ_μ_$i"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+                           description = "σ_μ: standard deviation of mark up shock process",
+                           tex_label = string("\\sigma_{\\mu}", replace(i, "_" => " ")))
+            m <= parameter(Symbol("ρ_μ_$i"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+                           description = "ρ_μ: AR(1) coefficient of the mark up shock process",
+                           tex_label = string("\\rho_{\\mu}",  replace(i, "_" => " ")))
+        end
+    # For all subspecs 113 and above, we now have sector specific markup process
+    elseif subspec_int ∈ [113, 114, 115, 116, 117]
+        n = get_setting(m, :n_sectors)
+        for i in 1:n
+            m <= parameter(Symbol("σ_μ_$(i)"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+                           description = "σ_μ: standard deviation of mark up shock process",
+                           tex_label = "\\sigma_{\\mu^$(i)}")
+            m <= parameter(Symbol("ρ_μ_$(i)"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+                           description = "ρ_μ: AR(1) coefficient of the mark up shock process",
+                           tex_label = "\\rho_{\\mu^$(i)}")
+        end
     end
 
     #2) Add pi-star
-    if subspec_int ∈ [3, 4, 5, 7, 8, 9, 10, 12, 20]
+    if subspec_int ∈ [3, 4, 5, 7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
         m <= parameter(:π_star, 0.5, fixed = true,
                        description = "Steady state rate of inflation",
                        tex_label = "\\pi^\\star")
     end
 
-    if subspec_int ∈ [7, 8, 9, 10, 12, 20]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
     #3) Add common shock
         m <= parameter(:σ_μ_com, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ_com: standard deviation of mark up shock process",
                        tex_label = "\\sigma_{\\mu} common}")
     end
+
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+        #4) Add CPI measurement error parameters
+        m <= parameter(:ρ_meas_cpi, 0.0, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed = false, tex_label = "\\rho_{meas\\_cpi}")
+        m <= parameter(:σ_meas_cpi, 0.0999, (0.0, 5.0), (0.0, 5.0), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false, tex_label = "\\sigma_{meas\\_cpi}")
+    end
+
 
 end
 
@@ -542,36 +587,60 @@ function init_model_indices!(m::OnionModel)
 
     n = get_setting(m, :n_sectors)
 
+    # For subspecs above 100, we have sector specific markup processes (as opposed to subgroup specific)
+    if subspec_int ∈ [113, 114, 115, 116, 117]
+        exogenous_shocks            =
+            [[Symbol("μ_$(i)_sh") for i in 1:n];
+             [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
+             [:τ_sh]]
 
-    exogenous_shocks            =
-        [[Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))];
-         [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
-         [:τ_sh]]
+        endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
+                             [Symbol("π_$i") for i in 1:n]; #sectoral inflation
+                             [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
+                             [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
+                             [Symbol("Eπ_$i") for i in 1:n];
+                             [:Ec_t, :Eπc_t, :Eπw_t];
+                             [Symbol("μ_$(i)") for i in 1:n]]
+
+        equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
+                                  [Symbol("eq_srec_$i") for i in 1:n];
+                                  [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
+                                  [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
+                                  [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
+                                  [Symbol("eq_Eπ_$i") for i in 1:n];
+                                  [Symbol("eq_μ_$(i)") for i in 1:n]]
+    else
+        exogenous_shocks            =
+            [[Symbol("μ_$(i)_sh") for i in collect(keys(get_setting(m, :subgroup_names)))];
+             [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
+             [:τ_sh]]
+
+        endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
+                             [Symbol("π_$i") for i in 1:n]; #sectoral inflation
+                             [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
+                             [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
+                             [Symbol("Eπ_$i") for i in 1:n];
+                             [:Ec_t, :Eπc_t, :Eπw_t];
+                             [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+
+        equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
+                                  [Symbol("eq_srec_$i") for i in 1:n];
+                                  [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
+                                  [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
+                                  [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
+                                  [Symbol("eq_Eπ_$i") for i in 1:n];
+                                  [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
+    end
+
 
     observables                 = keys(m.observable_mappings)
 
     pseudo_observables = keys(m.pseudo_observable_mappings)
 
-    endogenous_states = [[Symbol("s_$(i)") for i in 1:n]; #(log deviation of) real sectoral prices
-                         [Symbol("π_$i") for i in 1:n]; #sectoral inflation
-                         [:r_t, :c_t, :πc_t, :πw_t, :w_t, :πKc_t] ; #interest rate, cons, CPI, wage Infl, wages
-                         [:a_t, :b_t, :μw, :lτ, :τ, :πstar, :mp_t];
-                         [Symbol("Eπ_$i") for i in 1:n];
-                         [:Ec_t, :Eπc_t, :Eπw_t];
-                         [Symbol("μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
-
     endogenous_states_augmented = [:w_t1, :c_t1, :r_t1, :πc_t1] #, :e_meas_πc_t
 
     expected_shocks =[[Symbol("Eπ_$(i)_sh") for i in 1:n];
                       [:Ec_sh, :Eπc_sh, :Eπw_sh]]
-
-    equilibrium_conditions = [[Symbol("eq_pc_$i") for i in 1:n];
-                              [Symbol("eq_srec_$i") for i in 1:n];
-                              [:eq_cpi, :eq_wpc, :eq_wrec, :eq_monpol, :eq_euler];
-                              [:eq_a_t,:eq_b_t,:eq_μw, :eq_τ, :eq_lτdef, :eq_πstar, :eq_mp_t];
-                              [:eq_Ect, :eq_Eπct, :eq_Eπwt, :eq_Kcpi];
-                              [Symbol("eq_Eπ_$i") for i in 1:n];
-                              [Symbol("eq_μ_$(i)") for i in collect(keys(get_setting(m, :subgroup_names)))]]
 
     #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
     if subspec_int >= 7
@@ -579,6 +648,13 @@ function init_model_indices!(m::OnionModel)
         push!(exogenous_shocks, :μ_com_sh)
         push!(equilibrium_conditions, :eq_μ_com)
     end
+
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+        # Add CPI measurement error shock and endogenous state
+        push!(exogenous_shocks, :meas_cpi_sh)
+        push!(endogenous_states_augmented, :e_meas_cpi_t)
+    end
+
     #end
 
     for (i,k) in enumerate(observables); m.observables[k] = i end
@@ -591,6 +667,7 @@ function init_model_indices!(m::OnionModel)
 
     m <= Setting(:n_model_states, length(m.endogenous_states))
 end
+
 
 function steadystate!(m::OnionModel)
     return m
@@ -622,7 +699,7 @@ function shock_groupings(m::OnionModel)
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
     elseif subspec_int ∈ [3, 4, 5]
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
-    elseif subspec_int ∈ [7, 8, 9, 10, 12]
+    elseif subspec_int ∈ [7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117]
         return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
     end
 end

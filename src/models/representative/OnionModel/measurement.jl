@@ -32,7 +32,7 @@ function measurement(m::OnionModel{T},
 
     ## Demeaned Consumption Growth
     #if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
-    if subspec_int ∉ [7, 9, 12]
+    if subspec_int ∉ [7, 9, 12, 13, 113, 114, 115, 116, 117]
         ZZ[obs[:consumption_growth], endo[:c_t]]  = 1.0
         ZZ[obs[:consumption_growth], endo_new[:c_t1]] = -1.0
     end
@@ -294,12 +294,20 @@ elseif subspec_int ∈ [3, 4, 5] # Add LR infl expectations (fix MP estimation)
         end
     end
 
-elseif subspec_int ∈ [6, 7, 8, 9, 10, 12] # Add LR infl expectations (fix MP estimation)
+elseif subspec_int ∈ [6, 7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117] # Add LR infl expectations (fix MP estimation)
 
-    # Specify all subgroup shocks
-    for i in collect(keys(get_setting(m, :subgroup_names)))
-        QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
+    if subspec_int ∈ [113, 114, 115, 116, 117]
+        # Specify all sector shocks
+        for i in 1:get_setting(m, :n_sectors)
+            QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
+        end
+    else
+        # Specify all subgroup shocks
+        for i in collect(keys(get_setting(m, :subgroup_names)))
+            QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
+        end
     end
+
 
     QQ[exo[:πstar_sh], exo[:πstar_sh]] = m[:σ_πstar]^2
 
@@ -327,26 +335,66 @@ elseif subspec_int ∈ [6, 7, 8, 9, 10, 12] # Add LR infl expectations (fix MP e
     ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
 
     # Now, add back observable CPI and add iid common markup shock std
-    if subspec_int ∈ [7, 8, 9, 10, 12]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117]
         ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
         QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ_com]^2
     end
 
-    #Add observables for each:
-    inflation_subgroup_names = collect(keys(get_setting(m, :subgroup_to_sector)))
-    for sect in inflation_subgroup_names
-        i_sum = sum(get_setting(m, :Kgam)[get_setting(m, :subgroup_to_sector)[sect]])
-        for i in get_setting(m, :subgroup_to_sector)[sect]
-            if sect == "core_goods"
-                ZZ[obs[Symbol("cpi_core_goods")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
-            elseif sect == "core_services"
-                ZZ[obs[Symbol("cpi_core_services")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
-            elseif sect == "cpi_energy"
-                ZZ[obs[Symbol("cpi_energy")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+    # Now add CPI meas err shock for ss13 and beyond
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+        ZZ[obs[:cpi_inflation], endo_new[:e_meas_cpi_t]] = 1.0 # Additive in meas error endogenous state e_meas_cpi = rho * e_meas_cpi_{t-1} + sigma_meas_cpi
+        QQ[exo[:meas_cpi_sh], exo[:meas_cpi_sh]] = m[:σ_meas_cpi]^2
+    end
+
+    # For ss114 onwards, we begin to decompose subgroups into sectors (ss114: energy)
+    if subspec_int >= 114
+        inflation_subgroup_names = collect(keys(get_setting(m, :subgroup_to_sector)))
+        for subgp in inflation_subgroup_names
+            # Loop through sector indices and names in order and pair them accordingly
+            if subgp in get_setting(m, :decomp_subgroup) # This array varies according to subspec
+                @show subgp
+                sect_inds = get_setting(m, :subgroup_to_sector)[subgp]
+                @show sect_inds
+                decomp_sectors_names = collect(values(get_setting(m, :sector_names_short)))[sect_inds]
+                @show decomp_sectors_names
+                for i in 1:length(decomp_sectors_names)
+                    ZZ[obs[Symbol("π_$(decomp_sectors_names[i])")], endo[Symbol("π_$(sect_inds[i])")]] = 1.0
+                end
+            # Otherwise, just find subgroup inflation for remaining subgroups
+            else
+                i_sum = sum(get_setting(m, :Kgam)[get_setting(m, :subgroup_to_sector)[subgp]])
+                for i in get_setting(m, :subgroup_to_sector)[subgp]
+                    if subgp == "core_goods"
+                        ZZ[obs[Symbol("cpi_core_goods")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+                    elseif subgp == "core_services"
+                        ZZ[obs[Symbol("cpi_core_services")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+                    elseif subgp == "cpi_energy"
+                        ZZ[obs[Symbol("cpi_energy")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+                        println("Don't be here for ss114")
+                    elseif subgp == "cpi_food"
+                        ZZ[obs[Symbol("cpi_food")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+                    end
+                end
+            end
+        end
+
+    elseif subspec_int ∈ [6, 7, 8, 9, 10, 12, 13, 113] #Keep this code intact (although redundant and can be combined- later)
+        inflation_subgroup_names = collect(keys(get_setting(m, :subgroup_to_sector)))
+        for subgp in inflation_subgroup_names
+            i_sum = sum(get_setting(m, :Kgam)[get_setting(m, :subgroup_to_sector)[subgp]])
+            for i in get_setting(m, :subgroup_to_sector)[subgp]
+                if subgp == "core_goods"
+                    ZZ[obs[Symbol("cpi_core_goods")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+                elseif subgp == "core_services"
+                    ZZ[obs[Symbol("cpi_core_services")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+                elseif subgp == "cpi_energy"
+                    ZZ[obs[Symbol("cpi_energy")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+                elseif subgp == "cpi_food" && subspec_int ∈ [13, 113] # Add food observable for ss13, ss113 and above
+                    ZZ[obs[Symbol("cpi_food")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
+                end
             end
         end
     end
-
 end
 
 elseif subspec_int ∈ [20]
