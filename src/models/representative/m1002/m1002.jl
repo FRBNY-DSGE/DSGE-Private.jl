@@ -1441,7 +1441,8 @@ function shock_groupings(m::Model1002)
         bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
         fin = ShockGroup("FF", [:γ_sh, :μ_e_sh, :σ_ω_sh], RGB(0.29, 0.0, 0.51)) # indigo
         # tfp = ShockGroup("tfp", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
-        tfp = ShockGroup("tfp", [:ztil_sh, :zp_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+        tfp_lvl = ShockGroup("tfp_lvl", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+        tfp_gr = ShockGroup("tfp_gr", [:zp_sh], RGB(1.0, 0.84, 0.0)) # lightorange
         pmu = ShockGroup("mkp", [:λ_f_sh, :λ_w_sh], RGB(0.60, 0.80, 0.20)) # yellowgreen
         wmu = ShockGroup("w-mkp", [:λ_w_sh], RGB(0.0, 0.5, 0.5)) # teal
         phi = ShockGroup("phi", [:φ_sh], RGB(0.5, 0.5, 0.))
@@ -1504,12 +1505,12 @@ function shock_groupings(m::Model1002)
         # Time-varying CCC, e.g. from temporary ZLB
         if haskey(get_settings(m), :gensys2) ? get_setting(m, :gensys2) : false
             st = ShockGroup("States Trend", [:StatesTrend], :darkgreen) # :dettrend
-            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth, st]
+            return [betcovid, ocovid, bet, fin, tfp_lvl, tfp_gr, pmu, pol, mea, oth, st]
         elseif haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
             ant_mu = ShockGroup("Ant Markup", [Symbol("λ_f_ant_sh$(i)") for i in 1:get_setting(m, :add_ant_markup_shocks_ind)], :darkgreen)
-            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, ant_mu, oth]
+            return [betcovid, ocovid, bet, fin, tfp_lvl, tfp_gr, pmu, pol, mea, ant_mu, oth]
         else
-            return [betcovid, ocovid, bet, fin, tfp, pmu, pol, mea, oth]
+            return [betcovid, ocovid, bet, fin, tfp_lvl, tfp_gr, pmu, pol, mea, oth]
         end
         # return [gov, bet, fin, tfp, pmu, wmu, pol, pis, mei, mea, zpe, det]
         # return [betcovid, zcovid, φcovid, bet, fin, tfp, pmu, pol, mea, oth]
