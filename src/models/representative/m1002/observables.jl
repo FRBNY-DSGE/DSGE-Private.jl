@@ -326,8 +326,8 @@ function init_observable_mappings!(m::Model1002)
                                                          avgshortinflation_rev_transform,
                                                          #"Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
                                                          #"Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
-                                                         "Sum of -2, -1, 0, 1 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
-                                                         "Sum of -2, -1, 0, 1 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
+                                                         "Quarterly-Average short-run inflation",
+                                                         "Quarterly-Average short-run inflation")
 
 
     end
