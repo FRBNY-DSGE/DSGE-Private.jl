@@ -539,10 +539,10 @@ if subspec_int >= 2
         for i in 1:n
             m <= parameter(Symbol("σ_μ_$(i)"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                            description = "σ_μ: standard deviation of mark up shock process",
-                           tex_label = "\\sigma_{\\mu^$(i)}")
+                           tex_label = "\\sigma_{\\mu^{$(i)}}")
             m <= parameter(Symbol("ρ_μ_$(i)"), 0.8827, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                            description = "ρ_μ: AR(1) coefficient of the mark up shock process",
-                           tex_label = "\\rho_{\\mu^$(i)}")
+                           tex_label = "\\rho_{\\mu^{$(i)}}")
         end
     end
 
@@ -680,17 +680,51 @@ function shock_groupings(m::OnionModel)
 
     #1) Create shock groups
 
-    core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_core_goods_sh] , RGB(0.0, 0.6, 0.1))
-    core_services_mkp   = ShockGroup("mkp_core_services", [:μ_core_services_sh], RGB(0.6,0.6,0.0))
-    energy_mkp = ShockGroup("mkp_energy", [:μ_cpi_energy_sh], RGB(0.0, 0.6, 0.6))
-    wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
-    #tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
-    pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
-    pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
-    tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
-    bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
-    food_mkup = ShockGroup("mkp_food", [:μ_cpi_food_sh], RGB(0.6, .99, 0.5))
-    com_mkup = ShockGroup("common_mkup", [:μ_com_sh], RGB(0.9, 0.9, 0.7))
+    if subspec_int ∈ [117]
+        pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
+        pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
+        tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
+        bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
+
+        com_mkup = ShockGroup("common_mkup", [:μ_com_sh], RGB(0.9, 0.9, 0.7))
+        wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
+
+        core_goods_sh = []
+        core_services_sh = []
+        cpi_energy_sh = []
+        cpi_food_sh = []
+        for (subgp, inds) in get_setting(m, :subgroup_to_sector)
+            if subgp == "core_goods"
+                core_goods_sh = [Symbol("μ_$(i)_sh") for i in get_setting(m, :subgroup_to_sector)["core_goods"]]
+            elseif subgp == "core_services"
+                core_services_sh = [Symbol("μ_$(i)_sh") for i in get_setting(m, :subgroup_to_sector)["core_services"]]
+            elseif subgp == "cpi_energy"
+                cpi_energy_sh = [Symbol("μ_$(i)_sh") for i in get_setting(m, :subgroup_to_sector)["cpi_energy"]]
+            elseif subgp == "cpi_food"
+                cpi_food_sh = [Symbol("μ_$(i)_sh") for i in get_setting(m, :subgroup_to_sector)["cpi_food"]]
+            end
+        end
+
+        core_goods_mkp   = ShockGroup("mkp_core_goods", core_goods_sh , RGB(0.0, 0.6, 0.1))
+        core_services_mkp   = ShockGroup("mkp_core_services", core_services_sh, RGB(0.6,0.6,0.0))
+        energy_mkp = ShockGroup("mkp_energy", cpi_energy_sh, RGB(0.0, 0.6, 0.6))
+        food_mkup = ShockGroup("mkp_food", cpi_food_sh, RGB(0.6, .99, 0.5))
+
+
+    else
+        core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_core_goods_sh] , RGB(0.0, 0.6, 0.1))
+        core_services_mkp   = ShockGroup("mkp_core_services", [:μ_core_services_sh], RGB(0.6,0.6,0.0))
+        energy_mkp = ShockGroup("mkp_energy", [:μ_cpi_energy_sh], RGB(0.0, 0.6, 0.6))
+        wage_pmu = ShockGroup("wage_mkp", [:μw_sh], RGB(0.5,0.0, 0.5))
+        #tax = ShockGroup("tax", [:τ_sh], RGB(0.29, 0.0, 0.51))
+        pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
+        pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
+        tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
+        bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
+        food_mkup = ShockGroup("mkp_food", [:μ_cpi_food_sh], RGB(0.6, .99, 0.5))
+        com_mkup = ShockGroup("common_mkup", [:μ_com_sh], RGB(0.9, 0.9, 0.7))
+
+    end
 
 
     #2) Return shock groups based on subspec

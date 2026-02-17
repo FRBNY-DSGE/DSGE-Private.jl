@@ -7303,7 +7303,9 @@ function ss205!(m)
             m[pk].transform_parameterization = (0., 1e2)
 
             # Set prior
-            m[pk].prior = regime_prior(m[:σ_biidc], 1)
+            set_regime_prior!(m[pk], 1, regime_prior(m[:σ_biidc], 1))
+            set_regime_prior!(m[pk], 2, regime_prior(m[:σ_biidc], 1))
+
         end
         # pgap and ygap initialization shocks
         for pk in [:σ_pgap, :σ_ygap]
