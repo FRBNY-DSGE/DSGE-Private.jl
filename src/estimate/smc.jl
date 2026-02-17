@@ -114,7 +114,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
               run_csminwel::Bool = true,
               regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
-              add_zlb_duration::Tuple{Bool, Int} = (false, 1))
+              add_zlb_duration::Tuple{Bool, Int} = (false, 1),
+              cholesky_fix = :none)
 
     parallel    = get_setting(m, :use_parallel_workers)
     n_parts     = get_setting(m, :n_particles)
@@ -343,7 +344,8 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
 
             regime_switching = regime_switching,
             debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data,
-            add_zlb_duration = add_zlb_duration)#,
+            add_zlb_duration = add_zlb_duration,
+            cholesky_fix = cholesky_fix)#,
             #timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
 
     if run_csminwel
@@ -367,7 +369,8 @@ function smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame; verb
              save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
              continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
              run_csminwel::Bool = true,
-             regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0)
+             regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
+             cholesky_fix = :none)
 
     data_mat = df_to_matrix(m, data)
     return smc2(m, data_mat, verbose = verbose,
@@ -379,7 +382,8 @@ function smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame; verb
                 continue_intermediate = continue_intermediate,
                 intermediate_stage_start = intermediate_stage_start,
                 run_csminwel = run_csminwel,
-                regime_switching = regime_switching, log_prob_old_data = log_prob_old_data)
+                regime_switching = regime_switching, log_prob_old_data = log_prob_old_data,
+                cholesky_fix = cholesky_fix)
 end
 
 function smc(m::Union{AbstractDSGEModel,AbstractVARModel}; verbose::Symbol = :low,

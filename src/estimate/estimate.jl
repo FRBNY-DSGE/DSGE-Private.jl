@@ -92,7 +92,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   run_csminwel::Bool = true,
                   toggle::Bool = true,
                   log_prob_old_data::Float64 = 0.0,
-                  add_zlb_duration::Tuple{Bool, Int} = (false, 1))
+                  add_zlb_duration::Tuple{Bool, Int} = (false, 1),
+                  cholesky_fix = :none)
     data = df_to_matrix(m, df)
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
@@ -102,7 +103,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
              intermediate_stage_increment = intermediate_stage_increment,
              save_intermediate = save_intermediate,
              run_csminwel = run_csminwel, toggle = toggle, log_prob_old_data = log_prob_old_data,
-             add_zlb_duration = add_zlb_duration)
+             add_zlb_duration = add_zlb_duration,
+             cholesky_fix = cholesky_fix)
 end
 
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
@@ -152,7 +154,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
 		          save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
                   toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
-                  add_zlb_duration::Tuple{Bool, Int} = (false, 1))
+                  add_zlb_duration::Tuple{Bool, Int} = (false, 1),
+                  cholesky_fix = :none)
 
     if !(get_setting(m, :sampling_method) in [:SMC, :MH])
         error("method must be :SMC or :MH")
@@ -328,7 +331,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
              intermediate_stage_increment = intermediate_stage_increment,
              run_csminwel = run_csminwel,
              regime_switching = regime_switching, log_prob_old_data = log_prob_old_data,
-             add_zlb_duration = add_zlb_duration)
+             add_zlb_duration = add_zlb_duration,
+             cholesky_fix = cholesky_fix)
     end
 
     ########################################################################################
