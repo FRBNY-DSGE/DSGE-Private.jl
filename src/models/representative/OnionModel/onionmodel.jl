@@ -734,6 +734,6 @@ function shock_groupings(m::OnionModel)
     elseif subspec_int ∈ [3, 4, 5]
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
     elseif subspec_int ∈ [7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117]
-        return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
+        return [core_goods_mkp, core_services_mkp, energy_mkp, food_mkup, com_mkup, wage_pmu, pol,  bet, pis]
     end
 end

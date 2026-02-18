@@ -105,7 +105,8 @@ function plot_impulse_response(m::AbstractDSGEModel, shock::Symbol, vars::Vector
     for (var, title) in zip(vars, titles)
         # Call recipe
         if full_title == true
-            title = title * " vs $(shock)"
+            #title = title * " vs $(shock)"
+            title = "$(shock)"
             plots[var] = irf(shock, var, mb, mb2; title = title, input_type = input_type, input_type2 = input_type2, kwargs...)
         else
             plots[var] = irf(shock, var, mb, mb2; title = title, input_type = input_type, input_type2 = input_type2, kwargs...)
