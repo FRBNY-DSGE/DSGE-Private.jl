@@ -1,7 +1,8 @@
 function init_pseudo_observable_mappings!(m::OnionModel)
-    subspec_ind = isletter(subspec(m)[end]) ? length(subspec(m)) - 1 : length(subspec(m))
 
-    pseudo_names = [:pseudo_CPI, :pseudo_KCPI]
+    subspec_int = parse(Int, subspec(m)[3:end])
+
+    pseudo_names = [:pseudo_CPI, :pseudo_KCPI, :pseudo_cons]
 
     pseudo = OrderedDict{Symbol, PseudoObservable}()
     for k in pseudo_names
@@ -43,6 +44,11 @@ function init_pseudo_observable_mappings!(m::OnionModel)
     pseudo[:LongRunInflation].longname = "Long Run Inflation"
     pseudo[:LongRunInflation].rev_transform = quartertoannual
 =#
+    # ss117 consumption growth pseudo observable for IRFs
+    pseudo[:pseudo_cons].name = "Consumption Growth"
+    pseudo[:pseudo_cons].longname = "Consumption Growth pseudo observable"
+    pseudo[:pseudo_cons].rev_transform = identity
+
 
     m.pseudo_observable_mappings = pseudo
 

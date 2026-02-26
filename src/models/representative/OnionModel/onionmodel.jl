@@ -364,11 +364,11 @@ m <= parameter(:ξ, paras["ξ"], fixed = true,
 
 m <= parameter(:mp_cpi_infl, 1.01, (1e-5, 10.), (1e-5, 10.00), ModelConstructors.Exponential(), Normal(1.5, 0.25), fixed=false, #paras["mp_cpi_infl"] NEEDS TO BE 1.01 to AVOID EIGENVALUE ISSUE
                description="weight on cpi inflation in mp rule",
-               tex_label="\\varphi_{\\pi}") #"mp_cpi_infl"
+               tex_label="\\psi_{1}") #"mp_cpi_infl"
 
 m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description="weight on consumption in mp rule",
-               tex_label="\\varphi_{c}") #"mp_cons"
+               tex_label="\\psi_{2}") #"mp_cons"
 #Temp bypass
 if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10", "ss12", "ss13", "ss20", "ss113", "ss114", "ss115", "ss116", "ss117"]
     m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
@@ -443,17 +443,17 @@ m <= parameter(:σ_c, 0.8719, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Expone
                tex_label = "\\sigma_c")
 m <= parameter(:σ_b_t, 0.0292, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                description = "σ_b: Standard deviation of the discount rate process",
-               tex_label = "\\sigma_{b_t}")
+               tex_label = "\\sigma_{b}")
 m <= parameter(:ρ_b_t, 0.941, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                description = "ρ_b: AR(1) coefficient of the discount rate process",
-               tex_label = "\\rho_{b_t}")
+               tex_label = "\\rho_{b}")
 
 m <= parameter(:σ_μw, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                description = "σ_wμ: standard deviation of wage mark up shock process",
-               tex_label = "\\sigma_{\\mu w}")
+               tex_label = "\\sigma_{\\mu^w}")
 m <= parameter(:ρ_μw, 0.3884, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                description = "ρ_μw: AR(1) coefficient in the wage mark up shock process",
-               tex_label = "\\rho_{\\mu w}")
+               tex_label = "\\rho_{\\mu^w}")
 
 m <= parameter(:σ_πstar, 0.0269, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(6, 0.03), fixed=false,
                description = "σ_πstar: standard deviation of the process describing the time varying inflation target",
@@ -464,11 +464,11 @@ m <= parameter(:ρ_πstar, 0.99, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors
 
 m <= parameter(:σ_a_t, 0.6742, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false, #Taken from std dev of stationary comp of prod
                description = "σ_a_t: standard deviation of the process describing productivity",
-               tex_label = "\\sigma_{a_t}")
+               tex_label = "\\sigma_{a}")
 
 m <= parameter(:ρ_a_t, 0.9446,  (0., 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,#Taken from std dev of stationary comp of prod 0.9446
                description = "ρ_a_t: AR(1) coefficient of the process describing productivity",
-               tex_label = "\\rho_{a_t}")
+               tex_label = "\\rho_{a}")
 
 m <= parameter(:h, 0.5347,  (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.7, 0.1), fixed=false,
                description = "h: consumption habit persistence",
@@ -486,7 +486,7 @@ m <= parameter(:mp_habit, 0.0, fixed = true,
 
 m <= parameter(:mp_habit, 0.0, (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                description = ":mp_habit: weight of MP rule on habit formation",
-               tex_label="\\varphi_{h}") #"mp-habit"
+               tex_label="\\psi_{3}") #"mp-habit"
 
 
 m <= parameter(:σ_r_m, 0.2380, (0.0, 5.), (0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
@@ -557,13 +557,13 @@ if subspec_int >= 2
     #3) Add common shock
         m <= parameter(:σ_μ_com, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ_com: standard deviation of mark up shock process",
-                       tex_label = "\\sigma_{\\mu} common}")
+                       tex_label = "\\sigma_{\\mu^{c}}")
     end
 
     if subspec_int ∈ [13, 113, 114, 115, 116, 117]
         #4) Add CPI measurement error parameters
-        m <= parameter(:ρ_meas_cpi, 0.0, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed = false, tex_label = "\\rho_{meas\\_cpi}")
-        m <= parameter(:σ_meas_cpi, 0.0999, (0.0, 5.0), (0.0, 5.0), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false, tex_label = "\\sigma_{meas\\_cpi}")
+        m <= parameter(:ρ_meas_cpi, 0.0, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed = false, tex_label = "\\rho_{meas^{cpi}}")
+        m <= parameter(:σ_meas_cpi, 0.0999, (0.0, 5.0), (0.0, 5.0), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false, tex_label = "\\sigma_{meas^{cpi}}")
     end
 
 
@@ -708,8 +708,10 @@ function shock_groupings(m::OnionModel)
         core_goods_mkp   = ShockGroup("mkp_core_goods", core_goods_sh , RGB(0.0, 0.6, 0.1))
         core_services_mkp   = ShockGroup("mkp_core_services", core_services_sh, RGB(0.6,0.6,0.0))
         energy_mkp = ShockGroup("mkp_energy", cpi_energy_sh, RGB(0.0, 0.6, 0.6))
-        food_mkup = ShockGroup("mkp_food", cpi_food_sh, RGB(0.6, .99, 0.5))
 
+        food_mkup = ShockGroup("mkp_food", cpi_food_sh, RGB(0.6, .99, 0.5))
+        farm_mkp = ShockGroup("farm_mkp", [:μ_1_sh], RGB(0.0, 0.1, 0.9))
+        food_bev_tobacco_mkp = ShockGroup("food_bev_tobacco_mkp", [:μ_21_sh], RGB(0.9, .1, 0.0))
 
     else
         core_goods_mkp   = ShockGroup("mkp_core_goods", [:μ_core_goods_sh] , RGB(0.0, 0.6, 0.1))
@@ -734,6 +736,7 @@ function shock_groupings(m::OnionModel)
     elseif subspec_int ∈ [3, 4, 5]
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
     elseif subspec_int ∈ [7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117]
-        return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
+        #return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
+        return [farm_mkp, food_bev_tobacco_mkp, core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, com_mkup]
     end
 end

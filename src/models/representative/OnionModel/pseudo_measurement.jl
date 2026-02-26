@@ -3,7 +3,7 @@ function pseudo_measurement(m::OnionModel{T},
                             RRR::Matrix{T},
                             CCC::Vector{T}) where {T <:AbstractFloat}
 
-    subspect_ind = isletter(subspec(m)[end]) ? length(subspec(m)) - 1 : length(subspec(m))
+    subspec_int = parse(Int, subspec(m)[3:end])
 
     endo      = m.endogenous_states
     endo_addl = m.endogenous_states_augmented
@@ -24,6 +24,13 @@ function pseudo_measurement(m::OnionModel{T},
     for i in 1:get_setting(m, :n_sectors)
         ZZ_pseudo[pseudo[:pseudo_KCPI], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i]
     end
+
+    # Consumption growth pseudo observable for ss117 IRFs
+    if subspec_int ∈ [117]
+        ZZ_pseudo[pseudo[:pseudo_cons], endo[:c_t]] = 1.0
+        ZZ_pseudo[pseudo[:pseudo_cons], endo_addl[:c_t1]] = 1.0
+    end
+
 
     #=
     # Core CPI
