@@ -199,9 +199,9 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
 =#
     end
 
-    tmat = hcat(eye(n - nunstab), -(ueta * (deta \ veta') * veta1 * (deta1 * adjoint(ueta1)))')
-    G0   = vcat(tmat * a, hcat(zeros(nunstab, n - nunstab), eye(nunstab)))
-    G1   = vcat(tmat * b, zeros(nunstab, n))
+    tmat = hcat(I, -(ueta * (deta \ veta') * veta1 * (deta1 * adjoint(ueta1)))')
+    G0   = vcat(tmat * a, hcat(Zeros(nunstab, n - nunstab), I))
+    G1   = vcat(tmat * b, Zeros(nunstab, n))
 
     # G0 is always non-singular because by construction there are no zeros on
     # the diagonal of a(1:n-nunstab,1:n-nunstab), which forms G0's ul corner.
@@ -211,7 +211,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     Busix  = b[usix,usix]
     Ausix  = a[usix,usix]
     C      = G0I * vcat(tmat * (adjoint(qt) * c), (Ausix - Busix) \ (adjoint(qt2) * c))
-    impact = G0I * vcat(tmat * (adjoint(qt) * Ψ), zeros(nunstab, size(Ψ, 2)))
+    impact = G0I * vcat(tmat * (adjoint(qt) * Ψ), Zeros(nunstab, size(Ψ, 2)))
     #fmat   = Busix \ Ausix
     #fwt    = -Busix \ (adjoint(qt2) * Ψ)
     #ywt    = G0I[:, usix]

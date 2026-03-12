@@ -23,6 +23,10 @@ function init_subspec!(m::DSGEVAR)
         ss12!(m)
     elseif subspec(m) == "ss13"
         ss13!(m)
+    elseif subspec(m) == "ss20"
+        ss20!(m)
+    elseif subspec(m) == "ss21"
+        ss21!(m)
     else
         error("DSGEVAR subspec $(subspec(m)) is not defined.")
     end
@@ -30,6 +34,7 @@ function init_subspec!(m::DSGEVAR)
     return m
 end
 
+# Basic DSGE-VARs, mainly for testing
 function ss1!(m::DSGEVAR)
     observables = [:obs_hours, :obs_gdpdeflator]
     lags        = 4
@@ -51,6 +56,7 @@ function ss3!(m::DSGEVAR)
     update!(m; observables = observables, lags = lags, λ = λ)
 end
 
+# Some DSGE-VARs for Model1002
 function ss10!(m::DSGEVAR)
     observables = [:obs_hours, :obs_gdpdeflator, :laborshare_t, :NominalWageGrowth]
     lags        = 4
@@ -76,5 +82,20 @@ function ss13!(m::DSGEVAR)
     observables = [:obs_spread, :obs_hours, :π_t, :laborshare_t, :NominalWageGrowth, :Epi_t]
     lags        = 4
     λ           = .5
+    update!(m; observables = observables, lags = lags, λ = λ)
+end
+
+# DSGE-VARs for BayerBornLuetticke
+function ss20!(m::DSGEVAR)
+    observables = [:obs_gdp, :obs_consumption, :obs_investment, :obs_wages, :obs_hours, :obs_gdpdeflator, :obs_nominalrate]
+    lags        = 4
+    λ           = 1.
+    update!(m; observables = observables, lags = lags, λ = λ)
+end
+
+function ss21!(m::DSGEVAR)
+    observables = [:obs_gdp, :obs_consumption, :obs_investment, :obs_wages, :obs_hours, :obs_gdpdeflator, :obs_nominalrate, :obs_sigmasq]
+    lags        = 4
+    λ           = 1.
     update!(m; observables = observables, lags = lags, λ = λ)
 end

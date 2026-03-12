@@ -3,11 +3,16 @@ isdefined(Base, :__precompile__) && __precompile__(false)
 module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
-    using BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff, HDF5, JLD2, LinearAlgebra
-    using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
+    using ArnoldiMethod, BasisMatrices, BandedMatrices, BlockArrays, Distributed, Distributions, FileIO, FredData, ForwardDiff
+    using HDF5, Interpolations, JLD2, KrylovKit, LinearAlgebra
+    using Missings, Nullables, Optim, Printf, Random, RecipesBase
+    using SparseArrays, SparseDiffTools, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
+    using PetscWrap, SlepcWrap, MPI, ParallelDataTransfer
     using CSV, DataFrames, DataStructures, OrderedCollections
+    using BandedMatrices: Zeros
     using DataStructures: SortedDict, insert!, ForwardOrdering
+    using FFTW: dct
     using Roots: fzero, ConvergenceFailed
     using StatsBase: sample, Weights
     using StatsFuns: chisqinvcdf
@@ -73,6 +78,9 @@ module DSGE
 
         # abstractvarmodel.jl
         AbstractVARModel, AbstractDSGEVARModel, AbstractDSGEVECMModel,
+
+        # grids.jl # TODO: delete these exports. Just exporting while we're experimenting with BayerBornLuetticke
+        ndgrid, get_grid, get_gridpts, get_gridwts, get_gridscale,
 
         # statespace.jl
         Transition, Measurement, PseudoMeasurement, System, RegimeSwitchingSystem, compute_system, var_approx_state_space,
@@ -166,12 +174,12 @@ module DSGE
 
         # models/heterogeneous/
         KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
-        RepDSGEGovDebt, HetDSGESimpleTaylor, HetDSGELag, Grid,
+        RepDSGEGovDebt, HetDSGESimpleTaylor, HetDSGELag, BayerBornLuetticke, Grid,
 
         #### Continuous time
         # models
         solve_hjb, solve_kfe, model_settings!, AbstractCTModel, KrusellSmithCT,
-        SteadyStateParameterArray, OneAssetHANK, calibrate_pLH_pHL,
+        OneAssetHANK, calibrate_pLH_pHL,
 
 	    # TwoAssetHANK
         TwoAssetHANK,
@@ -241,6 +249,7 @@ module DSGE
     include("solve/gensys2_uncertain_altpol.jl")
     include("solve/solve.jl")
     include("solve/klein.jl")
+    include("solve/discrete_time_reduction/copula.jl")
 
     include("estimate/smc/particle.jl") # need to add this first b/c need ParticleCloud
     #include("estimate/smc/initialization.jl")
@@ -445,6 +454,9 @@ include("models/representative/OnionModel/InOutData.jl")
 
     # Heterogeneous Agent Models
     include("models/heterogeneous/util.jl")
+    include("models/heterogeneous/macros.jl")
+    include("models/heterogeneous/steady_state_helpers/kolmogorov_forward.jl")
+    include("models/heterogeneous/steady_state_helpers/ndgrid_evaluations.jl")
 
     include("models/heterogeneous/krusell_smith/krusell_smith.jl")
     include("models/heterogeneous/krusell_smith/steady_state.jl")
@@ -495,6 +507,22 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/het_dsge_gov_debt/observables.jl")
     include("models/heterogeneous/het_dsge_gov_debt/measurement.jl")
     include("models/heterogeneous/het_dsge_gov_debt/augment_states.jl")
+
+    include("models/heterogeneous/bayer_born_luetticke/bayer_born_luetticke.jl")
+    include("models/heterogeneous/bayer_born_luetticke/util.jl")
+    include("models/heterogeneous/bayer_born_luetticke/steady_state.jl")
+    include("models/heterogeneous/bayer_born_luetticke/subspecs.jl")
+    include("models/heterogeneous/bayer_born_luetticke/jacobian.jl")
+    include("models/heterogeneous/bayer_born_luetticke/shock_loading.jl")
+    include("models/heterogeneous/bayer_born_luetticke/observables.jl")
+    include("models/heterogeneous/bayer_born_luetticke/pseudo_observables.jl")
+    include("models/heterogeneous/bayer_born_luetticke/measurement.jl")
+    include("models/heterogeneous/bayer_born_luetticke/augment_states.jl")
+    include("models/heterogeneous/bayer_born_luetticke/helper_functions/numerical/bayer_born_luetticke_numerical.jl")
+    include("models/heterogeneous/bayer_born_luetticke/helper_functions/steady_state/bayer_born_luetticke_steady_state.jl")
+    include("models/heterogeneous/bayer_born_luetticke/helper_functions/linearization/bayer_born_luetticke_linearization.jl")
+    include("models/heterogeneous/bayer_born_luetticke/helper_functions/original_steady_state/bayer_born_luetticke_steady_state.jl")
+    include("models/heterogeneous/bayer_born_luetticke/helper_functions/original_linearization/bayer_born_luetticke_linearization.jl")
 
     include("models/representative/rep_dsge_gov_debt/rep_dsge_gov_debt.jl")
     include("models/representative/rep_dsge_gov_debt/subspecs.jl")

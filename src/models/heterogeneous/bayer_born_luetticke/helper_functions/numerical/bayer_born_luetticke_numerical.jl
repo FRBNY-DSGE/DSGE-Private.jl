@@ -1,0 +1,7 @@
+include("BrentsMethod.jl")
+include("DCT.jl")
+include("FastRoot.jl")
+include("GCintegration.jl")
+include("LinInterpols.jl")
+include("LocateFcn.jl")
+include("MarkovChain.jl")

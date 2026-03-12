@@ -113,6 +113,8 @@ The AbstractHetModel is defined as a subtype of AbstractDSGEModel to accomodate 
 """
 abstract type AbstractHetModel{T} <: AbstractDSGEModel{T} end
 
+n_states(m::AbstractHetModel) = sum(map(i -> length(collect(m.endogenous_states)[i][2]), 1:length(keys(m.endogenous_states))))
+
 """
 ```
 AbstractRepModel{T} <: AbstractDSGEModel{T}

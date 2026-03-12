@@ -3,12 +3,14 @@ import Distributions: Normal, pdf, cdf
 ###############################
 # Type Definition/Constructors
 ###############################
-mutable struct Grid
-    points::Vector{Float64}
-    weights::Vector{Float64}
-    scale::Float64
-    Grid(points, weights, scale) = sum(weights) ≈ scale ? new(points, weights, scale) : error("scaled weights do not sum up properly")
+mutable struct Grid{T <: Real}
+    points::Vector{T}
+    weights::Vector{T}
+    scale::T
+    Grid{T}(points, weights, scale) where {T <: Real} = sum(weights) ≈ scale ? new(points, weights, scale) : error("scaled weights do not sum up properly")
 end
+
+Grid(points::Vector{T}, weights::Vector{T}, scale::T) where {T <: Real} = Grid{T}(points, weights, scale)
 
 # Constructor utilizing a custom weight calculation function
 function Grid(quadrature::Function,
@@ -25,7 +27,7 @@ end
 # A pre-populated version of that rule that only accepts 3 arguments:
 # Lower bound, upper bound, and number of points
 function uniform_quadrature(lower_bound::T, upper_bound::T, n_points::Int;
-                            scale::T = 1) where {T<:Real}
+                            scale::T = one(T)) where {T<:Real}
     grid = collect(range(lower_bound, stop = upper_bound, length = n_points))
     weights = fill(scale/n_points, n_points)
     return grid, weights
@@ -94,9 +96,13 @@ end
 ####################
 # Grid-based utils
 ####################
-function get_grid(m::AbstractDSGEModel, grid_name::Symbol)
-    return m.grids[grid_name]
-end
+get_gridpts(grids::AbstractDict, grid_name::Symbol) = grids[grid_name].points
+get_gridwts(grids::AbstractDict, grid_name::Symbol) = grids[grid_name].weights
+get_gridscale(grids::AbstractDict, grid_name::Symbol) = grids[grid_name].scale
+get_grid(m::AbstractDSGEModel, grid_name::Symbol) = m.grids[grid_name]
+get_gridpts(m::AbstractDSGEModel, grid_name::Symbol) = get_gridpts(m.grids, grid_name)
+get_gridwts(m::AbstractDSGEModel, grid_name::Symbol) = get_gridwts(m.grids, grid_name)
+get_gridscale(m::AbstractDSGEModel, grid_name::Symbol) = get_gridscale(m.grids, grid_name)
 
 function quadrature_sum(x::Vector{T}, grid::Grid) where {T<:Real}
     return sum(grid.weights .* x .* grid.points)
@@ -104,6 +110,39 @@ end
 
 function quadrature_sum(grid::Grid, x::Vector{T}) where {T<:Real}
     return sum(x, grid)
+end
+
+###########################################################################
+# ndgrid port from VectorizedRoutines but updated for current Julia syntax
+###########################################################################
+ndgrid(v::AbstractVector) = copy(v)
+
+function ndgrid(v1::AbstractVector{T}, v2::AbstractVector{T}) where {T}
+    m, n = length(v1), length(v2)
+    v1 = reshape(v1, m, 1)
+    v2 = reshape(v2, 1, n)
+    (repeat(v1, 1, n), repeat(v2, m, 1))
+end
+
+function ndgrid_fill(a, v, s, snext)
+    for j = 1:length(a)
+        a[j] = v[div(rem(j-1, snext), s)+1]
+    end
+end
+
+function ndgrid(vs::AbstractVector{T}...) where {T}
+    n = length(vs)
+    sz = map(length, vs)
+    out = ntuple(i->Array{T}(undef, sz), n)
+    s = 1
+    for i=1:n
+        a = out[i]::Array
+        v = vs[i]
+        snext = s*size(a,i)
+        ndgrid_fill(a, v, s, snext)
+        s = snext
+    end
+    out
 end
 
 # # Defining arithmetic on/standard function evaluation of grids

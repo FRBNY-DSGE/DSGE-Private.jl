@@ -149,3 +149,39 @@ function stack_indices(key_dict::AbstractDict, keys::Vector{Symbol})
     end
     return indices
 end
+
+"""
+```
+get_compression_indices(m::AbstractHetModel, name::Symbol)
+get_compression_indices(m::AbstractHetModel, names::Vector{Symbol})
+```
+returns the compression indices from the Setting `dct_compression_indices`
+for a variable `name` or a vector of variables `names`. It is assumed
+that `get_setting(m, :dct_compression_indices` is a `Dict{Symbol, Vector{Int64}}`.
+"""
+get_compression_indices(m::AbstractHetModel, name::Symbol) = get_setting(m, :dct_compression_indices)[name]
+get_compression_indices(m::AbstractHetModel, names::Vector{Symbol} = [:Vm, :Vk, :copula]) = [get_compression_indices(m, name) for name in names]
+
+"""
+```
+update_compression_indices!(m::AbstractHetModel, name::Symbol, indices::Vector{Int64})
+update_compression_indices!(m::AbstractHetModel, names::Vector{Symbol}, indices::Vector{Int64}...)
+```
+updates the compression indices in the Setting `dct_compression_indices`
+for a variable `name` or a vector of variables `names`. It is assumed
+that `get_setting(m, :dct_compression_indices` is a `Dict{Symbol, Vector{Int64}}`.
+"""
+@inline function update_compression_indices!(m::AbstractHetModel, name::Symbol, indices::Vector{Int64})
+    get_setting(m, :dct_compression_indices)[name] = indices
+
+    return m
+end
+
+@inline function update_compression_indices!(m::AbstractHetModel, names::Vector{Symbol}, all_indices::Vector{Int64}...)
+    dct_indices = get_setting(m, :dct_compression_indices)
+    for (i, name) in enumerate(names)
+        dct_indices[name] = all_indices[i]
+    end
+
+    return m
+end

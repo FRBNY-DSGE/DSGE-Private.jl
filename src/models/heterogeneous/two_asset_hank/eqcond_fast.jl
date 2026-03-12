@@ -159,26 +159,26 @@ function eqcond_lite(m::TwoAssetHANK)
         y_shock      = real(y_shock ./ y_shock_mean .* y_mean)
 
         println("Timing: solve_hjb()")
-        @time c, s, d  = solve_hjb_lite(V, a_lb, ggamma, permanent, ddeath, pam, aggZ,
+        c, s, d  = solve_hjb_lite(V, a_lb, ggamma, permanent, ddeath, pam, aggZ,
                                         xxi, tau_I, w, trans, r_b, r_b_borr, y_shock[indx],
                                         a, b, cost, util, deposit)
 
-        @time interp_decision = interp(b_g, a_g, b, a)
+        interp_decision = interp(b_g, a_g, b, a)
         d_g = reshape(interp_decision * vec(d), I_g, J_g)
         s_g = reshape(interp_decision * vec(s), I_g, J_g)
         c_g = reshape(interp_decision * vec(c), I_g, J_g)
 
-        @show size(interp_decision)
+        size(interp_decision)
         # Derive transition matrices
         println("Timing: transition_deriva()")
-        @time A, AT = transition_deriva_lite(permanent, ddeath, pam, xxi, w, a_lb, aggZ,
+        A, AT = transition_deriva_lite(permanent, ddeath, pam, xxi, w, a_lb, aggZ,
                                         d, d_g, s, s_g, r_a, a, a_g, b, b_g, y_shock[indx],
                                         lambda[indx,indx], cost, util, deposit)
 
         #----------------------------------------------------------------
         # KFE
         #----------------------------------------------------------------
-        @time gIntermediate, cc = solve_kfe(dab_g_tilde, b, g_inds, gg, ddeath,
+        gIntermediate, cc = solve_kfe(dab_g_tilde, b, g_inds, gg, ddeath,
                                             lambda, AT, indx, V_SS)
 
         #----------------------------------------------------------------
@@ -281,7 +281,7 @@ function eqcond_lite(m::TwoAssetHANK)
     nVarsi = n_v + n_g + n_p + 1
 
     out = get_residuals_lite(zeros(Float64, 2 * nVarsi + nEErrors + 1))
-    @time out = get_residuals_lite(zeros(Float64, 2 * nVarsi + nEErrors + 1))
+    out = get_residuals_lite(zeros(Float64, 2 * nVarsi + nEErrors + 1))
 
     #JLD2.jldopen("reference/eqcond_after_.jld2", true, true, true, IOStream) do file
     #    file["residuals"] = out
@@ -294,7 +294,7 @@ function eqcond_lite(m::TwoAssetHANK)
     @assert isapprox(my_out[60001:62250], vec(out)[2001:4250], rtol=1e-4)
 
     x = zeros(Float64, 2 * nVarsi + nEErrors + 1)
-    @time derivs = ForwardDiff.sparse_jacobian(get_residuals_lite, x)
+    derivs = ForwardDiff.sparse_jacobian(get_residuals_lite, x)
 
     nstates = nVars    # n_states(m)
     n_s_exp = nEErrors # n_shocks_expectational(m)
@@ -311,7 +311,7 @@ function eqcond_lite(m::TwoAssetHANK)
     for i=1:1
         indx = i
         x = zeros(Float64, 2 * nVarsi + nEErrors + 1)
-        @time derivs = ForwardDiff.sparse_jacobian(get_residuals_lite, x)
+        derivs = ForwardDiff.sparse_jacobian(get_residuals_lite, x)
         #Γ1[] = -
         #Γ0[] =
         #Π[]  =

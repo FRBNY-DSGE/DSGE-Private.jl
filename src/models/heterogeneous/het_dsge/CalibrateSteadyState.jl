@@ -240,9 +240,9 @@ for iLH = 1:nLH
 	for iHL = 1:nHL
 		i = nHL*(iLH-1)+iHL
 
-        @time out = best_fit(pLH_grid[iLH], pHL_grid[iHL], target, lower, upper, us)
+        out = best_fit(pLH_grid[iLH], pHL_grid[iHL], target, lower, upper, us)
         @show "Old Method"
-		@time (sH_by_sL_grid2[i], zlo_grid2[i], varlinc_grid[i], vardlinc_grid[i]) = best_fit(pLH_grid[iLH],pHL_grid[iHL],varlinc_target,vardlinc_target,sH_by_sL_grid, zlo_grid,np,np,zs,us)
+		(sH_by_sL_grid2[i], zlo_grid2[i], varlinc_grid[i], vardlinc_grid[i]) = best_fit(pLH_grid[iLH],pHL_grid[iHL],varlinc_target,vardlinc_target,sH_by_sL_grid, zlo_grid,np,np,zs,us)
 		(f, sgrid, swts) = persistent_skill_process(sH_by_sL_grid2[i], pLH_grid[iLH], pHL_grid[iHL], ns)
 		(agrid, awts) = cash_grid(sgrid, ω, H, r, η, γ, T, zlo, na)
 		aswts = kron(swts, awts)

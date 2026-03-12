@@ -595,7 +595,7 @@ function steadystate!(m::TwoAssetHANK)
 	    #----------------------------------------------------------------
 	    # Solve HJB
 	    #----------------------------------------------------------------
-        @time for nn = 1 : maxit_HJB
+        for nn = 1 : maxit_HJB
             perm_c =  ddeath * pam # NOTE: perm?
             c0_c   = ((1-xxi) - tau_I) * w
 
