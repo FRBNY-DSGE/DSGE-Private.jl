@@ -411,8 +411,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
                                                                            parallel_evaluation = true, store_trace = store_trace, show_trace = show_trace, 
                                                                            extended_trace = extended_trace, verbose = verbose, rng = rng)
         else
-            popsize = 100
-            s0 = 0.02
             opt_result, iteration_times, posterior_ls, x_trace = optimizer(f_opt_particle, x_opt, s0; lower = lower_bounds, upper = upper_bounds, popsize = popsize, 
             parallel_evaluation = false, store_trace = store_trace, show_trace = show_trace, 
             extended_trace = extended_trace, verbose = verbose, rng = rng)

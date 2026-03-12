@@ -115,6 +115,19 @@ end
         maxfevals = maxfevals               
     )
 
+#=
+    cma_result = CMAEvolutionStrategy.minimize(
+        f_batch, x0, s0;
+        lower = lower,
+        upper = upper,
+        popsize = popsize,
+        callback = callback,
+        parallel_evaluation = parallel_evaluation,
+        seed = 123,
+        maxiter = maxiter,
+        maxfevals = maxfevals               
+    )
+=#
 
     x_best = xbest(cma_result)
     f_best = fbest(cma_result)
