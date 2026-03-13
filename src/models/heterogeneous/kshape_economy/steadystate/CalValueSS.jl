@@ -1,9 +1,5 @@
 using SparseArrays
 using LinearAlgebra
-
-include("helpers/genweight.jl")
-include("helpers/sub2ind.jl")
-
 """
     CalValueSS(b_n_star, b_a_star, a_a_star, c_a_star, c_n_star, AProb, P_SE, param, grid)
 

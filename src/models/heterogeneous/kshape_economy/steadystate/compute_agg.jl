@@ -1,12 +1,4 @@
-using LinearAlgebra
-using NLsolve
-using MAT
-include("find_alpha.jl")
-include("helpers/set_field!.jl")
-
 # Assumes all inputs (meshes, grid, param) are Dicts with String keys
-
-
 """
     compute_agg(meshes, grid, param)
 
@@ -56,17 +48,11 @@ Tuple of 27 outputs:
 # Notes
 - This function modifies `param` and `grid` in place
 - Requires `find_alpha` function to be available
-- Requires `SS_stats_base` to be available (loaded or passed via param)
 """
 
 
 
 function compute_agg(meshes, grid, param)
-    
-    # Load SS_stats_base from .mat file here
-    mat_file_ss = matopen("../src/SS_stats_base.mat")
-    SS_stats_base = read(mat_file_ss, "SS_stats_base")
-    close(mat_file_ss)
     
     v = param["v"]  # ss utilization rate of 0.75
     

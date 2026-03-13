@@ -1,10 +1,3 @@
-using LinearAlgebra
-
-include("helpers/ndgrid.jl")
-include("compute_agg.jl")
-include("policyguess.jl")
-include("compute_K.jl")
-
 """
     solve_SS(grid, param)
 

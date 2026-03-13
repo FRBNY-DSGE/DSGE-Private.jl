@@ -1,16 +1,3 @@
-using LinearAlgebra
-using SparseArrays
-using Interpolations
-include("../helpers/ndgrid.jl")
-include("../helpers/genweight.jl")
-include("../helpers/uncompress.jl")
-include("../helpers/compress.jl")
-include("../helpers/myinterpolate3.jl")
-include("../helpers/cdf_to_pdf3D_forwarddiff.jl")
-include("../helpers/sub2ind.jl")
-include("../helpers/q_cons2.jl")
-include("policies_update.jl")
-
 """
     _build_transition_matrix!(weight11, weight12, weight21, weight22,
                                Dist_b, idb, Dist_a, ida,

@@ -1,136 +1,136 @@
 isdefined(Base, :__precompile__) && __precompile__(false)
 
 module DSGE
-    using ModelConstructors, SMC
-    using Dates, Test, BenchmarkTools
-    using ArnoldiMethod, BasisMatrices, BandedMatrices, BlockArrays, Distributed, Distributions, FileIO, FredData, ForwardDiff
-    using HDF5, Interpolations, JLD2, KrylovKit, LinearAlgebra
-    using Missings, Nullables, Optim, Printf, Random, RecipesBase
-    using SparseArrays, SparseDiffTools, SpecialFunctions
-    using StateSpaceRoutines, StatsPlots
-    using PetscWrap, SlepcWrap, MPI, ParallelDataTransfer
-    using CSV, DataFrames, DataStructures, OrderedCollections
-    using BandedMatrices: Zeros
-    using DataStructures: SortedDict, insert!, ForwardOrdering
-    using FFTW: dct
-    using Roots: fzero, ConvergenceFailed
-    using StatsBase: sample, Weights
-    using StatsFuns: chisqinvcdf
-    using Statistics: std
-    using MatrixEquations
-    using CMAEvolutionStrategy
+using ModelConstructors, SMC
+using Dates, Test, BenchmarkTools
+using ArnoldiMethod, BasisMatrices, BandedMatrices, BlockArrays, Distributed, Distributions, FileIO, FredData, ForwardDiff
+using HDF5, Interpolations, JLD2, KrylovKit, LinearAlgebra
+using Missings, Nullables, Optim, Printf, Random, RecipesBase
+using SparseArrays, SparseDiffTools, SpecialFunctions
+using StateSpaceRoutines, StatsPlots
+#using PetscWrap, SlepcWrap, MPI, ParallelDataTransfer
+using CSV, DataFrames, DataStructures, OrderedCollections
+using BandedMatrices: Zeros
+using DataStructures: SortedDict, insert!, ForwardOrdering
+using FFTW: dct
+using Roots: fzero, ConvergenceFailed
+using StatsBase: sample, Weights
+using StatsFuns: chisqinvcdf
+using Statistics: std
+using MatrixEquations
+using CMAEvolutionStrategy
 
-    import Calculus
-    import Base.isempty, Base.<, Base.min, Base.max
-    import LinearAlgebra: rank
-    import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults, LineSearches
-    import BlackBoxOptim
-    import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks, solve_discrete_lyapunov
-    import ModelConstructors
-    import ModelConstructors: posterior!, posterior, <=, n_states,
-                              n_states, n_states_augmented, n_shocks_exogenous,
-                              n_shocks_expectational, n_observables, n_pseudo_observables,
-                              n_equilibrium_conditions, n_parameters, n_parameters_steady_state,
-                              n_parameters_free, SteadyStateParameterGrid, get_setting, prior,
-                              savepath, filestring_base, data_vintage
-    import SMC: get_vals, get_logpost
-    import Calculus, Missings, Nullables
-    import StateSpaceRoutines: KalmanFilter
-    import SparseArrays: sparse, spdiagm, spzeros
+import Calculus
+import Base.isempty, Base.<, Base.min, Base.max
+import LinearAlgebra: rank
+import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults, LineSearches
+import BlackBoxOptim
+import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks, solve_discrete_lyapunov
+import ModelConstructors
+import ModelConstructors: posterior!, posterior, <=, n_states,
+                          n_states, n_states_augmented, n_shocks_exogenous,
+                          n_shocks_expectational, n_observables, n_pseudo_observables,
+                          n_equilibrium_conditions, n_parameters, n_parameters_steady_state,
+                          n_parameters_free, SteadyStateParameterGrid, get_setting, prior,
+                          savepath, filestring_base, data_vintage
+import SMC: get_vals, get_logpost
+import Calculus, Missings, Nullables
+import StateSpaceRoutines: KalmanFilter
+import SparseArrays: sparse, spdiagm, spzeros
 
-    export
-        # defaults.jl
-        default_settings!, default_test_settings!,
+export
+    # defaults.jl
+    default_settings!, default_test_settings!,
 
-        # abstractdsgemodel.jl
-        AbstractDSGEModel, AbstractRepModel, description,
-        n_anticipated_shocks, n_anticipated_shocks_padding,
-        n_mon_anticipated_shocks, n_mon_anticipated_shocks_padding,
-        mon_anticipated_ait_shocks,
-        date_presample_start, date_mainsample_start, date_zlb_start,
-        date_presample_end, date_prezlb_end, date_mainsample_end, date_conditional_end,
-        index_presample_start, index_mainsample_start, index_zlb_start, index_forecast_start,
-        index_shockdec_start,
-        n_presample_periods, n_prezlb_periods, n_zlb_periods, n_mainsample_periods,
-        n_conditional_periods,
-        inds_presample_periods, inds_prezlb_periods, inds_zlb_periods, inds_mainsample_periods,
-        n_states, n_states_augmented, n_shocks_exogenous, n_shocks_expectational,
-        n_equilibrium_conditions, n_observables, n_parameters, n_parameters_steady_state,
-        n_parameters_free, n_pseudo_observables, get_dict, get_key,
-        inds_states_no_ant, inds_shocks_no_ant, inds_obs_no_ant,
-        spec, subspec, saveroot, dataroot,
-        data_vintage, data_id, cond_vintage, cond_id, cond_full_names, cond_semi_names,
-        use_population_forecast,
-        use_parallel_workers,
-        reoptimize, calculate_hessian, hessian_path, n_hessian_test_params,
-        n_mh_blocks, n_mh_simulations, n_mh_burn, mh_thin,
-        date_forecast_start, date_forecast_end,
-        forecast_block_size, forecast_start_block,
-        forecast_input_file_overrides, forecast_uncertainty_override,
-        forecast_smoother, forecast_horizons,
-        forecast_zlb_value, forecast_tdist_shocks, forecast_tdist_df_val,
-        shockdec_startdate, date_shockdec_end,
-        n_shockdec_periods, impulse_response_horizons,
-        load_parameters_from_file, specify_mode!, specify_hessian!,
-        logpath, workpath, rawpath, tablespath, figurespath, inpath,
-        transform_to_model_space!, transform_to_real_line!,
-        ShockGroup, alternative_policy, setup_regime_switching_inds!,
+    # abstractdsgemodel.jl
+    AbstractDSGEModel, AbstractRepModel, description,
+    n_anticipated_shocks, n_anticipated_shocks_padding,
+    n_mon_anticipated_shocks, n_mon_anticipated_shocks_padding,
+    mon_anticipated_ait_shocks,
+    date_presample_start, date_mainsample_start, date_zlb_start,
+    date_presample_end, date_prezlb_end, date_mainsample_end, date_conditional_end,
+    index_presample_start, index_mainsample_start, index_zlb_start, index_forecast_start,
+    index_shockdec_start,
+    n_presample_periods, n_prezlb_periods, n_zlb_periods, n_mainsample_periods,
+    n_conditional_periods,
+    inds_presample_periods, inds_prezlb_periods, inds_zlb_periods, inds_mainsample_periods,
+    n_states, n_states_augmented, n_shocks_exogenous, n_shocks_expectational,
+    n_equilibrium_conditions, n_observables, n_parameters, n_parameters_steady_state,
+    n_parameters_free, n_pseudo_observables, get_dict, get_key,
+    inds_states_no_ant, inds_shocks_no_ant, inds_obs_no_ant,
+    spec, subspec, saveroot, dataroot,
+    data_vintage, data_id, cond_vintage, cond_id, cond_full_names, cond_semi_names,
+    use_population_forecast,
+    use_parallel_workers,
+    reoptimize, calculate_hessian, hessian_path, n_hessian_test_params,
+    n_mh_blocks, n_mh_simulations, n_mh_burn, mh_thin,
+    date_forecast_start, date_forecast_end,
+    forecast_block_size, forecast_start_block,
+    forecast_input_file_overrides, forecast_uncertainty_override,
+    forecast_smoother, forecast_horizons,
+    forecast_zlb_value, forecast_tdist_shocks, forecast_tdist_df_val,
+    shockdec_startdate, date_shockdec_end,
+    n_shockdec_periods, impulse_response_horizons,
+    load_parameters_from_file, specify_mode!, specify_hessian!,
+    logpath, workpath, rawpath, tablespath, figurespath, inpath,
+    transform_to_model_space!, transform_to_real_line!,
+    ShockGroup, alternative_policy, setup_regime_switching_inds!,
 
-        # abstractvarmodel.jl
-        AbstractVARModel, AbstractDSGEVARModel, AbstractDSGEVECMModel,
+    # abstractvarmodel.jl
+    AbstractVARModel, AbstractDSGEVARModel, AbstractDSGEVECMModel,
 
-        # grids.jl # TODO: delete these exports. Just exporting while we're experimenting with BayerBornLuetticke
-        ndgrid, get_grid, get_gridpts, get_gridwts, get_gridscale,
+    # grids.jl # TODO: delete these exports. Just exporting while we're experimenting with BayerBornLuetticke
+    ndgrid, get_grid, get_gridpts, get_gridwts, get_gridscale,
 
-        # statespace.jl
-        Transition, Measurement, PseudoMeasurement, System, RegimeSwitchingSystem, compute_system, var_approx_state_space,
-        n_regimes,
+    # statespace.jl
+    Transition, Measurement, PseudoMeasurement, System, RegimeSwitchingSystem, compute_system, var_approx_state_space,
+    n_regimes,
 
-        # benchmark/
-        print_all_benchmarks, construct_trial_group, write_ref_trial, write_ref_trial_group,
+    # benchmark/
+    print_all_benchmarks, construct_trial_group, write_ref_trial, write_ref_trial_group,
 
-        # data/
-        load_data, load_data_levels, load_cond_data_levels, load_fred_data,
-        transform_data, save_data, get_data_filename,
-        df_to_matrix, hpfilter, difflog, quartertodate, percapita, nominal_to_real,
-        oneqtrpctchange, annualtoquarter, quartertoannual, quartertoannualpercent,
-        loggrowthtopct_percapita, loggrowthtopct, logleveltopct_annualized,
-        loggrowthtopct_annualized_percapita, loggrowthtopct_annualized,
-        logleveltopct_annualized_percapita,
-        logleveltopct_annualized_approx, loggrowthtopct_4q_approx, logleveltopct_4q_approx,
-        parse_data_series, collect_data_transforms, reverse_transform,
-        subtract_quarters, iterate_quarters,
-        simulate_data, simulate_observables, simulate_states, post_covid_data_mods!,
+    # data/
+    load_data, load_data_levels, load_cond_data_levels, load_fred_data,
+    transform_data, save_data, get_data_filename,
+    df_to_matrix, hpfilter, difflog, quartertodate, percapita, nominal_to_real,
+    oneqtrpctchange, annualtoquarter, quartertoannual, quartertoannualpercent,
+    loggrowthtopct_percapita, loggrowthtopct, logleveltopct_annualized,
+    loggrowthtopct_annualized_percapita, loggrowthtopct_annualized,
+    logleveltopct_annualized_percapita,
+    logleveltopct_annualized_approx, loggrowthtopct_4q_approx, logleveltopct_4q_approx,
+    parse_data_series, collect_data_transforms, reverse_transform,
+    subtract_quarters, iterate_quarters,
+    simulate_data, simulate_observables, simulate_states, post_covid_data_mods!,
 
-        # solve/
-        gensys, solve, klein,
+    # solve/
+    gensys, solve, klein,
 
-        # estimate/
-        simulated_annealing, combined_optimizer, lbfgs, pso, trust_region_newton,
-        conjugate_gradient, cmaes, xnes, filter, filter_shocks, likelihood, posterior, posterior!,
-        optimize!, csminwel, hessian!, estimate, proposal_distribution,
-        metropolis_hastings, compute_parameter_covariance, prior, get_estimation_output_files,
-        find_density_bands, mutation, resample, smc,
-        mvnormal_mixture_draw, nearest_spd, marginal_data_density,
-        initial_draw!, ParticleCloud, Particle, estimate_bma,
+    # estimate/
+    simulated_annealing, combined_optimizer, lbfgs, pso, trust_region_newton,
+    conjugate_gradient, cmaes, xnes, filter, filter_shocks, likelihood, posterior, posterior!,
+    optimize!, csminwel, hessian!, estimate, proposal_distribution,
+    metropolis_hastings, compute_parameter_covariance, prior, get_estimation_output_files,
+    find_density_bands, mutation, resample, smc,
+    mvnormal_mixture_draw, nearest_spd, marginal_data_density,
+    initial_draw!, ParticleCloud, Particle, estimate_bma,
 
-        # backwards_compatibility.jl
-        smc2, old_to_new_cloud, # TO REMOVE
+    # backwards_compatibility.jl
+    smc2, old_to_new_cloud, # TO REMOVE
 
-        # forecast/
-        load_draws, forecast_one,
-        smooth, forecast, shock_decompositions, deterministic_trends, trends, impulse_responses,
-        compute_system, compute_system_function, add_requisite_output_vars, n_forecast_draws,
-        get_forecast_input_file, get_forecast_output_files, get_forecast_filename,
-        read_forecast_output,
+    # forecast/
+    load_draws, forecast_one,
+    smooth, forecast, shock_decompositions, deterministic_trends, trends, impulse_responses,
+    compute_system, compute_system_function, add_requisite_output_vars, n_forecast_draws,
+    get_forecast_input_file, get_forecast_output_files, get_forecast_filename,
+    read_forecast_output,
 
-        # analysis/
-        find_density_bands, moment_tables, compute_meansbands, MeansBands,
-        meansbands_to_matrix, read_mb, read_bdd_and_unbdd_mb,
-        get_meansbands_input_file, get_meansbands_output_file, get_product, get_class,
-        which_density_bands,
-        prepare_meansbands_tables_timeseries, prepare_means_tables_shockdec,
-        prepare_meansbands_table_irf,
+    # analysis/
+    find_density_bands, moment_tables, compute_meansbands, MeansBands,
+    meansbands_to_matrix, read_mb, read_bdd_and_unbdd_mb,
+    get_meansbands_input_file, get_meansbands_output_file, get_product, get_class,
+    which_density_bands,
+    prepare_meansbands_tables_timeseries, prepare_means_tables_shockdec,
+    prepare_meansbands_table_irf,
         write_meansbands_tables_timeseries, write_means_tables_shockdec,
         prepare_meansbands_table_irf,
         write_meansbands_tables_all, construct_fcast_and_hist_dfs,
@@ -170,7 +170,7 @@ module DSGE
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
         PoolModel, OnionModel, SectoralOnionModel, eqcond, measurement, pseudo_measurement,
-        shock_groupings, transition, DSGEVAR, DSGEVECM, DSSW,
+        shock_groupings, transition, DSGEVAR, DSGEVECM, DSSW, mBBQ,
 
         # models/heterogeneous/
         KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
@@ -572,6 +572,71 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/two_asset_hank/helpers.jl")
     include("models/heterogeneous/two_asset_hank/interp.jl")
 
+    ## KShape Model
+    include("models/heterogeneous/kshape_economy/helpers/set_field.jl")                                                
+    include("models/heterogeneous/kshape_economy/helpers/sub2ind.jl")                                                  
+    include("models/heterogeneous/kshape_economy/helpers/ndgrid.jl")
+    include("models/heterogeneous/kshape_economy/helpers/gradient.jl")
+    include("models/heterogeneous/kshape_economy/helpers/q_cons2.jl")
+    include("models/heterogeneous/kshape_economy/helpers/genweight.jl")
+    include("models/heterogeneous/kshape_economy/helpers/createSparsebasis.jl")
+    # interpolation
+    include("models/heterogeneous/kshape_economy/helpers/Grids/griddedInterpolant.jl")
+    include("models/heterogeneous/kshape_economy/helpers/Grids/myinterpolate3.jl")
+    include("models/heterogeneous/kshape_economy/helpers/Grids/myinterpolate3_ee.jl")
+    include("models/heterogeneous/kshape_economy/helpers/Grids/interp3_nonuniform.jl")
+    include("models/heterogeneous/kshape_economy/helpers/Grids/cdf_to_pdf3D_forwarddiff.jl")
+    include("models/heterogeneous/kshape_economy/helpers/Grids/copula_nodes_share_safe.jl")
+    # DCT / compression
+    include("models/heterogeneous/kshape_economy/helpers/DCT/mydctmx.jl")
+    include("models/heterogeneous/kshape_economy/helpers/DCT/compress.jl")
+    include("models/heterogeneous/kshape_economy/helpers/DCT/uncompress.jl")
+    # steady state helpers
+    include("models/heterogeneous/kshape_economy/helpers/steadystate/Fastroot.jl")
+    include("models/heterogeneous/kshape_economy/helpers/steadystate/Cal_SS_stats.jl")
+    include("models/heterogeneous/kshape_economy/helpers/steadystate/steady_anal.jl")
+    # jachelpers
+    include("models/heterogeneous/kshape_economy/helpers/jachelpers/macros2.jl")
+    include("models/heterogeneous/kshape_economy/helpers/jachelpers/index2.jl")
+    # main model struct and constructor
+    include("models/heterogeneous/kshape_economy/mBBQ.jl")
+    include("models/heterogeneous/kshape_economy/util.jl")
+    include("models/heterogeneous/kshape_economy/helpers/grids.jl")
+    # model-type-dependent helpers (after mBBQ.jl)
+    include("models/heterogeneous/kshape_economy/helpers/jachelpers/populate_from_jld2.jl")
+    include("models/heterogeneous/kshape_economy/shock_loading.jl")
+    # steady state
+    include("models/heterogeneous/kshape_economy/steadystate/Fastroot.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/policyguess.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/find_alpha.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/EGM_Step1.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/EGM_Step2.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/EGM_Step3.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/EGM_Step4.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/CalValueSS.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/compute_agg.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/compute_K.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/find_dist.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/ss_ump_new.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/policies_SS.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/steady_anal.jl")
+    include("models/heterogeneous/kshape_economy/steadystate/solve_SS.jl")
+    # dynamics
+    include("models/heterogeneous/kshape_economy/dynamics/parameters_agg.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/parameters_agg_EST_v3.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/policies_update.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/indexing.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/update_ss_v5.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/state_reduc_tvcopula.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/SGU_solver.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/F_sys_ref_tvcopula_QE.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/dyn_ZLB_tvcopula_new.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/IRFs_Taylor_QE_compare_tvcopula.jl")
+    # top-level
+    include("models/heterogeneous/kshape_economy/jacobian.jl")
+    include("models/heterogeneous/kshape_economy/fsys_agg.jl")
+
+
     # VAR models
     include("models/var/util.jl")
 
@@ -603,6 +668,7 @@ include("models/representative/OnionModel/InOutData.jl")
     # include("dsgevar/dsgevar_likelihood.jl")
     # include("dsgevar/impulse_responses.jl")
     # include("dsgevar/util.jl")
+
 
     if (VERSION >= v"1.0") && (VERSION <= v"1.1")
         isnothing(x::Any) = x === nothing ? true : false

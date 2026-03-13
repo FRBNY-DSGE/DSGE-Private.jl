@@ -1,7 +1,4 @@
 using LinearAlgebra
-# include("helpers/set_field!.jl")
-include("helpers/genweight.jl")
-
 # Assumes all inputs (grid, inc, param) are Dicts with String keys
 """
     EGM_Step3(EMU, grid, inc, b_a_star, c_n_aux, param)

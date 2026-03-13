@@ -1,27 +1,5 @@
 """
-EGM (Endogenous Grid Method) functions for solving household optimization problems.
-
-This code follows Bayer et al. (2018) very closely and implements EGM steps
-for the household problem with adjustment and non-adjustment cases.
-
-Copyright (c) 2018-05-27
-Christian Bayer, Ralph Lutticke, Lien Pham-Dao, and Volker Tjaden
-
-From: 'Precautionary Savings, Illiquid Assets, and the Aggregate Consequences of
-Shocks to Household Income Risk', Bonn mimeo
-http://wiwi.uni-bonn.de/hump/wp.html
-
-Translated to Julia for the HANK model replication.
-"""
-
-using Statistics
-using Interpolations
-
-include("Fastroot.jl")
-
-
-"""
-    EGM_Step1_b(grid, inc, c_n_aux, param, meshes)
+    EGM_Step1(grid, inc, c_n_aux, param, meshes)
 
 Compute optimal consumption and corresponding bond holdings when equity holding
 cannot be adjusted (no-adjustment case).
@@ -41,6 +19,17 @@ cannot be adjusted (no-adjustment case).
 - Takes budget constraint into account
 - Handles borrowing constraint at grid.b[1]
 - Uses interpolation to map from endogenous grid to exogenous grid
+
+This code follows Bayer et al. (2018) very closely and implements EGM steps
+for the household problem with adjustment and non-adjustment cases.
+
+Copyright (c) 2018-05-27
+Christian Bayer, Ralph Lutticke, Lien Pham-Dao, and Volker Tjaden
+
+From: 'Precautionary Savings, Illiquid Assets, and the Aggregate Consequences of
+Shocks to Household Income Risk', Bonn mimeo
+http://wiwi.uni-bonn.de/hump/wp.html
+
 """
 function EGM_Step1(grid, inc, c_n_aux, param, meshes)
 

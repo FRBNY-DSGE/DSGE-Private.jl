@@ -1,7 +1,3 @@
-include("helpers/q_cons2.jl")
-include("helpers/gradient.jl")
-include("helpers/ndgrid.jl")
-
 """
     steady_anal(grid, param, meshes, SS_stats, AProb, mu_dist, n, H_tilde,
                 b_n_star, b_a_star, a_a_star, c_n_guess, c_a_guess)

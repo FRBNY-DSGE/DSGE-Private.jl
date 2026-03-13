@@ -1,12 +1,3 @@
-using LinearAlgebra
-using SparseArrays
-
-include("compute_agg.jl")
-include("policyguess.jl")
-include("policies_SS.jl")
-include("find_dist.jl")
-include("CalValueSS.jl")
-
 """
     compute_K(K, c_a_guess, c_n_guess, psi_guess, AProb, mu_dist, grid, param, meshes)
 

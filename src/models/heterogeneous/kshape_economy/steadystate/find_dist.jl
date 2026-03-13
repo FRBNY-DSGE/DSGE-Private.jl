@@ -34,10 +34,6 @@ Tuple of 3 outputs:
 - Iterates until convergence (dist_mu < 1e-14) or max iterations (150000)
 """
 
-using SparseArrays
-include("helpers/genweight.jl")
-include("helpers/sub2ind.jl")
-
 function find_dist(mu_dist, H, AProb, b_n_star, b_a_star, a_a_star, H_tilde, P_SE_dist, param, grid)
     
     # Get grid dimensions - direct Dict access

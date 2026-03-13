@@ -1,5 +1,3 @@
-include("Fastroot.jl")
-
 """
     EGM_Step2(mutil_c_n, mutil_c_a, psi_guess, grid, P_SE, RBRB, RR, AProb, param)
 

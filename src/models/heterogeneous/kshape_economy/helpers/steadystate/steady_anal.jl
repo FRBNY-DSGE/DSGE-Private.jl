@@ -1,5 +1,3 @@
-include("q_cons2.jl")
-include("gradient.jl")
 """
     steady_anal(grid, param, meshes, SS_stats, AProb, mu_dist, n, H_tilde,
                 b_n_star, b_a_star, a_a_star, c_n_guess, c_a_guess)
@@ -35,9 +33,6 @@ Translated from MATLAB to Julia for the HANK model replication.
 """
 function steady_anal(grid, param, meshes, SS_stats, AProb, mu_dist, n, H_tilde,
                     b_n_star, b_a_star, a_a_star, c_n_guess, c_a_guess)
-
-    # Include helper function
-    #include("q_cons2.jl")
 
     # Initialize output dictionary
     anal_stats = Dict{String, Any}()

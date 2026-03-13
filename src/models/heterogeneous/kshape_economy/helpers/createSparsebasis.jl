@@ -1,5 +1,3 @@
-using LinearAlgebra
-include("ndgrid.jl")
 """
     createSparsebasis(grid, maxdim, Xss)
 

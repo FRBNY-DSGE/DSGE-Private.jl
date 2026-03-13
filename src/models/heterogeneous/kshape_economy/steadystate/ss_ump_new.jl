@@ -1,15 +1,3 @@
-using MAT
-using Interpolations
-
-include("compute_agg.jl")
-include("policyguess.jl")
-include("compute_K.jl")
-include("helpers/Cal_SS_stats.jl")
-include("helpers/griddedInterpolant.jl")
-include("helpers/ndgrid.jl")
-include("solve_SS.jl")
-include("helpers/steady_anal.jl")
-
 """
     ss_ump(param_file, grid_file)
 

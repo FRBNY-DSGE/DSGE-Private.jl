@@ -1,9 +1,3 @@
-using DSGE: @sslogdeviations2levels, @sslogdeviations2levels_unprimekeys, @unpack_and_first
-include("helpers/q_cons2.jl")
-include("mBBQ.jl")
-include("models/7_KShape_Share/index2.jl")    
-include("models/7_KShape_Share/macros2.jl")   
-
 """
 ```
 Fsys_agg(F, X, XPrime, θ, grids, id, nt, eq)

@@ -1,8 +1,3 @@
-using SparseArrays
-using LinearAlgebra
-include("../helpers/mydctmx.jl")
-include("../helpers/copula_nodes_share_safe.jl")
-include("../helpers/createSparsebasis.jl")
 """
     state_reduc_tvcopula!(param, grid, SS_stats, mu_dist, Value, mutil_c, Va)
 

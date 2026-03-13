@@ -1,9 +1,3 @@
-using LinearAlgebra
-
-# Include dependencies
-include("../Fastroot.jl")
-include("../helpers/griddedInterpolant.jl")
-
 """
     _interp1_linear!(out, xgrid, yvals, xquery)
 

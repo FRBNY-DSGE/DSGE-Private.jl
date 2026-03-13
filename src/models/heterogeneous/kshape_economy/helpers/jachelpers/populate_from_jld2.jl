@@ -1,22 +1,30 @@
-using JLD2
+function populate_from_jld2!(m::mBBQ, out::String)
+    m <= Setting(:ss_file_path, out)
+    return populate_from_jld2!(m)
+end
 
-function populate_from_jld2(m::mBBQ, out::JLD2)
-    
-    #cop = JLD2.jldread(JLD2 FILE)
-    m <= Setting(:Γ, cop["Gamma_state"], "Gamma matrix")
-    m <= Setting(:copula, cop["Copula"], "Copula")
+function populate_from_jld2!(m::mBBQ)
+    try
+        file = get_setting(m, :ss_file_path)
+        ref = JLD2.jldopen(file, "r")
+    catch
+        e "There is no jld2 file associated with this model"
+    end
+
+    m <= Setting(:Γ, ref["Gamma_state"], "Gamma matrix")
+    m <= Setting(:copula, ref["Copula"], "Copula")
 
 
-    Gamma_control = cop["Gamma_control"]
-    distrSS      = cop["distrSS"]
+    Gamma_control = ref["Gamma_control"]
+    distrSS      = ref["distrSS"]
 
     #Save marginal distributions forliquid + illiquid + income
-    m[:marginal_cdf_b_star] = cop["CDF_b_SS"]
-    m[:marginal_cdf_a_star] = cop["CDF_a_SS"]
-    m[:marginal_cdf_se_star] = cop["CDF_se_SS"]
-    m[:marginal_pdf_b_star] = cop["distr_b_SS"]
-    m[:marginal_pdf_a_star] = cop["distr_a_SS"]
-    m[:marginal_pdf_se_star] = cop["distr_se_SS"]
+    m[:marginal_cdf_b_star] = ref["CDF_b_SS"]
+    m[:marginal_cdf_a_star] = ref["CDF_a_SS"]
+    m[:marginal_cdf_se_star] = ref["CDF_se_SS"]
+    m[:marginal_pdf_b_star] = ref["distr_b_SS"]
+    m[:marginal_pdf_a_star] = ref["distr_a_SS"]
+    m[:marginal_pdf_se_star] = ref["distr_se_SS"]
 
     # Key dimensions
     oc          = Int(grid["oc"])
@@ -24,26 +32,26 @@ function populate_from_jld2(m::mBBQ, out::JLD2)
     nb_cop = Int(grid["nb_copula"])
     na_cop = Int(grid["na_copula"])
     nse_cop = Int(grid["nse_copula"])
-    nPoly   = cop["nPoly"]
+    nPoly   = ref["nPoly"]
 
     # Settings
     m <= Setting(:nb_copula, nb_cop, "Compression Index for Liquid Assets")
     m <= Setting(:na_copula, na_cop, "Compression Index for Illiquid Assets")
-    m <= Setting(:nse_copula, nse_cop "Compression Index for Income")
+    m <= Setting(:nse_copula, nse_cop, "Compression Index for Income")
     m <= Setting(:nPoly, nPoly, "Degree of Chebyshev Polynomials")
     m <= Setting(:ny, oc, "Total number of Chebyshev polynomial coefficients across 
                  all distributions" )
 
     # 4. DCT matrices (reconstructed from dimensions)
-    m <= Setting(:DC, cop["DC"])
-    m <= Setting(:IDC, cop["IDC"])
-    m <= Setting(:DCD, cop["DCD"])
-    m <= Setting(:IDCD, cop["IDCD"])
+    m <= Setting(:DC, ref["DC"])
+    m <= Setting(:IDC, ref["IDC"])
+    m <= Setting(:DCD, ref["DCD"])
+    m <= Setting(:IDCD, ref["IDCD"])
 
     #Copula compression indices
     comprCOP = Vector{Int}(grid["compressionIndexesCOP"])
     get_setting(m, :dct_compression_coefficients)[:copula] = comprCOP
-    get_setting(m, :n_copula_dct_coefficients) = nCOP
+    #get_setting(m, :n_copula_dct_coefficients) = nCOP
     # Steady-state NamedTuple (reuses build_ss from index2.jl)
     ss = build_ss(param, SS_stats)
     m <= Setting(:ss, ss)

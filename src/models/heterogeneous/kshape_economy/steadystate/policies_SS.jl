@@ -1,8 +1,3 @@
-include("EGM_Step1.jl")
-include("EGM_Step2.jl")
-include("EGM_Step3.jl")
-include("EGM_Step4.jl")
-
 """
     policies_SS(c_a_guess, c_n_guess, psi_guess, AProb, grid, inc, RR, RBRB, P_SE, param, meshes)
 

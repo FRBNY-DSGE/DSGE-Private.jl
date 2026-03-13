@@ -12,7 +12,7 @@ BayerBornLuetticke{T} <: AbstractHeterogeneousModel{T}
 
 #### Parameters and Steady-States
 *  `parameters::Vector{AbstractParameter{T}}`: Vector of all the time invariant model
-parametesrs.
+parameters.
 
 
 
@@ -27,17 +27,17 @@ mutable struct mBBQ{T} <: AbstractHetModel{T} #TODO <: AbstractHetModel{T}
     # figure out a more flexible way to define
     # "grids" that are not necessarily quadrature
     # grids within the model
-# TODO: maybe add field/type to hold reduction information e.g. DCTindices (but not coefficient values), copula info
+    # TODO: maybe add field/type to hold reduction information e.g. DCTindices (but not coefficient values), copula info
     grids::OrderedDict{Symbol,Union{Grid, Array, T}}
     keys::OrderedDict{Symbol,Int}                    # Human-readable names for all the model
-                                              # parameters and steady-states
+    # parameters and steady-states
 
     state_variables::Vector{Symbol}                  # Vector of symbols of the state variables
     jump_variables::Vector{Symbol}                   # Vector of symbols of the jump variables
     aggregate_state_variables::Vector{Symbol}                  # Vector of symbols of the state variables
     aggregate_jump_variables::Vector{Symbol}                   # Vector of symbols of the jump variables
-#=    normalized_model_states::Vector{Symbol}          # All of the distributional model
-                                                     # state variables that need to be normalized=#
+    #=    normalized_model_states::Vector{Symbol}          # All of the distributional model
+    # state variables that need to be normalized=#
 
     # Vector of ranges corresponding to normalized (post Klein solution) indices
     aggregate_endogenous_states::OrderedDict{Symbol,Int}
@@ -71,12 +71,12 @@ m.settings[:nx], m.settings[:ns].
 """
 #=
 function init_grids!(m::mBBQ; coarse::Bool = true)
-    # Use coarse defaults from init_model_indices! (nx=12, ns=2).
-    # m.grids is already initialized in the constructor.
-    # Full grid construction (b, a, se meshes, etc.) to be implemented.
+# Use coarse defaults from init_model_indices! (nx=12, ns=2).
+# m.grids is already initialized in the constructor.
+# Full grid construction (b, a, se meshes, etc.) to be implemented.
 
-    #in models/7KShape_Share, need to move here
-    return nothing
+#in models/7KShape_Share, need to move here
+return nothing
 end
 =#
 """
@@ -97,11 +97,11 @@ function init_model_indices!(m::mBBQ)
     # Predetermined states
     # TODO: delete states that should just be augmented states
 
-      m.state_variables = [:marginal_pdf_b′_t, :marginal_pdf_a′_t, :marginal_pdf_se′_t, :copula′_t, 
-                           :R_cb′_t, :w′′t, :A_b′_t, :B_b′_t, :A_gaux′_t, :Q′_t, :lev′_t, :NW_b′_t, 
-                           :R′_tilde′_t, :x_cb′_t, :π_past′_t, :Y_past′_t, :C_past′_t, :I_past′_t, 
-                           :Profit_past′_t, :unemp_past′_t, :G_past′_t, :LT_past′_t, :R_star′_t, :B_F′_t, :Z′_t, 
-                           :ψ_rp′_t, :η′_t, :D′_t, :GG′_t, :ι′_t, :BB′_t, :ψ_w′_t, :MP′_t, :p_m′_t]
+    m.state_variables = [:marginal_pdf_b′_t, :marginal_pdf_a′_t, :marginal_pdf_se′_t, :copula′_t, 
+                         :R_cb′_t, :w′′t, :A_b′_t, :B_b′_t, :A_gaux′_t, :Q′_t, :lev′_t, :NW_b′_t, 
+                         :R′_tilde′_t, :x_cb′_t, :π_past′_t, :Y_past′_t, :C_past′_t, :I_past′_t, 
+                         :Profit_past′_t, :unemp_past′_t, :G_past′_t, :LT_past′_t, :R_star′_t, :B_F′_t, :Z′_t, 
+                         :ψ_rp′_t, :η′_t, :D′_t, :GG′_t, :ι′_t, :BB′_t, :ψ_w′_t, :MP′_t, :p_m′_t]
 
 
     m.aggregate_state_variables = m.state_variables[5:end]
@@ -109,17 +109,17 @@ function init_model_indices!(m::mBBQ)
     # Jumps
     # TODO: delete jump variables that should just be pseudo-observables
     println("testing new ordering bbl")
-   #= m.jump_variables = [:Vm′_t, :Vk′_t,
-                        # Function valued jumps above, Distribution Names
-                        :Gini_C′_t, :Gini_X′_t, :I90_share′_t, :I90_share_net′_t,:W90_share′_t, :sd_log_y′_t,
-                        # Endogenous scalar-valued jumps
-                        :rk′_t, :w′_t, :K′_t, :π′_t, :π_w′_t, :Y′_t, :C′_t, :q′_t, :N′_t, :mc′_t,
-                        :mc_w′_t, :u′_t, :Ht′_t, :avg_tax_rate′_t, :T′_t, :I′_t, :B′_t,
-                        :BD′_t, :BY′_t, :TY′_t, :mc_w_w′_t, :G′_t, :τ_level′_t, :τ_prog′_t, :Ygrowth′_t,
-                        :Bgrowth′_t, :Igrowth′_t, :wgrowth′_t, :Cgrowth′_t,
-                        :Tgrowth′_t, :LP′_t, :LP_XA′_t, :union_profits′_t,
-                        :profits′_t] =#
-    
+    #= m.jump_variables = [:Vm′_t, :Vk′_t,
+    # Function valued jumps above, Distribution Names
+    :Gini_C′_t, :Gini_X′_t, :I90_share′_t, :I90_share_net′_t,:W90_share′_t, :sd_log_y′_t,
+    # Endogenous scalar-valued jumps
+    :rk′_t, :w′_t, :K′_t, :π′_t, :π_w′_t, :Y′_t, :C′_t, :q′_t, :N′_t, :mc′_t,
+    :mc_w′_t, :u′_t, :Ht′_t, :avg_tax_rate′_t, :T′_t, :I′_t, :B′_t,
+    :BD′_t, :BY′_t, :TY′_t, :mc_w_w′_t, :G′_t, :τ_level′_t, :τ_prog′_t, :Ygrowth′_t,
+    :Bgrowth′_t, :Igrowth′_t, :wgrowth′_t, :Cgrowth′_t,
+    :Tgrowth′_t, :LP′_t, :LP_XA′_t, :union_profits′_t,
+    :profits′_t] =#
+
 
     m.jump_variables = [:Value, :mutil_cons′_t, :Va′_t, :MRS′_t, :A_hh′_t, :B_hh′_t, :C′_t, 
                         :N′_t, :L′_t, :UB′_t, :K′_t, :B′_t, :B_gov_ncp′_t, :T′_t, :LT′_t, :G′_t, 
@@ -155,8 +155,8 @@ function init_model_indices!(m::mBBQ)
     m.settings[:shock2state] = Setting(:shock2state, shock2state_map)
 
     standard_deviation_dictionary = Dict(:A_sh => :σ_A, :Z_sh => :σ_Z, :Ψ_sh => :σ_Ψ, :μ_p_sh => :σ_μ_p,
-                                     :μ_w_sh => :σ_μ_w, :G_sh => :σ_G, :R_sh => :σ_R, :S_sh => :σ_S,
-                                     :P_sh => :σ_P)
+                                         :μ_w_sh => :σ_μ_w, :G_sh => :σ_G, :R_sh => :σ_R, :S_sh => :σ_S,
+                                         :P_sh => :σ_P)
 
     m.settings[:shock_to_deviation_dict] = Setting(:shock_to_deviation_dict, standard_deviation_dictionary)
 
@@ -170,16 +170,16 @@ function init_model_indices!(m::mBBQ)
     for (i,k) in enumerate(exogenous_shocks);   m.exogenous_shocks[k] = i end
     for (i,k) in enumerate(observables);        m.observables[k]      = i end
     for (i,k) in enumerate(pseudo_observables); m.pseudo_observables[k]      = i end
- 
+
     # Initialize indices for
     # reduced-form endogenous_states (from gensys notation) and equilibrium conditions
     # setup_indices!(m) # TODO: This might have to be called AFTER steadystate! is called and leave entries empty otherwise
-    end 
+end 
 
 function mBBQ(subspec::String="ss1";
-                            custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
-                            load_steadystate::Bool = false, load_jacobian::Bool = false,
-                            testing = false)
+        custom_settings::Dict{Symbol, Setting} = Dict{Symbol, Setting}(),
+        load_steadystate::Bool = false, load_jacobian::Bool = false,
+        testing = false)
 
     # Model-specific specifications
     spec               = "mBBQ"
@@ -190,37 +190,37 @@ function mBBQ(subspec::String="ss1";
 
     # initialize empty model
     m = mBBQ{Float64}(
-            # model parameters and steady state values
-            Vector{AbstractParameter{Float64}}(), Vector{Float64}(),
-            # grids and keys
-            OrderedDict{Symbol,Union{Grid, Array, Float64}}(), OrderedDict{Symbol,Int}(),
+                      # model parameters and steady state values
+                      Vector{AbstractParameter{Float64}}(), Vector{Float64}(),
+                      # grids and keys
+                      OrderedDict{Symbol,Union{Grid, Array, Float64}}(), OrderedDict{Symbol,Int}(),
 
-            # state_variables, jump_variables,
-            Vector{Symbol}(), Vector{Symbol}(),
+                      # state_variables, jump_variables,
+                      Vector{Symbol}(), Vector{Symbol}(),
 
-            # aggregate_state_variables, aggregate_jump_variables
-            Vector{Symbol}(), Vector{Symbol}(),
+                      # aggregate_state_variables, aggregate_jump_variables
+                      Vector{Symbol}(), Vector{Symbol}(),
 
-            # model indices
-            # endogenous states
-            OrderedDict{Symbol, Int}(), # TODO: label these
-            OrderedDict{Symbol, UnitRange{Int}}(), # TODO: label these
-            OrderedDict{Symbol, Int}(), OrderedDict{Symbol, Int}(),
-            OrderedDict{Symbol, UnitRange{Int}}(), OrderedDict{Symbol, Int}(),
-            OrderedDict{Symbol, Int}(), OrderedDict{Symbol, Int}(),
-            OrderedDict{Symbol, Int}(),
+                      # model indices
+                      # endogenous states
+                      OrderedDict{Symbol, Int}(), # TODO: label these
+                      OrderedDict{Symbol, UnitRange{Int}}(), # TODO: label these
+                      OrderedDict{Symbol, Int}(), OrderedDict{Symbol, Int}(),
+                      OrderedDict{Symbol, UnitRange{Int}}(), OrderedDict{Symbol, Int}(),
+                      OrderedDict{Symbol, Int}(), OrderedDict{Symbol, Int}(),
+                      OrderedDict{Symbol, Int}(),
 
-            spec,
-            subspec,
-            settings,
-            test_settings,
-            rng,
-            testing,
-            OrderedDict{Symbol,Observable}(),
-            OrderedDict{Symbol,PseudoObservable}())
+                      spec,
+                      subspec,
+                      settings,
+                      test_settings,
+                      rng,
+                      testing,
+                      OrderedDict{Symbol,Observable}(),
+                      OrderedDict{Symbol,PseudoObservable}())
 
-        #TODO: SETTINGS
-     DSGE.default_settings!(m)  # TODO: Implement or ensure AbstractHetModel <: AbstractDSGEModel
+    #TODO: SETTINGS
+    DSGE.default_settings!(m)  # TODO: Implement or ensure AbstractHetModel <: AbstractDSGEModel
 
     # # Set observable transformations
     # init_observable_mappings!(m)
@@ -246,7 +246,7 @@ function mBBQ(subspec::String="ss1";
     init_parameters!(m)
 
     # Initialize grids
-    init_grids!(m; default=false) #TO-DO: change away from default? idk
+    #init_grids!(m; coarse=false) 
     #TO-DO: another init_grids after loading the steadystate
     #init_grids!(m; coarse = !load_steadystate) # if steady state has not been computed, we start from a coarse grid
     #println(m[:Σ_n].value)
@@ -270,130 +270,137 @@ function mBBQ(subspec::String="ss1";
     return m
 end
 
-       function model_settings!(m::mBBQ)
-        #TO-DO: defaul_settings!(m)
-        #Grid Settings
-        m <= Setting(:na, 40, "Number of illiquid asset(equity) points for default grid")
-        m <= Setting(:amin, 0, "Minimum grid value for illiquid asset(equity) for default grid")
-        m <= Setting(:amax, 1500, "Maximum grid value for illiquid asset(equity) for default grid")
-        
-        m <= Setting(:nb, 40, "Number of liquid asset(bond) points for default grid")
-        m <= Setting(:bmin, -1.3006141532, "Minimum grid value for liquid asset(bond) for default grid") #placeholder
-        m <= Setting(:bmax, 1000, "Maximum grid value for liquid asset(bond) for default grid")
-        
-        m <= Setting(:smin, 0.1811542190, "Minimum grid value for idiosyncratic income states for default grid")
-        m <= Setting(:smax, 5.4424929457, "Maximum grid value for idiosyncratic income states for default grid")
-        m <= Setting(:ns, 5, "Number of idio. income states for default grid")
-        
-        m <= Setting(:nse, get_setting(m, :ns)*2+1, "Number of points in income grid") 
-       
-        #Labor Supply Settings
-        m <= Setting(:n, 1.0, "Labor supply") 
-        m <= Setting(:in, 0.0005, "Prob. of becoming an enterpreneur")
-        m <= Setting(:out,  0.2061564501, "Prob. of entrepreneur -> worker")
-        m <= Setting(:in_s, 0.005, "Prob. of becoming a high-skilled worker")
-        m <= Setting(:out_s, 0.1581289398, "Prob. of high skilled ->  worker")
-        m <= Setting(:in_l, 0.01, "Prob. of becoming a low skilled worker")
-        m <= Setting(:out_l, 0.0937744842, "Prob. of low skilled -> worker")
-        m <= Setting(:b_ratio, 0.4, "Replacement ratio for unemployment benefit")
+function model_settings!(m::mBBQ)
+    default_settings!(m)
+    #Grid Settings
+    m <= Setting(:na, 40, "Number of illiquid asset(equity) points for default grid")
+    m <= Setting(:amin, 0, "Minimum grid value for illiquid asset(equity) for default grid")
+    m <= Setting(:amax, 1500, "Maximum grid value for illiquid asset(equity) for default grid")
 
-        #Copula Settings
-        m <= Setting(:reduc_copula, 100)
+    m <= Setting(:nb, 40, "Number of liquid asset(bond) points for default grid")
+    m <= Setting(:bmin, -1.3006141532, "Minimum grid value for liquid asset(bond) for default grid") #placeholder
+    m <= Setting(:bmax, 1000, "Maximum grid value for liquid asset(bond) for default grid")
+
+    m <= Setting(:smin, 0.1811542190, "Minimum grid value for idiosyncratic income states for default grid")
+    m <= Setting(:smax, 5.4424929457, "Maximum grid value for idiosyncratic income states for default grid")
+    m <= Setting(:ns, 5, "Number of idio. income states for default grid")
+
+    m <= Setting(:nse, get_setting(m, :ns)*2+1, "Number of points in income grid") 
+
+    #Labor Supply Settings
+    m <= Setting(:n, 1.0, "Labor supply") 
+    m <= Setting(:in, 0.0005, "Prob. of becoming an enterpreneur")
+    m <= Setting(:out,  0.2061564501, "Prob. of entrepreneur -> worker")
+    m <= Setting(:in_s, 0.005, "Prob. of becoming a high-skilled worker")
+    m <= Setting(:out_s, 0.1581289398, "Prob. of high skilled ->  worker")
+    m <= Setting(:in_l, 0.01, "Prob. of becoming a low skilled worker")
+    m <= Setting(:out_l, 0.0937744842, "Prob. of low skilled -> worker")
+    m <= Setting(:b_ratio, 0.4, "Replacement ratio for unemployment benefit")
+
+    #Copula Settings
+    m <= Setting(:reduc_copula, 100)
     #=    m <= Setting(:na_copula, 10)
-        m <= Setting(:nb_copula, 10)
-        m <= Setting(:nse_copula, 10) =#
-        m <= Setting(:dct_compression_indices, Dict{Symbol, Vector{Int}}()) #make not a dict
-        m <= Setting(:n_copula_dct_coefficients, 98, "Number of coefficients in the DCT compression of the "*
-                     "distribution over idiosyncratic states to approximate a perturbation in the copula")
+    m <= Setting(:nb_copula, 10)
+    m <= Setting(:nse_copula, 10) =#
+    m <= Setting(:dct_compression_indices, Dict{Symbol, Vector{Int}}()) #make not a dict
+    m <= Setting(:n_copula_dct_coefficients, 98, "Number of coefficients in the DCT compression of the "*
+                 "distribution over idiosyncratic states to approximate a perturbation in the copula")
 
 
-# Temp settings
-        m <= Setting(:data_vintage, "210504")
-        m <= Setting(:cond_vintage, "210504")
-        m <= Setting(:data_id, 1793)
-        m <= Setting(:cond_id, 1793)
-        m <= Setting(:date_zlb_start, quartertodate("2009-Q1")) # ZLB measured using Wu and Xia (2016) shadow FFR, which starts in 2009:Q1
-        m <= Setting(:date_mainsample_start, quartertodate("1954-Q4"))
-        m <= Setting(:date_presample_start, quartertodate("1954-Q4"))
-        m <= Setting(:date_forecast_start, quartertodate("2020-Q1"))
-        m <= Setting(:date_conditional_end, quartertodate("2020-Q1"))
-
-        ## Monetary Policy
-        m <= Setting(:n_mon_anticipated_shocks_padding, 0) # anticipated shocks are not used
-
-    end
-    function setup_indices!(m::mBBQ)
-        #Abbreviations for ease
-        state_vars = m.state_variables
-        jump_vars = m.jump_variables
-        endo = m.endogenous_states
-        aggr_end = m.aggregate_endogenous_states
-        eqconds = m.equilibrium_conditions
-        aggr_eqconds = m.aggregate_equilibrium_conditions
-        
-        #Retrieve size of the grid
-        nb, na, nse = get_idiosyncratic_dims(m)
-#=
-        na = get_setting(m, :na)
-        nb = get_setting(m, :nb)
-        ns = get_setting(m, :ns)
-        nse = get_setting(m, :nse)
-  =#      
-        #compute idiosyncratic dims
-        n_idio_states = na + nb + nse - 3 #nse more accurately 
-        dof_to_remove = 3
-
-        #Marginals
-        endo[:marginal_b′_t] = 1:nb-1
-        endo[:marginal_a′_t] = nb+1:nb+na-1
-        endo[:marginal_se′_t] = nb+na+1:nse-1
-        
-        #Copula-related indexation
-        n_dct_copula = length(get_setting(m, :dct_compression_indices)[:copula])
-        n_distr_states = n_idio_states + n_dct_copula
-                            #n_idio_states + get_setting(m, :n_copula_dct_coefficients) 
-                            ##TO-DO: modify state_reduc_tvcopula.jl to save all those grid items into model obj
-        
-       endo[:copula′_t] = (1 + n_idio_states):n_distr_states
-       for (i, k) ∈ enumerate(get_aggregate_state_variables(m))
-           endo[k] = (n_distr_states + i):(n_distr_states+i)
-           aggr_endo[k] = i
-       end
-
-       # Update n_states to be consistent with number of
-       # idiosyncratic states and jumps after reduction
-       n_states = first(endo[state_vars[end]])
-       n_aggr_states = n_states - n_distr_states
-       m <= Setting(:n_backward_looking_states, n_states)
-
-       # Jump indices
-       # URGENT TO-DO: FIGURE OUT HOW TO DEAL WITH THE BEGINNING JUMP VARS
-      
-       for (i, k) ∈ enumerate(get_aggregate_jump_variables(m))
-           endo[k] = (n_states_idio_jumps + i):(n_stapes_idio_jumps+i)
-           aggr_endo[k] = i + n_aggr_states
-       end
+    # Temp settings
+    m <= Setting(:data_vintage, "210504")
+    m <= Setting(:cond_vintage, "210504")
+    m <= Setting(:data_id, 1793)
+    m <= Setting(:cond_id, 1793)
+    m <= Setting(:date_zlb_start, quartertodate("2009-Q1")) # ZLB measured using Wu and Xia (2016) shadow FFR, which starts in 2009:Q1
+    m <= Setting(:date_mainsample_start, quartertodate("1954-Q4"))
+    m <= Setting(:date_presample_start, quartertodate("1954-Q4"))
+    m <= Setting(:date_forecast_start, quartertodate("2020-Q1"))
+    m <= Setting(:date_conditional_end, quartertodate("2020-Q1"))
 
 
+    #Regime Settings
+    m <= Setting(:regime_switching, true)
+    m <= Setting(:n_regimes, 2)
+    m <= Setting(:n_hist_regimes, 1)   # how many regimes appear in estimation sample
+    m <= Setting(:regime_dates, Dict{Int, Date}())  # populated by user at runtime
 
+    ## Monetary Policy
+    m <= Setting(:n_mon_anticipated_shocks_padding, 0) # anticipated shocks are not used
+
+end
+function setup_indices!(m::mBBQ)
+    #Abbreviations for ease
+    state_vars = m.state_variables
+    jump_vars = m.jump_variables
+    endo = m.endogenous_states
+    aggr_end = m.aggregate_endogenous_states
+    eqconds = m.equilibrium_conditions
+    aggr_eqconds = m.aggregate_equilibrium_conditions
+
+    #Retrieve size of the grid
+    nb, na, nse = get_idiosyncratic_dims(m)
+    #=
+    na = get_setting(m, :na)
+    nb = get_setting(m, :nb)
+    ns = get_setting(m, :ns)
+    nse = get_setting(m, :nse)
+    =#      
+    #compute idiosyncratic dims
+    n_idio_states = na + nb + nse - 3 #nse more accurately 
+    dof_to_remove = 3
+
+    #Marginals
+    endo[:marginal_b′_t] = 1:nb-1
+    endo[:marginal_a′_t] = nb+1:nb+na-1
+    endo[:marginal_se′_t] = nb+na+1:nse-1
+
+    #Copula-related indexation
+    n_dct_copula = length(get_setting(m, :dct_compression_indices)[:copula])
+    n_distr_states = n_idio_states + n_dct_copula
+    #n_idio_states + get_setting(m, :n_copula_dct_coefficients) 
+    ##TO-DO: modify state_reduc_tvcopula.jl to save all those grid items into model obj
+
+    endo[:copula′_t] = (1 + n_idio_states):n_distr_states
+    for (i, k) ∈ enumerate(get_aggregate_state_variables(m))
+        endo[k] = (n_distr_states + i):(n_distr_states+i)
+        aggr_endo[k] = i
     end
 
+    # Update n_states to be consistent with number of
+    # idiosyncratic states and jumps after reduction
+    n_states = first(endo[state_vars[end]])
+    n_aggr_states = n_states - n_distr_states
+    m <= Setting(:n_backward_looking_states, n_states)
 
-    # Create dict for unreduced endogenous_states
-    # to facilitate repeated solutions of steady state
+    # Jump indices
+    # URGENT TO-DO: FIGURE OUT HOW TO DEAL WITH THE BEGINNING JUMP VARS
+
+    for (i, k) ∈ enumerate(get_aggregate_jump_variables(m))
+        endo[k] = (n_states_idio_jumps + i):(n_stapes_idio_jumps+i)
+        aggr_endo[k] = i + n_aggr_states
+    end
+
+
+
+end
+
+
+# Create dict for unreduced endogenous_states
+# to facilitate repeated solutions of steady state
 #=    m <= Setting(:n_model_states_unreduced, length(m.endogenous_states),
-                 "Number of model states (incl. both predetermined states and jumps) before any state-space reduction")=#
+"Number of model states (incl. both predetermined states and jumps) before any state-space reduction")=#
 
-    # Additional states added after solving model, namely
-    # lagged states and observables measurement error
-    # TODO: add augmented variables back
+# Additional states added after solving model, namely
+# lagged states and observables measurement error
+# TODO: add augmented variables back
 #=    endogenous_states_augmented = [:C_t1]
 
-    for (i, k) in enumerate(endogenous_states_augmented)
-        m.endogenous_states_augmented[k] = i + length(m.endogenous_states[get_setting(m, :jumps)[end]])
-    end
-    m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
-                 length(m.endogenous_states_augmented))=#
+for (i, k) in enumerate(endogenous_states_augmented)
+m.endogenous_states_augmented[k] = i + length(m.endogenous_states[get_setting(m, :jumps)[end]])
+end
+m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states) +
+length(m.endogenous_states_augmented))=#
 
 # TODO: maybe add coarse as a kwarg
 
@@ -407,7 +414,7 @@ parameters (in preparation for `steadystate!(m)` being called to initialize
 those).
 """
 function init_parameters!(m::mBBQ)
-    
+
     #phillips curve parameters
     m <= parameter(:κ, 0.05247664549755819, (1e-5, 5.), (1e-5, 5.), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
                    description = "κ: The slope of the Phillips curve", tex_label = "\\kappa")
@@ -415,7 +422,7 @@ function init_parameters!(m::mBBQ)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_w: AR(1) coefficient in the wage process.",
                    tex_label = "\\rho_w")
-    
+
     #monpol parameters
     m <= parameter(:δ, 0.3267222276512135, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.15), fixed = false,
@@ -523,7 +530,7 @@ function init_parameters!(m::mBBQ)
                    GammaAlt(0.5, 0.2), fixed = false,
                    description = "ι: Parameter",
                    tex_label = "\\iota")
-    
+
     # Fixed parameters
     m <= parameter(:ε_w, 1.0, fixed = true, description = "ε_w: Parameter", tex_label = "\\varepsilon_w")
     m <= parameter(:φ_x, 0.0, fixed = true, description = "φ_x: Parameter", tex_label = "\\varphi_x")
@@ -546,7 +553,7 @@ function init_parameters!(m::mBBQ)
     m <= parameter(:ρ_S, 0.93, fixed = true, description = "Persistence of productivity shocks",
                    tex_label = "\\rho_S")
     m <= parameter(:σ_S, 0.03, fixed = true, description = "Standard deviation of productivity shocks", 
-                  tex_label = "\\sigma_S")
+                   tex_label = "\\sigma_S")
 
     m <= parameter(:π_cb, 1.005, fixed = true, description = "pi star", tex_label = "\\varphi_{\\pi_cb}")
     m <= parameter(:τ_cp, 0.0, fixed = true, description = "extra cost per unit of central bank asset purchases", tex_label = "\\varphi_{\\tau_cb}")
@@ -576,9 +583,9 @@ function init_parameters!(m::mBBQ)
                    tex_label ="")
     m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
                    tex_label ="")
-                   m <= parameter(:fix, 0.5237134756666655, fixed = true, description = "",
+    m <= parameter(:fix, 0.5237134756666655, fixed = true, description = "",
                    tex_label ="")
-                   m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
+    m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
                    tex_label ="")
     m <= parameter(:γ , 0.12186571534563953, fixed = true, description = "",
                    tex_label ="")
@@ -600,7 +607,7 @@ function init_parameters!(m::mBBQ)
                                   tex_label = "\\mu_*")
     m <= SteadyStateParameter(:βstar, NaN, description = "Steady-state discount factor",
                               tex_label = "\\beta_*")
-    
+
 
     #Steady state grids
     m <= SteadyStateParameterGrid(:marginal_cdf_b_star, Vector{Float64}(undef, 0), 
