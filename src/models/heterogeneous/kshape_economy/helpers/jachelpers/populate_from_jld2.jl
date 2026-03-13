@@ -7,8 +7,8 @@ function populate_from_jld2!(m::mBBQ)
     try
         file = get_setting(m, :ss_file_path)
         ref = JLD2.jldopen(file, "r")
-    catch
-        e "There is no jld2 file associated with this model"
+    catch e
+        error("There is no jld2 file associated with this model")
     end
 
     m <= Setting(:Γ, ref["Gamma_state"], "Gamma matrix")
