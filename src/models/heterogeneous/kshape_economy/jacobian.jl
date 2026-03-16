@@ -18,7 +18,7 @@ are updated in place.
 - `A::Matrix`,`B::Matrix`: first derivatives of `Fsys` with respect to arguments `X` [`B`] and
     `XPrime` [`A`]
 """
-@inline function jacobian(m::BayerBornLuetticke{T}) where {T <: Real}
+@inline function jacobian(m::mBBQ{T}) where {T <: Real}
 
     if get_setting(m, :replicate_original_output)::Bool
         # This block replicates output from the original implementation by Bayer, Born, and Luetticke
@@ -62,11 +62,11 @@ are updated in place.
     end
 end
 
-function _jacobian!(m::BayerBornLuetticke)
+function _jacobian!(m::mBBQ)
 
     # Information needed from m for set up
-    θ = parameters2namedtuple(m)
-    nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
+    #θ = parameters2namedtuple(m)
+    #nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
     # id = construct_prime_and_noprime_indices(m; only_aggregate = false)
     id = get_setting(m, :prime_and_noprime_indices)::OrderedDict{Symbol, UnitRange{Int}}
     nb, na, nse = get_idiosyncratic_dims(m)
