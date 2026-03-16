@@ -64,19 +64,4 @@ function populate_from_jld2!(m::mBBQ)
      m.equilibrium_conditions[Symbol("eq_" * string(k))] = v
     end
 
-
-    #prime_and_noprime settings -- NEEDS TO BE TESTED
-    full_id = OrderedDict{Symbol,UnitRange{Int}}()
-    for (k, v) in merge(state_id, control_id)
-     full_id[k] = v isa Int ? (v:v) : v
-    end
-    m <= Setting(:prime_and_noprime_indices, full_id)
-
-    agg_id = OrderedDict{Symbol,Int}()
-    for sym in keys(m.aggregate_endogenous_states)
-     agg_id[sym] = m.aggregate_endogenous_states[sym]
-    end
-    m <= Setting(:prime_and_noprime_aggregate_indices, agg_id)
-
-
 end

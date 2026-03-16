@@ -137,7 +137,7 @@ function init_model_indices!(m::mBBQ)
     # Must be set before init_parameters! — init_grids! may overwrite with actual values.
     # Defaults: coarse grid nb=4, na=3, nse=2 → nx=nb*na=12, ns=nse=2
     m.settings[:nx] = Setting(:nx, 12)
-    m.settings[:ns] = Setting(:ns, 2)
+#    m.settings[:ns] = Setting(:ns, 2)
     m.settings[:l] = Setting(:l, 12)  # grid dimension for steady-state household variables (lstar, cstar, μstar)
     m.settings[:n_scalar_jumps] = Setting(:n_scalar_jumps, n_scalar_jumps)
     m.settings[:n_scalar_variables] = Setting(:n_scalar_variables, n_scalar_jumps + n_scalar_states)
@@ -246,7 +246,7 @@ function mBBQ(subspec::String="ss1";
     init_parameters!(m)
 
     # Initialize grids
-    #init_grids!(m; coarse=false) 
+    init_grids!(m; coarse=false) 
     #TO-DO: another init_grids after loading the steadystate
     #init_grids!(m; coarse = !load_steadystate) # if steady state has not been computed, we start from a coarse grid
     #println(m[:Σ_n].value)
@@ -281,9 +281,10 @@ function model_settings!(m::mBBQ)
     m <= Setting(:bmin, -1.3006141532, "Minimum grid value for liquid asset(bond) for default grid") #placeholder
     m <= Setting(:bmax, 1000, "Maximum grid value for liquid asset(bond) for default grid")
 
-    m <= Setting(:smin, 0.1811542190, "Minimum grid value for idiosyncratic income states for default grid")
-    m <= Setting(:smax, 5.4424929457, "Maximum grid value for idiosyncratic income states for default grid")
+    m <= Setting(:smin, 0.181165219, "Minimum grid value for idiosyncratic income states for default grid")
+    m <= Setting(:smax, 5.44249294570, "Maximum grid value for idiosyncratic income states for default grid")
     m <= Setting(:ns, 5, "Number of idio. income states for default grid")
+
 
     m <= Setting(:nse, get_setting(m, :ns)*2+1, "Number of points in income grid") 
 
