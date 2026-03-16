@@ -603,7 +603,7 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/kshape_economy/util.jl")
     include("models/heterogeneous/kshape_economy/helpers/grids.jl")
     # model-type-dependent helpers (after mBBQ.jl)
-    include("models/heterogeneous/kshape_economy/helpers/jachelpers/populate_from_jld2.jl")
+    include("models/heterogeneous/kshape_economy/helpers/jacobian/populate_from_jld2.jl")
     include("models/heterogeneous/kshape_economy/shock_loading.jl")
     # steady state
     include("models/heterogeneous/kshape_economy/steadystate/Fastroot.jl")
