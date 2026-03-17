@@ -1,8 +1,8 @@
 using DSGE: @sslogdeviations2levels, @sslogdeviations2levels_unprimekeys, @unpack_and_first
-include("helpers/q_cons2.jl")
-include("mBBQ.jl")
-include("models/7_KShape_Share/index2.jl")    
-include("models/7_KShape_Share/macros2.jl")   
+#include("helpers/q_cons2.jl")
+#include("mBBQ.jl")
+#include("models/7_KShape_Share/index2.jl")    
+#include("models/7_KShape_Share/macros2.jl")   
 
 """
 ```
@@ -21,12 +21,17 @@ Return deviations from aggregate equilibrium conditions for simplified 6-variabl
 - `eq::OrderedDict{Symbol, Int or UnitRange{Int}}`: maps name of equilibrium conditions
     to its index/indices in `F`
 
-"""
+"""#=
 function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
                   ss::NamedTuple, grids::OrderedDict, id::OrderedDict{Symbol, I1}, nt::NamedTuple,
                   eq::OrderedDict{Symbol, I2}) where {I1 <: Union{Int, UnitRange}, I2 <: Union{Int, UnitRange}, reg = 1}
 
+ =#
 
+
+ function Fsys_agg(F, X, Xprime, ss, state_id, control_id, reg = 1)
+
+#=
                     #TODO: make all of these arguments into function
                   jld2file = "XssYss.jld2"
                   @load jld2file StateSS ControlSS SS_stats grid param
@@ -42,10 +47,14 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
                   State_zero = zeros(length(StateSS))
                   Control_zero = zeros(length(ControlSS))
                   
-                  
-                  F = Dict{Symbol,Float64}() #TODO: need to change typing of this
+  =#
 
-                  
+
+
+                  #F = Dict{Symbol,Float64}() #TODO: need to change typing of this
+
+     Control_zero = Xprime #TODO: def change
+     State_zero = X
     #===================================================================#
     #eq1: eq_rate_monetary_policy TODO: regime change
     @sslogdeviations2levels R_cb_t, eps_R_t = State_zero, state_id, StateSS

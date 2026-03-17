@@ -2,12 +2,13 @@ using LinearAlgebra
 using OrderedCollections: OrderedDict
 using DSGE
 using JLD2
+using Revise
 
-
+#=
 include("jacobian.jl")
 include("helpers/jachelpers/index2.jl")    
 include("helpers/jachelpers/macros2.jl")   
-
+=#
 
 jld2file = "data/XssYss.jld2"
 @load jld2file StateSS ControlSS SS_stats grid param
@@ -25,7 +26,12 @@ Control_zero = zeros(length(ControlSS))
 
 
 F = Dict{Symbol,Any}() #TODO: need to change typing of this
-modelgroupings = Dict()
-paramgroupings = Dict()
 
-_jacobian!(m)
+
+
+
+F = Fsys_agg(F, State_zero, Control_zero, ss, state_id, control_id, reg = 1)
+
+
+#F = Fsys_agg(F, X, Xprime, ss, state_id, control_id, reg = 1)
+#_jacobian!(m)
