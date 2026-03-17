@@ -597,6 +597,8 @@ function init_parameters!(m::mBBQ)
     m <= parameter(:Eratio, 0.2380054186, fixed = true, tex_label = "\\mathrm{Eratio}")
     m <= parameter(:b_share, 0.0, fixed = true, tex_label = "b_{\\mathrm{share}}")
 
+
+
     # Setting steady-state parameters
     nx = get_setting(m, :nx)
     ns = get_setting(m, :ns)
