@@ -37,16 +37,16 @@ function Fsys(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray, θ::Na
     # rougly 10% of computing time, more if uncompress is actually called
 
     # Some initial set up
-    m_ndgrid = grids[:m_ndgrid]::Array{Float64, 3}
-    k_ndgrid = grids[:k_ndgrid]::Array{Float64, 3}
-    y_ndgrid = grids[:y_ndgrid]::Array{Float64, 3}
-    m_grid = get_gridpts(grids, :m_grid)::Vector{Float64}
-    k_grid = get_gridpts(grids, :k_grid)::Vector{Float64}
-    y_grid = get_gridpts(grids, :y_grid)::Vector{Float64}
+    b_ndgrid = grids[:b_ndgrid]::Array{Float64, 3}
+    a_ndgrid = grids[:a_ndgrid]::Array{Float64, 3}
+    se_ndgrid = grids[:se_ndgrid]::Array{Float64, 3}
+    b_grid = get_gridpts(grids, :b_grid)::Vector{Float64}
+    a_grid = get_gridpts(grids, :a_grid)::Vector{Float64}
+    se_grid = get_gridpts(grids, :se_grid)::Vector{Float64}
     HW     = grids[:HW]::Float64
     y_bin_bounds = grids[:y_bin_bounds]::Vector{Float64}
     Π = grids[:Π]::Matrix{Float64}
-    nm, nk, ny = size(m_ndgrid)
+    nb, na, nse = size(m_ndgrid)
 
     ############################################################################
     # I.1. Generate code that reads aggregate states/controls

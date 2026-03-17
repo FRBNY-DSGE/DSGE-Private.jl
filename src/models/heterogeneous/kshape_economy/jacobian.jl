@@ -102,41 +102,6 @@ function _jacobian!(m::mBBQ)
 
     
 
-    # Matrices for discrete cosine transforms
-  #=  
-    DC = Vector{Array{Float64, 2}}(undef, 3)
-    DC[1]  = mydctmx(nm)
-    DC[2]  = mydctmx(nk)
-    DC[3]  = mydctmx(ny)
-
-    IDC    = [DC[1]', DC[2]', DC[3]'] # TODO: why do we need to take the transpose?
-
-    DCD = Vector{Array{Float64, 2}}(undef, 3)
-    # DCD = Vector{Array{Float64, 2}}(undef, 3)
-    ## commenting out fixed approach for dct copula
-    #n_copula = get_setting(m, :n_copula_dct_coefficients)
-    n_copula = length(get_setting(m,:dct_compression_indices)[:copula])
-
-    nm_copula = get_setting(m,:nm_copula)
-    nk_copula = get_setting(m,:nk_copula)
-    ny_copula = get_setting(m,:ny_copula)
-    DCD[1] = mydctmx(nm_copula)
-    DCD[2] = mydctmx(nk_copula)
-    DCD[3] = mydctmx(ny_copula)
-#=
-   DCD[1]  = mydctmx(nm-1)
-    DCD[2]  = mydctmx(nk-1)
-    DCD[3]  = mydctmx(ny-1)
-=#
-    IDCD    = [DCD[1]', DCD[2]', DCD[3]']
-=#
-
-#=
-  DCD[1]  = mydctmx(n_copula)
-    DCD[2]  = mydctmx(n_copula)
-    DCD[3]  = mydctmx(n_copula)
-    IDCD    = [DCD[1]', DCD[2]', DCD[3]']=#
-
 
     ############################################################################
     # Check whether steady state solves the difference equation
@@ -152,15 +117,12 @@ function _jacobian!(m::mBBQ)
     ############################################################################
     # Calculate Jacobians of the Difference equation F
     ############################################################################
-    length_X0   = get_setting(m, :n_model_states)::Int
-    ny          = get_setting(m, :ny) #total number of Chebyshev polynomial coefs
-    #n_dct_Vm    = length(get_setting(m, :dct_compression_indices)[:Vm]::Vector{Int})
-    #n_dct_Vk    = length(get_setting(m, :dct_compression_indices)[:Vk]::Vector{Int})
-    n_marginals = length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) + length(id[:marginal_pdf_k_t])
-    nxB         = length_X0 - ny
+    length_X0   = length(get_setting(m, :Xss))::Int
+    nPoly          = get_setting(m, :nPoly) #total number of Chebyshev polynomial coefs
+    n_marginals = get_setting(m, :nRedMarg) #total number of marginal indices
+    nxB         = length_X0 - nPoly
     nxA         = length_X0 - n_marginals
     n_vars      = n_model_states(m)
-
 
     # The objective function omits the Vm, Vk in the X vector, but we left off at index id[:Vm_t][1] - 1,
     # so after we use zeros for the Vm, Vk parts of X, we need to start from id[:Vm_t][1]. We then go
@@ -169,7 +131,7 @@ function _jacobian!(m::mBBQ)
     # x is a vector of length nxB + nxA.
     BA = zeros(n_vars, nxB + nxA)
 
-    obj_fnct    = (F, x) -> Fsys(F, [x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
+    obj_fnct    = (F, x) -> Fsys(F, [x[1:id[nRedStates]]; Zeros(3*nPoly); x[nRedStates+1:nxB]],
                                  [Zeros(n_marginals); x[nxB+1:end]],
                                  θ, m.grids, id, nt, m.equilibrium_conditions,
                                  get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD,m)
@@ -333,7 +295,7 @@ function _original_jacobian!(m::BayerBornLuetticke)
     θ = parameters2namedtuple(m)
     nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
     id = construct_prime_and_noprime_indices(m; only_aggregate = false)
-    nm, nk, ny = get_idiosyncratic_dims(m)
+    nm, nk, nPoly = get_idiosyncratic_dims(m)
 
     ############################################################################
     # Prepare elements used for uncompression
@@ -345,13 +307,13 @@ function _original_jacobian!(m::BayerBornLuetticke)
     DC = Vector{Array{Float64, 2}}(undef, 3)
     DC[1]  = mydctmx(nm)
     DC[2]  = mydctmx(nk)
-    DC[3]  = mydctmx(ny)
+    DC[3]  = mydctmx(nPoly)
     IDC    = [DC[1]', DC[2]', DC[3]'] # TODO: why do we need to take the transpose?
 
     DCD = Vector{Array{Float64, 2}}(undef, 3)
    #= DCD[1]  = mydctmx(nm-1)
     DCD[2]  = mydctmx(nk-1)
-    DCD[3]  = mydctmx(ny-1)
+    DCD[3]  = mydctmx(nPoly-1)
 =#
 
     nm_copula = get_setting(m,:nm_copula)
@@ -363,7 +325,7 @@ function _original_jacobian!(m::BayerBornLuetticke)
 #=
     DCD[1]  = mydctmx(nm-1)
     DCD[2]  = mydctmx(nk-1)
-    DCD[3]  = mydctmx(ny-1)
+    DCD[3]  = mydctmx(nPoly-1)
 =#
     IDCD    = [DCD[1]', DCD[2]', DCD[3]']
 
@@ -569,7 +531,7 @@ function _original_jacobian!(m::BayerBornLuetticke)
     θ = parameters2namedtuple(m)
     nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
     id = construct_prime_and_noprime_indices(m; only_aggregate = false)
-    nm, nk, ny = get_idiosyncratic_dims(m)
+    nm, nk, nPoly = get_idiosyncratic_dims(m)
 
     ############################################################################
     # Prepare elements used for uncompression
@@ -581,13 +543,13 @@ function _original_jacobian!(m::BayerBornLuetticke)
     DC = Vector{Array{Float64, 2}}(undef, 3)
     DC[1]  = mydctmx(nm)
     DC[2]  = mydctmx(nk)
-    DC[3]  = mydctmx(ny)
+    DC[3]  = mydctmx(nPoly)
     IDC    = [DC[1]', DC[2]', DC[3]'] # TODO: why do we need to take the transpose?
 
     DCD = Vector{Array{Float64, 2}}(undef, 3)
    #= DCD[1]  = mydctmx(nm-1)
     DCD[2]  = mydctmx(nk-1)
-    DCD[3]  = mydctmx(ny-1)
+    DCD[3]  = mydctmx(nPoly-1)
 =#
 
     nm_copula = get_setting(m,:nm_copula)

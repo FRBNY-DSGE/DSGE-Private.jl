@@ -87,4 +87,8 @@ function init_grids!(m::mBBQ{T}; coarse::Bool=true) where (T<: Real)
     end
     grids[:s2_dist] = s2_dist
     grids[:P_SS2] = P_SS2
+
+    grids[:b_ndgrid], grids[:a_ndgrid], grids[:se_ndgrid] = ndgrid([get_gridpts(m, x) for x in [:b_grid, :a_grid, :se_grid]]...)
+    grids[:weights_ndgrid] = eval_three_states((x, y, z) -> x * y * z, [get_gridwts(m, x) for x in [:b_grid, :a_grid, :se_grid]]...)
+
 end

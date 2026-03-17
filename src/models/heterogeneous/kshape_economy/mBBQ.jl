@@ -352,9 +352,9 @@ function setup_indices!(m::mBBQ)
     dof_to_remove = 3
 
     #Marginals
-    endo[:marginal_b′_t] = 1:nb-1
-    endo[:marginal_a′_t] = nb+1:nb+na-1
-    endo[:marginal_se′_t] = nb+na+1:nse-1
+    endo[:marginal_pdf_b′_t] = 1:nb-1
+    endo[:marginal_pdf_a′_t] = nb+1:nb+na-1
+    endo[:marginal_pdf_se′_t] = nb+na+1:nse-1
 
     #Copula-related indexation
     n_dct_copula = length(get_setting(m, :dct_compression_indices)[:copula])
@@ -375,10 +375,12 @@ function setup_indices!(m::mBBQ)
     m <= Setting(:n_backward_looking_states, n_states)
 
     # Jump indices
-    # URGENT TO-DO: FIGURE OUT HOW TO DEAL WITH THE BEGINNING JUMP VARS
+    n_model_states      = n_states_idio_jumps + oc
+    n_jumps             = n_model_states - n_backward_looking_states    # = 3*nPoly + oc
+
 
     for (i, k) ∈ enumerate(get_aggregate_jump_variables(m))
-        endo[k] = (n_states_idio_jumps + i):(n_stapes_idio_jumps+i)
+        endo[k] = (n_states_idio_jumps + i):(n_states_idio_jumps+i)
         aggr_endo[k] = i + n_aggr_states
     end
 
