@@ -16,7 +16,7 @@ function build_indices(grid, lenSSS, lenCSS)
     :h_t, :v_t, :Y_t, :Profit_t, :r_k_t, :r_a_t, :MC_t, :unemp_t, :nn_t, :M_t, :f_t,
     :zz_t, :xx_t, :vv_t, :ee_t, :C_b_t, :Profit_FI_t, :RRa_t, :RR_t, :I_t, :x_k_t,]
 
-    observable_controls = [:A_g_obs_t, :Y_obs_t, :C_obs_t, :I_obs_t, :w_obs_t, :PROFIT_obs_t, :unemp_obs_t,
+    observable_controls = [:A_g_obs_t, :Y_obs_t, :C_obs_t, :I_obs_t, :w_obs_t, :Profit_obs_t, :unemp_obs_t,
     :inf_obs_t, :R_obs_t, :w_lag_t, :G_obs_t,
     # Past/auxiliary controls
     :YY_lag_t, :CC_lag_t, :II_lag_t, :PPROFIT_lag_t, :uu_lag_t, :GG_lag_t, :A_g_lag_t,
@@ -186,7 +186,7 @@ function build_ss(param::AbstractDict, SS_stats::AbstractDict)
     ss = Dict{Symbol, Any}()
 
     # keys for which we want to keep levels (no log), e.g. transition matrices
-    no_log_keys = Set(["P_SS", "P_SS2"])
+    no_log_keys = Set(["P_SS", "P_SS2", "tau_w", "lambda", "pi_bar", "tau_a"])
 
     for (k, va) in param_ss_keys
         if haskey(param, k)
@@ -220,6 +220,7 @@ function build_ss(param::AbstractDict, SS_stats::AbstractDict)
         "LT" => "LT",
         "C_b" => "C_b",
         "A_F" => "A_F",
+        "A_g" => "A_g",
         "v" => "v",
         "L" => "L",
         "B_gov_ncp2" => "B_gov_ncp2",
@@ -250,3 +251,4 @@ function build_ss(param::AbstractDict, SS_stats::AbstractDict)
 
     return NamedTuple{Tuple(keys(ss))}(values(ss))
 end
+
