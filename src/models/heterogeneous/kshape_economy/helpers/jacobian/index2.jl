@@ -44,9 +44,9 @@ function build_indices(grid, lenSSS, lenCSS)
     #These indexes are all skipping an index but this is from the code so idk
     state_id[:marginal_b′_t] = 1:nb-1
     state_id[:marginal_a′_t] = nb:nb+na-2
-    state_id[:marginal_se′_t] = nb+na-1:nb+na+nse-1
+    state_id[:marginal_se′_t] = nb+na-1:nb+na+nse-3
 
-    state_id[:COP]         = nRedMarg+1:nCOP
+    state_id[:COP]         = nRedMarg+1:nRedMarg+nCOP
 
     next = lenSSS - (41 - 1) #TODO: how to get 41 without manually setting
 
