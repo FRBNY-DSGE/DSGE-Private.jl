@@ -29,8 +29,7 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
  =#
 
 
- function Fsys_agg(F, X, Xprime, ss, state_id, control_id, reg = 1)
-
+ function Fsys_agg(F, m, grid, StateSS, ControlSS, State_zero, Control_zero, ss, state_id, control_id, reg=1)
 #=
                     #TODO: make all of these arguments into function
                   jld2file = "XssYss.jld2"
@@ -53,8 +52,8 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
 
                   #F = Dict{Symbol,Float64}() #TODO: need to change typing of this
 
-     Control_zero = Xprime #TODO: def change
-     State_zero = X
+     #Control_zero = Xprime #TODO: def change
+     #State_zero = X
     #===================================================================#
     #eq1: eq_rate_monetary_policy TODO: regime change
     @sslogdeviations2levels R_cb_t, eps_R_t = State_zero, state_id, StateSS
@@ -65,8 +64,8 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
 
     if monpol == :taylor
         F[:eq_rate_monetary_policy] = log(R_cb′_t) - ss[:R_cb_t] - 
-        (1 - m[:ρ_R]) * (m[:φ_π] * log(pi_t/m[:π_cb]) -
-        m[:φ_u] * (unemp_t - ss[:u_t])) -  
+        (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
+        m[:ϕ_u] * (unemp_t - ss[:u_t])) -  
         m[:ρ_R]*(log(R_cb_t) - ss[:R_cb_t]) - log(eps_R_t)
 
         println("in taylor")
@@ -176,8 +175,8 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     elseif monpol == :qe
             F[:eq_quantitative_easing] = log(x_cb′_t) - 
         log( 1 + m[:ρ_X_QE] * (x_cb_t-1) + 
-        (1-m[:ρ_X_QE])*(-m[:ϕ_π_QE]*log(pi_t / m[:π_cb])+
-        m[:ϕ_u_QE] * (unemp_t - ss[:u_t])) )
+        (1-m[:ρ_X_QE])*(-m[:φ_π_QE]*log(pi_t / m[:π_cb])+
+        m[:φ_u_QE] * (unemp_t - ss[:u_t])) )
     end
 
 
@@ -288,20 +287,6 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     # param.rho_D        * log(Dminus)        + eps_D;
 
     F[:eq_D] = log(D′_t) - (m[:ρ_D].value * log(D_t) + log(eps_D_t))
-
-    # eq23 TEST
-    modelgroupings[:eq_D] = [
-        :value => [log(D′_t), log(D_t)],
-        :shock => [eps_D_t]
-    ]
-
-    paramgroupings[:eq_D] = [
-        (sym = :ρ_D, name = "rho_D")
-
-    ]
-
-    test(:eq_D, F, modelgroupings, paramgroupings)
-
 
     #===================================================================#
     #eq24: GG TODO: add regime

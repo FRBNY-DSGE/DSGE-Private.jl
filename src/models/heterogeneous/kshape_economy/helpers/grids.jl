@@ -70,7 +70,11 @@ function init_grids!(m::mBBQ{T}; coarse::Bool=true) where (T<: Real)
     grids[:s_dist] = s_dist
     grids[:s_bar] = s_bar
     grids[:s2_bar] = s2_bar
-    grids[:se_grid] = se_grid
+    se_min = Float64(minimum(se_grid))
+    se_max = Float64(maximum(se_grid))
+    nse    = length(se_grid)
+    grids[:se_grid] = Grid(se_grid, uniform_quadrature(se_min, se_max, nse; scale=se_max-se_min)[2],
+                           Float64(se_max - se_min))
 
 
     P_SS2 = kron(I(2), P_SS) #creating the block diagonal

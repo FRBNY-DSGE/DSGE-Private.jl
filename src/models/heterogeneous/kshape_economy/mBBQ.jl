@@ -174,6 +174,37 @@ function init_model_indices!(m::mBBQ)
     # Initialize indices for
     # reduced-form endogenous_states (from gensys notation) and equilibrium conditions
     # setup_indices!(m) # TODO: This might have to be called AFTER steadystate! is called and leave entries empty otherwise
+
+
+
+ regime_dates = Dict(
+    1  => Dates.Date("1987-09-30"),
+    2  => Dates.Date("2001-03-31"),
+    3  => Dates.Date("2004-09-30"),
+    4  => Dates.Date("2007-09-30"),
+    5  => Dates.Date("2008-12-31"),
+    6  => Dates.Date("2014-03-31"),
+    7  => Dates.Date("2020-03-31"),
+    8  => Dates.Date("2022-03-31"),
+    )
+
+    regime_monpol = Dict(
+    1  => :taylor,
+    2  => :taylor,
+    3  => :taylor,
+    4  => :qe,
+    5  => :qe,
+    6  => :taylor,
+    7  => :qe,
+    8  => :taylor,
+    )
+    m <= Setting(:regime_dates, regime_dates)
+    m <= Setting(:regime_monpol, regime_monpol)
+
+
+
+
+
 end 
 
 function mBBQ(subspec::String="ss1";
@@ -418,6 +449,7 @@ those).
 """
 function init_parameters!(m::mBBQ)
 
+   
     #phillips curve parameters
     m <= parameter(:κ, 0.05247664549755819, (1e-5, 5.), (1e-5, 5.), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
                    description = "κ: The slope of the Phillips curve", tex_label = "\\kappa")
@@ -425,7 +457,7 @@ function init_parameters!(m::mBBQ)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_w: AR(1) coefficient in the wage process.",
                    tex_label = "\\rho_w")
-
+    
     #monpol parameters
     m <= parameter(:δ, 0.3267222276512135, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.15), fixed = false,
@@ -435,17 +467,17 @@ function init_parameters!(m::mBBQ)
                    BetaAlt(0.5, 0.15), fixed = true,
                    description = "δ:",
                    tex_label = "\\delta")
-    m <= parameter(:φ, 5.1115, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
+    m <= parameter(:ϕ, 5.1115, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
                    Normal(3.0, 0.5), fixed = false,
-                   description = "φ: Parameter in monetary policy rule.",
+                   description = "ϕ: Parameter in monetary policy rule.",
                    tex_label = "\\phi")
-    m <= parameter(:φ_π, 1.3101032779695438, (1e-5, 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
+    m <= parameter(:ϕ_π, 1.3101032779695438, (1e-5, 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
                    Normal(1.7, 0.3), fixed = false,
-                   description = "φ_π: Weight on inflation gap in monetary policy rule.",
+                   description = "ϕ_π: Weight on inflation gap in monetary policy rule.",
                    tex_label = "\\varphi_\\pi")
-    m <= parameter(:φ_u, 0.37475243192750335, (-0.5, 0.5), (-0.5, 0.5), Untransformed(),
+    m <= parameter(:ϕ_u, 0.37475243192750335, (-0.5, 0.5), (-0.5, 0.5), Untransformed(),
                    Normal(0.1, 0.05), fixed = false,
-                   description = "φ_u: Weight on unemployment gap in monetary policy rule",
+                   description = "ϕ_u: Weight on unemployment gap in monetary policy rule",
                    tex_label = "\\varphi_u")
     m <= parameter(:ρ_R, 0.792722753458172, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
@@ -533,17 +565,17 @@ function init_parameters!(m::mBBQ)
                    GammaAlt(0.5, 0.2), fixed = false,
                    description = "ι: Parameter",
                    tex_label = "\\iota")
-
+     
     # Fixed parameters
     m <= parameter(:ε_w, 1.0, fixed = true, description = "ε_w: Parameter", tex_label = "\\varepsilon_w")
-    m <= parameter(:φ_x, 0.0, fixed = true, description = "φ_x: Parameter", tex_label = "\\varphi_x")
+    m <= parameter(:ϕ_x, 0.0, fixed = true, description = "ϕ_x: Parameter", tex_label = "\\varphi_x")
     m <= parameter(:ρ_ψ_w, 0.0, fixed = true, description = "ρ_ψ_w: Parameter", tex_label = "\\rho_{\\psi_w}")
-    m <= parameter(:φ_var, 0.0, fixed = true, description = "φ_var: Parameter", tex_label = "\\varphi")
+    m <= parameter(:ϕ_var, 0.0, fixed = true, description = "ϕ_var: Parameter", tex_label = "\\varphi")
     m <= parameter(:α_lk, 0.0, fixed = true, description = "α_lk: Parameter", tex_label = "\\alpha_{lk}")
     m <= parameter(:θ_b, 0.97, fixed = true, description = "θ_b: Parameter", tex_label = "\\theta_b")
     m <= parameter(:ρ_X_QE, 0.95, fixed = true, description = "ρ_X_QE: Parameter", tex_label = "\\rho_{X_QE}")
-    m <= parameter(:φ_π_QE, 10.0, fixed = true, description = "φ_π_QE: Parameter", tex_label = "\\varphi_{\\pi_QE}")
-    m <= parameter(:φ_u_QE, 10.0, fixed = true, description = "φ_u_QE: Parameter", tex_label = "\\varphi_{u_QE}")
+    m <= parameter(:ϕ_π_QE, 10.0, fixed = true, description = "ϕ_π_QE: Parameter", tex_label = "\\varphi_{\\pi_QE}")
+    m <= parameter(:ϕ_u_QE, 10.0, fixed = true, description = "ϕ_u_QE: Parameter", tex_label = "\\varphi_{u_QE}")
     m <= parameter(:γ_B, 0.0, fixed = true, description = "γ_B: Parameter", tex_label = "\\gamma_B")
     m <= parameter(:γ_π, 0.0, fixed = true, description = "γ_π: Parameter", tex_label = "\\gamma_\\pi")
     m <= parameter(:γ_Y, 0.0, fixed = true, description = "γ_Y: Parameter", tex_label = "\\gamma_Y")
@@ -556,7 +588,7 @@ function init_parameters!(m::mBBQ)
     m <= parameter(:ρ_S, 0.93, fixed = true, description = "Persistence of productivity shocks",
                    tex_label = "\\rho_S")
     m <= parameter(:σ_S, 0.03, fixed = true, description = "Standard deviation of productivity shocks", 
-                   tex_label = "\\sigma_S")
+                  tex_label = "\\sigma_S")
 
     m <= parameter(:π_cb, 1.005, fixed = true, description = "pi star", tex_label = "\\varphi_{\\pi_cb}")
     m <= parameter(:τ_cp, 0.0, fixed = true, description = "extra cost per unit of central bank asset purchases", tex_label = "\\varphi_{\\tau_cb}")
@@ -586,9 +618,9 @@ function init_parameters!(m::mBBQ)
                    tex_label ="")
     m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
                    tex_label ="")
-    m <= parameter(:fix, 0.5237134756666655, fixed = true, description = "",
+                   m <= parameter(:fix, 0.5237134756666655, fixed = true, description = "",
                    tex_label ="")
-    m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
+                   m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
                    tex_label ="")
     m <= parameter(:γ , 0.12186571534563953, fixed = true, description = "",
                    tex_label ="")
@@ -596,7 +628,22 @@ function init_parameters!(m::mBBQ)
                    tex_label ="")
     m <= parameter(:Eratio, 0.2380054186, fixed = true, tex_label = "\\mathrm{Eratio}")
     m <= parameter(:b_share, 0.0, fixed = true, tex_label = "b_{\\mathrm{share}}")
-
+    m <= parameter(:Eshare, 0.0024194744454305124, fixed = true, tex_label = "b_{\\mathrm{share}}")
+    m <= parameter(:ψ, 0.785159222538979, fixed = true, tex_label = "b_{\\mathrm{share}}")
+    m <= parameter(:α , 1.7127143830661984, fixed = true, description = "",
+                   tex_label ="")
+    m <= parameter(:β_b , 0.9950218012776563, fixed = true, description = "",
+                   tex_label ="")
+    m <= parameter(:ϕ_b , 0., fixed = true, description = "",
+                   tex_label ="")
+    m <= parameter(:σ_2 , 1.5, fixed = true, description = "",
+                   tex_label ="")
+    m <= parameter(:ρ_passive_QE , 0.95, fixed = true, description = "",
+                   tex_label ="")
+    m <= parameter(:ρ_X_QE, 0.95, fixed = true, description = "")
+    m <= parameter(:ϕ_π_QE, 0.5, fixed = true, description = "")
+    m <= parameter(:ϕ_u_QE, 10., fixed = true, description = "")
+    m <= parameter(:MMF_ratio_1, 10., fixed = true, description = "")
 
 
     # Setting steady-state parameters
