@@ -145,14 +145,11 @@ F = OrderedDict{Symbol, Any}(
     :B_gov_ncp2_ind => 0.
 )
 
-
+#set regime for testing
 reg = 1
 F = DSGE.Fsys_agg(F, m, grid, StateSS, ControlSS, State_zero, Control_zero, State_zero, Control_zero, ss, state_id, control_id, reg)
 
-
 eq_keys = collect(keys(F))
-#nState  = length(StateSS)
-#nCtrl   = length(ControlSS)
 
 # flatten f dict into a vector of scalar, issue with J, might cause indexing issue later on
 function flatten_F!(F_vec, F_dict, eq_keys)
@@ -170,10 +167,10 @@ function flatten_F!(F_vec, F_dict, eq_keys)
     end
 end
 
-# Run once to determine flat output size
+#determine flat output size
 n_eqs_flat = sum(k -> (F[k] isa AbstractArray ? length(F[k]) : 1), eq_keys)
 
-# x = [Xt1; Yt1; Xt; Yt]
+# x = [Xt1; Yt1; Xt; Yt] Xt1 is state_t, Yt1 is control_t+1, Xt is state_t-1, Yt is control_t
 n_x = 2*nState + 2*nCtrl
 BA_agg = zeros(n_eqs_flat, n_x)
 
@@ -182,25 +179,27 @@ function obj_fnct_agg(F_vec, x)
     Yt1 = x[nState+1:nState+nCtrl]
     Xt  = x[nState+nCtrl+1:2*nState+nCtrl]
     Yt  = x[2*nState+nCtrl+1:end]
-    F_dict = Dict{Symbol, Any}()
+    F_dict = OrderedDict{Symbol, Any}()
     DSGE.Fsys_agg(F_dict, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, ss, state_id, control_id, reg)
     flatten_F!(F_vec, F_dict, eq_keys)
 end
 
+#autodiff jacobian
 ForwardDiff.jacobian!(BA_agg, obj_fnct_agg, zeros(n_eqs_flat), zeros(n_x))
 
-# Trim to aggregate-only columns (drop distribution block indices)
+# aggregate-only columns (drop distribution block indices)
 dist_state_keys = Set([:marginal_b′_t, :marginal_a′_t, :marginal_se′_t, :COP])
 dist_ctrl_keys  = Set([:VALUE_t, :mutil_c_t, :Va_t])
 
 agg_state_cols = vcat([collect(state_id[s])   for s in keys(state_id)   if s ∉ dist_state_keys]...)
 agg_ctrl_cols  = vcat([collect(control_id[s]) for s in keys(control_id) if s ∉ dist_ctrl_keys]...)
 
+
+#matching donggyu dims
 F1_ad = BA_agg[:, 1:nState][:, agg_state_cols]                        # ∂F/∂Xt1 (agg cols)
 F2_ad = BA_agg[:, nState+1:nState+nCtrl][:, agg_ctrl_cols]            # ∂F/∂Yt1 (agg cols)
 F3_ad = BA_agg[:, nState+nCtrl+1:2*nState+nCtrl][:, agg_state_cols]  # ∂F/∂Xt  (agg cols)
 F4_ad = BA_agg[:, 2*nState+nCtrl+1:end][:, agg_ctrl_cols]            # ∂F/∂Yt  (agg cols)
-
 
 os = grid[:os]
 oc = grid[:oc]
@@ -215,8 +214,7 @@ F43_ad = F3_ad[os+1:end, :]
 F44_ad = F4_ad[os+1:end, :]
 
 
-
-
+#load in nonQE donggyu original jacobians
 mat_contents = matread("data/TESTJACOB.mat")
 out_jacob = mat_contents["out_Jacob"]
 F21_aux = out_jacob["F21_aux"]
@@ -228,22 +226,24 @@ F42_aux = out_jacob["F42_aux"]
 F43_aux = out_jacob["F43_aux"]
 F44_aux = out_jacob["F44_aux"]
 
-r1_start, r1_end = 89, 118
-r2_start, r2_end = 337, 405
+#r1_start, r1_end = 89, 118
+#r2_start, r2_end = 337, 405
 
-F21_aux_trim = F21_aux[: , r1_start:r1_end]
-F23_aux_trim = F23_aux[: , r1_start:r1_end]
-F41_aux_trim = F41_aux[: , r1_start:r1_end]
-F43_aux_trim = F43_aux[: , r1_start:r1_end]
+F21_aux_trim = F21_aux[: , end-os+1:end]
+F23_aux_trim = F23_aux[: , end-os+1:end]
+F41_aux_trim = F41_aux[: , end-os+1:end]
+F43_aux_trim = F43_aux[: , end-os+1:end]
 
-F22_aux_trim = F22_aux[: , r2_start:r2_end]
-F24_aux_trim = F24_aux[: , r2_start:r2_end]
-F42_aux_trim = F42_aux[: , r2_start:r2_end]
-F44_aux_trim = F44_aux[: , r2_start:r2_end]
+F22_aux_trim = F22_aux[: , end-oc+1:end]
+F24_aux_trim = F24_aux[: , end-oc+1:end]
+F42_aux_trim = F42_aux[: , end-oc+1:end]
+F44_aux_trim = F44_aux[: , end-oc+1:end]
 
+
+#save as csv for viewing 
 mkpath("csv")
-for (name, mat) in [("F21_ad", F21_ad), ("F22_agg", F22_ad), ("F23_agg", F23_ad), ("F24_agg", F24_ad),
-                    ("F41_ad", F41_ad), ("F42_agg", F42_ad), ("F43_agg", F43_ad), ("F44_agg", F44_ad),
+for (name, mat) in [("F21_ad", F21_ad), ("F22_ad", F22_ad), ("F23_ad", F23_ad), ("F24_ad", F24_ad),
+                    ("F41_ad", F41_ad), ("F42_ad", F42_ad), ("F43_ad", F43_ad), ("F44_ad", F44_ad),
                     ("F21_aux", F21_aux_trim), ("F23_aux", F23_aux_trim),
                     ("F41_aux", F41_aux_trim), ("F43_aux", F43_aux_trim),
                     ("F22_aux", F22_aux_trim), ("F24_aux", F24_aux_trim),
