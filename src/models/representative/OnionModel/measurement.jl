@@ -370,7 +370,6 @@ elseif subspec_int ∈ [6, 7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117] # Add L
                         ZZ[obs[Symbol("cpi_core_services")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
                     elseif subgp == "cpi_energy"
                         ZZ[obs[Symbol("cpi_energy")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
-                        println("Don't be here for ss114")
                     elseif subgp == "cpi_food"
                         ZZ[obs[Symbol("cpi_food")], endo[Symbol("π_$i")]] = get_setting(m, :Kgam)[i] / i_sum
                     end

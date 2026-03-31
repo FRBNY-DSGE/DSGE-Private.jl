@@ -359,7 +359,7 @@ Return a dictionary of type {Symbol, Array{Int32, 1}} with the model parameters 
 Builds off DSGE function find_param_ind(params::Vector{AbstractParameter{Float64}}, para_one::Symbol; regime::Int = 1) to give dictionary of index for all parameter/regime combinations of all parameters in model m.
 """
 function param_regimes_dict(m::AbstractDSGEModel)
-    para_dict = Dict{Symbol, Array{Int32, 1}}()
+    para_dict = Dict()
 
     for p in m.parameters
 

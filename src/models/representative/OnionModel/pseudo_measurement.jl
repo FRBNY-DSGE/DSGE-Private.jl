@@ -28,7 +28,7 @@ function pseudo_measurement(m::OnionModel{T},
     # Consumption growth pseudo observable for ss117 IRFs
     if subspec_int ∈ [117]
         ZZ_pseudo[pseudo[:pseudo_cons], endo[:c_t]] = 1.0
-        ZZ_pseudo[pseudo[:pseudo_cons], endo_addl[:c_t1]] = 1.0
+        ZZ_pseudo[pseudo[:pseudo_cons], endo_addl[:c_t1]] = -1.0
     end
 
 
