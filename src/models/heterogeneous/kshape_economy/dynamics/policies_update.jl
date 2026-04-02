@@ -86,35 +86,35 @@ Tuple of 5 arrays (all nb × na × nse):
 - `c_n_star`: Optimal consumption when not adjusting portfolio
 - `b_n_star`: Optimal bond holdings when not adjusting portfolio
 """
-function policies_update(EVb, EVa, Qminus, PIminus, R_cbminus, UU, KK, inc, meshes, grid, param)
+function policies_update(EVb, EVa, Qminus, PIminus, R_cbminus, UU, KK, inc, grid, param)
 
     # Extract grid dimensions
-    nb = Int(grid["nb"])
-    na = Int(grid["na"])
-    nse = Int(grid["nse"])
+    nb        = get_setting(m, :nb)
+    na        = get_setting(m, :na)
+    nse       = get_setting(m, :nse)
 
-    # Extract grid vectors
-    grid_b = vec(grid["b"])
-    grid_a = vec(grid["a"])
+    # Extract grid vectors (1D grid points)
+    grid_b = grid[:b_grid].points
+    grid_a = grid[:a_grid].points
 
     # Extract parameters
-    beta_aux = param["beta_aux"]
-    sigma = param["sigma"]
-    death_rate = param["death_rate"]
-    Rprem = param["Rprem"]
-    b_a_aux = param["b_a_aux"]
+    beta_aux  = param[:β]
+    sigma     = param[:σ_2]
+    death_rate = param[:dr]
+    Rprem     = param[:Rprem]
+    b_a_aux   = param[:λ_aux]
 
     # Extract meshes
-    meshes_b = meshes["b"]
-    meshes_a = meshes["a"]
-    meshes_se = meshes["se"]
+    meshes_b  = grid[:b_ndgrid]
+    meshes_a  = grid[:a_ndgrid]
+    meshes_se = grid[:se_ndgrid]
 
     # Extract income components
-    inc_labor = inc["labor"]
-    inc_dividend = inc["dividend"]
-    inc_capital = inc["capital"]
-    inc_bond = inc["bond"]
-    inc_transfer = inc["transfer"]
+    inc_labor    = inc[:labor]
+    inc_dividend = inc[:dividend]
+    inc_capital  = inc[:capital]
+    inc_bond     = inc[:bond]
+    inc_transfer = inc[:transfer]
 
     ## EGM Step 1: Non-adjustment case
     EMU = beta_aux * UU * (1 - death_rate) * reshape(EVb, (nb, na, nse))

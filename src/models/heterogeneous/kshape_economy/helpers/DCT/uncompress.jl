@@ -76,9 +76,9 @@ COP_Dev = reshape(theta_full, (nb_copula, na_copula, nse_copula))
 - Compression indices must be valid linear indices into an `nm × nk × ny` array.
 - This implementation matches the MATLAB function `uncompress.m`.
 """
-function uncompress(compressionIndexes::Vector{Float64}, 
-        XC::Vector{<:AbstractMatrix}, 
-        DC::Vector{<:AbstractMatrix}, 
+function uncompress(compressionIndexes::AbstractVector,
+        XC::AbstractVector,
+        DC::Vector{<:AbstractMatrix},
         IDC::Vector{<:AbstractMatrix})
     # Extract dimensions from DCT matrices
     nm = size(DC[1], 1)  # Dimension 1 (bonds/b)

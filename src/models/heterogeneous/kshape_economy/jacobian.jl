@@ -87,7 +87,7 @@ function _jacobian!(m::mBBQ)
         DC[1]  = mydctmx(nb)
         DC[2]  = mydctmx(na)
         DC[3]  = mydctmx(nse)
-        IDCD[transpose(DCD[i]) for i ∈ 1:3]
+        IDCD = [transpose(DCD[i]) for i ∈ 1:3]
 
         DCD = Vector{Array{Float64, 2}}(undef, 3)
         n_copula = length(get_setting(m,:dct_compression_indices)[:copula])

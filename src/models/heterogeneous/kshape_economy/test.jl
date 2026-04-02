@@ -54,7 +54,7 @@ F = OrderedDict{Symbol, Any}(
     :eq_unemployment_lag => 0.,
     :eq_government_spending_lag => 0.,
     :eq_lump_sum_transfers => 0.,
-    :R_star_ind => 0., #TODO: need to add
+    :eq_R_star => 0., #TODO: need to add
     :eq_fiscal_liability => 0.,
     :eq_z => 0.,
     :eq_ψ => 0.,
@@ -188,8 +188,8 @@ end
 ForwardDiff.jacobian!(BA_agg, obj_fnct_agg, zeros(n_eqs_flat), zeros(n_x))
 
 # aggregate-only columns (drop distribution block indices)
-dist_state_keys = Set([:marginal_b′_t, :marginal_a′_t, :marginal_se′_t, :COP])
-dist_ctrl_keys  = Set([:VALUE_t, :mutil_c_t, :Va_t])
+dist_state_keys = Set([:marginal_b_t, :marginal_a_t, :marginal_se_t, :copula_t])
+dist_ctrl_keys  = Set([:Value_t, :mutil_c_t, :Va_t])
 
 agg_state_cols = vcat([collect(state_id[s])   for s in keys(state_id)   if s ∉ dist_state_keys]...)
 agg_ctrl_cols  = vcat([collect(control_id[s]) for s in keys(control_id) if s ∉ dist_ctrl_keys]...)

@@ -6,7 +6,7 @@ using Random: MersenneTwister
 
 """
 ```
-BayerBornLuetticke{T} <: AbstractHeterogeneousModel{T}
+mBBQ{T} <: AbstractHeterogeneousModel{T}
 ```
 ### Fields
 
@@ -121,7 +121,7 @@ function init_model_indices!(m::mBBQ)
     :profits′_t] =#
 
 
-    m.jump_variables = [:Value, :mutil_cons′_t, :Va′_t, :MRS′_t, :A_hh′_t, :B_hh′_t, :C′_t, 
+    m.jump_variables = [:Value′_t, :mutil_cons′_t, :Va′_t, :MRS′_t, :A_hh′_t, :B_hh′_t, :C′_t, 
                         :N′_t, :L′_t, :UB′_t, :K′_t, :B′_t, :B_gov_ncp′_t, :T′_t, :LT′_t, :G′_t, 
                         :λ′_t, :pi′_t, :V′_t, :J′_t, :h′_t, :v′_t, :Y′_t, :Profit′_t, :r_k′_t, 
                         :r_a′_t, :MC′_t, :unemp′_t, :nn′_t, :M′_t, :f′_t, :zz′_t, :xx′_t, :vv′_t, 
@@ -360,40 +360,44 @@ function model_settings!(m::mBBQ)
     ## Monetary Policy
     m <= Setting(:n_mon_anticipated_shocks_padding, 0) # anticipated shocks are not used
 
+    # Indices, declared just for initialization
+    m <= Setting(:n_scalar_jumps, 1, "number of scalar jumps")
+    m <= Setting(:n_scalar_states, 1, "number of scalar states")
+    m <= Setting(:n_scalar_variables, get_setting(m, :n_scalar_jumps)+get_setting(m, :n_scalar_states),
+                 "Num Scalars (jumps and states)")
+    m <= Setting(:n_backward_looking_states, 1, "Total number of states after reduction steps") # just initializing, will count later
+    m <= Setting(:n_jumps, 1, "Total number of jumps after reduction steps")
+    m <= Setting(:n_model_states, get_setting(m, :n_backward_looking_states) + get_setting(m, :n_jumps),
+                 "Number of model states (predetermined states and jump variables)")
+
+
+
+
 end
 function setup_indices!(m::mBBQ)
     #Abbreviations for ease
     state_vars = m.state_variables
     jump_vars = m.jump_variables
     endo = m.endogenous_states
-    aggr_end = m.aggregate_endogenous_states
+    aggr_endo = m.aggregate_endogenous_states
     eqconds = m.equilibrium_conditions
     aggr_eqconds = m.aggregate_equilibrium_conditions
 
-    #Retrieve size of the grid
+    # Retrieve size of the grid
     nb, na, nse = get_idiosyncratic_dims(m)
-    #=
-    na = get_setting(m, :na)
-    nb = get_setting(m, :nb)
-    ns = get_setting(m, :ns)
-    nse = get_setting(m, :nse)
-    =#      
-    #compute idiosyncratic dims
-    n_idio_states = na + nb + nse - 3 #nse more accurately 
-    dof_to_remove = 3
-
+    # Compute idiosyncratic dims
+    n_idio_states = get_setting(m, :nRedMarg)
+    # Store compression indices
     #Marginals
-    endo[:marginal_pdf_b′_t] = 1:nb-1
-    endo[:marginal_pdf_a′_t] = nb+1:nb+na-1
-    endo[:marginal_pdf_se′_t] = nb+na+1:nse-1
+    endo[:marginal_pdf_b′_t] = 1:(nb-1)
+    endo[:marginal_pdf_a′_t] = nb:(nb+na-2)
+    endo[:marginal_pdf_se′_t] = (nb+na-1):(nb+na+nse-3)
 
     #Copula-related indexation
-    n_dct_copula = length(get_setting(m, :dct_compression_indices)[:copula])
+    n_dct_copula = get_setting(m, :nCOP)
     n_distr_states = n_idio_states + n_dct_copula
-    #n_idio_states + get_setting(m, :n_copula_dct_coefficients) 
-    ##TO-DO: modify state_reduc_tvcopula.jl to save all those grid items into model obj
-
     endo[:copula′_t] = (1 + n_idio_states):n_distr_states
+
     for (i, k) ∈ enumerate(get_aggregate_state_variables(m))
         endo[k] = (n_distr_states + i):(n_distr_states+i)
         aggr_endo[k] = i
@@ -401,22 +405,77 @@ function setup_indices!(m::mBBQ)
 
     # Update n_states to be consistent with number of
     # idiosyncratic states and jumps after reduction
-    n_states = first(endo[state_vars[end]])
+    n_states = Int64(first(endo[state_vars[end]]))
     n_aggr_states = n_states - n_distr_states
     m <= Setting(:n_backward_looking_states, n_states)
 
     # Jump indices
-    n_model_states      = n_states_idio_jumps + oc
-    n_jumps             = n_model_states - n_backward_looking_states    # = 3*nPoly + oc
+    #not sure this is right
+    nPoly = get_setting(m, :nPoly)
+    n_idio_jumps  = 3 * nPoly
+    n_states_idio_jumps  = n_states + n_idio_jumps
+    endo[:Value′_t] = n_states .+ (1:(nPoly-1))
+    endo[:mutil_cons′_t] = n_states .+ (nPoly:(2*nPoly-1))
+    endo[:Va′_t] = n_states .+ (2*nPoly:3*nPoly-1)
 
-
+    #=
+    n_compression_indices = get_setting(m, :nPoly)
+    endo[:Value′_t] = 1:n_compression_indices
+    endo[:mutil_cons′_t] = n_compression_indices+1:2*n_compression_indices
+    endo[:Va′_t] = 2*n_compression_indices+1:3*n_compression_indices =#
     for (i, k) ∈ enumerate(get_aggregate_jump_variables(m))
         endo[k] = (n_states_idio_jumps + i):(n_states_idio_jumps+i)
         aggr_endo[k] = i + n_aggr_states
     end
+    m <= Setting(:n_model_states, first(endo[jump_vars[end]])) #test equiv. to :numstates
+    m <= Setting(:n_jumps, get_setting(m, :n_model_states) - n_states) #compare w :numRedCtrl
+
+    # Populating equation indices:
+    eqconds[:eq_marginal_pdf_b]             =   endo[:marginal_pdf_b′_t]
+    eqconds[:eq_marginal_pdf_a]             =   endo[:marginal_pdf_a′_t]
+    eqconds[:eq_marginal_pdf_se]            =   endo[:marginal_pdf_se′_t]
+    eqconds[:eq_copula]                     =   endo[:copula′_t]
+    eqconds[:eq_value]                      =   endo[:Value′_t]
+    eqconds[:eq_marginal_util_cons]         =   endo[:mutil_cons′_t]
+    eqconds[:eq_marginal_value_illiquid]    =   endo[:Va′_t]
+
+    ### DOESN'T MATTER BC bbl CODE DOES IT DIF
+    #=
+    exogenous_shocks = collect([:Z_sh, :G_sh, :D_sh, :R_sh, :ι_sh, :η_sh, :w_sh])
+    aggr_eqn_names = [
+    :eq_Z, :eq_A, :eq_G, :eq_D, :eq_R, :eq_ι, :eq_η, :eq_w]
+    =#
+    for (i, name) ∈ enumerate([
+                               :eq_rate_monetary_policy, :eq_wage, :eq_liquid_assets,
+                               :eq_central_bank_assets, :eq_tobins_q, :eq_leverage,
+                               :eq_net_worth_bank, :eq_houshold_bond_rate, :eq_quantitative_easing,
+                               :eq_inflation_lag, :eq_output_lag, :eq_consumption_lag,
+                               :eq_investment_lag, :eq_profit_lag, :eq_unemployment_lag,
+                               :eq_government_spending_lag, :eq_lump_sum_transfers,
+                               :eq_fiscal_liability, :eq_z, :eq_ψ, :eq_η, :eq_D, :eq_GG,
+                               :eq_ι, :eq_BB, :eq_ψ_w, :eq_MP, :eq_pm, :eq_control_capital,
+                               :eq_control_bond, :eq_control_government_bond, :eq_control_tax,
+                               :eq_control_transfer, :eq_control_government_spending,
+                               :eq_control_lambda, :eq_control_inflation, :eq_control_vacancies,
+                               :eq_control_j, :eq_control_mpl, :eq_control_elasticity_labor,
+                               :eq_control_output, :eq_control_profit, :eq_control_mpk,
+                               :eq_control_mpa, :eq_control_marginal_cost,
+                               :eq_control_unemployment_rate, :eq_control_nn, :eq_control_M,
+                               :eq_control_f, :eq_control_zz, :eq_control_xx, :eq_control_vv,
+                               :eq_control_ee, :eq_control_cb, :eq_control_profit_fi,
+                               :eq_control_rra, :eq_control_rr, :eq_control_investment,
+                               :eq_control_x_k, :eq_control_a_g_obs, :eq_control_y_obs,
+                               :eq_control_c_obs, :eq_control_i_obs, :eq_control_w_obs,
+                               :eq_control_profit_obs,
+                              ])
+        eqconds[name] = (n_states_idio_jumps + i):(n_states_idio_jumps+i)
+        aggr_eqconds[name] = i + n_aggr_states
+    end
+    m <= Setting(:n_model_states, first(endo[jump_vars[end]]))
+    m <= Setting(:n_jumps, get_setting(m, :n_model_states) - n_states)
 
 
-
+    m <= Setting(:n_model_states_augmented, get_setting(m, :n_model_states))
 end
 
 
@@ -604,6 +663,7 @@ function init_parameters!(m::mBBQ)
     m <= parameter(:λ_aux, 0.994966466098559, fixed = true, description="", tex_label = "\\lamdba_aux")
     m <= parameter(:λ_b_aux, 0.996816728468132, fixed = true, description = " ", tex_label = "\\lambda_aux")
     m <= parameter(:fix_L, 0.00763002310934482, fixed = true, description = " ", tex_label = "\\")
+    m <= parameter(:w_bar, 1.2111925176640317, fixed = true, description ="")
     m <= parameter(:dr, 0.005555555555555556, fixed = true, description = " ", tex_label = "\\")
     m <= parameter(:in, 0.0005, fixed = true, description = " ", tex_label = "\\")
     m <= parameter(:π_bar, 1.005, fixed = true, description = "Steady state inflation rate",
@@ -644,8 +704,10 @@ function init_parameters!(m::mBBQ)
     m <= parameter(:ϕ_π_QE, 0.5, fixed = true, description = "")
     m <= parameter(:ϕ_u_QE, 10., fixed = true, description = "")
     m <= parameter(:MMF_ratio_1, 10., fixed = true, description = "")
-
-
+    m <= parameter(:Rprem, 0.038285657, fixed = true, description = "")
+    m <= parameter(:μ_χ, 9.049040346313916, fixed = true, description = "")
+    m <= parameter(:σ_χ, 3.4204542765, fixed = true, description = "")
+    m <= parameter(:β, 0.9931748706, fixed = true, description = "")
     # Setting steady-state parameters
     nx = get_setting(m, :nx)
     ns = get_setting(m, :ns)

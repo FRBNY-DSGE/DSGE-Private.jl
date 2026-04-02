@@ -66,11 +66,11 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
         F[:eq_rate_monetary_policy] = log(R_cb′_t) - ss[:R_cb_t] - 
         (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
         m[:ϕ_u] * (unemp_t - ss[:u_t])) -  
-        m[:ρ_R]*(log(R_cb_t) - ss[:R_cb_t]) - log(eps_R_t)
+        m[:ρ_R]*(log(R_cb_t) - ss[:R_cb_t]) + log(eps_R_t)
 
         println("in taylor")
     elseif monpol == :qe
-        F[:eq_rate_monetary_policy] = log(R_cb′_t) - ss[:R_cb_t]
+        F[:eq_rate_monetary_policy] = log(R_cb′_t) - ss[:R_cb_t] 
 
         println("in qe")
 
@@ -79,15 +79,16 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
 
     #===================================================================#
     #eq2: wage
-    @sslogdeviations2levels w_t, eps_w_t, π_past_t, ψ_w_t = Xt, state_id, StateSS
-    @sslogdeviations2levels_unprimekeys w′_t = Xt1, state_id, StateSS
+    @sslogdeviations2levels w_t, eps_w_t, π_past_t,ψ_w_t = Xt, state_id, StateSS
+    @sslogdeviations2levels_unprimekeys w′_t, ψ_w′_t = Xt1, state_id, StateSS
     @sslogdeviations2levels h_t = Yt, control_id, ControlSS
-
+    #used to be ψ_w_t unprimed 
     #delta might be new param d
     F[:eq_wage] = log(w′_t) - ss[:w_t] - 
     m[:ρ_w].value * (log(w_t) - ss[:w_t] + 
     m[:d].value * log(log(ss[:π_t])/log(pi_t)) + (1-m[:d].value)*log(log(π_past_t)/log(pi_t))) - 
-    (1 - m[:ρ_w].value) * eps_w_t * log(ψ_w_t + h_t - ss[:r_l_t])
+    (1 - m[:ρ_w].value) * eps_w_t * (ψ_w_t + h_t - ss[:r_l_t])
+    (1 - m[:ρ_w].value) * eps_w_t * log(ψ_w′_t + h_t - ss[:r_l_t])
 
 
     #===================================================================#
@@ -121,6 +122,7 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     @sslogdeviations2levels x_cb_t = Xt, state_id, StateSS
 
     if monpol == :qe
+        println("hello monpol")
         F[:eq_central_bank_assets] = log(A_gaux′_t) - log( x_cb_t * A_g_t + 1 )
     else
         F[:eq_central_bank_assets] = log(A_gaux′_t) - 
@@ -134,11 +136,9 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     # @sslogdeviations2levels_unprimekeys  = Xt1, state_id, StateSS
     @sslogdeviations2levels ι_2_t, x_k_t, λ_t = Yt, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys ι_2′_t, x_k′_t = Yt1, control_id, ControlSS
-
-    F[:eq_tobins_q] = log(Q′_t) - 
-    log( ι_2_t * (1 + m[:ϕ].value * log(x_k_t)+m[:ϕ].value/2*(log(x_k_t))^2 ) + 
+    F[:eq_tobins_q] = log(Q′_t) -
+    log(ι_2_t * (1 + m[:ϕ].value * log(x_k′_t)+m[:ϕ].value/2*(log(x_k′_t))^2 ) + 
     ι_2′_t * λ_t / ss[:λ_t] * m[:ϕ].value * log(x_k′_t) * x_k′_t )
-
 
     #===================================================================#
     #eq7: bank leverage
@@ -164,8 +164,7 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     @sslogdeviations2levels D_t, R_tilde_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys R_tilde′_t, D′_t = Xt1, state_id, StateSS
 
-    F[:eq_houshold_bond_rate] = log(R_tilde′_t) - log( R_cb′_t * D′_t ) 
-
+    F[:eq_houshold_bond_rate] = log(R_tilde′_t) - log( R_cb′_t * D_t ) 
     #===================================================================#
     #eq10: eq_quantitative_easing #TODO: add regimes #TODO ADD shocks
     @sslogdeviations2levels_unprimekeys x_cb′_t = Xt1, state_id, StateSS
@@ -236,6 +235,15 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     F[:eq_lump_sum_transfers] = log(LT_past′_t) - log(LT_t)
 
     #===================================================================#
+    #eq19: R_star
+    @sslogdeviations2levels R_star_t = Xt, state_id, StateSS
+    @sslogdeviations2levels_unprimekeys  R_star′_t = Xt1, state_id, StateSS
+    F[:eq_R_star] = log(R_star′_t) - ss[:R_cb_t] -
+                    (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
+                    m[:ϕ_u] * (unemp_t - ss[:u_t])) -
+                    m[:ρ_R]*(log(R_star_t) - ss[:R_cb_t]) - log(eps_R_t)
+  
+    #===================================================================#
     #eq19: eq_fiscal_liability
 
     @sslogdeviations2levels B_F_t, eps_B_F_t = Xt, state_id, StateSS
@@ -253,21 +261,20 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     F[:eq_z] = log(Z′_t) - (m[:ρ_Z].value * log(Z_t) + log(eps_Z_t))
 
     #===================================================================#
-    #eq21: Ψ 
+    #eq21:  
 
     @sslogdeviations2levels ψ_rp_t, eps_RP_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys ψ_rp′_t = Xt1, state_id, StateSS
 
-    F[:eq_ψ] = log(ψ_rp′_t) - (m[:ρ_ψ_rp].value * log(ψ_rp_t) + log(eps_RP_t))
+    F[:eq_ψ] = log(ψ_rp′_t) - (m[:ρ_ψ_rp].value * log(ψ_rp_t))
 
     #===================================================================#
     #eq22: η
-
-    @sslogdeviations2levels η_t = Xt, state_id, StateSS
+    @sslogdeviations2levels η_t, eps_eta_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys η′_t, p_m′_t = Xt1, state_id, StateSS
 
     #RHS(eta_ind)         = log(p_mark/(p_mark-1));
-    F[:eq_η] = log(η′_t) - ( log(p_m′_t) - log(p_m′_t - 1) )
+    F[:eq_η] = log(η′_t) - ( log(p_m′_t) - log(p_m′_t - 1) ) + log(eps_eta_t)
 
     #===================================================================#
     #eq23: D
@@ -280,7 +287,7 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     #===================================================================#
     #eq24: GG TODO: add regime
     #SHOCK: eps_G
-    @sslogdeviations2levels GG_t, eps_D_t = Xt, state_id, StateSS
+    @sslogdeviations2levels GG_t, eps_G_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys GG′_t = Xt1, state_id, StateSS
     @sslogdeviations2levels G_t, C_b_t = Yt, control_id, ControlSS
 
@@ -288,37 +295,37 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     if regime == "G"
         F[:eq_GG] = log(GG′_t) - 
         (m[:ρ_G].value * log(GG_t) + (1 - m[:ρ_G].value) * 
-        log(ss[:Y_t] / (ss[:Y_t] - ss[:LT_t] - ss[:C_b_t])))
+         log(ss[:Y_t] / (ss[:Y_t] - ss[:LT_t] - ss[:C_b_t]))) + log(eps_G_t)
     elseif regime == "LT" #doesn't work
         F[:eq_GG] = log(GG′_t)  - 
         (m[:ρ_G]  * log(GG_t) + (1-m[:ρ_G])  * 
-        log(ss[:Y_t] / (ss[:Y_t] - ss[:G_t])))
+         log(ss[:Y_t] / (ss[:Y_t] - ss[:G_t]))) + log(eps_G_t)
     end
 
     #===================================================================#
     #eq25: 
     #SHOCK: eps_iota
-    @sslogdeviations2levels ι_t = Xt, state_id, StateSS
+    @sslogdeviations2levels ι_t, eps_iota_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys ι′_t = Xt1, state_id, StateSS
 
-    F[:eq_ι] = log(ι′_t) - (m[:ρ_ι].value * log(ι_t) )
+    F[:eq_ι] = log(ι′_t) - (m[:ρ_ι].value * log(ι_t)) + log(eps_iota_t)
 
     #===================================================================#
     #eq27: 
     #SHOCK: eps_BB
-    @sslogdeviations2levels BB_t = Xt, state_id, StateSS
+    @sslogdeviations2levels BB_t, eps_BB_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys BB′_t = Xt1, state_id, StateSS
 
 
-    F[:eq_BB] = log(BB′_t) - (m[:ρ_BB].value * log(BB_t))
+    F[:eq_BB] = log(BB′_t) - (m[:ρ_BB].value * log(BB_t)) + log(eps_BB_t)
 
     #===================================================================#
     #eq28: psi_w
     #SHOCK: eps_w
-    @sslogdeviations2levels ψ_w_t = Xt, state_id, StateSS
+    @sslogdeviations2levels ψ_w_t, eps_w_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys ψ_w′_t = Xt1, state_id, StateSS
 
-    F[:eq_ψ_w] = log(ψ_w′_t) - (m[:ρ_ψ_w].value * log(ψ_w_t))
+    F[:eq_ψ_w] = log(ψ_w′_t) - (m[:ρ_ψ_w].value * log(ψ_w_t)) + log(eps_w_t)
 
     #===================================================================#
     #eq29: mp
@@ -326,7 +333,7 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     @sslogdeviations2levels MP_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys MP′_t = Xt1, state_id, StateSS
 
-    F[:eq_MP] = log(MP′_t) - (m[:ρ_mp].value * log(MP_t) )
+    F[:eq_MP] = log(MP′_t) - (m[:ρ_mp].value * log(MP_t)) + log(eps_R_t)
 
 
     #===================================================================#
@@ -368,8 +375,14 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     #===================================================================#
     #control eq4: tax
     @sslogdeviations2levels T_t, L_t, UB_t = Yt, control_id, ControlSS
-
+    @sslogdeviations2levels Profit_FI_t  = Yt, control_id, ControlSS
+    #=
     F[:eq_control_tax] = T_t - (m[:τ_w].value *(w′_t * L_t + UB_t) + m[:τ_w].value*(Profit_t))
+=#
+ F[:eq_control_tax] = T_t - (m[:τ_w].value * (w′_t * L_t + UB_t) +
+        m[:τ_a].value * Profit_t +
+        m[:τ_a].value * (Profit_FI_t - m[:fix2].value))
+
 
 
     #===================================================================#
@@ -404,10 +417,16 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     #control eq7: Inflation
     @sslogdeviations2levels pi_t = Yt, control_id, ControlSS
    
-    F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) - (m[:π_cb].value * exp(m[:ρ_B].value / (m[:ρ_B].value + m[:γ_π].value))
+#=    F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) - (m[:π_cb].value * exp(m[:ρ_B].value / (m[:ρ_B].value + m[:γ_π].value))
                                         * log(B_gov_ncp_t * R_cb_t / (ss[:B_gov_ncp_t] * R_cb_t))
                                         - m[:γ_T].value/(m[:ρ_B].value + m[:γ_π].value) * log(T_t / ss[:T_t]) -
                                         1/(m[:ρ_B].value + m[:γ_π].value)*log(B_gov_ncp′_t / ss[:B_gov_ncp_t]))
+=#
+F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
+        (m[:ρ_B].value / (m[:ρ_B].value + m[:γ_π].value) *
+            log(B_gov_ncp_t * R_cb_t / (ss[:B_gov_ncp_t] * exp(ss[:R_cb_t])))
+        - m[:γ_T].value / (m[:ρ_B].value + m[:γ_π].value) * log(T_t / ss[:T_t])
+        - 1 / (m[:ρ_B].value + m[:γ_π].value) * log(B_gov_ncp′_t / ss[:B_gov_ncp_t]))
 
     
     #===================================================================#
@@ -649,7 +668,23 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
 
     F[:eq_control_profit_obs] = Profit_obs_t - Profit_t - m[:fix2] - log(B_F′_t)
     #===================================================================#
-    
+    # Shocks
+    @sslogdeviations2levels_unprimekeys eps_QE′_t, eps_B_F′_t, eps_RP′_t, eps_BB′_t,
+      eps_Z′_t, eps_G′_t, eps_D′_t, eps_R′_t, eps_iota′_t, eps_eta′_t, eps_w′_t = Xt1, state_id, StateSS
+    F[:eps_QE_ind]   = log(eps_QE′_t)
+    F[:eps_B_F_ind]  = log(eps_B_F′_t)
+    F[:eps_RP_ind]   = log(eps_RP′_t)
+    F[:eps_BB_ind]   = log(eps_BB′_t)
+    F[:eps_Z_ind]    = log(eps_Z′_t)
+    F[:eps_G_ind]    = log(eps_G′_t)
+    F[:eps_D_ind]    = log(eps_D′_t)
+    F[:eps_R_ind]    = log(eps_R′_t)
+    F[:eps_iota_ind] = log(eps_iota′_t)
+    F[:eps_eta_ind]  = log(eps_eta′_t)
+    F[:eps_w_ind]    = log(eps_w′_t)
+    #===================================================================#
+
+
     return F
 end
 

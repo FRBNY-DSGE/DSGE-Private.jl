@@ -4,8 +4,6 @@ mBBQ and are still only compatible with BayerBornLuetticke.
 Note, if the type has not been updated, then the method does
 not yet exist for mBBQ
 """
-
-
 # Access functions
 
 # aggregate variable names
@@ -14,6 +12,17 @@ get_aggregate_jump_variables(m::mBBQ) = m.aggregate_jump_variables
 get_aggregate_endogenous_states(m::mBBQ) = m.aggregate_endogenous_states
 get_aggregate_equilibrium_conditions(m::mBBQ) = m.aggregate_equilibrium_conditions
 #get_lagged_variables(m::BayerBornLuetticke) = m.state_variables[7:15] # 7 = Y′_tl1, 15 = τ_prog′_t1
+
+#TO-DO: Add types
+@inline util(c) = (c .^ (1-θ[:σ_2])) ./ (1-θ[:σ_2])
+@inline mutil(c) = 1.0 ./ (c .^ θ[:σ_2])
+@inline invutil(u) = ((1 - θ[:σ_2]) .* u) .^ (1 / (1 - θ[:σ_2]))
+@inline invmutil(μ) = (1.0 ./ μ) .^ (1 / θ[:σ_2])
+
+#Copula Indices
+@inline function get_copula_indices(m::mBBQ)
+    get_setting(m, :nb_copula), get_setting(m, :na_copula), get_setting(m, :nse_copula)
+end
 
 # Idiosyncratic grid settings
 @inline function get_idiosyncratic_dims(m::mBBQ; coarse::Bool = false)
@@ -26,14 +35,6 @@ end
 get_idiosyncratic_gridpts(m::mBBQ) = (m.grids[:b_grid].points, m.grids[:a_grid].points, m.grids[:se_grid].points)
 get_idiosyncratic_ndgrids(m::BayerBornLuetticke) = (m.grids[:b_ndgrid], m.grids[:a_ndgrid], m.grids[:se_ndgrid])
 
-# Numbers of states when only tracking backward-looking states
-#TO-DO: update this
-#=
-n_states(m::BayerBornLuetticke) = haskey(get_settings(m), :klein_track_backward_looking_states_only) &&
-    get_setting(m, :klein_track_backward_looking_states_only) ? n_backward_looking_states(m)::Int :
-    sum(map(i -> length(collect(m.endogenous_states)[i][2]), 1:length(keys(m.endogenous_states))))
-=#
-## Parsing functions
 
 # Map lagged variable to steady state name
 @inline function _mbbq_parse_endogenous_states(var::Symbol)
@@ -51,7 +52,7 @@ end
     fp = get_setting(m, :steadystate_output_file)
     if !ispath(dirname(fp))
         mkpath(dirname(fp))
-    end 
+    end
     JLD2.jldopen(fp, true, true, true, IOStream) do file
         write(file, "KSS", KSS)
         write(file, "VmSS", VmSS)

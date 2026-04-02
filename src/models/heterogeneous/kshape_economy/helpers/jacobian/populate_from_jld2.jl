@@ -13,21 +13,16 @@ function populate_from_jld2!(m::mBBQ)
         error("There is no jld2 file associated with this model")
     end
 
-
     #Xss, Yss
     m <= Setting(:Xss, ref["Xss"], "Xss")
     m <= Setting(:Yss, ref["Yss"], "Yss")
 
-    #Storing Γ mattrices and Chebyshev Polynomials
+    #Storing Γ matrices and Chebyshev Polynomials
     m <= Setting(:Γ_state, ref["Gamma_state"], "Gamma State matrix")
     m <= Setting(:Γ_control, ref["Gamma_control"], "Gamma Control matrix")
     m <= Setting(:InvGamma, ref["InvGamma"], " ")
     m <= Setting(:Poly, ref["Poly"], "") #add description
     m <= Setting(:Γ2, ref["Gamma2"], " ")
-
-    # Why did i think this existed? 
-    #m <= Setting(:copula, ref["Copula"], "Copula")
-
 
     # Should I save this?
     distrSS      = ref["distrSS"]
@@ -53,13 +48,6 @@ function populate_from_jld2!(m::mBBQ)
     grids[:copula_marginal_b] = ref_grid["copula_marginal_se"]
     grids[:copula_marginal_a] = ref_grid["copula_marginal_se"]
     grids[:copula_marginal_se] = ref_grid["copula_marginal_se"]
-
-    #=
-    grids[:oc] = Int(ref_grid["oc"])
-    grids[:oc_agg] = Int(ref_grid["ac_agg"])
-    grids[:os_process] = Int(ref_grid["os_process"])
-    grids[:os_agg] = Int(ref_grid["os_agg"])
-    =#
 
     # Settings
     m <= Setting(:nPoly, Int(ref["nPoly"]), "Number of Chebyshev basis functions in the 
@@ -111,6 +99,5 @@ function populate_from_jld2!(m::mBBQ)
                  truncation (entries satisfying I+J+K <= reduc_copula, excluding cross-marginal terms)")
     m <= Setting(:compressionIndexesCOP, Vector{Int}(ref_grid["compressionIndexesCOP"]), "Linear indices into 
                  the  nb_copula × na_copula × nse_copula DCT coefficient array identifying the retained sparse 
-                 copula coefficients") 
-    
+                 copula coefficients")   
 end

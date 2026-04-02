@@ -6,7 +6,7 @@ function build_indices(grid, lenSSS, lenCSS)
     :π_past_t, :Y_past_t, :C_past_t, :I_past_t, :Profit_past_t, :unemp_past_t, :G_past_t, :LT_past_t,
     :R_star_t, :B_F_t, :Z_t, :ψ_rp_t, :η_t, :D_t, :GG_t, :ι_t, :BB_t, :ψ_w_t, :MP_t, :p_m_t]
     
-    shock_states = [:eps_QE_t, :eps_RP_t, :eps_B_F_t, :eps_BB_t, :eps_Z_t, :eps_G_t, :eps_D_t,
+    shock_states = [:eps_QE_t, :eps_B_F_t, :eps_RP_t, :eps_BB_t, :eps_Z_t, :eps_G_t, :eps_D_t,
     :eps_R_t, :eps_iota_t, :eps_eta_t, :eps_w_t]
 
     summary_controls = [:MRS_t, :A_hh_t, :B_hh_t, :C_t, :N_t, :L_t, :UB_t]
@@ -38,15 +38,15 @@ function build_indices(grid, lenSSS, lenCSS)
     ny = 3 * NN #+ oc
 
     # ─── state_id ─────────────────────────────────────────────────────────────
-    state_id = OrderedDict{Symbol, Union{Int, UnitRange{Int}}}()
+    state_id = OrderedDict{Symbol, Union{Int, UnitRange{Int}, Vector{Int}}}()
 
     # Distribution block: reduced marginals + copula coefficients
     #These indexes are all skipping an index but this is from the code so idk
-    state_id[:marginal_b′_t] = 1:nb-1
-    state_id[:marginal_a′_t] = nb:nb+na-2
-    state_id[:marginal_se′_t] = nb+na-1:nb+na+nse-3
+    state_id[:marginal_pdf_b_t] = collect(1:nb-1)
+    state_id[:marginal_pdf_a_t] = collect(nb:nb+na-2)
+    state_id[:marginal_pdf_se_t] = collect(nb+na-1:nb+na+nse-3)
 
-    state_id[:COP]         = nRedMarg+1:nRedMarg+nCOP
+    state_id[:copula_t]         = nRedMarg+1:nRedMarg+nCOP
 
     next = lenSSS - (41 - 1) #TODO: how to get 41 without manually setting
 
@@ -59,13 +59,13 @@ function build_indices(grid, lenSSS, lenCSS)
     # @assert next - 1 == numstates "state_id covers $(next-1) indices but numstates = $numstates"
 
     # ─── control_id ───────────────────────────────────────────────────────────
-    control_id = OrderedDict{Symbol, Union{Int, UnitRange{Int}}}()
+    control_id = OrderedDict{Symbol, Union{Int, UnitRange{Int}, Vector{Int}}}()
     #next = 1
 
     # Distributional controls (full-grid, NN = nb*na*nse each) TODO: fix this
-    control_id[:VALUE_t] = 1:NN
-    control_id[:mutil_c_t] = NN+1:2*NN
-    control_id[:Va_t] = 2*NN+1:3*NN
+    control_id[:Value_t] = collect(1:NN)
+    control_id[:mutil_c_t] = collect(NN+1:2*NN)
+    control_id[:Va_t] = collect(2*NN+1:3*NN)
 
     next = ny + 1
 
@@ -84,6 +84,28 @@ function build_indices(grid, lenSSS, lenCSS)
     # @assert next - 1 == ny "control_id covers $(next-1) indices but ny (3*NN + oc) = $ny"
 
     return (state_id, control_id)
+end
+
+"""
+    build_combined_indices(state_id, control_id, nState) -> OrderedDict
+
+Merge `state_id` and `control_id` into a single index dict for use with the
+combined vector `X = [states; controls]` (length `nState + nCtrl`).
+
+State entries are unchanged. Control entries are offset by `nState` so that
+`X[id[:Value_t]]` retrieves the period-t Value function deviations, and
+`XPrime[id[:Value_t]]` retrieves the period-(t+1) deviations — same index,
+different vector, just like BBL.
+"""
+function build_combined_indices(state_id::AbstractDict, control_id::AbstractDict, nState::Int)
+    id = OrderedDict{Symbol, Union{Int, UnitRange{Int}}}()
+    for (k, v) in state_id
+        id[k] = v
+    end
+    for (k, v) in control_id
+        id[k] = v isa Int ? v + nState : v .+ nState
+    end
+    return id
 end
 
 
