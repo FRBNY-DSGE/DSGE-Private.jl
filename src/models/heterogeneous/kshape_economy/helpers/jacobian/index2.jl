@@ -6,7 +6,7 @@ function build_indices(grid, lenSSS, lenCSS)
     :π_past_t, :Y_past_t, :C_past_t, :I_past_t, :Profit_past_t, :unemp_past_t, :G_past_t, :LT_past_t,
     :R_star_t, :B_F_t, :Z_t, :ψ_rp_t, :η_t, :D_t, :GG_t, :ι_t, :BB_t, :ψ_w_t, :MP_t, :p_m_t]
     
-    shock_states = [:eps_QE_t, :eps_B_F_t, :eps_RP_t, :eps_BB_t, :eps_Z_t, :eps_G_t, :eps_D_t,
+    shock_states = [:eps_QE_t, :eps_RP_t,:eps_B_F_t, :eps_BB_t, :eps_Z_t, :eps_G_t, :eps_D_t,
     :eps_R_t, :eps_iota_t, :eps_eta_t, :eps_w_t]
 
     summary_controls = [:MRS_t, :A_hh_t, :B_hh_t, :C_t, :N_t, :L_t, :UB_t]

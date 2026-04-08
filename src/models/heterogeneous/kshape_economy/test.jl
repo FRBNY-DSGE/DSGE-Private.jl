@@ -67,8 +67,8 @@ F = OrderedDict{Symbol, Any}(
     :eq_MP => 0.,
     :eq_pm => 0.,
     :eps_QE_ind => 0.,
-    :eps_B_F_ind => 0.,
     :eps_RP_ind => 0.,
+    :eps_B_F_ind => 0.,
     :eps_BB_ind => 0.,
     :eps_Z_ind => 0.,
     :eps_G_ind => 0.,
@@ -229,10 +229,10 @@ F44_aux = out_jacob["F44_aux"]
 #r1_start, r1_end = 89, 118
 #r2_start, r2_end = 337, 405
 
-F21_aux_trim = F21_aux[: , end-os+1:end]
-F23_aux_trim = F23_aux[: , end-os+1:end]
-F41_aux_trim = F41_aux[: , end-os+1:end]
-F43_aux_trim = F43_aux[: , end-os+1:end]
+F21_aux_trim = F21_aux[: , :]
+F23_aux_trim = F23_aux[: , :]
+F41_aux_trim = F41_aux[: , :]
+F43_aux_trim = F43_aux[: , :]
 
 F22_aux_trim = F22_aux[: , end-oc+1:end]
 F24_aux_trim = F24_aux[: , end-oc+1:end]

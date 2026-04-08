@@ -512,7 +512,7 @@ function init_parameters!(m::mBBQ)
     #phillips curve parameters
     m <= parameter(:κ, 0.05247664549755819, (1e-5, 5.), (1e-5, 5.), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
                    description = "κ: The slope of the Phillips curve", tex_label = "\\kappa")
-    m <= parameter(:ρ_w, 0.7982120589417719, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_w, 0.8916942990519234, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_w: AR(1) coefficient in the wage process.",
                    tex_label = "\\rho_w")
@@ -522,15 +522,15 @@ function init_parameters!(m::mBBQ)
                    BetaAlt(0.5, 0.15), fixed = false,
                    description = "δ:",
                    tex_label = "\\delta") #TODO: check if this or delta is fixed
-    m <= parameter(:d, 0.8164683082325113, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:d, 0.6738, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.15), fixed = true,
                    description = "δ:",
                    tex_label = "\\delta")
-    m <= parameter(:ϕ, 5.1115, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
+    m <= parameter(:ϕ, 49.7917, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
                    Normal(3.0, 0.5), fixed = false,
                    description = "ϕ: Parameter in monetary policy rule.",
                    tex_label = "\\phi")
-    m <= parameter(:ϕ_π, 1.3101032779695438, (1e-5, 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
+    m <= parameter(:ϕ_π, 1.532296337149513, (1e-5, 10.), (1e-5, 10.0), ModelConstructors.Exponential(),
                    Normal(1.7, 0.3), fixed = false,
                    description = "ϕ_π: Weight on inflation gap in monetary policy rule.",
                    tex_label = "\\varphi_\\pi")
@@ -538,13 +538,13 @@ function init_parameters!(m::mBBQ)
                    Normal(0.1, 0.05), fixed = false,
                    description = "ϕ_u: Weight on unemployment gap in monetary policy rule",
                    tex_label = "\\varphi_u")
-    m <= parameter(:ρ_R, 0.792722753458172, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_R, 0.8818054913182859, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_R: AR(1) coefficient in the monetary policy rule.",
                    tex_label = "\\rho_R")
 
     #autocorrelation
-    m <= parameter(:ρ_BB, 0.9886677881949328, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_BB, 0.9983489940166279, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_BB: AR(1) coefficient in the BB process.",
                    tex_label = "\\rho_{BB}")
@@ -552,27 +552,27 @@ function init_parameters!(m::mBBQ)
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_B: AR(1) coefficient in the intertemporal preference shifter process.",
                    tex_label = "\\rho_B")
-    m <= parameter(:ρ_D, 0.9996850817482046, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_D, 0.8440051981700979, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_D: AR(1) coefficient in the D process.",
                    tex_label = "\\rho_D")
-    m <= parameter(:ρ_G, 0.9985898293160633, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_G, 0.7402477481386883, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_G: AR(1) coefficient in the government spending process.",
                    tex_label = "\\rho_G")
-    m <= parameter(:ρ_Z, 0.9952045106146552, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_Z, 0.9516176031961177, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_Z: AR(1) coefficient in the technology process.",
                    tex_label = "\\rho_Z")
-    m <= parameter(:ρ_η, 0.9608468601131817, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_η, 0.8944669355937231, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_η: AR(1) coefficient in the η process.",
                    tex_label = "\\rho_\\eta")
-    m <= parameter(:ρ_ι, 0.9783872396306657, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_ι, 0.9598287691285154, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_ι: AR(1) coefficient in the ι process.",
                    tex_label = "\\rho_\\iota")
-    m <= parameter(:ρ_B_F, 0.9504808782484778, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_B_F, 0.9175878755308129, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_B_F: AR(1) coefficient in the B_F process.",
                    tex_label = "\\rho_{B_F}")
@@ -582,7 +582,7 @@ function init_parameters!(m::mBBQ)
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_D: The standard deviation of the D process.",
                    tex_label = "\\sigma_D")
-    m <= parameter(:σ_G, 0.6725, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_G, 0.7402477481386883, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_G: The standard deviation of the government spending process.",
                    tex_label = "\\sigma_G")
@@ -700,14 +700,13 @@ function init_parameters!(m::mBBQ)
                    tex_label ="")
     m <= parameter(:ρ_passive_QE , 0.95, fixed = true, description = "",
                    tex_label ="")
-    m <= parameter(:ρ_X_QE, 0.95, fixed = true, description = "")
-    m <= parameter(:ϕ_π_QE, 0.5, fixed = true, description = "")
-    m <= parameter(:ϕ_u_QE, 10., fixed = true, description = "")
     m <= parameter(:MMF_ratio_1, 10., fixed = true, description = "")
     m <= parameter(:Rprem, 0.038285657, fixed = true, description = "")
     m <= parameter(:μ_χ, 9.049040346313916, fixed = true, description = "")
     m <= parameter(:σ_χ, 3.4204542765, fixed = true, description = "")
     m <= parameter(:β, 0.9931748706, fixed = true, description = "")
+    m <= parameter(:ρ_A_g, 0.95, fixed = true, description = "")
+
     # Setting steady-state parameters
     nx = get_setting(m, :nx)
     ns = get_setting(m, :ns)
