@@ -706,7 +706,7 @@ function init_parameters!(m::mBBQ)
     m <= parameter(:σ_χ, 3.4204542765, fixed = true, description = "")
     m <= parameter(:β, 0.9931748706, fixed = true, description = "")
     m <= parameter(:ρ_A_g, 0.95, fixed = true, description = "")
-
+    m <= parameter(:b_a_aux, 0.9944444444444445, fixed=true, description = "", tex_label = "b_{\\text{aux}}")
     # Setting steady-state parameters
     nx = get_setting(m, :nx)
     ns = get_setting(m, :ns)

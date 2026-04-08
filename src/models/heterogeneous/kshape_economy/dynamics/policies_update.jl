@@ -102,7 +102,8 @@ function policies_update(EVb, EVa, Qminus, PIminus, R_cbminus, UU, KK, inc, grid
     sigma     = param[:σ_2]
     death_rate = param[:dr]
     Rprem     = param[:Rprem]
-    b_a_aux   = param[:λ_aux]
+    b_a_aux = param[:b_a_aux]
+    #b_a_aux   = param[:λ_aux]
 
     # Extract meshes
     meshes_b  = grid[:b_ndgrid]

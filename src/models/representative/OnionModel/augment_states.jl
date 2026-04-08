@@ -29,10 +29,16 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     TTT_aug[endo_new[:πc_t1], endo[:πc_t]] = 1.
 
     ### Add cpi measurement error
-    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117, 118]
         TTT_aug[endo_new[:e_meas_cpi_t], endo_new[:e_meas_cpi_t]] = m[:ρ_meas_cpi]
     end
 
+    # Add FFR measurement error
+    if subspec_int ∈ [118]
+        TTT_aug[endo_new[:e_meas_ffr_t], endo_new[:e_meas_ffr_t]] = m[:ρ_meas_cpi]
+        RRR_aug[endo_new[:e_meas_ffr_t], exo[:meas_ffr_sh]] = 1.0
+    end
+   
 
     #Add measurement error:
     #TTT_aug[endo_new[:e_meas_πc_t], endo_new[:e_meas_πc_t]] = m[:ρ_meas_πc]
@@ -44,7 +50,7 @@ function augment_states(m::OnionModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vect
     RRR_aug[endo_new[:e_πstar], exo[:
 =#
 
-    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117, 118]
         RRR_aug[endo_new[:e_meas_cpi_t], exo[:meas_cpi_sh]] = 1.0
     end
 

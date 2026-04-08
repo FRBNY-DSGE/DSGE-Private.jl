@@ -470,10 +470,15 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels_unprimekeys l_λ_′t, J′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_j] = J_t - 
+        ((h_t - m[:fix_L].value - w′_t) .* (grid[:s]) .* nn_t + 
+        (λ_t * (1 - m[:dr].value) * (1-l_λ_′t) *
+        (1-m[:in].value)) * ss[:P_SS_t] * J′_t)
+    #=
+    F[:eq_control_j] = J_t - 
         ((h_t - m[:fix_L].value - w_t) .* (grid[:s]) .* nn_t + 
         (λ_t * (1 - m[:dr].value) * (1-l_λ_′t) *
         (1-m[:in].value)) * ss[:P_SS_t] * J′_t)
-
+=#
     #===================================================================#
     #control eq15: r^l
     @sslogdeviations2levels MC_t, K_t, L_t, v_t = Yt, control_id, ControlSS
@@ -505,7 +510,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
 
     F[:eq_control_profit] = Profit_t - 
     ((Y_t * (1- η′_t / (2 * m[:κ]) * (log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) - 
-    m[:γ]*log(π_past_t)) .^ 2) + Y_t.*(-MC_t) - m[:fix] + (h_t  - m[:fix_L] - w_t) .* L_t - 
+    m[:γ]*log(π_past_t)) .^ 2) + Y_t.*(-MC_t) - m[:fix] + (h_t  - m[:fix_L] - w′_t) .* L_t -
     m[:ι].*V_t) + (r_k_t * v_t - m[:δ_0].* v_t .^ m[:δ_1]) .* K_t +  
     Q_t *(K′_t- K_t)-(K′_t-K_t) - m[:ϕ]  /2 * (K′_t/K_t-1)^2*K_t  + Profit_FI_t - m[:fix2] )
 
@@ -552,8 +557,8 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels_unprimekeys N_t, M_t, l_λ_t = Yt1, control_id, ControlSS
 
 
-    F[:eq_control_nn] = nn_t - 
-    ( ((1- ss[:tau_w_t] )* w_t / (m[:ψ]))^( 1 / m[:ξ]) )
+    F[:eq_control_nn] = nn_t -
+    ( ((1- ss[:tau_w_t] )* w′_t / (m[:ψ]))^( 1 / m[:ξ]) )
 
 
     #===================================================================#
@@ -579,19 +584,19 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     #===================================================================#
 
     #control eq25: zz
-    @sslogdeviations2levels zz_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels zz_t = Yt, control_id, ControlSS
 
-    F[:eq_control_zz] = zz_t - 
-    ((RRa_t - m[:b_a_aux2] * R_cb_t / pi_t) * lev_t +  
+    F[:eq_control_zz] = zz_t -
+    ((RRa_t - m[:b_a_aux2] * R_cb_t / pi_t) * lev_t +
     m[:b_a_aux2] * R_cb_t / pi_t)
 
 
     #===================================================================#
     #control eq26: x
-    @sslogdeviations2levels xx_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels xx_t = Yt, control_id, ControlSS
 
 
-    F[:eq_control_xx] = zz_t - 
+    F[:eq_control_xx] = xx_t -
     ( (lev′_t / lev_t ) * zz_t)
 
 
@@ -690,7 +695,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     #control eq44: i_obs
     @sslogdeviations2levels w_obs_t = Yt, control_id, ControlSS
 
-    F[:eq_control_w_obs] = w_obs_t - w_t
+    F[:eq_control_w_obs] = w_obs_t - w′_t
 
     #===================================================================#
     #control eq45: profit_obs

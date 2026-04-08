@@ -188,7 +188,7 @@ end
 ForwardDiff.jacobian!(BA_agg, obj_fnct_agg, zeros(n_eqs_flat), zeros(n_x))
 
 # aggregate-only columns (drop distribution block indices)
-dist_state_keys = Set([:marginal_b_t, :marginal_a_t, :marginal_se_t, :copula_t])
+  dist_state_keys = Set([:marginal_pdf_b_t, :marginal_pdf_a_t, :marginal_pdf_se_t, :copula_t])
 dist_ctrl_keys  = Set([:Value_t, :mutil_c_t, :Va_t])
 
 agg_state_cols = vcat([collect(state_id[s])   for s in keys(state_id)   if s ∉ dist_state_keys]...)

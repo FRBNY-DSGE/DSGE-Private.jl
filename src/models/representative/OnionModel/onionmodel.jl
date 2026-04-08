@@ -103,7 +103,7 @@ function init_settings!(m::OnionModel)
         m <= Setting(:n_smc_blocks, 1)
         m <= Setting(:sampling_method, :SMC)
 
-        if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 21, 113, 114, 115, 116, 117]
+        if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 21, 113, 114, 115, 116, 117, 118]
             m <= Setting(:subgroup_names,
                          OrderedDict{String, Symbol}("core_goods" => :CUSR0000SACL1E,
                                                      "core_services" => :CUSR0000SASLE,
@@ -370,7 +370,7 @@ m <= parameter(:mp_cons, 0., (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untrans
                description="weight on consumption in mp rule",
                tex_label="\\varphi_{c}") #"mp_cons"
 #Temp bypass
-if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10", "ss12", "ss13", "ss20", "ss113", "ss114", "ss115", "ss116", "ss117"]
+if subspec(m) ∉ ["ss7", "ss8", "ss9", "ss10", "ss12", "ss13", "ss20", "ss113", "ss114", "ss115", "ss116", "ss117", "ss118"]
     m <= parameter(:mp_cstar, 0.,  (-0.5, 0.5), (-0.5, 0.5), ModelConstructors.Untransformed(), Normal(0.12, 0.05), fixed = false,
                    description="weight on potential consumption",
                    tex_label="\\varphi_{c \\star}") #"mp_cstar"
@@ -534,7 +534,7 @@ if subspec_int >= 2
                            tex_label = string("\\rho_{\\mu}",  replace(i, "_" => " ")))
         end
     # For all subspecs 113 and above, we now have sector specific markup process
-    elseif subspec_int ∈ [113, 114, 115, 116, 117]
+    elseif subspec_int ∈ [113, 114, 115, 116, 117, 118]
         n = get_setting(m, :n_sectors)
         for i in 1:n
             m <= parameter(Symbol("σ_μ_$(i)"), 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
@@ -547,20 +547,20 @@ if subspec_int >= 2
     end
 
     #2) Add pi-star
-    if subspec_int ∈ [3, 4, 5, 7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [3, 4, 5, 7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117, 118]
         m <= parameter(:π_star, 0.5, fixed = true,
                        description = "Steady state rate of inflation",
                        tex_label = "\\pi^\\star")
     end
 
-    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117, 118]
     #3) Add common shock
         m <= parameter(:σ_μ_com, 0.1314, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        description = "σ_μ_com: standard deviation of mark up shock process",
                        tex_label = "\\sigma_{\\mu} common}")
     end
 
-    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117, 118]
         #4) Add CPI measurement error parameters
         m <= parameter(:ρ_meas_cpi, 0.0, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed = false, tex_label = "\\rho_{meas\\_cpi}")
         m <= parameter(:σ_meas_cpi, 0.0999, (0.0, 5.0), (0.0, 5.0), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false, tex_label = "\\sigma_{meas\\_cpi}")
@@ -588,7 +588,7 @@ function init_model_indices!(m::OnionModel)
     n = get_setting(m, :n_sectors)
 
     # For subspecs above 100, we have sector specific markup processes (as opposed to subgroup specific)
-    if subspec_int ∈ [113, 114, 115, 116, 117]
+    if subspec_int ∈ [113, 114, 115, 116, 117, 118]
         exogenous_shocks            =
             [[Symbol("μ_$(i)_sh") for i in 1:n];
              [:μw_sh, :πstar_sh, :mp_sh, :b_sh, :a_sh]
@@ -649,10 +649,16 @@ function init_model_indices!(m::OnionModel)
         push!(equilibrium_conditions, :eq_μ_com)
     end
 
-    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117, 118]
         # Add CPI measurement error shock and endogenous state
         push!(exogenous_shocks, :meas_cpi_sh)
         push!(endogenous_states_augmented, :e_meas_cpi_t)
+    end
+
+    if subspec_int == 118
+        # Add ffr measurement error shock
+        push!(exogenous_shocks, :meas_ffr_sh)
+        push!(endogenous_states_augmented, :e_meas_ffr_t)
     end
 
     #end
@@ -680,7 +686,7 @@ function shock_groupings(m::OnionModel)
 
     #1) Create shock groups
 
-    if subspec_int ∈ [117]
+    if subspec_int ∈ [117, 118]
         pis = ShockGroup("pi-LR", [:πstar_sh], RGB(1.0, 0.75, 0.793))
         pol = ShockGroup("pol", [:mp_sh], RGB(1.0,0.84,0.0))
         tfp = ShockGroup("tfp", [:a_sh], RGB(1.0,0.55,0.0))
@@ -733,7 +739,8 @@ function shock_groupings(m::OnionModel)
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, wage_pmu, pol, bet]
     elseif subspec_int ∈ [3, 4, 5]
         return [core_goods_mkp, core_services_mkp, energy_mkp, tfp, pis, wage_pmu, pol, bet]
-    elseif subspec_int ∈ [7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117]
-        return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
+    elseif subspec_int ∈ [7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117, 118]
+        #return [core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, food_mkup, com_mkup]
+        return [farm_mkp, food_bev_tobacco_mkp, core_goods_mkp, core_services_mkp, energy_mkp,  wage_pmu, pol,  bet, pis, com_mkup]
     end
 end

@@ -43,6 +43,8 @@ function init_subspec!(m::OnionModel)
         return ss116!(m)
     elseif subspec(m) == "ss117"
         return ss117!(m)
+    elseif subspec(m) == "ss118"
+        return ss118!(m)
     else
         error("This subspec has not been defined.")
     end
@@ -422,6 +424,11 @@ function ss117!(m::OnionModel)
     # Create setting for which subgroup to decompose into sectoral observables
     decomp_subgroup = ["cpi_energy", "cpi_food", "core_goods", "core_services"]
     m <= Setting(:decomp_subgroup, decomp_subgroup)
+
+end
+
+function ss118!(m::OnionModel)
+    ss113!(m)
 
 end
 

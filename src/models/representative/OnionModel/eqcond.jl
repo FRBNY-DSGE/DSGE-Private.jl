@@ -56,16 +56,18 @@ function eqcond(m::OnionModel) #m::OnionModel
         #if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
 
         # Add back new states and equilibrium conditions
-        if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
+        if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117, 118]
             push!(endogenous_states, :μ_com)
             push!(equilibrium_conditions, :eq_μ_com)
         end
 
-        if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+        if subspec_int ∈ [13, 113, 114, 115, 116, 117, 118]
             push!(endogenous_states_augmented, :e_meas_cpi_t)
         end
 
-        #end
+        if subspec_int == 118
+            push!(endogenous_states_augmented, :e_meas_ffr_t)
+        end
 
         for (i,k) in enumerate(equilibrium_conditions); m.equilibrium_conditions[k] = i end
         for (i,k) in enumerate(endogenous_states); m.endogenous_states[k] = i end
@@ -136,7 +138,7 @@ function eqcond(m::OnionModel) #m::OnionModel
 
 
     #   if haskey(get_settings(m), :test_μ_com) && get_setting(m, :test_μ_com)
-    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 20, 113, 114, 115, 116, 117, 118]
         Γ0[eq[Symbol("eq_pc_1")]:eq[Symbol("eq_pc_$n")], endo[:μ_com]]    = get_setting(m, :invkap)
 
         Γ0[eq[:eq_μ_com], endo[:μ_com]] = 1.
@@ -149,7 +151,7 @@ function eqcond(m::OnionModel) #m::OnionModel
     invkap_value = get_setting(m, :invkap)
 
     # For subspecs above 100, we now have SECTOR specific endogenous state for price markup process
-    if subspec_int ∈ [113, 114, 115, 116, 117]
+    if subspec_int ∈ [113, 114, 115, 116, 117, 118]
         for i in 1:get_setting(m, :n_sectors)
             Γ0[eq[Symbol("eq_pc_$(i)")], endo[Symbol("μ_$(i)")]] = - invkap_value[i]
         end
@@ -176,13 +178,12 @@ function eqcond(m::OnionModel) #m::OnionModel
 
     #Define processes for each markup based on subspec:
 
-    if subspec_int ∈ [113, 114, 115, 116, 117]
+    if subspec_int ∈ [113, 114, 115, 116, 117, 118]
         for i in 1:get_setting(m, :n_sectors)
             Γ0[eq[Symbol("eq_μ_$(i)")], endo[Symbol("μ_$(i)")]] = 1.
             Ψ[eq[Symbol("eq_μ_$(i)")], exo[Symbol("μ_$(i)_sh")]] = 1.
             Γ1[eq[Symbol("eq_μ_$(i)")], endo[Symbol("μ_$(i)")]] = m[Symbol("ρ_μ_$(i)")]
         end
-
     else
         for sg in collect(keys(get_setting(m, :subgroup_names)))
             Γ0[eq[Symbol("eq_μ_$(sg)")], endo[Symbol("μ_$(sg)")]] = 1.
@@ -256,10 +257,10 @@ function eqcond(m::OnionModel) #m::OnionModel
     #New Euler equation
     Γ0[eq[:eq_euler], endo[:c_t]] = 1. #c_t
     Γ0[eq[:eq_euler], endo[:r_t]] =  (1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ]))) #R_t
-Γ0[eq[:eq_euler], endo[:Eπc_t]] = - (1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ]))) #Et[π_{t+1}]
-Γ1[eq[:eq_euler], endo[:c_t]] = (m[:h] * exp(-m[:γ]))/(1 +  m[:h] * exp(-m[:γ])) #c_{t-1}
-Γ0[eq[:eq_euler], endo[:Ec_t]] = -1. / (1. +  m[:h] * exp(-m[:γ])) #Et[c_{t+1}]
-Γ0[eq[:eq_euler], endo[:b_t]] = -1. #Might need for this to be +1
+    Γ0[eq[:eq_euler], endo[:Eπc_t]] = - (1. - m[:h] * exp(-m[:γ]))/(m[:σ_c]* (1 +  m[:h] * exp(-m[:γ]))) #Et[π_{t+1}]
+    Γ1[eq[:eq_euler], endo[:c_t]] = (m[:h] * exp(-m[:γ]))/(1 +  m[:h] * exp(-m[:γ])) #c_{t-1}
+    Γ0[eq[:eq_euler], endo[:Ec_t]] = -1. / (1. +  m[:h] * exp(-m[:γ])) #Et[c_{t+1}]
+    Γ0[eq[:eq_euler], endo[:b_t]] = -1. #Might need for this to be +1
 
 
     # monetary policy li_{t+1} = rho_i*li_t + (1-rho_i)*(mp_cpi_infl*pic_t +

@@ -45,8 +45,8 @@ function populate_from_jld2!(m::mBBQ)
     grids[:na_copula] = Float64(ref_grid["na_copula"])
     grids[:nse_copula] = Float64(ref_grid["nse_copula"])
 
-    grids[:copula_marginal_b] = ref_grid["copula_marginal_se"]
-    grids[:copula_marginal_a] = ref_grid["copula_marginal_se"]
+    grids[:copula_marginal_b] = ref_grid["copula_marginal_b"]
+    grids[:copula_marginal_a] = ref_grid["copula_marginal_a"]
     grids[:copula_marginal_se] = ref_grid["copula_marginal_se"]
 
     # Settings
@@ -79,6 +79,17 @@ function populate_from_jld2!(m::mBBQ)
                  3 × nPoly value function coefficients + aggregate controls)")
     m <= Setting(:num_endo, Int(ref_grid["num_endo"]), "Total number of endogenous variables 
                  (endogenous states + controls), i.e. size of the linearized system excluding shocks")
+    
+
+    # Storing compression indices
+    m <= Setting(:NN, get_setting(m, :nb)*get_setting(m, :na)*get_setting(m, :nse), "DCT compression length")
+    NN = get_setting(m, :NN)
+    m <= Setting(:dct_compression_indices, Dict{Symbol, Vector{Int}}(), "DCT compression indices")
+    dct = get_setting(m, :dct_compression_indices)
+    dct[:Value] = collect(1:NN)
+    dct[:mutil_cons] = collect(NN+1:2*NN)
+    dct[:Va] = collect(2*NN+1:3*NN)
+    dct[:copula] = collect(Vector{Int}(ref_grid["compressionIndexesCOP"])) 
 
     # DCT matrices (reconstructed from dimensions)
     m <= Setting(:DC, ref["DC"])

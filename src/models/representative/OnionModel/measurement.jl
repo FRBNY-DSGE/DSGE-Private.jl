@@ -32,7 +32,7 @@ function measurement(m::OnionModel{T},
 
     ## Demeaned Consumption Growth
     #if !(haskey(get_settings(m), :test_rm_cgrowth) && get_setting(m, :test_rm_cgrowth))
-    if subspec_int ∉ [7, 9, 12, 13, 113, 114, 115, 116, 117]
+    if subspec_int ∉ [7, 9, 12, 13, 113, 114, 115, 116, 117, 118]
         ZZ[obs[:consumption_growth], endo[:c_t]]  = 1.0
         ZZ[obs[:consumption_growth], endo_new[:c_t1]] = -1.0
     end
@@ -294,9 +294,9 @@ elseif subspec_int ∈ [3, 4, 5] # Add LR infl expectations (fix MP estimation)
         end
     end
 
-elseif subspec_int ∈ [6, 7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117] # Add LR infl expectations (fix MP estimation)
+elseif subspec_int ∈ [6, 7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117, 118] # Add LR infl expectations (fix MP estimation)
 
-    if subspec_int ∈ [113, 114, 115, 116, 117]
+    if subspec_int ∈ [113, 114, 115, 116, 117, 118]
         # Specify all sector shocks
         for i in 1:get_setting(m, :n_sectors)
             QQ[exo[Symbol("μ_$(i)_sh")], exo[Symbol("μ_$(i)_sh")]] = m[Symbol("σ_μ_$i")]^2
@@ -335,15 +335,20 @@ elseif subspec_int ∈ [6, 7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117] # Add L
     ZZ[obs[:obs_longinflation], :] = view(TTT10, endo[:πKc_t], :)
 
     # Now, add back observable CPI and add iid common markup shock std
-    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [7, 8, 9, 10, 12, 13, 113, 114, 115, 116, 117, 118]
         ZZ[obs[:cpi_inflation], endo[:πKc_t]] = 1.
         QQ[exo[:μ_com_sh], exo[:μ_com_sh]] = m[:σ_μ_com]^2
     end
 
     # Now add CPI meas err shock for ss13 and beyond
-    if subspec_int ∈ [13, 113, 114, 115, 116, 117]
+    if subspec_int ∈ [13, 113, 114, 115, 116, 117, 118]
         ZZ[obs[:cpi_inflation], endo_new[:e_meas_cpi_t]] = 1.0 # Additive in meas error endogenous state e_meas_cpi = rho * e_meas_cpi_{t-1} + sigma_meas_cpi
         QQ[exo[:meas_cpi_sh], exo[:meas_cpi_sh]] = m[:σ_meas_cpi]^2
+    end
+
+    if subspec_int == 118
+        ZZ[obs[:NominalFFR], endo_new[:e_meas_ffr_t]] = 1.0
+        QQ[exo[:meas_ffr_sh], exo[:meas_ffr_sh]] = m[:σ_meas_cpi]^2 # should be the same as for cpi
     end
 
     # For ss114 onwards, we begin to decompose subgroups into sectors (ss114: energy)

@@ -3,12 +3,23 @@ using Test
 
 
 names = collect(keys(F))
-state_eqn_names = vcat(fill("dont know name", 88), names[1:os])
-control_eqn_names = names[os+1:end]
-
+# state_eqn_names = vcat(fill("dont know name", 88), names[1:os])
+state_eqn_names = names[1:os]
+# Build flattened control equation names, accounting for vector equations (J spans ns=5 rows)
+control_eqn_names = String[]
+for k in names[os+1:end]
+    v = F[k]
+    n = v isa AbstractArray ? length(v) : 1
+    if n > 1
+        append!(control_eqn_names, ["$(k)[$(i)]" for i in 1:n])
+    else
+        push!(control_eqn_names, String(k))
+    end
+end
 
 names2 = collect(keys(state_id))
-state_var_names = vcat(fill("dont know name", 88), names2[5:end])
+# state_var_names = vcat(fill("dont know name", 88), names2[5:end])
+state_var_names = names2[5:end]
 
 names3 = collect(keys(control_id))
 control_var_names = names3[4:end]
@@ -34,7 +45,7 @@ function compare_matrices(AD, FD, name::String, eqn_state::Bool, var_state; atol
                 println("  $(length(diffs)) differing elements in $name:")
                 for i in diffs
                     r, c = Tuple(CartesianIndices(AD)[i])
-                    eqn = eqn_state ? state_eqn_names[r+88] : control_eqn_names[r]
+                    eqn = eqn_state ? state_eqn_names[r] : control_eqn_names[r]
                     var = var_state ? state_var_names[c] : control_var_names[c]
                     println("eqn (row) $eqn, var (col) $var") 
                     println("[$r,$c]  julia=$(AD[i])  original=$(FD[i])  ")
@@ -54,3 +65,5 @@ compare_matrices(F41_ad, F41_aux_trim, "F41 (ctrl eqns wrt x_t)",    false, true
 compare_matrices(F42_ad, F42_aux_trim, "F42 (ctrl eqns wrt y_t+1)",  false, false)
 compare_matrices(F43_ad, F43_aux_trim, "F43 (ctrl eqns wrt x_t-1)",  false, true)
 compare_matrices(F44_ad, F44_aux_trim, "F44 (ctrl eqns wrt y_t)",    false, false)
+
+

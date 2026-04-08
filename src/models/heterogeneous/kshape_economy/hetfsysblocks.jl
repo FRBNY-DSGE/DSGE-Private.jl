@@ -188,7 +188,7 @@ R_tilde′_t = exp(StateSS[state_id[:R_tilde_t]] + Xt1[state_id[:R_tilde_t]])
 pi_t     = exp(Control_full[control_id[:pi_t]])
 r_a_t    = exp(Control_full[control_id[:r_a_t]])
 nn_t     = exp(Control_full[control_id[:nn_t]])
-λ_t      = exp(Control_full[control_id[:λ_t]])
+l_λ_t      = exp(Control_full[control_id[:l_λ_t]])
 LT_t     = exp(Control_full[control_id[:LT_t]])
 C_b_t    = exp(Control_full[control_id[:C_b_t]])
 Profit_t = exp(Control_full[control_id[:Profit_t]])
@@ -196,7 +196,7 @@ f_t      = exp(Control_full[control_id[:f_t]])
 
 # Controls next period (unprimed key for index lookup, Controlnext_full for value)
 pi′_t = exp(Controlnext_full[control_id[:pi_t]])
-λ′_t  = exp(Controlnext_full[control_id[:λ_t]])
+l_λ′_t  = exp(Controlnext_full[control_id[:l_λ_t]])
 f′_t  = exp(Controlnext_full[control_id[:f_t]])
 
 MU = pdf_joint_m
@@ -206,7 +206,7 @@ MU = pdf_joint_m
 ############################################################################
 
 A_emp = [
-    1 - λ_t + λ_t * f_t    λ_t * (1 - f_t)
+    1 - l_λ_t + l_λ_t * f_t    l_λ_t * (1 - f_t)
     f_t                      1 - f_t
 ]
 I_ns      = Matrix{Float64}(I, ns, ns)   # local identity (avoid shadowing `id` dict)
@@ -218,7 +218,7 @@ H_tilde  = kron(Matrix{Float64}(P_SS3_aux'), sparse(Matrix{Float64}(I, nb*na, nb
 MU_tilde = reshape(reshape(MU, nb*na, nse) * P_SS3_aux, nb, na, nse)
 
 A_emp_next    = [
-    1 - λ′_t + λ′_t * f′_t    λ′_t * (1 - f′_t)
+    1 - l_λ′_t + l_λ′_t * f′_t    l_λ′_t * (1 - f′_t)
     f′_t                        1 - f′_t
 ]
 P_SS3next_aux = kron(A_emp_next, Matrix{Float64}(I, ns, ns))
@@ -257,7 +257,7 @@ inc[:dividend] = a_ndgrid .* R_A_aux
 inc[:capital]  = a_ndgrid .* Q′_t
 inc[:bond]     = (R_cb_t / pi_t) .* b_ndgrid .+
                (b_ndgrid .< 0) .* (θ[:Rprem] / pi_t) .* b_ndgrid
-inc[:bond]     = inc[:bond] ./ (1 - θ[:dr]) .* θ[:λ_aux]
+inc[:bond]     = inc[:bond] ./ (1 - θ[:dr]) .* θ[:b_a_aux]
 inc[:transfer] = (LT_t + C_b_t) / (1 + θ[:ϕ_b]) .* ones(nb, na, nse)
 
 ############################################################################
@@ -267,7 +267,7 @@ inc[:transfer] = (LT_t + C_b_t) / (1 + θ[:ϕ_b]) .* ones(nb, na, nse)
 EVa = reshape(reshape(Vanext, (nb*na, nse)) * P_transition_exp', (nb, na, nse))
 
 R_tildeaux = R_tilde′_t / pi′_t .+ (b_ndgrid .< 0) .* (θ[:Rprem] / pi′_t)
-EVb = reshape(reshape(R_tildeaux[:] ./ (1 - θ[:dr]) .* θ[:λ_aux] .* mutil_cnext, (nb*na, nse)) * P_transition_exp', (nb, na, nse))
+EVb = reshape(reshape(R_tildeaux[:] ./ (1 - θ[:dr]) .* θ[:b_a_aux] .* mutil_cnext, (nb*na, nse)) * P_transition_exp', (nb, na, nse))
 
 c_a_star, b_a_star, a_a_star, c_n_star, b_n_star = policies_update(EVb, EVa, Q′_t, pi_t, R_cb_t, 1, 1, inc, grids, θ)
 ############################################################################
