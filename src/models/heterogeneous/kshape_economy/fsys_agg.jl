@@ -300,7 +300,8 @@ println("m[:d]:       ", m[:d].value)
 
     #===================================================================#
     #eq22: η
-    @sslogdeviations2levels η_t, eps_eta_t = Xt, state_id, StateSS
+    @sslogdeviations2levels η_t = Xt1, state_id, StateSS
+    @sslogdeviations2levels eps_eta_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys η′_t, p_m′_t = Xt1, state_id, StateSS
 
     #RHS(eta_ind)         = log(p_mark/(p_mark-1));
@@ -535,7 +536,6 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
 
     #===================================================================#
     #control eq21: marginal cost
-    @sslogdeviations2levels_unprimekeys η2_t = Yt1, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys Y′_t, pi′_t, η2′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_marginal_cost] = MC_t - 
@@ -554,7 +554,8 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
 
     #===================================================================#
     #control eq26: nn
-    @sslogdeviations2levels_unprimekeys N_t, M_t, l_λ_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels_unprimekeys N_t, M_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels_unprimekeys l_λ_t = Yt, control_id, ControlSS
 
 
     F[:eq_control_nn] = nn_t -
@@ -626,7 +627,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels_unprimekeys C_b′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_cb] = C_b_t - 
-    ((1 * m[:β_b] * R_cb′_t / pi′_t)/(1 + m[:ϕ_b]*(B_b′_t / B_b_t - 1))*
+    ((D′_t * m[:β_b] * R_cb′_t / pi′_t)/(1 + m[:ϕ_b]*(B_b′_t / B_b_t - 1))*
     C_b′_t ^(-m[:σ_2]))^(-1 / m[:σ_2])
 
     #===================================================================#
@@ -654,14 +655,13 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels I_t = Yt, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys A_hh′_t = Yt1, control_id, ControlSS
 
-    F[:eq_control_investment] = I_t - 
-    (ι′_t * (1+ m[:ϕ] / 2 * (log(x_k_t))^2) * 
-    (A_hh′_t + A_g′_t + A_b′_t + ss[:A_F_t]) - 
-    (1-m[:δ_0]*v_t^ m[:δ_1]) * K_t;)
+F[:eq_control_investment] = I_t - 
+K′_t * (1 + m[:ϕ] / 2 * (log(x_k_t))^2) -
+A_hh′_t - A_g′_t - A_b′_t + ι′_t * K_t +  #check k indexing
+(1-m[:δ_0]*v_t^ m[:δ_1]) * K_t
 
     #===================================================================#
     #control eq34: x_k
-    @sslogdeviations2levels x_k_t = Yt, control_id, ControlSS
 
     F[:eq_control_x_k] = x_k_t - K′_t / K_t
 
@@ -701,7 +701,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     #control eq45: profit_obs
     @sslogdeviations2levels Profit_obs_t = Yt, control_id, ControlSS
 
-    F[:eq_control_profit_obs] = Profit_obs_t - Profit_t - m[:fix2] - log(B_F′_t)
+    F[:eq_control_profit_obs] = Profit_obs_t - Profit_t - m[:fix2] 
     #===================================================================#
     # Shocks
     @sslogdeviations2levels_unprimekeys eps_QE′_t, eps_B_F′_t, eps_RP′_t, eps_BB′_t,
@@ -845,19 +845,19 @@ F[:eq_xI] = x_I_t - I_t/I_past_t
 #===================================================================#
 #control eq63: eta2
 
-F[:eq_eta2] = η′_t - η2_t
+F[:eq_eta2] =  η2_t - η_t
 
 #===================================================================#
 #control eq63: iota2
 @sslogdeviations2levels ι_2_t = Yt, control_id, ControlSS
 
-F[:eq_iota2] = ι′_t - ι_2_t
+F[:eq_iota2] = ι_2_t - ι′_t
 
 #===================================================================#
 #control eq64: iota2
 @sslogdeviations2levels B_gov_ncp2_t = Yt, control_id, ControlSS
 
-F[:eq_b_gov_ncp2] = B_gov_ncp2_t - (B_b′_t  + B_hh_t - (Q_t*A_b_t- NW_b_t) - Q_t *(1+m[:τ_cp])* A_g′_t)
+F[:eq_b_gov_ncp2] = B_gov_ncp2_t - (B_b_t  + B_hh_t - (Q_t*A_b_t- NW_b_t) - Q_t *(1+m[:τ_cp])* A_g′_t)
 
     return F
 end
