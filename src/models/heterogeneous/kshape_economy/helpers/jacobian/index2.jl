@@ -17,7 +17,7 @@ function build_indices(grid, lenSSS, lenCSS)
     :zz_t, :xx_t, :vv_t, :ee_t, :C_b_t, :Profit_FI_t, :RRa_t, :RR_t, :I_t, :x_k_t,]
 
     observable_controls = [:A_g_obs_t, :Y_obs_t, :C_obs_t, :I_obs_t, :w_obs_t, :Profit_obs_t, :unemp_obs_t,
-    :inf_obs_t, :R_obs_t, :w_lag_t, :G_obs_t,
+    :pi_obs_t, :R_obs_t, :w_lag_t, :G_obs_t,
     # Past/auxiliary controls
     :YY_lag_t, :CC_lag_t, :II_lag_t, :PPROFIT_lag_t, :uu_lag_t, :GG_lag_t, :A_g_lag_t,
     :l_λ_t , :Q_lag_t, :x_I_t, :η2_t, :ι_2_t, :LT2_lag_t, :G2_lag_t, :LT_obs_t, :B_gov_ncp2_t]

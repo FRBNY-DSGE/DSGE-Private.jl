@@ -607,7 +607,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels_unprimekeys RRa′_t, xx′_t, vv′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_vv] = vv_t - 
-    (((1- m[:θ_b])* BB′_t * λ_t * (RRa′_t - R_cb_t / pi′_t ) +
+    (((1- m[:θ_b])* BB′_t * λ_t * (RRa′_t - R_cb′_t / pi′_t ) +
     m[:θ_b]* BB′_t * λ_t * xx′_t * vv′_t))
 
     #===================================================================#
@@ -616,7 +616,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels_unprimekeys zz′_t, ee′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_ee] = ee_t - 
-    ((1-m[:θ_b])* BB′_t * λ_t * R_cb_t / pi′_t + 
+    ((1-m[:θ_b])* BB′_t * λ_t * R_cb′_t / pi′_t + 
     m[:θ_b] * BB′_t * λ_t *zz′_t*ee′_t)
 
     #===================================================================#
@@ -626,7 +626,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels_unprimekeys C_b′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_cb] = C_b_t - 
-    ((1 * m[:β_b] * R_cb_t / pi′_t)/(1 + m[:ϕ_b]*(B_b′_t / B_b_t - 1))*
+    ((1 * m[:β_b] * R_cb′_t / pi′_t)/(1 + m[:ϕ_b]*(B_b′_t / B_b_t - 1))*
     C_b′_t ^(-m[:σ_2]))^(-1 / m[:σ_2])
 
     #===================================================================#
@@ -719,6 +719,145 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     F[:eps_w_ind]    = log(eps_w′_t)
     #===================================================================#
 
+
+
+
+
+#control eq46: unempoyment observable
+@sslogdeviations2levels unemp_obs_t = Yt, control_id, ControlSS
+
+F[:eq_unemployment_observable] = unemp_obs_t - 100*unemp_t
+
+#===================================================================#
+#control eq46: inflation observable
+@sslogdeviations2levels pi_obs_t = Yt, control_id, ControlSS
+
+F[:eq_inflation_observable] = pi_obs_t - pi_t
+
+#===================================================================#
+#control eq47: r observable
+@sslogdeviations2levels R_obs_t = Yt, control_id, ControlSS
+
+F[:eq_rate_observable] = R_obs_t - R_cb′_t
+
+#===================================================================#
+#control eq48: past wage
+@sslogdeviations2levels w_lag_t = Yt, control_id, ControlSS
+
+F[:eq_past_wage] = w_lag_t - w_t
+
+#===================================================================#
+#control eq49: G_obs
+@sslogdeviations2levels G_obs_t = Yt, control_id, ControlSS
+
+F[:eq_government_observable] = G_obs_t - G_t
+
+#===================================================================#
+#control eq50: pastYY
+@sslogdeviations2levels YY_lag_t = Yt, control_id, ControlSS
+@sslogdeviations2levels Y_past_t = Xt, state_id, StateSS
+
+F[:eq_past_YY] = YY_lag_t - Y_past_t
+
+#===================================================================#
+#control eq51: pastCC
+@sslogdeviations2levels CC_lag_t = Yt, control_id, ControlSS
+@sslogdeviations2levels C_past_t = Xt, state_id, StateSS
+
+F[:eq_past_CC] = CC_lag_t - C_past_t
+
+#===================================================================#
+#control eq52: pastII
+@sslogdeviations2levels II_lag_t = Yt, control_id, ControlSS
+@sslogdeviations2levels I_past_t = Xt, state_id, StateSS
+
+F[:eq_past_II] = II_lag_t - I_past_t
+
+#===================================================================#
+#control eq53: pastPPROFIT
+@sslogdeviations2levels PPROFIT_lag_t = Yt, control_id, ControlSS
+@sslogdeviations2levels Profit_past_t = Xt, state_id, StateSS
+
+F[:eq_past_profit] = PPROFIT_lag_t - Profit_past_t
+
+#===================================================================#
+#control eq54: pastuu
+@sslogdeviations2levels uu_lag_t = Yt, control_id, ControlSS
+@sslogdeviations2levels unemp_past_t = Xt, state_id, StateSS
+
+F[:eq_past_uu] = uu_lag_t - unemp_past_t
+
+#===================================================================#
+#control eq55: pastGG
+@sslogdeviations2levels GG_lag_t = Yt, control_id, ControlSS
+@sslogdeviations2levels G_past_t, LT_past_t = Xt, state_id, StateSS
+
+if regime == "G"
+    F[:eq_past_GG] = GG_lag_t - LT_past_t
+
+elseif regime == "LT" #doesn't work
+    F[:eq_past_GG] = GG_lag_t - G_past_t
+end
+
+#===================================================================#
+#control eq56: pastA_g
+@sslogdeviations2levels A_g_lag_t = Yt, control_id, ControlSS
+
+F[:eq_past_A_g] = A_g_lag_t - A_g′_t
+
+#===================================================================#
+#control eq57: pastQ
+@sslogdeviations2levels Q_lag_t = Yt, control_id, ControlSS
+
+F[:eq_past_q] = Q_lag_t - Q_t
+
+#===================================================================#
+#control eq58: pastLT2
+@sslogdeviations2levels LT2_lag_t = Yt, control_id, ControlSS
+
+
+F[:eq_past_lt2] = LT2_lag_t - LT_past_t
+
+#===================================================================#
+#control eq59: pastG2
+@sslogdeviations2levels G2_lag_t = Yt, control_id, ControlSS
+
+F[:eq_past_g2] = G2_lag_t - G_past_t
+
+#===================================================================#
+#control eq60: LT_obs
+@sslogdeviations2levels LT_obs_t = Yt, control_id, ControlSS
+
+F[:eq_lt_obs] = LT_obs_t - LT_t
+
+#===================================================================#
+#control eq61: l_lambda
+
+F[:eq_l_lambda] = l_λ_t - ss[:lambda_t]
+
+#===================================================================#
+#control eq62: x_I
+@sslogdeviations2levels x_I_t = Yt, control_id, ControlSS
+@sslogdeviations2levels I_past_t = Xt, state_id, StateSS
+
+F[:eq_xI] = x_I_t - I_t/I_past_t
+
+#===================================================================#
+#control eq63: eta2
+
+F[:eq_eta2] = η′_t - η2_t
+
+#===================================================================#
+#control eq63: iota2
+@sslogdeviations2levels ι_2_t = Yt, control_id, ControlSS
+
+F[:eq_iota2] = ι′_t - ι_2_t
+
+#===================================================================#
+#control eq64: iota2
+@sslogdeviations2levels B_gov_ncp2_t = Yt, control_id, ControlSS
+
+F[:eq_b_gov_ncp2] = B_gov_ncp2_t - (B_b′_t  + B_hh_t - (Q_t*A_b_t- NW_b_t) - Q_t *(1+m[:τ_cp])* A_g′_t)
 
     return F
 end
