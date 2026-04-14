@@ -411,15 +411,15 @@ println("m[:d]:       ", m[:d].value)
     F[:eq_control_tax] = T_t - (m[:τ_w].value *(w′_t * L_t + UB_t) + m[:τ_w].value*(Profit_t))
 =#
  F[:eq_control_tax] = T_t - (m[:τ_w].value * (w′_t * L_t + UB_t) +
-        m[:τ_a].value * Profit_t +
-        m[:τ_a].value * (Profit_FI_t - m[:fix2].value))
+        m[:τ_a].value * Profit_t
+        #= + m[:τ_a].value * (Profit_FI_t - m[:fix2].value) =#)
 
 
 
     #===================================================================#
     #control eq5: Lump-sum transfer #TODO: regime
     @sslogdeviations2levels LT_t = Yt, control_id, ControlSS
-    regime = "LT"
+    regime = "G"
     if regime == "G"
         F[:eq_control_transfer] = LT_t - ((1 - 1/GG′_t) * ss[:Y_t] -  ss[:C_b_t])
     elseif regime == "LT"
@@ -453,8 +453,8 @@ println("m[:d]:       ", m[:d].value)
                                         - m[:γ_T].value/(m[:ρ_B].value + m[:γ_π].value) * log(T_t / ss[:T_t]) -
                                         1/(m[:ρ_B].value + m[:γ_π].value)*log(B_gov_ncp′_t / ss[:B_gov_ncp_t]))
 =#
-F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
-        (m[:ρ_B].value / (m[:ρ_B].value + m[:γ_π].value) *
+F[:eq_control_inflation] = pi_t - m[:π_cb].value * exp(
+        m[:ρ_B].value / (m[:ρ_B].value + m[:γ_π].value) *
             log(B_gov_ncp_t * R_cb_t / (ss[:B_gov_ncp_t] * exp(ss[:R_cb_t])))
         - m[:γ_T].value / (m[:ρ_B].value + m[:γ_π].value) * log(T_t / ss[:T_t])
         - 1 / (m[:ρ_B].value + m[:γ_π].value) * log(B_gov_ncp′_t / ss[:B_gov_ncp_t]))
@@ -494,8 +494,9 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     #control eq16: v
     @sslogdeviations2levels r_k_t = Yt, control_id, ControlSS
 
-    F[:eq_control_elasticity_labor] = v_t - 
-    min( (r_k_t/(m[:δ_0].value * m[:δ_1].value ))^(1/(m[:δ_1].value-1)),1)
+    F[:eq_control_elasticity_labor] = v_t -
+    (r_k_t/(m[:δ_0].value * m[:δ_1].value ))^(1/(m[:δ_1].value-1))
+    #= min(..., 1) dropped to match MATLAB compute_Jacob_covid_v1.m =#
 
     #===================================================================#
     #control eq17: Y
@@ -509,11 +510,12 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels Profit_FI_t, V_t = Yt, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys K′_t = Yt1, control_id, ControlSS
 
+    fix_ratio_t = (m[:fix].value / exp(ss[:Y_t]) - ss[:B_F_t] + log(B_F′_t)) * Y_t
     F[:eq_control_profit] = Profit_t -
     ((Y_t * (1- m[:η] / (2 * m[:κ]) * (log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) -
-                                       m[:γ]*log(π_past_t)) .^ 2) + Y_t.*(-MC_t) - m[:fix] + (h_t - ss[:w_t]) .* L_t -
+                                       m[:γ]*log(π_past_t)) .^ 2) + Y_t.*(-MC_t) - fix_ratio_t + (h_t - w′_t) .* L_t -
     m[:ι].*V_t) + (r_k_t * v_t - m[:δ_0].* v_t .^ m[:δ_1]) .* K_t +
-    Q_t *(K′_t- K_t) - m[:ϕ]  /2 * (K′_t/K_t-1)^2*K_t + Profit_FI_t - m[:fix2])
+    Q′_t *(K′_t- K_t)-(K′_t-K_t) - m[:ϕ]  /2 * (K′_t/K_t-1)^2*K_t + Profit_FI_t - m[:fix2])
 
     #===================================================================#
     #control eq19: r^k
@@ -653,8 +655,8 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels I_t = Yt, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys A_hh′_t = Yt1, control_id, ControlSS
 
-F[:eq_control_investment] = I_t - 
-K′_t * (1 + m[:ϕ] / 2 * (log(x_k_t))^2) -
+F[:eq_control_investment] = I_t -
+x_k_t * K_t * (1 + m[:ϕ] / 2 * (log(x_k_t))^2) -
 A_hh′_t - A_g′_t - A_b′_t + ι′_t * K_t +  #check k indexing
 (1-m[:δ_0]*v_t^ m[:δ_1]) * K_t
 
