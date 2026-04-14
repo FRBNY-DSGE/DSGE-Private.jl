@@ -507,8 +507,8 @@ parameters (in preparation for `steadystate!(m)` being called to initialize
 those).
 """
 function init_parameters!(m::mBBQ)
-
-   
+    # TO-DO: fix these parameter defs
+    m <= parameter(:ν, 1.0, fixed = true)
     #phillips curve parameters
     m <= parameter(:κ, 0.05247664549755819, (1e-5, 5.), (1e-5, 5.), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
                    description = "κ: The slope of the Phillips curve", tex_label = "\\kappa")
@@ -616,7 +616,7 @@ function init_parameters!(m::mBBQ)
                    tex_label = "\\sigma_{B_F}")
 
     # Other parameters
-    m <= parameter(:γ, 0.1755, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:γ, 0.12186571534563953, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.15), fixed = false,
                    description = "γ: The log of the steady-state growth rate of technology",
                    tex_label = "\\gamma")
@@ -679,9 +679,9 @@ function init_parameters!(m::mBBQ)
                    tex_label ="")
     m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
                    tex_label ="")
-                   m <= parameter(:fix, 0.5237134756666655, fixed = true, description = "",
+    m <= parameter(:fix, 0.5237134756666655, fixed = true, description = "",
                    tex_label ="")
-                   m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
+    m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
                    tex_label ="")
     m <= parameter(:γ , 0.12186571534563953, fixed = true, description = "",
                    tex_label ="")

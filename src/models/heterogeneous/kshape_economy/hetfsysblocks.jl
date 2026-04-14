@@ -22,6 +22,7 @@ include("helpers/grids/myinterpolate3.jl")
 include("helpers/cdf_to_pdf3D_forwarddiff.jl")
 include("helpers/genweight.jl")
 include("helpers/sub2ind.jl")
+include("helpers/ndgrid.jl")
 include("steadystate/Fastroot.jl")
 include("dynamics/policies_update.jl")
 include("util.jl")
@@ -39,8 +40,7 @@ ss = DSGE.build_ss(param, SS_stats)
 m <= Setting(:COP_SS, SS_stats["COP_SS"])
 
 # Utility functions (CRRA with σ = θ[:σ_2])
-#=
-util     = c -> (c .^ (1 - θ[:σ_2])) ./ (1 - θ[:σ_2])
+#=util     = c -> (c .^ (1 - θ[:σ_2])) ./ (1 - θ[:σ_2])
 mutil    = c -> 1.0 ./ (c .^ θ[:σ_2])
 invmutil = mu -> (1.0 ./ mu) .^ (1 / θ[:σ_2])
 =#
@@ -226,20 +226,21 @@ P_SS3next_aux = [P_SS3next_aux zeros(nse-1, 1)]
 P_SS3next_aux = [P_SS3next_aux; [zeros(1, 2*ns) 1]]
 
 P_SS2             = grids[:P_SS2]
-P_transition_exp  = P_SS2 * P_SS3next_aux
+P_transition_exp  = P_SS2*P_SS3next_aux
 P_transition_dist = P_SS2
 
 ############################################################################
 # IX. Income
 ############################################################################
-b_ndgrid = grids[:b_ndgrid]
-a_ndgrid = grids[:a_ndgrid]
-se_ndgrid = grids[:se_ndgrid]
+b_ndgrid = vec(grids[:b_ndgrid][:, 1, 1])
+a_ndgrid = vec(grids[:a_ndgrid][1, :, 1])
+_, _, se_ndgrid = ndgrid(grids[:b_grid].points, grids[:a_grid].points, collect(1:nse))
+se_ndgrid = vec(se_ndgrid[1, 1, :])
 
 auxWW               = ones(nb, na, nse)
 auxWW[:,:,ns+1:end] = zeros(nb, na, nse - ns)
 auxWW1              = copy(auxWW)
-auxWW               = auxWW .* (se_ndgrid .^ (θ[:b_aux] - 1))
+auxWW               = auxWW .* (grids[:se_ndgrid] .^ (θ[:b_aux] - 1))
 
 auxWW2               = ones(nb, na, nse)
 auxWW2[:,:,1:ns]     = zeros(nb, na, ns)
@@ -252,11 +253,11 @@ WW = (1 - θ[:τ_w]) * (NW .* auxWW1 .+ θ[:ξ] / (1 + θ[:ξ]) * θ[:w_bar] .* 
 WW[:,:,end] .= (1 - θ[:τ_a]) * (θ[:Eratio] * Profit_t) / θ[:Eshare]
 
 inc = Dict{Symbol, Any}()
-inc[:labor]    = WW .* se_ndgrid
-inc[:dividend] = a_ndgrid .* R_A_aux
-inc[:capital]  = a_ndgrid .* Q′_t
-inc[:bond]     = (R_cb_t / pi_t) .* b_ndgrid .+
-               (b_ndgrid .< 0) .* (θ[:Rprem] / pi_t) .* b_ndgrid
+inc[:labor]    = WW .* grids[:se_ndgrid]
+inc[:dividend] = grids[:a_ndgrid] .* R_A_aux
+inc[:capital]  = grids[:a_ndgrid] .* Q′_t
+inc[:bond]     = (R_cb_t / pi_t) .* grids[:b_ndgrid] .+
+               (grids[:b_ndgrid] .< 0) .* (θ[:Rprem] / pi_t) .* grids[:b_ndgrid]
 inc[:bond]     = inc[:bond] ./ (1 - θ[:dr]) .* θ[:b_a_aux]
 inc[:transfer] = (LT_t + C_b_t) / (1 + θ[:ϕ_b]) .* ones(nb, na, nse)
 
@@ -266,32 +267,39 @@ inc[:transfer] = (LT_t + C_b_t) / (1 + θ[:ϕ_b]) .* ones(nb, na, nse)
 
 EVa = reshape(reshape(Vanext, (nb*na, nse)) * P_transition_exp', (nb, na, nse))
 
-R_tildeaux = R_tilde′_t / pi′_t .+ (b_ndgrid .< 0) .* (θ[:Rprem] / pi′_t)
-EVb = reshape(reshape(R_tildeaux[:] ./ (1 - θ[:dr]) .* θ[:b_a_aux] .* mutil_cnext, (nb*na, nse)) * P_transition_exp', (nb, na, nse))
+R_tildeaux = R_tilde′_t / pi′_t .+ (grids[:b_ndgrid] .< 0) .* (θ[:Rprem] / pi′_t)
+EVb = reshape(reshape(R_tildeaux[:] ./ (1 - θ[:dr]) .* θ[:b_a_aux] .* mutil_cnext, (nb*na, nse)) * 
+              P_transition_exp', (nb, na, nse))
 
-c_a_star, b_a_star, a_a_star, c_n_star, b_n_star = policies_update(EVb, EVa, Q′_t, pi_t, R_cb_t, 1, 1, inc, grids, θ)
+c_a_star, b_a_star, a_a_star, c_n_star, b_n_star = policies_update(EVb, EVa, Q′_t, pi_t, R_cb_t,
+                                                                   1, 1, inc, grids, θ)
+#EV = reshape(Vanext, (nb*na, nse)) * P_transition_exp'
+
 ############################################################################
 # XI. Value function update
 ############################################################################
-b_grid = grids[:b_grid].points
-a_grid = grids[:a_grid].points
-se_grid = grids[:se_grid].points
-
-se_idx = repeat(reshape(collect(1:nse), 1, 1, nse), outer=(nb, na, 1))
+meshaux = Dict{Symbol, Any}(
+                            :b => grids[:b_ndgrid],
+                            :a => grids[:a_ndgrid],
+                            :se => grids[:se_ndgrid])
+_, _, meshaux[:se_aux] = ndgrid(grids[:b_grid].points, grids[:a_grid].points, collect(1:nse))
+b_grid = vec(meshaux[:b][:, 1, 1])
+a_grid = vec(meshaux[:a][1, :, 1])
+se_grid = vec(meshaux[:se_aux][1, 1, :])
 
 EV3 = reshape(reshape(Controlnext_VALUE, (nb*na, nse)) * P_transition_exp', nb, na, nse)
-itp_v     = interpolate((b_grid, a_grid, collect(1:nse)), EV3, Gridded(Linear()))
+itp_v     = interpolate((b_grid, a_grid, se_grid), EV3, Gridded(Linear()))
 Controlnext_VALUE_itp = extrapolate(itp_v, Line())
 
-V_adjust   = util(c_a_star) .+ θ[:β] * (1 - θ[:dr]) .* Controlnext_VALUE_itp.(b_a_star, a_a_star, se_idx)
-V_noadjust = util(c_n_star) .+ θ[:β] * (1 - θ[:dr]) .* Controlnext_VALUE_itp.(b_n_star, a_ndgrid,  se_idx)
+V_adjust   = util(c_a_star) .+ θ[:β] * (1 - θ[:dr]) .* Controlnext_VALUE_itp.(b_a_star, a_a_star, meshaux[:se_aux])
+V_noadjust = util(c_n_star) .+ θ[:β] * (1 - θ[:dr]) .* Controlnext_VALUE_itp.(b_n_star, meshaux[:a], meshaux[:se_aux])
 
 AProb = clamp.(1.0 ./ (1.0 .+ exp.(.-(V_adjust .- V_noadjust .- θ[:μ_χ]) ./ θ[:σ_χ])), 1e-6, 1 - 1e-6)
 AC    = θ[:σ_χ] .* ((1.0 .- vec(AProb)) .* log.(1.0 .- vec(AProb)) .+
                        vec(AProb) .* log.(vec(AProb))) .+
         θ[:μ_χ] .* vec(AProb) .- (θ[:μ_χ] - θ[:σ_χ] * log(1 + exp(θ[:μ_χ] / θ[:σ_χ])))
-AProb = AProb .* θ[:ψ]
-AC    = AC    .* θ[:ψ]
+AProb = AProb .* θ[:ν]
+AC    = AC    .* θ[:ν]
 
 VALUEaux = vec(AProb) .* vec(V_adjust) .+ (1.0 .- vec(AProb)) .* vec(V_noadjust) .- vec(AC)
 
@@ -306,7 +314,6 @@ mutil_c_aux = AProb .* mutil_c_a .+ (1.0 .- AProb) .* mutil_c_n
 mutil_cnext_aux = reshape(reshape(mutil_cnext, nb*na, nse) * P_transition_exp', nb, na, nse)
 itp_mu          = interpolate((b_grid, a_grid, collect(1:nse)), mutil_cnext_aux, Gridded(Linear()))
 mutil_cnext_itp = extrapolate(itp_mu, Line())
-
 ############################################################################
 # XIII. Marginal value of illiquid assets update
 ############################################################################
@@ -316,7 +323,7 @@ itp_va  = interpolate((b_grid, a_grid, collect(1:nse)), Va3, Gridded(Linear()))
 Va_itp  = extrapolate(itp_va, Line())
 
 Va_aux = AProb .* (R_A_aux .+ Q′_t) .* mutil_c_a .+ (1.0 .- AProb) .* R_A_aux .* mutil_c_n .+
-         θ[:β] * (1 - θ[:dr]) .* (1.0 .- AProb) .* Va_itp.(b_n_star, a_ndgrid, se_idx)
+         θ[:β] * (1 - θ[:dr]) .* (1.0 .- AProb) .* Va_itp.(b_n_star, grids[:a_ndgrid], meshaux[:se_aux])
 
 ############################################################################
 # XIV. Residuals for jump variables (value functions at t)
@@ -325,15 +332,16 @@ Va_aux = AProb .* (R_A_aux .+ Q′_t) .* mutil_c_a .+ (1.0 .- AProb) .* R_A_aux 
 F[:eq_Value]      = Control_full[1:NN]        .- invutil(vec(VALUEaux))
 F[:eq_mutil_cons] = Control_full[NN+1:2*NN]   .- invmutil(vec(mutil_c_aux))
 F[:eq_Va]         = Control_full[2*NN+1:3*NN] .- invmutil(vec(Va_aux))
-
 ############################################################################
 # XV. Distribution transition
 ############################################################################
+b_grid = grids[:b_grid].points
+a_grid = grids[:a_grid].points
 
 Dist_b_a, idb_a = genweight(b_a_star, b_grid)
 Dist_b_n, idb_n = genweight(b_n_star, b_grid)
 Dist_a_a, ida_a = genweight(a_a_star, a_grid)
-Dist_a_n, ida_n = genweight(a_ndgrid,  a_grid)
+Dist_a_n, ida_n = genweight(grids[:a_ndgrid],  a_grid)
 
 Dist_b_die, idb_die = genweight(zeros(nb, na, nse), b_grid)
 Dist_a_die, ida_die = genweight(zeros(nb, na, nse), a_grid)

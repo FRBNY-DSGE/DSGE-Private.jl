@@ -509,11 +509,11 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels Profit_FI_t, V_t = Yt, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys K′_t = Yt1, control_id, ControlSS
 
-    F[:eq_control_profit] = Profit_t - 
-    ((Y_t * (1- η′_t / (2 * m[:κ]) * (log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) - 
-    m[:γ]*log(π_past_t)) .^ 2) + Y_t.*(-MC_t) - m[:fix] + (h_t  - m[:fix_L] - w′_t) .* L_t -
-    m[:ι].*V_t) + (r_k_t * v_t - m[:δ_0].* v_t .^ m[:δ_1]) .* K_t +  
-    Q_t *(K′_t- K_t)-(K′_t-K_t) - m[:ϕ]  /2 * (K′_t/K_t-1)^2*K_t  + Profit_FI_t - m[:fix2] )
+    F[:eq_control_profit] = Profit_t -
+    ((Y_t * (1- m[:η] / (2 * m[:κ]) * (log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) -
+                                       m[:γ]*log(π_past_t)) .^ 2) + Y_t.*(-MC_t) - m[:fix] + (h_t - ss[:w_t]) .* L_t -
+    m[:ι].*V_t) + (r_k_t * v_t - m[:δ_0].* v_t .^ m[:δ_1]) .* K_t +
+    Q_t *(K′_t- K_t) - m[:ϕ]  /2 * (K′_t/K_t-1)^2*K_t + Profit_FI_t - m[:fix2])
 
     #===================================================================#
     #control eq19: r^k
@@ -546,16 +546,14 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     #22-25 unemployment rate
 
     #control eq25: unemployment rate
-    @sslogdeviations2levels_unprimekeys N_t, M_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels N_t, M_t, l_λ_t = Yt, control_id, ControlSS
 
-    F[:eq_control_unemployment_rate] = unemp_t - 
-    ( (1-((1-ss[:lambda_t])*N_t + M_t)- m[:Eshare] ) / (1 - m[:Eshare]) )
+    F[:eq_control_unemployment_rate] = unemp_t -
+    ( (1-((1-l_λ_t)*N_t + M_t)- m[:Eshare] ) / (1 - m[:Eshare]) )
 
 
     #===================================================================#
     #control eq26: nn
-    @sslogdeviations2levels_unprimekeys N_t, M_t = Yt1, control_id, ControlSS
-    @sslogdeviations2levels_unprimekeys l_λ_t = Yt, control_id, ControlSS
 
 
     F[:eq_control_nn] = nn_t -
@@ -575,7 +573,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
 
 
     #control eq24: f
-    @sslogdeviations2levels f_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels f_t = Yt, control_id, ControlSS
 
 
     F[:eq_control_f] = f_t - 
