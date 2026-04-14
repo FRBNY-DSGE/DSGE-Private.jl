@@ -620,7 +620,7 @@ function init_parameters!(m::mBBQ)
                    BetaAlt(0.5, 0.15), fixed = false,
                    description = "γ: The log of the steady-state growth rate of technology",
                    tex_label = "\\gamma")
-    m <= parameter(:ι, 0.03168618124805551, (1e-5, 5.), (1e-5, 5.), SquareRoot(),
+    m <= parameter(:ι, 0.0542, (1e-5, 5.), (1e-5, 5.), SquareRoot(),
                    GammaAlt(0.5, 0.2), fixed = false,
                    description = "ι: Parameter",
                    tex_label = "\\iota")
