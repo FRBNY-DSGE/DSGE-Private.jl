@@ -120,12 +120,12 @@ println("m[:d]:       ", m[:d].value)
 
     #===================================================================#
     #eq4: asset b (bonds)
-    @sslogdeviations2levels A_gaux_t, B_b_t = Xt, state_id, StateSS
-    @sslogdeviations2levels_unprimekeys B_b′_t, Q′_t, A_gaux′_t = Xt1, state_id, StateSS
+    @sslogdeviations2levels A_gaux_t, B_b_t, A_g_t = Xt, state_id, StateSS
+    @sslogdeviations2levels_unprimekeys B_b′_t, Q′_t, A_gaux′_t, A_g′_t = Xt1, state_id, StateSS
     @sslogdeviations2levels T_t, B_gov_ncp_t, r_a_t, UB_t, LT_t, C_b_t, G_t = Yt, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys Profit_t, Profit_FI_t, B_gov_ncp′_t = Yt1, control_id, ControlSS
-    A_g′_t = A_gaux′_t - 1
-    A_g_t = A_gaux_t - 1
+    #A_g′_t = A_gaux′_t - 1
+    #A_g_t = A_gaux_t - 1
 
     #eq4: asset b (bonds)
     F[:eq_liquid_assets] =  log(B_b′_t) -
@@ -383,7 +383,7 @@ println("m[:d]:       ", m[:d].value)
     @sslogdeviations2levels K_t, A_hh_t = Yt, control_id, ControlSS
     @sslogdeviations2levels A_b_t = Xt, state_id, StateSS
 
-    F[:eq_control_capital] = log(K_t) - log(A_hh_t + A_g_t  + A_b_t + ss[:A_F_t])
+    F[:eq_control_capital] = K_t - (A_hh_t + A_g_t  + A_b_t )
 
 
     #===================================================================#
@@ -669,7 +669,7 @@ A_hh′_t - A_g′_t - A_b′_t + ι′_t * K_t +  #check k indexing
     #control eq39: a_g_obs
     @sslogdeviations2levels A_g_obs_t = Yt, control_id, ControlSS
 
-    F[:eq_control_a_g_obs] = A_g_obs_t - (A_gaux′_t - 1)
+    F[:eq_control_a_g_obs] = A_g_obs_t - (A_g′_t - 1)
 
     #===================================================================#
     #control eq41: y_obs
@@ -803,7 +803,7 @@ end
 #control eq56: pastA_g
 @sslogdeviations2levels A_g_lag_t = Yt, control_id, ControlSS
 
-F[:eq_past_A_g] = A_g_lag_t - A_g′_t
+F[:eq_past_A_g] = A_g_lag_t - A_g_t
 
 #===================================================================#
 #control eq57: pastQ
@@ -857,7 +857,7 @@ F[:eq_iota2] = ι_2_t - ι′_t
 #control eq64: iota2
 @sslogdeviations2levels B_gov_ncp2_t = Yt, control_id, ControlSS
 
-F[:eq_b_gov_ncp2] = B_gov_ncp2_t - (B_b_t  + B_hh_t - (Q_t*A_b_t- NW_b_t) - Q_t *(1+m[:τ_cp])* A_g′_t)
+F[:eq_b_gov_ncp2] = B_gov_ncp2_t - (B_b_t  + B_hh_t - (Q_t*A_b_t- NW_b_t) - Q_t *(1+m[:τ_cp])* A_g_t)
 
     return F
 end

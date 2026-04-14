@@ -24,6 +24,12 @@ grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns",
 state_id, control_id = DSGE.build_indices(grid, length(StateSS), length(ControlSS))
 ss = DSGE.build_ss(param, SS_stats)
 
+#manual fixes, jank but ygdwygd
+state_id[:A_g_t] = 17733
+push!(StateSS, 0.)
+StateSS[state_id[:A_g_t]] = log(exp(StateSS[state_id[:A_gaux_t]]) - 1)
+
+
 #test state and control controls of zero
 State_zero = zeros(length(StateSS))
 Control_zero = zeros(length(ControlSS))
@@ -31,6 +37,11 @@ Control_zero = zeros(length(ControlSS))
 nState  = length(StateSS)
 nCtrl   = length(ControlSS)
 
+
+#testing
+#@sslogdeviations2levels A_gaux_t, B_b_t, A_g_t = State_zero, state_id, StateSS
+#@sslogdeviations2levels_unprimekeys B_b′_t, Q′_t, A_gaux′_t, A_g′_t = State_zero, state_id, StateSS
+#@assert false
 
 
 #F = Dict{Symbol,Any}() #TODO: need to change typing of this
@@ -212,6 +223,21 @@ F41_ad = F1_ad[os+1:end, :]
 F42_ad = F2_ad[os+1:end, :]
 F43_ad = F3_ad[os+1:end, :]
 F44_ad = F4_ad[os+1:end, :]
+
+
+#edit remove col 42
+let a_gaux_col = findfirst(==(state_id[:A_gaux_t]), agg_state_cols)
+    replace_pairs = [(F23_ad, 5),
+                     (F41_ad, 41), (F41_ad, 43),
+                     (F43_ad, 8), (F43_ad, 10), (F43_ad, 60), (F43_ad, 69)]
+    for (mat, i) in replace_pairs
+        mat[i, a_gaux_col] = mat[i, end]
+    end
+end
+F21_ad = F21_ad[:, 1:end-1]
+F23_ad = F23_ad[:, 1:end-1]
+F41_ad = F41_ad[:, 1:end-1]
+F43_ad = F43_ad[:, 1:end-1]
 
 
 #load in nonQE donggyu original jacobians
