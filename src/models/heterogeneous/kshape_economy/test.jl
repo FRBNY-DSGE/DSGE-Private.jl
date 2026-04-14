@@ -29,6 +29,8 @@ state_id[:A_g_t] = 17733
 push!(StateSS, 0.)
 StateSS[state_id[:A_g_t]] = log(exp(StateSS[state_id[:A_gaux_t]]) - 1)
 
+ControlSS[control_id[:J_t]] = ControlSS[control_id[:J_t]] .+ log(1.711583655983251)
+
 
 #test state and control controls of zero
 State_zero = zeros(length(StateSS))

@@ -471,7 +471,7 @@ F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) -
     @sslogdeviations2levels_unprimekeys l_λ_′t, J′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_j] = J_t - 
-        ((h_t - m[:fix_L].value - w′_t) .* (grid[:s]) .* nn_t + 
+        ((h_t - m[:fix_L].value -  w′_t) .* (grid[:s]) .* nn_t + 
         (λ_t * (1 - m[:dr].value) * (1-l_λ_′t) *
         (1-m[:in].value)) * ss[:P_SS_t] * J′_t)
     #=
