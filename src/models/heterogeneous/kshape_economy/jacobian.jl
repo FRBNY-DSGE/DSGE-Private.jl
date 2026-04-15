@@ -138,8 +138,19 @@ function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
         :eq_past_lt2 => 0.,
         :eq_past_g2 => 0.,
         :eq_lt_obs => 0.,
-        :eq_b_gov_ncp2 => 0.
+        :eq_b_gov_ncp2 => 0.,
+        :eq_rate_monetary_policy_ZLB => 0.,
+        :eq_R_star_ZLB => 0.,
+        :eq_central_bank_assets_ZLB => 0.,
+        :eq_quantitative_easing_ZLB => 0.
     )
+
+    zlb_equations = Set([
+        (:eq_rate_monetary_policy, :eq_rate_monetary_policy_ZLB),
+        (:eq_R_star, :eq_R_star_ZLB),
+        (:eq_central_bank_assets, :eq_central_bank_assets_ZLB),
+        (:eq_quantitative_easing, :eq_quantitative_easing_ZLB)
+    ])
 
     #set regime for testing
     reg = 1
@@ -191,6 +202,18 @@ function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
     agg_ctrl_cols  = vcat([collect(control_id[s]) for s in keys(control_id) if s ∉ dist_ctrl_keys]...)
 
 
+
+    #zlb equations 
+    num_zlb_equations = length(zlb_equations)
+
+    zlb_nonzlb_idx_pairs = [
+        (
+            findfirst(x -> x == nonzlb, eq_keys),
+            findfirst(x -> x == zlb, eq_keys)
+        )
+        for (nonzlb, zlb) in zlb_equations
+    ]
+
     #matching donggyu dims
     F1_ad = BA_agg[:, 1:nState][:, agg_state_cols]                        # ∂F/∂Xt1 (agg cols)
     F2_ad = BA_agg[:, nState+1:nState+nCtrl][:, agg_ctrl_cols]            # ∂F/∂Yt1 (agg cols)
@@ -204,10 +227,16 @@ function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
     F23_ad = F3_ad[1:os, :]
     F24_ad = F4_ad[1:os, :]
 
-    F41_ad = F1_ad[os+1:end, :]
-    F42_ad = F2_ad[os+1:end, :]
-    F43_ad = F3_ad[os+1:end, :]
-    F44_ad = F4_ad[os+1:end, :]
+    F41_ad = F1_ad[os+1:end-num_zlb_equations, :]
+    F42_ad = F2_ad[os+1:end-num_zlb_equations, :]
+    F43_ad = F3_ad[os+1:end-num_zlb_equations, :]
+    F44_ad = F4_ad[os+1:end-num_zlb_equations, :]
+
+    # FZLB_ad = F1_ad[end-num_zlb_equations+1 : end, :]
+    # FZLB_ad = F2_ad[end-num_zlb_equations+1 : end, :]
+    # FZLB_ad = F3_ad[end-num_zlb_equations+1 : end, :]
+    # FZLB_ad = F4_ad[end-num_zlb_equations+1 : end, :]
+
 
 
     #edit remove col 42
@@ -224,7 +253,26 @@ function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
     F41_ad = F41_ad[:, 1:end-1]
     F43_ad = F43_ad[:, 1:end-1]
 
-    return F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad
+
+
+    F21_ad_zlb = copy(F21_ad)
+    F22_ad_zlb = copy(F22_ad)
+    F23_ad_zlb = copy(F23_ad)
+    F24_ad_zlb = copy(F24_ad)
+
+    # trim ag_t
+    F1_ad_trim = F1_ad[:, 1:end-1]
+    F3_ad_trim = F3_ad[:, 1:end-1]
+
+    for (nonzlb_row, zlb_row) in zlb_nonzlb_idx_pairs
+        F21_ad_zlb[nonzlb_row, :] = F1_ad_trim[zlb_row + 4, :] #TODO instead of maual +4 account for J better
+        F22_ad_zlb[nonzlb_row, :] = F2_ad[zlb_row + 4, :]
+        F23_ad_zlb[nonzlb_row, :] = F3_ad_trim[zlb_row + 4, :]
+        F24_ad_zlb[nonzlb_row, :] = F4_ad[zlb_row + 4, :]
+    end
+
+
+    return F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad, F42_ad, F43_ad, F44_ad
 
 end
 

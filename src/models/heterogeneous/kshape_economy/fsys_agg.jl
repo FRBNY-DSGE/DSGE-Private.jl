@@ -62,20 +62,24 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
 
     monpol = get_setting(m, :regime_monpol)[reg]
 
-    if monpol == :taylor
-        F[:eq_rate_monetary_policy] = log(R_cb′_t) - ss[:R_cb_t] - 
-        (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
-        m[:ϕ_u] * (unemp_t - ss[:u_t])) -  
-        m[:ρ_R]*(log(R_cb_t) - ss[:R_cb_t]) - log(eps_R_t)
+    #monpol == :taylor
+    F[:eq_rate_monetary_policy] = log(R_cb′_t) - ss[:R_cb_t] - 
+    (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
+    m[:ϕ_u] * (unemp_t - ss[:u_t])) -  
+    m[:ρ_R]*(log(R_cb_t) - ss[:R_cb_t]) - log(eps_R_t)
 
-        #println("in taylor")
-    elseif monpol == :qe
-        F[:eq_rate_monetary_policy] = log(R_cb′_t) - ss[:R_cb_t] 
+    #monpol == :qe
+    F[:eq_rate_monetary_policy_ZLB] = log(R_cb′_t) - ss[:R_cb_t] - log(eps_R_t)
 
-        println("in qe")
-
-    end
-
+    #===================================================================#
+    #eq r star 
+    @sslogdeviations2levels R_star_t = Xt, state_id, StateSS
+    @sslogdeviations2levels_unprimekeys R_star′_t = Xt1, state_id, StateSS
+    
+    F[:eq_R_star_ZLB] = log(R_star′_t) - #ss[:R_star_t] - 
+    (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
+    m[:ϕ_u] * (unemp_t - ss[:u_t])) -  
+    m[:ρ_R]*(log(R_star_t) - ss[:R_cb_t]) - log(eps_R_t)
 
     #===================================================================#
     #eq2: wage
@@ -139,18 +143,17 @@ println("m[:d]:       ", m[:d].value)
     #===================================================================#
     #eq5: central bank assets TODO: regime change
     @sslogdeviations2levels x_cb_t, ψ_rp_t = Xt, state_id, StateSS
-    @sslogdeviations2levels_unprimekeys ψ_rp′_t = Xt1, state_id, StateSS
+    @sslogdeviations2levels_unprimekeys ψ_rp′_t,x_cb′_t = Xt1, state_id, StateSS
     @sslogdeviations2levels Y_t = Yt, control_id, ControlSS
  
 
-    if monpol == :qe
-        println("hello monpol")
-        F[:eq_central_bank_assets] = log(A_gaux′_t) - log( x_cb_t * A_g_t + 1 )
-    else
-        F[:eq_central_bank_assets] = log(A_gaux′_t) - 
-        log( m[:ρ_A_g]* (A_g_t) + 
-            (1 - m[:ρ_A_g])* ss[:A_g_t] + log(ψ_rp′_t)*Y_t)
-    end
+    #if monpol == :qe
+    F[:eq_central_bank_assets_ZLB] = log(A_gaux′_t) - log( x_cb′_t * A_g_t )
+    #monpol taylor
+    F[:eq_central_bank_assets] = log(A_gaux′_t) - 
+    log( m[:ρ_A_g]* (A_g_t) + 
+        (1 - m[:ρ_A_g])* ss[:A_g_t] + log(ψ_rp′_t)*Y_t)
+    
 
     #===================================================================#
     #eq6: tobin's q
@@ -197,15 +200,19 @@ println("m[:d]:       ", m[:d].value)
     F[:eq_houshold_bond_rate] = log(R_tilde′_t) - log( R_cb′_t) 
     #===================================================================#
     #eq10: eq_quantitative_easing #TODO: add regimes #TODO ADD shocks
-    @sslogdeviations2levels_unprimekeys x_cb′_t = Xt1, state_id, StateSS
 
     #if monpol == :taylor
-       # F[:eq_quantitative_easing] = log(x_cb′_t)
+    F[:eq_quantitative_easing] = log(x_cb′_t) - 
+    log( 1 + m[:ρ_X_QE] * (x_cb_t-1) + 
+    (1-m[:ρ_X_QE])*(-m[:ϕ_π_QE]*log(pi_t / m[:π_cb])+
+    m[:ϕ_u_QE] * (unemp_t - ss[:u_t])) )    
+    
     #elseif monpol == :qe
-            F[:eq_quantitative_easing] = log(x_cb′_t) - 
-        log( 1 + m[:ρ_X_QE] * (x_cb_t-1) + 
-        (1-m[:ρ_X_QE])*(-m[:ϕ_π_QE]*log(pi_t / m[:π_cb])+
-        m[:ϕ_u_QE] * (unemp_t - ss[:u_t])) )
+    F[:eq_quantitative_easing_ZLB] = log(x_cb′_t) - 
+    log( 1 + m[:ρ_X_QE] * (x_cb_t-1) + 
+    (1-m[:ρ_X_QE])*(-m[:ϕ_π_QE]*log(pi_t / m[:π_cb])+
+    m[:ϕ_u_QE] * (unemp_t - ss[:u_t])) + log(ψ_rp′_t))
+    
     #end
 
 

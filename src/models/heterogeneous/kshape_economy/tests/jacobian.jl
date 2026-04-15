@@ -12,7 +12,7 @@ grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns",
 
 m = mBBQ()
 
-F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad = DSGE.jacobian(m, StateSS, ControlSS, SS_stats, grid, param)
+F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian(m, StateSS, ControlSS, SS_stats, grid, param)
 
 
 #LOAD IN OLD JACOB
@@ -43,6 +43,34 @@ F22_aux_trim = F22_aux[: , end-oc+1:end]
 F24_aux_trim = F24_aux[: , end-oc+1:end]
 F42_aux_trim = F42_aux[: , end-oc+1:end]
 F44_aux_trim = F44_aux[: , end-oc+1:end]
+
+
+
+mat_contents = matread("../data/TESTJACOBZLB.mat")
+out_jacob_zlb = mat_contents["out_Jacob_ZLB"]
+F21_aux_zlb = out_jacob_zlb["F21_aux"]
+F22_aux_zlb = out_jacob_zlb["F22_aux"]
+F23_aux_zlb = out_jacob_zlb["F23_aux"]
+F24_aux_zlb = out_jacob_zlb["F24_aux"]
+F41_aux_zlb = out_jacob_zlb["F41_aux"]
+F42_aux_zlb = out_jacob_zlb["F42_aux"]
+F43_aux_zlb = out_jacob_zlb["F43_aux"]
+F44_aux_zlb = out_jacob_zlb["F44_aux"]
+
+#r1_start, r1_end = 89, 118
+#r2_start, r2_end = 337, 405
+# os = grid[:os]
+# oc = grid[:oc]
+
+F21_aux_trim_zlb = F21_aux_zlb[: , end-os+1:end]
+F23_aux_trim_zlb = F23_aux_zlb[: , end-os+1:end]
+F41_aux_trim_zlb = F41_aux_zlb[: , end-os+1:end]
+F43_aux_trim_zlb = F43_aux_zlb[: , end-os+1:end]
+
+F22_aux_trim_zlb = F22_aux_zlb[: , end-oc+1:end]
+F24_aux_trim_zlb = F24_aux_zlb[: , end-oc+1:end]
+F42_aux_trim_zlb = F42_aux_zlb[: , end-oc+1:end]
+F44_aux_trim_zlb = F44_aux_zlb[: , end-oc+1:end]
 
 
 #save as csv for viewing 
@@ -163,7 +191,11 @@ F = OrderedDict{Symbol, Any}(
     :eq_past_lt2 => 0.,
     :eq_past_g2 => 0.,
     :eq_lt_obs => 0.,
-    :eq_b_gov_ncp2 => 0.
+    :eq_b_gov_ncp2 => 0.,
+    :eq_rate_monetary_policy_ZLB => 0.,
+    :eq_R_star_ZLB => 0.,
+    :eq_central_bank_assets_ZLB => 0.,
+    :eq_quantitative_easing_ZLB => 0.
 )
 
 #indexing
@@ -223,6 +255,8 @@ function compare_matrices(AD, FD, name::String, eqn_state::Bool, var_state; atol
     end
 end
 
+println("TEST TAYLOR")
+
 compare_matrices(F21_ad, F21_aux_trim, "F21 (state eqns wrt x_t)",   true,  true)#, exceptions=[[5,22]])
 compare_matrices(F22_ad, F22_aux_trim, "F22 (state eqns wrt y_t+1)", true,  false)
 compare_matrices(F23_ad, F23_aux_trim, "F23 (state eqns wrt x_t-1)", true,  true)
@@ -231,3 +265,14 @@ compare_matrices(F41_ad, F41_aux_trim, "F41 (ctrl eqns wrt x_t)",    false, true
 compare_matrices(F42_ad, F42_aux_trim, "F42 (ctrl eqns wrt y_t+1)",  false, false)
 compare_matrices(F43_ad, F43_aux_trim, "F43 (ctrl eqns wrt x_t-1)",  false, true)
 compare_matrices(F44_ad, F44_aux_trim, "F44 (ctrl eqns wrt y_t)",    false, false)#, exceptions=[[41,8], [41,42]])
+
+
+println("TEST ZLB")
+compare_matrices(F21_ad_zlb, F21_aux_trim_zlb, "F21 (state eqns wrt x_t)",   true,  true)#, exceptions=[[5,22]])
+compare_matrices(F22_ad_zlb, F22_aux_trim_zlb, "F22 (state eqns wrt y_t+1)", true,  false)
+compare_matrices(F23_ad_zlb, F23_aux_trim_zlb, "F23 (state eqns wrt x_t-1)", true,  true)
+compare_matrices(F24_ad_zlb, F24_aux_trim_zlb, "F24 (state eqns wrt y_t)",   true,  false)
+compare_matrices(F41_ad_zlb, F41_aux_trim_zlb, "F41 (ctrl eqns wrt x_t)",    false, true)#, exceptions = [[41,26]])
+compare_matrices(F42_ad_zlb, F42_aux_trim_zlb, "F42 (ctrl eqns wrt y_t+1)",  false, false)
+compare_matrices(F43_ad_zlb, F43_aux_trim_zlb, "F43 (ctrl eqns wrt x_t-1)",  false, true)
+compare_matrices(F44_ad_zlb, F44_aux_trim_zlb, "F44 (ctrl eqns wrt y_t)",    false, false)#, exceptions=[[41,8], [41,42]])
