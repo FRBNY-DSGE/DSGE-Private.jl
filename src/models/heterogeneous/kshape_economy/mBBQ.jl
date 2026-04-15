@@ -679,7 +679,7 @@ function init_parameters!(m::mBBQ)
                    tex_label ="")
     m <= parameter(:δ_1, 1.0025, fixed = true, description = "",
                    tex_label ="")
-    m <= parameter(:δ_0, 0.014851493304229206, fixed = true, description = "",
+    m <= parameter(:δ_0, 0.014851, fixed = true, description = "",
                    tex_label ="")
     m <= parameter(:fix, 0.524055, fixed = true, description = "",
                    tex_label ="")
