@@ -1,666 +1,236 @@
-#hank
-# TODO: add an option that constructs nt and id only once rather than repeatedly
-using Debugger, CSV, Tables
-"""
-```
-jacobian(m::BayerBornLuetticke)
-```
-compute the Jacobians of the non-linear difference equations defined
-by the functions `Fsys` and `Fsys_agg` using the package `ForwardDiff`.
+using Revise
+using LinearAlgebra
+using OrderedCollections: OrderedDict
+using ForwardDiff
+using DataFrames
+using DSGE
 
-If the user only wants to update the aggregate block of the Jacobians
-without changing the heterogeneous block, then the user
-should set `m <= Setting(:linearize_heterogeneous_block, false)`.
-In this case, the Jacobians are already stored in `m` and
-are updated in place.
 
-### Outputs
-- `A::Matrix`,`B::Matrix`: first derivatives of `Fsys` with respect to arguments `X` [`B`] and
-    `XPrime` [`A`]
-"""
-@inline function jacobian(m::mBBQ{T}) where {T <: Real}
 
-    if get_setting(m, :replicate_original_output)::Bool
-        # This block replicates output from the original implementation by Bayer, Born, and Luetticke
-        if get_setting(m, :linearize_heterogeneous_block)::Bool
-            return _original_jacobian!(m)
-        else
-            #return _original_update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
-                                                       # get_untransformed_values(m[:B])::Matrix{T})
-            return _original_update_aggregate_jacobian!(m, m[:A].value::Matrix{T},m[:B].value::Matrix{T})
-        end
-    else
-        if get_setting(m, :linearize_heterogeneous_block)::Bool
-            # Compute the Jacobian from scratch (assumes steadystate!(m) has already been called)
-             m <= Setting(:linearize_heterogeneous_block, false)
-            return _jacobian!(m)
-        else
-            # Note that since get_untransformed_values(m[:A]) = m[:A].value,
-            # the A matrix in m[:A] is being directly updated
-            if isempty(m[:A]) || isempty(m[:B])
-                return _jacobian!(m)
+function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
+
+    #one time setup to move prev donggyu format to bbl format
+    state_id, control_id = DSGE.build_indices(grid, length(StateSS), length(ControlSS))
+    ss = DSGE.build_ss(param, SS_stats)
+
+    #manual fixes, jank but ygdwygd
+    state_id[:A_g_t] = 17733
+    push!(StateSS, 0.)
+    StateSS[state_id[:A_g_t]] = log(exp(StateSS[state_id[:A_gaux_t]]) - 1)
+
+    ControlSS[control_id[:J_t]] = ControlSS[control_id[:J_t]] .+ log(1.711583655983251)
+
+
+    #test state and control controls of zero
+    State_zero = zeros(length(StateSS))
+    Control_zero = zeros(length(ControlSS))
+
+    nState  = length(StateSS)
+    nCtrl   = length(ControlSS)
+
+
+    #F = Dict{Symbol,Any}() #TODO: offload to different file
+    #must be same ordering as in idx of donggyu code
+    F = OrderedDict{Symbol, Any}(
+        :eq_rate_monetary_policy => 0.,
+        :eq_wage => 0.,
+        :eq_illiquid_assets => 0.,
+        :eq_liquid_assets => 0.,
+        :eq_central_bank_assets => 0.,
+        :eq_tobins_q => 0.,
+        :eq_leverage => 0.,
+        :eq_net_worth_bank => 0.,
+        :eq_houshold_bond_rate => 0.,
+        :eq_quantitative_easing => 0.,
+        :eq_inflation_lag => 0.,
+        :eq_output_lag => 0.,
+        :eq_consumption_lag => 0.,
+        :eq_investment_lag => 0.,
+        :eq_profit_lag => 0.,
+        :eq_unemployment_lag => 0.,
+        :eq_government_spending_lag => 0.,
+        :eq_lump_sum_transfers => 0.,
+        :eq_R_star => 0., #TODO: need to add
+        :eq_fiscal_liability => 0.,
+        :eq_z => 0.,
+        :eq_ψ => 0.,
+        :eq_η => 0.,
+        :eq_D => 0.,
+        :eq_GG => 0.,
+        :eq_ι => 0.,
+        :eq_BB => 0.,
+        :eq_ψ_w => 0.,
+        :eq_MP => 0.,
+        :eq_pm => 0.,
+        :eps_QE_ind => 0.,
+        :eps_RP_ind => 0.,
+        :eps_B_F_ind => 0.,
+        :eps_BB_ind => 0.,
+        :eps_Z_ind => 0.,
+        :eps_G_ind => 0.,
+        :eps_D_ind => 0.,
+        :eps_R_ind => 0.,
+        :eps_iota_ind => 0.,
+        :eps_eta_ind => 0.,
+        :eps_w_ind => 0.,
+        #CONTROLS
+        :MRS_ind => 0.,
+        :A_hh_ind => 0.,
+        :B_hh_ind => 0.,
+        :C_ind => 0.,
+        :N_ind => 0.,
+        :L_ind => 0.,
+        :UB_ind => 0.,
+        :eq_control_capital => 0.,
+        :eq_control_bond => 0.,
+        :eq_control_government_bond => 0.,
+        :eq_control_tax => 0.,
+        :eq_control_transfer => 0.,
+        :eq_control_government_spending => 0.,
+        :eq_control_lambda => 0.,
+        :eq_control_inflation => 0.,
+        :eq_control_vacancies => 0.,
+        :eq_control_j => 0.,
+        :eq_control_mpl => 0.,
+        :eq_control_elasticity_labor => 0.,
+        :eq_control_output => 0.,
+        :eq_control_profit => 0.,
+        :eq_control_mpk => 0.,
+        :eq_control_mpa => 0.,
+        :eq_control_marginal_cost => 0.,
+        :eq_control_unemployment_rate => 0.,
+        :eq_control_nn => 0.,
+        :eq_control_M => 0.,
+        :eq_control_f => 0.,
+        :eq_control_zz => 0.,
+        :eq_control_xx => 0.,
+        :eq_control_vv => 0.,
+        :eq_control_ee => 0.,
+        :eq_control_cb => 0.,
+        :eq_control_profit_fi => 0.,
+        :eq_control_rra => 0.,
+        :eq_control_rr => 0.,
+        :eq_control_investment => 0.,
+        :eq_control_x_k => 0.,
+        :eq_control_a_g_obs => 0.,
+        :eq_control_y_obs => 0.,
+        :eq_control_c_obs => 0.,
+        :eq_control_i_obs => 0.,
+        :eq_control_w_obs => 0.,
+        :eq_control_profit_obs => 0.,
+        :eq_unemployment_observable => 0.,
+        :eq_inflation_observable => 0.,
+        :eq_rate_observable => 0.,
+        :eq_past_wage => 0.,
+        :eq_government_observable => 0.,
+        :eq_past_YY => 0.,
+        :eq_past_CC => 0.,
+        :eq_past_II => 0.,
+        :eq_past_profit => 0.,
+        :eq_past_uu => 0.,
+        :eq_past_GG => 0.,
+        :eq_past_A_g => 0.,
+        :eq_l_lambda => 0.,
+        :eq_past_q => 0.,
+        :eq_xI => 0.,
+        :eq_eta2 => 0.,
+        :eq_iota2 => 0.,
+        :eq_past_lt2 => 0.,
+        :eq_past_g2 => 0.,
+        :eq_lt_obs => 0.,
+        :eq_b_gov_ncp2 => 0.
+    )
+
+    #set regime for testing
+    reg = 1
+    F = DSGE.Fsys_agg(F, m, grid, StateSS, ControlSS, State_zero, Control_zero, State_zero, Control_zero, ss, state_id, control_id, reg)
+
+    eq_keys = collect(keys(F))
+
+    # flatten f dict into a vector of scalar, issue with J, might cause indexing issue later on
+    function flatten_F!(F_vec, F_dict, eq_keys)
+        idx = 1
+        for k in eq_keys
+            v = get(F_dict, k, zero(eltype(F_vec)))
+            if v isa AbstractArray
+                n = length(v)
+                F_vec[idx:idx+n-1] .= v
+                idx += n
             else
-
-                return _update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
-                                               get_untransformed_values(m[:B])::Matrix{T})
+                F_vec[idx] = v
+                idx += 1
             end
-
-
-          #= try
-                result =  _update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
-                                               get_untransformed_values(m[:B])::Matrix{T})
-            catch e
-                result = _jacobian!(m)
-            end
-
-            return result =#
-
-           #= return _update_aggregate_jacobian!(m, get_untransformed_values(m[:A])::Matrix{T},
-                                               get_untransformed_values(m[:B])::Matrix{T})
-                =#
         end
     end
+
+    #determine flat output size
+    n_eqs_flat = sum(k -> (F[k] isa AbstractArray ? length(F[k]) : 1), eq_keys)
+
+    # x = [Xt1; Yt1; Xt; Yt] Xt1 is state_t, Yt1 is control_t+1, Xt is state_t-1, Yt is control_t
+    n_x = 2*nState + 2*nCtrl
+    BA_agg = zeros(n_eqs_flat, n_x)
+
+    function obj_fnct_agg(F_vec, x)
+        Xt1 = x[1:nState]
+        Yt1 = x[nState+1:nState+nCtrl]
+        Xt  = x[nState+nCtrl+1:2*nState+nCtrl]
+        Yt  = x[2*nState+nCtrl+1:end]
+        F_dict = OrderedDict{Symbol, Any}()
+        DSGE.Fsys_agg(F_dict, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, ss, state_id, control_id, reg)
+        flatten_F!(F_vec, F_dict, eq_keys)
+    end
+
+    #autodiff jacobian
+    ForwardDiff.jacobian!(BA_agg, obj_fnct_agg, zeros(n_eqs_flat), zeros(n_x))
+
+    # aggregate-only columns (drop distribution block indices)
+    dist_state_keys = Set([:marginal_pdf_b_t, :marginal_pdf_a_t, :marginal_pdf_se_t, :copula_t])
+    dist_ctrl_keys  = Set([:Value_t, :mutil_c_t, :Va_t])
+
+    agg_state_cols = vcat([collect(state_id[s])   for s in keys(state_id)   if s ∉ dist_state_keys]...)
+    agg_ctrl_cols  = vcat([collect(control_id[s]) for s in keys(control_id) if s ∉ dist_ctrl_keys]...)
+
+
+    #matching donggyu dims
+    F1_ad = BA_agg[:, 1:nState][:, agg_state_cols]                        # ∂F/∂Xt1 (agg cols)
+    F2_ad = BA_agg[:, nState+1:nState+nCtrl][:, agg_ctrl_cols]            # ∂F/∂Yt1 (agg cols)
+    F3_ad = BA_agg[:, nState+nCtrl+1:2*nState+nCtrl][:, agg_state_cols]  # ∂F/∂Xt  (agg cols)
+    F4_ad = BA_agg[:, 2*nState+nCtrl+1:end][:, agg_ctrl_cols]            # ∂F/∂Yt  (agg cols)
+
+    os = grid[:os]
+    oc = grid[:oc]
+    F21_ad = F1_ad[1:os, :]
+    F22_ad = F2_ad[1:os, :]
+    F23_ad = F3_ad[1:os, :]
+    F24_ad = F4_ad[1:os, :]
+
+    F41_ad = F1_ad[os+1:end, :]
+    F42_ad = F2_ad[os+1:end, :]
+    F43_ad = F3_ad[os+1:end, :]
+    F44_ad = F4_ad[os+1:end, :]
+
+
+    #edit remove col 42
+    let a_gaux_col = findfirst(==(state_id[:A_gaux_t]), agg_state_cols)
+        replace_pairs = [(F23_ad, 5),
+                        (F41_ad, 41), (F41_ad, 43),
+                        (F43_ad, 8), (F43_ad, 10), (F43_ad, 60), (F43_ad, 69)]
+        for (mat, i) in replace_pairs
+            mat[i, a_gaux_col] = mat[i, end]
+        end
+    end
+    F21_ad = F21_ad[:, 1:end-1]
+    F23_ad = F23_ad[:, 1:end-1]
+    F41_ad = F41_ad[:, 1:end-1]
+    F43_ad = F43_ad[:, 1:end-1]
+
+    return F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad
+
 end
 
-function _jacobian!(m::mBBQ)
 
-    # Information needed from m for set up
-    #θ = parameters2namedtuple(m)
-    #nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    # id = construct_prime_and_noprime_indices(m; only_aggregate = false)
-    id = get_setting(m, :prime_and_noprime_indices)::OrderedDict{Symbol, UnitRange{Int}}
-    nb, na, nse = get_idiosyncratic_dims(m)
 
 
-    ############################################################################
-    # Prepare elements used for uncompression
-    ############################################################################
-    # Matrices to take care of reduced degree of freedom in marginal distributions
-    Γ = get_setting(m, :Γ)
-    if has_setting(m, :DC)
-        DC = get_setting(m, :DC)
-        IDC = get_setting(m, :IDC)
-        DCD = get_setting(m, :DCD)
-        IDCD = get_setting(m, :IDCD)
-    else
-        DC = Vector{Array{Float64, 2}}(undef, 3)
-        DC[1]  = mydctmx(nb)
-        DC[2]  = mydctmx(na)
-        DC[3]  = mydctmx(nse)
-        IDCD = [transpose(DCD[i]) for i ∈ 1:3]
 
-        DCD = Vector{Array{Float64, 2}}(undef, 3)
-        n_copula = length(get_setting(m,:dct_compression_indices)[:copula])
-        nb_copula = get_setting(m,:nb_copula)
-        na_copula = get_setting(m,:na_copula)
-        nse_copula = get_setting(m,:nse_copula)
-        DCD[1] = mydctmx(nb_copula)
-        DCD[2] = mydctmx(na_copula)
-        DCD[3] = mydctmx(nse_copula)
-        IDCD = [transpose(DCD[i]) for i ∈ 1:3]
-    end
 
-    
 
-
-    ############################################################################
-    # Check whether steady state solves the difference equation
-    # (left here in case the user ever wants to check)
-    ############################################################################
-    # X0 = zeros(get_setting(m, :n_model_states)) .+ ForwardDiff.Dual(0.0,tuple(zeros(5)...))
-    # F  = Fsys(X0, X0, θ, m.grids, id, nt, m.equilibrium_conditions,
-    #           get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
-    # if maximum(abs.(F)) / 10 > get_setting(m, :ϵ)
-    #     @warn  "F = 0 is not at required precision"
-    # end
-
-    ############################################################################
-    # Calculate Jacobians of the Difference equation F
-    ############################################################################
-    length_X0   = length(get_setting(m, :Xss))::Int
-    nPoly          = get_setting(m, :nPoly) #total number of Chebyshev polynomial coefs
-    n_marginals = get_setting(m, :nRedMarg) #total number of marginal indices
-    nxB         = length_X0 - nPoly
-    nxA         = length_X0 - n_marginals
-    n_vars      = n_model_states(m)
-
-    # The objective function omits the Vm, Vk in the X vector, but we left off at index id[:Vm_t][1] - 1,
-    # so after we use zeros for the Vm, Vk parts of X, we need to start from id[:Vm_t][1]. We then go
-    # to nxB since that is the total number of X elements we want to perturb.
-    # For XPrime, we ignore the marginal perturbations and then have to start at nxB + 1 since
-    # x is a vector of length nxB + nxA.
-    BA = zeros(n_vars, nxB + nxA)
-
-    obj_fnct    = (F, x) -> Fsys(F, [x[1:id[nRedStates]]; Zeros(3*nPoly); x[nRedStates+1:nxB]],
-                                 [Zeros(n_marginals); x[nxB+1:end]],
-                                 θ, m.grids, id, nt, m.equilibrium_conditions,
-                                 get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD,m)
-    @show n_vars
-
-
-
-    ForwardDiff.jacobian!(BA, obj_fnct, zeros(n_vars), zeros(nxB+nxA))
-
-    A      = zeros(n_vars, n_vars)
-    B      = zeros(n_vars, n_vars)
-
-    B[:,1:id[:Vm_t][1]-1]                 = BA[:,1:id[:Vm_t][1]-1]
-    B[:,id[:Vk_t][end]+1:end]             = BA[:,id[:Vm_t][1]:nxB]
-    A[:,id[:marginal_pdf_y_t][end]+1:end] = BA[:,nxB+1:end]
-
-    # Make use of the fact that Vk/Vm has no influence on any variable in
-    # the system, thus derivative is 1
-    for (i, j) in zip(m.equilibrium_conditions[:eq_marginal_value_bonds], id[:Vm_t])
-        B[i, j] = 1.0
-    end
-    for (i, j) in zip(m.equilibrium_conditions[:eq_marginal_value_capital], id[:Vk_t])
-        B[i, j] = 1.0
-    end
-
-    # Make use of the fact that future distribution has no influence on any variable in
-    # the system, thus derivative is Γ
-    for (count, i) in enumerate(id[:marginal_pdf_m_t])
-        A[id[:marginal_pdf_m_t],i] = -Γ[1][1:end-1,count]
-    end
-    for (count, i) in enumerate(id[:marginal_pdf_k_t])
-        A[id[:marginal_pdf_k_t],i] = -Γ[2][1:end-1,count]
-    end
-    for (count, i) in enumerate(id[:marginal_pdf_y_t])
-        A[id[:marginal_pdf_y_t],i] = -Γ[3][1:end-1,count]
-    end
-
-    # Store A and B Jacobians
-    m[:A] = A
-    m[:B] = B
-
-    if get_setting(m, :save_jacobian)
-        save_jacobian(m)
-    end
-
-    return A, B
-end
-
-function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::Matrix{T}) where {T <: Real}
-
-    # Information needed from m for set up
-    θ = parameters2namedtuple(m)
-    nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    # id = construct_prime_and_noprime_indices(m; only_aggregate = true)
-    # θ  = get_setting(m, :parameters_namedtuple)::NamedTuple
-    # nt = get_setting(m, :steadystate_namedtuple)::NamedTuple
-    id = get_setting(m, :prime_and_noprime_aggregate_indices)::OrderedDict{Symbol, Int}
-
-    # Get index info
-    eqconds          = m.equilibrium_conditions
-    endo_states      = m.endogenous_states
-    aggr_eqconds     = get_aggregate_equilibrium_conditions(m)
-    aggr_endo_states = get_aggregate_endogenous_states(m)
-
-    # We want to exclude aggregate equilibrium conditions/states that
-    # are still distributional, e.g. Gini Coefficients
-    aggr_eqconds_excl_distr     = deepcopy(aggr_eqconds)
-    aggr_endo_states_excl_distr = deepcopy(aggr_endo_states)
-    for k in [:eq_Gini_C, :eq_Gini_X, :eq_sd_log_y, :eq_I90_share, :eq_I90_share_net, :eq_W90_share]
-        pop!(aggr_eqconds_excl_distr, k)
-    end
-    for k in [:Gini_C′_t, :Gini_X′_t, :sd_log_y′_t, :I90_share′_t, :I90_share_net′_t, :W90_share′_t]
-        pop!(aggr_endo_states_excl_distr, k)
-    end
-
-    ############################################################################
-    # Calculate derivatives of non-linear difference equation
-    ############################################################################
-
-    length_X0                  = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
-
-    # Sparsity differentiation settings
-    use_sparse_jac             = haskey(get_settings(m), :use_sparse_jacobian) && get_setting(m, :use_sparse_jacobian)
-    has_sparsity_pattern       = haskey(get_settings(m), :sparsity_pattern)
-
-    obj_fnct = (F, x) -> Fsys_agg(F, x[1:length_X0], x[length_X0+1:end], θ,
-                                  m.grids, id, nt, aggr_eqconds)
-
-
-
-    if use_sparse_jac && has_sparsity_pattern
-
-        sparsity_pattern = get_setting(m, :sparsity_pattern)::SparseMatrixCSC{T,Int}
-        colorvec = haskey(get_settings(m), :colorvec) ? get_setting(m, :colorvec)::Vector{Int} : matrix_colors(sparsity_pattern)
-
-        if haskey(get_settings(m), :sparse_aggregate_block_jacobian)
-
-            BA = get_setting(m, :sparse_aggregate_block_jacobian)::SparseMatrixCSC{T,Int}
-            input = get_setting(m, :aggregate_block_jacobian_input)::Vector{T}
-            output = get_setting(m, :aggregate_block_jacobian_output)::Vector{T}
-        else
-
-            BA = similar(sparsity_pattern)
-            input = zeros(T, 2 * length_X0)
-            output = similar(input, length_X0)
-            m <= Setting(:sparse_aggregate_block_jacobian, BA)
-            m <= Setting(:aggregate_block_jacobian_input, input)
-            m <= Setting(:aggregate_block_jacobian_output, output)
-        end
-
-        forwarddiff_color_jacobian!(BA, obj_fnct, input; dx = output,
-                                    colorvec = colorvec, sparsity = sparsity_pattern)
-    else
-        if use_sparse_jac
-
-            warn_str = "No sparsity pattern provided, so a dense Jacobian will be computed via ForwardDiff" *
-                " instead of a sparse Jacobian via SparseDiffTools"
-            @warn warn_str
-        end
-
-        if haskey(get_settings(m), :aggregate_block_jacobian)
-           #this is the only block that runs
-            BA = get_setting(m, :aggregate_block_jacobian)::Matrix{T}
-            input = get_setting(m, :aggregate_block_jacobian_input)::Vector{T}
-            output = get_setting(m, :aggregate_block_jacobian_output)::Vector{T}
-        else
-
-            BA = Matrix{T}(undef, length_X0, 2 * length_X0)
-            input = zeros(T, 2 * length_X0)
-            output = similar(input, length_X0)
-            m <= Setting(:aggregate_block_jacobian, BA)
-            m <= Setting(:aggregate_block_jacobian_input, input)
-            m <= Setting(:aggregate_block_jacobian_output, output)
-        end
-        ForwardDiff.jacobian!(BA, obj_fnct, output, input)
-    end
-
-    @show size(BA)
-    Aa          = BA[:, length_X0+1:end] # aggregate A       # to create the required Jacobian sparsity pattern
-    Ba          = BA[:, 1:length_X0]     # aggregate B
-
-    # Update Jacobians of equilibrium conditions w.r.t. aggregate variables,
-    # excluding aggregates that are distributional in nature (e.g. Gini coefficients)
-
-    for (aggr_endo_state_name, j) in aggr_endo_states_excl_distr # endo states are the columns
-        _j = first(endo_states[aggr_endo_state_name])
-        for (aggr_eqcond_name, i) in aggr_eqconds_excl_distr # eqconds are the rows
-            # So the following line populates A in column major order
-            _i = first(eqconds[aggr_eqcond_name])
-            A[_i, _j] = Aa[i, j]
-            B[_i, _j] = Ba[i, j]
-        end
-    end
-
-    return A, B
-end
-
-function _original_jacobian!(m::BayerBornLuetticke)
-
-    # Information needed from m for set up
-    θ = parameters2namedtuple(m)
-    nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    id = construct_prime_and_noprime_indices(m; only_aggregate = false)
-    nm, nk, nPoly = get_idiosyncratic_dims(m)
-
-    ############################################################################
-    # Prepare elements used for uncompression
-    ############################################################################
-    # Matrices to take care of reduced degree of freedom in marginal distributions
-    Γ  = shuffle_matrix(m[:distr_star])
-
-    # Matrices for discrete cosine transforms
-    DC = Vector{Array{Float64, 2}}(undef, 3)
-    DC[1]  = mydctmx(nm)
-    DC[2]  = mydctmx(nk)
-    DC[3]  = mydctmx(nPoly)
-    IDC    = [DC[1]', DC[2]', DC[3]'] # TODO: why do we need to take the transpose?
-
-    DCD = Vector{Array{Float64, 2}}(undef, 3)
-   #= DCD[1]  = mydctmx(nm-1)
-    DCD[2]  = mydctmx(nk-1)
-    DCD[3]  = mydctmx(nPoly-1)
-=#
-
-    nm_copula = get_setting(m,:nm_copula)
-    nk_copula = get_setting(m,:nk_copula)
-    ny_copula = get_setting(m,:ny_copula)
-    DCD[1] = mydctmx(nm_copula)
-    DCD[2] = mydctmx(nk_copula)
-    DCD[3] = mydctmx(ny_copula)
-#=
-    DCD[1]  = mydctmx(nm-1)
-    DCD[2]  = mydctmx(nk-1)
-    DCD[3]  = mydctmx(nPoly-1)
-=#
-    IDCD    = [DCD[1]', DCD[2]', DCD[3]']
-
-#=
-    DCD[1]  = mydctmx(n_copula)
-    DCD[2]  = mydctmx(n_copula)
-    DCD[3]  = mydctmx(n_copula)
-    IDCD    = [DCD[1]', DCD[2]', DCD[3]']=#
-
-
-    ############################################################################
-    # Check whether steady state solves the difference equation
-    # (left here in case the user ever wants to check)
-    ############################################################################
-    # X0 = zeros(get_setting(m, :n_model_states)) .+ ForwardDiff.Dual(0.0,tuple(zeros(5)...))
-    # F  = Fsys(X0, X0, θ, m.grids, id, nt, m.equilibrium_conditions,
-    #           get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
-    # if maximum(abs.(F)) / 10 > get_setting(m, :ϵ)
-    #     @warn  "F = 0 is not at required precision"
-    # end
-
-    ############################################################################
-    # Calculate Jacobians of the Difference equation F
-    ############################################################################
-    length_X0   = get_setting(m, :n_model_states)::Int
-    n_dct_Vm    = length(get_setting(m, :dct_compression_indices)[:Vm]::Vector{Int})
-    n_dct_Vk    = length(get_setting(m, :dct_compression_indices)[:Vk]::Vector{Int})
-    n_marginals = length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) + length(id[:marginal_pdf_k_t])
-    nxB         = length_X0 - n_dct_Vm - n_dct_Vk
-    nxA         = length_X0 - n_marginals
-    n_vars      = n_model_states(m)
-
-
-    # The objective function omits the Vm, Vk in the X vector, but we left off at index id[:Vm_t][1] - 1,
-    # so after we use zeros for the Vm, Vk parts of X, we need to start from id[:Vm_t][1]. We then go
-    # to nxB since that is the total number of X elements we want to perturb.
-    # For XPrime, we ignore the marginal perturbations and then have to start at nxB + 1 since
-    # x is a vector of length nxB + nxA.
-    BA = zeros(n_vars, nxB + nxA)
-
-    obj_fnct    = (F, x) -> Fsys(F, [x[1:id[:Vm_t][1]-1]; Zeros(n_dct_Vm + n_dct_Vk); x[id[:Vm_t][1]:nxB]],
-                                 [Zeros(n_marginals); x[nxB+1:end]],
-                                 θ, m.grids, id, nt, m.equilibrium_conditions,
-                                 get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD,m)
-    @show n_vars
-
-
-
-    ForwardDiff.jacobian!(BA, obj_fnct, zeros(n_vars), zeros(nxB+nxA))
-
-    A      = zeros(n_vars, n_vars)
-    B      = zeros(n_vars, n_vars)
-
-    B[:,1:id[:Vm_t][1]-1]                 = BA[:,1:id[:Vm_t][1]-1]
-    B[:,id[:Vk_t][end]+1:end]             = BA[:,id[:Vm_t][1]:nxB]
-    A[:,id[:marginal_pdf_y_t][end]+1:end] = BA[:,nxB+1:end]
-
-    # Make use of the fact that Vk/Vm has no influence on any variable in
-    # the system, thus derivative is 1
-    for (i, j) in zip(m.equilibrium_conditions[:eq_marginal_value_bonds], id[:Vm_t])
-        B[i, j] = 1.0
-    end
-    for (i, j) in zip(m.equilibrium_conditions[:eq_marginal_value_capital], id[:Vk_t])
-        B[i, j] = 1.0
-    end
-
-    # Make use of the fact that future distribution has no influence on any variable in
-    # the system, thus derivative is Γ
-    for (count, i) in enumerate(id[:marginal_pdf_m_t])
-        A[id[:marginal_pdf_m_t],i] = -Γ[1][1:end-1,count]
-    end
-    for (count, i) in enumerate(id[:marginal_pdf_k_t])
-        A[id[:marginal_pdf_k_t],i] = -Γ[2][1:end-1,count]
-    end
-    for (count, i) in enumerate(id[:marginal_pdf_y_t])
-        A[id[:marginal_pdf_y_t],i] = -Γ[3][1:end-1,count]
-    end
-
-    # Store A and B Jacobians
-    m[:A] = A
-    m[:B] = B
-
-    if get_setting(m, :save_jacobian)
-        save_jacobian(m)
-    end
-
-    return A, B
-end
-
-function _update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::Matrix{T}) where {T <: Real}
-
-    # Information needed from m for set up
-    θ = parameters2namedtuple(m)
-    nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    # id = construct_prime_and_noprime_indices(m; only_aggregate = true)
-    # θ  = get_setting(m, :parameters_namedtuple)::NamedTuple
-    # nt = get_setting(m, :steadystate_namedtuple)::NamedTuple
-    id = get_setting(m, :prime_and_noprime_aggregate_indices)::OrderedDict{Symbol, Int}
-
-    # Get index info
-    eqconds          = m.equilibrium_conditions
-    endo_states      = m.endogenous_states
-    aggr_eqconds     = get_aggregate_equilibrium_conditions(m)
-    aggr_endo_states = get_aggregate_endogenous_states(m)
-
-    # We want to exclude aggregate equilibrium conditions/states that
-    # are still distributional, e.g. Gini Coefficients
-    aggr_eqconds_excl_distr     = deepcopy(aggr_eqconds)
-    aggr_endo_states_excl_distr = deepcopy(aggr_endo_states)
-    for k in [:eq_Gini_C, :eq_Gini_X, :eq_sd_log_y, :eq_I90_share, :eq_I90_share_net, :eq_W90_share]
-        pop!(aggr_eqconds_excl_distr, k)
-    end
-    for k in [:Gini_C′_t, :Gini_X′_t, :sd_log_y′_t, :I90_share′_t, :I90_share_net′_t, :W90_share′_t]
-        pop!(aggr_endo_states_excl_distr, k)
-    end
-
-    ############################################################################
-    # Calculate derivatives of non-linear difference equation
-    ############################################################################
-
-    length_X0                  = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
-
-    # Sparsity differentiation settings
-    use_sparse_jac             = haskey(get_settings(m), :use_sparse_jacobian) && get_setting(m, :use_sparse_jacobian)
-    has_sparsity_pattern       = haskey(get_settings(m), :sparsity_pattern)
-
-    obj_fnct = (F, x) -> Fsys_agg(F, x[1:length_X0], x[length_X0+1:end], θ,
-                                  m.grids, id, nt, aggr_eqconds)
-
-
-
-    if use_sparse_jac && has_sparsity_pattern
-
-        sparsity_pattern = get_setting(m, :sparsity_pattern)::SparseMatrixCSC{T,Int}
-        colorvec = haskey(get_settings(m), :colorvec) ? get_setting(m, :colorvec)::Vector{Int} : matrix_colors(sparsity_pattern)
-
-        if haskey(get_settings(m), :sparse_aggregate_block_jacobian)
-
-            BA = get_setting(m, :sparse_aggregate_block_jacobian)::SparseMatrixCSC{T,Int}
-            input = get_setting(m, :aggregate_block_jacobian_input)::Vector{T}
-            output = get_setting(m, :aggregate_block_jacobian_output)::Vector{T}
-        else
-
-            BA = similar(sparsity_pattern)
-            input = zeros(T, 2 * length_X0)
-            output = similar(input, length_X0)
-            m <= Setting(:sparse_aggregate_block_jacobian, BA)
-            m <= Setting(:aggregate_block_jacobian_input, input)
-            m <= Setting(:aggregate_block_jacobian_output, output)
-        end
-
-        forwarddiff_color_jacobian!(BA, obj_fnct, input; dx = output,
-                                    colorvec = colorvec, sparsity = sparsity_pattern)
-    else
-        if use_sparse_jac
-
-            warn_str = "No sparsity pattern provided, so a dense Jacobian will be computed via ForwardDiff" *
-                " instead of a sparse Jacobian via SparseDiffTools"
-            @warn warn_str
-        end
-
-        if haskey(get_settings(m), :aggregate_block_jacobian)
-           #this is the only block that runs
-            BA = get_setting(m, :aggregate_block_jacobian)::Matrix{T}
-            input = get_setting(m, :aggregate_block_jacobian_input)::Vector{T}
-            output = get_setting(m, :aggregate_block_jacobian_output)::Vector{T}
-        else
-
-            BA = Matrix{T}(undef, length_X0, 2 * length_X0)
-            input = zeros(T, 2 * length_X0)
-            output = similar(input, length_X0)
-            m <= Setting(:aggregate_block_jacobian, BA)
-            m <= Setting(:aggregate_block_jacobian_input, input)
-            m <= Setting(:aggregate_block_jacobian_output, output)
-        end
-        ForwardDiff.jacobian!(BA, obj_fnct, output, input)
-    end
-
-    @show size(BA)
-    Aa          = BA[:, length_X0+1:end] # aggregate A       # to create the required Jacobian sparsity pattern
-    Ba          = BA[:, 1:length_X0]     # aggregate B
-
-    # Update Jacobians of equilibrium conditions w.r.t. aggregate variables,
-    # excluding aggregates that are distributional in nature (e.g. Gini coefficients)
-
-    for (aggr_endo_state_name, j) in aggr_endo_states_excl_distr # endo states are the columns
-        _j = first(endo_states[aggr_endo_state_name])
-        for (aggr_eqcond_name, i) in aggr_eqconds_excl_distr # eqconds are the rows
-            # So the following line populates A in column major order
-            _i = first(eqconds[aggr_eqcond_name])
-            A[_i, _j] = Aa[i, j]
-            B[_i, _j] = Ba[i, j]
-        end
-    end
-
-
-    return A, B
-end
-
-function _original_jacobian!(m::BayerBornLuetticke)
-
-    # Information needed from m for set up
-    θ = parameters2namedtuple(m)
-    nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    id = construct_prime_and_noprime_indices(m; only_aggregate = false)
-    nm, nk, nPoly = get_idiosyncratic_dims(m)
-
-    ############################################################################
-    # Prepare elements used for uncompression
-    ############################################################################
-    # Matrices to take care of reduced degree of freedom in marginal distributions
-    Γ  = shuffle_matrix(m[:distr_star])
-
-    # Matrices for discrete cosine transforms
-    DC = Vector{Array{Float64, 2}}(undef, 3)
-    DC[1]  = mydctmx(nm)
-    DC[2]  = mydctmx(nk)
-    DC[3]  = mydctmx(nPoly)
-    IDC    = [DC[1]', DC[2]', DC[3]'] # TODO: why do we need to take the transpose?
-
-    DCD = Vector{Array{Float64, 2}}(undef, 3)
-   #= DCD[1]  = mydctmx(nm-1)
-    DCD[2]  = mydctmx(nk-1)
-    DCD[3]  = mydctmx(nPoly-1)
-=#
-
-    nm_copula = get_setting(m,:nm_copula)
-    nk_copula = get_setting(m,:nk_copula)
-    ny_copula = get_setting(m,:ny_copula)
-    DCD[1] = mydctmx(nm_copula)
-    DCD[2] = mydctmx(nk_copula)
-    DCD[3] = mydctmx(ny_copula)
-
-
-    IDCD    = [DCD[1]', DCD[2]', DCD[3]']
-
-    ############################################################################
-    # Check whether steady state solves the difference equation
-    # (left here in case the user ever wants to check)
-    ############################################################################
-    # X0 = zeros(get_setting(m, :n_model_states)) .+ ForwardDiff.Dual(0.0,tuple(zeros(5)...))
-    # F  = Fsys(X0, X0, θ, m.grids, id, nt, m.equilibrium_conditions,
-    #           get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD)
-    # if maximum(abs.(F)) / 10 > get_setting(m, :ϵ)
-    #     @warn  "F = 0 is not at required precision"
-    # end
-
-    ############################################################################
-    # Calculate Jacobians of the Difference equation F
-    ############################################################################
-    length_X0   = get_setting(m, :n_model_states)::Int
-    n_dct_Vm    = length(get_setting(m, :dct_compression_indices)[:Vm]::Vector{Int})
-    n_dct_Vk    = length(get_setting(m, :dct_compression_indices)[:Vk]::Vector{Int})
-    n_marginals = length(id[:marginal_pdf_y_t]) + length(id[:marginal_pdf_m_t]) + length(id[:marginal_pdf_k_t])
-    nxB         = length_X0 - n_dct_Vm - n_dct_Vk
-    nxA         = length_X0 - n_marginals
-
-    # The objective function omits the Vm, Vk in the X vector, but we left off at index id[:Vm_t][1] - 1,
-    # so after we use zeros for the Vm, Vk parts of X, we need to start from id[:Vm_t][1]. We then go
-    # to nxB since that is the total number of X elements we want to perturb.
-    # For XPrime, we ignore the marginal perturbations and then have to start at nxB + 1 since
-    # x is a vector of length nxB + nxA.
-    obj_fnct    = x -> original_Fsys(x[1:length_X0], x[length_X0+1:end],
-                                     θ, m.grids, id, nt, m.equilibrium_conditions,                                                                    get_setting(m, :dct_compression_indices), Γ, DC, IDC, DCD, IDCD, m)
-    println("obj fnct norm zeros")
-    println(norm(obj_fnct(zeros(2*length_X0))))
-
-    # TODO: make Fsys in place? Would it make sense to make Fsys in place in general, particularly w.r.t Fsys_agg?
-    # Relatedly, could we use a sparsity pattern to do the autodiffing so we don't need to do a bunch of copying
-    # for SGU_estim and can just directly differentiate into the Jacobian by using the correct sparsity matrix?
-    BA          = ForwardDiff.jacobian(obj_fnct, zeros(2*length_X0))
-
-    B     = BA[:,1:length_X0]
-    A     = BA[:,length_X0+1:end]
-    # Store A and B Jacobians
-    m[:A] = A
-    m[:B] = B
-    if get_setting(m,:load_bbl_posterior_mean)
-        CSV.write(rawpath(m, "estimate", "DSGE_A_Mat_v3_Post_Mode.csv"),Tables.table(m[:A].value))
-        CSV.write(rawpath(m, "estimate", "DSGE_B_Mat_v3_Post_Mode.csv"),Tables.table(m[:A].value))
-
-    else
-         CSV.write(rawpath(m, "estimate", "DSGE_A_Mat_v3_Prior_Mode.csv"),Tables.table(m[:A].value))
-        CSV.write(rawpath(m, "estimate", "DSGE_B_Mat_v3_Prior_Mode.csv"),Tables.table(m[:A].value))
-    end
-
-    return A, B
-end
-
-function _original_update_aggregate_jacobian!(m::BayerBornLuetticke{T}, A::Matrix{T}, B::Matrix{T}) where {T <: Real}
-
-    # Information needed from m for set up
-    θ = parameters2namedtuple(m)
-    nt = construct_steadystate_namedtuple(m) # see helper_functions/steady_state/prepare_linearization.jl
-    id = construct_prime_and_noprime_indices(m; only_aggregate = true)
-
-    # Get index info
-    eqconds          = m.equilibrium_conditions
-    endo_states      = m.endogenous_states
-    aggr_eqconds     = get_aggregate_equilibrium_conditions(m)
-    aggr_endo_states = get_aggregate_endogenous_states(m)
-
-    # We want to exclude aggregate equilibrium conditions/states that
-    # are still distributional, e.g. Gini Coefficients
-    aggr_eqconds_excl_distr     = deepcopy(aggr_eqconds)
-    aggr_endo_states_excl_distr = deepcopy(aggr_endo_states)
-    for k in [:eq_Gini_C, :eq_Gini_X, :eq_sd_log_y, :eq_I90_share, :eq_I90_share_net, :eq_W90_share]
-        pop!(aggr_eqconds_excl_distr, k)
-    end
-    for k in [:Gini_C′_t, :Gini_X′_t, :sd_log_y′_t, :I90_share′_t, :I90_share_net′_t, :W90_share′_t]
-        pop!(aggr_endo_states_excl_distr, k)
-    end
-
-    ############################################################################
-    # Calculate derivatives of non-linear difference equation
-    ############################################################################
-
-    length_X0   = length(aggr_eqconds) # num. aggregate variables = num. equilibrium conditions
-    BA          = ForwardDiff.jacobian(x -> original_Fsys_agg(x[1:length_X0], x[length_X0+1:end], θ,
-                                                              m.grids, id, nt, aggr_eqconds),
-                                       zeros(2 * length_X0))
-    Aa          = BA[:, length_X0+1:end] # aggregate A
-    Ba          = BA[:, 1:length_X0]     # aggregate B
-
-    # Update Jacobians of equilibrium conditions w.r.t. aggregate variables,
-    # excluding aggregates that are distributional in nature (e.g. Gini coefficients)
-    for (aggr_endo_state_name, j) in aggr_endo_states_excl_distr # endo states are the columns
-        _j = first(endo_states[aggr_endo_state_name])
-        for (aggr_eqcond_name, i) in aggr_eqconds_excl_distr # eqconds are the rows
-            # So the following line populates A in column major order
-            _i = first(eqconds[aggr_eqcond_name])
-            A[_i, _j] = Aa[i, j]
-            B[_i, _j] = Ba[i, j]
-        end
-    end
-
-    return A, B
-end
