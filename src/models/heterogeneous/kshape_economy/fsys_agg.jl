@@ -510,12 +510,29 @@ F[:eq_control_inflation] = pi_t - m[:π_cb].value * exp(
     @sslogdeviations2levels Profit_FI_t, V_t = Yt, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys K′_t = Yt1, control_id, ControlSS
 
+#=
     fix_ratio_t = (m[:fix].value / exp(ss[:Y_t]) - ss[:B_F_t] + log(B_F′_t)) * Y_t
     F[:eq_control_profit] = Profit_t -
     ((Y_t * (1- m[:η] / (2 * m[:κ]) * (log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) -
                                        m[:γ]*log(π_past_t)) .^ 2) + Y_t.*(-MC_t) - fix_ratio_t + (h_t - w′_t) .* L_t -
     m[:ι].*V_t) + (r_k_t * v_t - m[:δ_0].* v_t .^ m[:δ_1]) .* K_t +
     Q′_t *(K′_t- K_t)-(K′_t-K_t) - m[:ϕ]  /2 * (K′_t/K_t-1)^2*K_t + Profit_FI_t - m[:fix2])
+
+
+F[:eq_control_profit] = Profit_t -
+((Y_t * ((1- η′_t / (2 * m[:κ]) *
+(log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) - m[:γ]*log(π_past_t)) .^ 2)) +
+Y_t.*(-MC_t) - m[:fix] + (h_t  - w_t) .* L_t -
+m[:ι].*V_t) + (r_k_t * v_t - m[:δ_0].* v_t .^ m[:δ_1]) .* K_t +
+Q_t *(K′_t- K_t)-(K′_t-K_t) - m[:ϕ]  /2 * (K′_t/K_t-1)^2*K_t  + Profit_FI_t - m[:fix2] )
+=#
+
+F[:eq_control_profit] = Profit_t -
+((Y_t * (1 - η′_t / (2 * m[:κ]) *
+(log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) - m[:γ]*log(π_past_t)) .^ 2) +
+Y_t.*(-MC_t) - m[:fix] + (h_t - w′_t) .* L_t -
+m[:ι].*V_t) + (r_k_t * v_t - m[:δ_0].* v_t .^ m[:δ_1]) .* K_t +
+Q_t*(K′_t - K_t) - (K′_t - K_t) - m[:ϕ]/2 * (K′_t/K_t - 1)^2 * K_t + Profit_FI_t - m[:fix2])
 
     #===================================================================#
     #control eq19: r^k
