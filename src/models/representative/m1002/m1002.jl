@@ -234,6 +234,12 @@ function init_model_indices!(m::Model1002)
         push!(exogenous_shocks, :meas_π_sh)
     end
 
+    if subspec(m) ∈ ["ss108"]
+        push!(endogenous_states, :zp2_t)
+        push!(equilibrium_conditions, :eq_zp2)
+        push!(exogenous_shocks, :zp2_sh)
+    end
+
     # COVID counterparts for standard business cycle shocks
     if subspec(m) in ["ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83"]
         push!(endogenous_states, :g_covid_t)
@@ -424,7 +430,7 @@ Initializes the model's settings as per sub specification. These settings are in
 function init_settings!(m::Model1002)
     subspec_int = parse(Int, subspec(m)[3:end])
 
-    if subspec_int == 104
+    if subspec_int in [104, 108]
         m <= Setting(:mon_anticipated_ait_shocks, [1, 2, 3, 4, 5, 6])
         m <= Setting(:expected_ffr, [1, 2, 3, 4, 5, 6])
         m <= Setting(:all_ffr_qs, [1, 2, 3, 4, 5, 6])
@@ -1354,7 +1360,7 @@ function parameter_groupings(m::Model1002)
     if subspec_num >= 87
         push!(error, :ρ_meas_π, :σ_meas_π)
     end
-    if subspec_num >= 100 && subspec_num != 104
+    if subspec_num >= 100 && subspec_num ∉ [104, 108]
         push!(policy, :φ_π, :φ_y, :ρ_smooth)
     end
     if haskey(get_settings(m), :add_ait_rm) && get_setting(m, :add_ait_rm)
@@ -1441,7 +1447,11 @@ function shock_groupings(m::Model1002)
         bet = ShockGroup("b", [:b_sh], RGB(0.3, 0.3, 1.0))
         fin = ShockGroup("FF", [:γ_sh, :μ_e_sh, :σ_ω_sh], RGB(0.29, 0.0, 0.51)) # indigo
         # tfp = ShockGroup("tfp", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
-        tfp_lvl = ShockGroup("tfp_lvl", [:ztil_sh], RGB(1.0, 0.55, 0.0)) # darkorange
+        tfp_lvl_shocks = [:ztil_sh]
+        if haskey(m.exogenous_shocks, :zp2_sh)
+            push!(tfp_lvl_shocks, :zp2_sh)
+        end
+        tfp_lvl = ShockGroup("tfp_lvl", tfp_lvl_shocks, RGB(1.0, 0.55, 0.0)) # darkorange
         tfp_gr = ShockGroup("tfp_gr", [:zp_sh], RGB(1.0, 0.84, 0.0)) # lightorange
         pmu = ShockGroup("mkp", [:λ_f_sh, :λ_w_sh], RGB(0.60, 0.80, 0.20)) # yellowgreen
         wmu = ShockGroup("w-mkp", [:λ_w_sh], RGB(0.0, 0.5, 0.5)) # teal

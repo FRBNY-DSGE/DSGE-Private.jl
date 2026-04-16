@@ -133,6 +133,8 @@ function init_subspec!(m::Model1002)
         return ss103!(m)
     elseif subspec(m) == "ss104"
         return ss104!(m)
+    elseif subspec(m) == "ss108"
+        return ss108!(m)
     else
         error("This subspec is not defined.")
     end
@@ -7051,6 +7053,26 @@ function ss104!(m)
 
 
 
+end
+
+"""
+```
+ss108!(m::Model1002)
+```
+
+Adds iid level TFP shock (zp2) on top of ss104. LW/HLW-style decomposition
+of permanent TFP into growth-rate (zp, AR(1)) and level (zp2, iid) components.
+"""
+function ss108!(m)
+    ss104!(m)
+
+    m <= parameter(:ρ_z_p2, 0.0, fixed = true,
+                   description = "ρ_z_p2: AR(1) coefficient for iid level TFP component (fixed at 0).",
+                   tex_label = "\\rho_{z^{p2}}")
+    m <= parameter(:σ_z_p2, 0.1662, (1e-8, 5.), (1e-8, 5.),
+                   ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = true,
+                   description = "σ_z_p2: SD of iid level shock to permanent TFP.",
+                   tex_label = "\\sigma_{z^{p2}}")
 end
 
 """

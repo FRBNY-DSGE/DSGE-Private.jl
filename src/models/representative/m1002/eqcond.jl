@@ -395,6 +395,14 @@ function eqcond(m::Model1002, reg::Int)
     Γ1[eq[:eq_zp], endo[:zp_t]] = m[:ρ_z_p]
     Ψ[eq[:eq_zp], exo[:zp_sh]]  = 1.
 
+    if subspec(m) ∈ ["ss108"]
+        Γ0[eq[:eq_zp2], endo[:zp2_t]] = 1.
+        Γ1[eq[:eq_zp2], endo[:zp2_t]] = m[:ρ_z_p2]
+        Ψ[eq[:eq_zp2],  exo[:zp2_sh]] = 1.
+
+        Γ0[eq[:eq_z], endo[:zp2_t]] = -1.
+    end
+
     # Government spending
     Γ0[eq[:eq_g], endo[:g_t]] = 1.
     Γ1[eq[:eq_g], endo[:g_t]] = m[:ρ_g]
