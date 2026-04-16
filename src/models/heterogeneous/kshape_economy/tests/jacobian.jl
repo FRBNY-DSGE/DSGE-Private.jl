@@ -74,15 +74,22 @@ F44_aux_trim_zlb = F44_aux_zlb[: , end-oc+1:end]
 
 
 #save as csv for viewing 
-# mkpath("csv")
-# for (name, mat) in [("F21_ad", F21_ad), ("F22_ad", F22_ad), ("F23_ad", F23_ad), ("F24_ad", F24_ad),
-#                     ("F41_ad", F41_ad), ("F42_ad", F42_ad), ("F43_ad", F43_ad), ("F44_ad", F44_ad),
-#                     ("F21_aux", F21_aux_trim), ("F23_aux", F23_aux_trim),
-#                     ("F41_aux", F41_aux_trim), ("F43_aux", F43_aux_trim),
-#                     ("F22_aux", F22_aux_trim), ("F24_aux", F24_aux_trim),
-#                     ("F42_aux", F42_aux_trim), ("F44_aux", F44_aux_trim)]
-#     CSV.write("csv/$name.csv", DataFrame(mat, :auto))
-# end
+mkpath("csv")
+for (name, mat) in [("F21_ad", F21_ad), ("F22_ad", F22_ad), ("F23_ad", F23_ad), ("F24_ad", F24_ad),
+                    ("F41_ad", F41_ad), ("F42_ad", F42_ad), ("F43_ad", F43_ad), ("F44_ad", F44_ad),
+                    ("F21_aux", F21_aux_trim), ("F23_aux", F23_aux_trim),
+                    ("F41_aux", F41_aux_trim), ("F43_aux", F43_aux_trim),
+                    ("F22_aux", F22_aux_trim), ("F24_aux", F24_aux_trim),
+                    ("F42_aux", F42_aux_trim), ("F44_aux", F44_aux_trim),
+                    # ZLB ones
+                    ("F21_ad_zlb", F21_ad_zlb), ("F22_ad_zlb", F22_ad_zlb), ("F23_ad_zlb", F23_ad_zlb), ("F24_ad_zlb", F24_ad_zlb),
+                    ("F21_aux_zlb", F21_aux_trim_zlb), ("F23_aux_zlb", F23_aux_trim_zlb),
+                    ("F41_aux_zlb", F41_aux_trim_zlb), ("F43_aux_zlb", F43_aux_trim_zlb),
+                    ("F22_aux_zlb", F22_aux_trim_zlb), ("F24_aux_zlb", F24_aux_trim_zlb),
+                    ("F42_aux_zlb", F42_aux_trim_zlb), ("F44_aux_zlb", F44_aux_trim_zlb)
+                    ]
+    CSV.write("csv/$name.csv", DataFrame(mat, :auto))
+end
 
 F = OrderedDict{Symbol, Any}(
     :eq_rate_monetary_policy => 0.,

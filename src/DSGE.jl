@@ -628,13 +628,15 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/kshape_economy/dynamics/indexing.jl")
     include("models/heterogeneous/kshape_economy/dynamics/update_ss_v5.jl")
     include("models/heterogeneous/kshape_economy/dynamics/state_reduc_tvcopula.jl")
-    include("models/heterogeneous/kshape_economy/dynamics/SGU_solver.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/SGU_jacob.jl")
     include("models/heterogeneous/kshape_economy/dynamics/F_sys_ref_tvcopula_QE.jl")
     include("models/heterogeneous/kshape_economy/dynamics/dyn_ZLB_tvcopula_new.jl")
     include("models/heterogeneous/kshape_economy/dynamics/IRFs_Taylor_QE_compare_tvcopula.jl")
     # top-level
     include("models/heterogeneous/kshape_economy/jacobian.jl")
     include("models/heterogeneous/kshape_economy/fsys_agg.jl")
+    include("models/heterogeneous/kshape_economy/compute_system.jl")
+
 
 
     # VAR models
