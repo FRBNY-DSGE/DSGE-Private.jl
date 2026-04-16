@@ -395,6 +395,12 @@ function eqcond(m::Model1002, reg::Int)
     Γ1[eq[:eq_zp], endo[:zp_t]] = m[:ρ_z_p]
     Ψ[eq[:eq_zp], exo[:zp_sh]]  = 1.
 
+    #= OLD (broken) ss108 block — semantic mismatch: z_t is a GROWTH RATE in this
+       codebase, but below it was being set equal to two LEVELS (zp_t + zp2_t), and
+       eq_Ez at line 359 was left untouched (still applied -ρ_z_p·zp_t, which only
+       makes sense when zp_t is AR(1) growth). Both issues caused gensys NaN once
+       regimes started. Replaced below.
+
     if subspec(m) ∈ ["ss108"]
         # z_t = permanent level component + permanent growth component + stationary part
         Γ0[eq[:eq_z], endo[:zp_t]]  = -1.
@@ -416,6 +422,46 @@ function eqcond(m::Model1002, reg::Int)
         Γ0[eq[:eq_zp2], endo[:x_t]]   = -1.
         Γ1[eq[:eq_zp2], endo[:zp2_t]] = 1.
 
+    end
+    =#
+
+    #= PATH-B attempt (v2): kept baseline zp_t structure but tried to add unit-root
+       level states zp_t / zp2_t to the canonical system. tgsen! (LAPACK) threw
+       INFO=1 because the two gen-eigenvalues at 1 were numerically degenerate in
+       the QZ reordering. Moved zp_t and zp2_t accumulators OUT of gensys into
+       augmented states — see augment_states.jl. The canonical system now just
+       needs one new shock wired into eq_z.
+
+    if subspec(m) ∈ ["ss108"]
+        Γ0[eq[:eq_z], endo[:zp_t]] = 0.
+        Γ0[eq[:eq_z], endo[:x_t]]  = -1.
+        Ψ[eq[:eq_z],  exo[:zp_sh]] = 1.
+        Γ0[eq[:eq_Ez], endo[:zp_t]] = 0.
+        Γ0[eq[:eq_Ez], endo[:x_t]]  = -m[:ρ_x]
+        Γ0[eq[:eq_zp], endo[:zp_t]] = 1.
+        Γ1[eq[:eq_zp], endo[:zp_t]] = 1. - 1e-6
+        Ψ[eq[:eq_zp],  exo[:zp_sh]] = 1.
+        Γ0[eq[:eq_x], endo[:x_t]] = 1.
+        Γ1[eq[:eq_x], endo[:x_t]] = m[:ρ_x]
+        Ψ[eq[:eq_x],  exo[:x_sh]] = 1.
+        Γ0[eq[:eq_zp2], endo[:zp2_t]] = 1.
+        Γ0[eq[:eq_zp2], endo[:x_t]]   = -1.
+        Γ1[eq[:eq_zp2], endo[:zp2_t]] = 1. - 2e-6
+    end
+    =#
+
+    if subspec(m) ∈ ["ss108"]
+        # HLW-style two-shock permanent TFP. In this codebase z_t is the GROWTH RATE
+        # of TFP and baseline zp_t is its AR(1) growth-rate component — that's exactly
+        # the user's "permanent growth-rate component" p2. Here we add one new IID
+        # shock zp_level_sh that enters z_t directly — the user's "permanent level
+        # component" p1. Cumulative levels of p1 and p2 are tracked as augmented
+        # states (see augment_states.jl), which keeps them out of the gensys pencil
+        # and avoids the two-unit-root QZ reordering pathology.
+        #
+        #   z_t  = zp_t + zp_level_sh + (1/(1-α))·Δztil_t
+        #   Ez_t = ρ_z_p · zp_t + (ρ_ztil-1)/(1-α) · ztil_t          (baseline, unchanged)
+        Ψ[eq[:eq_z], exo[:zp_level_sh]] = 1.
     end
 
     # Government spending

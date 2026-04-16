@@ -234,6 +234,9 @@ function init_model_indices!(m::Model1002)
         push!(exogenous_shocks, :meas_π_sh)
     end
 
+    #= OLD ss108 canonical additions — zp2_t and zp_t in gensys produced two
+       degenerate unit gen-eigenvalues that broke tgsen! (LAPACKException(1)).
+       Path B: moved zp_level_t and zp_growth_t tracking to augmented states below.
     if subspec(m) ∈ ["ss108"]
         push!(endogenous_states, :zp2_t)
         push!(endogenous_states, :x_t)
@@ -242,6 +245,19 @@ function init_model_indices!(m::Model1002)
         push!(equilibrium_conditions, :eq_zp2)
 
         push!(exogenous_shocks, :x_sh)
+    end
+    =#
+
+    if subspec(m) ∈ ["ss108"]
+        # One new IID shock for the permanent LEVEL component (p1). The AR(1)
+        # growth component (p2) is already baseline zp_t / zp_sh.
+        push!(exogenous_shocks, :zp_level_sh)
+
+        # HLW-style level trackers (accumulators, post-gensys via augment_states.jl):
+        #   zp_level_t  = Σ zp_level_sh          (level of p1, RW)
+        #   zp_growth_t = Σ zp_t  (baseline AR(1)) (level of p2)
+        push!(endogenous_states_augmented, :zp_level_t)
+        push!(endogenous_states_augmented, :zp_growth_t)
     end
 
     # COVID counterparts for standard business cycle shocks
@@ -298,6 +314,19 @@ function init_model_indices!(m::Model1002)
             integ_series = union(get_setting(m, :integrated_series), integ_series)
         end
         m <= Setting(:integrated_series, integ_series)
+    end
+    if subspec(m) ∈ ["ss108"]
+        # Register the two HLW-style level trackers as integrated series so that
+        # measurement's k_periods_ahead_expected_sums takes the integ_series=true
+        # branch instead of computing (I - TTT) \ ..., which is singular whenever
+        # TTT_aug has unit-root self-loops (as these trackers do).
+        ss108_integ = [:zp_level_t, :zp_growth_t]
+        if haskey(get_settings(m), :integrated_series)
+            m <= Setting(:integrated_series,
+                         union(get_setting(m, :integrated_series), ss108_integ))
+        else
+            m <= Setting(:integrated_series, ss108_integ)
+        end
     end
     if get_setting(m, :add_flexible_price_growth)
         push!(endogenous_states_augmented, setdiff([:y_f_t1, :c_f_t1, :i_f_t1], endogenous_states_augmented)...)

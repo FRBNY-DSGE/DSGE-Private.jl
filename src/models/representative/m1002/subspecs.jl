@@ -7060,9 +7060,32 @@ end
 ss108!(m::Model1002)
 ```
 
-Adds iid level TFP shock (zp2) on top of ss104. LW/HLW-style decomposition
-of permanent TFP into growth-rate (zp, AR(1)) and level (zp2, iid) components.
+HLW / Laubach-Williams style two-shock decomposition of permanent log TFP on top
+of ss104. Permanent log TFP is split into:
+
+  - p1 (permanent LEVEL component, IID random walk on the level):
+        innovation `zp_level_sh` with std dev `σ_zp_level`
+        enters z_t directly (zp_level_sh contributes once to TFP growth)
+        level tracked in augmented state `zp_level_t` (post-gensys accumulator)
+
+  - p2 (permanent GROWTH-RATE component, AR(1) on the growth rate):
+        this is the baseline `zp_t` (AR(1) with persistence `ρ_z_p`),
+        innovation `zp_sh` with std dev `σ_z_p` — unchanged from ss104
+        level tracked in augmented state `zp_growth_t` (post-gensys accumulator)
+
+The growth rate of TFP in eq_z is: z_t = zp_t + zp_level_sh + (1/(1-α))·Δztil_t.
+
+Nests the earlier experiments:
+  - permanent LEVEL shock only:  set σ_z_p = 0, shock zp_level_sh
+  - permanent GROWTH shock only: set σ_zp_level = 0, ρ_z_p near 1, shock zp_sh
+
+Note: the canonical gensys system gets only one extra shock column (no new canonical
+states), so gensys behaves exactly as in ss104. The two level trackers live as
+augmented states purely for IRFs / shock decompositions / historical reports.
 """
+#= OLD ss108! — kept for reference; tex_labels and descriptions were cloned from ρ_z_p
+   and misleading (labeled ρ_x / σ_x as "permanent component" rather than "growth rate
+   of the permanent component"). Replaced below.
 function ss108!(m)
     ss104!(m)
 
@@ -7072,6 +7095,33 @@ function ss108!(m)
     m <= parameter(:σ_x, 0.1662, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                    description="σ_x: The standard deviation of the shock to the permanent component of productivity.",
                    tex_label="\\sigma_{z^p}")
+end
+=#
+#= STRUCTURAL-VARIANT ss108! — declared ρ_x, σ_x as parameters of an AR(1) growth-rate
+   state x_t that was going to live in the canonical system. That approach put two
+   coincident unit eigenvalues into gensys and produced LAPACKException(1) from
+   tgsen!. Path B removes the explicit x_t state entirely and replaces both of these
+   parameters with a single σ_zp_level for the IID level shock.
+function ss108!(m)
+    ss104!(m)
+
+    m <= parameter(:ρ_x, 0.8910, (1e-5, 0.999), (1e-5, 0.999),
+                   ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed = false,
+                   description = "ρ_x: AR(1) persistence of the permanent TFP growth-rate component (p2).",
+                   tex_label   = "\\rho_{x}")
+    m <= parameter(:σ_x, 0.1662, (1e-8, 5.), (1e-8, 5.),
+                   ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false,
+                   description = "σ_x: std. dev. of shock to the permanent TFP growth-rate component (p2).",
+                   tex_label   = "\\sigma_{x}")
+end
+=#
+function ss108!(m)
+    ss104!(m)
+
+    m <= parameter(:σ_zp_level, 0.1662, (1e-8, 5.), (1e-8, 5.),
+                   ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false,
+                   description = "σ_zp_level: std. dev. of the permanent-LEVEL TFP shock (p1, IID).",
+                   tex_label   = "\\sigma_{zp,\\text{level}}")
 end
 
 """

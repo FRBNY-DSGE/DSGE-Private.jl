@@ -342,8 +342,14 @@ end
     QQ[exo[:π_star_sh], exo[:π_star_sh]]   = m[:σ_π_star]^2
     QQ[exo[:lr_sh], exo[:lr_sh]]           = m[:σ_lr]^2
     QQ[exo[:zp_sh], exo[:zp_sh]]           = m[:σ_z_p]^2
+    #= STRUCTURAL-VARIANT ss108 — wired variance for x_sh, innovation to a canonical
+       AR(1) growth-rate state that Path B removed. Replaced below.
     if subspec(m) ∈ ["ss108"]
         QQ[exo[:x_sh], exo[:x_sh]]    = m[:σ_x]^2
+    end
+    =#
+    if subspec(m) ∈ ["ss108"]
+        QQ[exo[:zp_level_sh], exo[:zp_level_sh]] = m[:σ_zp_level]^2
     end
     QQ[exo[:tfp_sh], exo[:tfp_sh]]         = m[:σ_tfp]^2
     QQ[exo[:gdpdef_sh], exo[:gdpdef_sh]]   = m[:σ_gdpdef]^2

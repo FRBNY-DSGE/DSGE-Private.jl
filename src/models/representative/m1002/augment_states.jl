@@ -316,6 +316,21 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
         end
     end
 
+    # HLW-style two-shock permanent TFP (Path B): augmented-state trackers for
+    # the permanent-LEVEL component (p1) and permanent-GROWTH component (p2). These
+    # are post-gensys accumulators, modeled on the cum_z_t pattern above, so they
+    # carry unit-root self-loops without entering the canonical QZ decomposition.
+    if subspec(m) ∈ ["ss108"]
+        # p1 level: zp_level_t = zp_level_{t-1} + zp_level_sh  (RW on the level)
+        TTT_aug[endo_new[:zp_level_t], endo_new[:zp_level_t]] = 1.0
+        RRR_aug[endo_new[:zp_level_t], exo[:zp_level_sh]]     = 1.0
+
+        # p2 level: zp_growth_t = zp_growth_{t-1} + zp_t  (integrates baseline
+        # AR(1) growth-rate component zp_t — same idea as cum_z_t integrating z_t)
+        TTT_aug[endo_new[:zp_growth_t], endo[:zp_t]]            = 1.0
+        TTT_aug[endo_new[:zp_growth_t], endo_new[:zp_growth_t]] = 1.0
+    end
+
     ### CCC Modifications
 
     # Expected inflation
