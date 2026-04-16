@@ -28,7 +28,7 @@ It then performs the generalized Schur (QZ) step, selects the stable generalized
 # Returns
 Tuple `(hx, gx, F1, F2, F3, F4)`.
 """
-function SGU_solver(F1, F2, F3, F4, grid; overrideEigen=false)
+function SGU_solver(param,grid,Jacob_base   ,idx,F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
     numstates = Int(grid["numstates"])
 
     # QZ decomposition: [F1, F2] * E[x', u'] = -[F3, F4] * [x, u]

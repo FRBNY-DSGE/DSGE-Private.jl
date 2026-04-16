@@ -9,45 +9,63 @@ function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jaco
     #check certain values >0
 
     #state_reduc_tv_copula #TODO missing args
-    (
-        Xss = Xss,
-        Yss = Yss,
-        DC = DC,
-        IDC = IDC,
-        DCD = DCD,
-        IDCD = IDCD,
-        Gamma_state = Gamma_state,
-        Gamma_control = Gamma_control,
-        InvGamma = InvGamma,
-        State = State,
-        State_m = State_m,
-        Contr = Contr,
-        Contr_m = Contr_m,
-        distrSS = distrSS,
-        CDF_SS = CDF_SS,
-        COP_SS = COP_SS,
-        distr_b_SS = distr_b_SS,
-        distr_a_SS = distr_a_SS,
-        distr_se_SS = distr_se_SS,
-        CDF_b_SS = CDF_b_SS,
-        CDF_a_SS = CDF_a_SS,
-        CDF_se_SS = CDF_se_SS,
-        compressionIndexesCOP = compressionIndexesCOP,
-        Poly = Poly,
-        InvCheb = InvCheb,
-        Gamma2 = Gamma2,
-        nPoly = nPoly,
-        nFullCtrl = nFullCtrl,
-        nRedCtrl = nRedCtrl,
-        nFullMarg = nFullMarg,
-        nRedMarg = nRedMarg,
-        nRedStates = nRedStates
-    ) = state_reduc_tvcopula!(param_base, grid, SS_stats_base, mu_dist, Value, mutil_c, Va)
+    reduc = state_reduc_tvcopula!(param_base, grid, SS_stats_base, mu_dist, Value, mutil_c, Va)
+    Xss = reduc.Xss
+    Yss = reduc.Yss
+    DC = reduc.DC
+    IDC = reduc.IDC
+    DCD = reduc.DCD
+    IDCD = reduc.IDCD
+    Gamma_state = reduc.Gamma_state
+    Gamma_control = reduc.Gamma_control
+    InvGamma = reduc.InvGamma
+    State = reduc.State
+    State_m = reduc.State_m
+    Contr = reduc.Contr
+    Contr_m = reduc.Contr_m
+    distrSS = reduc.distrSS
+    CDF_SS = reduc.CDF_SS
+    COP_SS = reduc.COP_SS
+    distr_b_SS = reduc.distr_b_SS
+    distr_a_SS = reduc.distr_a_SS
+    distr_se_SS = reduc.distr_se_SS
+    CDF_b_SS = reduc.CDF_b_SS
+    CDF_a_SS = reduc.CDF_a_SS
+    CDF_se_SS = reduc.CDF_se_SS
+    compressionIndexesCOP = reduc.compressionIndexesCOP
+    Poly = reduc.Poly
+    InvCheb = reduc.InvCheb
+    Gamma2 = reduc.Gamma2
+    nPoly = reduc.nPoly
+    nFullCtrl = reduc.nFullCtrl
+    nRedCtrl = reduc.nRedCtrl
+    nFullMarg = reduc.nFullMarg
+    nRedMarg = reduc.nRedMarg
+    nRedStates = reduc.nRedStates
     
     #maybe square some values?
 
-    #compute jacob
-    F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian(m, Xss, Yss, SS_stats_base, grid, param_base)
+    #compute jacob TESTING ONLY
+    #F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian(m, Xss, Yss, SS_stats_base, grid, param_base)
+    F21_ad = Matrix(CSV.read("test/csv/F21_ad.csv", DataFrame))
+    F22_ad = Matrix(CSV.read("tests/csv/F22_ad.csv", DataFrame))
+    F23_ad = Matrix(CSV.read("tests/csv/F23_ad.csv", DataFrame))
+    F24_ad = Matrix(CSV.read("tests/csv/F24_ad.csv", DataFrame))
+    F41_ad = Matrix(CSV.read("tests/csv/F41_ad.csv", DataFrame))
+    F42_ad = Matrix(CSV.read("tests/csv/F42_ad.csv", DataFrame))
+    F43_ad = Matrix(CSV.read("tests/csv/F43_ad.csv", DataFrame))
+    F44_ad = Matrix(CSV.read("tests/csv/F44_ad.csv", DataFrame))
+
+    F21_ad_zlb = Matrix(CSV.read("tests/csv/F21_ad_zlb.csv", DataFrame))
+    F22_ad_zlb = Matrix(CSV.read("tests/csv/F22_ad_zlb.csv", DataFrame))
+    F23_ad_zlb = Matrix(CSV.read("tests/csv/F23_ad_zlb.csv", DataFrame))
+    F24_ad_zlb = Matrix(CSV.read("tests/csv/F24_ad_zlb.csv", DataFrame))
+    F41_ad_zlb = Matrix(CSV.read("tests/csv/F41_ad_zlb.csv", DataFrame))
+    F42_ad_zlb = Matrix(CSV.read("tests/csv/F42_ad_zlb.csv", DataFrame))
+    F43_ad_zlb = Matrix(CSV.read("tests/csv/F43_ad_zlb.csv", DataFrame))
+    F44_ad_zlb = Matrix(CSV.read("tests/csv/F44_ad_zlb.csv", DataFrame))
+
+
 
     # -----------------------------
     # SGU solver
