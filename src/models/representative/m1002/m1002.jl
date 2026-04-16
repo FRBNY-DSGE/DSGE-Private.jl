@@ -430,7 +430,7 @@ Initializes the model's settings as per sub specification. These settings are in
 function init_settings!(m::Model1002)
     subspec_int = parse(Int, subspec(m)[3:end])
 
-    if subspec_int in [104, 108]
+    if subspec_int ∈ [104, 108]
         m <= Setting(:mon_anticipated_ait_shocks, [1, 2, 3, 4, 5, 6])
         m <= Setting(:expected_ffr, [1, 2, 3, 4, 5, 6])
         m <= Setting(:all_ffr_qs, [1, 2, 3, 4, 5, 6])
