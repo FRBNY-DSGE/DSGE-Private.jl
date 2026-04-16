@@ -1,6 +1,6 @@
 
 
-#TODO: m only as input
+#TODO m only as input
 function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jacob_base; H_obs=nothing)
     
     #update_ss_v5 #TODO need to make this model object only as input
@@ -74,6 +74,8 @@ function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jaco
     hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, param_base, indicator = DSGE.SGU_solver(param_base, grid, Jacob_base, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
     F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb, param_zlb = DSGE.SGU_solver_zlb(param_base, grid, Jacob_base, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb)
 
+    #TODO TEST OUTPUTS SAME
+
     # -----------------------------
     # Linearized system
     # -----------------------------
@@ -124,7 +126,7 @@ function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jaco
     cof_zlb = hcat(C_zlb, B_zlb, A_zlb)
     J_zlb = E_zlb
 
-    # Shock covariance matrices (aligned with reference script conventions).
+    #shock covariance matrices
     sig_B_F = get(param_base, "sig_B_F", 0.0)
     sig_BB = get(param_base, "sig_BB", 0.0)
     sig_Z = get(param_base, "sig_Z", 0.0)
@@ -170,7 +172,7 @@ function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jaco
     sigma = nsh > 1 ? sigma_full[2:end, 2:end] : zeros(0, 0)
     sigma_zlb = nsh > 2 ? sigma_full[2:end-1, 2:end-1] : zeros(0, 0)
 
-     #OccBin call
+    #OccBin call, commented out for now
     #Ps, Ds, E, P_1, D_1, E_1 = occbin(m)
     
     #Measurement-equation objects
@@ -188,6 +190,8 @@ function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jaco
         H_ZLB[1:4, :] = H_obs[1:4, :]
         H_ZLB[5:end, :] = H_obs[6:end-1, :]
     end
+
+    #TODO TEST ALL VARIABLES SAME
 
     return (
         indicator = indicator,
