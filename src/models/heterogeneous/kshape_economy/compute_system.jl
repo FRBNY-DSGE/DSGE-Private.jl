@@ -45,7 +45,7 @@ function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jaco
     
     #maybe square some values?
 
-    #compute jacob TESTING ONLY
+    #compute jacob TESTING ONLY, read csv jacob instead of actually compute jacob for testing
     #F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian(m, Xss, Yss, SS_stats_base, grid, param_base)
     F21_ad = Matrix(CSV.read("test/csv/F21_ad.csv", DataFrame))
     F22_ad = Matrix(CSV.read("tests/csv/F22_ad.csv", DataFrame))
@@ -71,8 +71,8 @@ function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jaco
     # SGU solver
     # -----------------------------
     param["overrideEigen"] = true
-    hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, param = DSGE.SGU_solver(F1, F2, F3, F4, grid)
-    hx_zlb, gx_zlb, F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb, param_zlb = DSGE.SGU_solver(F1, F2, F3, F4, grid)
+    hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, param = DSGE.SGU_solver(param_base, grid, Jacob_base, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
+    F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb, param_zlb = DSGE.SGU_solver_zlb(param_base, grid, Jacob_base, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb)
 
     # -----------------------------
     # Linearized system
@@ -112,7 +112,7 @@ function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jaco
 
 
     #occbin
-
+    Ps, Ds, E, P_1, D_1, E_1 = occbin(m)
 
 
 end

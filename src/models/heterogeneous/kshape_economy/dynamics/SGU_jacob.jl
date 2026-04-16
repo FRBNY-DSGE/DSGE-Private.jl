@@ -1,53 +1,49 @@
 using LinearAlgebra
 
 """
-    SGU_solver(F1, F2, F3, F4, grid; overrideEigen=false)
+    SGU_solver(param, grid, Jacob_base, idx, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
 
-Solve the Schmitt-Grohe-Uribe linear system from precomputed Jacobians.
-
-This is the Jacobian-only version of `SGU_solver`: it skips numerical differentiation
-and starts from the four Jacobian blocks
-
-- `F1 = dF/dX'`
-- `F2 = dF/dY'`
-- `F3 = dF/dX`
-- `F4 = dF/dY`
-
-It then performs the generalized Schur (QZ) step, selects the stable generalized
- eigenvalues, reorders the decomposition, and returns the linear policy rules
-
-- `hx`: law of motion for states
-- `gx`: policy rule for controls
-
-# Arguments
-- `F1`, `F2`, `F3`, `F4`: Jacobian blocks from the SGU system.
-- `grid`: dictionary containing at least `"numstates"`.
-- `overrideEigen`: if `true`, shift the stability threshold exactly as in the main solver
-  when the stable eigenvalue count does not equal `numstates`.
-
-# Returns
-Tuple `(hx, gx, F1, F2, F3, F4)`.
+Jacobian-only SGU solve translated from `SGU_EST_ref_v2.m`.
+The aggregate Jacobian update blocks (`F21_ad`...`F44_ad`) are expected to be already trimmed.
 """
-function SGU_solver(param,grid,Jacob_base   ,idx,F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
+function SGU_solver(param,grid,Jacob_base,F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
     numstates = Int(grid["numstates"])
+    numcontrols = Int(grid["numcontrols"])
+
+    #TODO: need change this, is currently matlab, future will be in model object
+    getjb(x, k::Symbol) = x isa AbstractDict ? (haskey(x, k) ? x[k] : x[String(k)]) : getproperty(x, k)
+    getparam(x, k::AbstractString, default) = x isa AbstractDict ? get(x, k, default) : default
+
+    F1Xnext = getjb(Jacob_base, :F1Xnext)
+    F1Ynext = getjb(Jacob_base, :F1Ynext)
+    F1X = getjb(Jacob_base, :F1X)
+    F1Y = getjb(Jacob_base, :F1Y)
+    F4Xnext = getjb(Jacob_base, :F4Xnext)
+    F4Ynext = getjb(Jacob_base, :F4Ynext)
+    F4X = getjb(Jacob_base, :F4X)
+    F4Y = getjb(Jacob_base, :F4Y)
+    F5Xnext = getjb(Jacob_base, :F5Xnext)
+    F5Ynext = getjb(Jacob_base, :F5Ynext)
+    F5X = getjb(Jacob_base, :F5X)
+    F5Y = getjb(Jacob_base, :F5Y)
+
+    # Translation of SGU_EST_ref_v2.m with already-trimmed Jacobian update blocks.
+    #TODO: CHECK THIS INDEXING
+    F1 = vcat(F1Xnext, F21_ad, F4Xnext, F5Xnext, F41_ad)
+    F2 = vcat(F1Ynext, F22_ad, F4Ynext, F5Ynext, F42_ad)
+    F3 = vcat(F1X, F23_ad, F4X, F5X, F43_ad)
+    F4 = vcat(F1Y, F24_ad, F4Y, F5Y, F44_ad)
 
     # QZ decomposition: [F1, F2] * E[x', u'] = -[F3, F4] * [x, u]
     A = [F1 F2]
     B = -[F3 F4]
     schur_result = schur(A, B)
-    s = schur_result.S
-    t = schur_result.T
-    #Main.xx[][:schur_result] = schur_result
-    #Main.xx[][:S] = s
-    #Main.xx[][:T] = t
-    # Use alpha/beta from the generalized Schur decomposition rather than diag(s)./diag(t)
-    # so complex conjugate pairs are handled correctly.
     relev = abs.(schur_result.alpha) ./ abs.(schur_result.beta)
-    #Main.xx[][:relev] = relev
-    #@assert false
     ll = sort(relev)
     slt = relev .>= 1.0
     nk = sum(slt)
+    indicator = 1
+    overrideEigen = getparam(param, "overrideEigen", false)
 
     if nk > numstates
         if overrideEigen
@@ -57,6 +53,7 @@ function SGU_solver(param,grid,Jacob_base   ,idx,F21_ad, F22_ad, F23_ad, F24_ad,
         else
             error("No Local Equilibrium Exists, last eigenvalue: $(ll[end - numstates])")
         end
+        indicator = 0
     elseif nk < numstates
         if overrideEigen
             threshold = ll[end - numstates]
@@ -66,34 +63,32 @@ function SGU_solver(param,grid,Jacob_base   ,idx,F21_ad, F22_ad, F23_ad, F24_ad,
         else
             error("No Local Equilibrium Exists, last eigenvalue: $(ll[end - numstates])")
         end
+        indicator = 0
     end
 
-    # Reorder the generalized Schur form so selected eigenvalues move to the top-left block.
-    S = copy(Matrix(schur_result.S))
-    T = copy(Matrix(schur_result.T))
-    Qmat = copy(Matrix(schur_result.left))
-    Zmat = copy(Matrix(schur_result.right))
-    selectInt = LinearAlgebra.LAPACK.BlasInt.(slt)
-
-    @info "SGU_solver: Before tgsen: rank(Zmat)=$(rank(Zmat)), sum(selectInt)=$(sum(selectInt))"
-    LinearAlgebra.LAPACK.tgsen!(selectInt, S, T, Qmat, Zmat)
-    @info "SGU_solver: After tgsen: rank(Zmat)=$(rank(Zmat))"
+    reordered = ordschur(schur_result, slt)
+    S = Matrix(reordered.S)
+    T = Matrix(reordered.T)
+    Zmat = Matrix(reordered.right)
 
     z11 = Zmat[1:nk, 1:nk]
     z21 = Zmat[(nk + 1):end, 1:nk]
     s11 = S[1:nk, 1:nk]
     t11 = T[1:nk, 1:nk]
 
-    z11_rank = rank(z11)
-    @info "SGU_solver: z11 size=$(size(z11)), rank=$(z11_rank), nk=$nk"
-    if z11_rank < nk
-        @warn "invertibility condition violated: rank(z11)=$(z11_rank) < nk=$nk"
+    if indicator > 0 && rank(z11) < nk
+        @warn "invertibility condition violated"
+        indicator = 0
     end
 
-    z11i = z11 \ Matrix{Float64}(I, nk, nk)
-    gx = real(z21 * z11i)
-    hx = real(z11 * (s11 \ t11) * z11i)
+    if indicator > 0
+        z11i = z11 \ Matrix{Float64}(I, nk, nk)
+        gx = real(z21 * z11i)
+        hx = real(z11 * (s11 \ t11) * z11i)
+    else
+        gx = zeros(numcontrols, numstates)
+        hx = zeros(numstates, numstates)
+    end
 
-    @info "SGU_solver: done."
-    return hx, gx, F1, F2, F3, F4
+    return hx, gx, F1, F2, F3, F4, param, indicator
 end

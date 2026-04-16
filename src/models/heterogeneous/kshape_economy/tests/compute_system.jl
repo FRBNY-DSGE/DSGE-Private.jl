@@ -13,4 +13,10 @@ grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns",
 
 m = mBBQ()
 
+
+
+#load in basejacob
+mat_contents = matread("../data/TESTJACOBBASE.mat")
+Jacob_base = mat_contents["Jacob_base"]
+
 compute_system(m, StateSS, ControlSS, SS_stats, grid, param, Jacob_base)
