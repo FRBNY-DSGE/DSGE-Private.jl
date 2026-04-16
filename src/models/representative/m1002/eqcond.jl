@@ -396,11 +396,26 @@ function eqcond(m::Model1002, reg::Int)
     Ψ[eq[:eq_zp], exo[:zp_sh]]  = 1.
 
     if subspec(m) ∈ ["ss108"]
-        Γ0[eq[:eq_zp2], endo[:zp2_t]] = 1.
-        Γ1[eq[:eq_zp2], endo[:zp2_t]] = m[:ρ_z_p2]
-        Ψ[eq[:eq_zp2],  exo[:zp2_sh]] = 1.
-
+        # z_t = permanent level component + permanent growth component + stationary part
+        Γ0[eq[:eq_z], endo[:zp_t]]  = -1.
         Γ0[eq[:eq_z], endo[:zp2_t]] = -1.
+
+        # Reinterpret zp_t as permanent level component:
+        # zp_t = zp_{t-1} + zp_sh
+        Γ0[eq[:eq_zp], endo[:zp_t]] = 1.
+        Γ1[eq[:eq_zp], endo[:zp_t]] = 1.
+        Ψ[eq[:eq_zp], exo[:zp_sh]]  = 1.
+
+        # New persistent growth-rate state x_t
+        Γ0[eq[:eq_x], endo[:x_t]] = 1.
+        Γ1[eq[:eq_x], endo[:x_t]] = m[:ρ_x]
+        Ψ[eq[:eq_x], exo[:x_sh]]  = 1.
+
+        # zp2_t = zp2_{t-1} + x_t
+        Γ0[eq[:eq_zp2], endo[:zp2_t]] = 1.
+        Γ0[eq[:eq_zp2], endo[:x_t]]   = -1.
+        Γ1[eq[:eq_zp2], endo[:zp2_t]] = 1.
+
     end
 
     # Government spending

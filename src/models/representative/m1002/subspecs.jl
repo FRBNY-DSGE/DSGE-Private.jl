@@ -7066,13 +7066,12 @@ of permanent TFP into growth-rate (zp, AR(1)) and level (zp2, iid) components.
 function ss108!(m)
     ss104!(m)
 
-    m <= parameter(:ρ_z_p2, 0.0, fixed = true,
-                   description = "ρ_z_p2: AR(1) coefficient for iid level TFP component (fixed at 0).",
-                   tex_label = "\\rho_{z^{p2}}")
-    m <= parameter(:σ_z_p2, 0.1662, (1e-8, 5.), (1e-8, 5.),
-                   ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = true,
-                   description = "σ_z_p2: SD of iid level shock to permanent TFP.",
-                   tex_label = "\\sigma_{z^{p2}}")
+    m <= parameter(:ρ_x, 0.8910, (1e-5, 0.999), (1e-5, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
+                   description="ρ_x: AR(1) coefficient in the process describing the permanent component of productivity.",
+                   tex_label="\\rho_{z^p}")
+    m <= parameter(:σ_x, 0.1662, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
+                   description="σ_x: The standard deviation of the shock to the permanent component of productivity.",
+                   tex_label="\\sigma_{z^p}")
 end
 
 """

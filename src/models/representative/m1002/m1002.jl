@@ -236,8 +236,12 @@ function init_model_indices!(m::Model1002)
 
     if subspec(m) ∈ ["ss108"]
         push!(endogenous_states, :zp2_t)
+        push!(endogenous_states, :x_t)
+
+        push!(equilibrium_conditions, :eq_x)
         push!(equilibrium_conditions, :eq_zp2)
-        push!(exogenous_shocks, :zp2_sh)
+
+        push!(exogenous_shocks, :x_sh)
     end
 
     # COVID counterparts for standard business cycle shocks

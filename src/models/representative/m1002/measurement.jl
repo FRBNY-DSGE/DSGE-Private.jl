@@ -343,7 +343,7 @@ end
     QQ[exo[:lr_sh], exo[:lr_sh]]           = m[:σ_lr]^2
     QQ[exo[:zp_sh], exo[:zp_sh]]           = m[:σ_z_p]^2
     if subspec(m) ∈ ["ss108"]
-        QQ[exo[:zp2_sh], exo[:zp2_sh]]    = m[:σ_z_p2]^2
+        QQ[exo[:x_sh], exo[:x_sh]]    = m[:σ_x]^2
     end
     QQ[exo[:tfp_sh], exo[:tfp_sh]]         = m[:σ_tfp]^2
     QQ[exo[:gdpdef_sh], exo[:gdpdef_sh]]   = m[:σ_gdpdef]^2
