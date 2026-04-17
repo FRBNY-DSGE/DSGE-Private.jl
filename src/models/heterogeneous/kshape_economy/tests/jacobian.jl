@@ -9,7 +9,7 @@ using DataFrames
 
 jld2file = "../data/XssYss.jld2"
 @load jld2file StateSS ControlSS SS_stats grid param
-grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
+# grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
 
 m = mBBQ()
 

@@ -29,6 +29,7 @@ mutable struct mBBQ{T} <: AbstractHetModel{T} #TODO <: AbstractHetModel{T}
     # grids within the model
     # TODO: maybe add field/type to hold reduction information e.g. DCTindices (but not coefficient values), copula info
     grids::OrderedDict{Symbol,Union{Grid, Array, T}}
+    dicts::Dict{Symbol,Any}                        # container for large SS/intermediate dictionaries
     keys::OrderedDict{Symbol,Int}                    # Human-readable names for all the model
     # parameters and steady-states
 
@@ -224,7 +225,7 @@ function mBBQ(subspec::String="ss1";
                       # model parameters and steady state values
                       Vector{AbstractParameter{Float64}}(), Vector{Float64}(),
                       # grids and keys
-                      OrderedDict{Symbol,Union{Grid, Array, Float64}}(), OrderedDict{Symbol,Int}(),
+                      OrderedDict{Symbol,Union{Grid, Array, Float64}}(), Dict{String,Any}(), OrderedDict{Symbol,Int}(),
 
                       # state_variables, jump_variables,
                       Vector{Symbol}(), Vector{Symbol}(),
@@ -742,6 +743,12 @@ function init_parameters!(m::mBBQ)
                                   tex_label = "\\mu_*")
     m <= SteadyStateParameter(:βstar, NaN, description = "Steady-state discount factor",
                               tex_label = "\\beta_*")
+
+    m.grids[:StateSS] = zeros(17732)
+    m.grids[:ControlSS] = zeros(52869)
+    m.dicts[:SS_stats] = Dict{String, Any}()
+    m.dicts[:grid] = Dict{String, Any}()
+    m.dicts[:param] = Dict{String, Any}()
 
 
     #Steady state grids

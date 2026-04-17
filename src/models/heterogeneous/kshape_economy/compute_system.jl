@@ -1,11 +1,11 @@
 
 
-#TODO m only as input
-function compute_system(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param, Jacob_base; H_obs=nothing)
+function compute_system(m::mBBQ, Jacob_base; H_obs=nothing)
     
-    #update_ss_v5 #TODO need to make this model object only as input
-    SS_stats_base, param_base = DSGE.update_ss_v5!(SS_stats, param, param_update, grid)
+    #update_ss_v5
+    DSGE.update_ss_v5!(m) #TODO see if param can be moved to model
     
+    @assert false
     #check certain values >0
 
     #state_reduc_tv_copula #TODO missing args
