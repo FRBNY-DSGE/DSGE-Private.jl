@@ -3,37 +3,38 @@
 function compute_system(m::mBBQ, Jacob_base; H_obs=nothing)
     
     #update_ss_v5
-    DSGE.update_ss_v5!(m) #TODO see if param can be moved to model
+    DSGE.update_ss_v5!(m) 
     
     #check certain values >0
 
-    #state_reduc_tv_copula #TODO missing args
-    DSGE.state_reduc_tvcopula!(m, mu_dist, Value, mutil_c, Va)
+    #state_reduc_tv_copula 
+    DSGE.state_reduc_tvcopula!(m)
     
-    @assert false
 
     #maybe square some values?
 
     #compute jacob TESTING ONLY, read csv jacob instead of actually compute jacob for testing
     #F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian(m, Xss, Yss, SS_stats_base, grid, param_base)
-    F21_ad = Matrix(CSV.read("test/csv/F21_ad.csv", DataFrame))
-    F22_ad = Matrix(CSV.read("tests/csv/F22_ad.csv", DataFrame))
-    F23_ad = Matrix(CSV.read("tests/csv/F23_ad.csv", DataFrame))
-    F24_ad = Matrix(CSV.read("tests/csv/F24_ad.csv", DataFrame))
-    F41_ad = Matrix(CSV.read("tests/csv/F41_ad.csv", DataFrame))
-    F42_ad = Matrix(CSV.read("tests/csv/F42_ad.csv", DataFrame))
-    F43_ad = Matrix(CSV.read("tests/csv/F43_ad.csv", DataFrame))
-    F44_ad = Matrix(CSV.read("tests/csv/F44_ad.csv", DataFrame))
+    _jcsv = joinpath(@__DIR__, "tests", "csv")
+    F21_ad = Matrix(CSV.read(joinpath(_jcsv, "F21_ad.csv"), DataFrame))
+    F22_ad = Matrix(CSV.read(joinpath(_jcsv, "F22_ad.csv"), DataFrame))
+    F23_ad = Matrix(CSV.read(joinpath(_jcsv, "F23_ad.csv"), DataFrame))
+    F24_ad = Matrix(CSV.read(joinpath(_jcsv, "F24_ad.csv"), DataFrame))
+    F41_ad = Matrix(CSV.read(joinpath(_jcsv, "F41_ad.csv"), DataFrame))
+    F42_ad = Matrix(CSV.read(joinpath(_jcsv, "F42_ad.csv"), DataFrame))
+    F43_ad = Matrix(CSV.read(joinpath(_jcsv, "F43_ad.csv"), DataFrame))
+    F44_ad = Matrix(CSV.read(joinpath(_jcsv, "F44_ad.csv"), DataFrame))
 
-    F21_ad_zlb = Matrix(CSV.read("tests/csv/F21_ad_zlb.csv", DataFrame))
-    F22_ad_zlb = Matrix(CSV.read("tests/csv/F22_ad_zlb.csv", DataFrame))
-    F23_ad_zlb = Matrix(CSV.read("tests/csv/F23_ad_zlb.csv", DataFrame))
-    F24_ad_zlb = Matrix(CSV.read("tests/csv/F24_ad_zlb.csv", DataFrame))
-    F41_ad_zlb = Matrix(CSV.read("tests/csv/F41_ad_zlb.csv", DataFrame))
-    F42_ad_zlb = Matrix(CSV.read("tests/csv/F42_ad_zlb.csv", DataFrame))
-    F43_ad_zlb = Matrix(CSV.read("tests/csv/F43_ad_zlb.csv", DataFrame))
-    F44_ad_zlb = Matrix(CSV.read("tests/csv/F44_ad_zlb.csv", DataFrame))
+    F21_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F21_ad_zlb.csv"), DataFrame))
+    F22_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F22_ad_zlb.csv"), DataFrame))
+    F23_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F23_ad_zlb.csv"), DataFrame))
+    F24_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F24_ad_zlb.csv"), DataFrame))
+    # F41_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F41_ad_zlb.csv"), DataFrame))
+    # F42_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F42_ad_zlb.csv"), DataFrame))
+    # F43_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F43_ad_zlb.csv"), DataFrame))
+    # F44_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F44_ad_zlb.csv"), DataFrame))
 
+    @assert false
 
 
     # -----------------------------
