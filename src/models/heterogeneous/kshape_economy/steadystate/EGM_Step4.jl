@@ -59,10 +59,23 @@ function EGM_Step4(cons_list, res_list, b_list, a_list, inc, param, grid)
     
     for j = 1:nse_val
         # Ensure lists are 1D vectors (MATLAB cell arrays might be 2D when loaded)
-        res_list_j = vec(res_list[j])
+        res_list_j  = vec(res_list[j])
         cons_list_j = vec(cons_list[j])
-        b_list_j = vec(b_list[j])
-        a_list_j = vec(a_list[j])
+        b_list_j    = vec(b_list[j])
+        a_list_j    = vec(a_list[j])
+
+        # MATLAB's griddedInterpolant sorts knots automatically; Julia requires sorted unique knots
+        perm = sortperm(res_list_j)
+        res_list_j  = res_list_j[perm]
+        cons_list_j = cons_list_j[perm]
+        b_list_j    = b_list_j[perm]
+        a_list_j    = a_list_j[perm]
+        # deduplicate
+        uniq = [true; diff(res_list_j) .> 0]
+        res_list_j  = res_list_j[uniq]
+        cons_list_j = cons_list_j[uniq]
+        b_list_j    = b_list_j[uniq]
+        a_list_j    = a_list_j[uniq]
         
         # log_index = Resource_grid(:,j)<res_list{j}(1);
         log_index = Resource_grid[:, j] .< res_list_j[1]

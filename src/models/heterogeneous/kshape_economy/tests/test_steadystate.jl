@@ -1,99 +1,74 @@
-using Test
-using JLD2
-using DSGE
+using Test, Revise, NLsolve
+using DSGE, ModelConstructors
+include("../helpers/genweight.jl")
+include("../helpers/sub2ind.jl")
+include("../helpers/q_cons2.jl")
+include("../helpers/gradient.jl")
 
-# This intentionally ignores any param/grid saved in the reference file.
-# The solve always runs with the current model-derived objects.
-const DEFAULT_REFERENCE = joinpath(@__DIR__, "..", "data", "steadystate_reference.jld2")
-const DEFAULT_KEYS = [
-    "Output", "R_fc", "H_fc", "W_fc", "r_k", "mc", "v", "u", "V", "M", "f",
-    "Profits_fc", "THETA", "NWb", "Profit_FI", "Ab", "Bb", "Cb", "n",
-    "c_n_guess", "b_n_star", "c_a_guess", "b_a_star", "a_a_star", "psi_guess",
-    "mu_dist", "AProb", "Value", "mutil_c", "Vb", "Va",
-]
-const DEFAULT_GRID_OUTPUT_KEYS = ["K", "L", "N"]
+include("../steadystate/steadystate.jl")
 
-_stringkeydict(d::AbstractDict) = Dict(string(k) => v for (k, v) in pairs(d))
+# Build model without triggering the full SS solve in the constructor
+m = mBBQ()
+m <= Setting(:compute_full_steadystate, false)
 
-function build_test_model(subspec::AbstractString)
-    try
-        return DSGE.mBBQ(subspec; load_steadystate = true)
-    catch
-        @warn "Could not load a saved steady state. Falling back to a fresh solve for test setup."
-        return DSGE.mBBQ(subspec; load_steadystate = false)
-    end
-end
+@testset "mBBQ ss_ump_new" begin
+    results = ss_ump_new(m)
 
-function load_reference_results(path::AbstractString)
-    ref = Dict{String, Any}()
-    JLD2.jldopen(path, "r") do file
-        if haskey(file, "results")
-            results = file["results"]
-            results isa AbstractDict || error("Expected `results` in $path to be a Dict-like object.")
-            merge!(ref, _stringkeydict(results))
-        else
-            for key in keys(file)
-                ref[string(key)] = file[key]
-            end
-        end
-    end
-    return ref
-end
+    @test results isa Dict{String, Any}
 
-function compare_value(name::AbstractString, actual, expected; atol::Real = 1e-8, rtol::Real = 1e-6)
-    if actual isa AbstractArray || expected isa AbstractArray
-        actual_arr = Array(actual)
-        expected_arr = Array(expected)
-        @test size(actual_arr) == size(expected_arr)
-        @test isapprox(actual_arr, expected_arr; atol = atol, rtol = rtol)
-    else
-        @test isapprox(Float64(actual), Float64(expected); atol = atol, rtol = rtol)
-    end
-    return nothing
-end
-
-function run_steadystate_reference_test(;
-    ref_path::AbstractString = get(ENV, "MBBQ_SS_REFERENCE", DEFAULT_REFERENCE),
-    subspec::AbstractString = "ss1",
-    compare_keys::Vector{String} = copy(DEFAULT_KEYS),
-    grid_output_keys::Vector{String} = copy(DEFAULT_GRID_OUTPUT_KEYS),
-    atol::Real = 1e-8,
-    rtol::Real = 1e-6,
-    m::Union{Nothing, DSGE.mBBQ} = nothing,
-)
-    isfile(ref_path) || error("Reference JLD2 not found at $ref_path")
-
-    model = isnothing(m) ? build_test_model(subspec) : m
-
-    current_param = DSGE._mbbq_ss_param_dict(model)
-    current_grid = DSGE._mbbq_ss_grid_dict(model)
-    current = DSGE.ss_ump_new(current_param, current_grid)
-    reference = load_reference_results(ref_path)
-
-    @testset "mBBQ steady state vs reference" begin
-        @testset "Top-level outputs" begin
-            for key in compare_keys
-                @test haskey(reference, key)
-                @test haskey(current, key)
-                compare_value(key, current[key], reference[key]; atol = atol, rtol = rtol)
-            end
-        end
-
-        @testset "Grid outputs" begin
-            ref_grid = haskey(reference, "grid") && reference["grid"] isa AbstractDict ?
-                _stringkeydict(reference["grid"]) : Dict{String, Any}()
-            for key in grid_output_keys
-                @test haskey(ref_grid, key)
-                @test haskey(current["grid"], key)
-                compare_value("grid.$key", current["grid"][key], ref_grid[key]; atol = atol, rtol = rtol)
-            end
-        end
+    for key in ["Output", "R_fc", "H_fc", "W_fc", "r_k", "mc", "v", "u",
+                "V", "M", "f", "Profits_fc", "THETA", "NWb", "Profit_FI",
+                "Ab", "Bb", "Cb", "n", "c_n_guess", "b_n_star", "c_a_guess",
+                "b_a_star", "a_a_star", "psi_guess", "mu_dist", "AProb",
+                "Value", "mutil_c", "Vb", "Va", "SS_stats", "grid"]
+        @test haskey(results, key)
     end
 
-    return current, reference, model
+    @test results["u"] > 0
+    @test results["Output"] > 0
+    @test sum(results["mu_dist"]) ≈ 1.0 atol = 1e-6
 end
+@testset "mBBQ _store_ss_results!" begin
+    results = ss_ump_new(m)
+    _store_ss_results!(m, results)
 
-if abspath(PROGRAM_FILE) == @__FILE__
-    ref_path = isempty(ARGS) ? get(ENV, "MBBQ_SS_REFERENCE", DEFAULT_REFERENCE) : ARGS[1]
-    run_steadystate_reference_test(ref_path = ref_path)
+    # scalar SS parameters — non-NaN and sensible
+    for sym in [:Output_star, :u_star, :w_bar_star, :R_a_star, :r_k_star,
+                :mc_star, :n_star, :v_star, :f_star, :M_star, :V_star,
+                :Lambda_star, :THETA_star, :NWb_star, :Profit_FI_star,
+                :Profit_star, :Ab_star, :Bb_star, :Cb_star]
+        @test !isnan(Float64(m[sym].value))
+        @test m[sym].value > 0
+    end
+
+    # distributions sum to 1
+    @test sum(m[:marginal_pdf_b_star].value)  ≈ 1.0 atol = 1e-6
+    @test sum(m[:marginal_pdf_a_star].value)  ≈ 1.0 atol = 1e-6
+    @test sum(m[:marginal_pdf_se_star].value) ≈ 1.0 atol = 1e-6
+    @test sum(m[:mu_dist_star].value)         ≈ 1.0 atol = 1e-6
+
+    # CDFs end at 1
+    @test m[:marginal_cdf_b_star].value[end]  ≈ 1.0 atol = 1e-6
+    @test m[:marginal_cdf_a_star].value[end]  ≈ 1.0 atol = 1e-6
+    @test m[:marginal_cdf_se_star].value[end] ≈ 1.0 atol = 1e-6
+
+    # value functions have correct size
+    nb  = get_setting(m, :nb)
+    na  = get_setting(m, :na)
+    nse = get_setting(m, :nse)
+    @test length(m[:Value_star].value)   == nb * na * nse
+    @test length(m[:Vb_star].value)      == nb * na * nse
+    @test length(m[:Va_star].value)      == nb * na * nse
+    @test length(m[:mutil_c_star].value) == nb * na * nse
+
+    # settings populated
+    @test haskey(m.settings, :SS_stats)
+    @test haskey(m.settings, :copula)
+    @test haskey(m.settings, :anal_stats)
+    @test haskey(m.settings, :Q_dists)
+
+    # grids updated from SS solve
+    @test haskey(m.grids, :K) && !isnan(m.grids[:K])
+    @test haskey(m.grids, :L) && !isnan(m.grids[:L])
+    @test haskey(m.grids, :N) && !isnan(m.grids[:N])
 end

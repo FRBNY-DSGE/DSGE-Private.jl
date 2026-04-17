@@ -1,7 +1,7 @@
 """
     dyn_ZLB_tvcopula_new(
         final_table,
-        param, grid, SS_stats,
+        m, grid, SS_stats,
         P_SE, mu_dist, Value, mutil_c, Va;
         pool=nothing
     ) -> Dict{String,Any}
@@ -10,7 +10,7 @@ Run the ZLB / Taylor–QE pipeline under a time-varying copula specification.
 """
 function dyn_ZLB_tvcopula_new(
     final_table,
-    param, grid, SS_stats,
+    m::mBBQ, grid, SS_stats,
     P_SE, mu_dist, Value, mutil_c, Va;
     pool=nothing
 )
@@ -18,14 +18,19 @@ function dyn_ZLB_tvcopula_new(
     maxiter = 10
     tol     = 1e-8
 
+    # TODO: SS/transition matrix object — handle separately (copula, adjust, regime, QE, FEAR_shock config flags)
+    #= param["copula"] = "time-varying" =#
+    param = Dict{String,Any}()   # TODO: SS/transition matrix object — handle separately (config flags below; remove once SGU_solver migrated)
     param["copula"] = "time-varying"
 
     for jkjkjkjkjk in 1:1
         for lllllll in 1:1
 
             if jkjkjkjkjk == 1
+                # TODO: SS/transition matrix object — handle separately (adjust config flag)
                 param["adjust"] = "G"
             else
+                # TODO: SS/transition matrix object — handle separately (adjust config flag)
                 param["adjust"] = "LT"
             end
 
@@ -34,7 +39,7 @@ function dyn_ZLB_tvcopula_new(
             # -----------------------------
             xhat = final_table[1:26, :]
 
-            parameters_agg!(param, SS_stats)
+            parameters_agg!(m, SS_stats)
 
             param_update = Dict{String,Any}()
 
@@ -84,15 +89,15 @@ function dyn_ZLB_tvcopula_new(
             param_update["sig_RP"]     = 0.1 / 100
             param_update["Calvo"]      = 0.7
 
-            update_ss_v5!(SS_stats, param, param_update, grid)
-            parameters_agg_EST_v3!(param, param_update)
+            update_ss_v5!(SS_stats, m, param_update, grid)
+            parameters_agg_EST_v3!(m, param_update)
             
 
 
             # -----------------------------
             # State-space reduction
             # -----------------------------
-            reduc = state_reduc_tvcopula!(param, grid, SS_stats, mu_dist, Value, mutil_c, Va)
+            reduc = state_reduc_tvcopula!(m, grid, SS_stats, mu_dist, Value, mutil_c, Va)
             Xss           = reduc.Xss
             Yss           = reduc.Yss
             Gamma_state   = reduc.Gamma_state
@@ -131,9 +136,10 @@ function dyn_ZLB_tvcopula_new(
             # -----------------------------
             # Regime settings
             # -----------------------------
-            param["FEAR_shock"] = "both"
-            param["QE"]         = "No QE"
-            param["regime"]     = "Taylor"
+            # TODO: SS/transition matrix object — handle separately (FEAR_shock, QE, regime config flags)
+            param["FEAR_shock"] = "both"   # TODO: SS/transition matrix object — handle separately
+            param["QE"]         = "No QE"  # TODO: SS/transition matrix object — handle separately
+            param["regime"]     = "Taylor" # TODO: SS/transition matrix object — handle separately
 
             # -----------------------------
             # Reference system
@@ -142,7 +148,7 @@ function dyn_ZLB_tvcopula_new(
                 return F_sys_ref_tvcopula_QE(
                     State, State_m, Contr, Contr_m, StateSS,
                     ControlSS, Gamma_state, Gamma_control, InvGamma,
-                    param, grid, SS_stats, DCD, IDCD, P_SE
+                    m, grid, SS_stats, DCD, IDCD, P_SE
                 )
             end
 
@@ -157,9 +163,9 @@ function dyn_ZLB_tvcopula_new(
             # -----------------------------
             # SGU solver
             # -----------------------------
-            param["overrideEigen"] = true
+            param["overrideEigen"] = true  # TODO: SS/transition matrix object — handle separately (config flag; remove once SGU_solver migrated)
             hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, param =
-                SGU_solver(F_ref, param, grid, pool)
+                SGU_solver(F_ref, param, grid, pool)  # TODO: SS/transition matrix object — handle separately (param passed for scaleval1/scaleval2/overrideEigen)
 
             # -----------------------------
             # Linearized system
@@ -209,7 +215,7 @@ function dyn_ZLB_tvcopula_new(
             # IRFs
             # -----------------------------
             IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_control,
-                                            param, grid, SS_stats)
+                                            m, grid, SS_stats)
 
             return Dict{String,Any}(
                 "SYS_ref"      => SYS_ref,
@@ -217,7 +223,7 @@ function dyn_ZLB_tvcopula_new(
                 "gx"           => gx,
                 "resid_max"    => resid_max,
                 "param_update" => param_update,
-                "param"        => param,
+                "param"        => param,  # TODO: SS/transition matrix object — handle separately (remove once config flags migrated off param dict)
             )
         end
     end

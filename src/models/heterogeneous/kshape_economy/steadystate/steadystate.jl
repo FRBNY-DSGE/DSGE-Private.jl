@@ -1,3 +1,19 @@
+include("Fastroot.jl")
+include("EGM_Step1.jl")
+include("EGM_Step2.jl")
+include("EGM_Step3.jl")
+include("EGM_Step4.jl")
+include("policyguess.jl")
+include("policies_SS.jl")
+include("CalValueSS.jl")
+include("find_alpha.jl")
+include("find_dist.jl")
+include("compute_agg.jl")
+include("compute_K.jl")
+include("steady_anal.jl")
+include("../helpers/steadystate/Cal_SS_stats.jl")
+include("solve_SS.jl")
+
 @inline _mbbq_value(x) = hasproperty(x, :value) ? getproperty(x, :value) : x
 @inline _mbbq_getvalue(m::mBBQ, key::Symbol, default = nothing) = haskey(m.keys, key) ? _mbbq_value(m[key]) : default
 
@@ -42,6 +58,10 @@ function _mbbq_ss_param_dict(m::mBBQ)
     param["P_SS"] = copy(m.grids[:P_SS])
     param["P_SS2"] = copy(m.grids[:P_SS2])
     param["pi_cb"] = _mbbq_getvalue(m, :π_cb)
+    param["pi_bar"] = param["pi_cb"]
+    param["tau_cp"] = _mbbq_getvalue(m, :τ_cp, 0.0)
+    param["psi_cp"] = _mbbq_getvalue(m, :psi_cp, 0.0)
+    param["frac_b"] = _mbbq_getvalue(m, :frac_b, 0.0)
     param["q"] = _mbbq_getvalue(m, :q_ss, 1.0)
     param["R_cb"] = _mbbq_getvalue(m, :R_cb_ss, 1.0069)
     param["Rprem"] = _mbbq_getvalue(m, :Rprem)
@@ -120,16 +140,12 @@ function ss_ump_new(m::mBBQ)
         end
     end
 
-    grid_se_aux = hcat(grid["s"],
-                      min.(param["b_ratio"] .* grid["s"], grid["s_bar"]),
-                      [1])
-    meshes["se_aux"] = zeros(nb_val, na_val, size(grid_se_aux, 2))
-    for k in 1:size(grid_se_aux, 2)
-        for j in 1:na_val
-            for i in 1:nb_val
-                meshes["se_aux"][i, j, k] = grid_se_aux[k]
-            end
-        end
+    grid_se_aux = vcat(grid["s"],
+                       min.(param["b_ratio"] .* grid["s"], grid["s_bar"]),
+                       [1.0])
+    meshes["se_aux"] = zeros(nb_val, na_val, length(grid_se_aux))
+    for k in 1:length(grid_se_aux)
+        meshes["se_aux"][:, :, k] .= grid_se_aux[k]
     end
 
     RBRB = param["R_cb"] / param["pi_cb"] .+ (meshes["b"] .< 0) .* (param["Rprem"] / param["pi_cb"])

@@ -1,4 +1,8 @@
+using MAT
 # Assumes all inputs (meshes, grid, param) are Dicts with String keys
+set_field!(d::AbstractDict, key::Symbol, val) = (d[string(key)] = val)
+
+const _SS_STATS_BASE_PATH = joinpath(@__DIR__, "..", "data", "SS_stats_base.mat")
 """
     compute_agg(meshes, grid, param)
 
@@ -53,7 +57,11 @@ Tuple of 27 outputs:
 
 
 function compute_agg(meshes, grid, param)
-    
+
+    mat_file_ss = matopen(_SS_STATS_BASE_PATH)
+    SS_stats_base = read(mat_file_ss, "SS_stats_base")
+    close(mat_file_ss)
+
     v = param["v"]  # ss utilization rate of 0.75
     
     # Handle ss_obj_old - it might not exist or might be wrapped
@@ -195,15 +203,11 @@ function compute_agg(meshes, grid, param)
     P_SS_val = param["P_SS"]
     w_bar_val = param["w_bar"]
     s_val = grid["s"]
-    J = inv(I_ns - beta_L_val * (1 - death_rate_val) * (1 - lambda_val) * (1 - in_val) * P_SS_val) * 
-        (r_l - w_bar_val) * n * s_val'
-    
-    J_aux1 = inv(I_ns - beta_L_val * (1 - death_rate_val) * (1 - lambda_val) * (1 - in_val) * P_SS_val) * 
-             (r_l - w_bar_val) * n * s_val'
-    J_aux2 = inv(I_ns - beta_L_val * (1 - death_rate_val) * (1 - lambda_val) * (1 - in_val) * P_SS_val) * 
-             n * s_val'
-    J_aux3 = inv(I_ns - beta_L_val * (1 - death_rate_val) * (1 - lambda_val) * (1 - in_val) * P_SS_val) * 
-             (r_l - w_bar_val) * n * s_val'
+    Minv = inv(I_ns - beta_L_val * (1 - death_rate_val) * (1 - lambda_val) * (1 - in_val) * P_SS_val)
+    J      = Minv * ((r_l - w_bar_val) * n .* s_val)
+    J_aux1 = Minv * ((r_l - w_bar_val) * n .* s_val)
+    J_aux2 = Minv * (n .* s_val)
+    J_aux3 = Minv * ((r_l - w_bar_val) * n .* s_val)
     
     # J_bar = J'*grid.s_dist;
     s_dist_val = grid["s_dist"]
@@ -225,8 +229,8 @@ function compute_agg(meshes, grid, param)
     
     # J = inv(eye(grid.ns)-param.beta_L*(1-param.death_rate)*(1-param.lambda)*(1-param.in)*param.P_SS)*((r_l-param.fix_L-param.w_bar)*n*(grid.s'));
     fix_L_val = param["fix_L"]
-    J = inv(I_ns - beta_L_val * (1 - death_rate_val) * (1 - lambda_val) * (1 - in_val) * P_SS_val) * 
-        ((r_l - fix_L_val - w_bar_val) * n * s_val')
+    J = inv(I_ns - beta_L_val * (1 - death_rate_val) * (1 - lambda_val) * (1 - in_val) * P_SS_val) *
+        ((r_l - fix_L_val - w_bar_val) * n .* s_val)
     
     # J_bar = J'*grid.s_dist;
     J_bar = first(J' * s_dist_val)  # Extract scalar from 1x1 matrix
@@ -238,14 +242,13 @@ function compute_agg(meshes, grid, param)
     delta_ss_val = param["delta_ss"]
     Profit_K = (r_k * v - delta_ss_val) * K_val
     
-    # param.fix = Y - mc*Y + Profit_L + Profit_K - SS_stats_old.Profit;
-    # Handle SS_stats_old access - try both Dict and struct access
-    SS_profit = if SS_stats_old isa Dict
-        haskey(SS_stats_old, :Profit) ? SS_stats_old[:Profit] : 
-        (haskey(SS_stats_old, "Profit") ? SS_stats_old["Profit"] : 0.0)
+    # param.fix = Y - mc*Y + Profit_L + Profit_K - SS_stats_base.Profit;
+    SS_profit = if SS_stats_base isa Dict
+        haskey(SS_stats_base, :Profit) ? SS_stats_base[:Profit] :
+        (haskey(SS_stats_base, "Profit") ? SS_stats_base["Profit"] : 0.0)
     else
         try
-            getproperty(SS_stats_old, :Profit)
+            getproperty(SS_stats_base, :Profit)
         catch
             0.0
         end

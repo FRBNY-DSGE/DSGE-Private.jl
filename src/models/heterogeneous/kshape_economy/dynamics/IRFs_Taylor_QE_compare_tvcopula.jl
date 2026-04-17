@@ -29,8 +29,8 @@ Dictionary containing:
   a Taylor rule IRF (requires IRFs_Taylor_G.mat file)
 - For other regimes, uses the provided or computed shock size
 """
-function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_control, 
-                                         param, grid, SS_stats, MP_shock_aux=nothing)
+function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_control,
+                                         m::mBBQ, grid, SS_stats, MP_shock_aux=nothing)
     
     # Set maxlag if not provided
     if !haskey(grid, "maxlag")
@@ -116,14 +116,15 @@ function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_co
     I_ind = RR_ind + 1
     
     # Handle different regimes
-    regime = string(param["regime"])
-    adjust = string(param["adjust"])
-    
+    # TODO: SS/transition matrix object — handle separately (regime, adjust)
+    regime = string(get_setting(m, :regime))
+    adjust = string(get_setting(m, :adjust))
+
     if regime == "QE"
         for jjj in 1:2
             if jjj == 1
                 # First pass: compute shock size to match Taylor rule
-                x0[end-3] = -param["sigma_R"]
+                x0[end-3] = -m[:σ_R]
                 
                 # Compute IRF for shock size calculation
                 numcontrols_aux = size(gx, 1)
@@ -151,13 +152,13 @@ function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_co
                     try
                         taylor_data = matread("IRFs_Taylor_G.mat")
                         IRFs_Taylor = taylor_data["IRFs_Taylor_G"]
-                        MP_shock_aux = param["sigma_R"] * IRFs_Taylor["IRFs_Y_p"][1] / IRFs_Y_aux
-                        
+                        MP_shock_aux = m[:σ_R] * IRFs_Taylor["IRFs_Y_p"][1] / IRFs_Y_aux
+
                         # Save for later use
                         matwrite("MP_shock_aux.mat", Dict("MP_shock_aux" => MP_shock_aux))
                     catch e
                         @warn "Could not load IRFs_Taylor_G.mat, using default shock size"
-                        MP_shock_aux = param["sigma_R"]
+                        MP_shock_aux = m[:σ_R]
                     end
                 elseif adjust == "LT"
                     # Load pre-computed shock size
@@ -166,7 +167,7 @@ function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_co
                         MP_shock_aux = shock_data["MP_shock_aux"]
                     catch e
                         @warn "Could not load MP_shock_aux.mat, using default shock size"
-                        MP_shock_aux = param["sigma_R"]
+                        MP_shock_aux = m[:σ_R]
                     end
                 end
             else
@@ -175,7 +176,7 @@ function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_co
             end
         end
     elseif regime == "Taylor"
-        x0[end-3] = -param["sigma_R"]
+        x0[end-3] = -m[:σ_R]
     elseif regime == "Partial QE"
         if MP_shock_aux === nothing
             try
@@ -183,7 +184,7 @@ function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_co
                 MP_shock_aux = shock_data["MP_shock_aux"]
             catch e
                 @warn "Could not load MP_shock_aux.mat, using default shock size"
-                MP_shock_aux = param["sigma_R"]
+                MP_shock_aux = m[:σ_R]
             end
         end
         x0[end-3] = -MP_shock_aux
@@ -244,13 +245,14 @@ function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_co
     MRS_IRFs_p = Control_IRFs[MRS_ind, :]
     
     # Compute derived series
-    U_IRFs_p = 1 .- N_IRFs_p .- param["Eshare"]
-    M_IRFs_p = (U_IRFs_p .+ param["lambda"] .* N_IRFs_p) .* V_IRFs_p ./ 
-               (((U_IRFs_p .+ param["lambda"] .* N_IRFs_p) .^ param["alpha"] .+ 
-                 V_IRFs_p .^ param["alpha"]) .^ (1 / param["alpha"]))
-    f_IRFs_p = M_IRFs_p ./ (U_IRFs_p .+ param["lambda"] .* N_IRFs_p)
-    nn_IRFs_p = ((1 - param["tau_w"]) .* W_IRFs_p ./ param["psi"]) .^ (1 / param["xi"])
-    Ntilde_IRFs_p = (1 - param["lambda"]) .* N_IRFs_p .+ M_IRFs_p
+    U_IRFs_p = 1 .- N_IRFs_p .- m[:Eshare]
+    # TODO: SS/transition matrix object — handle separately (lambda)
+    M_IRFs_p = (U_IRFs_p .+ SS_stats["lambda"] .* N_IRFs_p) .* V_IRFs_p ./
+               (((U_IRFs_p .+ SS_stats["lambda"] .* N_IRFs_p) .^ m[:α] .+
+                 V_IRFs_p .^ m[:α]) .^ (1 / m[:α]))
+    f_IRFs_p = M_IRFs_p ./ (U_IRFs_p .+ SS_stats["lambda"] .* N_IRFs_p)
+    nn_IRFs_p = ((1 - m[:τ_w]) .* W_IRFs_p ./ m[:ψ]) .^ (1 / m[:ξ])
+    Ntilde_IRFs_p = (1 - SS_stats["lambda"]) .* N_IRFs_p .+ M_IRFs_p
     IRFs_M_p = 100 * (M_IRFs_p / SS_stats["M"] .- 1)
     IRFs_f_p = 100 * (f_IRFs_p / SS_stats["f"] .- 1)
     IRFs_Y_p = 100 * (Y_IRFs_p / SS_stats["Y"] .- 1)
@@ -313,29 +315,30 @@ function IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_co
     IRFs_C_b_p = 100 * IRF_state_sparse[(total_rows-oc+C_b_ind), :]
     
     # Markup calculations
-    TC_ss = param["w_bar"] * SS_stats["L"] + param["delta_0"] * param["v"]^param["delta_1"] * grid["K"] + 
-            param["iota"] * SS_stats["V"] + param["fix"]
+    # TODO: SS/transition matrix object — handle separately (v in SS context)
+    TC_ss = m[:w_bar] * SS_stats["L"] + m[:δ_0] * SS_stats["v"]^m[:δ_1] * grid["K"] +
+            m[:ι] * SS_stats["V"] + m[:fix]
     Amarkup = 1 - TC_ss / SS_stats["Y"]
-    
-    Markup_IRFs_p = 1 .- (W_IRFs_p .* L_IRFs_p .+ param["delta_0"] .* v_IRFs_p .^ param["delta_1"] .* K_IRFs_p .+ 
-                          param["iota"] .* V_IRFs_p .+ param["fix"]) ./ Y_IRFs_p
+
+    Markup_IRFs_p = 1 .- (W_IRFs_p .* L_IRFs_p .+ m[:δ_0] .* v_IRFs_p .^ m[:δ_1] .* K_IRFs_p .+
+                          m[:ι] .* V_IRFs_p .+ m[:fix]) ./ Y_IRFs_p
     IRFs_Markups_p = 100 * (Markup_IRFs_p .- Amarkup)
-    IRFs_Profit_NF_p = 100 * ((Profit_IRFs_p .- Profit_FI_IRFs_p .+ param["fix2"]) / SS_stats["Profit"] .- 1)
-    IRFs_Profit_F_p = 100 * ((SS_stats["Profit"] .- param["fix2"] .+ Profit_FI_IRFs_p) / SS_stats["Profit"] .- 1)
-    
+    IRFs_Profit_NF_p = 100 * ((Profit_IRFs_p .- Profit_FI_IRFs_p .+ m[:fix2]) / SS_stats["Profit"] .- 1)
+    IRFs_Profit_F_p = 100 * ((SS_stats["Profit"] .- m[:fix2] .+ Profit_FI_IRFs_p) / SS_stats["Profit"] .- 1)
+
     # Average cost
-    AC_IRFs_p = (param["delta_0"] .* v_IRFs_p[1:(end-1)] .^ param["delta_1"] .* K_IRFs_p[1:(end-1)] .+ 
-                 W_IRFs_p[2:end] .* L_IRFs_p[1:(end-1)] .+ param["fix"] .+ param["iota"] .* V_IRFs_p[1:(end-1)]) ./ 
+    AC_IRFs_p = (m[:δ_0] .* v_IRFs_p[1:(end-1)] .^ m[:δ_1] .* K_IRFs_p[1:(end-1)] .+
+                 W_IRFs_p[2:end] .* L_IRFs_p[1:(end-1)] .+ m[:fix] .+ m[:ι] .* V_IRFs_p[1:(end-1)]) ./
                 Y_IRFs_p[1:(end-1)]
     IRFs_AC_p = 100 * (AC_IRFs_p / SS_stats["AvgC"] .- 1)
-    
-    IRFs_Profit_int_p = 100 * (((1 .- MC_IRFs_p) .* Y_IRFs_p .- param["fix"]) / SS_stats["Profit_int"] .- 1)
-    
+
+    IRFs_Profit_int_p = 100 * (((1 .- MC_IRFs_p) .* Y_IRFs_p .- m[:fix]) / SS_stats["Profit_int"] .- 1)
+
     # Government and financial sector bonds
     B_FI_IRFs_p = Q_IRFs_p .* A_b_IRFs_p .- NW_b_IRFs_p
-    B_cp_IRFs_p = Q_IRFs_p .* (1 + param["tau_cp"]) .* (A_g_IRFs_p .- 1)
+    B_cp_IRFs_p = Q_IRFs_p .* (1 + m[:τ_cp]) .* (A_g_IRFs_p .- 1)
     IRFs_B_FI_p = 100 * (B_FI_IRFs_p / SS_stats["B_FI"] .- 1)
-    B_gov_IRFs_p = B_b_IRFs_p[2:end] .+ B_hh_IRFs_p[1:(end-1)] / (1 - param["death_rate"]) .+ 
+    B_gov_IRFs_p = B_b_IRFs_p[2:end] .+ B_hh_IRFs_p[1:(end-1)] / (1 - m[:dr]) .+
                    SS_stats["B_F"] .- B_FI_IRFs_p[2:end]
     B_gov_ncp_IRFs_p = B_gov_IRFs_p .- B_cp_IRFs_p[2:end]
     IRFs_B_gov_p = 100 * (B_gov_IRFs_p / SS_stats["B_gov"] .- 1)

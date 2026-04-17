@@ -19,6 +19,7 @@ using StatsFuns: chisqinvcdf
 using Statistics: std
 using MatrixEquations
 using CMAEvolutionStrategy
+using NLsolve
 
 import Calculus
 import Base.isempty, Base.<, Base.min, Base.max

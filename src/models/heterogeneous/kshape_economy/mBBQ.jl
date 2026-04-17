@@ -283,11 +283,11 @@ function mBBQ(subspec::String="ss1";
     #println(m[:Σ_n].value)
     # Load the steady state if it has already been computed
     # from the filepath get_setting(m, :steadystate_output_file)
-    if load_steadystate
+   #= if load_steadystate
         load_steadystate!(m)
     end
     steadystate!(m)
-
+=#
     # So that the indices of m.endogenous_states reflect the normalization
     # normalize_model_state_indices!(m)
     #println(m[:Σ_n].value)
@@ -653,7 +653,9 @@ function init_parameters!(m::mBBQ)
                   tex_label = "\\sigma_S")
 
     m <= parameter(:π_cb, 1.005, fixed = true, description = "pi star", tex_label = "\\varphi_{\\pi_cb}")
-    m <= parameter(:τ_cp, 0.0, fixed = true, description = "extra cost per unit of central bank asset purchases", tex_label = "\\varphi_{\\tau_cb}")
+    m <= parameter(:τ_cp,   0.0, fixed = true, description = "extra cost per unit of central bank asset purchases", tex_label = "\\tau_{cp}")
+    m <= parameter(:psi_cp, 0.0, fixed = true, description = "equity payout share of financial intermediaries", tex_label = "\\psi_{cp}")
+    m <= parameter(:frac_b, 0.0, fixed = true, description = "fraction of banker households", tex_label = "\\text{frac}_b")
     m <= parameter(:b_a_aux2, 1.0, fixed = true, description = "extra cost per unit of central bank asset purchases", tex_label = "\\varphi_{\\tau_cb}")
     m <= parameter(:ω, 0.007975547917397408, fixed=true, description="")
     m <= parameter(:σ_s, 0.03, fixed=true, description="Standard deviation of productivity shock")

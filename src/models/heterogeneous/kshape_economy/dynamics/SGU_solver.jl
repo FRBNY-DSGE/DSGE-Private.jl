@@ -36,6 +36,7 @@ function SGU_solver(F, param, grid, p, parallel = false)
     numcontrols = Int(grid["numcontrols"])
 
     # Absolute deviations (set before Fb so all F calls see identical param state)
+    # TODO: SS/transition matrix object — handle separately (scaleval1, scaleval2 are numerical step sizes)
     param["scaleval1"] = 1e-5  # Numerical differentiation step size
     param["scaleval2"] = 1e-5  # Numerical differentiation step size
 
@@ -85,6 +86,7 @@ function SGU_solver(F, param, grid, p, parallel = false)
     @info "SGU_solver: steady state done. Computing Jacobians F1, F3 (2×$numstates F-calls in $blocks blocks, parallel=$parallel)..."
 
     # Absolute deviations
+    # TODO: SS/transition matrix object — handle separately (scaleval1, scaleval2 are numerical step sizes)
     param["scaleval1"] = 1e-5  # Numerical differentiation step size
     param["scaleval2"] = 1e-5  # Numerical differentiation step size
 
@@ -106,7 +108,7 @@ function SGU_solver(F, param, grid, p, parallel = false)
             ss = zeros(numstates)
 
             for (idx, Xct) in enumerate(range)
-                h = param["scaleval1"]
+                h = param["scaleval1"]  # TODO: SS/transition matrix object — handle separately
                 X = zeros(Float64, numstates)
                 X[Xct] = h
 
@@ -136,7 +138,7 @@ function SGU_solver(F, param, grid, p, parallel = false)
 
             for (idx, Xct) in enumerate(range)
                 X = zeros(Float64, numstates)
-                h = param["scaleval1"]
+                h = param["scaleval1"]  # TODO: SS/transition matrix object — handle separately
                 X[Xct] = h
 
                 # F3: derivative w.r.t. today's state
@@ -188,7 +190,7 @@ function SGU_solver(F, param, grid, p, parallel = false)
 
             Y = zeros(numcontrols)
             for (idx, Yct) in enumerate(range)
-                h = param["scaleval2"]
+                h = param["scaleval2"]  # TODO: SS/transition matrix object — handle separately
                 fill!(Y, 0.0)
                 Y[Yct] = h
 
@@ -211,7 +213,7 @@ function SGU_solver(F, param, grid, p, parallel = false)
 
             Y = zeros(numcontrols)
             for (idx, Yct) in enumerate(range)
-                h = param["scaleval2"]
+                h = param["scaleval2"]  # TODO: SS/transition matrix object — handle separately
                 fill!(Y, 0.0)
                 Y[Yct] = h
 
@@ -277,7 +279,7 @@ function SGU_solver(F, param, grid, p, parallel = false)
     nk = sum(slt)  # Number of state variables based on eigenvalues
 
     if nk > numstates
-        if haskey(param, "overrideEigen") && param["overrideEigen"]
+        if haskey(param, "overrideEigen") && param["overrideEigen"]  # TODO: SS/transition matrix object — handle separately
             @warn "The Equilibrium is Locally Indeterminate, critical eigenvalue shifted to: $(ll[end - numstates])"
             slt = relev .> ll[end - numstates]
             nk = sum(slt)
@@ -285,7 +287,7 @@ function SGU_solver(F, param, grid, p, parallel = false)
             error("No Local Equilibrium Exists, last eigenvalue: $(ll[end - numstates])")
         end
     elseif nk < numstates
-        if haskey(param, "overrideEigen") && param["overrideEigen"]
+        if haskey(param, "overrideEigen") && param["overrideEigen"]  # TODO: SS/transition matrix object — handle separately
             threshold = ll[end - numstates]
             @warn "No Local Equilibrium Exists, critical eigenvalue shifted to: $threshold"
             slt = relev .> threshold

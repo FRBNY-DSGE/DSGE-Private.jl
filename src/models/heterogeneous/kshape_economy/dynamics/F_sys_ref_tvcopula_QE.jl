@@ -73,7 +73,7 @@ System of equations written in Schmitt-Grohe-Uribe generic form with states and 
 """
 function F_sys_ref_tvcopula_QE(State, Stateminus, Controlnext_sparse, Control_sparse, StateSS,
                                  ControlSS, Gamma_state, Gamma_control, InvGamma,
-                                 param, grid, SS_stats,  DCD, IDCD, P_SE)
+                                 m::mBBQ, grid, SS_stats, DCD, IDCD, P_SE)
 
 # System of equations written in Schmitt-Groh?-Uribe generic form with states and controls
 # STATE: Vector of state variables t+1 (only marginal distributions for histogram)
@@ -103,10 +103,10 @@ function F_sys_ref_tvcopula_QE(State, Stateminus, Controlnext_sparse, Control_sp
 
 ## Initializations
 
-util     = c -> (c .^ (1 - param["sigma"])) ./ (1 - param["sigma"])
-mutil    = c -> 1.0 ./ (c .^ param["sigma"])
-invutil  = u -> ((1 - param["sigma"]) .* u) .^ (1 / (1 - param["sigma"]))
-invmutil = mu -> (1.0 ./ mu) .^ (1 / param["sigma"])
+util     = c -> (c .^ (1 - m[:σ])) ./ (1 - m[:σ])
+mutil    = c -> 1.0 ./ (c .^ m[:σ])
+invutil  = u -> ((1 - m[:σ]) .* u) .^ (1 / (1 - m[:σ]))
+invmutil = mu -> (1.0 ./ mu) .^ (1 / m[:σ])
 
 # Number of states, controls
 nx   = Int(grid["numstates"])  # Number of states
@@ -662,8 +662,8 @@ iota2     = exp(Control[iota2_ind])
 # Observables
 
 A_g_obs    = exp(Control[A_g_obs_ind]) 
-tau_w      = param["tau_w"] 
-tau_a      = param["tau_a"] 
+tau_w      = m[:τ_w]
+tau_a      = m[:τ_a]
 
 zznext         = exp(Controlnext[zz_ind]) 
 xxnext         = exp(Controlnext[xx_ind]) 
@@ -951,7 +951,7 @@ MU_se = dropdims(sum(MU, dims=(1,2)), dims=(1,2))
 
 # Eshare = MU_se(end) 
 
-Eshare = param["Eshare"]
+Eshare = m[:Eshare]
 
 meshes = Dict{String, Any}()
 meshes["b"], meshes["a"], meshes["se"] = ndgrid(grid["b"], grid["a"], grid["se"])
@@ -986,51 +986,47 @@ P_SS3next_aux  = [P_SS3next_aux zeros(nse-1, 1)]
 lastrow        = [zeros(1, 2*ns) 1]
 P_SS3next_aux  = [P_SS3next_aux; lastrow] 
 
-P_transition_exp  = param["P_SS2"]*P_SS3next_aux 
-P_transition_dist = param["P_SS2"]   # The new transition matrix
+P_transition_exp  = SS_stats["P_SS2"]*P_SS3next_aux   # TODO: SS/transition matrix object — handle separately
+P_transition_dist = SS_stats["P_SS2"]                 # TODO: SS/transition matrix object — handle separately
 
 #  Income (grids)
 
 auxWW                  = ones(nb, na, nse)
 auxWW[:,:,ns+1:end]    = zeros(nb, na, nse - ns)
 auxWW1                 = auxWW
-auxWW                  = auxWW .* (meshes["se"] .^ (param["b_aux"] - 1))  # bonus
+auxWW                  = auxWW .* (meshes["se"] .^ (m[:b_aux] - 1))  # bonus
 
 auxWW2                 = ones(nb, na, nse)
 auxWW2[:,:,1:ns]       = zeros(nb, na, ns)
 auxWW2[:,:,end]        = zeros(nb, na, 1) 
 
-# param["beta_aux"] = param["beta"]*gamma_Q 
+# m[:β] * gamma_Q   (beta_aux variants, kept for reference)
+# m[:β]
+# m[:β] * D
 
-# param["beta_aux"] = param["beta"] 
-
-# param["beta_aux"] = param["beta"]*D 
-
-param["beta_aux"] = param["beta"] 
-
-R_A_aux = R_A + (param["death_rate"] / (1 - param["death_rate"])) * Q  # annuity payments
+R_A_aux = R_A + (m[:dr] / (1 - m[:dr])) * Q  # annuity payments
 
 # After-tax wage or unemployment benefit
-NW = param["xi"] / (1 + param["xi"]) * nn * W
-WW = (1 - tau_w) * (NW * auxWW1 + param["xi"] / (1 + param["xi"]) * param["w_bar"] .* auxWW2)
-WW[:,:,end] = (1 - tau_a) * (param["Eratio"] * PROFIT) / Eshare * ones(nb, na)
+NW = m[:ξ] / (1 + m[:ξ]) * nn * W
+WW = (1 - tau_w) * (NW * auxWW1 + m[:ξ] / (1 + m[:ξ]) * m[:w_bar] .* auxWW2)
+WW[:,:,end] = (1 - tau_a) * (m[:Eratio] * PROFIT) / Eshare * ones(nb, na)
 
 inc = Dict{String, Any}()
 inc["labor"]    = WW .* meshes["se"]
 inc["dividend"] = meshes["a"] * R_A_aux
 inc["capital"]  = meshes["a"] * Q
 inc["bond"]     = (R_cbminus / PI) .* meshes["b"] +
-                  (meshes["b"] .< 0) .* (param["Rprem"] / PI) .* meshes["b"]
-inc["bond"]     = inc["bond"] / (1 - param["death_rate"]) * param["b_a_aux"]
-inc["transfer"] = (LT + C_b) / (1 + param["frac_b"]) * ones(nb, na, nse) 
+                  (meshes["b"] .< 0) .* (m[:Rprem] / PI) .* meshes["b"]
+inc["bond"]     = inc["bond"] / (1 - m[:dr]) * m[:b_a_aux]
+inc["transfer"] = (LT + C_b) / (1 + SS_stats["frac_b"]) * ones(nb, na, nse)  # TODO: SS/transition matrix object — handle separately (frac_b)
 
 ## First Set: Value functions, marginal values
 ## Update policies
 
 EVa = reshape(reshape(Vanext, (nb*na, nse)) * P_transition_exp', (nb, na, nse))
-R_tildeaux = R_tilde / PInext .+ (meshes["b"] .< 0) .* (param["Rprem"] / PInext)
+R_tildeaux = R_tilde / PInext .+ (meshes["b"] .< 0) .* (m[:Rprem] / PInext)
 
-EVb = reshape(reshape(R_tildeaux[:] / (1 - param["death_rate"]) * param["b_a_aux"] .* mutil_cnext, (nb*na, nse)) * P_transition_exp', (nb, na, nse)) 
+EVb = reshape(reshape(R_tildeaux[:] / (1 - m[:dr]) * m[:b_a_aux] .* mutil_cnext, (nb*na, nse)) * P_transition_exp', (nb, na, nse))
 
 # [c_a_star,b_a_star,a_a_star,c_n_star,b_n_star] = policies_update(EVb,EVa,Q,PI,R_tildeminus,1,1,inc,meshes,grid,param) 
 c_a_star,b_a_star,a_a_star,c_n_star,b_n_star = policies_update(EVb,EVa,Q,PI,R_cbminus,1,1,inc,meshes,grid,param) 
@@ -1056,15 +1052,15 @@ itp = interpolate((b_grid, a_grid, se_grid), EV3, Gridded(Linear()))
 
 
 VALUE_next = extrapolate(itp, Line())
-V_adjust   = util(c_a_star) .+ param["beta_aux"] * (1 - param["death_rate"]) .* VALUE_next.(b_a_star, a_a_star, meshaux["se_aux"])
-V_noadjust = util(c_n_star) .+ param["beta_aux"] * (1 - param["death_rate"]) .* VALUE_next.(b_n_star, meshaux["a"], meshaux["se_aux"])
+V_adjust   = util(c_a_star) .+ m[:β] * (1 - m[:dr]) .* VALUE_next.(b_a_star, a_a_star, meshaux["se_aux"])
+V_noadjust = util(c_n_star) .+ m[:β] * (1 - m[:dr]) .* VALUE_next.(b_n_star, meshaux["a"], meshaux["se_aux"])
 
-AProb = clamp.(1.0 ./ (1.0 .+ exp.(.-(V_adjust .- V_noadjust .- param["mu_chi"]) ./ param["sigma_chi"])), 1e-6, 1 - 1e-6)
-AC = param["sigma_chi"] .* ((1.0 .- vec(AProb)) .* log.(1.0 .- vec(AProb)) + vec(AProb) 
-                            .* log.(vec(AProb))) .+ param["mu_chi"] .* vec(AProb) .- (param["mu_chi"] 
-                            - param["sigma_chi"] * log(1 + exp(param["mu_chi"] / param["sigma_chi"])))
-AProb = AProb .* param["nu"]
-AC = AC .* param["nu"]
+AProb = clamp.(1.0 ./ (1.0 .+ exp.(.-(V_adjust .- V_noadjust .- m[:μ_χ]) ./ m[:σ_χ])), 1e-6, 1 - 1e-6)
+AC = m[:σ_χ] .* ((1.0 .- vec(AProb)) .* log.(1.0 .- vec(AProb)) + vec(AProb)
+                            .* log.(vec(AProb))) .+ m[:μ_χ] .* vec(AProb) .- (m[:μ_χ]
+                            - m[:σ_χ] * log(1 + exp(m[:μ_χ] / m[:σ_χ])))
+AProb = AProb .* m[:ν]
+AC = AC .* m[:ν]
 
 VALUEaux = vec(AProb) .* vec(V_adjust) .+ (1.0 .- vec(AProb)) .* vec(V_noadjust) .- vec(AC) 
 
@@ -1089,8 +1085,8 @@ itp = interpolate((b_grid, a_grid, se_grid), mutil_cnext_aux, Gridded(Linear()))
 mutil_cnext_itp = extrapolate(itp, Line())
 
 
-MRS_a_aux = param["beta_aux"] * (1 - param["death_rate"]) .* mutil_cnext_itp.(b_a_star, a_a_star, meshaux["se_aux"]) ./ mutil_c_a .* AProb .* MU_tilde
-MRS_n_aux = param["beta_aux"] * (1 - param["death_rate"]) .* mutil_cnext_itp.(b_n_star, meshaux["a"], meshaux["se_aux"]) ./ mutil_c_n .* (1.0 .- AProb) .* MU_tilde
+MRS_a_aux = m[:β] * (1 - m[:dr]) .* mutil_cnext_itp.(b_a_star, a_a_star, meshaux["se_aux"]) ./ mutil_c_a .* AProb .* MU_tilde
+MRS_n_aux = m[:β] * (1 - m[:dr]) .* mutil_cnext_itp.(b_n_star, meshaux["a"], meshaux["se_aux"]) ./ mutil_c_n .* (1.0 .- AProb) .* MU_tilde
 
 
 b_grid  = vec(meshaux["b"][:, 1, 1])
@@ -1103,7 +1099,7 @@ itp     = interpolate((b_grid, a_grid, se_grid), Va3, Gridded(Linear()))
 Va_next = extrapolate(itp, Line())
 
 Va_aux = AProb .* (R_A_aux .+ Q) .* mutil_c_a .+ (1.0 .- AProb) .* R_A_aux .* mutil_c_n .+
-         param["beta_aux"] * (1 - param["death_rate"]) .* (1.0 .- AProb) .* Va_next.(b_n_star, meshaux["a"], meshaux["se_aux"])
+         m[:β] * (1 - m[:dr]) .* (1.0 .- AProb) .* Va_next.(b_n_star, meshaux["a"], meshaux["se_aux"])
 
 
 _, _, meshes["se3_aux"] = ndgrid(grid["b"], grid["a"], grid["se3_aux"])
@@ -1247,14 +1243,14 @@ TT_die = sparse(vec(rowindex), [vec(index11); vec(index21); vec(index12); vec(in
 n_aprob = length(vec(AProb))
 APD_a = sparse(1:n_aprob, 1:n_aprob, vec(AProb))
 APD_n = sparse(1:n_aprob, 1:n_aprob, 1 .- vec(AProb))
-TT = (1 - param["death_rate"]) * (APD_a * TT_a + APD_n * TT_n) + param["death_rate"] * TT_die
+TT = (1 - m[:dr]) * (APD_a * TT_a + APD_n * TT_n) + m[:dr] * TT_die
 
 TT = H_tilde' * TT
 
 MUnext = vec(MU)' * TT
 MUnext = reshape(vec(MUnext), (nb, na, nse)) 
 
-death = param["death_rate"]
+death = m[:dr]
 
 PDF_joint   = MUnext 
 C_next_grid = cumsum(cumsum(cumsum(PDF_joint; dims=1); dims=2); dims=3) 

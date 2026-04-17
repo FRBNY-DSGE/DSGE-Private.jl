@@ -206,7 +206,7 @@ function Cal_SS_stats(mu_dist, c_a_guess, c_n_guess, AProb, b_n_star, b_a_star, 
     K_agg = (1 - param["death_rate"]) * K_tilde_agg
 
     # Create grid.se_aux for consumption calculations
-    grid_s_aux = hcat(grid["s"], min.(param["b_ratio"]*grid["s"], grid["s_bar"]), [1])
+    grid_s_aux = hcat(grid["s"], min.(param["b_ratio"]*grid["s"], grid["s_bar"]), ones(length(grid["s"])))
 
     C_agg = X_agg + (1 - param["tau_w"]) / (1 + param["xi"]) * W_fc *
             sum(grid["se"][1:grid["ns"]] .* mu_dist_tilde_se[1:grid["ns"]]) * grid["n"]
@@ -507,12 +507,10 @@ function Cal_SS_stats(mu_dist, c_a_guess, c_n_guess, AProb, b_n_star, b_a_star, 
     # J statistics
     I_mat = Matrix(1.0I, grid["ns"], grid["ns"])
     
-    SS_stats["J_aux1"] = inv(I_mat - param["beta_L"] * (1 - param["death_rate"]) *
-                             (1 - param["lambda"]) * (1 - param["in"]) * param["P_SS"]) *
-                         (SS_stats["r_l"] - param["w_bar"]) * n * grid["s"]'
-    SS_stats["J_aux2"] = inv(I_mat - param["beta_L"] * (1 - param["death_rate"]) *
-                             (1 - param["lambda"]) * (1 - param["in"]) * param["P_SS"]) *
-                         n * grid["s"]'
+    Minv_cal = inv(I_mat - param["beta_L"] * (1 - param["death_rate"]) *
+                   (1 - param["lambda"]) * (1 - param["in"]) * param["P_SS"])
+    SS_stats["J_aux1"] = Minv_cal * ((SS_stats["r_l"] - param["w_bar"]) * n .* vec(grid["s"]))
+    SS_stats["J_aux2"] = Minv_cal * (n .* vec(grid["s"]))
 
     SS_stats["J_bar1"] = (SS_stats["J_aux1"]' * grid["s_dist"])[1]
     SS_stats["J_bar2"] = (SS_stats["J_aux2"]' * grid["s_dist"])[1]

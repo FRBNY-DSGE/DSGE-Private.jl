@@ -1,33 +1,34 @@
 """
-    state_reduc_tvcopula!(param, grid, SS_stats, mu_dist, Value, mutil_c, Va)
+    state_reduc_tvcopula!(m, grid, SS_stats, mu_dist, Value, mutil_c, Va)
 
 Set up state reduction for the time-varying copula model.
 Returns a named tuple with all computed variables.
 
 Modifies `grid` and `SS_stats` in place.
 """
-function state_reduc_tvcopula!(param::Dict, grid::Dict, SS_stats::Dict,
+function state_reduc_tvcopula!(m::mBBQ, grid::Dict, SS_stats::Dict,
                                mu_dist::Array, Value::Array, mutil_c::Array, Va::Array)
 
     # Define inverse utility functions
-    sigma = param["sigma"]
+    sigma = m[:σ]
     invutil(u) = ((1 - sigma) .* u) .^ (1 / (1 - sigma))
     invmutil(mu) = (1 ./ mu) .^ (1 / sigma)
 
-    # Build Xss based on param["adjust"]
-    adjust = string(param["adjust"])
+    # Build Xss based on adjust regime (TODO: SS/transition matrix object — handle separately)
+    adjust = string(get_setting(m, :adjust))
     if adjust == "G"
         Xss = vcat(
             vec(sum(sum(mu_dist, dims=2), dims=3)),
             vec(sum(sum(mu_dist, dims=1), dims=3)),
             vec(sum(sum(mu_dist, dims=2), dims=1)),
             vec(SS_stats["mu_dist"]),
-            log(param["R_cb"]), log(param["w_bar"]),
+            # TODO: SS/transition matrix object — handle separately (R_cb, q, u)
+            log(SS_stats["R_cb"]), log(m[:w_bar]),
             log(SS_stats["A_b"]), log(SS_stats["B_b"]), log(SS_stats["A_g"] + 1),
-            log(param["q"]), log(SS_stats["leverage"]), log(SS_stats["NW_b"]), log(param["R_cb"]), 0,
-            log(param["pi_bar"]),
-            log(SS_stats["Y"]), log(SS_stats["Chh"]), log(SS_stats["I2"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]), log(param["u"]), log(SS_stats["G"]), log(SS_stats["LT"]), log(param["R_cb"]), log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["B_F"])),
-            log(1), log(1), log(param["eta"]), log(1), log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["LT"] - SS_stats["C_b"])), log(1), log(1), log(1), log(1), log(param["eta"] / (param["eta"] - 1)),
+            log(SS_stats["q"]), log(SS_stats["leverage"]), log(SS_stats["NW_b"]), log(SS_stats["R_cb"]), 0,
+            log(m[:π_bar]),
+            log(SS_stats["Y"]), log(SS_stats["Chh"]), log(SS_stats["I2"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]), log(SS_stats["u"]), log(SS_stats["G"]), log(SS_stats["LT"]), log(SS_stats["R_cb"]), log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["B_F"])),
+            log(1), log(1), log(m[:η]), log(1), log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["LT"] - SS_stats["C_b"])), log(1), log(1), log(1), log(1), log(m[:η] / (m[:η] - 1)),
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         )
     elseif adjust == "LT"
@@ -36,60 +37,61 @@ function state_reduc_tvcopula!(param::Dict, grid::Dict, SS_stats::Dict,
             vec(sum(sum(mu_dist, dims=1), dims=3)),
             vec(sum(sum(mu_dist, dims=2), dims=1)),
             vec(SS_stats["mu_dist"]),
-            log(param["R_cb"]), log(param["w_bar"]),
+            # TODO: SS/transition matrix object — handle separately (R_cb, q, u)
+            log(SS_stats["R_cb"]), log(m[:w_bar]),
             log(SS_stats["A_b"]), log(SS_stats["B_b"]), log(SS_stats["A_g"] + 1),
-            log(param["q"]), log(SS_stats["leverage"]), log(SS_stats["NW_b"]), log(param["R_cb"]), 0,
-            log(param["pi_bar"]),
-            log(SS_stats["Y"]), log(SS_stats["Chh"]), log(SS_stats["I2"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]), log(param["u"]), log(SS_stats["G"]), log(SS_stats["LT"]), log(param["R_cb"]), log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["B_F"])),
-            log(1), log(1), log(param["eta"]), log(1), log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["G"])), log(1), log(1), log(1), log(1), log(param["eta"] / (param["eta"] - 1)),
+            log(SS_stats["q"]), log(SS_stats["leverage"]), log(SS_stats["NW_b"]), log(SS_stats["R_cb"]), 0,
+            log(m[:π_bar]),
+            log(SS_stats["Y"]), log(SS_stats["Chh"]), log(SS_stats["I2"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]), log(SS_stats["u"]), log(SS_stats["G"]), log(SS_stats["LT"]), log(SS_stats["R_cb"]), log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["B_F"])),
+            log(1), log(1), log(m[:η]), log(1), log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["G"])), log(1), log(1), log(1), log(1), log(m[:η] / (m[:η] - 1)),
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         )
     else
         error("Unknown adjust value: $adjust")
     end
 
-    # Build Yss based on param["adjust"]
+    # Build Yss based on adjust regime
     if adjust == "G"
         Yss = vcat(
             invutil(Value[:]),
             invmutil(mutil_c[:]),
             invmutil(Va[:]),
-            log(SS_stats["MRS"]), log(SS_stats["A_hh"]), log(SS_stats["B_nb"] / (1 - param["death_rate"]) * param["b_a_aux"]), log(SS_stats["Chh"]),
+            log(SS_stats["MRS"]), log(SS_stats["A_hh"]), log(SS_stats["B_nb"] / (1 - m[:dr]) * m[:b_a_aux]), log(SS_stats["Chh"]),
             log(SS_stats["N"]), log(SS_stats["L"]), log(SS_stats["UB"]),
             log(grid["K"]), log(SS_stats["B2"]), log(SS_stats["B_gov_ncp"]),
             log(SS_stats["T"]), log(SS_stats["LT"]), log(SS_stats["G"]),
-            log(SS_stats["Lambda"]), log(param["pi_bar"]),
+            log(SS_stats["Lambda"]), log(m[:π_bar]),
             log(SS_stats["V"]), log.(SS_stats["J"]), log(SS_stats["r_l"]), log(SS_stats["v"]),
             log(SS_stats["Y"]), log(SS_stats["Profit"]), log(SS_stats["r_k"]), log(SS_stats["r_a"]), log(SS_stats["mc"]),
-            log(SS_stats["u"]), log(param["n"]), log(SS_stats["M"]), log(SS_stats["f"]),
+            log(SS_stats["u"]), log(SS_stats["n"]), log(SS_stats["M"]), log(SS_stats["f"]),  # TODO: SS/transition matrix object — handle separately (n)
             log(SS_stats["zz"]), log(SS_stats["xx"]), log(SS_stats["vv"]), log(SS_stats["ee"]), log(SS_stats["C_b"]), log(SS_stats["Profit_FI"]),
             log(SS_stats["R_a"]), log(SS_stats["R"]), log(SS_stats["I2"]),
             0,
-            log(SS_stats["A_g"]), log(SS_stats["Y"]), log(SS_stats["C"]), log(SS_stats["I2"]), log(param["w_bar"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]),
-            log(100 * param["u"]), log(param["pi_bar"]), log(param["R_cb"]), log(param["w_bar"]), log(SS_stats["G"]),
-            log(SS_stats["Y"]), log(SS_stats["Chh"]), log(SS_stats["I2"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]), log(param["u"]), log(SS_stats["LT"]), log(SS_stats["A_g"]),
-            log(param["lambda"]), 0, 0, log(param["eta"]), 0, log(SS_stats["LT"]), log(SS_stats["G"]), log(SS_stats["LT"]), log(SS_stats["B_gov_ncp2"])
+            log(SS_stats["A_g"]), log(SS_stats["Y"]), log(SS_stats["C"]), log(SS_stats["I2"]), log(m[:w_bar]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]),
+            log(100 * SS_stats["u"]), log(m[:π_bar]), log(SS_stats["R_cb"]), log(m[:w_bar]), log(SS_stats["G"]),  # TODO: SS/transition matrix object — handle separately (u, R_cb)
+            log(SS_stats["Y"]), log(SS_stats["Chh"]), log(SS_stats["I2"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]), log(SS_stats["u"]), log(SS_stats["LT"]), log(SS_stats["A_g"]),
+            log(SS_stats["lambda"]), 0, 0, log(m[:η]), 0, log(SS_stats["LT"]), log(SS_stats["G"]), log(SS_stats["LT"]), log(SS_stats["B_gov_ncp2"])  # TODO: SS/transition matrix object — handle separately (lambda)
         )
     elseif adjust == "LT"
         Yss = vcat(
             invutil(Value[:]),
             invmutil(mutil_c[:]),
             invmutil(Va[:]),
-            log(SS_stats["MRS"]), log(SS_stats["A_hh"]), log(SS_stats["B_nb"] / (1 - param["death_rate"]) * param["b_a_aux"]), log(SS_stats["Chh"]),
+            log(SS_stats["MRS"]), log(SS_stats["A_hh"]), log(SS_stats["B_nb"] / (1 - m[:dr]) * m[:b_a_aux]), log(SS_stats["Chh"]),
             log(SS_stats["N"]), log(SS_stats["L"]), log(SS_stats["UB"]),
             log(grid["K"]), log(SS_stats["B2"]), log(SS_stats["B_gov_ncp"]),
             log(SS_stats["T"]), log(SS_stats["LT"]), log(SS_stats["G"]),
-            log(SS_stats["Lambda"]), log(param["pi_bar"]),
+            log(SS_stats["Lambda"]), log(m[:π_bar]),
             log(SS_stats["V"]), log.(SS_stats["J"]), log(SS_stats["r_l"]), log(SS_stats["v"]),
             log(SS_stats["Y"]), log(SS_stats["Profit"]), log(SS_stats["r_k"]), log(SS_stats["r_a"]), log(SS_stats["mc"]),
-            log(SS_stats["u"]), log(param["n"]), log(SS_stats["M"]), log(SS_stats["f"]),
+            log(SS_stats["u"]), log(SS_stats["n"]), log(SS_stats["M"]), log(SS_stats["f"]),  # TODO: SS/transition matrix object — handle separately (n)
             log(SS_stats["zz"]), log(SS_stats["xx"]), log(SS_stats["vv"]), log(SS_stats["ee"]), log(SS_stats["C_b"]), log(SS_stats["Profit_FI"]),
             log(SS_stats["R_a"]), log(SS_stats["R"]), log(SS_stats["I2"]),
             0,
-            log(SS_stats["A_g"]), log(SS_stats["Y"]), log(SS_stats["C"]), log(SS_stats["I2"]), log(param["w_bar"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]),
-            log(100 * param["u"]), log(param["pi_bar"]), log(param["R_cb"]), log(param["w_bar"]), log(SS_stats["G"]),
-            log(SS_stats["Y"]), log(SS_stats["Chh"]), log(SS_stats["I2"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]), log(param["u"]), log(SS_stats["G"]), log(SS_stats["A_g"]),
-            log(param["lambda"]), 0, 0, log(param["eta"]), 0, log(SS_stats["LT"]), log(SS_stats["G"]), log(SS_stats["LT"]), log(SS_stats["B_gov_ncp2"])
+            log(SS_stats["A_g"]), log(SS_stats["Y"]), log(SS_stats["C"]), log(SS_stats["I2"]), log(m[:w_bar]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]),
+            log(100 * SS_stats["u"]), log(m[:π_bar]), log(SS_stats["R_cb"]), log(m[:w_bar]), log(SS_stats["G"]),  # TODO: SS/transition matrix object — handle separately (u, R_cb)
+            log(SS_stats["Y"]), log(SS_stats["Chh"]), log(SS_stats["I2"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"]), log(SS_stats["u"]), log(SS_stats["G"]), log(SS_stats["A_g"]),
+            log(SS_stats["lambda"]), 0, 0, log(m[:η]), 0, log(SS_stats["LT"]), log(SS_stats["G"]), log(SS_stats["LT"]), log(SS_stats["B_gov_ncp2"])  # TODO: SS/transition matrix object — handle separately (lambda)
         )
     end
 
