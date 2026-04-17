@@ -5,44 +5,13 @@ function compute_system(m::mBBQ, Jacob_base; H_obs=nothing)
     #update_ss_v5
     DSGE.update_ss_v5!(m) #TODO see if param can be moved to model
     
-    @assert false
     #check certain values >0
 
     #state_reduc_tv_copula #TODO missing args
-    reduc = state_reduc_tvcopula!(param_base, grid, SS_stats_base, mu_dist, Value, mutil_c, Va)
-    Xss = reduc.Xss
-    Yss = reduc.Yss
-    DC = reduc.DC
-    IDC = reduc.IDC
-    DCD = reduc.DCD
-    IDCD = reduc.IDCD
-    Gamma_state = reduc.Gamma_state
-    Gamma_control = reduc.Gamma_control
-    InvGamma = reduc.InvGamma
-    State = reduc.State
-    State_m = reduc.State_m
-    Contr = reduc.Contr
-    Contr_m = reduc.Contr_m
-    distrSS = reduc.distrSS
-    CDF_SS = reduc.CDF_SS
-    COP_SS = reduc.COP_SS
-    distr_b_SS = reduc.distr_b_SS
-    distr_a_SS = reduc.distr_a_SS
-    distr_se_SS = reduc.distr_se_SS
-    CDF_b_SS = reduc.CDF_b_SS
-    CDF_a_SS = reduc.CDF_a_SS
-    CDF_se_SS = reduc.CDF_se_SS
-    compressionIndexesCOP = reduc.compressionIndexesCOP
-    Poly = reduc.Poly
-    InvCheb = reduc.InvCheb
-    Gamma2 = reduc.Gamma2
-    nPoly = reduc.nPoly
-    nFullCtrl = reduc.nFullCtrl
-    nRedCtrl = reduc.nRedCtrl
-    nFullMarg = reduc.nFullMarg
-    nRedMarg = reduc.nRedMarg
-    nRedStates = reduc.nRedStates
+    DSGE.state_reduc_tvcopula!(m, mu_dist, Value, mutil_c, Va)
     
+    @assert false
+
     #maybe square some values?
 
     #compute jacob TESTING ONLY, read csv jacob instead of actually compute jacob for testing

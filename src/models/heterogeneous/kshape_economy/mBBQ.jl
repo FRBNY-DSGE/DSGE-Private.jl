@@ -750,6 +750,10 @@ function init_parameters!(m::mBBQ)
     m.dicts[:grid] = Dict{String, Any}()
     m.dicts[:param] = Dict{String, Any}()
 
+    m.grids[:mu_dist] = zeros(1)
+    m.grids[:Value] = zeros(1)
+    m.grids[:mutil_c] = zeros(1)
+    m.grids[:Va] = zeros(1)
 
     #Steady state grids
     m <= SteadyStateParameterGrid(:marginal_cdf_b_star, Vector{Float64}(undef, 0), 

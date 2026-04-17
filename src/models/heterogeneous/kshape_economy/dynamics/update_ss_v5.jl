@@ -13,7 +13,7 @@ This function updates various steady-state calculations including:
 - Fixed costs and other auxiliary 
 
 """
-function update_ss_v5!(m)
+function update_ss_v5!(m::mBBQ)
 
 
     # 1) iota
