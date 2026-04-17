@@ -238,14 +238,14 @@ function compute_agg(meshes, grid, param)
     delta_ss_val = param["delta_ss"]
     Profit_K = (r_k * v - delta_ss_val) * K_val
     
-    # param.fix = Y - mc*Y + Profit_L + Profit_K - SS_stats_base.Profit;
-    # Handle SS_stats_base access - try both Dict and struct access
-    SS_profit = if SS_stats_base isa Dict
-        haskey(SS_stats_base, :Profit) ? SS_stats_base[:Profit] : 
-        (haskey(SS_stats_base, "Profit") ? SS_stats_base["Profit"] : 0.0)
+    # param.fix = Y - mc*Y + Profit_L + Profit_K - SS_stats_old.Profit;
+    # Handle SS_stats_old access - try both Dict and struct access
+    SS_profit = if SS_stats_old isa Dict
+        haskey(SS_stats_old, :Profit) ? SS_stats_old[:Profit] : 
+        (haskey(SS_stats_old, "Profit") ? SS_stats_old["Profit"] : 0.0)
     else
         try
-            getproperty(SS_stats_base, :Profit)
+            getproperty(SS_stats_old, :Profit)
         catch
             0.0
         end
@@ -399,3 +399,7 @@ function compute_agg(meshes, grid, param)
     return mc, L, n, r_l, r_k, Profit, v, J, u, V, M, f, w, WW, RR, RBRB, Y, P_SE, param, Lambda, grid, THETA, NWb, Profit_FI, Ab, Bb, Cb
 end
 
+
+function compute_agg(m::mBBQ, meshes)
+    return compute_agg(meshes, _mbbq_ss_grid_dict(m), _mbbq_ss_param_dict(m))
+end

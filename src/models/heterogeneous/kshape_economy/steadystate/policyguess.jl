@@ -76,3 +76,7 @@ function policyguess(meshes, WW, RR, RBRB, param, grid)
     return (c_a_guess, c_n_guess, psi_guess, inc)
 end
 
+
+function policyguess(m::mBBQ, meshes, WW, RR, RBRB)
+    return policyguess(meshes, WW, RR, RBRB, _mbbq_ss_param_dict(m), _mbbq_ss_grid_dict(m))
+end

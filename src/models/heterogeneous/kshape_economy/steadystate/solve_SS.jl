@@ -131,3 +131,44 @@ function solve_SS(grid, param)
             P_SE, Lambda, TT, WW, THETA, NWb, Profit_FI, Ab, Bb, Cb)
 end
 
+
+function solve_SS(m::mBBQ)
+    t_start = time()
+
+    meshes = _mbbq_meshes(m)
+    grid = _mbbq_ss_grid_dict(m)
+    param = _mbbq_ss_param_dict(m)
+
+    nb_val = Int(grid["nb"])
+    na_val = Int(grid["na"])
+    nse_val = Int(grid["nse"])
+    AProb = param["guessadj"] * ones(nb_val, na_val, nse_val)
+    mu_dist = ones(nb_val, na_val, nse_val) / (nb_val * na_val * nse_val)
+
+    mc, L, n, h, r_k, Profit, v, J, u, V, M, f, w, WW, RR, RBRB, Y, P_SE, param, Lambda, grid, THETA, NW, Profit_FI, Ab, Bb, Cb =
+        compute_agg(meshes, grid, param)
+
+    c_a_guess, c_n_guess, psi_guess, inc = policyguess(meshes, WW, RR, RBRB, param, grid)
+    grid_K = grid["K"]
+
+    excess, c_n_guess, b_n_star, c_a_guess, b_a_star, a_a_star, psi_guess, mu_dist, AProb, Value, mc, L, n, h, r_k, Profits_fc, v, J, u, V, M, f, w, WW, RR, RBRB, Output, param, Lambda, TT, grid =
+        compute_K(grid_K, c_a_guess, c_n_guess, psi_guess, AProb, mu_dist, grid, param, meshes)
+
+    H_fc = h
+    W_fc = w
+    R_fc = RR
+
+    grid["L"] = L
+    aux = dropdims(sum(sum(mu_dist, dims=1), dims=2), dims=(1, 2))
+    ns_val = Int(grid["ns"])
+    grid["N"] = sum(aux[1:ns_val])
+
+    mc, L, n, h, r_k, Profit, v, J, u, V, M, f, w, WW, RR, RBRB, Y, P_SE, param, Lambda, grid, THETA, NWb, Profit_FI, Ab, Bb, Cb =
+        compute_agg(meshes, grid, param)
+
+    tot_esp_time = time() - t_start
+
+    return (c_n_guess, b_n_star, c_a_guess, b_a_star, a_a_star, psi_guess, mu_dist, AProb, Value,
+            R_fc, H_fc, W_fc, r_k, mc, v, J, u, V, M, f, Profits_fc, Output, n, grid, param,
+            P_SE, Lambda, TT, WW, THETA, NWb, Profit_FI, Ab, Bb, Cb)
+end

@@ -286,7 +286,7 @@ function mBBQ(subspec::String="ss1";
     if load_steadystate
         load_steadystate!(m)
     end
-    # steadystate!(m)
+    steadystate!(m)
 
     # So that the indices of m.endogenous_states reflect the normalization
     # normalize_model_state_indices!(m)
@@ -337,6 +337,7 @@ function model_settings!(m::mBBQ)
     m <= Setting(:dct_compression_indices, Dict{Symbol, Vector{Int}}()) #make not a dict
     m <= Setting(:n_copula_dct_coefficients, 98, "Number of coefficients in the DCT compression of the "*
                  "distribution over idiosyncratic states to approximate a perturbation in the copula")
+    m <= Setting(:compute_full_steadystate, true, "Flag to avoid re-computing the full steady-state.")
 
 
     # Temp settings
@@ -708,6 +709,24 @@ function init_parameters!(m::mBBQ)
     m <= parameter(:β, 0.9931748706, fixed = true, description = "")
     m <= parameter(:ρ_A_g, 0.95, fixed = true, description = "")
     m <= parameter(:b_a_aux, 0.9944444444444445, fixed=true, description = "", tex_label = "b_{\\text{aux}}")
+    m <= parameter(:v_util, 0.75, fixed = true, description = "Steady-state utilization rate")
+    m <= parameter(:u_target, 0.058, fixed = true, description = "Target unemployment rate")
+    m <= parameter(:v_f_target, 0.7, fixed = true, description = "Target vacancy fill rate")
+    m <= parameter(:λ_sep, 0.03, fixed = true, description = "Separation rate")
+    m <= parameter(:LT_ratio, 0.0, fixed = true, description = "Transfers-to-output ratio")
+    m <= parameter(:wmarkdown, 1.0, fixed = true, description = "Wage markdown")
+    m <= parameter(:β_L, m[:β].value, fixed = true, description = "Labor-side discount factor")
+    m <= parameter(:q_ss, 1.0, fixed = true, description = "Steady-state Tobin''s q")
+    m <= parameter(:R_cb_ss, 1.0069, fixed = true, description = "Steady-state policy rate")
+    m <= parameter(:B_gov_ratio, 0.6, fixed = true, description = "Government debt to output ratio")
+    m <= parameter(:B_F_ratio, 0.5, fixed = true, description = "Fiscal liability share of government debt")
+    m <= parameter(:Ab_ratio_init, 0.1, fixed = true, description = "Initial bank equity share")
+    m <= parameter(:THETA_ss, 10.0, fixed = true, description = "Steady-state leverage ratio")
+    m <= parameter(:Bb_ratio, 0.5, fixed = true, description = "Family deposit share")
+    m <= parameter(:guessadj, 0.5, fixed = true, description = "Initial portfolio adjustment probability")
+    m <= parameter(:A_F_ratio, 0.0, fixed = true, description = "FI asset share")
+    m <= parameter(:A_g_ratio, 0.0, fixed = true, description = "Central bank asset share")
+    m <= parameter(:K_ss_init, 30.0, fixed = true, description = "Initial steady-state capital guess")
     # Setting steady-state parameters
     nx = get_setting(m, :nx)
     ns = get_setting(m, :ns)
@@ -742,6 +761,31 @@ function init_parameters!(m::mBBQ)
     m <= SteadyStateParameterGrid(:marginal_pdf_se_star, Vector{Float64}(undef, 0),
                                   description = "Marginal PDF of income (steady-state)", 
                                   tex_label = " ")
+    m <= SteadyStateParameter(:Output_star, NaN, description = "Steady-state output", tex_label = " ")
+    m <= SteadyStateParameter(:w_bar_star, NaN, description = "Steady-state wage", tex_label = " ")
+    m <= SteadyStateParameter(:R_a_star, NaN, description = "Steady-state return on equity", tex_label = " ")
+    m <= SteadyStateParameter(:r_l_star, NaN, description = "Steady-state labor rental rate", tex_label = " ")
+    m <= SteadyStateParameter(:r_k_star, NaN, description = "Steady-state capital rental rate", tex_label = " ")
+    m <= SteadyStateParameter(:mc_star, NaN, description = "Steady-state marginal cost", tex_label = " ")
+    m <= SteadyStateParameter(:u_star, NaN, description = "Steady-state unemployment", tex_label = " ")
+    m <= SteadyStateParameter(:n_star, NaN, description = "Steady-state employment", tex_label = " ")
+    m <= SteadyStateParameter(:v_star, NaN, description = "Steady-state vacancies", tex_label = " ")
+    m <= SteadyStateParameter(:Profit_star, NaN, description = "Steady-state profits", tex_label = " ")
+    m <= SteadyStateParameter(:THETA_star, NaN, description = "Steady-state leverage", tex_label = " ")
+    m <= SteadyStateParameter(:NWb_star, NaN, description = "Steady-state bank net worth", tex_label = " ")
+    m <= SteadyStateParameter(:Profit_FI_star, NaN, description = "Steady-state FI profits", tex_label = " ")
+    m <= SteadyStateParameter(:Lambda_star, NaN, description = "Steady-state discount factor", tex_label = " ")
+    m <= SteadyStateParameter(:f_star, NaN, description = "Steady-state job finding rate", tex_label = " ")
+    m <= SteadyStateParameter(:M_star, NaN, description = "Steady-state matches", tex_label = " ")
+    m <= SteadyStateParameter(:Ab_star, NaN, description = "Steady-state bank equity holdings", tex_label = " ")
+    m <= SteadyStateParameter(:Bb_star, NaN, description = "Steady-state family deposits", tex_label = " ")
+    m <= SteadyStateParameter(:Cb_star, NaN, description = "Steady-state family consumption", tex_label = " ")
+    m <= SteadyStateParameter(:V_star, NaN, description = "Steady-state vacancies stock", tex_label = " ")
+    m <= SteadyStateParameterGrid(:mu_dist_star, Vector{Float64}(undef, 0), description = "Steady-state household distribution", tex_label = " ")
+    m <= SteadyStateParameterGrid(:Value_star, Vector{Float64}(undef, 0), description = "Steady-state value function", tex_label = " ")
+    m <= SteadyStateParameterGrid(:Vb_star, Vector{Float64}(undef, 0), description = "Steady-state bond marginal value", tex_label = " ")
+    m <= SteadyStateParameterGrid(:Va_star, Vector{Float64}(undef, 0), description = "Steady-state capital marginal value", tex_label = " ")
+    m <= SteadyStateParameterGrid(:mutil_c_star, Vector{Float64}(undef, 0), description = "Steady-state marginal utility of consumption", tex_label = " ")
 
 
 
