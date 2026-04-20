@@ -24,11 +24,27 @@ function SGU_solver_zlb(param, grid, Jacob_base, F21_ad, F22_ad, F23_ad, F24_ad,
     F5X = getjb(Jacob_base, :F5X)
     F5Y = getjb(Jacob_base, :F5Y)
 
-    # Translation of SGU_EST_ZLB_v2.m with already-trimmed Jacobian update blocks.
-    F1 = vcat(F1Xnext, F21_ad, F4Xnext, F5Xnext, F41_ad)
-    F2 = vcat(F1Ynext, F22_ad, F4Ynext, F5Ynext, F42_ad)
-    F3 = vcat(F1X, F23_ad, F4X, F5X, F43_ad)
-    F4 = vcat(F1Y, F24_ad, F4Y, F5Y, F44_ad)
+    function untrim_left(mat::AbstractMatrix, full_cols::Int)
+        nrows, ncols = size(mat)
+        ncols > full_cols && error("Trimmed block has more columns than target width.")
+        ncols == full_cols && return mat
+        return hcat(zeros(eltype(mat), nrows, full_cols - ncols), mat)
+    end
+
+    F21_full = untrim_left(F21_ad, size(F1Xnext, 2))
+    F23_full = untrim_left(F23_ad, size(F1X, 2))
+    F41_full = untrim_left(F41_ad, size(F4Xnext, 2))
+    F43_full = untrim_left(F43_ad, size(F4X, 2))
+    F22_full = untrim_left(F22_ad, size(F1Ynext, 2))
+    F24_full = untrim_left(F24_ad, size(F1Y, 2))
+    F42_full = untrim_left(F42_ad, size(F4Ynext, 2))
+    F44_full = untrim_left(F44_ad, size(F4Y, 2))
+
+    # Translation of SGU_EST_ZLB_v2.m with reconstructed full-width update blocks.
+    F1 = vcat(F1Xnext, F21_full, F4Xnext, F5Xnext, F41_full)
+    F2 = vcat(F1Ynext, F22_full, F4Ynext, F5Ynext, F42_full)
+    F3 = vcat(F1X, F23_full, F4X, F5X, F43_full)
+    F4 = vcat(F1Y, F24_full, F4Y, F5Y, F44_full)
 
     return F1, F2, F3, F4, param
 end

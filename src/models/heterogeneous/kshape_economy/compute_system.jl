@@ -1,6 +1,6 @@
 
 
-function compute_system(m::mBBQ, Jacob_base; H_obs=nothing)
+function compute_system!(m::mBBQ; H_obs=nothing)
     
     #update_ss_v5
     DSGE.update_ss_v5!(m) 
@@ -14,7 +14,7 @@ function compute_system(m::mBBQ, Jacob_base; H_obs=nothing)
     #maybe square some values?
 
     #compute jacob TESTING ONLY, read csv jacob instead of actually compute jacob for testing
-    #F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian(m, Xss, Yss, SS_stats_base, grid, param_base)
+    #F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian!(m)
     _jcsv = joinpath(@__DIR__, "tests", "csv")
     F21_ad = Matrix(CSV.read(joinpath(_jcsv, "F21_ad.csv"), DataFrame))
     F22_ad = Matrix(CSV.read(joinpath(_jcsv, "F22_ad.csv"), DataFrame))
@@ -34,16 +34,20 @@ function compute_system(m::mBBQ, Jacob_base; H_obs=nothing)
     # F43_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F43_ad_zlb.csv"), DataFrame))
     # F44_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F44_ad_zlb.csv"), DataFrame))
 
-    @assert false
 
 
     # -----------------------------
     # SGU solver
     # -----------------------------
-    param_base["overrideEigen"] = true
-    hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, param_base, indicator = DSGE.SGU_solver(param_base, grid, Jacob_base, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
+    # param_base["overrideEigen"] = true
+    hx, gx, F1_aux, F2_aux, F3_aux, F4_aux = DSGE.SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
+    return hx, gx, F1_aux, F2_aux, F3_aux, F4_aux #temporary test
+    @assert false
+
     F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb, param_zlb = DSGE.SGU_solver_zlb(param_base, grid, Jacob_base, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb)
 
+
+    
     #TODO TEST OUTPUTS SAME
 
     # -----------------------------
