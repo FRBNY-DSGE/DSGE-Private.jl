@@ -41,14 +41,14 @@ function compute_system!(m::mBBQ; H_obs=nothing)
     # -----------------------------
     # param_base["overrideEigen"] = true
     hx, gx, F1_aux, F2_aux, F3_aux, F4_aux = DSGE.SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
-    return hx, gx, F1_aux, F2_aux, F3_aux, F4_aux #temporary test
+
+
+    F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb = DSGE.SGU_solver_zlb(m, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad, F42_ad, F43_ad, F44_ad)
+
+    return hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb #temporary test
     @assert false
-
-    F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb, param_zlb = DSGE.SGU_solver_zlb(param_base, grid, Jacob_base, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb)
-
-
     
-    #TODO TEST OUTPUTS SAME
+    #TODO TEST pq creation output SAME, move to own function
 
     # -----------------------------
     # Linearized system

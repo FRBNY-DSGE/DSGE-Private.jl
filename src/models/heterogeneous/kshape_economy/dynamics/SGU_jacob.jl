@@ -72,12 +72,19 @@ function SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F
     B = -[F3 F4]
     println("B shape: ", size(B))
     schur_result = schur(A, B)
+    s = schur_result.S
+    t = schur_result.T
+    #Main.xx[][:schur_result] = schur_result
+    #Main.xx[][:S] = s
+    #Main.xx[][:T] = t
+    # Use alpha/beta from the generalized Schur decomposition rather than diag(s)./diag(t)
+    # so complex conjugate pairs are handled correctly.
     relev = abs.(schur_result.alpha) ./ abs.(schur_result.beta)
+    #Main.xx[][:relev] = relev
+    #@assert false
     ll = sort(relev)
     slt = relev .>= 1.0
     nk = sum(slt)
-    indicator = 1
-    overrideEigen = getparam(m.dicts[:param], "overrideEigen", false)
 
     if nk > numstates
         if overrideEigen
@@ -87,7 +94,6 @@ function SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F
         else
             error("No Local Equilibrium Exists, last eigenvalue: $(ll[end - numstates])")
         end
-        indicator = 0
     elseif nk < numstates
         if overrideEigen
             threshold = ll[end - numstates]
@@ -97,32 +103,34 @@ function SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F
         else
             error("No Local Equilibrium Exists, last eigenvalue: $(ll[end - numstates])")
         end
-        indicator = 0
     end
 
-    reordered = ordschur(schur_result, slt)
-    S = Matrix(reordered.S)
-    T = Matrix(reordered.T)
-    Zmat = Matrix(reordered.right)
+    # Reorder the generalized Schur form so selected eigenvalues move to the top-left block.
+    S = copy(Matrix(schur_result.S))
+    T = copy(Matrix(schur_result.T))
+    Qmat = copy(Matrix(schur_result.left))
+    Zmat = copy(Matrix(schur_result.right))
+    selectInt = LinearAlgebra.LAPACK.BlasInt.(slt)
+
+    # @info "SGU_solver: Before tgsen: rank(Zmat)=$(rank(Zmat)), sum(selectInt)=$(sum(selectInt))"
+    LinearAlgebra.LAPACK.tgsen!(selectInt, S, T, Qmat, Zmat)
+    # @info "SGU_solver: After tgsen: rank(Zmat)=$(rank(Zmat))"
 
     z11 = Zmat[1:nk, 1:nk]
     z21 = Zmat[(nk + 1):end, 1:nk]
     s11 = S[1:nk, 1:nk]
     t11 = T[1:nk, 1:nk]
 
-    if indicator > 0 && rank(z11) < nk
-        @warn "invertibility condition violated"
-        indicator = 0
+    z11_rank = rank(z11)
+    @info "SGU_solver: z11 size=$(size(z11)), rank=$(z11_rank), nk=$nk"
+    if z11_rank < nk
+        @warn "invertibility condition violated: rank(z11)=$(z11_rank) < nk=$nk"
     end
 
-    if indicator > 0
-        z11i = z11 \ Matrix{Float64}(I, nk, nk)
-        gx = real(z21 * z11i)
-        hx = real(z11 * (s11 \ t11) * z11i)
-    else
-        gx = zeros(numcontrols, numstates)
-        hx = zeros(numstates, numstates)
-    end
+    z11i = z11 \ Matrix{Float64}(I, nk, nk)
+    gx = real(z21 * z11i)
+    hx = real(z11 * (s11 \ t11) * z11i)
 
+    # @info "SGU_solver: done."
     return hx, gx, F1, F2, F3, F4
 end
