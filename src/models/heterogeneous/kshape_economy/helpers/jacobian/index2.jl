@@ -1,6 +1,11 @@
 using OrderedCollections: OrderedDict
 
 function build_indices(grid, lenSSS, lenCSS)
+    getgrid(g, k::Symbol) =
+        haskey(g, k) ? g[k] :
+        haskey(g, String(k)) ? g[String(k)] :
+        error("Missing grid key: $(k)")
+
     #must appear in exact order as indexation in F_sys_ref_tvcopula_QE
     agg_states = [:R_cb_t, :w_t, :A_b_t, :B_b_t, :A_gaux_t, :Q_t, :lev_t, :NW_b_t, :R_tilde_t, :x_cb_t,
     :π_past_t, :Y_past_t, :C_past_t, :I_past_t, :Profit_past_t, :unemp_past_t, :G_past_t, :LT_past_t,
@@ -22,13 +27,13 @@ function build_indices(grid, lenSSS, lenCSS)
     :YY_lag_t, :CC_lag_t, :II_lag_t, :PPROFIT_lag_t, :uu_lag_t, :GG_lag_t, :A_g_lag_t,
     :l_λ_t , :Q_lag_t, :x_I_t, :η2_t, :ι_2_t, :LT2_lag_t, :G2_lag_t, :LT_obs_t, :B_gov_ncp2_t]
     
-    nb  = Int(grid[:nb])
-    na  = Int(grid[:na])
-    nse = Int(grid[:nse])
-    ns  = Int(grid[:ns])
-    nCOP = Int(grid[:nCOP])
-    oc  = Int(grid[:oc])
-    numstates = Int(grid[:numstates])
+    nb  = Int(getgrid(grid, :nb))
+    na  = Int(getgrid(grid, :na))
+    nse = Int(getgrid(grid, :nse))
+    ns  = Int(getgrid(grid, :ns))
+    nCOP = Int(getgrid(grid, :nCOP))
+    oc  = Int(getgrid(grid, :oc))
+    numstates = Int(getgrid(grid, :numstates))
 
     NN = nb * na * nse
     # println("NN IN INDEX $NN")

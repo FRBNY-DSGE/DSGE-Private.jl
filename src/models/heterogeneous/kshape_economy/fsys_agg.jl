@@ -29,7 +29,7 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
  =#
 
 
- function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, ss, state_id, control_id, reg=1)
+ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, control_id, reg=1)
 #=
                     #TODO: make all of these arguments into function
                   jld2file = "XssYss.jld2"
@@ -63,13 +63,13 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     monpol = get_setting(m, :regime_monpol)[reg]
 
     #monpol == :taylor
-    F[:eq_rate_monetary_policy] = log(R_cb′_t) - ss[:R_cb_t] - 
+    F[:eq_rate_monetary_policy] = log(R_cb′_t) - log(m.dicts[:SS_stats]["R_cb"]) - 
     (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
-    m[:ϕ_u] * (unemp_t - ss[:u_t])) -  
-    m[:ρ_R]*(log(R_cb_t) - ss[:R_cb_t]) - log(eps_R_t)
+    m[:ϕ_u] * (unemp_t - m.dicts[:SS_stats]["u"])) -  
+    m[:ρ_R]*(log(R_cb_t) - log(m.dicts[:SS_stats]["R_cb"])) - log(eps_R_t)
 
     #monpol == :qe
-    F[:eq_rate_monetary_policy_ZLB] = log(R_cb′_t) - ss[:R_cb_t] - log(eps_R_t)
+    F[:eq_rate_monetary_policy_ZLB] = log(R_cb′_t) - log(m.dicts[:SS_stats]["R_cb"]) - log(eps_R_t)
 
     #===================================================================#
     #eq r star 
@@ -78,8 +78,8 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     
     F[:eq_R_star_ZLB] = log(R_star′_t) - #ss[:R_star_t] - 
     (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
-    m[:ϕ_u] * (unemp_t - ss[:u_t])) -  
-    m[:ρ_R]*(log(R_star_t) - ss[:R_cb_t]) - log(eps_R_t)
+    m[:ϕ_u] * (unemp_t - m.dicts[:SS_stats]["u"])) -  
+    m[:ρ_R]*(log(R_star_t) - log(m.dicts[:SS_stats]["R_cb"])) - log(eps_R_t)
 
     #===================================================================#
     #eq2: wage
@@ -89,21 +89,21 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
     #used to be ψ_w_t unprimed 
     #delta might be new param d
 #=
-    F[:eq_wage] = log(w′_t) - ss[:w_t] - 
-    m[:ρ_w].value * (log(w_t) - ss[:w_t] + 
-    m[:d].value * log(log(ss[:π_t])/log(pi_t)) + (1-m[:d].value)*log(log(π_past_t)/log(pi_t))) - 
-    (1 - m[:ρ_w].value) * eps_w_t * log(ψ_w_t + h_t - ss[:r_l_t])
+    F[:eq_wage] = log(w′_t) - log(m.dicts[:SS_stats]["w"]) - 
+    m[:ρ_w].value * (log(w_t) - log(m.dicts[:SS_stats]["w"]) + 
+    m[:d].value * log(log(m.dicts[:param]["pi_bar"])/log(pi_t)) + (1-m[:d].value)*log(log(π_past_t)/log(pi_t))) - 
+    (1 - m[:ρ_w].value) * eps_w_t * log(ψ_w_t + h_t - m.dicts[:SS_stats]["r_l"])
 =#
-    F[:eq_wage] = log(w′_t) - ss[:w_t] - 
-    m[:ρ_w].value * (log(w_t) - ss[:w_t] + 
-    m[:d].value * log(ss[:π_t]/pi_t) + (1-m[:d].value)*log(π_past_t/pi_t)) - 
-    (1 - m[:ρ_w].value) * eps_w_t * log( h_t / ss[:r_l_t]) - (1 - m[:ρ_w].value) * log(1/ ψ_w′_t)
+    F[:eq_wage] = log(w′_t) - log(m.dicts[:SS_stats]["w"]) - 
+    m[:ρ_w].value * (log(w_t) - log(m.dicts[:SS_stats]["w"]) + 
+    m[:d].value * log(m.dicts[:param]["pi_bar"]/pi_t) + (1-m[:d].value)*log(π_past_t/pi_t)) - 
+    (1 - m[:ρ_w].value) * eps_w_t * log( h_t / m.dicts[:SS_stats]["r_l"]) - (1 - m[:ρ_w].value) * log(1/ ψ_w′_t)
 #=   
 println("w′_t:        ", w′_t)
 println("w_t:         ", w_t)
-println("ss[:w_t]:    ", ss[:w_t])
-println("ss[:π_t]:    ", ss[:π_t])
-println("ss[:r_l_t]:  ", ss[:r_l_t])
+println("log(m.dicts[:SS_stats]["w"]):    ", log(m.dicts[:SS_stats]["w"]))
+println("m.dicts[:param]["pi_bar"]:    ", m.dicts[:param]["pi_bar"])
+println("m.dicts[:SS_stats]["r_l"]:  ", m.dicts[:SS_stats]["r_l"])
 println("pi_t:        ", pi_t)
 println("π_past_t:    ", π_past_t)
 println("ψ_w_t:       ", ψ_w_t)
@@ -152,7 +152,7 @@ println("m[:d]:       ", m[:d].value)
     #monpol taylor
     F[:eq_central_bank_assets] = log(A_gaux′_t) - 
     log( m[:ρ_A_g]* (A_g_t) + 
-        (1 - m[:ρ_A_g])* ss[:A_g_t] + log(ψ_rp′_t)*Y_t)
+        (1 - m[:ρ_A_g])* m.dicts[:SS_stats]["A_g"] + log(ψ_rp′_t)*Y_t)
     
 
     #===================================================================#
@@ -166,11 +166,11 @@ println("m[:d]:       ", m[:d].value)
 
     F[:eq_tobins_q] = log(Q′_t) -
     log(ι_2_t * (1 + m[:ϕ].value * log(x_k_t)+m[:ϕ].value/2*(log(x_k_t))^2 ) + 
-    ι_2′_t * λ_t / ss[:λ_t] * m[:ϕ].value * log(x_k′_t) * x_k′_t )
+    ι_2′_t * λ_t / m.dicts[:SS_stats]["Lambda"] * m[:ϕ].value * log(x_k′_t) * x_k′_t )
 #=
  F[:eq_tobins_q] = log(Q′_t) -
     log(η2_t * (1 + m[:ϕ].value * log(x_k_t)+m[:ϕ].value/2*(log(x_k_t))^2 ) + 
-    η2′_t * λ_t / ss[:λ_t] * m[:ϕ].value * log(x_k′_t) * x_k′_t )
+    η2′_t * λ_t / m.dicts[:SS_stats]["Lambda"] * m[:ϕ].value * log(x_k′_t) * x_k′_t )
 =#
 
     #===================================================================#
@@ -205,13 +205,13 @@ println("m[:d]:       ", m[:d].value)
     F[:eq_quantitative_easing] = log(x_cb′_t) - 
     log( 1 + m[:ρ_X_QE] * (x_cb_t-1) + 
     (1-m[:ρ_X_QE])*(-m[:ϕ_π_QE]*log(pi_t / m[:π_cb])+
-    m[:ϕ_u_QE] * (unemp_t - ss[:u_t])) )    
+    m[:ϕ_u_QE] * (unemp_t - m.dicts[:SS_stats]["u"])) )    
     
     #elseif monpol == :qe
     F[:eq_quantitative_easing_ZLB] = log(x_cb′_t) - 
     log( 1 + m[:ρ_X_QE] * (x_cb_t-1) + 
     (1-m[:ρ_X_QE])*(-m[:ϕ_π_QE]*log(pi_t / m[:π_cb])+
-    m[:ϕ_u_QE] * (unemp_t - ss[:u_t])) + log(ψ_rp′_t))
+    m[:ϕ_u_QE] * (unemp_t - m.dicts[:SS_stats]["u"])) + log(ψ_rp′_t))
     
     #end
 
@@ -274,10 +274,10 @@ println("m[:d]:       ", m[:d].value)
     #eq19: R_star
     @sslogdeviations2levels R_star_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys  R_star′_t = Xt1, state_id, StateSS
-    F[:eq_R_star] = log(R_star′_t) - ss[:R_cb_t] -
+    F[:eq_R_star] = log(R_star′_t) - log(m.dicts[:SS_stats]["R_cb"]) -
                     (1 - m[:ρ_R]) * (m[:ϕ_π] * log(pi_t/m[:π_cb]) -
-                    m[:ϕ_u] * (unemp_t - ss[:u_t])) -
-                    m[:ρ_R]*(log(R_star_t) - ss[:R_cb_t]) - log(eps_R_t)
+                    m[:ϕ_u] * (unemp_t - m.dicts[:SS_stats]["u"])) -
+                    m[:ρ_R]*(log(R_star_t) - log(m.dicts[:SS_stats]["R_cb"])) - log(eps_R_t)
   
     #===================================================================#
     #eq19: eq_fiscal_liability
@@ -286,7 +286,7 @@ println("m[:d]:       ", m[:d].value)
     @sslogdeviations2levels_unprimekeys B_F′_t = Xt1, state_id, StateSS
    
     F[:eq_fiscal_liability] = log(B_F′_t) - ( m[:ρ_B_F].value * log(B_F_t) +
-                                             (1 - m[:ρ_B_F].value) * log(ss[:Y_t] / (ss[:Y_t] - ss[:B_F_t] ))) - log(eps_B_F_t)
+                                             (1 - m[:ρ_B_F].value) * log(m.dicts[:SS_stats]["Y"] / (m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["B_F"] ))) - log(eps_B_F_t)
 
     #===================================================================#
     #eq20: z 
@@ -333,11 +333,11 @@ println("m[:d]:       ", m[:d].value)
     if regime == "G"
         F[:eq_GG] = log(GG′_t) - 
         (m[:ρ_G].value * log(GG_t) + (1 - m[:ρ_G].value) * 
-         log(ss[:Y_t] / (ss[:Y_t] - ss[:LT_t] - ss[:C_b_t]))) - log(eps_G_t)
+         log(m.dicts[:SS_stats]["Y"] / (m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["LT"] - m.dicts[:SS_stats]["C_b"]))) - log(eps_G_t)
     elseif regime == "LT" #doesn't work
         F[:eq_GG] = log(GG′_t)  - 
         (m[:ρ_G]  * log(GG_t) + (1-m[:ρ_G])  * 
-         log(ss[:Y_t] / (ss[:Y_t] - ss[:G_t]))) - log(eps_G_t)
+         log(m.dicts[:SS_stats]["Y"] / (m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["G"]))) - log(eps_G_t)
     end
 
     #===================================================================#
@@ -398,7 +398,7 @@ println("m[:d]:       ", m[:d].value)
     @sslogdeviations2levels B_b_t = Xt, state_id, StateSS
     @sslogdeviations2levels B_t, B_hh_t = Yt, control_id, ControlSS
 
-    F[:eq_control_bond] = B_t - (B_hh_t + B_b_t  + (1-1/1)*ss[:Y_t])
+    F[:eq_control_bond] = B_t - (B_hh_t + B_b_t  + (1-1/1)*m.dicts[:SS_stats]["Y"])
 
 
     #===================================================================#
@@ -406,7 +406,7 @@ println("m[:d]:       ", m[:d].value)
     @sslogdeviations2levels B_gov_ncp_t = Yt, control_id, ControlSS
 
     F[:eq_control_government_bond] = B_gov_ncp_t - 
-    (B_b_t  + B_hh_t + (1-1/1)*ss[:Y_t] - 
+    (B_b_t  + B_hh_t + (1-1/1)*m.dicts[:SS_stats]["Y"] - 
     (Q_t * A_b_t- NW_b_t) - Q_t * (1 + m[:τ_cp].value) * A_g_t)
 
 
@@ -428,9 +428,9 @@ println("m[:d]:       ", m[:d].value)
     @sslogdeviations2levels LT_t = Yt, control_id, ControlSS
     regime = "G"
     if regime == "G"
-        F[:eq_control_transfer] = LT_t - ((1 - 1/GG′_t) * ss[:Y_t] -  ss[:C_b_t])
+        F[:eq_control_transfer] = LT_t - ((1 - 1/GG′_t) * m.dicts[:SS_stats]["Y"] -  m.dicts[:SS_stats]["C_b"])
     elseif regime == "LT"
-        F[:eq_control_transfer] = LT_t - (ss[:LT_t])
+        F[:eq_control_transfer] = LT_t - (m.dicts[:SS_stats]["LT"])
     end
 
 
@@ -441,9 +441,9 @@ println("m[:d]:       ", m[:d].value)
 
     regime = "G"
     if regime == "G"
-        F[:eq_control_government_spending] = G_t - ss[:G_t]
+        F[:eq_control_government_spending] = G_t - m.dicts[:SS_stats]["G"]
     elseif regime == "LT" #Doesnt work
-        F[:eq_control_government_spending] = G_t - ((1-1/GG′_t)*ss[:Y_t])
+        F[:eq_control_government_spending] = G_t - ((1-1/GG′_t)*m.dicts[:SS_stats]["Y"])
     end
     
     #===================================================================#
@@ -456,21 +456,21 @@ println("m[:d]:       ", m[:d].value)
     @sslogdeviations2levels pi_t = Yt, control_id, ControlSS
    
 #=    F[:eq_control_inflation] = log(pi_t / m[:π_cb].value) - (m[:π_cb].value * exp(m[:ρ_B].value / (m[:ρ_B].value + m[:γ_π].value))
-                                        * log(B_gov_ncp_t * R_cb_t / (ss[:B_gov_ncp_t] * R_cb_t))
-                                        - m[:γ_T].value/(m[:ρ_B].value + m[:γ_π].value) * log(T_t / ss[:T_t]) -
-                                        1/(m[:ρ_B].value + m[:γ_π].value)*log(B_gov_ncp′_t / ss[:B_gov_ncp_t]))
+                                        * log(B_gov_ncp_t * R_cb_t / (m.dicts[:SS_stats]["B_gov_ncp"] * R_cb_t))
+                                        - m[:γ_T].value/(m[:ρ_B].value + m[:γ_π].value) * log(T_t / m.dicts[:SS_stats]["T"]) -
+                                        1/(m[:ρ_B].value + m[:γ_π].value)*log(B_gov_ncp′_t / m.dicts[:SS_stats]["B_gov_ncp"]))
 =#
 F[:eq_control_inflation] = pi_t - m[:π_cb].value * exp(
         m[:ρ_B].value / (m[:ρ_B].value + m[:γ_π].value) *
-            log(B_gov_ncp_t * R_cb_t / (ss[:B_gov_ncp_t] * exp(ss[:R_cb_t])))
-        - m[:γ_T].value / (m[:ρ_B].value + m[:γ_π].value) * log(T_t / ss[:T_t])
-        - 1 / (m[:ρ_B].value + m[:γ_π].value) * log(B_gov_ncp′_t / ss[:B_gov_ncp_t]))
+            log(B_gov_ncp_t * R_cb_t / (m.dicts[:SS_stats]["B_gov_ncp"] * exp(log(m.dicts[:SS_stats]["R_cb"]))))
+        - m[:γ_T].value / (m[:ρ_B].value + m[:γ_π].value) * log(T_t / m.dicts[:SS_stats]["T"])
+        - 1 / (m[:ρ_B].value + m[:γ_π].value) * log(B_gov_ncp′_t / m.dicts[:SS_stats]["B_gov_ncp"]))
 
     
     #===================================================================#
     #control eq9: Vacancies
     @sslogdeviations2levels V_t, M_t, J_t = Yt, control_id, ControlSS
-    F[:eq_control_vacancies] = V_t - (M_t / m[:ι].value * only(J_t' * grid[:s_dist]) )
+    F[:eq_control_vacancies] = V_t - (M_t / m[:ι].value * only(J_t' * m.dicts[:grid]["s_dist"]) )
 
     #===================================================================#
     #control eq10 to 14: J #TODO: standardize type of array in ss
@@ -478,14 +478,14 @@ F[:eq_control_inflation] = pi_t - m[:π_cb].value * exp(
     @sslogdeviations2levels_unprimekeys l_λ_′t, J′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_j] = J_t - 
-        ((h_t - m[:fix_L].value -  w′_t) .* (grid[:s]) .* nn_t + 
+        ((h_t - m[:fix_L].value -  w′_t) .* (m.dicts[:grid]["s"]) .* nn_t + 
         (λ_t * (1 - m[:dr].value) * (1-l_λ_′t) *
-        (1-m[:in].value)) * ss[:P_SS_t] * J′_t)
+        (1-m[:in].value)) * m.dicts[:param]["P_SS"] * J′_t)
     #=
     F[:eq_control_j] = J_t - 
         ((h_t - m[:fix_L].value - w_t) .* (grid[:s]) .* nn_t + 
         (λ_t * (1 - m[:dr].value) * (1-l_λ_′t) *
-        (1-m[:in].value)) * ss[:P_SS_t] * J′_t)
+        (1-m[:in].value)) * m.dicts[:param]["P_SS"] * J′_t)
 =#
     #===================================================================#
     #control eq15: r^l
@@ -494,8 +494,8 @@ F[:eq_control_inflation] = pi_t - m[:π_cb].value * exp(
     F[:eq_control_mpl] = h_t - 
     (Z′_t * MC_t *(v_t * K_t) .^ m[:θ].value .* (L_t).^(m[:θ_2].value - 1) * 
     (m[:θ_2].value + m[:α_lk].value * 
-    log(v_t * K_t / ss[:v_t] / grid[:K] ) + 
-    m[:α_ll]*log(L_t / ss[:L_t])))
+    log(v_t * K_t / m.dicts[:SS_stats]["v"] / m.dicts[:grid]["K"] ) + 
+    m[:α_ll]*log(L_t / m.dicts[:SS_stats]["L"])))
 
     #===================================================================#
     #control eq16: v
@@ -518,7 +518,7 @@ F[:eq_control_inflation] = pi_t - m[:π_cb].value * exp(
     @sslogdeviations2levels_unprimekeys K′_t = Yt1, control_id, ControlSS
 
 #=
-    fix_ratio_t = (m[:fix].value / exp(ss[:Y_t]) - ss[:B_F_t] + log(B_F′_t)) * Y_t
+    fix_ratio_t = (m[:fix].value / exp(m.dicts[:SS_stats]["Y"]) - m.dicts[:SS_stats]["B_F"] + log(B_F′_t)) * Y_t
     F[:eq_control_profit] = Profit_t -
     ((Y_t * (1- m[:η] / (2 * m[:κ]) * (log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) -
                                        m[:γ]*log(π_past_t)) .^ 2) + Y_t.*(-MC_t) - fix_ratio_t + (h_t - w′_t) .* L_t -
@@ -550,14 +550,14 @@ Q_t*(K′_t - K_t) - (K′_t - K_t) - m[:ϕ]/2 * (K′_t/K_t - 1)^2 * K_t + Prof
 
     F[:eq_control_mpk] = r_k_t - 
     (Z′_t * MC_t * (v_t * K_t) .^ ( m[:θ] - 1) .* (L_t ) .^ m[:θ_2] * 
-    (m[:θ] + m[:α_lk] *log(L_t / ss[:L_t] ) + m[:α_kk] * log(v_t * K_t / ss[:v_t] / grid[:K])))
+    (m[:θ] + m[:α_lk] *log(L_t / m.dicts[:SS_stats]["L"] ) + m[:α_kk] * log(v_t * K_t / m.dicts[:SS_stats]["v"] / m.dicts[:grid]["K"])))
 
     #===================================================================#
     #control eq20: r^a
     @sslogdeviations2levels r_a_t = Yt, control_id, ControlSS
 
     F[:eq_control_mpa] = r_a_t - 
-    ((1 - ss[:tau_a_t])*(1 - m[:Eratio] - m[:b_share])* Profit_t / K_t)
+    ((1 - m.dicts[:SS_stats]["tau_a"])*(1 - m[:Eratio] - m[:b_share])* Profit_t / K_t)
 
 
     #===================================================================#
@@ -565,8 +565,8 @@ Q_t*(K′_t - K_t) - (K′_t - K_t) - m[:ϕ]/2 * (K′_t/K_t - 1)^2 * K_t + Prof
     @sslogdeviations2levels_unprimekeys Y′_t, pi′_t, η2′_t = Yt1, control_id, ControlSS
 
     F[:eq_control_marginal_cost] = MC_t - 
-    (1 - 1/η′_t + (log(pi_t/(π_past_t ^ m[:γ] * ss[:π_t] ^(1 - m[:γ]))) - 
-    λ_t * η2′_t/η2_t * Y′_t / Y_t * log(pi′_t / (pi_t^m[:γ] * ss[:π_t] ^ (1-m[:γ])) )) / m[:κ])
+    (1 - 1/η′_t + (log(pi_t/(π_past_t ^ m[:γ] * m.dicts[:param]["pi_bar"] ^(1 - m[:γ]))) - 
+    λ_t * η2′_t/η2_t * Y′_t / Y_t * log(pi′_t / (pi_t^m[:γ] * m.dicts[:param]["pi_bar"] ^ (1-m[:γ])) )) / m[:κ])
 
     #===================================================================#
     #22-25 unemployment rate
@@ -583,7 +583,7 @@ Q_t*(K′_t - K_t) - (K′_t - K_t) - m[:ϕ]/2 * (K′_t/K_t - 1)^2 * K_t + Prof
 
 
     F[:eq_control_nn] = nn_t -
-    ( ((1- ss[:tau_w_t] )* w′_t / (m[:ψ]))^( 1 / m[:ξ]) )
+    ( ((1- m.dicts[:SS_stats]["tau_w"] )* w′_t / (m[:ψ]))^( 1 / m[:ξ]) )
 
 
     #===================================================================#
@@ -857,7 +857,7 @@ F[:eq_lt_obs] = LT_obs_t - LT_t
 #===================================================================#
 #control eq61: l_lambda
 
-F[:eq_l_lambda] = l_λ_t - ss[:lambda_t]
+F[:eq_l_lambda] = l_λ_t - m.dicts[:param]["lambda"]
 
 #===================================================================#
 #control eq62: x_I

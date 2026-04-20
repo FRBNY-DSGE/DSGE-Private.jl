@@ -223,9 +223,9 @@ function mBBQ(subspec::String="ss1";
     # initialize empty model
     m = mBBQ{Float64}(
                       # model parameters and steady state values
-                      Vector{AbstractParameter{Float64}}(), Vector{Float64}(),
+                      Vector{AbstractParameter{Float64}}(), Vector{AbstractParameter{Float64}}(),
                       # grids and keys
-                      OrderedDict{Symbol,Union{Grid, Array, Float64}}(), Dict{String,Any}(), OrderedDict{Symbol,Int}(),
+                      OrderedDict{Symbol,Union{Grid, Array, Float64}}(), Dict{Symbol,Any}(), OrderedDict{Symbol,Int}(),
 
                       # state_variables, jump_variables,
                       Vector{Symbol}(), Vector{Symbol}(),
@@ -750,10 +750,16 @@ function init_parameters!(m::mBBQ)
     m.dicts[:grid] = Dict{String, Any}()
     m.dicts[:param] = Dict{String, Any}()
 
+    m.dicts[:Jacob_base] = Dict{Symbol, Any}()
+
+
     m.grids[:mu_dist] = zeros(1)
     m.grids[:Value] = zeros(1)
     m.grids[:mutil_c] = zeros(1)
     m.grids[:Va] = zeros(1)
+
+    m.grids[:Va] = zeros(1)
+
 
     #Steady state grids
     m <= SteadyStateParameterGrid(:marginal_cdf_b_star, Vector{Float64}(undef, 0), 

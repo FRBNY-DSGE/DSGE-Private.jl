@@ -15,12 +15,15 @@ Value = input_data["Value"]
 mutil_c = input_data["mutil_c"]
 Va = input_data["Va"]
 
+jld2file = "../data/sgufx.jld2"
+@load jld2file F1_aux_rep F2_aux_rep F3_aux_rep F4_aux_rep
 
 jld2file = "../data/XssYss.jld2"
 @load jld2file StateSS ControlSS SS_stats grid param
 # grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
 
 m = mBBQ()
+
 
 m.dicts[:grid] = grid
 m.dicts[:SS_stats] = SS_stats
@@ -33,8 +36,15 @@ m.grids[:Value] = Value
 m.grids[:mutil_c] = mutil_c
 m.grids[:Va] = Va
 
+
+Jacob_base2 = DSGE.save_jacob_base(F1_aux_rep, F2_aux_rep, F3_aux_rep, F4_aux_rep, m)
+
+
 #load in basejacob
 mat_contents = matread("../data/TESTJACOBBASE.mat")
-Jacob_base = mat_contents["Jacob_base"]
+Jacob_base = mat_contents["Jacob_base"] #for testing use, this but in prod use save_jacob_base based on tvcopula
 
-compute_system(m, Jacob_base)
+m.dicts[:Jacob_base] = Jacob_base
+
+
+compute_system(m)

@@ -7,11 +7,21 @@ using DSGE
 
 
 
-function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
+function jacobian!(m::mBBQ)
+    grid = m.dicts[:grid] 
+    SS_stats = m.dicts[:SS_stats] 
+    param = m.dicts[:param] 
+    StateSS = m.grids[:StateSS]
+    ControlSS = m.grids[:ControlSS] 
+    getgrid(g, k::Symbol) =
+        haskey(g, k) ? g[k] :
+        haskey(g, String(k)) ? g[String(k)] :
+        error("Missing grid key: $(k)")
+
 
     #one time setup to move prev donggyu format to bbl format
     state_id, control_id = DSGE.build_indices(grid, length(StateSS), length(ControlSS))
-    ss = DSGE.build_ss(param, SS_stats)
+    #ss = DSGE.build_ss(param, SS_stats)
 
     #manual fixes, jank but ygdwygd
     state_id[:A_g_t] = 17733
@@ -154,7 +164,7 @@ function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
 
     #set regime for testing
     reg = 1
-    F = DSGE.Fsys_agg(F, m, grid, StateSS, ControlSS, State_zero, Control_zero, State_zero, Control_zero, ss, state_id, control_id, reg)
+    F = DSGE.Fsys_agg(F, m, grid, StateSS, ControlSS, State_zero, Control_zero, State_zero, Control_zero, state_id, control_id, reg)
 
     eq_keys = collect(keys(F))
 
@@ -187,7 +197,7 @@ function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
         Xt  = x[nState+nCtrl+1:2*nState+nCtrl]
         Yt  = x[2*nState+nCtrl+1:end]
         F_dict = OrderedDict{Symbol, Any}()
-        DSGE.Fsys_agg(F_dict, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, ss, state_id, control_id, reg)
+        DSGE.Fsys_agg(F_dict, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, control_id, reg)
         flatten_F!(F_vec, F_dict, eq_keys)
     end
 
@@ -220,8 +230,8 @@ function jacobian(m::mBBQ, StateSS, ControlSS, SS_stats, grid, param)
     F3_ad = BA_agg[:, nState+nCtrl+1:2*nState+nCtrl][:, agg_state_cols]  # ∂F/∂Xt  (agg cols)
     F4_ad = BA_agg[:, 2*nState+nCtrl+1:end][:, agg_ctrl_cols]            # ∂F/∂Yt  (agg cols)
 
-    os = grid[:os]
-    oc = grid[:oc]
+    os = Int(getgrid(grid, :os))
+    oc = Int(getgrid(grid, :oc))
     F21_ad = F1_ad[1:os, :]
     F22_ad = F2_ad[1:os, :]
     F23_ad = F3_ad[1:os, :]

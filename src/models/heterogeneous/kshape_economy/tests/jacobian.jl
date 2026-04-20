@@ -13,7 +13,18 @@ jld2file = "../data/XssYss.jld2"
 
 m = mBBQ()
 
-# F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian(m, StateSS, ControlSS, SS_stats, grid, param)
+m.dicts[:grid] = grid
+m.dicts[:SS_stats] = SS_stats
+m.dicts[:param] = param
+m.grids[:StateSS] = StateSS
+m.grids[:ControlSS] = ControlSS
+
+getgrid(g, k::Symbol) =
+    haskey(g, k) ? g[k] :
+    haskey(g, String(k)) ? g[String(k)] :
+    error("Missing grid key: $(k)")
+
+F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad_zlb, F42_ad_zlb, F43_ad_zlb, F44_ad_zlb = DSGE.jacobian!(m)
 
 
 #LOAD IN OLD JACOB
@@ -32,8 +43,8 @@ F44_aux = out_jacob["F44_aux"]
 
 #r1_start, r1_end = 89, 118
 #r2_start, r2_end = 337, 405
-os = grid[:os]
-oc = grid[:oc]
+os = Int(getgrid(grid, :os))
+oc = Int(getgrid(grid, :oc))
 
 F21_aux_trim = F21_aux[: , end-os+1:end]
 F23_aux_trim = F23_aux[: , end-os+1:end]
