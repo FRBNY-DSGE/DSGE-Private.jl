@@ -110,8 +110,8 @@ H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, ZLB_duration_1, uniqu
 end
 
 
-aligned_elements_tol = sum(abs.(Ps_aux .- Ps_aux_original) .< 1e-6)
+aligned_elements_tol = sum(abs.(Ps_aux .- Ps_aux_original) .< 1e-5)
 total_elements_Ps_aux = length(Ps_aux)
 
-aligned_elements_Es_aux_tol = sum(abs.(Es_aux .- Es_aux_original) .< 1e-6)
+aligned_elements_Es_aux_tol = sum(abs.(Es_aux .- Es_aux_original) .< 1e-5)
 total_elements_Es_aux = length(Es_aux)

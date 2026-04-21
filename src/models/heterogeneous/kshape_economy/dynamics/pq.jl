@@ -172,25 +172,26 @@ function pq(
         T = Int(Tmax)
         T < 1 && error("Invalid ZLB duration Tmax=$Tmax")
 
-        # Terminal step at horizon T (MATLAB OccBin scripts)
-        invmat = Ab * decrulea + Bb
-        Ps1 = -(invmat \ Cb)
-        Ds1 = -(invmat \ Dv)
+        # Mirror MATLAB OccBin recursion exactly:
+        # first set terminal (ii=T), then recurse backward to ii=1.
+        P_path = zeros(nvars, nvars, T)
+        D_path = zeros(nvars, T)
 
-        # Backward recursion to obtain P(:,:,1) at the start of the spell
-        Ps_cur = Ps1
-        Ds_cur = Ds1
-        for _ in 1:(T - 1)
-            invmat = Ab * Ps_cur + Bb
-            Ps_cur = -(invmat \ Cb)
-            Ds_cur = -(invmat \ (Ab * Ds_cur + Dv))
+        invmat = Ab * decrulea + Bb
+        P_path[:, :, T] = -(invmat \ Cb)
+        D_path[:, T] = -(invmat \ Dv)
+
+        for ii in (T - 1):-1:1
+            invmat = Ab * P_path[:, :, ii + 1] + Bb
+            P_path[:, :, ii] = -(invmat \ Cb)
+            D_path[:, ii] = -(invmat \ (Ab * D_path[:, ii + 1] + Dv))
         end
 
-        invmat = Ab * Ps_cur + Bb
+        # MATLAB sets E_1 using the last invmat from the recursion loop.
         Es_cur = -(invmat \ J_zlb)
 
-        Ps_aux[:, :, kk] = Ps_cur
-        Ds_aux[:, kk] = Ds_cur
+        Ps_aux[:, :, kk] = P_path[:, :, 1]
+        Ds_aux[:, kk] = D_path[:, 1]
         Es_aux[:, :, kk] = Es_cur
     end
 
