@@ -7,6 +7,8 @@ using OrderedCollections: OrderedDict
 using CSV
 using DataFrames
 using Dates
+using LinearAlgebra
+using StateSpaceRoutines: kalman_filter
 
 
 mat_contents = matread("../data/pq_in.mat")
@@ -50,23 +52,24 @@ H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, ZLB_duration_1, uniqu
 
 
 df = CSV.read("../data/data.csv", DataFrame; header=false)
-df = df[:, 2:end]  # remove first column
+df = df[1:end-1, 2:end]  # remove first column
 df = DataFrame(Matrix(df)', :auto)  
 
 observable_names = [
-    :ygpc,
-    :cgpc,
-    :igpc,
-    :rcb,
-    :wg,
-    :u,
-    :lt,
-    :p,
-    :xcb,
-    :sp500,
+    :ygpc,          # Real GDP Growth per capita
+    :cgpc,          # Real Consumption Growth per capita
+    :igpc,          # Real Investment Growth
+    :pi,             # Inflation
+    :rcb,           # Nominal Interest Rate
+    :wg,            # Real Wage Growth
+    :u,             # Unemployment Rate
+    :lt,            # Lumpsum Transfer
+    :profit,        # Profit
+    :xcb,           # Central Bank Assets
+    # :sp500,         # Stock Returns
 ]
 
-rename!(df, Dict(names(df)[1:length(observable_names)] .=> observable_names))
+rename!(df, observable_names)
 
 # Quarter-end dates: first row = 1992 Q1 (last day 1992-03-31), then successive quarters.
 n = nrow(df)
@@ -82,3 +85,40 @@ for i in 1:n
                   Date(yy, 12, 31)
 end
 insertcols!(df, 1, :date => quarter_dates)
+
+
+Nt_est, Ny = size(df)
+Ny = Ny - 1
+println("Ny: $Ny, observable_names: ", observable_names)
+@assert Ny == length(observable_names) "Ny != n observables"
+Nt = min(Nt_est, nrow(df))
+@assert Nt >= 1 "Nt < 1"
+
+y = zeros(Float64, Ny, Nt)
+for (row, sym) in enumerate(observable_names)
+    y[row, :] .= Float64.(df[1:Nt, sym])
+end
+
+TTT = Float64.(P_ref)
+RRR = Float64.(Q_ref)
+QQ = Float64.(SIGMA_full)
+ZZ = Float64.(H_aux)
+Ns = size(TTT, 1)
+@assert size(ZZ, 1) == Ny
+@assert size(ZZ, 2) == Ns
+@assert size(RRR, 1) == Ns
+@assert size(RRR, 2) == size(QQ, 1)
+
+CCC = zeros(Float64, Ns)
+DD = zeros(Float64, Ny)
+# Tiny diagonal measurement error for numerical conditioning of V_pred
+EE = Matrix(Diagonal(fill(1e-12, Ny)))
+
+loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
+    kalman_filter(y, TTT, RRR, CCC, QQ, ZZ, DD, EE; outputs = [:loglh, :pred, :filt])
+
+println("loglh length: ", length(loglh))
+println("all loglh finite: ", all(isfinite, loglh))
+total_loglh = sum(loglh)
+println("total_loglh: ", total_loglh)
+println("isfinite(total_loglh): ", isfinite(total_loglh))
