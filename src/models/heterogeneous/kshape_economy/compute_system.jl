@@ -53,10 +53,10 @@ function compute_system!(m::mBBQ; H_obs=nothing)
     # -----------------------------
     # Linearized system
     # -----------------------------
-    nse = Int(grid["numstates_endo"])
-    ns  = Int(grid["numstates"])
-    nc  = Int(grid["numcontrols"])
-    nsh = Int(grid["numstates_shocks"])
+    nse = Int(m.dicts[:grid]["numstates_endo"])
+    ns  = Int(m.dicts[:grid]["numstates"])
+    nc  = Int(m.dicts[:grid]["numcontrols"])
+    nsh = Int(m.dicts[:grid]["numstates_shocks"])
 
     F1 = vcat(F1_aux[1:nse, :], F1_aux[(ns+1):end, :])
     F2 = vcat(F2_aux[1:nse, :], F2_aux[(ns+1):end, :])

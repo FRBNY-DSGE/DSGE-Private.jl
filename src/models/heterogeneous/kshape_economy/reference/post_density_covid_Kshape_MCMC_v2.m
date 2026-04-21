@@ -175,7 +175,10 @@ if  param_update.GAMMA >= 0 && ss_check > 0 && param_update.eps_w > 0 && param_u
     % [hx_afterGR,gx_afterGR,F1_afterGR_aux,F2_afterGR_aux,F3_afterGR_aux,F4_afterGR_aux,param,indicator_2] = SGU_EST_ref_v2(param,grid,Jacob_afterGR,idx,out_Jacob_afterGR);
     [F1_ZLB_aux,F2_ZLB_aux,F3_ZLB_aux,F4_ZLB_aux,param]                                                   = SGU_EST_ZLB_v2(param,grid,Jacob_base    ,idx,out_Jacob_ZLB);
     [hx_afterGR,gx_afterGR,F1_afterGR_aux,F2_afterGR_aux,F3_afterGR_aux,F4_afterGR_aux,param,indicator_2] = SGU_EST_ref_v2(param,grid,Jacob_base    ,idx,out_Jacob_afterGR);
+    save('pq_in.mat', 'hx', 'gx', 'F1_aux', 'F2_aux', 'F3_aux', 'F4_aux', 'param', 'indicator_1', 'F1_ZLB_aux', 'F2_ZLB_aux', 'F3_ZLB_aux', 'F4_ZLB_aux');
     
+    save('pq_cursor_inputs.mat', ...
+        'data_est', 'H_aux', 'ZLB_duration_1', 'Fss_ZLB', 'R_cb_ind');
     indicator = indicator_1*indicator_2;
 
     if indicator == 1
@@ -191,7 +194,7 @@ if  param_update.GAMMA >= 0 && ss_check > 0 && param_update.eps_w > 0 && param_u
         F31 = F3(:,1:grid.numstates_endo);
         F32 = F3(:,grid.numstates_endo+1:end);
         
-        save('TESTIDX.mat', 'idx');
+        %save('TESTIDX.mat', 'idx');
         
         % Construct a coefficient matrix
         
@@ -519,6 +522,14 @@ else
 end
 
 esp_time = toc;
+
+% Save Kalman / OccBin inputs for external filtering code (only if they exist).
+
+    save('pq_out.mat', ...
+        'data_est','H_aux','P_ref','Q_ref','HQ','SIGMA_full','SIGMA', ...
+        'ZLB_indicator','ZLB_duration_1','unique_EZLB_duration_1', ...
+        'Ps_aux','Ds_aux','Es_aux','D_ZLB','indicator');
+
 % disp('-----------------------------------------------');
 % fprintf('Elapsed time     : %1.3f \n', esp_time);
 % fprintf('Log-likelihood   : %5.6f \n', -out);
