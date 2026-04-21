@@ -635,6 +635,7 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/kshape_economy/dynamics/F_sys_ref_tvcopula_QE.jl")
     include("models/heterogeneous/kshape_economy/dynamics/dyn_ZLB_tvcopula_new.jl")
     include("models/heterogeneous/kshape_economy/dynamics/IRFs_Taylor_QE_compare_tvcopula.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/pq.jl")
     # top-level
     include("models/heterogeneous/kshape_economy/jacobian.jl")
     include("models/heterogeneous/kshape_economy/fsys_agg.jl")
