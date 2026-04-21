@@ -4,7 +4,7 @@ function init_observable_mappings!(m::mBBQ)
     m.observable_mappings = observables
 end
 
-function _init_original_observable_mappings!(m::BayerBornLuetticke, observables::OrderedDict{Symbol, Observable})
+function _init_original_observable_mappings!(m::mBBQ, observables::OrderedDict{Symbol, Observable})
     iden_fwd_transform = (levels, name) -> levels[!, name]
     iden_rev_transform = x -> x
 
