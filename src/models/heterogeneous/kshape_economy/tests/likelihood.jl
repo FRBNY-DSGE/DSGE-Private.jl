@@ -10,6 +10,7 @@ using Dates
 using LinearAlgebra
 using StateSpaceRoutines: kalman_filter
 
+include(joinpath(@__DIR__, "../reference/kalman_filter.jl"))
 
 mat_contents = matread("../data/pq_in.mat")
 hx            = mat_contents["hx"]
@@ -87,38 +88,94 @@ end
 insertcols!(df, 1, :date => quarter_dates)
 
 
-Nt_est, Ny = size(df)
-Ny = Ny - 1
-println("Ny: $Ny, observable_names: ", observable_names)
-@assert Ny == length(observable_names) "Ny != n observables"
-Nt = min(Nt_est, nrow(df))
-@assert Nt >= 1 "Nt < 1"
+Ny_data, Nt_data = size(data_est)
+if Ny_data != length(observable_names)
+    error("Number of rows in data_est does not match observable_names")
+end
+if Ny_data != size(H_aux, 1)
+    error("Number of rows in data_est does not match number of rows in H_aux")
+end
+if ncol(df) != 1 + length(observable_names)
+    error("Unexpected number of columns in df")
+end
+
+Ny = Ny_data
+Nt = min(Nt_data, nrow(df))
+if Nt < 1
+    error("No data to process (Nt < 1)")
+end
 
 y = zeros(Float64, Ny, Nt)
 for (row, sym) in enumerate(observable_names)
     y[row, :] .= Float64.(df[1:Nt, sym])
 end
 
-TTT = Float64.(P_ref)
-RRR = Float64.(Q_ref)
+Ns = size(P_ref, 1)
+EE = Matrix(Diagonal(fill(1e-12, Ny)))
 QQ = Float64.(SIGMA_full)
 ZZ = Float64.(H_aux)
-Ns = size(TTT, 1)
-@assert size(ZZ, 1) == Ny
-@assert size(ZZ, 2) == Ns
-@assert size(RRR, 1) == Ns
-@assert size(RRR, 2) == size(QQ, 1)
+if size(ZZ, 2) != Ns
+    error("Mismatch in size(ZZ, 2) and Ns")
+end
+if size(Q_ref, 2) != size(QQ, 1)
+    error("Mismatch in size(Q_ref, 2) and size(QQ, 1)")
+end
 
-CCC = zeros(Float64, Ns)
-DD = zeros(Float64, Ny)
-# Tiny diagonal measurement error for numerical conditioning of V_pred
-EE = Matrix(Diagonal(fill(1e-12, Ny)))
+zi = zlb_indicator_quarters(ZLB_indicator, Nt)
+
+udur = Float64.(unique_EZLB_duration_1)
+if !issorted(udur)
+    error("udur is not sorted")
+end
+
+zdur = zlb_duration_per_period(vec(ZLB_duration_1), zi, Nt)
+
+kk = zeros(Int, Nt)
+for t in 1:Nt
+    kk[t] = occbin_slice_index(udur, zdur[t], zi[t])
+end
+
+regime_inds, regime_keys = occbin_regime_partition(zi, kk)
+
+Ts = Matrix{Float64}[]
+Rs = Matrix{Float64}[]
+Cs = Vector{Float64}[]
+Qs = Matrix{Float64}[]
+Zs = Matrix{Float64}[]
+Ds = Vector{Float64}[]
+Es = Matrix{Float64}[]
+    for (inzlb, kslice) in regime_keys
+    if !inzlb
+        push!(Ts, Float64.(P_ref))
+        push!(Rs, Float64.(Q_ref))
+        push!(Cs, zeros(Float64, Ns))
+    else
+        if !(1 <= kslice <= size(Ps_aux, 3))
+            error("kslice $kslice out of bounds for Ps_aux")
+        end
+        push!(Ts, Float64.(Ps_aux[:, :, kslice]))
+        push!(Rs, Float64.(Es_aux[:, :, kslice]))
+        push!(Cs, Float64.(Ds_aux[:, kslice]))
+        if size(Rs[end], 2) != size(QQ, 1)
+            error("Mismatch in size(Rs[end], 2) and size(QQ, 1)")
+        end
+    end
+    push!(Qs, QQ)
+    push!(Zs, ZZ)
+    push!(Ds, zeros(Float64, Ny))
+    push!(Es, EE)
+end
 
 loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
-    kalman_filter(y, TTT, RRR, CCC, QQ, ZZ, DD, EE; outputs = [:loglh, :pred, :filt])
+    kalman_filter(regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es;
+                  outputs = [:loglh, :pred, :filt])
 
-println("loglh length: ", length(loglh))
-println("all loglh finite: ", all(isfinite, loglh))
-total_loglh = sum(loglh)
-println("total_loglh: ", total_loglh)
-println("isfinite(total_loglh): ", isfinite(total_loglh))
+if length(loglh) != Nt
+    error("Length of loglh does not match Nt")
+end
+if !all(isfinite, loglh)
+    error("Non-finite value(s) found in loglh")
+end
+if !isfinite(sum(loglh))
+    error("Sum of loglh is not finite")
+end
