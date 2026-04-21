@@ -254,10 +254,10 @@ function mBBQ(subspec::String="ss1";
     #TODO: SETTINGS
     DSGE.default_settings!(m)  # TODO: Implement or ensure AbstractHetModel <: AbstractDSGEModel
 
-    # # Set observable transformations
-    # init_observable_mappings!(m)
+    # Set observable transformations (must precede init_model_indices!, which reads observable keys)
+    init_observable_mappings!(m)
 
-    # # Set settings
+    # Set settings
     model_settings!(m)
     # for custom_setting in values(custom_settings)
     #     m <= custom_setting

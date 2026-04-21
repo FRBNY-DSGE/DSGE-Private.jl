@@ -601,6 +601,8 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/kshape_economy/helpers/jacobian/index2.jl")
     # main model struct and constructor
     include("models/heterogeneous/kshape_economy/mBBQ.jl")
+    include("models/heterogeneous/kshape_economy/measurement.jl")
+    include("models/heterogeneous/kshape_economy/observables.jl")
     include("models/heterogeneous/kshape_economy/util.jl")
     include("models/heterogeneous/kshape_economy/helpers/grids.jl")
     # model-type-dependent helpers (after mBBQ.jl)
