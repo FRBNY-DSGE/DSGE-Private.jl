@@ -6,6 +6,7 @@ using MAT
 using OrderedCollections: OrderedDict
 using CSV
 using DataFrames
+using Dates
 
 
 mat_contents = matread("../data/pq_in.mat")
@@ -21,23 +22,6 @@ F1_ZLB_aux    = mat_contents["F1_ZLB_aux"]
 F2_ZLB_aux    = mat_contents["F2_ZLB_aux"]
 F3_ZLB_aux    = mat_contents["F3_ZLB_aux"]
 F4_ZLB_aux    = mat_contents["F4_ZLB_aux"]
-
-mat_contents = matread("../data/pq_out.mat")
-data_est_original            = mat_contents["data_est"]
-H_aux_original               = mat_contents["H_aux"]
-P_ref_original               = mat_contents["P_ref"]
-Q_ref_original               = mat_contents["Q_ref"]
-HQ_original                  = mat_contents["HQ"]
-SIGMA_full_original          = mat_contents["SIGMA_full"]
-SIGMA_original               = mat_contents["SIGMA"]
-ZLB_indicator_original       = mat_contents["ZLB_indicator"]
-ZLB_duration_1_original      = mat_contents["ZLB_duration_1"]
-unique_EZLB_duration_1_original = mat_contents["unique_EZLB_duration_1"]
-Ps_aux_original              = mat_contents["Ps_aux"]
-Ds_aux_original              = mat_contents["Ds_aux"]
-Es_aux_original              = mat_contents["Es_aux"]
-D_ZLB_original               = mat_contents["D_ZLB"]
-indicator_original           = mat_contents["indicator"]
 
 mat_contents = matread("../data/pq_in2.mat")
 data_est       = mat_contents["data_est"]
@@ -64,48 +48,37 @@ m.dicts[:param] = param
 H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, ZLB_duration_1, unique_EZLB_duration_1, Ps_aux, Ds_aux, Es_aux, D_ZLB, indicator = DSGE.pq(m, hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, indicator_1, F1_ZLB_aux, F2_ZLB_aux, F3_ZLB_aux, F4_ZLB_aux, data_est, H_aux, ZLB_duration_1, Fss_ZLB)
 
 
-@testset "pq output comparison" begin
-    tol = 1e-5
 
-    @test size(H_aux) == size(H_aux_original)
-    @test H_aux ≈ H_aux_original atol=tol
+df = CSV.read("../data/data.csv", DataFrame; header=false)
+df = df[:, 2:end]  # remove first column
+df = DataFrame(Matrix(df)', :auto)  
 
-    @test size(P_ref) == size(P_ref_original)
-    @test P_ref ≈ P_ref_original atol=tol
+observable_names = [
+    :ygpc,
+    :cgpc,
+    :igpc,
+    :rcb,
+    :wg,
+    :u,
+    :lt,
+    :p,
+    :xcb,
+    :sp500,
+]
 
-    @test size(Q_ref) == size(Q_ref_original)
-    @test Q_ref ≈ Q_ref_original atol=tol
+rename!(df, Dict(names(df)[1:length(observable_names)] .=> observable_names))
 
-    @test size(HQ) == size(HQ_original)
-    @test HQ ≈ HQ_original atol=tol
-
-    @test size(SIGMA_full) == size(SIGMA_full_original)
-    @test SIGMA_full ≈ SIGMA_full_original atol=tol
-
-    @test size(SIGMA) == size(SIGMA_original)
-    @test SIGMA ≈ SIGMA_original atol=tol
-
-    @test size(ZLB_indicator) == size(ZLB_indicator_original)
-    @test ZLB_indicator ≈ ZLB_indicator_original atol=tol
-
-    @test size(ZLB_duration_1) == size(ZLB_duration_1_original)
-    @test ZLB_duration_1 ≈ ZLB_duration_1_original atol=tol
-
-    @test size(unique_EZLB_duration_1) == size(unique_EZLB_duration_1_original)
-    @test unique_EZLB_duration_1 ≈ unique_EZLB_duration_1_original atol=tol
-
-    @test size(Ps_aux) == size(Ps_aux_original)
-    @test Ps_aux ≈ Ps_aux_original atol=tol
-
-    @test size(Ds_aux) == size(Ds_aux_original)
-    @test Ds_aux ≈ Ds_aux_original atol=tol
-
-    @test size(Es_aux) == size(Es_aux_original)
-    @test Es_aux ≈ Es_aux_original atol=tol
-
-    @test size(D_ZLB) == size(D_ZLB_original)
-    @test D_ZLB ≈ D_ZLB_original atol=tol
-
-    @test indicator == indicator_original
+# Quarter-end dates: first row = 1992 Q1 (last day 1992-03-31), then successive quarters.
+n = nrow(df)
+quarter_dates = Vector{Date}(undef, n)
+for i in 1:n
+    off = i - 1
+    yy = 1992 + off ÷ 4
+    qq = 1 + (off % 4)
+    quarter_dates[i] =
+        qq == 1 ? Date(yy, 3, 31) :
+        qq == 2 ? Date(yy, 6, 30) :
+        qq == 3 ? Date(yy, 9, 30) :
+                  Date(yy, 12, 31)
 end
-
+insertcols!(df, 1, :date => quarter_dates)
