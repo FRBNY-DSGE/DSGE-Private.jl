@@ -22,6 +22,11 @@ jld2file = "../models/mBBQ/data/XssYss.jld2"
 @load jld2file StateSS ControlSS SS_stats grid param
 # grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
 
+mat_contents = matread("../models/mBBQ/data/pq_in2.mat")
+ZLB_duration_1 = mat_contents["ZLB_duration_1"]
+Fss_ZLB        = mat_contents["Fss_ZLB"]
+
+
 m = mBBQ()
 
 
@@ -47,4 +52,8 @@ Jacob_base = mat_contents["Jacob_base"] #for testing use, this but in prod use s
 m.dicts[:Jacob_base] = Jacob_base2
 
 
-hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb = DSGE.compute_system!(m)
+regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es = DSGE.compute_system!(m, ZLB_duration_1, Fss_ZLB)
+
+loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
+    kalman_filter(regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es;
+                  outputs = [:loglh, :pred, :filt])

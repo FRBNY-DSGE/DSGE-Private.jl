@@ -581,6 +581,9 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/kshape_economy/helpers/q_cons2.jl")
     include("models/heterogeneous/kshape_economy/helpers/genweight.jl")
     include("models/heterogeneous/kshape_economy/helpers/createSparsebasis.jl")
+    include("models/heterogeneous/kshape_economy/helpers/kalman_filter.jl")
+    include("models/heterogeneous/kshape_economy/helpers/load_data_bbq.jl")
+
     # interpolation
     include("models/heterogeneous/kshape_economy/helpers/grids/griddedInterpolant.jl")
     include("models/heterogeneous/kshape_economy/helpers/grids/myinterpolate3.jl")
@@ -632,6 +635,10 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/kshape_economy/dynamics/update_ss_v5.jl")
     include("models/heterogeneous/kshape_economy/dynamics/state_reduc_tvcopula.jl")
     include("models/heterogeneous/kshape_economy/dynamics/SGU_jacob.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/SGU_jacob_zlb.jl")
+include("models/heterogeneous/kshape_economy/dynamics/SGU_solver.jl")
+
+
     include("models/heterogeneous/kshape_economy/models/mBBQ/dynamics/F_sys_ref_tvcopula_QE.jl")
     include("models/heterogeneous/kshape_economy/dynamics/dyn_ZLB_tvcopula_new.jl")
     include("models/heterogeneous/kshape_economy/dynamics/IRFs_Taylor_QE_compare_tvcopula.jl")
@@ -639,6 +646,8 @@ include("models/representative/OnionModel/InOutData.jl")
     # top-level
     include("models/heterogeneous/kshape_economy/models/mBBQ/jacobian.jl")
     include("models/heterogeneous/kshape_economy/models/mBBQ/fsys_agg.jl")
+include("models/heterogeneous/kshape_economy/models/mBBQ/compute_system.jl")
+
 
 
 

@@ -107,3 +107,88 @@ function indicator_only_regime_partition(zlb::AbstractVector{Bool})
     kk = zeros(Int, Nt)
     return occbin_regime_partition(zlb, kk)
 end
+
+
+function prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, ZLB_duration_1, unique_EZLB_duration_1, Ps_aux, Ds_aux, Es_aux, D_ZLB, indicator)
+
+
+    Nt_data, Ny_data = size(df)
+    if Ny_data != length(m.grids[:obs])
+        error("Number of rows in data_est does not match observable_names")
+    end
+    if Ny_data != size(H_aux, 1)
+        error("Number of rows in data_est does not match number of rows in H_aux")
+    end
+    if ncol(df) != length(m.grids[:obs])
+        error("Unexpected number of columns in df")
+    end
+    
+    Ny = Ny_data
+    Nt = min(Nt_data, nrow(df))
+    if Nt < 1
+        error("No data to process (Nt < 1)")
+    end
+    
+    y = zeros(Float64, Ny, Nt)
+    for (row, sym) in enumerate(m.grids[:obs])
+        y[row, :] .= Float64.(df[1:Nt, sym])
+    end
+    
+    Ns = size(P_ref, 1)
+    EE = Matrix(Diagonal(fill(1e-12, Ny)))
+    QQ = Float64.(SIGMA_full)
+    ZZ = Float64.(H_aux)
+    if size(ZZ, 2) != Ns
+        error("Mismatch in size(ZZ, 2) and Ns")
+    end
+    if size(Q_ref, 2) != size(QQ, 1)
+        error("Mismatch in size(Q_ref, 2) and size(QQ, 1)")
+    end
+    
+    zi = DSGE.zlb_indicator_quarters(ZLB_indicator, Nt)
+    
+    udur = Float64.(unique_EZLB_duration_1)
+    if !issorted(udur)
+        error("udur is not sorted")
+    end
+    
+    zdur = DSGE.zlb_duration_per_period(vec(ZLB_duration_1), zi, Nt)
+    
+    kk = zeros(Int, Nt)
+    for t in 1:Nt
+        kk[t] = DSGE.occbin_slice_index(udur, zdur[t], zi[t])
+    end
+    
+    regime_inds, regime_keys = DSGE.occbin_regime_partition(zi, kk)
+    
+    Ts = Matrix{Float64}[]
+    Rs = Matrix{Float64}[]
+    Cs = Vector{Float64}[]
+    Qs = Matrix{Float64}[]
+    Zs = Matrix{Float64}[]
+    Ds = Vector{Float64}[]
+    Es = Matrix{Float64}[]
+        for (inzlb, kslice) in regime_keys
+        if !inzlb
+            push!(Ts, Float64.(P_ref))
+            push!(Rs, Float64.(Q_ref))
+            push!(Cs, zeros(Float64, Ns))
+        else
+            if !(1 <= kslice <= size(Ps_aux, 3))
+                error("kslice $kslice out of bounds for Ps_aux")
+            end
+            push!(Ts, Float64.(Ps_aux[:, :, kslice]))
+            push!(Rs, Float64.(Es_aux[:, :, kslice]))
+            push!(Cs, Float64.(Ds_aux[:, kslice]))
+            if size(Rs[end], 2) != size(QQ, 1)
+                error("Mismatch in size(Rs[end], 2) and size(QQ, 1)")
+            end
+        end
+        push!(Qs, QQ)
+        push!(Zs, ZZ)
+        push!(Ds, zeros(Float64, Ny))
+        push!(Es, EE)
+    end
+
+    return regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es
+end

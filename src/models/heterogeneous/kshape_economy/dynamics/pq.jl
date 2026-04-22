@@ -32,8 +32,7 @@ function pq(
     F2_ZLB_aux,
     F3_ZLB_aux,
     F4_ZLB_aux,
-    data_est,
-    H_aux,
+    data,
     ZLB_duration_1,
     Fss_ZLB)
 
@@ -142,12 +141,46 @@ function pq(
 
     SIGMA = nsh > 1 ? SIGMA_full[2:end, 2:end] : zeros(0, 0)
 
+    #create H_aux
+    oc = m.dicts[:grid]["oc"]
+
+    H_aux = zeros(10, nvars)
+    lenSS = length(m.grids[:StateSS])
+    lenC = length(m.grids[:ControlSS])
+    state_id, control_id = DSGE.build_indices(grid, lenSS, lenC)
+
+    H_aux[1 ,end-lenC+control_id[:Y_t]]                = 1
+    H_aux[1 ,end-lenC+control_id[:YY_lag_t]]           = -1
+
+    H_aux[2 ,end-lenC+control_id[:C_t]]                = 1
+    H_aux[2 ,end-lenC+control_id[:CC_lag_t]]           = -1
+
+    H_aux[3 ,end-lenC+control_id[:I_t]]                = 1
+    H_aux[3 ,end-lenC+control_id[:II_lag_t]]           = -1
+    %         
+    H_aux[4 ,end-lenC+control_id[:pi_t]]               = 1
+
+    H_aux[5 ,ns - lenSS + state_id[:R_cb_t]]  = 1;
+            
+    H_aux[6 ,ns - lenSS + state_id[:w_t]]     = 1;
+    H_aux[6 ,end-lenC+control_id[:w_lag_t]]            = -1;
+                    
+    H_aux[7 ,end-lenC+control_id[:unemp_t]]            = 1;
+
+    H_aux[8 ,end-lenC+control_id[:LT_t]]               = 1;
+    H_aux[8 ,end-lenC+control_id[:LT2_lag_t]]          = -1;
+
+    H_aux[9 ,end-lenC+control_id[:Profit_obs_t]]       = 1;
+    H_aux[9 ,end-lenC+control_id[:PPROFIT_lag_t]]      = -1;
+
+    H_aux[10 ,ns - lenSS + state_id[:A_gaux_t]]    = 1;
+
     # Measurement helpers
     HQ = H_aux * Q_ref
 
     # R_cb = as_float(getp(param, "R_cb"))
     R_cb = m.dicts[:SS_stats]["R_cb"]
-    rates = vec(data_est[5, :])
+    rates = data[!, :rcb]
     ZLB_indicator = exp.(rates) .* R_cb .< 1 + 1e-8
 
     D_ZLB = vcat(Fss_ZLB[1:nse, :], Fss_ZLB[(ns+1):end, :])
