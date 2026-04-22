@@ -44,7 +44,7 @@ Jacob_base2 = DSGE.save_jacob_base(F1_aux_rep, F2_aux_rep, F3_aux_rep, F4_aux_re
 mat_contents = matread("../data/TESTJACOBBASE.mat")
 Jacob_base = mat_contents["Jacob_base"] #for testing use, this but in prod use save_jacob_base based on tvcopula
 
-m.dicts[:Jacob_base] = Jacob_base2
+m.dicts[:Jacob_base] = Jacob_base
 
 
-hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, F1_aux_zlb, F2_aux_zlb, F3_aux_zlb, F4_aux_zlb = DSGE.compute_system!(m)
+hx, gx, F1_aux, F2_aux, F3_aux, F4_aux = DSGE.compute_system!(m)
