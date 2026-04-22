@@ -34,3 +34,4 @@ docs/.documenter.pub
 
 # Outputs of test
 test/estimate/smc/save/output_data/an_schorfheide/ss0/estimate/raw
+test/models/heterogeneous/kshape_economy/SSInfo.jld2
