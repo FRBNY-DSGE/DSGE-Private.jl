@@ -47,7 +47,14 @@ function _init_original_observable_mappings!(m::mBBQ, observables::OrderedDict{S
     ############################################################################
     ## 4. Inflation
     ############################################################################
-
+    observables[:obs_inflation] = Observable(
+        :obs_inflation,
+        [:igpc],
+        x -> iden_fwd_transform(x, :pi),
+        iden_rev_transform,
+        "Inflation",
+        "Identity mapping",
+    )
     ############################################################################
     ## 5. Nominal interest rate (shadow)
     ############################################################################
