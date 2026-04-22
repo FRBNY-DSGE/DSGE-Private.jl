@@ -7,7 +7,7 @@ using OrderedCollections: OrderedDict
 using CSV
 using DataFrames
 
-jld2file = "../data/XssYss.jld2"
+jld2file = "../models/mBBQ/data/XssYss.jld2"
 @load jld2file StateSS ControlSS SS_stats grid param
 # grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
 
@@ -30,7 +30,7 @@ F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_
 #LOAD IN OLD JACOB
 
 #load in nonQE donggyu original jacobians
-mat_contents = matread("../data/TESTJACOB.mat")
+mat_contents = matread("../models/mBBQ/data/TESTJACOB.mat")
 out_jacob = mat_contents["out_Jacob"]
 F21_aux = out_jacob["F21_aux"]
 F22_aux = out_jacob["F22_aux"]
@@ -58,7 +58,7 @@ F44_aux_trim = F44_aux[: , end-oc+1:end]
 
 
 
-mat_contents = matread("../data/TESTJACOBZLB.mat")
+mat_contents = matread("../models/mBBQ/data/TESTJACOBZLB.mat")
 out_jacob_zlb = mat_contents["out_Jacob_ZLB"]
 F21_aux_zlb = out_jacob_zlb["F21_aux"]
 F22_aux_zlb = out_jacob_zlb["F22_aux"]

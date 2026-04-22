@@ -10,9 +10,9 @@ using Dates
 using LinearAlgebra
 using StateSpaceRoutines: kalman_filter
 
-include(joinpath(@__DIR__, "../reference/kalman_filter.jl"))
+#include(joinpath(@__DIR__, "../reference/kalman_filter.jl"))
 
-mat_contents = matread("../data/pq_in.mat")
+mat_contents = matread("../models/mBBQ/data/pq_in.mat")
 hx            = mat_contents["hx"]
 gx            = mat_contents["gx"]
 F1_aux        = mat_contents["F1_aux"]
@@ -26,14 +26,14 @@ F2_ZLB_aux    = mat_contents["F2_ZLB_aux"]
 F3_ZLB_aux    = mat_contents["F3_ZLB_aux"]
 F4_ZLB_aux    = mat_contents["F4_ZLB_aux"]
 
-mat_contents = matread("../data/pq_in2.mat")
+mat_contents = matread("../models/mBBQ/data/pq_in2.mat")
 data_est       = mat_contents["data_est"]
 H_aux          = mat_contents["H_aux"]
 ZLB_duration_1 = mat_contents["ZLB_duration_1"]
 Fss_ZLB        = mat_contents["Fss_ZLB"]
 
 
-jld2file = "../data/XssYss.jld2"
+jld2file = "../models/mBBQ/data/XssYss.jld2"
 @load jld2file StateSS ControlSS SS_stats grid param
 
 m = mBBQ()
@@ -52,7 +52,7 @@ H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, ZLB_duration_1, uniqu
 
 
 
-df = CSV.read("../data/data.csv", DataFrame; header=false)
+df = CSV.read("../models/mBBQ/data/data.csv", DataFrame; header=false)
 df = df[1:end-1, 2:end]  # remove first column
 df = DataFrame(Matrix(df)', :auto)  
 
@@ -121,21 +121,21 @@ if size(Q_ref, 2) != size(QQ, 1)
     error("Mismatch in size(Q_ref, 2) and size(QQ, 1)")
 end
 
-zi = zlb_indicator_quarters(ZLB_indicator, Nt)
+zi = DSGE.zlb_indicator_quarters(ZLB_indicator, Nt)
 
 udur = Float64.(unique_EZLB_duration_1)
 if !issorted(udur)
     error("udur is not sorted")
 end
 
-zdur = zlb_duration_per_period(vec(ZLB_duration_1), zi, Nt)
+zdur = DSGE.zlb_duration_per_period(vec(ZLB_duration_1), zi, Nt)
 
 kk = zeros(Int, Nt)
 for t in 1:Nt
-    kk[t] = occbin_slice_index(udur, zdur[t], zi[t])
+    kk[t] = DSGE.occbin_slice_index(udur, zdur[t], zi[t])
 end
 
-regime_inds, regime_keys = occbin_regime_partition(zi, kk)
+regime_inds, regime_keys = DSGE.occbin_regime_partition(zi, kk)
 
 Ts = Matrix{Float64}[]
 Rs = Matrix{Float64}[]
