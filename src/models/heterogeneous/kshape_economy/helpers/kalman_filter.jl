@@ -193,3 +193,49 @@ function prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, Z
 
     return regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es
 end
+
+function prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA)
+    Nt_data, Ny_data = size(df)
+    if Ny_data != length(m.grids[:obs])
+        error("Number of rows in data_est does not match observable_names")
+    end
+    if Ny_data != size(H_aux, 1)
+        error("Number of rows in data_est does not match number of rows in H_aux")
+    end
+    if ncol(df) != length(m.grids[:obs])
+        error("Unexpected number of columns in df")
+    end
+
+    Ny = Ny_data
+    Nt = min(Nt_data, nrow(df))
+    if Nt < 1
+        error("No data to process (Nt < 1)")
+    end
+
+    y = zeros(Float64, Ny, Nt)
+    for (row, sym) in enumerate(m.grids[:obs])
+        y[row, :] .= Float64.(df[1:Nt, sym])
+    end
+
+    Ns = size(P_ref, 1)
+    EE = Matrix(Diagonal(fill(1e-12, Ny)))
+    QQ = Float64.(SIGMA_full)
+    ZZ = Float64.(H_aux)
+    if size(ZZ, 2) != Ns
+        error("Mismatch in size(ZZ, 2) and Ns")
+    end
+    if size(Q_ref, 2) != size(QQ, 1)
+        error("Mismatch in size(Q_ref, 2) and size(QQ, 1)")
+    end
+
+    regime_inds = UnitRange{Int}[1:Nt]
+    Ts = Matrix{Float64}[Float64.(P_ref)]
+    Rs = Matrix{Float64}[Float64.(Q_ref)]
+    Cs = Vector{Float64}[zeros(Float64, Ns)]
+    Qs = Matrix{Float64}[QQ]
+    Zs = Matrix{Float64}[ZZ]
+    Ds = Vector{Float64}[zeros(Float64, Ny)]
+    Es = Matrix{Float64}[EE]
+
+    return regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es
+end
