@@ -348,7 +348,7 @@ end
         QQ[exo[:x_sh], exo[:x_sh]]    = m[:σ_x]^2
     end
     =#
-    if subspec(m) ∈ ["ss108"]
+    if subspec(m) ∈ ["ss108", "ss31"]
         QQ[exo[:zp_level_sh], exo[:zp_level_sh]] = m[:σ_zp_level]^2
     end
     QQ[exo[:tfp_sh], exo[:tfp_sh]]         = m[:σ_tfp]^2

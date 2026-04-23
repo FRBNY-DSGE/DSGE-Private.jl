@@ -135,6 +135,8 @@ function init_subspec!(m::Model1002)
         return ss104!(m)
     elseif subspec(m) == "ss108"
         return ss108!(m)
+    elseif subspec(m) == "ss31"
+        return ss31!(m)
     else
         error("This subspec is not defined.")
     end
@@ -7117,6 +7119,16 @@ end
 =#
 function ss108!(m)
     ss104!(m)
+
+    m <= parameter(:σ_zp_level, 0.1662, (1e-8, 5.), (1e-8, 5.),
+                   ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false,
+                   description = "σ_zp_level: std. dev. of the permanent-LEVEL TFP shock (p1, IID).",
+                   tex_label   = "\\sigma_{zp,\\text{level}}")
+end
+
+
+function ss31!(m)
+    ss10!(m)
 
     m <= parameter(:σ_zp_level, 0.1662, (1e-8, 5.), (1e-8, 5.),
                    ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false,

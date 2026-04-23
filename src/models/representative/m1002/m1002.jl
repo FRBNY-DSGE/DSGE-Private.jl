@@ -248,7 +248,7 @@ function init_model_indices!(m::Model1002)
     end
     =#
 
-    if subspec(m) ∈ ["ss108"]
+    if subspec(m) ∈ ["ss108", "ss31"]
         # One new IID shock for the permanent LEVEL component (p1). The AR(1)
         # growth component (p2) is already baseline zp_t / zp_sh.
         push!(exogenous_shocks, :zp_level_sh)
@@ -315,17 +315,17 @@ function init_model_indices!(m::Model1002)
         end
         m <= Setting(:integrated_series, integ_series)
     end
-    if subspec(m) ∈ ["ss108"]
+    if subspec(m) ∈ ["ss108", "ss31"]
         # Register the two HLW-style level trackers as integrated series so that
         # measurement's k_periods_ahead_expected_sums takes the integ_series=true
         # branch instead of computing (I - TTT) \ ..., which is singular whenever
         # TTT_aug has unit-root self-loops (as these trackers do).
-        ss108_integ = [:zp_level_t, :zp_growth_t]
+        prod_integ = [:zp_level_t, :zp_growth_t]
         if haskey(get_settings(m), :integrated_series)
             m <= Setting(:integrated_series,
-                         union(get_setting(m, :integrated_series), ss108_integ))
+                         union(get_setting(m, :integrated_series), prod_integ))
         else
-            m <= Setting(:integrated_series, ss108_integ)
+            m <= Setting(:integrated_series, prod_integ)
         end
     end
     if get_setting(m, :add_flexible_price_growth)

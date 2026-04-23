@@ -450,7 +450,7 @@ function eqcond(m::Model1002, reg::Int)
     end
     =#
 
-    if subspec(m) ∈ ["ss108"]
+    if subspec(m) ∈ ["ss108", "ss31"]
         # HLW-style two-shock permanent TFP. In this codebase z_t is the GROWTH RATE
         # of TFP and baseline zp_t is its AR(1) growth-rate component — that's exactly
         # the user's "permanent growth-rate component" p2. Here we add one new IID
