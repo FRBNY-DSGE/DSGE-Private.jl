@@ -1,7 +1,7 @@
 using LinearAlgebra
 
 """
-    SGU_solver(m.dicts[:param], m.dicts[:grid], Jacob_base, idx, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
+    hx, gx, F1, F2, F3, F4, indicator = SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
 
 Jacobian-only SGU solve translated from `SGU_EST_ref_v2.m`.
 The aggregate Jacobian update blocks (`F21_ad`...`F44_ad`) are expected to be already trimmed.
@@ -9,6 +9,7 @@ The aggregate Jacobian update blocks (`F21_ad`...`F44_ad`) are expected to be al
 function SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
     numstates = Int(m.dicts[:grid]["numstates"])
     numcontrols = Int(m.dicts[:grid]["numcontrols"])
+    overrideEigen = false
 
     #TODO: need change this, is currently matlab, future will be in model object
     getjb(x, k::Symbol) = x isa AbstractDict ? (haskey(x, k) ? x[k] : x[String(k)]) : getproperty(x, k)
@@ -86,6 +87,9 @@ function SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F
     slt = relev .>= 1.0
     nk = sum(slt)
 
+    # --- Same sequence as SGU_EST_ref_v2.m (lines 146–172) ---
+    indicator = 1
+
     if nk > numstates
         if overrideEigen
             @warn "The Equilibrium is Locally Indeterminate, critical eigenvalue shifted to: $(ll[end - numstates])"
@@ -94,6 +98,7 @@ function SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F
         else
             error("No Local Equilibrium Exists, last eigenvalue: $(ll[end - numstates])")
         end
+        indicator = 0
     elseif nk < numstates
         if overrideEigen
             threshold = ll[end - numstates]
@@ -103,6 +108,7 @@ function SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F
         else
             error("No Local Equilibrium Exists, last eigenvalue: $(ll[end - numstates])")
         end
+        indicator = 0
     end
 
     # Reorder the generalized Schur form so selected eigenvalues move to the top-left block.
@@ -123,14 +129,30 @@ function SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F
 
     z11_rank = rank(z11)
     @info "SGU_solver: z11 size=$(size(z11)), rank=$(z11_rank), nk=$nk"
-    if z11_rank < nk
-        @warn "invertibility condition violated: rank(z11)=$(z11_rank) < nk=$nk"
+
+    # --- Same as SGU_EST_ref_v2.m lines 184–194 ---
+    hx = zeros(Float64, numstates, numstates)
+    gx = zeros(Float64, numcontrols, numstates)
+    if indicator > 0
+        if z11_rank < nk
+            @warn "invertibility condition violated: rank(z11)=$(z11_rank) < nk=$nk"
+            indicator = 0
+        else
+            z11i = z11 \ Matrix{Float64}(I, nk, nk)
+            gx_mat = real(z21 * z11i)
+            hx_mat = real(z11 * (s11 \ t11) * z11i)
+            if size(hx_mat, 1) != numstates || size(hx_mat, 2) != numstates
+                hx[1:size(hx_mat, 1), 1:size(hx_mat, 2)] .= hx_mat
+            else
+                hx .= hx_mat
+            end
+            if size(gx_mat, 1) != numcontrols || size(gx_mat, 2) != numstates
+                gx[1:size(gx_mat, 1), 1:size(gx_mat, 2)] .= gx_mat
+            else
+                gx .= gx_mat
+            end
+        end
     end
 
-    z11i = z11 \ Matrix{Float64}(I, nk, nk)
-    gx = real(z21 * z11i)
-    hx = real(z11 * (s11 \ t11) * z11i)
-
-    # @info "SGU_solver: done."
-    return hx, gx, F1, F2, F3, F4
+    return hx, gx, F1, F2, F3, F4, indicator
 end

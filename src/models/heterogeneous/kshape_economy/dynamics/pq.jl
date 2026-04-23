@@ -27,14 +27,11 @@ function pq(
     F2_aux,
     F3_aux,
     F4_aux,
-    indicator_1,
     F1_ZLB_aux,
     F2_ZLB_aux,
     F3_ZLB_aux,
     F4_ZLB_aux,
-    data,
-    ZLB_duration_1,
-    Fss_ZLB)
+    data)
 
     grid = m.dicts[:grid]
 
@@ -160,20 +157,20 @@ function pq(
     %         
     H_aux[4 ,end-lenC+control_id[:pi_t]]               = 1
 
-    H_aux[5 ,ns - lenSS + state_id[:R_cb_t]]  = 1;
-            
-    H_aux[6 ,ns - lenSS + state_id[:w_t]]     = 1;
-    H_aux[6 ,end-lenC+control_id[:w_lag_t]]            = -1;
-                    
-    H_aux[7 ,end-lenC+control_id[:unemp_t]]            = 1;
+    H_aux[5 ,ns - lenSS + state_id[:R_cb_t]]           = 1
 
-    H_aux[8 ,end-lenC+control_id[:LT_t]]               = 1;
-    H_aux[8 ,end-lenC+control_id[:LT2_lag_t]]          = -1;
+    H_aux[6 ,ns - lenSS + state_id[:w_t]]             = 1
+    H_aux[6 ,end-lenC+control_id[:w_lag_t]]           = -1
 
-    H_aux[9 ,end-lenC+control_id[:Profit_obs_t]]       = 1;
-    H_aux[9 ,end-lenC+control_id[:PPROFIT_lag_t]]      = -1;
+    H_aux[7 ,end-lenC+control_id[:unemp_t]]           = 1
 
-    H_aux[10 ,ns - lenSS + state_id[:A_gaux_t]]    = 1;
+    H_aux[8 ,end-lenC+control_id[:LT_t]]              = 1
+    H_aux[8 ,end-lenC+control_id[:LT2_lag_t]]         = -1
+
+    H_aux[9 ,end-lenC+control_id[:Profit_obs_t]]      = 1
+    H_aux[9 ,end-lenC+control_id[:PPROFIT_lag_t]]    = -1
+
+    H_aux[10 ,ns - lenSS + state_id[:A_gaux_t]]      = 1
 
     # Measurement helpers
     HQ = H_aux * Q_ref
@@ -183,10 +180,11 @@ function pq(
     rates = data[!, :rcb]
     ZLB_indicator = exp.(rates) .* R_cb .< 1 + 1e-8
 
+    Fss_ZLB = m.dicts[:Fss_ZLB]
     D_ZLB = vcat(Fss_ZLB[1:nse, :], Fss_ZLB[(ns+1):end, :])
 
     # OccBin precomputation (unique ZLB durations)
-    unique_EZLB_duration_1 = sort(unique(vec(ZLB_duration_1)))
+    unique_EZLB_duration_1 = sort(unique(vec(m.dicts[:ZLB_duration_1])))
     ndur = length(unique_EZLB_duration_1)
 
     Cb = cof_zlb[:, 1:nvars]
@@ -228,7 +226,6 @@ function pq(
         Es_aux[:, :, kk] = Es_cur
     end
 
-    indicator = indicator_1
 
     return H_aux,
         P_ref,
@@ -237,11 +234,9 @@ function pq(
         SIGMA_full,
         SIGMA,
         ZLB_indicator,
-        ZLB_duration_1,
         unique_EZLB_duration_1,
         Ps_aux,
         Ds_aux,
         Es_aux,
-        D_ZLB,
-        indicator
+        D_ZLB
 end

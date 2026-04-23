@@ -33,6 +33,9 @@ ZLB_duration_1 = mat_contents["ZLB_duration_1"]
 Fss_ZLB        = mat_contents["Fss_ZLB"]
 
 
+
+
+
 jld2file = "../models/mBBQ/data/XssYss.jld2"
 @load jld2file StateSS ControlSS SS_stats grid param
 
@@ -47,12 +50,16 @@ m.dicts[:param] = param
 # m.grids[:mutil_c] = mutil_c
 # m.grids[:Va] = Va
 # m.dicts[:Jacob_base] = Jacob_base2
+m.dicts[:ZLB_duration_1] = ZLB_duration_1
+# Fss_ZLB = zeros(534, 1)
+m.dicts[:Fss_ZLB] = Fss_ZLB
+
 
 df = DSGE.load_data_bbq(m)
 
-H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, ZLB_duration_1, unique_EZLB_duration_1, Ps_aux, Ds_aux, Es_aux, D_ZLB, indicator = DSGE.pq(m, hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, indicator_1, F1_ZLB_aux, F2_ZLB_aux, F3_ZLB_aux, F4_ZLB_aux, df, ZLB_duration_1, Fss_ZLB)
+H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, unique_EZLB_duration_1, Ps_aux, Ds_aux, Es_aux, D_ZLB = DSGE.pq(m, hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, F1_ZLB_aux, F2_ZLB_aux, F3_ZLB_aux, F4_ZLB_aux, df)
 
-regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es = DSGE.prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, ZLB_duration_1, unique_EZLB_duration_1, Ps_aux, Ds_aux, Es_aux, D_ZLB, indicator)
+regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es = DSGE.prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, unique_EZLB_duration_1, Ps_aux, Ds_aux, Es_aux, D_ZLB)
 
 loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
     kalman_filter(regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es;

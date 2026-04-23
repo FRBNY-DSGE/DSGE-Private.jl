@@ -5,6 +5,7 @@ using DSGE
 using MAT
 using OrderedCollections: OrderedDict
 using CSV
+using StateSpaceRoutines
 
 input_path = joinpath(@__DIR__, "../models/mBBQ/data/inputs/state_reduc_tvcopula.mat")
 println("\nLoading input fixtures from $input_path")
@@ -40,7 +41,7 @@ m.grids[:mu_dist] = mu_dist
 m.grids[:Value] = Value
 m.grids[:mutil_c] = mutil_c
 m.grids[:Va] = Va
-
+m.dicts[:ZLB_duration_1] = ZLB_duration_1
 
 Jacob_base2 = DSGE.save_jacob_base(F1_aux_rep, F2_aux_rep, F3_aux_rep, F4_aux_rep, m)
 
@@ -51,9 +52,18 @@ Jacob_base = mat_contents["Jacob_base"] #for testing use, this but in prod use s
 
 m.dicts[:Jacob_base] = Jacob_base2
 
+# TESTING!, need to make call to F_sys_ZLB_QE
+Fss_ZLB = zeros(632, 1)
+m.dicts[:Fss_ZLB] = Fss_ZLB
 
-regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es = DSGE.compute_system!(m, ZLB_duration_1, Fss_ZLB)
+regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es, flag = DSGE.compute_system!(m)
 
-loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
-    kalman_filter(regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es;
+if flag == true
+    loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
+    StateSpaceRoutines.kalman_filter(regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es;
                   outputs = [:loglh, :pred, :filt])
+
+else
+    loglh = Inf
+
+end

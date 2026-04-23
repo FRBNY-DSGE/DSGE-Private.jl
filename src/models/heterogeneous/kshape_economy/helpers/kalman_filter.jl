@@ -109,7 +109,7 @@ function indicator_only_regime_partition(zlb::AbstractVector{Bool})
 end
 
 
-function prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, ZLB_duration_1, unique_EZLB_duration_1, Ps_aux, Ds_aux, Es_aux, D_ZLB, indicator)
+function prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, ZLB_indicator, unique_EZLB_duration_1, Ps_aux, Ds_aux, Es_aux, D_ZLB)
 
 
     Nt_data, Ny_data = size(df)
@@ -152,6 +152,7 @@ function prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, Z
         error("udur is not sorted")
     end
     
+    ZLB_duration_1 = m.dicts[:ZLB_duration_1]
     zdur = DSGE.zlb_duration_per_period(vec(ZLB_duration_1), zi, Nt)
     
     kk = zeros(Int, Nt)
