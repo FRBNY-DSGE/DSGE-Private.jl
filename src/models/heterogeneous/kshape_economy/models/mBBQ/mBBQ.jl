@@ -512,11 +512,9 @@ function init_parameters!(m::mBBQ)
     # TO-DO: fix these parameter defs
     m <= parameter(:ν, 1.0, fixed = true)
     #phillips curve parameters
-     m <= parameter(:κ, 0.0276503, (1e-5, 5.), (1e-5, 5.), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
+     m <= parameter(:κ, 0.0276503, (1e-5, 0.2), (1e-5, 0.2), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
                    description = "κ: The slope of the Phillips curve", tex_label = "\\kappa")
-#m <= parameter(:κ, 0.05247664549755819, (1e-5, 5.), (1e-5, 5.), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
-                   #description = "κ: The slope of the Phillips curve", tex_label = "\\kappa")
-    m <= parameter(:ρ_w, 0.8916942990519234, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:ρ_w, 0.8916942990519234, (1e-5, 5.), (1e-5, 5.), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_w: AR(1) coefficient in the wage process.",
                    tex_label = "\\rho_w")
@@ -526,11 +524,11 @@ function init_parameters!(m::mBBQ)
                    BetaAlt(0.5, 0.15), fixed = false,
                    description = "δ:",
                    tex_label = "\\delta") #TODO: check if this or delta is fixed
-    m <= parameter(:d, 0.6738, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:d, 0.6738, (1e-5, 2.), (1e-5, 2.), SquareRoot(),
                    BetaAlt(0.5, 0.15), fixed = true,
                    description = "δ:",
                    tex_label = "\\delta")
-    m <= parameter(:ϕ, 49.7917, (1e-5, 10.), (1e-5, 10.), ModelConstructors.Exponential(),
+    m <= parameter(:ϕ, 49.7917, (1e-5, 270.), (1e-5, 270.), ModelConstructors.Exponential(),
                    Normal(3.0, 0.5), fixed = false,
                    description = "ϕ: Parameter in monetary policy rule.",
                    tex_label = "\\phi")
@@ -538,7 +536,7 @@ function init_parameters!(m::mBBQ)
                    Normal(1.7, 0.3), fixed = false,
                    description = "ϕ_π: Weight on inflation gap in monetary policy rule.",
                    tex_label = "\\varphi_\\pi")
-    m <= parameter(:ϕ_u, 0.37475243192750335, (-0.5, 0.5), (-0.5, 0.5), Untransformed(),
+    m <= parameter(:ϕ_u, 0.37475243192750335, (-0.5, 2.), (-0.5, 2.), Untransformed(),
                    Normal(0.1, 0.05), fixed = false,
                    description = "ϕ_u: Weight on unemployment gap in monetary policy rule",
                    tex_label = "\\varphi_u")
@@ -582,49 +580,49 @@ function init_parameters!(m::mBBQ)
                    tex_label = "\\rho_{B_F}")
 
     # Exogenous processes - standard deviations
-    m <= parameter(:σ_D, 0.12371, (1e-8, 50.), (1e-8, 50.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_D, 0.12371, (1e-8, 1.), (1e-8, 1.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_D: The standard deviation of the D process.",
                    tex_label = "\\sigma_D")
-    m <= parameter(:σ_G, 0.0068107, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_G, 0.0068107, (1e-8, 0.05), (1e-8, 0.05), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_G: The standard deviation of the government spending process.",
                    tex_label = "\\sigma_G")
-    m <= parameter(:σ_R, 0.0010768, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_R, 0.0010768, (1e-8, 0.005), (1e-8, 0.005), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_R: The standard deviation of the monetary policy shock.",
                    tex_label = "\\sigma_R")
-    m <= parameter(:σ_Z, 0.0079954, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_Z, 0.0079954, (1e-8, 0.05), (1e-8, 0.05), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_Z: The standard deviation of the technology process.",
                    tex_label = "\\sigma_Z")
-    m <= parameter(:σ_η, 0.039461, (1e-8, 20.), (1e-8, 20.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_η, 0.039461, (1e-8, 0.5), (1e-8, 0.5), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_η: The standard deviation of the η process.",
                    tex_label = "\\sigma_\\eta")
-    m <= parameter(:σ_ι, 0.00090722, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_ι, 0.00090722, (1e-8, 0.005), (1e-8, 0.005), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_ι: The standard deviation of the ι process.",
                    tex_label = "\\sigma_\\iota")
-    m <= parameter(:σ_w, 0.031033, (1e-8, 20.), (1e-8, 20.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_w, 0.031033, (1e-8, 3.), (1e-8, 3.), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_w: The standard deviation of the wage process.",
                    tex_label = "\\sigma_w")
-    m <= parameter(:σ_BB, 0.0019753, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_BB, 0.0019753, (1e-8, 0.01), (1e-8, 0.01), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_BB: The standard deviation of the BB process.",
                    tex_label = "\\sigma_{BB}")
-    m <= parameter(:σ_B_F, 0.010128, (1e-8, 5.), (1e-8, 5.), ModelConstructors.Exponential(),
+    m <= parameter(:σ_B_F, 0.010128, (1e-8, 0.05), (1e-8, 0.05), ModelConstructors.Exponential(),
                    RootInverseGamma(2, 0.02), fixed = false,
                    description = "σ_B_F: The standard deviation of the B_F process.",
                    tex_label = "\\sigma_{B_F}")
 
     # Other parameters
-    m <= parameter(:γ, 0.18919, (1e-5, 1 - 1e-5), (1e-5, 1-1e-5), SquareRoot(),
+    m <= parameter(:γ, 0.18919, (1e-5, 1.), (1e-5, 1.), SquareRoot(),
                    BetaAlt(0.5, 0.15), fixed = false,
                    description = "γ: The log of the steady-state growth rate of technology",
                    tex_label = "\\gamma")
-    m <= parameter(:ι, 0.0542, (1e-5, 5.), (1e-5, 5.), SquareRoot(),
+    m <= parameter(:ι, 0.0542, (1e-5, 0.5), (1e-5, 0.5), SquareRoot(),
                    GammaAlt(0.5, 0.2), fixed = false,
                    description = "ι: Parameter",
                    tex_label = "\\iota")
