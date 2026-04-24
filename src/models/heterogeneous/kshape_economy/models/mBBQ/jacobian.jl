@@ -8,6 +8,8 @@ using DSGE
 
 
 function jacobian!(m::mBBQ)
+    # t0 = time()
+
     grid = m.dicts[:grid] 
     SS_stats = m.dicts[:SS_stats] 
     param = m.dicts[:param] 
@@ -17,11 +19,16 @@ function jacobian!(m::mBBQ)
         haskey(g, k) ? g[k] :
         haskey(g, String(k)) ? g[String(k)] :
         error("Missing grid key: $(k)")
-
+    
+    # t1 = time()
+    # println("setup: $(t1 - t0) seconds")
 
     #one time setup to move prev donggyu format to bbl format
     state_id, control_id = DSGE.build_indices(grid, length(StateSS), length(ControlSS))
     #ss = DSGE.build_ss(param, SS_stats)
+
+    # t1 = time()
+    # println("buildindices: $(t1 - t0) seconds")
 
     #manual fixes, jank but ygdwygd
     state_id[:A_g_t] = 17733
@@ -38,6 +45,8 @@ function jacobian!(m::mBBQ)
     nState  = length(StateSS)
     nCtrl   = length(ControlSS)
 
+    # t1 = time()
+    # println("setup2: $(t1 - t0) seconds")
 
     #F = Dict{Symbol,Any}() #TODO: offload to different file
     #must be same ordering as in idx of donggyu code
@@ -162,20 +171,30 @@ function jacobian!(m::mBBQ)
         (:eq_quantitative_easing, :eq_quantitative_easing_ZLB)
     ])
 
+    # t1 = time()
+    # println("state the f eqn: $(t1 - t0) seconds")
+
     #set regime for testing
     reg = 1
     F = DSGE.Fsys_agg(F, m, grid, StateSS, ControlSS, State_zero, Control_zero, State_zero, Control_zero, state_id, control_id, reg)
 
+    # t1 = time()
+    # println("call fsys: $(t1 - t0) seconds")
+
     eq_keys = collect(keys(F))
 
+
+    # t1 = time()
+    # println("collect keys: $(t1 - t0) seconds")
+
     # flatten f dict into a vector of scalar, issue with J, might cause indexing issue later on
-    function flatten_F!(F_vec, F_dict, eq_keys)
+    function flatten_F!(F_vec::AbstractVector{T}, F_dict::OrderedDict{Symbol, Any}, eq_keys::AbstractVector{Symbol}) where {T}
         idx = 1
-        for k in eq_keys
-            v = get(F_dict, k, zero(eltype(F_vec)))
+        @inbounds for k in eq_keys
+            v = get(F_dict, k, zero(T))
             if v isa AbstractArray
                 n = length(v)
-                F_vec[idx:idx+n-1] .= v
+                copyto!(view(F_vec, idx:(idx + n - 1)), vec(v))
                 idx += n
             else
                 F_vec[idx] = v
@@ -187,22 +206,49 @@ function jacobian!(m::mBBQ)
     #determine flat output size
     n_eqs_flat = sum(k -> (F[k] isa AbstractArray ? length(F[k]) : 1), eq_keys)
 
+
+    # t1 = time()
+    # println("flatten: $(t1 - t0) seconds")
+
     # x = [Xt1; Yt1; Xt; Yt] Xt1 is state_t, Yt1 is control_t+1, Xt is state_t-1, Yt is control_t
     n_x = 2*nState + 2*nCtrl
-    BA_agg = zeros(n_eqs_flat, n_x)
+    BA_agg = zeros(Float64, n_eqs_flat, n_x)
+    F_dict = OrderedDict{Symbol, Any}()
 
     function obj_fnct_agg(F_vec, x)
-        Xt1 = x[1:nState]
-        Yt1 = x[nState+1:nState+nCtrl]
-        Xt  = x[nState+nCtrl+1:2*nState+nCtrl]
-        Yt  = x[2*nState+nCtrl+1:end]
-        F_dict = OrderedDict{Symbol, Any}()
+        
+        # t2 = time()
+
+        @views Xt1 = x[1:nState]
+        @views Yt1 = x[nState+1:nState+nCtrl]
+        @views Xt  = x[nState+nCtrl+1:2*nState+nCtrl]
+        @views Yt  = x[2*nState+nCtrl+1:end]
+        empty!(F_dict)
+        
+        # t3 = time()
+        # println("flaobjfcn 1: $(t3 - t2) seconds")
         DSGE.Fsys_agg(F_dict, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, control_id, reg)
+        
+        # t4 = time()
+        # println("flaobjfcn 2: $(t4 - t3) seconds")
+
         flatten_F!(F_vec, F_dict, eq_keys)
+
+        # t5 = time()
+        # println("flaobjfcn 3: $(t5 - t4) seconds")
     end
 
     #autodiff jacobian
-    ForwardDiff.jacobian!(BA_agg, obj_fnct_agg, zeros(n_eqs_flat), zeros(n_x))
+    #ForwardDiff.jacobian!(BA_agg, obj_fnct_agg, zeros(n_eqs_flat), zeros(n_x))
+    # autodiff jacobian with preallocated buffers/config
+    f0 = zeros(Float64, n_eqs_flat)
+    x0 = zeros(Float64, n_x)
+    cfg = ForwardDiff.JacobianConfig(obj_fnct_agg, f0, x0)
+    ForwardDiff.jacobian!(BA_agg, obj_fnct_agg, f0, x0, cfg)
+
+    
+    # t1 = time()
+    # println("forwarddiff: $(t1 - t0) seconds")
 
     # aggregate-only columns (drop distribution block indices)
     dist_state_keys = Set([:marginal_pdf_b_t, :marginal_pdf_a_t, :marginal_pdf_se_t, :copula_t])
@@ -211,18 +257,20 @@ function jacobian!(m::mBBQ)
     agg_state_cols = vcat([collect(state_id[s])   for s in keys(state_id)   if s ∉ dist_state_keys]...)
     agg_ctrl_cols  = vcat([collect(control_id[s]) for s in keys(control_id) if s ∉ dist_ctrl_keys]...)
 
-
+    # t1 = time()
+    # println("drop dist: $(t1 - t0) seconds")
 
     #zlb equations 
     num_zlb_equations = length(zlb_equations)
 
-    zlb_nonzlb_idx_pairs = [
-        (
-            findfirst(x -> x == nonzlb, eq_keys),
-            findfirst(x -> x == zlb, eq_keys)
-        )
-        for (nonzlb, zlb) in zlb_equations
+    eq_index = Dict{Symbol, Int}(k => i for (i, k) in pairs(eq_keys))
+    zlb_nonzlb_idx_pairs = Tuple{Int, Int}[
+        (eq_index[nonzlb], eq_index[zlb]) for (nonzlb, zlb) in zlb_equations
     ]
+
+    # t1 = time()
+    # println("zlb sorting: $(t1 - t0) seconds")
+
 
     #matching donggyu dims
     F1_ad = BA_agg[:, 1:nState][:, agg_state_cols]                        # ∂F/∂Xt1 (agg cols)
@@ -279,7 +327,10 @@ function jacobian!(m::mBBQ)
         F22_ad_zlb[nonzlb_row, :] = F2_ad[zlb_row + 4, :]
         F23_ad_zlb[nonzlb_row, :] = F3_ad_trim[zlb_row + 4, :]
         F24_ad_zlb[nonzlb_row, :] = F4_ad[zlb_row + 4, :]
-    end
+    end                                 
+
+    # t1 = time()
+    # println("trimming: $(t1 - t0) seconds")
 
 
     return F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad, F21_ad_zlb, F22_ad_zlb, F23_ad_zlb, F24_ad_zlb, F41_ad, F42_ad, F43_ad, F44_ad
