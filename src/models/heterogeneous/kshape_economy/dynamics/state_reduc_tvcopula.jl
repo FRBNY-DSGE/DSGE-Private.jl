@@ -12,129 +12,159 @@ Returns a named tuple with all computed variables.
 Modifies `m.dicts[:grid]` and `m.dicts[:SS_stats]` in place.
 """
 function state_reduc_tvcopula!(m::mBBQ)
+    param = m.dicts[:param]
+    grid = m.dicts[:grid]
+    ss = m.dicts[:SS_stats]
+    mu_dist = m.grids[:mu_dist]
+    cache = get!(m.dicts, :state_reduc_cache, Dict{Symbol, Any}())
 
     # Define inverse utility functions
-    sigma = m.dicts[:param]["sigma"]
+    sigma = param["sigma"]
     invutil(u) = ((1 - sigma) .* u) .^ (1 / (1 - sigma))
     invmutil(mu) = (1 ./ mu) .^ (1 / sigma)
 
+    # Precompute repeated marginal sums once.
+    mu_sum_b = vec(sum(sum(mu_dist, dims=2), dims=3))
+    mu_sum_a = vec(sum(sum(mu_dist, dims=1), dims=3))
+    mu_sum_se = vec(sum(sum(mu_dist, dims=2), dims=1))
+
+    function push_scalars!(v::Vector{Float64}, vals...)
+        for x in vals
+            push!(v, Float64(x))
+        end
+        return v
+    end
+
     # Build Xss based on m.dicts[:param]["adjust"]
-    adjust = string(m.dicts[:param]["adjust"])
-    if adjust == "G"
-        Xss = vcat(
-            vec(sum(sum(m.grids[:mu_dist], dims=2), dims=3)),
-            vec(sum(sum(m.grids[:mu_dist], dims=1), dims=3)),
-            vec(sum(sum(m.grids[:mu_dist], dims=2), dims=1)),
-            vec(m.grids[:mu_dist][:]),
-            log(m.dicts[:param]["R_cb"]), log(m.dicts[:param]["w_bar"]),
-            log(m.dicts[:SS_stats]["A_b"]), log(m.dicts[:SS_stats]["B_b"]), log(m.dicts[:SS_stats]["A_g"] + 1),
-            log(m.dicts[:param]["q"]), log(m.dicts[:SS_stats]["leverage"]), log(m.dicts[:SS_stats]["NW_b"]), log(m.dicts[:param]["R_cb"]), 0,
-            log(m.dicts[:param]["pi_bar"]),
-            log(m.dicts[:SS_stats]["Y"]), log(m.dicts[:SS_stats]["Chh"]), log(m.dicts[:SS_stats]["I2"]), log(m.dicts[:SS_stats]["Profit"] + m.dicts[:SS_stats]["Profit_FI"]), log(m.dicts[:param]["u"]), log(m.dicts[:SS_stats]["G"]), log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:param]["R_cb"]), log(m.dicts[:SS_stats]["Y"] / (m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["B_F"])),
-            log(1), log(1), log(m[:η]), log(1), log(m.dicts[:SS_stats]["Y"] / (m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["LT"] - m.dicts[:SS_stats]["C_b"])), log(1), log(1), log(1), log(1), log(m[:η] / (m[:η] - 1)),
+    adjust_raw = param["adjust"]
+    adjust = adjust_raw isa Symbol ? adjust_raw : Symbol(adjust_raw)
+    Xss = Float64[]
+    sizehint!(Xss, length(mu_sum_b) + length(mu_sum_a) + length(mu_sum_se) + length(vec(mu_dist)) + 48)
+    append!(Xss, mu_sum_b)
+    append!(Xss, mu_sum_a)
+    append!(Xss, mu_sum_se)
+
+    if adjust == :G
+        append!(Xss, vec(mu_dist))
+        push_scalars!(Xss,
+            log(param["R_cb"]), log(param["w_bar"]),
+            log(ss["A_b"]), log(ss["B_b"]), log(ss["A_g"] + 1),
+            log(param["q"]), log(ss["leverage"]), log(ss["NW_b"]), log(param["R_cb"]), 0,
+            log(param["pi_bar"]),
+            log(ss["Y"]), log(ss["Chh"]), log(ss["I2"]), log(ss["Profit"] + ss["Profit_FI"]), log(param["u"]), log(ss["G"]), log(ss["LT"]), log(param["R_cb"]), log(ss["Y"] / (ss["Y"] - ss["B_F"])),
+            log(1), log(1), log(m[:η]), log(1), log(ss["Y"] / (ss["Y"] - ss["LT"] - ss["C_b"])), log(1), log(1), log(1), log(1), log(m[:η] / (m[:η] - 1)),
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         )
-    elseif adjust == "LT"
-        Xss = vcat(
-            vec(sum(sum(m.grids[:mu_dist], dims=2), dims=3)),
-            vec(sum(sum(m.grids[:mu_dist], dims=1), dims=3)),
-            vec(sum(sum(m.grids[:mu_dist], dims=2), dims=1)),
-            vec(m.dicts[:SS_stats]["mu_dist"]),
-            log(m.dicts[:param]["R_cb"]), log(m.dicts[:param]["w_bar"]),
-            log(m.dicts[:SS_stats]["A_b"]), log(m.dicts[:SS_stats]["B_b"]), log(m.dicts[:SS_stats]["A_g"] + 1),
-            log(m.dicts[:param]["q"]), log(m.dicts[:SS_stats]["leverage"]), log(m.dicts[:SS_stats]["NW_b"]), log(m.dicts[:param]["R_cb"]), 0,
-            log(m.dicts[:param]["pi_bar"]),
-            log(m.dicts[:SS_stats]["Y"]), log(m.dicts[:SS_stats]["Chh"]), log(m.dicts[:SS_stats]["I2"]), log(m.dicts[:SS_stats]["Profit"] + m.dicts[:SS_stats]["Profit_FI"]), log(m.dicts[:param]["u"]), log(m.dicts[:SS_stats]["G"]), log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:param]["R_cb"]), log(m.dicts[:SS_stats]["Y"] / (m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["B_F"])),
-            log(1), log(1), log(m[:η]), log(1), log(m.dicts[:SS_stats]["Y"] / (m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["G"])), log(1), log(1), log(1), log(1), log(m[:η] / (m[:η] - 1)),
+    elseif adjust == :LT
+        append!(Xss, vec(ss["mu_dist"]))
+        push_scalars!(Xss,
+            log(param["R_cb"]), log(param["w_bar"]),
+            log(ss["A_b"]), log(ss["B_b"]), log(ss["A_g"] + 1),
+            log(param["q"]), log(ss["leverage"]), log(ss["NW_b"]), log(param["R_cb"]), 0,
+            log(param["pi_bar"]),
+            log(ss["Y"]), log(ss["Chh"]), log(ss["I2"]), log(ss["Profit"] + ss["Profit_FI"]), log(param["u"]), log(ss["G"]), log(ss["LT"]), log(param["R_cb"]), log(ss["Y"] / (ss["Y"] - ss["B_F"])),
+            log(1), log(1), log(m[:η]), log(1), log(ss["Y"] / (ss["Y"] - ss["G"])), log(1), log(1), log(1), log(1), log(m[:η] / (m[:η] - 1)),
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         )
     else
-        error("Unknown adjust value: $adjust")
+        error("Unknown adjust value: $adjust_raw")
     end
 
     # Build Yss based on m.dicts[:param]["adjust"]
-    if adjust == "G"
-        Yss = vcat(
-            invutil(m.grids[:Value][:]),
-            invmutil(m.grids[:mutil_c][:]),
-            invmutil(m.grids[:Va][:]),
-            log(m.dicts[:SS_stats]["MRS"]), log(m.dicts[:SS_stats]["A_hh"]), log(m.dicts[:SS_stats]["B_nb"] / (1 - m[:dr]) * m[:b_a_aux]), log(m.dicts[:SS_stats]["Chh"]),
-            log(m.dicts[:SS_stats]["N"]), log(m.dicts[:SS_stats]["L"]), log(m.dicts[:SS_stats]["UB"]),
-            log(m.dicts[:grid]["K"]), log(m.dicts[:SS_stats]["B2"]), log(m.dicts[:SS_stats]["B_gov_ncp"]),
-            log(m.dicts[:SS_stats]["T"]), log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:SS_stats]["G"]),
-            log(m.dicts[:SS_stats]["Lambda"]), log(m.dicts[:param]["pi_bar"]),
-            log(m.dicts[:SS_stats]["V"]), log.(m.dicts[:SS_stats]["J"]), log(m.dicts[:SS_stats]["r_l"]), log(m.dicts[:SS_stats]["v"]),
-            log(m.dicts[:SS_stats]["Y"]), log(m.dicts[:SS_stats]["Profit"]), log(m.dicts[:SS_stats]["r_k"]), log(m.dicts[:SS_stats]["r_a"]), log(m.dicts[:SS_stats]["mc"]),
-            log(m.dicts[:SS_stats]["u"]), log(m.dicts[:param]["n"]), log(m.dicts[:SS_stats]["M"]), log(m.dicts[:SS_stats]["f"]),
-            log(m.dicts[:SS_stats]["zz"]), log(m.dicts[:SS_stats]["xx"]), log(m.dicts[:SS_stats]["vv"]), log(m.dicts[:SS_stats]["ee"]), log(m.dicts[:SS_stats]["C_b"]), log(m.dicts[:SS_stats]["Profit_FI"]),
-            log(m.dicts[:SS_stats]["R_a"]), log(m.dicts[:SS_stats]["R"]), log(m.dicts[:SS_stats]["I2"]),
-            0,
-            log(m.dicts[:SS_stats]["A_g"]), log(m.dicts[:SS_stats]["Y"]), log(m.dicts[:SS_stats]["C"]), log(m.dicts[:SS_stats]["I2"]), log(m.dicts[:param]["w_bar"]), log(m.dicts[:SS_stats]["Profit"] + m.dicts[:SS_stats]["Profit_FI"]),
-            log(100 * m.dicts[:param]["u"]), log(m.dicts[:param]["pi_bar"]), log(m.dicts[:param]["R_cb"]), log(m.dicts[:param]["w_bar"]), log(m.dicts[:SS_stats]["G"]),
-            log(m.dicts[:SS_stats]["Y"]), log(m.dicts[:SS_stats]["Chh"]), log(m.dicts[:SS_stats]["I2"]), log(m.dicts[:SS_stats]["Profit"] + m.dicts[:SS_stats]["Profit_FI"]), log(m.dicts[:param]["u"]), log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:SS_stats]["A_g"]),
-            log(m.dicts[:param]["lambda"]), 0, 0, log(m[:η]), 0, log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:SS_stats]["G"]), log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:SS_stats]["B_gov_ncp2"])
+    Yss = Float64[]
+    sizehint!(Yss, length(m.grids[:Value]) + length(m.grids[:mutil_c]) + length(m.grids[:Va]) + 80)
+    append!(Yss, vec(invutil(m.grids[:Value])))
+    append!(Yss, vec(invmutil(m.grids[:mutil_c])))
+    append!(Yss, vec(invmutil(m.grids[:Va])))
+
+    if adjust == :G
+        push_scalars!(Yss,
+            log(ss["MRS"]), log(ss["A_hh"]), log(ss["B_nb"] / (1 - m[:dr]) * m[:b_a_aux]), log(ss["Chh"]),
+            log(ss["N"]), log(ss["L"]), log(ss["UB"]),
+            log(grid["K"]), log(ss["B2"]), log(ss["B_gov_ncp"]),
+            log(ss["T"]), log(ss["LT"]), log(ss["G"]),
+            log(ss["Lambda"]), log(param["pi_bar"]),
+            log(ss["V"])
         )
-    elseif adjust == "LT"
-        Yss = vcat(
-            invutil(m.grids[:Value][:]),
-            invmutil(m.grids[:mutil_c][:]),
-            invmutil(m.grids[:Va][:]),
-            log(m.dicts[:SS_stats]["MRS"]), log(m.dicts[:SS_stats]["A_hh"]), log(m.dicts[:SS_stats]["B_nb"] / (1 - m[:dr]) * m[:b_a_aux]), log(m.dicts[:SS_stats]["Chh"]),
-            log(m.dicts[:SS_stats]["N"]), log(m.dicts[:SS_stats]["L"]), log(m.dicts[:SS_stats]["UB"]),
-            log(m.dicts[:grid]["K"]), log(m.dicts[:SS_stats]["B2"]), log(m.dicts[:SS_stats]["B_gov_ncp"]),
-            log(m.dicts[:SS_stats]["T"]), log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:SS_stats]["G"]),
-            log(m.dicts[:SS_stats]["Lambda"]), log(m.dicts[:param]["pi_bar"]),
-            log(m.dicts[:SS_stats]["V"]), log.(m.dicts[:SS_stats]["J"]), log(m.dicts[:SS_stats]["r_l"]), log(m.dicts[:SS_stats]["v"]),
-            log(m.dicts[:SS_stats]["Y"]), log(m.dicts[:SS_stats]["Profit"]), log(m.dicts[:SS_stats]["r_k"]), log(m.dicts[:SS_stats]["r_a"]), log(m.dicts[:SS_stats]["mc"]),
-            log(m.dicts[:SS_stats]["u"]), log(m.dicts[:param]["n"]), log(m.dicts[:SS_stats]["M"]), log(m.dicts[:SS_stats]["f"]),
-            log(m.dicts[:SS_stats]["zz"]), log(m.dicts[:SS_stats]["xx"]), log(m.dicts[:SS_stats]["vv"]), log(m.dicts[:SS_stats]["ee"]), log(m.dicts[:SS_stats]["C_b"]), log(m.dicts[:SS_stats]["Profit_FI"]),
-            log(m.dicts[:SS_stats]["R_a"]), log(m.dicts[:SS_stats]["R"]), log(m.dicts[:SS_stats]["I2"]),
+        append!(Yss, log.(ss["J"]))
+        push_scalars!(Yss,
+            log(ss["r_l"]), log(ss["v"]),
+            log(ss["Y"]), log(ss["Profit"]), log(ss["r_k"]), log(ss["r_a"]), log(ss["mc"]),
+            log(ss["u"]), log(param["n"]), log(ss["M"]), log(ss["f"]),
+            log(ss["zz"]), log(ss["xx"]), log(ss["vv"]), log(ss["ee"]), log(ss["C_b"]), log(ss["Profit_FI"]),
+            log(ss["R_a"]), log(ss["R"]), log(ss["I2"]),
             0,
-            log(m.dicts[:SS_stats]["A_g"]), log(m.dicts[:SS_stats]["Y"]), log(m.dicts[:SS_stats]["C"]), log(m.dicts[:SS_stats]["I2"]), log(m.dicts[:param]["w_bar"]), log(m.dicts[:SS_stats]["Profit"] + m.dicts[:SS_stats]["Profit_FI"]),
-            log(100 * m.dicts[:param]["u"]), log(m.dicts[:param]["pi_bar"]), log(m.dicts[:param]["R_cb"]), log(m.dicts[:param]["w_bar"]), log(m.dicts[:SS_stats]["G"]),
-            log(m.dicts[:SS_stats]["Y"]), log(m.dicts[:SS_stats]["Chh"]), log(m.dicts[:SS_stats]["I2"]), log(m.dicts[:SS_stats]["Profit"] + m.dicts[:SS_stats]["Profit_FI"]), log(m.dicts[:param]["u"]), log(m.dicts[:SS_stats]["G"]), log(m.dicts[:SS_stats]["A_g"]),
-            log(m.dicts[:param]["lambda"]), 0, 0, log(m[:η]), 0, log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:SS_stats]["G"]), log(m.dicts[:SS_stats]["LT"]), log(m.dicts[:SS_stats]["B_gov_ncp2"])
+            log(ss["A_g"]), log(ss["Y"]), log(ss["C"]), log(ss["I2"]), log(param["w_bar"]), log(ss["Profit"] + ss["Profit_FI"]),
+            log(100 * param["u"]), log(param["pi_bar"]), log(param["R_cb"]), log(param["w_bar"]), log(ss["G"]),
+            log(ss["Y"]), log(ss["Chh"]), log(ss["I2"]), log(ss["Profit"] + ss["Profit_FI"]), log(param["u"]), log(ss["LT"]), log(ss["A_g"]),
+            log(param["lambda"]), 0, 0, log(m[:η]), 0, log(ss["LT"]), log(ss["G"]), log(ss["LT"]), log(ss["B_gov_ncp2"])
+        )
+    elseif adjust == :LT
+        push_scalars!(Yss,
+            log(ss["MRS"]), log(ss["A_hh"]), log(ss["B_nb"] / (1 - m[:dr]) * m[:b_a_aux]), log(ss["Chh"]),
+            log(ss["N"]), log(ss["L"]), log(ss["UB"]),
+            log(grid["K"]), log(ss["B2"]), log(ss["B_gov_ncp"]),
+            log(ss["T"]), log(ss["LT"]), log(ss["G"]),
+            log(ss["Lambda"]), log(param["pi_bar"]),
+            log(ss["V"])
+        )
+        append!(Yss, log.(ss["J"]))
+        push_scalars!(Yss,
+            log(ss["r_l"]), log(ss["v"]),
+            log(ss["Y"]), log(ss["Profit"]), log(ss["r_k"]), log(ss["r_a"]), log(ss["mc"]),
+            log(ss["u"]), log(param["n"]), log(ss["M"]), log(ss["f"]),
+            log(ss["zz"]), log(ss["xx"]), log(ss["vv"]), log(ss["ee"]), log(ss["C_b"]), log(ss["Profit_FI"]),
+            log(ss["R_a"]), log(ss["R"]), log(ss["I2"]),
+            0,
+            log(ss["A_g"]), log(ss["Y"]), log(ss["C"]), log(ss["I2"]), log(param["w_bar"]), log(ss["Profit"] + ss["Profit_FI"]),
+            log(100 * param["u"]), log(param["pi_bar"]), log(param["R_cb"]), log(param["w_bar"]), log(ss["G"]),
+            log(ss["Y"]), log(ss["Chh"]), log(ss["I2"]), log(ss["Profit"] + ss["Profit_FI"]), log(param["u"]), log(ss["G"]), log(ss["A_g"]),
+            log(param["lambda"]), 0, 0, log(m[:η]), 0, log(ss["LT"]), log(ss["G"]), log(ss["LT"]), log(ss["B_gov_ncp2"])
         )
     end
 
     # m.dicts[:grid] setup
-    m.dicts[:grid]["maxdim"] = 10
-    nb = Int(m.dicts[:grid]["nb"])
-    na = Int(m.dicts[:grid]["na"])
-    nse = Int(m.dicts[:grid]["nse"])
-    m.dicts[:grid]["Ng"] = nb * na * nse
-    Ng = m.dicts[:grid]["Ng"]
+    grid["maxdim"] = 10
+    nb = Int(grid["nb"])
+    na = Int(grid["na"])
+    nse = Int(grid["nse"])
+    grid["Ng"] = nb * na * nse
+    Ng = grid["Ng"]
 
-    m.dicts[:grid]["nb_copula"] = 10
-    m.dicts[:grid]["na_copula"] = 10
-    m.dicts[:grid]["nse_copula"] = 10
+    grid["nb_copula"] = 10
+    grid["na_copula"] = 10
+    grid["nse_copula"] = 10
 
     # DCT matrices
-    DC = Vector{Matrix{Float64}}(undef, 3)
-    DC[1] = mydctmx(nb)
-    DC[2] = mydctmx(na)
-    DC[3] = mydctmx(nse)
-    IDC = [transpose(DC[i]) for i in 1:3]
-
-    DCD = Vector{Matrix{Float64}}(undef, 3)
-    DCD[1] = mydctmx(m.dicts[:grid]["nb_copula"])
-    DCD[2] = mydctmx(m.dicts[:grid]["na_copula"])
-    DCD[3] = mydctmx(m.dicts[:grid]["nse_copula"])
-    IDCD = [transpose(DCD[i]) for i in 1:3]
+    nb_cop = Int(grid["nb_copula"])
+    na_cop = Int(grid["na_copula"])
+    nse_cop = Int(grid["nse_copula"])
+    dct_key = (nb, na, nse, nb_cop, na_cop, nse_cop)
+    if get(cache, :dct_key, nothing) != dct_key
+        DC = Matrix{Float64}[mydctmx(nb), mydctmx(na), mydctmx(nse)]
+        IDC = Matrix{Float64}[transpose(DC[1]), transpose(DC[2]), transpose(DC[3])]
+        DCD = Matrix{Float64}[mydctmx(nb_cop), mydctmx(na_cop), mydctmx(nse_cop)]
+        IDCD = Matrix{Float64}[transpose(DCD[1]), transpose(DCD[2]), transpose(DCD[3])]
+        cache[:dct_key] = dct_key
+        cache[:DC] = DC
+        cache[:IDC] = IDC
+        cache[:DCD] = DCD
+        cache[:IDCD] = IDCD
+    end
 
     # Distribution and copula
-    distrSS = m.grids[:mu_dist]
+    distrSS = mu_dist
     CDF_SS = cumsum(cumsum(cumsum(distrSS, dims=1), dims=2), dims=3)
     COP_SS = CDF_SS
 
-    m.dicts[:SS_stats]["COP_SS"] = COP_SS
+    ss["COP_SS"] = COP_SS
 
     # Marginal distributions
-    distr_b_SS = vec(sum(sum(distrSS, dims=2), dims=3))
+    distr_b_SS = copy(mu_sum_b)
     distr_b_SS = distr_b_SS / sum(distr_b_SS)
-    distr_a_SS = vec(sum(sum(distrSS, dims=1), dims=3))
+    distr_a_SS = copy(mu_sum_a)
     distr_a_SS = distr_a_SS / sum(distr_a_SS)
-    distr_se_SS = vec(sum(sum(distrSS, dims=1), dims=2))
+    distr_se_SS = copy(mu_sum_se)
     distr_se_SS = distr_se_SS / sum(distr_se_SS)
 
     CDF_b_SS = cumsum(distr_b_SS)
@@ -142,55 +172,70 @@ function state_reduc_tvcopula!(m::mBBQ)
     CDF_se_SS = cumsum(distr_se_SS)
 
     # Copula marginal m.dicts[:grid]s
-    m.dicts[:grid]["copula_marginal_b"] = copula_nodes_share_safe(distr_b_SS, vec(m.dicts[:grid]["b"]), m.dicts[:grid]["nb_copula"]; transform="logshift", alpha=0.3)
-    m.dicts[:grid]["copula_marginal_a"] = copula_nodes_share_safe(distr_a_SS, vec(m.dicts[:grid]["a"]), m.dicts[:grid]["na_copula"]; transform="none", alpha=0.5)
-    m.dicts[:grid]["copula_marginal_se"] = copula_nodes_share_safe(distr_se_SS, vec(m.dicts[:grid]["se"]), m.dicts[:grid]["nse_copula"]; transform="none", alpha=0.5, pinPenultimate=true)
+    grid["copula_marginal_b"] = copula_nodes_share_safe(distr_b_SS, vec(grid["b"]), grid["nb_copula"]; transform="logshift", alpha=0.3)
+    grid["copula_marginal_a"] = copula_nodes_share_safe(distr_a_SS, vec(grid["a"]), grid["na_copula"]; transform="none", alpha=0.5)
+    grid["copula_marginal_se"] = copula_nodes_share_safe(distr_se_SS, vec(grid["se"]), grid["nse_copula"]; transform="none", alpha=0.5, pinPenultimate=true)
 
-    m.dicts[:grid]["reduc_copula"] = 10
+    grid["reduc_copula"] = 10
 
     # Compression indices
-    nb_cop = m.dicts[:grid]["nb_copula"]
-    na_cop = m.dicts[:grid]["na_copula"]
-    nse_cop = m.dicts[:grid]["nse_copula"]
-
-    compressionIndexesCOP = Int[]
-    for k in 1:nse_cop
-        for j in 1:na_cop
-            for i in 1:nb_cop
-                if (i + j + k) <= m.dicts[:grid]["reduc_copula"] && !((i == 1 && j == 1) || (k == 1 && j == 1) || (k == 1 && i == 1))
-                    linear_idx = i + (j - 1) * nb_cop + (k - 1) * nb_cop * na_cop
-                    push!(compressionIndexesCOP, linear_idx)
+    reduc_copula = Int(grid["reduc_copula"])
+    cop_key = (nb_cop, na_cop, nse_cop, reduc_copula)
+    if get(cache, :compression_key, nothing) != cop_key
+        compressionIndexesCOP = Int[]
+        sizehint!(compressionIndexesCOP, nb_cop * na_cop * nse_cop)
+        for k in 1:nse_cop
+            for j in 1:na_cop
+                for i in 1:nb_cop
+                    if (i + j + k) <= reduc_copula && !((i == 1 && j == 1) || (k == 1 && j == 1) || (k == 1 && i == 1))
+                        linear_idx = i + (j - 1) * nb_cop + (k - 1) * nb_cop * na_cop
+                        push!(compressionIndexesCOP, linear_idx)
+                    end
                 end
             end
         end
+        cache[:compression_key] = cop_key
+        cache[:compression_indexes] = compressionIndexesCOP
     end
-    m.dicts[:grid]["compressionIndexesCOP"] = compressionIndexesCOP
-    m.dicts[:grid]["nCOP"] = length(compressionIndexesCOP)
+    compressionIndexesCOP = cache[:compression_indexes]
+    grid["compressionIndexesCOP"] = compressionIndexesCOP
+    grid["nCOP"] = length(compressionIndexesCOP)
 
-    s_m_b = m.dicts[:grid]["copula_marginal_b"]
-    s_m_a = m.dicts[:grid]["copula_marginal_a"]
-    s_m_se = m.dicts[:grid]["copula_marginal_se"]
+    s_m_b = grid["copula_marginal_b"]
+    s_m_a = grid["copula_marginal_a"]
+    s_m_se = grid["copula_marginal_se"]
 
     # Create sparse basis
-    Poly, InvCheb, Gamma2 = createSparsebasis(m.dicts[:grid], m.dicts[:grid]["maxdim"], Xss)
+    basis_key = (grid["maxdim"], nb, na, nse, nb_cop, na_cop, nse_cop, reduc_copula, hash(Xss))
+    if get(cache, :basis_key, nothing) == basis_key
+        Poly = cache[:Poly]
+        InvCheb = cache[:InvCheb]
+        Gamma2 = cache[:Gamma2]
+    else
+        Poly, InvCheb, Gamma2 = createSparsebasis(grid, grid["maxdim"], Xss)
+        cache[:basis_key] = basis_key
+        cache[:Poly] = Poly
+        cache[:InvCheb] = InvCheb
+        cache[:Gamma2] = Gamma2
+    end
     n1 = size(Poly)
     n2 = size(Gamma2)
 
     # m.dicts[:grid] m.dicts[:param]eters
-    m.dicts[:grid]["os"] = length(Xss) - (m.dicts[:grid]["nb"] + m.dicts[:grid]["na"] + m.dicts[:grid]["nse"]) - (m.dicts[:grid]["nb"] * m.dicts[:grid]["na"] * m.dicts[:grid]["nse"]) #os means other states
-    m.dicts[:grid]["oc"] = length(Yss) - 3 * n1[1] #oc means other controls
-    m.dicts[:grid]["oc_summary"] = 7
-    m.dicts[:grid]["oc_agg"] = m.dicts[:grid]["oc"] - m.dicts[:grid]["oc_summary"]
-    m.dicts[:grid]["os_process"] = 17
-    m.dicts[:grid]["os_agg"] = m.dicts[:grid]["os"] - m.dicts[:grid]["os_process"]
+    grid["os"] = length(Xss) - (grid["nb"] + grid["na"] + grid["nse"]) - (grid["nb"] * grid["na"] * grid["nse"]) #os means other states
+    grid["oc"] = length(Yss) - 3 * n1[1] #oc means other controls
+    grid["oc_summary"] = 7
+    grid["oc_agg"] = grid["oc"] - grid["oc_summary"]
+    grid["os_process"] = 17
+    grid["os_agg"] = grid["os"] - grid["os_process"]
 
-    nCOP = Int(m.dicts[:grid]["nCOP"])
+    nCOP = Int(grid["nCOP"])
     nPoly = Int(n1[2])
-    nFullCtrl = Int(3 * Ng + m.dicts[:grid]["oc"])
-    nRedCtrl = Int(3 * nPoly + m.dicts[:grid]["oc"])
+    nFullCtrl = Int(3 * Ng + grid["oc"])
+    nRedCtrl = Int(3 * nPoly + grid["oc"])
     nFullMarg = Int(n2[1])
     nRedMarg = Int(n2[2])
-    nRedStates = Int(nRedMarg + nCOP + m.dicts[:grid]["os"])
+    nRedStates = Int(nRedMarg + nCOP + grid["os"])
 
     Gamma_state = sparse(Gamma2)
 
@@ -203,32 +248,36 @@ function state_reduc_tvcopula!(m::mBBQ)
     InvGamma[r0 .+ (1:Ng), c0 .+ (1:nPoly)] = transpose(InvCheb)
     InvGamma[r0 + Ng .+ (1:Ng), c0 + nPoly .+ (1:nPoly)] = transpose(InvCheb)
     InvGamma[r0 + 2*Ng .+ (1:Ng), c0 + 2*nPoly .+ (1:nPoly)] = transpose(InvCheb)
-    InvGamma[r0 + 3*Ng .+ (1:m.dicts[:grid]["oc"]), c0 + 3*nPoly .+ (1:m.dicts[:grid]["oc"])] = sparse(I, m.dicts[:grid]["oc"], m.dicts[:grid]["oc"])
+    InvGamma[r0 + 3*Ng .+ (1:grid["oc"]), c0 + 3*nPoly .+ (1:grid["oc"])] = sparse(I, grid["oc"], grid["oc"])
     InvGamma = transpose(InvGamma)
 
     # Gamma_control matrix
-    Gamma_control = spzeros(Int(3 * n1[1] + m.dicts[:grid]["oc"]), Int(3 * n1[2] + m.dicts[:grid]["oc"]))
+    Gamma_control = spzeros(Int(3 * n1[1] + grid["oc"]), Int(3 * n1[2] + grid["oc"]))
     Gamma_control[1:n1[1], 1:n1[2]] = Poly
     Gamma_control[n1[1] .+ (1:n1[1]), n1[2] .+ (1:n1[2])] = Poly
     Gamma_control[2*n1[1] .+ (1:n1[1]), 2*n1[2] .+ (1:n1[2])] = Poly
-    Gamma_control[3*n1[1] .+ (1:m.dicts[:grid]["oc"]), 3*n1[2] .+ (1:m.dicts[:grid]["oc"])] = sparse(I, m.dicts[:grid]["oc"], m.dicts[:grid]["oc"])
+    Gamma_control[3*n1[1] .+ (1:grid["oc"]), 3*n1[2] .+ (1:grid["oc"])] = sparse(I, grid["oc"], grid["oc"])
 
     # m.dicts[:grid] state/control dimensions
-    m.dicts[:grid]["numstates"] = (nb + na + nse - 3) + nCOP + m.dicts[:grid]["os"]
-    m.dicts[:grid]["numstates_shocks"] = 10
-    m.dicts[:grid]["numstates_endo"] = m.dicts[:grid]["numstates"] - m.dicts[:grid]["numstates_shocks"]
-    m.dicts[:grid]["numcontrols"] = 3 * n1[2] + m.dicts[:grid]["oc"]
-    m.dicts[:grid]["num_endo"] = m.dicts[:grid]["numstates_endo"] + m.dicts[:grid]["numcontrols"]
+    grid["numstates"] = (nb + na + nse - 3) + nCOP + grid["os"]
+    grid["numstates_shocks"] = 10
+    grid["numstates_endo"] = grid["numstates"] - grid["numstates_shocks"]
+    grid["numcontrols"] = 3 * n1[2] + grid["oc"]
+    grid["num_endo"] = grid["numstates_endo"] + grid["numcontrols"]
 
     # Initialize state and control vectors
-    State = zeros(Int(m.dicts[:grid]["numstates"]))
+    State = zeros(Int(grid["numstates"]))
     State_m = copy(State)
-    Contr = zeros(Int(m.dicts[:grid]["numcontrols"]))
+    Contr = zeros(Int(grid["numcontrols"]))
     Contr_m = copy(Contr)
     
 
     m.grids[:ControlSS] = Yss    
     m.grids[:StateSS] = Xss
+    m.dicts[:grid] = grid
+    m.dicts[:param] = param
+    m.dicts[:SS_stats] = ss
+    m.grids[:mu_dist] = mu_dist
 
     # return (
     #     Xss = Xss,

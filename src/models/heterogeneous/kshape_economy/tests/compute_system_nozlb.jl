@@ -57,7 +57,7 @@ m.dicts[:Jacob_base] = Jacob_base2
 # m.dicts[:Fss_ZLB] = Fss_ZLB
 
 regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es, flag = DSGE.compute_system_nozlb!(m)
-
+t0 = time()
 if flag == true
     loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
     StateSpaceRoutines.kalman_filter(regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es;
@@ -67,3 +67,5 @@ else
     loglh = Inf
 
 end
+t1 = time()
+println("kalman: $(t1 - t0) seconds")

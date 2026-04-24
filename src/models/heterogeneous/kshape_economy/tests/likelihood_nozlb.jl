@@ -60,7 +60,11 @@ df = DSGE.load_data_bbq(m)
 H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA = DSGE.pq(m, hx, gx, F1_aux, F2_aux, F3_aux, F4_aux)
 
 regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es = DSGE.prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA)
+t0 = time()
 
 loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
     kalman_filter(y, Ts[1], Rs[1], Cs[1], Qs[1], Zs[1], Ds[1], Es[1];
                   outputs = [:loglh, :pred, :filt])
+
+                  t1 = time()
+                  println("kalman: $(t1 - t0) seconds")

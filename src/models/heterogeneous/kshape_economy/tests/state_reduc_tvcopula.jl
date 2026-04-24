@@ -13,7 +13,7 @@ println("Testing state_reduc_tvcopula function...")
 println("=" ^ 60)
 
 # Load MATLAB input fixtures
-input_path = joinpath(@__DIR__, "../data/inputs/state_reduc_tvcopula.mat")
+input_path = joinpath(@__DIR__, "../models/mBBQ/data/inputs/state_reduc_tvcopula.mat")
 println("\nLoading input fixtures from $input_path")
 input_data = matread(input_path)
 
@@ -26,7 +26,7 @@ mutil_c = input_data["mutil_c"]
 Va = input_data["Va"]
 
 # Load MATLAB output fixtures
-output_path = joinpath(@__DIR__, "../data/outputs/state_reduc_tvcopula.mat")
+output_path = joinpath(@__DIR__, "../models/mBBQ/data/outputs/state_reduc_tvcopula.mat")
 println("Loading output fixtures from $output_path")
 output_data = matread(output_path)
 Xss = output_data["Xss"]
@@ -34,7 +34,7 @@ Yss = output_data["Yss"]
 grid_out = output_data["grid"]
 
 
-jld2file = "../data/XssYss.jld2"
+jld2file = "../models/mBBQ/data/XssYss.jld2"
 @load jld2file StateSS ControlSS SS_stats grid param
 m = mBBQ()
 m.dicts[:grid] = grid
