@@ -87,7 +87,6 @@ Jacob_base2 = DSGE.save_jacob_base(F1_aux_rep, F2_aux_rep, F3_aux_rep, F4_aux_re
 m.dicts[:Jacob_base] = Jacob_base2
 
 
-system = DSGE.compute_system(m)
 # if flag == true
 #     loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
 #     StateSpaceRoutines.kalman_filter(regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es;
@@ -109,9 +108,11 @@ end
 
 t0 = time()
 
+# system = DSGE.compute_system(m)
+# lh = sum(DSGE.filter_likelihood(m, data, system))
+# println(lh)
 
-lh = sum(DSGE.filter_likelihood(m, data, system))
-println(lh)
-# end
+DSGE.likelihood(m, df)
+
 t1 = time()
 println("kalman: $(t1 - t0) seconds")
