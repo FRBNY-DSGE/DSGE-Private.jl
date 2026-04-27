@@ -68,3 +68,5 @@ loglh, _s_pred, _P_pred, _s_filt, _P_filt, _s0, _P0, _sT, _PT =
 
                   t1 = time()
                   println("kalman: $(t1 - t0) seconds")
+
+println(sum(loglh))

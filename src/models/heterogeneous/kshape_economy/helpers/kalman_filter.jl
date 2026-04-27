@@ -195,6 +195,7 @@ function prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA, Z
 end
 
 function prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA)
+    df = df[:, 2:end]
     Nt_data, Ny_data = size(df)
     if Ny_data != length(m.grids[:obs])
         error("Number of rows in data_est does not match observable_names")

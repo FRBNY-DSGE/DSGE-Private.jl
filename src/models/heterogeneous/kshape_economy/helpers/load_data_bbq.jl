@@ -1,5 +1,7 @@
 using CSV
 using DataFrames
+using Dates
+
 
 
 function load_data_bbq(m)
@@ -22,6 +24,15 @@ m.grids[:obs] = observable_names = [
 ]
 
 rename!(df, m.grids[:obs])
+
+
+# Generate quarter-end dates starting from 1992-01-31
+nrows = nrow(df)
+start_date = Date(1992, 3, 31)
+dates = [start_date + Month(3 * (i - 1)) for i in 1:nrows]
+
+insertcols!(df, 1, :date => dates)
+
 
 return df
 
