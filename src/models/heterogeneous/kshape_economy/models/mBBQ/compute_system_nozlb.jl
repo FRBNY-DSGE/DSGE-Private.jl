@@ -1,19 +1,25 @@
 
 
-function compute_system_nozlb!(m::mBBQ)
-    t0 = time()
+function compute_system_nozlb!(m::mBBQ;
+                              tvis::Bool = false,
+                              set_regime_eqcond_info!::Union{Function, Nothing} = nothing,
+                              verbose::Symbol = :high)
+    if !isnothing(set_regime_eqcond_info!)
+        set_regime_eqcond_info!(m)
+    end
+    # t0 = time()
 
     #update_ss_v5
-    DSGE.update_ss_v5!(m) 
-    t1 = time()
-    println("updatess: $(t1 - t0) seconds")
+    DSGE.update_ss_v5!(m)
+    # t1 = time()
+    # println("updatess: $(t1 - t0) seconds")
     
     #check certain values >0
 
     #state_reduc_tv_copula 
     DSGE.state_reduc_tvcopula!(m)
-    t2 = time()
-    println("statereduc: $(t2 - t1) seconds")
+    # t2 = time()
+    # println("statereduc: $(t2 - t1) seconds")
 
 
     #maybe square some values?
@@ -36,32 +42,44 @@ function compute_system_nozlb!(m::mBBQ)
     # F24_ad_zlb = Matrix(CSV.read(joinpath(_jcsv, "F24_ad_zlb.csv"), DataFrame))
 
 
-    t3 = time()
-    println("jacob: $(t3 - t2) seconds")
+    # t3 = time()
+    # println("jacob: $(t3 - t2) seconds")
     # SGU solver
     hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, indicator_1 = DSGE.SGU_solver(m, F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad)
 
-    t4 = time()
-    println("sgu: $(t4 - t3) seconds")
+    # t4 = time()
+    # println("sgu: $(t4 - t3) seconds")
 
     if indicator_1 == 0
-        return 0, 0, 0, 0, 0, 0, 0, 0, 0, false
+        return nothing
     end
 
     df = DSGE.load_data_bbq(m)
 
-    t5 = time()
-    println("load data: $(t5 - t4) seconds")
+    # t5 = time()
+    # println("load data: $(t5 - t4) seconds")
 
     H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA = DSGE.pq(m, hx, gx, F1_aux, F2_aux, F3_aux, F4_aux)
 
-    t6 = time()
-    println("pq1: $(t6 - t5) seconds")
+    # t6 = time()
+    # println("pq1: $(t6 - t5) seconds")
 
     regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es = DSGE.prepare_PQ_regimes(m, df, H_aux, P_ref, Q_ref, HQ, SIGMA_full, SIGMA)
 
-    t7 = time()
-    println("pq1: $(t7 - t6) seconds")
+    # t7 = time()
+    # println("pq1: $(t7 - t6) seconds")
 
-    return regime_inds, y, Ts, Rs, Cs, Qs, Zs, Ds, Es, true
+    transition = Transition(Ts[1], Rs[1], Cs[1])
+    measurement = Measurement(Zs[1], Ds[1], Qs[1], Es[1])
+
+    return System(transition, measurement)
+end
+
+function compute_system(m::mBBQ;
+                        tvis::Bool = false,
+                        set_regime_eqcond_info!::Union{Function, Nothing} = nothing,
+                        verbose::Symbol = :high)
+    return compute_system_nozlb!(m; tvis = tvis,
+                                set_regime_eqcond_info! = set_regime_eqcond_info!,
+                                verbose = verbose)
 end

@@ -357,6 +357,7 @@ function model_settings!(m::mBBQ)
     m <= Setting(:regime_switching, true)
     m <= Setting(:n_regimes, 2)
     m <= Setting(:n_hist_regimes, 1)   # how many regimes appear in estimation sample
+    m <= Setting(:n_cond_regimes, 0)   # number of regime switches in conditional forecast horizon
     m <= Setting(:regime_dates, Dict{Int, Date}())  # populated by user at runtime
 
     ## Monetary Policy
