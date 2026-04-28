@@ -132,71 +132,71 @@ export
     which_density_bands,
     prepare_meansbands_tables_timeseries, prepare_means_tables_shockdec,
     prepare_meansbands_table_irf,
-        write_meansbands_tables_timeseries, write_means_tables_shockdec,
-        prepare_meansbands_table_irf,
-        write_meansbands_tables_all, construct_fcast_and_hist_dfs,
-        df_to_table, load_posterior_moments, sample_λ, compute_Eλ,
-        create_q4q4_mb,
+    write_meansbands_tables_timeseries, write_means_tables_shockdec,
+    prepare_meansbands_table_irf,
+    write_meansbands_tables_all, construct_fcast_and_hist_dfs,
+    df_to_table, load_posterior_moments, sample_λ, compute_Eλ,
+    create_q4q4_mb,
 
-        # decomp/
-        decompose_forecast, decomposition_means,
+    # decomp/
+    decompose_forecast, decomposition_means,
 
-        # altpolicy/
-        AltPolicy, EqcondEntry, MultiPeriodAltPolicy, setup_permanent_altpol!, default_policy,
-        taylor93, taylor99, taylor_rule, alt_inflation, ait, ngdp, zlb_rule, zero_rate, flexible_ait, smooth_ait_gdp_alt,
+    # altpolicy/
+    AltPolicy, EqcondEntry, MultiPeriodAltPolicy, setup_permanent_altpol!, default_policy,
+    taylor93, taylor99, taylor_rule, alt_inflation, ait, ngdp, zlb_rule, zero_rate, flexible_ait, smooth_ait_gdp_alt,
 
-        # scenarios/
-        AbstractScenario, SingleScenario, Scenario, SwitchingScenario, ScenarioAggregate,
-        n_targets, n_instruments, n_target_horizons, targets_to_data,
-        compute_scenario_system, filter_shocks!, forecast_scenario, simulate_switching,
-        scenario_means_bands,
-        get_scenario_input_file, n_scenario_draws, get_scenario_filename,
-        get_scenario_output_files,
-        read_scenario_output, get_scenario_mb_input_file, get_scenario_mb_output_file,
-        read_scenario_mb,
-        count_scenario_draws,
+    # scenarios/
+    AbstractScenario, SingleScenario, Scenario, SwitchingScenario, ScenarioAggregate,
+    n_targets, n_instruments, n_target_horizons, targets_to_data,
+    compute_scenario_system, filter_shocks!, forecast_scenario, simulate_switching,
+    scenario_means_bands,
+    get_scenario_input_file, n_scenario_draws, get_scenario_filename,
+    get_scenario_output_files,
+    read_scenario_output, get_scenario_mb_input_file, get_scenario_mb_output_file,
+    read_scenario_mb,
+    count_scenario_draws,
 
-        # packet/
-        usual_model_settings!, usual_model_forecast, write_forecast_centric_model_packet,
-        write_standard_model_packet, plot_standard_model_packet,
+    # packet/
+    usual_model_settings!, usual_model_forecast, write_forecast_centric_model_packet,
+    write_standard_model_packet, plot_standard_model_packet,
 
-        # plot/
-        plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
-        plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
-        plot_posterior_intervals, plot_posterior_interval_comparison, plot_forecast_decomposition,
-        plot_forecast_sequence, date_to_float,
+    # plot/
+    plot_prior_posterior, plot_impulse_response, plot_history_and_forecast, hair_plot,
+    plot_forecast_comparison, plot_shock_decomposition, plot_altpolicies, plot_scenario,
+    plot_posterior_intervals, plot_posterior_interval_comparison, plot_forecast_decomposition,
+    plot_forecast_sequence, date_to_float,
 
-        # models/
-        init_parameters!, steadystate!, init_observable_mappings!,
-        init_pseudo_observable_mappings!,
-        Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
-        PoolModel, OnionModel, SectoralOnionModel, eqcond, measurement, pseudo_measurement,
-        shock_groupings, transition, DSGEVAR, DSGEVECM, DSSW, mBBQ,
+    # models/
+    init_parameters!, steadystate!, init_observable_mappings!,
+    init_pseudo_observable_mappings!,
+    Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
+    PoolModel, OnionModel, SectoralOnionModel, eqcond, measurement, pseudo_measurement,
+    shock_groupings, transition, DSGEVAR, DSGEVECM, DSSW, mBBQ,
 
-        # models/heterogeneous/
-        KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
-        RepDSGEGovDebt, HetDSGESimpleTaylor, HetDSGELag, BayerBornLuetticke, Grid,
+    # models/heterogeneous/
+    KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
+    RepDSGEGovDebt, HetDSGESimpleTaylor, HetDSGELag, BayerBornLuetticke, Grid,
 
-        #### Continuous time
-        # models
-        solve_hjb, solve_kfe, model_settings!, AbstractCTModel, KrusellSmithCT,
-        OneAssetHANK, calibrate_pLH_pHL,
+    #### Continuous time
+    # models
+    solve_hjb, solve_kfe, model_settings!, AbstractCTModel, KrusellSmithCT,
+    OneAssetHANK, calibrate_pLH_pHL,
 
-	    # TwoAssetHANK
-        TwoAssetHANK,
+    # TwoAssetHANK
+    TwoAssetHANK,
 
-        # solve/
-        gensysct, gensysct!, new_divct, decomposition_svdct!, <,
-        krylov_reduction, valueref_reduction, deflated_block_arnoldi, change_basis,
-        oneDquad_spline, extend_to_nd, projection_for_subset, spline_basis,
-        solve_static_conditions,
+    # solve/
+    gensysct, gensysct!, new_divct, decomposition_svdct!, <,
+    krylov_reduction, valueref_reduction, deflated_block_arnoldi, change_basis,
+    oneDquad_spline, extend_to_nd, projection_for_subset, spline_basis,
+    solve_static_conditions,
 
-        # estimate
-        hessizero, hess_diag_element, hess_offdiag_element, transform_transition_matrices,
+    # estimate
+    hessizero, hess_diag_element, hess_offdiag_element, transform_transition_matrices,
 
-        # estimate/ct_filters
-        BlockKalmanFilter, init_stationary_states, block_kalman_filter, CTBlockKalmanFilter,
-        ct_block_kalman_filter, ct_kalman_filter, forecast!
+    # estimate/ct_filters
+    BlockKalmanFilter, init_stationary_states, block_kalman_filter, CTBlockKalmanFilter,
+    ct_block_kalman_filter, ct_kalman_filter, forecast!
 
     const VERBOSITY = Dict(:none => 0, :low => 1, :high => 2)
     const DSGE_DATE_FORMAT = "yymmdd"
@@ -406,17 +406,17 @@ export
     #include("models/representative/SectoralOnionModel/augment_states.jl")
     #include("models/representative/SectoralOnionModel/InOutData.jl")
 
-#=
-include("models/representative/OnionModel/onionmodel_brief.jl")
-include("models/representative/OnionModel/subspecs.jl")
-include("models/representative/OnionModel/eqcond_briefing.jl")
-include("models/representative/OnionModel/observables_briefing.jl")
-include("models/representative/OnionModel/measurement_briefing.jl")
-include("models/representative/OnionModel/pseudo_observables.jl")
-include("models/representative/OnionModel/pseudo_measurement.jl")
-include("models/representative/OnionModel/augment_states.jl")
-include("models/representative/OnionModel/InOutData.jl")
-=#
+    #=
+    include("models/representative/OnionModel/onionmodel_brief.jl")
+    include("models/representative/OnionModel/subspecs.jl")
+    include("models/representative/OnionModel/eqcond_briefing.jl")
+    include("models/representative/OnionModel/observables_briefing.jl")
+    include("models/representative/OnionModel/measurement_briefing.jl")
+    include("models/representative/OnionModel/pseudo_observables.jl")
+    include("models/representative/OnionModel/pseudo_measurement.jl")
+    include("models/representative/OnionModel/augment_states.jl")
+    include("models/representative/OnionModel/InOutData.jl")
+    =#
     include("models/representative/smets_wouters/smets_wouters.jl")
     include("models/representative/smets_wouters/subspecs.jl")
     include("models/representative/smets_wouters/eqcond.jl")
@@ -532,7 +532,7 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/representative/rep_dsge_gov_debt/measurement.jl")
     include("models/representative/rep_dsge_gov_debt/augment_states.jl")
 
-#=    include("models/heterogeneous/het_dsge_lag/het_dsge_lag.jl")
+    #=    include("models/heterogeneous/het_dsge_lag/het_dsge_lag.jl")
     include("models/heterogeneous/het_dsge_lag/steady_state.jl")
     include("models/heterogeneous/het_dsge_lag/subspecs.jl")
     include("models/heterogeneous/het_dsge_lag/jacobian.jl")
@@ -574,8 +574,8 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/two_asset_hank/interp.jl")
 
     ## KShape Model
-    include("models/heterogeneous/kshape_economy/helpers/set_field.jl")                                                
-    include("models/heterogeneous/kshape_economy/helpers/sub2ind.jl")                                                  
+    include("models/heterogeneous/kshape_economy/helpers/set_field.jl")    
+    include("models/heterogeneous/kshape_economy/helpers/sub2ind.jl")
     include("models/heterogeneous/kshape_economy/helpers/ndgrid.jl")
     include("models/heterogeneous/kshape_economy/helpers/gradient.jl")
     include("models/heterogeneous/kshape_economy/helpers/q_cons2.jl")
@@ -636,21 +636,22 @@ include("models/representative/OnionModel/InOutData.jl")
     include("models/heterogeneous/kshape_economy/dynamics/state_reduc_tvcopula.jl")
     include("models/heterogeneous/kshape_economy/dynamics/SGU_jacob.jl")
     include("models/heterogeneous/kshape_economy/dynamics/SGU_jacob_zlb.jl")
-include("models/heterogeneous/kshape_economy/dynamics/SGU_solver.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/SGU_solver.jl")
 
 
     include("models/heterogeneous/kshape_economy/models/mBBQ/dynamics/F_sys_ref_tvcopula_QE.jl")
     include("models/heterogeneous/kshape_economy/dynamics/dyn_ZLB_tvcopula_new.jl")
     include("models/heterogeneous/kshape_economy/dynamics/IRFs_Taylor_QE_compare_tvcopula.jl")
-     include("models/heterogeneous/kshape_economy/dynamics/pq_nozlb.jl")
-     include("models/heterogeneous/kshape_economy/dynamics/pq.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/pq_nozlb.jl")
+    include("models/heterogeneous/kshape_economy/dynamics/pq.jl")
     # top-level
     include("models/heterogeneous/kshape_economy/models/mBBQ/jacobian.jl")
     include("models/heterogeneous/kshape_economy/models/mBBQ/fsys_agg.jl")
-include("models/heterogeneous/kshape_economy/models/mBBQ/compute_system.jl")
-include("models/heterogeneous/kshape_economy/models/mBBQ/compute_system_nozlb.jl")
+    include("models/heterogeneous/kshape_economy/models/mBBQ/compute_system.jl")
+    include("models/heterogeneous/kshape_economy/models/mBBQ/compute_system_nozlb.jl")
 
-
+    ## KCSC
+    include("models/heterogeneous/kshape_economy/models/kCSC/kCSC.jl")
 
 
 
@@ -690,4 +691,4 @@ include("models/heterogeneous/kshape_economy/models/mBBQ/compute_system_nozlb.jl
     if (VERSION >= v"1.0") && (VERSION <= v"1.1")
         isnothing(x::Any) = x === nothing ? true : false
     end
-end
+    end
