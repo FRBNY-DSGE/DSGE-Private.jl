@@ -4,7 +4,7 @@ using Test
 using MAT
 using DSGE: @sslogdeviations2levels, @sslogdeviations2levels_unprimekeys, @unpack_and_first
 
-include("../dynamics/index2.jl")
+include("../helpers/index.jl")
 include("../fsys_agg.jl")
 
 input = matread("../input_data/update_Jacob.mat")
@@ -20,6 +20,7 @@ ControlSS = vec(Yss)
 
 grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "ns_1", "ns_2", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
 ss = SS_stats
+m.dicts[:SS_stats] = ss
 state_id, control_id = build_indices(grid, length(StateSS), length(ControlSS))
 
 m = DSGE.kCSC()
