@@ -48,7 +48,7 @@ function Fsys_agg(F::AbstractVector, X::AbstractArray, XPrime::AbstractArray,
                   
   =#
 
-
+        ss = m.dicts[:SS_stats]
 
                   #F = Dict{Symbol,Float64}() #TODO: need to change typing of this
 

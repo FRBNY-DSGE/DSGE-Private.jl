@@ -97,37 +97,54 @@ function init_model_indices!(m::kCSC)
 
     # Predetermined states
     # TODO: delete states that should just be augmented states
-
-    m.state_variables = [:marginal_pdf_b′_t, :marginal_pdf_a′_t, :marginal_pdf_se′_t, :copula′_t, 
-                         :R_cb′_t, :w′′t, :A_b′_t, :B_b′_t, :A_gaux′_t, :Q′_t, :lev′_t, :NW_b′_t, 
-                         :R′_tilde′_t, :x_cb′_t, :π_past′_t, :Y_past′_t, :C_past′_t, :I_past′_t, 
-                         :Profit_past′_t, :unemp_past′_t, :G_past′_t, :LT_past′_t, :R_star′_t, :B_F′_t, :Z′_t, 
-                         :ψ_rp′_t, :η′_t, :D′_t, :GG′_t, :ι′_t, :BB′_t, :ψ_w′_t, :MP′_t, :p_m′_t]
-
+    m.state_variables = [
+        :marginal_pdf_b′_t, :marginal_pdf_a′_t, :marginal_pdf_se′_t, :copula′_t,
+        # aggregate states
+        :R_cb′_t, :w_1′_t, :w_2′_t, :w′_t,
+        :A_b′_t, :B_b′_t, :A_gaux′_t, :Q′_t, :lev′_t, :NW_b′_t,
+        :R_tilde′_t, :x_cb′_t, :π_past′_t, :Y_past′_t, :C_past′_t, :I_past′_t,
+        :Profit_past′_t, :unemp_past_1′_t, :unemp_past_2′_t,
+        :G_past′_t, :LT_past′_t, :R_star′_t,
+        :ZZ_1′_t, :ZZ_2′_t, :ZZ_3′_t, :ZZ_4′_t,
+        :B_F′_t, :Z′_t, :ψ_rp′_t, :η′_t, :D′_t, :GG′_t,
+        :ι′_t, :BB′_t, :ψ_w′_t, :MP′_t, :p_m′_t,
+        # shock states
+        :eps_1′_t, :eps_2′_t, :eps_3′_t, :eps_4′_t,
+        :eps_QE′_t, :eps_RP′_t, :eps_B_F′_t, :eps_BB′_t,
+        :eps_Z′_t, :eps_G′_t, :eps_D′_t, :eps_R′_t,
+        :eps_iota′_t, :eps_eta′_t, :eps_w′_t,
+    ]
 
     m.aggregate_state_variables = m.state_variables[5:end]
 
     # Jumps
     # TODO: delete jump variables that should just be pseudo-observables
-    println("testing new ordering bbl")
-    #= m.jump_variables = [:Vm′_t, :Vk′_t,
-    # Function valued jumps above, Distribution Names
-    :Gini_C′_t, :Gini_X′_t, :I90_share′_t, :I90_share_net′_t,:W90_share′_t, :sd_log_y′_t,
-    # Endogenous scalar-valued jumps
-    :rk′_t, :w′_t, :K′_t, :π′_t, :π_w′_t, :Y′_t, :C′_t, :q′_t, :N′_t, :mc′_t,
-    :mc_w′_t, :u′_t, :Ht′_t, :avg_tax_rate′_t, :T′_t, :I′_t, :B′_t,
-    :BD′_t, :BY′_t, :TY′_t, :mc_w_w′_t, :G′_t, :τ_level′_t, :τ_prog′_t, :Ygrowth′_t,
-    :Bgrowth′_t, :Igrowth′_t, :wgrowth′_t, :Cgrowth′_t,
-    :Tgrowth′_t, :LP′_t, :LP_XA′_t, :union_profits′_t,
-    :profits′_t] =#
-
-
-    m.jump_variables = [:Value′_t, :mutil_cons′_t, :Va′_t, :MRS′_t, :A_hh′_t, :B_hh′_t, :C′_t, 
-                        :N′_t, :L′_t, :UB′_t, :K′_t, :B′_t, :B_gov_ncp′_t, :T′_t, :LT′_t, :G′_t, 
-                        :λ′_t, :pi′_t, :V′_t, :J′_t, :h′_t, :v′_t, :Y′_t, :Profit′_t, :r_k′_t, 
-                        :r_a′_t, :MC′_t, :unemp′_t, :nn′_t, :M′_t, :f′_t, :zz′_t, :xx′_t, :vv′_t, 
-                        :ee′_t, :C_b′_t, :Profit_FI′_t, :RRa′_t, :RR′_t, :I′_t, :x_k′_t]
-    m.aggregate_jump_variables = m.jump_variables[3:end]
+    m.jump_variables = [
+        :Value′_t, :mutil_cons′_t, :Va′_t,
+        :MRS′_t, :A_hh′_t, :B_hh′_t, :C′_t,
+        :N_1′_t, :N_2′_t, :L_1′_t, :L_2′_t,
+        :UB′_t, :unemp_1′_t, :unemp_2′_t, :U_1′_t, :U_2′_t,
+        :K′_t, :B′_t, :B_gov_ncp′_t, :T′_t, :LT′_t, :G′_t,
+        :λ′_t, :pi′_t, :V_1′_t, :V_2′_t, :J′_t,
+        :r_l_1′_t, :r_l_2′_t, :v′_t, :Y′_t, :Profit′_t, :r_k′_t,
+        :r_a′_t, :MC′_t, :unemp′_t, :n_1′_t, :n_2′_t,
+        :M_1′_t, :M_2′_t, :f_1′_t, :f_2′_t,
+        :zz′_t, :xx′_t, :vv′_t, :ee′_t, :C_b′_t, :Profit_FI′_t,
+        :RRa′_t, :RR′_t, :I′_t, :x_k′_t,
+        :A_g_obs′_t, :Y_obs′_t, :C_obs′_t, :I_obs′_t,
+        :w_1_obs′_t, :w_2_obs′_t, :Profit_obs′_t,
+        :unemp_1_obs′_t, :unemp_2_obs′_t, :unemp_obs′_t,
+        :pi_obs′_t, :R_obs′_t,
+        :w_1_lag′_t, :w_2_lag′_t, :w_lag′_t,
+        :G_obs′_t, :YY_lag′_t, :CC_lag′_t, :II_lag′_t,
+        :PPROFIT_lag′_t, :uu_1_lag′_t, :uu_2_lag′_t,
+        :GG_lag′_t, :A_g_lag′_t,
+        :l_λ_1′_t, :l_λ_2′_t,
+        :Q_lag′_t, :x_I′_t, :η2′_t, :ι2′_t,
+        :LT2_lag′_t, :G2_lag′_t,
+        :LT_obs′_t, :B_gov_ncp2′_t,
+    ]
+    m.aggregate_jump_variables = m.jump_variables[4:end]
 
     # Update number of scalar states and jumps
     n_scalar_states = length(m.aggregate_state_variables)
@@ -150,9 +167,17 @@ function init_model_indices!(m::kCSC)
     m <= Setting(:n_mon_anticipated_shocks, 0)
     m <= Setting(:n_mon_anticipated_shocks_padding, 0)
     # Exogenous shocks
-    exogenous_shocks = collect([:Z_sh, :G_sh, :D_sh, :R_sh, :ι_sh, :η_sh, :w_sh])
-    shock2state_map = Dict(:Z_sh => :Z_t, :G_sh => :G_t, :D_sh => :D_t, :R_sh => :R_t, :ι_sh => :ι_t,
-                           :η_sh => :η_t, :w_sh => :w_t)
+    exogenous_shocks = [
+        :Z_sh, :G_sh, :D_sh, :R_sh, :ι_sh, :η_sh, :w_sh,
+        :ZZ_1_sh, :ZZ_2_sh, :ZZ_3_sh, :ZZ_4_sh,
+        :QE_sh, :RP_sh, :BB_sh, :B_F_sh,
+    ]
+    shock2state_map = Dict(
+        :Z_sh => :Z_t, :G_sh => :GG_t, :D_sh => :D_t, :R_sh => :MP_t,
+        :ι_sh => :ι_t, :η_sh => :η_t, :w_sh => :ψ_w_t,
+        :ZZ_1_sh => :ZZ_1_t, :ZZ_2_sh => :ZZ_2_t, :ZZ_3_sh => :ZZ_3_t, :ZZ_4_sh => :ZZ_4_t,
+        :QE_sh => :x_cb_t, :RP_sh => :ψ_rp_t, :BB_sh => :BB_t, :B_F_sh => :B_F_t,
+    )
     m.settings[:shock2state] = Setting(:shock2state, shock2state_map)
 
     standard_deviation_dictionary = Dict(:A_sh => :σ_A, :Z_sh => :σ_Z, :Ψ_sh => :σ_Ψ, :μ_p_sh => :σ_μ_p,
@@ -355,7 +380,7 @@ function model_settings!(m::kCSC)
 
     #Regime Settings
     m <= Setting(:regime_switching, true)
-    m <= Setting(:n_regimes, 2)
+    m <= Setting(:n_regimes, 8)
     m <= Setting(:n_hist_regimes, 1)   # how many regimes appear in estimation sample
     m <= Setting(:regime_dates, Dict{Int, Date}())  # populated by user at runtime
 
@@ -469,6 +494,18 @@ function setup_indices!(m::kCSC)
                                :eq_control_x_k, :eq_control_a_g_obs, :eq_control_y_obs,
                                :eq_control_c_obs, :eq_control_i_obs, :eq_control_w_obs,
                                :eq_control_profit_obs,
+                               :eq_control_unemp_1_obs, :eq_control_unemp_2_obs, :eq_control_unemp_obs,
+                               :eq_control_pi_obs, :eq_control_r_obs,
+                               :eq_control_w_1_lag, :eq_control_w_2_lag, :eq_control_w_lag,
+                               :eq_control_g_obs,
+                               :eq_control_yy_lag, :eq_control_cc_lag, :eq_control_ii_lag,
+                               :eq_control_pprofit_lag, :eq_control_uu_1_lag, :eq_control_uu_2_lag,
+                               :eq_control_gg_lag, :eq_control_a_g_lag,
+                               :eq_control_l_lambda_1, :eq_control_l_lambda_2,
+                               :eq_control_q_lag, :eq_control_x_i,
+                               :eq_control_eta2, :eq_control_iota2,
+                               :eq_control_lt2_lag, :eq_control_g2_lag,
+                               :eq_control_lt_obs, :eq_control_b_gov_ncp2,
                               ])
         eqconds[name] = (n_states_idio_jumps + i):(n_states_idio_jumps+i)
         aggr_eqconds[name] = i + n_aggr_states
