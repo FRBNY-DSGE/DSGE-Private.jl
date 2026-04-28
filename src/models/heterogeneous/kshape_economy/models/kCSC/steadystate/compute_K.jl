@@ -1,9 +1,9 @@
 using LinearAlgebra
 using SparseArrays
 
-include(joinpath(@__DIR__, "..", "policies_SS.jl"))
-include(joinpath(@__DIR__, "..", "find_dist.jl"))
-include(joinpath(@__DIR__, "..", "CalValueSS.jl"))
+# include(joinpath(@__DIR__, "..", "policies_SS.jl"))
+# include(joinpath(@__DIR__, "..", "find_dist.jl"))
+# include(joinpath(@__DIR__, "..", "CalValueSS.jl"))
 
 function compute_K(K::Float64, c_a_guess::Array{Float64,3}, c_n_guess::Array{Float64,3},
                    psi_guess::Array{Float64,3}, AProb::Array{Float64,3}, mu_dist::Array{Float64,3},

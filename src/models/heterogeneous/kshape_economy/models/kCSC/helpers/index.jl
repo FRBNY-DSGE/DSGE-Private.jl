@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-function build_indices(grid, lenSSS, lenCSS)
+function build_indices_csc(grid, lenSSS, lenCSS)
     #must appear in exact order as indexation in F_sys_ref_tvcopula_QE
     agg_states = [:R_cb_t, :w_1_t, :w_2_t, :w_t, :A_b_t, :B_b_t, :A_gaux_t, :Q_t, :lev_t, :NW_b_t,
                   :R_tilde_t, :x_cb_t, :π_past_t, :Y_past_t, :C_past_t, :I_past_t, :Profit_past_t,

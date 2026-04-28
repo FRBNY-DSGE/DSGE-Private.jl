@@ -1,10 +1,10 @@
 using Interpolations
 
-include(joinpath(@__DIR__, "parameters.jl"))
-include(joinpath(@__DIR__, "make_grids.jl"))
-include(joinpath(@__DIR__, "solve_SS.jl"))
-include(joinpath(@__DIR__, "Cal_SS_stats.jl"))
-include(joinpath(@__DIR__, "steady_anal.jl"))
+# include(joinpath(@__DIR__, "parameters.jl"))
+# include(joinpath(@__DIR__, "make_grids.jl"))
+# include(joinpath(@__DIR__, "solve_SS.jl"))
+# include(joinpath(@__DIR__, "Cal_SS_stats.jl"))
+# include(joinpath(@__DIR__, "steady_anal.jl"))
 
 function ss_CSC()
     param = make_parameters()

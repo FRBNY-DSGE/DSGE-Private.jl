@@ -1,8 +1,6 @@
 using LinearAlgebra
 using SpecialFunctions: erf
 
-include(joinpath(@__DIR__, "..", "helpers", "set_field!.jl"))
-
 _normal_cdf(x) = 0.5 * (1 + erf(x / sqrt(2.0)))
 
 function _tauchen_lognormal(rho::Float64, sigma_e::Float64, n::Int, m::Float64=3.0)

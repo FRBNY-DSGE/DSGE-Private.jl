@@ -9,11 +9,11 @@
 Run the ZLB / Taylor–QE pipeline under a time-varying copula specification.
 """
 function dyn_ZLB_tvcopula_new(
-    final_table,
-    m::mBBQ, grid, SS_stats,
-    P_SE, mu_dist, Value, mutil_c, Va;
+    m, final_table, P_SE, grid, SS_stats,
+    mu_dist, Value, mutil_c, Va;
     pool=nothing
 )
+    # P_SE = param["P_SE"]
 
     maxiter = 10
     tol     = 1e-8
