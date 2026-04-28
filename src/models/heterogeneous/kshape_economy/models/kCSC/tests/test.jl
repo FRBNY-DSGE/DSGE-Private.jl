@@ -20,11 +20,10 @@ ControlSS = vec(Yss)
 
 grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "ns_1", "ns_2", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
 ss = SS_stats
-m.dicts[:SS_stats] = ss
 state_id, control_id = build_indices(grid, length(StateSS), length(ControlSS))
 
 m = DSGE.kCSC()
-
+m.dicts[:SS_stats] = ss
 #test state and control controls of zero
 State_zero = zeros(length(StateSS))
 Control_zero = zeros(length(ControlSS))
