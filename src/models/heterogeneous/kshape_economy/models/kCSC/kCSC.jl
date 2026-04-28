@@ -255,7 +255,7 @@ function kCSC(subspec::String="ss1";
     DSGE.default_settings!(m)  # TODO: Implement or ensure AbstractHetModel <: AbstractDSGEModel
 
     # Set observable transformations (must precede init_model_indices!, which reads observable keys)
-    init_observable_mappings!(m)
+    #init_observable_mappings!(m)
 
     # Set settings
     model_settings!(m)
@@ -278,7 +278,7 @@ function kCSC(subspec::String="ss1";
     init_parameters!(m)
 
     # Initialize grids
-    init_grids!(m; coarse=false) 
+   # init_grids!(m; coarse=false) 
     #TO-DO: another init_grids after loading the steadystate
     #init_grids!(m; coarse = !load_steadystate) # if steady state has not been computed, we start from a coarse grid
     #println(m[:Σ_n].value)
