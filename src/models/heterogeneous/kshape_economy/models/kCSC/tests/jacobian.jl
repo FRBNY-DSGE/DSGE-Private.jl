@@ -7,6 +7,9 @@ using OrderedCollections: OrderedDict
 using CSV
 using DataFrames
 
+
+include("../jacobian.jl")
+
 # jld2file = "XssYss.jld2"
 # @load jld2file StateSS ControlSS SS_stats grid param
 # grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
@@ -36,7 +39,7 @@ getgrid(g, k::Symbol) =
     haskey(g, String(k)) ? g[String(k)] :
     error("Missing grid key: $(k)")
 
-F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad = DSGE.jacobian!(m)
+F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad = jacobian!(m)
 
 
 #LOAD IN OLD JACOB
@@ -70,54 +73,57 @@ F44_aux_trim = F44_aux[: , end-oc+1:end]
 
 
 
-mat_contents = matread("../models/mBBQ/data/TESTJACOBZLB.mat")
-out_jacob_zlb = mat_contents["out_Jacob_ZLB"]
-F21_aux_zlb = out_jacob_zlb["F21_aux"]
-F22_aux_zlb = out_jacob_zlb["F22_aux"]
-F23_aux_zlb = out_jacob_zlb["F23_aux"]
-F24_aux_zlb = out_jacob_zlb["F24_aux"]
-F41_aux_zlb = out_jacob_zlb["F41_aux"]
-F42_aux_zlb = out_jacob_zlb["F42_aux"]
-F43_aux_zlb = out_jacob_zlb["F43_aux"]
-F44_aux_zlb = out_jacob_zlb["F44_aux"]
+# mat_contents = matread("../models/mBBQ/data/TESTJACOBZLB.mat")
+# out_jacob_zlb = mat_contents["out_Jacob_ZLB"]
+# F21_aux_zlb = out_jacob_zlb["F21_aux"]
+# F22_aux_zlb = out_jacob_zlb["F22_aux"]
+# F23_aux_zlb = out_jacob_zlb["F23_aux"]
+# F24_aux_zlb = out_jacob_zlb["F24_aux"]
+# F41_aux_zlb = out_jacob_zlb["F41_aux"]
+# F42_aux_zlb = out_jacob_zlb["F42_aux"]
+# F43_aux_zlb = out_jacob_zlb["F43_aux"]
+# F44_aux_zlb = out_jacob_zlb["F44_aux"]
 
 #r1_start, r1_end = 89, 118
 #r2_start, r2_end = 337, 405
 # os = grid[:os]
 # oc = grid[:oc]
 
-F21_aux_trim_zlb = F21_aux_zlb[: , end-os+1:end]
-F23_aux_trim_zlb = F23_aux_zlb[: , end-os+1:end]
-F41_aux_trim_zlb = F41_aux_zlb[: , end-os+1:end]
-F43_aux_trim_zlb = F43_aux_zlb[: , end-os+1:end]
+# F21_aux_trim_zlb = F21_aux_zlb[: , end-os+1:end]
+# F23_aux_trim_zlb = F23_aux_zlb[: , end-os+1:end]
+# F41_aux_trim_zlb = F41_aux_zlb[: , end-os+1:end]
+# F43_aux_trim_zlb = F43_aux_zlb[: , end-os+1:end]
 
-F22_aux_trim_zlb = F22_aux_zlb[: , end-oc+1:end]
-F24_aux_trim_zlb = F24_aux_zlb[: , end-oc+1:end]
-F42_aux_trim_zlb = F42_aux_zlb[: , end-oc+1:end]
-F44_aux_trim_zlb = F44_aux_zlb[: , end-oc+1:end]
+# F22_aux_trim_zlb = F22_aux_zlb[: , end-oc+1:end]
+# F24_aux_trim_zlb = F24_aux_zlb[: , end-oc+1:end]
+# F42_aux_trim_zlb = F42_aux_zlb[: , end-oc+1:end]
+# F44_aux_trim_zlb = F44_aux_zlb[: , end-oc+1:end]
 
 
 #save as csv for viewing 
-mkpath("csv")
-for (name, mat) in [("F21_ad", F21_ad), ("F22_ad", F22_ad), ("F23_ad", F23_ad), ("F24_ad", F24_ad),
-                    ("F41_ad", F41_ad), ("F42_ad", F42_ad), ("F43_ad", F43_ad), ("F44_ad", F44_ad),
-                    ("F21_aux", F21_aux_trim), ("F23_aux", F23_aux_trim),
-                    ("F41_aux", F41_aux_trim), ("F43_aux", F43_aux_trim),
-                    ("F22_aux", F22_aux_trim), ("F24_aux", F24_aux_trim),
-                    ("F42_aux", F42_aux_trim), ("F44_aux", F44_aux_trim),
-                    # ZLB ones
-                    ("F21_ad_zlb", F21_ad_zlb), ("F22_ad_zlb", F22_ad_zlb), ("F23_ad_zlb", F23_ad_zlb), ("F24_ad_zlb", F24_ad_zlb),
-                    ("F21_aux_zlb", F21_aux_trim_zlb), ("F23_aux_zlb", F23_aux_trim_zlb),
-                    ("F41_aux_zlb", F41_aux_trim_zlb), ("F43_aux_zlb", F43_aux_trim_zlb),
-                    ("F22_aux_zlb", F22_aux_trim_zlb), ("F24_aux_zlb", F24_aux_trim_zlb),
-                    ("F42_aux_zlb", F42_aux_trim_zlb), ("F44_aux_zlb", F44_aux_trim_zlb)
-                    ]
-    CSV.write("csv/$name.csv", DataFrame(mat, :auto))
-end
+# mkpath("csv")
+# for (name, mat) in [("F21_ad", F21_ad), ("F22_ad", F22_ad), ("F23_ad", F23_ad), ("F24_ad", F24_ad),
+#                     ("F41_ad", F41_ad), ("F42_ad", F42_ad), ("F43_ad", F43_ad), ("F44_ad", F44_ad),
+#                     ("F21_aux", F21_aux_trim), ("F23_aux", F23_aux_trim),
+#                     ("F41_aux", F41_aux_trim), ("F43_aux", F43_aux_trim),
+#                     ("F22_aux", F22_aux_trim), ("F24_aux", F24_aux_trim),
+#                     ("F42_aux", F42_aux_trim), ("F44_aux", F44_aux_trim),
+#                     # ZLB ones
+#                     ("F21_ad_zlb", F21_ad_zlb), ("F22_ad_zlb", F22_ad_zlb), ("F23_ad_zlb", F23_ad_zlb), ("F24_ad_zlb", F24_ad_zlb),
+#                     ("F21_aux_zlb", F21_aux_trim_zlb), ("F23_aux_zlb", F23_aux_trim_zlb),
+#                     ("F41_aux_zlb", F41_aux_trim_zlb), ("F43_aux_zlb", F43_aux_trim_zlb),
+#                     ("F22_aux_zlb", F22_aux_trim_zlb), ("F24_aux_zlb", F24_aux_trim_zlb),
+#                     ("F42_aux_zlb", F42_aux_trim_zlb), ("F44_aux_zlb", F44_aux_trim_zlb)
+#                     ]
+#     CSV.write("csv/$name.csv", DataFrame(mat, :auto))
+# end
 
 F = OrderedDict{Symbol, Any}(
+    #states
     :eq_rate_monetary_policy => 0.,
-    :eq_wage => 0.,
+    :eq_wage_1 => 0.,
+    :eq_wage_2 => 0.,
+    :eq_wage_avg => 0.,
     :eq_illiquid_assets => 0.,
     :eq_liquid_assets => 0.,
     :eq_central_bank_assets => 0.,
@@ -131,10 +137,16 @@ F = OrderedDict{Symbol, Any}(
     :eq_consumption_lag => 0.,
     :eq_investment_lag => 0.,
     :eq_profit_lag => 0.,
+    :eq_unemployment_lag_1 => 0.,
+    :eq_unemployment_lag_2 => 0.,
     :eq_unemployment_lag => 0.,
     :eq_government_spending_lag => 0.,
-    :eq_lump_sum_transfers => 0.,
-    :eq_R_star => 0., #TODO: need to add
+    :eq_lump_sum_transfers_lag => 0.,
+    #shocks
+    :eq_ZZ_1 => 0., 
+    :eq_ZZ_2 => 0., 
+    :eq_ZZ_3 => 0.,
+    :eq_ZZ_4 => 0.,
     :eq_fiscal_liability => 0.,
     :eq_z => 0.,
     :eq_ψ => 0.,
@@ -146,6 +158,10 @@ F = OrderedDict{Symbol, Any}(
     :eq_ψ_w => 0.,
     :eq_MP => 0.,
     :eq_pm => 0.,
+    :eq_eps_1_ind => 0.,
+    :eq_eps_2_ind => 0.,
+    :eq_eps_3_ind => 0.,
+    :eq_eps_4_ind => 0.,
     :eps_QE_ind => 0.,
     :eps_RP_ind => 0.,
     :eps_B_F_ind => 0.,
@@ -158,13 +174,22 @@ F = OrderedDict{Symbol, Any}(
     :eps_eta_ind => 0.,
     :eps_w_ind => 0.,
     #CONTROLS
+    #summary
     :MRS_ind => 0.,
     :A_hh_ind => 0.,
     :B_hh_ind => 0.,
     :C_ind => 0.,
-    :N_ind => 0.,
-    :L_ind => 0.,
+    :N_ind_1 => 0.,
+    :N_ind_2 => 0.,
+    :L_ind_1 => 0.,
+    :L_ind_2 => 0.,
     :UB_ind => 0.,
+    :unemp_ind_1 => 0.,
+    :unemp_ind_2 => 0.,
+    :unemp_ind => 0.,
+    :U1 => 0.,
+    :U2 => 0.,
+    #controls
     :eq_control_capital => 0.,
     :eq_control_bond => 0.,
     :eq_control_government_bond => 0.,
@@ -173,19 +198,23 @@ F = OrderedDict{Symbol, Any}(
     :eq_control_government_spending => 0.,
     :eq_control_lambda => 0.,
     :eq_control_inflation => 0.,
-    :eq_control_vacancies => 0.,
+    :eq_control_vacancies_1 => 0.,
+    :eq_control_vacancies_2 => 0.,
     :eq_control_j => 0.,
-    :eq_control_mpl => 0.,
-    :eq_control_elasticity_labor => 0.,
+    :eq_control_mpl_1 => 0.,
+    :eq_control_mpl_2 => 0.,
+    :eq_control_elasticity_v => 0.,
     :eq_control_output => 0.,
     :eq_control_profit => 0.,
     :eq_control_mpk => 0.,
     :eq_control_mpa => 0.,
     :eq_control_marginal_cost => 0.,
-    :eq_control_unemployment_rate => 0.,
-    :eq_control_nn => 0.,
-    :eq_control_M => 0.,
-    :eq_control_f => 0.,
+    :eq_control_n_1 => 0.,
+    :eq_control_n_2 => 0.,
+    :eq_control_M_1 => 0.,
+    :eq_control_M_2 => 0.,
+    :eq_control_f_1 => 0.,
+    :eq_control_f_2 => 0.,
     :eq_control_zz => 0.,
     :eq_control_xx => 0.,
     :eq_control_vv => 0.,
@@ -196,25 +225,35 @@ F = OrderedDict{Symbol, Any}(
     :eq_control_rr => 0.,
     :eq_control_investment => 0.,
     :eq_control_x_k => 0.,
+    #observables
     :eq_control_a_g_obs => 0.,
     :eq_control_y_obs => 0.,
     :eq_control_c_obs => 0.,
     :eq_control_i_obs => 0.,
+    :eq_control_w1_obs => 0.,
+    :eq_control_w2_obs => 0.,
     :eq_control_w_obs => 0.,
     :eq_control_profit_obs => 0.,
+    :eq_unemployment_1_observable => 0.,
+    :eq_unemployment_2_observable => 0.,
     :eq_unemployment_observable => 0.,
     :eq_inflation_observable => 0.,
     :eq_rate_observable => 0.,
+    :eq_past_wage_1 => 0.,
+    :eq_past_wage_2 => 0.,
     :eq_past_wage => 0.,
     :eq_government_observable => 0.,
     :eq_past_YY => 0.,
     :eq_past_CC => 0.,
     :eq_past_II => 0.,
     :eq_past_profit => 0.,
+    :eq_past_uu_1 => 0.,
+    :eq_past_uu_2 => 0.,
     :eq_past_uu => 0.,
     :eq_past_GG => 0.,
     :eq_past_A_g => 0.,
-    :eq_l_lambda => 0.,
+    :eq_l_lambda_1 => 0.,
+    :eq_l_lambda_2 => 0.,
     :eq_past_q => 0.,
     :eq_xI => 0.,
     :eq_eta2 => 0.,
@@ -223,10 +262,6 @@ F = OrderedDict{Symbol, Any}(
     :eq_past_g2 => 0.,
     :eq_lt_obs => 0.,
     :eq_b_gov_ncp2 => 0.,
-    :eq_rate_monetary_policy_ZLB => 0.,
-    :eq_R_star_ZLB => 0.,
-    :eq_central_bank_assets_ZLB => 0.,
-    :eq_quantitative_easing_ZLB => 0.
 )
 
 #indexing
@@ -245,6 +280,8 @@ for k in names[os+1:end]
     end
 end
 
+StateSS = Xss
+ControlSS = Yss
 state_id, control_id = DSGE.build_indices(grid, length(StateSS), length(ControlSS)) #duplicate
 names2 = collect(keys(state_id))
 #state_var_names = vcat(fill("dont know name", 88), names2[5:end])
@@ -298,12 +335,12 @@ compare_matrices(F43_ad, F43_aux_trim, "F43 (ctrl eqns wrt x_t-1)",  false, true
 compare_matrices(F44_ad, F44_aux_trim, "F44 (ctrl eqns wrt y_t)",    false, false)#, exceptions=[[41,8], [41,42]])
 
 
-println("TEST ZLB")
-compare_matrices(F21_ad_zlb, F21_aux_trim_zlb, "F21 (state eqns wrt x_t)",   true,  true)#, exceptions=[[5,22]])
-compare_matrices(F22_ad_zlb, F22_aux_trim_zlb, "F22 (state eqns wrt y_t+1)", true,  false)
-compare_matrices(F23_ad_zlb, F23_aux_trim_zlb, "F23 (state eqns wrt x_t-1)", true,  true)
-compare_matrices(F24_ad_zlb, F24_aux_trim_zlb, "F24 (state eqns wrt y_t)",   true,  false)
-compare_matrices(F41_ad_zlb, F41_aux_trim_zlb, "F41 (ctrl eqns wrt x_t)",    false, true)#, exceptions = [[41,26]])
-compare_matrices(F42_ad_zlb, F42_aux_trim_zlb, "F42 (ctrl eqns wrt y_t+1)",  false, false)
-compare_matrices(F43_ad_zlb, F43_aux_trim_zlb, "F43 (ctrl eqns wrt x_t-1)",  false, true)
-compare_matrices(F44_ad_zlb, F44_aux_trim_zlb, "F44 (ctrl eqns wrt y_t)",    false, false)#, exceptions=[[41,8], [41,42]])
+# println("TEST ZLB")
+# compare_matrices(F21_ad_zlb, F21_aux_trim_zlb, "F21 (state eqns wrt x_t)",   true,  true)#, exceptions=[[5,22]])
+# compare_matrices(F22_ad_zlb, F22_aux_trim_zlb, "F22 (state eqns wrt y_t+1)", true,  false)
+# compare_matrices(F23_ad_zlb, F23_aux_trim_zlb, "F23 (state eqns wrt x_t-1)", true,  true)
+# compare_matrices(F24_ad_zlb, F24_aux_trim_zlb, "F24 (state eqns wrt y_t)",   true,  false)
+# compare_matrices(F41_ad_zlb, F41_aux_trim_zlb, "F41 (ctrl eqns wrt x_t)",    false, true)#, exceptions = [[41,26]])
+# compare_matrices(F42_ad_zlb, F42_aux_trim_zlb, "F42 (ctrl eqns wrt y_t+1)",  false, false)
+# compare_matrices(F43_ad_zlb, F43_aux_trim_zlb, "F43 (ctrl eqns wrt x_t-1)",  false, true)
+# compare_matrices(F44_ad_zlb, F44_aux_trim_zlb, "F44 (ctrl eqns wrt y_t)",    false, false)#, exceptions=[[41,8], [41,42]])

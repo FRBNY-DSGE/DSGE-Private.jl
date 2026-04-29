@@ -32,15 +32,15 @@ function build_indices_csc(grid, lenSSS, lenCSS)
                            :Q_lag_t, :x_I_t, :η2_t, :ι2_t, :LT2_lag_t, :G2_lag_t,
                            :LT_obs_t, :B_gov_ncp2_t]
 
-    nb  = Int(grid[:nb])
-    na  = Int(grid[:na])
-    nse = Int(grid[:nse])
-    ns  = Int(grid[:ns])
-    ns_1= Int(grid[:ns_1])
-    ns_2 = Int(grid[:ns_2])
-    nCOP = Int(grid[:nCOP])
-    oc  = Int(grid[:oc])
-    numstates = Int(grid[:numstates])
+    nb  = Int(grid["nb"])
+    na  = Int(grid["na"])
+    nse = Int(grid["nse"])
+    ns  = Int(grid["ns"])
+    ns_1= Int(grid["ns_1"])
+    ns_2 = Int(grid["ns_2"])
+    nCOP = Int(grid["nCOP"])
+    oc  = Int(grid["oc"])
+    numstates = Int(grid["numstates"])
 
     NN = nb * na * nse
     # println("NN IN INDEX $NN")

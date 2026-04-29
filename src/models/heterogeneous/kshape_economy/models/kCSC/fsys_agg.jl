@@ -141,11 +141,11 @@ CSC differs from mBBQ in:
   eq70 : IST auxiliary ι2
   eq71 : B_gov_ncp2 auxiliary
 """
-function fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, control_id, reg=1)
+function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, control_id, reg=1)
 
-    ns_1 = Int(grid[:ns_1])
-    ns_2 = Int(grid[:ns_2])
-    ns   = Int(grid[:ns])
+    ns_1 = Int(grid["ns_1"])
+    ns_2 = Int(grid["ns_2"])
+    ns   = Int(grid["ns"])
 
     #===================================================================#
     #eq1: monetary policy (Taylor rule only — no QE regime in CSC)

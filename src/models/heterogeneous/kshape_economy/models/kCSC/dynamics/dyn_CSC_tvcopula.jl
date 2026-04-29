@@ -159,8 +159,8 @@ function dyn_CSC_tvcopula(
             hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, param =
                 SGU_solver(F_ref, param, grid)
             
-            jld2file  = "XssYss.jld2"
-            @save jld2file F1_aux, F2_aux, F3_aux, F4_aux
+            jld2file  = "FXaux.jld2"
+            @save jld2file F1_aux F2_aux F3_aux F4_aux
     
 
             # -----------------------------
