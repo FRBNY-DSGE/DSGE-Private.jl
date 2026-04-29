@@ -24,7 +24,7 @@ state_var_names = names2[5:end]
 names3 = collect(keys(control_id))
 control_var_names = names3[4:end]
 new_syms = [:J_t2, :J_t3, :J_t4, :J_t5]
-splice!(control_var_names, 18:17, new_syms)
+splice!(control_var_names, 26:25, new_syms)
 
 
 control_var_name = []

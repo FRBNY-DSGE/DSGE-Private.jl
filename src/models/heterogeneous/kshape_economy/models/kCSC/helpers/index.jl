@@ -54,11 +54,11 @@ function build_indices_csc(grid, lenSSS, lenCSS)
 
     # Distribution block: reduced marginals + copula coefficients
     #These indexes are all skipping an index but this is from the code so idk
-    state_id[:marginal_b′_t] = 1:nb-1
-    state_id[:marginal_a′_t] = nb:nb+na-2
-    state_id[:marginal_se′_t] = nb+na-1:nb+na+nse-3
+    state_id[:marginal_pdf_b′_t] = 1:nb-1
+    state_id[:marginal_pdf_a′_t] = nb:nb+na-2
+    state_id[:marginal_pdf_se′_t] = nb+na-1:nb+na+nse-3
 
-    state_id[:COP]         = nRedMarg+1:nRedMarg+nCOP
+    state_id[:copula′_t]         = nRedMarg+1:nRedMarg+nCOP
 
     next = lenSSS - (length(agg_states) + length(shock_states) - 1)
 
@@ -75,9 +75,9 @@ function build_indices_csc(grid, lenSSS, lenCSS)
     #next = 1
 
     # Distributional controls (full-grid, NN = nb*na*nse each) TODO: fix this
-    control_id[:VALUE_t] = 1:NN
-    control_id[:mutil_c_t] = NN+1:2*NN
-    control_id[:Va_t] = 2*NN+1:3*NN
+    control_id[:Value′_t] = 1:NN
+    control_id[:mutil_cons′_t] = NN+1:2*NN
+    control_id[:Va′_t] = 2*NN+1:3*NN
 
     next = ny + 1
 

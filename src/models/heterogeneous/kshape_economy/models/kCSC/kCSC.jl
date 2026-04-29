@@ -665,7 +665,8 @@ function init_parameters!(m::kCSC)
     m <= parameter(:θ_2, 0.73, fixed = true, description = "", tex_label = "")
     m <= parameter(:θ, 0.27, fixed = true, description = "", tex_label = "")
     m <= parameter(:α_ll, 0.0, fixed = true, description = "", tex_label = "")
-    m <= parameter(:δ_1, 1.0025, fixed = true, description = "", tex_label = "")
+    m <= parameter(:δ_0, 0.01, fixed = true, description = "", tex_label = "")
+    m <= parameter(:δ_1, 0.26421369934443084, fixed = true, description = "", tex_label = "")
     m <= parameter(:α_kk, 0.0, fixed = true, description = "", tex_label = "")
     m <= parameter(:ψ, 0.785159222538979, fixed = true, tex_label = "b_{\\mathrm{share}}")
     m <= parameter(:α, 1.7127143830661984, fixed = true, description = "", tex_label = "")
@@ -702,6 +703,14 @@ function init_parameters!(m::kCSC)
     m <= parameter(:σ_ZZ_3, 0.0, fixed = true, description = "Standard deviation for ZZ_3 shock", tex_label = "\\sigma_{ZZ,3}")
     m <= parameter(:σ_ZZ_4, 0.0, fixed = true, description = "Standard deviation for ZZ_4 shock", tex_label = "\\sigma_{ZZ,4}")
 
+    m <= parameter(:fix2, 0.1103, fixed = true)
+    m <= parameter(:Z, 3.0, fixed = true)
+    m <= parameter(:w, 0.35, fixed = true)
+    m <= parameter(:a, 0.4, fixed = true)
+    m<= parameter(:ρ, -0.495, fixed = true)
+    m <= parameter(:α_1, 1.4233334480878406, fixed = true)
+    m <= parameter(:α_2, 0.7578613035589008, fixed = true)
+    m <= parameter(:σ2, 1.5, fixed = true)
     # Estimated parameters
     m <= parameter(:κ, 0.0276503, (1e-5, 5.0), (1e-5, 5.0), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
                    description = "κ: The slope of the Phillips curve", tex_label = "\\kappa")
@@ -804,7 +813,7 @@ function init_parameters!(m::kCSC)
                    description = "σ_B_F: The standard deviation of the B_F process.",
                    tex_label = "\\sigma_{B_F}")
 
-    m <= parameter(:γ, 0.18919, (1e-5, 1 - 1e-5), (1e-5, 1 - 1e-5), SquareRoot(),
+    m <= parameter(:γ, 0.12186571534563953, (1e-5, 1 - 1e-5), (1e-5, 1 - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.15), fixed = false,
                    description = "γ: The log of the steady-state growth rate of technology",
                    tex_label = "\\gamma")
