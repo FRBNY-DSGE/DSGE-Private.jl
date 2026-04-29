@@ -217,8 +217,9 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     #eq7: liquid assets (bond market / government budget)
     @sslogdeviations2levels A_gaux_t, B_b_t, A_b_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys B_b′_t, A_gaux′_t = Xt1, state_id, StateSS
-    @sslogdeviations2levels T_t, B_gov_ncp_t, r_a_t, UB_t, LT_t, C_b_t, G_t = Yt, control_id, ControlSS
-    @sslogdeviations2levels_unprimekeys Profit_t, Profit_FI_t, B_gov_ncp′_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels T_t, B_gov_ncp_t, r_a_t, Profit_t = Yt, control_id, ControlSS
+    @sslogdeviations2levels UB_t, LT_t, C_b_t, G_t = Yt, control_id, ControlSS
+    @sslogdeviations2levels_unprimekeys B_gov_ncp′_t = Yt1, control_id, ControlSS
 
     A_g_t  = A_gaux_t
     A_g′_t = A_gaux′_t
@@ -507,7 +508,6 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
 
     #===================================================================#
     #control eq4: taxes (two-sector labour income + capital income)
-    @sslogdeviations2levels Profit_FI_t = Yt, control_id, ControlSS
 
     F[:eq_control_tax] = T_t - (
         m[:τ_w] * (w_1′_t * L_1_t + w_2′_t * L_2_t + UB_t) +
@@ -611,7 +611,8 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     #===================================================================#
     #control eq16: firm profit (two-sector wages and vacancy costs)
     @sslogdeviations2levels_unprimekeys K′_t = Yt1, control_id, ControlSS
-
+    @sslogdeviations2levels Profit_FI_t = Yt, control_id, ControlSS
+    
     F[:eq_control_profit] = Profit_t - (
         (Y_t * (1 - η′_t / (2 * m[:κ]) *
                 (log(pi_t) - (1 - m[:γ]) * log(m[:π_cb]) - m[:γ] * log(π_past_t))^2) +
@@ -645,7 +646,7 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     F[:eq_control_marginal_cost] = MC_t - (
         1 - 1/η′_t +
         (log(pi_t / (π_past_t^m[:γ] * m[:π_bar]^(1 - m[:γ]))) -
-         λ_t * η2′_t / η2_t * Y′_t / Y_t *
+         m.dicts[:SS_stats]["Lambda"] * η2′_t / η2_t * Y′_t / Y_t *
          log(pi′_t / (pi_t^m[:γ] * m[:π_bar]^(1 - m[:γ])))) / m[:κ])
 
     #===================================================================#
@@ -877,9 +878,12 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
 
     #control eq66: l_lambda_1 (fixed at calibrated value)
     #control eq67: l_lambda_2 (fixed at calibrated value)
-    @sslogdeviations2levels l_λ_1_t, l_λ_2_t = Yt, control_id, ControlSS
-    F[:eq_l_lambda_1] = l_λ_1_t - m[:λ_1]
-    F[:eq_l_lambda_2] = l_λ_2_t - m[:λ_2]
+    @sslogdeviations2levels_unprimekeys η′_t = Xt1, state_id, StateSS
+    @sslogdeviations2levels l_λ_1_t = Yt, control_id, ControlSS
+    F[:eq_l_lambda_1] = l_λ_1_t - η′_t
+    
+    @sslogdeviations2levels l_λ_2_t = Yt, control_id, ControlSS
+    F[:eq_l_lambda_2] = l_λ_2_t - ι′_t
 
     #control eq68: investment growth x_I
     @sslogdeviations2levels x_I_t = Yt, control_id, ControlSS
@@ -891,7 +895,7 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
 
     #control eq70: IST auxiliary ι2 (= next-period ι)
     @sslogdeviations2levels ι2_t = Yt, control_id, ControlSS
-    F[:eq_iota2] = ι2_t - ι′_t
+    F[:eq_iota2] = ι2_t - ι_t
 
     #control eq71: B_gov_ncp2 auxiliary (gov bonds excl. central bank)
     @sslogdeviations2levels B_gov_ncp2_t = Yt, control_id, ControlSS

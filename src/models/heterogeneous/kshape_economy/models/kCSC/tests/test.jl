@@ -154,15 +154,18 @@ F42_aux = out_jacob["F42_aux"]
 F43_aux = out_jacob["F43_aux"]
 F44_aux = out_jacob["F44_aux"]
 
-F21_aux_trim = F21_aux[: , end-os+1:end]
-F23_aux_trim = F23_aux[: , end-os+1:end]
-F41_aux_trim = F41_aux[: , end-os+1:end]
-F43_aux_trim = F43_aux[: , end-os+1:end]
+# MRS..U_2 are rows 1-14 in MATLAB's oc-row F4x matrices (summary controls have no eqns in fsys_agg)
+n_hh_summary = 14
 
-F22_aux_trim = F22_aux[: , end-oc+1:end]
-F24_aux_trim = F24_aux[: , end-oc+1:end]
-F42_aux_trim = F42_aux[: , end-oc+1:end]
-F44_aux_trim = F44_aux[: , end-oc+1:end]
+F21_aux_trim = F21_aux[:, end-os+1:end]
+F23_aux_trim = F23_aux[:, end-os+1:end]
+F41_aux_trim = F41_aux[n_hh_summary+1:end, end-os+1:end]
+F43_aux_trim = F43_aux[n_hh_summary+1:end, end-os+1:end]
+
+F22_aux_trim = F22_aux[:, end-oc+1:end]
+F24_aux_trim = F24_aux[:, end-oc+1:end]
+F42_aux_trim = F42_aux[n_hh_summary+1:end, end-oc+1:end]
+F44_aux_trim = F44_aux[n_hh_summary+1:end, end-oc+1:end]
 
 
 #save as csv for viewing 
