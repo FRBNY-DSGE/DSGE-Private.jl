@@ -1,36 +1,34 @@
+using JLD2
+# include(joinpath(@__DIR__, "../../helpers/genweight.jl"))
+# include(joinpath(@__DIR__, "IRFs_CSC_tvcopula.jl"))
 """
-    dyn_ZLB_tvcopula_new(
+    dyn_CSC_tvcopula(
         final_table,
-        m, grid, SS_stats,
-        P_SE, mu_dist, Value, mutil_c, Va;
+        param, grid, SS_stats,
+        mu_dist, Value, mutil_c, Va;
         pool=nothing
     ) -> Dict{String,Any}
 
-Run the ZLB / Taylor–QE pipeline under a time-varying copula specification.
+Run the CSC (two-sector labour, financial intermediary) pipeline under a
+time-varying copula specification.  Mirrors `dyn_ZLB_tvcopula_new` but
+calls `F_sys_CSC_ref_tvcopula` and applies CSC-specific parameter overrides
+via `parameters_agg_EST_v3!(...; model=:csc)`.
 """
-function dyn_ZLB_tvcopula_new(
-    m, final_table, P_SE, grid, SS_stats,
+function dyn_CSC_tvcopula(
+    final_table,
+    param, grid, SS_stats,
     mu_dist, Value, mutil_c, Va;
     pool=nothing
 )
-    # P_SE = param["P_SE"]
 
-    maxiter = 10
-    tol     = 1e-8
-
-    # TODO: SS/transition matrix object — handle separately (copula, adjust, regime, QE, FEAR_shock config flags)
-    #= param["copula"] = "time-varying" =#
-    param = Dict{String,Any}()   # TODO: SS/transition matrix object — handle separately (config flags below; remove once SGU_solver migrated)
     param["copula"] = "time-varying"
 
     for jkjkjkjkjk in 1:1
         for lllllll in 1:1
 
             if jkjkjkjkjk == 1
-                # TODO: SS/transition matrix object — handle separately (adjust config flag)
                 param["adjust"] = "G"
             else
-                # TODO: SS/transition matrix object — handle separately (adjust config flag)
                 param["adjust"] = "LT"
             end
 
@@ -39,20 +37,20 @@ function dyn_ZLB_tvcopula_new(
             # -----------------------------
             xhat = final_table[1:26, :]
 
-            parameters_agg!(m, SS_stats)
+            parameters_agg_CSC(param, SS_stats)
 
             param_update = Dict{String,Any}()
 
             getx(i) = xhat isa AbstractVector ? xhat[i] : xhat[i]
 
             param_update["kappa"]      = getx(1)
-            param_update["rho_w"]      = getx(2)
-            param_update["d"]          = 1 - getx(3)
+            param_update["rho_w"]      = getx(2)        # mapped to rho_w_1/2 by :csc branch
+            param_update["d"]          = 1 - getx(3)    # mapped to d_1/2
             param_update["eps_w"]      = 1
             param_update["phi"]        = getx(4) * 10
             param_update["phi_x"]      = 0
             param_update["phi_pi"]     = getx(5)
-            param_update["phi_u"]      = getx(6)
+            param_update["phi_u"]      = getx(6)        # overridden to 0 by :csc branch
             param_update["rho_BB"]     = getx(7)
             param_update["rho_B"]      = getx(8)
             param_update["rho_D"]      = getx(9)
@@ -70,7 +68,7 @@ function dyn_ZLB_tvcopula_new(
             param_update["sig_iota"]   = getx(20) / 100
             param_update["sig_w"]      = getx(21) / 100
             param_update["sig_BB"]     = getx(22) / 100
-            param_update["iota"]       = getx(26)
+            param_update["iota"]       = getx(26)       # mapped to iota_1/2 by :csc branch
             param_update["varphi"]     = 0
             param_update["alpha_lk"]   = 0
             param_update["theta_b"]    = 0.97
@@ -89,72 +87,66 @@ function dyn_ZLB_tvcopula_new(
             param_update["sig_RP"]     = 0.1 / 100
             param_update["Calvo"]      = 0.7
 
-            update_ss_v5!(SS_stats, m, param_update, grid)
-            parameters_agg_EST_v3!(m, param_update)
-            
+            update_ss_csc!(SS_stats, param, param_update, grid)
+            parameters_agg_EST_v3!(param, param_update; model = :csc, SS_stats = SS_stats)
 
 
             # -----------------------------
             # State-space reduction
             # -----------------------------
-            reduc = state_reduc_tvcopula!(m, grid, SS_stats, mu_dist, Value, mutil_c, Va)
-            Xss           = reduc.Xss
-            Yss           = reduc.Yss
-            Gamma_state   = reduc.Gamma_state
-            Gamma_control = reduc.Gamma_control
-            InvGamma      = reduc.InvGamma
-            State         = reduc.State
-            State_m       = reduc.State_m
-            Contr         = reduc.Contr
-            Contr_m       = reduc.Contr_m
-            DCD           = reduc.DCD
-            IDCD          = reduc.IDCD
-            distr_b_SS = reduc.distr_b_SS
-            distr_a_SS = reduc.distr_a_SS
-            distr_se_SS = reduc.distr_se_SS
-            CDF_b_SS = CDF_b_SS,
-            CDF_a_SS = CDF_a_SS,
-            CDF_se_SS = CDF_se_SS,
- 
+            reduc = state_reduc_csc(param, grid, SS_stats, mu_dist, Value, mutil_c, Va)
+            Xss                   = reduc.Xss
+            Yss                   = reduc.Yss
+            Gamma_state           = reduc.Gamma_state
+            Gamma_control         = reduc.Gamma_control
+            InvGamma              = reduc.InvGamma
+            State                 = reduc.State
+            State_m               = reduc.State_m
+            Contr                 = reduc.Contr
+            Contr_m               = reduc.Contr_m
+            DC                    = reduc.DC
+            IDC                   = reduc.IDC
+            DCD                   = reduc.DCD
+            IDCD                  = reduc.IDCD
+            distrSS               = reduc.distrSS
+            CDF_SS                = reduc.CDF_SS
+            COP_SS                = reduc.COP_SS
+            distr_b_SS            = reduc.distr_b_SS
+            distr_a_SS            = reduc.distr_a_SS
+            distr_se_SS           = reduc.distr_se_SS
+            CDF_b_SS              = reduc.CDF_b_SS
+            CDF_a_SS              = reduc.CDF_a_SS
+            CDF_se_SS             = reduc.CDF_se_SS
+            compressionIndexesCOP = reduc.compressionIndexesCOP
+            Poly                  = reduc.Poly
+            InvCheb               = reduc.InvCheb
+            Gamma2                = reduc.Gamma2
+            nPoly                 = reduc.nPoly
+            nFullCtrl             = reduc.nFullCtrl
+            nRedCtrl              = reduc.nRedCtrl
+            nFullMarg             = reduc.nFullMarg
+            nRedMarg              = reduc.nRedMarg
+            nRedStates            = reduc.nRedStates
 
             StateSS   = Xss
             ControlSS = Yss
-            #jld2file = "CopulaInfo.jld2"
-            #@save jld2file Gamma_state Gamma_control State State_m Contr Contr_m distr_b_SS distr_a_SS distr_se_SS CDF_b_SS CDF_a_SS CDF_se_SS DCD IDCD
-           #println("Saved file at: ", abspath(jld2file))
-            println("SAVED")
-  
+            jld2file  = "XssYss.jld2"
 
+            @save jld2file Xss Yss Gamma_state Gamma_control InvGamma State State_m Contr Contr_m DC IDC DCD IDCD distrSS CDF_SS COP_SS distr_b_SS distr_a_SS distr_se_SS CDF_b_SS CDF_a_SS CDF_se_SS compressionIndexesCOP Poly InvCheb Gamma2 nPoly nFullCtrl nRedCtrl nFullMarg nRedMarg nRedStates grid SS_stats param
 
-
-            #TODO add StateSS, ControlSS, SS_stats, grid, param to Model
-            jld2file = "XssYss.jld2"
-            #@save jld2file StateSS ControlSS SS_stats grid param
             println("Saved file at: ", abspath(jld2file))
-            #println("SAVED")
-
-            # -----------------------------
-            # Regime settings
-            # -----------------------------
-            # TODO: SS/transition matrix object — handle separately (FEAR_shock, QE, regime config flags)
-            param["FEAR_shock"] = "both"   # TODO: SS/transition matrix object — handle separately
-            param["QE"]         = "No QE"  # TODO: SS/transition matrix object — handle separately
-            param["regime"]     = "Taylor" # TODO: SS/transition matrix object — handle separately
+            println("SAVED")
 
             # -----------------------------
             # Reference system
             # -----------------------------
             function F_ref(State, State_m, Contr, Contr_m)
-                return F_sys_ref_tvcopula_QE(
+                return F_sys_CSC_ref_tvcopula(
                     State, State_m, Contr, Contr_m, StateSS,
                     ControlSS, Gamma_state, Gamma_control, InvGamma,
-                    m, grid, SS_stats, DCD, IDCD, P_SE
+                    param, grid, SS_stats, DCD, IDCD
                 )
             end
-
-            #just to make F_ref compile once
-            # F_ref(zeros(numstates), zeros(numstates), zeros(numcontrols), zeros(numcontrols))
-
 
             Fss_ref, LHS_ref, RHS_ref, Distr_ref = F_ref(State, State_m, Contr, Contr_m)
             resid_max = maximum(abs.(Fss_ref))
@@ -163,13 +155,13 @@ function dyn_ZLB_tvcopula_new(
             # -----------------------------
             # SGU solver
             # -----------------------------
-            param["overrideEigen"] = true  # TODO: SS/transition matrix object — handle separately (config flag; remove once SGU_solver migrated)
+            param["overrideEigen"] = true
             hx, gx, F1_aux, F2_aux, F3_aux, F4_aux, param =
-                SGU_solver(F_ref, param, grid, pool)  # TODO: SS/transition matrix object — handle separately (param passed for scaleval1/scaleval2/overrideEigen)
-
-            jld2file = "FXaux.jld2"
-            @save F1_aux, F2_aux, F3_aux, F4_aux
-            println("Saved file at: ", abspath(jld2file))
+                SGU_solver(F_ref, param, grid)
+            
+            jld2file  = "XssYss.jld2"
+            @save jld2file F1_aux, F2_aux, F3_aux, F4_aux
+    
 
             # -----------------------------
             # Linearized system
@@ -218,8 +210,8 @@ function dyn_ZLB_tvcopula_new(
             # -----------------------------
             # IRFs
             # -----------------------------
-            IRFs_Taylor_QE_compare_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_control,
-                                            m, grid, SS_stats)
+            IRFs_CSC_tvcopula(hx, gx, Xss, Yss, Gamma_state, Gamma_control,
+                              param, grid, SS_stats)
 
             return Dict{String,Any}(
                 "SYS_ref"      => SYS_ref,
@@ -227,7 +219,7 @@ function dyn_ZLB_tvcopula_new(
                 "gx"           => gx,
                 "resid_max"    => resid_max,
                 "param_update" => param_update,
-                "param"        => param,  # TODO: SS/transition matrix object — handle separately (remove once config flags migrated off param dict)
+                "param"        => param,
             )
         end
     end

@@ -58,6 +58,13 @@ function steady_anal(grid, param, meshes, SS_stats, AProb, mu_dist, n, H_tilde,
     grid_se3_aux = hcat(zeros(1, 2 * Int(grid["ns"])),
                        [1])
 
+    grid["grid_se_aux"] = grid_se_aux
+    grid["grid_se1_aux"] = grid_se1_aux
+    grid["grid_se2_aux"] = grid_se2_aux
+    grid["grid_se3_aux"] = grid_se3_aux
+
+    
+
     ## 2. Create meshes for auxiliary grids
     nb_val = Int(grid["nb"])
     na_val = Int(grid["na"])
@@ -1746,5 +1753,5 @@ end
     println("Type of anal_stats: ", typeof(anal_stats))
     println("Type of SS_stats: ", typeof(SS_stats))
     println("Type of Q_dists: ", typeof(Q_dists))
-    return anal_stats, SS_stats, Q_dists
+    return anal_stats, SS_stats, Q_dists, grid
 end

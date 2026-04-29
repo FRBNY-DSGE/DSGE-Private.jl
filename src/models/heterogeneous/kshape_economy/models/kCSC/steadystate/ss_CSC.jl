@@ -52,7 +52,7 @@ function ss_CSC()
     grid["L"] = L_1 + L_2
     n_agg = (L_1 + L_2) / (SS_stats["N_tilde_1"] * grid["se_bar_1"] + SS_stats["N_tilde_2"] * grid["se_bar_2"])
 
-    anal_stats, SS_stats_steady, Q_dists = steady_anal(
+    anal_stats, SS_stats_steady, Q_dists, grid = steady_anal(
         grid, param, meshes, SS_stats, AProb, mu_dist, n_agg, SS_stats["H_tilde"], b_n_star, b_a_star, a_a_star,
         c_n_guess, c_a_guess,
     )

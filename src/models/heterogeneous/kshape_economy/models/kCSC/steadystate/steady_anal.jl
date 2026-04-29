@@ -20,6 +20,12 @@ function _steady_anal_auxiliary_productivity!(meshes, grid, param, nb::Int, na::
     grid_se2_aux = vcat(zeros(ns), unemployment_se, [0.0])
     grid_se3_aux = vcat(zeros(2 * ns), [1.0])
 
+    
+    grid["se_aux"] = grid_se_aux
+    grid["se1_aux"] = grid_se1_aux
+    grid["se2_aux"] = grid_se2_aux
+    grid["se3_aux"] = grid_se3_aux
+
     meshes_se_aux = _steady_anal_constant_state_mesh(grid_se_aux, nb, na)
     meshes_se1_aux = _steady_anal_constant_state_mesh(grid_se1_aux, nb, na)
     meshes_se2_aux = _steady_anal_constant_state_mesh(grid_se2_aux, nb, na)
@@ -1701,5 +1707,5 @@ end
         anal_stats["MRSs_Unemp"] = MRSs_Unemp
     end
 
-    return anal_stats, SS_stats, Q_dists
+    return anal_stats, SS_stats, Q_dists, grid
 end

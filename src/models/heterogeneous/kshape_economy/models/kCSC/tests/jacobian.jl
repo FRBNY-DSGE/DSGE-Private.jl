@@ -7,26 +7,29 @@ using OrderedCollections: OrderedDict
 using CSV
 using DataFrames
 
-# jld2file = "../models/mBBQ/data/XssYss.jld2"
+# jld2file = "XssYss.jld2"
 # @load jld2file StateSS ControlSS SS_stats grid param
 # grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
-input = matread("../input_data/update_Jacob.mat")
+# input = matread("../input_data/update_Jacob.mat")
 
-param = input["param"]
-grid = input["grid"]
-SS_stats = input["SS_stats"]
-Xss = input["Xss"]
-Yss = input["Yss"]
-StateSS = vec(Xss)
-ControlSS = vec(Yss)
+# param = input["param"]
+# grid = input["grid"]
+# SS_stats = input["SS_stats"]
+# Xss = input["Xss"]
+# Yss = input["Yss"]
+# StateSS = vec(Xss)
+# ControlSS = vec(Yss)
+
+@load "XssYss.jld2" Xss Yss SS_stats grid param
+
 
 m = DSGE.kCSC()
 
 m.dicts[:grid] = grid
 m.dicts[:SS_stats] = SS_stats
 m.dicts[:param] = param
-m.grids[:StateSS] = StateSS
-m.grids[:ControlSS] = ControlSS
+m.grids[:StateSS] = Xss
+m.grids[:ControlSS] = Yss
 
 getgrid(g, k::Symbol) =
     haskey(g, k) ? g[k] :
@@ -38,9 +41,9 @@ F21_ad, F22_ad, F23_ad, F24_ad, F41_ad, F42_ad, F43_ad, F44_ad = DSGE.jacobian!(
 
 #LOAD IN OLD JACOB
 
-#load in nonQE donggyu original jacobians
-mat_contents = matread("../models/mBBQ/data/TESTJACOB.mat")
-out_jacob = mat_contents["out_Jacob"]
+#load in donggyu original jacobians
+output = matread("../output_data/update_Jacob.mat")
+out_jacob = output["out_Jacob"]
 F21_aux = out_jacob["F21_aux"]
 F22_aux = out_jacob["F22_aux"]
 F23_aux = out_jacob["F23_aux"]

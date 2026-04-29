@@ -29,7 +29,7 @@ Tuple of:
 - For speed, start Julia with multiple threads: `julia -t N` (e.g. `julia -t 4`).
 - Implements Schmitt-Grohé-Uribe algorithm based on QZ decomposition.
 """
-function SGU_solver(F, param, grid, p, parallel = false)
+function SGU_solver(F, param, grid, p=nothing, parallel = false)
 
     # Ensure numstates and numcontrols are integers (defensive conversion)
     numstates = Int(grid["numstates"])
@@ -154,11 +154,11 @@ function SGU_solver(F, param, grid, p, parallel = false)
             FF3[bl] = DF3
         end
     end
-    Main.xx[][:blocks] = blocks
-    Main.xx[][:packagesize] = packagesize
-    Main.xx[][:Fb] = Fb
-    Main.xx[][:FF1] = FF1
-    Main.xx[][:FF3] = FF3
+    # Main.xx[][:blocks] = blocks
+    # Main.xx[][:packagesize] = packagesize
+    # Main.xx[][:Fb] = Fb
+    # Main.xx[][:FF1] = FF1
+    # Main.xx[][:FF3] = FF3
     #foo()
 
     # Assemble F1 and F3 from blocks

@@ -606,6 +606,7 @@ export
      include("models/heterogeneous/kshape_economy/models/kCSC/helpers/find_fs.jl")
  include("models/heterogeneous/kshape_economy/models/kCSC/helpers/find_ws.jl")
  include("models/heterogeneous/kshape_economy/models/kCSC/helpers/q_cons.jl")
+   include("models/heterogeneous/kshape_economy/helpers/jacobian/save_jacob_tvcopula.jl")
 
 
 
@@ -648,6 +649,8 @@ include("models/heterogeneous/kshape_economy/models/kCSC/steadystate/make_grids.
  #dynamics
     include("models/heterogeneous/kshape_economy/dynamics/parameters_agg.jl")
     include("models/heterogeneous/kshape_economy/dynamics/parameters_agg_EST_v3.jl")
+     include("models/heterogeneous/kshape_economy/dynamics/parameters_agg_EST_v3_nomodelobject.jl")
+
     include("models/heterogeneous/kshape_economy/dynamics/policies_update.jl")
     include("models/heterogeneous/kshape_economy/dynamics/update_ss_v5.jl")
     include("models/heterogeneous/kshape_economy/dynamics/state_reduc_tvcopula.jl")
@@ -655,6 +658,8 @@ include("models/heterogeneous/kshape_economy/models/kCSC/steadystate/make_grids.
     include("models/heterogeneous/kshape_economy/dynamics/SGU_jacob_zlb.jl")
     include("models/heterogeneous/kshape_economy/dynamics/SGU_solver.jl")
  include("models/heterogeneous/kshape_economy/dynamics/state_reduc_tvcopula_nomodelobject.jl")
+include("models/heterogeneous/kshape_economy/dynamics/update_ss_v5_nomodelobject.jl")
+
 
     include("models/heterogeneous/kshape_economy/models/mBBQ/dynamics/F_sys_ref_tvcopula_QE.jl")
     include("models/heterogeneous/kshape_economy/dynamics/dyn_ZLB_tvcopula_new.jl")
@@ -673,6 +678,17 @@ include("models/heterogeneous/kshape_economy/models/kCSC/steadystate/make_grids.
     include("models/heterogeneous/kshape_economy/models/kCSC/jacobian.jl")
     include("models/heterogeneous/kshape_economy/models/kCSC/helpers/index.jl")
     include("models/heterogeneous/kshape_economy/models/kCSC/steadystate/ss_CSC.jl")
+     include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/dyn_CSC_tvcopula.jl")
+     include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/F_sys_CSC_ref_tvcopula.jl")
+ #include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/hetfsysblocks.jl")
+ include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/IRFs_CSC_tvcopula.jl")
+  #include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/state_reduc_tvcopula.jl")
+ include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/parameters_agg_CSC.jl")
+ include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/update_ss_csc.jl")
+ include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/state_reduc_csc.jl")
+ 
+
+
 
 
 
