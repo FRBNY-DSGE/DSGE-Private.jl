@@ -134,10 +134,12 @@ let a_gaux_col = findfirst(==(state_id[:A_gaux_t]), agg_state_cols)
         mat[i, a_gaux_col] = mat[i, end]
     end
 end=#
+#= removed: was paired with commented-out let block that moved A_gaux_t to last col before dropping
 F21_ad = F21_ad[:, 1:end-1]
 F23_ad = F23_ad[:, 1:end-1]
 F41_ad = F41_ad[:, 1:end-1]
 F43_ad = F43_ad[:, 1:end-1]
+=#
 
 
 #load in nonQE donggyu original jacobians
