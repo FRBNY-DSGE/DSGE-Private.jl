@@ -659,6 +659,7 @@ include("models/heterogeneous/kshape_economy/models/kCSC/steadystate/make_grids.
     include("models/heterogeneous/kshape_economy/dynamics/SGU_solver.jl")
  include("models/heterogeneous/kshape_economy/dynamics/state_reduc_tvcopula_nomodelobject.jl")
 include("models/heterogeneous/kshape_economy/dynamics/update_ss_v5_nomodelobject.jl")
+include("models/heterogeneous/kshape_economy/dynamics/state_reduc_laypunov.jl")
 
 
     include("models/heterogeneous/kshape_economy/models/mBBQ/dynamics/F_sys_ref_tvcopula_QE.jl")

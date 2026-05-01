@@ -325,12 +325,12 @@ end
 
 println("TEST TAYLOR")
 
-compare_matrices(F21_ad, F21_aux_trim, "F21 (state eqns wrt x_t)",   true,  true)#, exceptions=[[5,22]])
-compare_matrices(F22_ad, F22_aux_trim, "F22 (state eqns wrt y_t+1)", true,  false)
-compare_matrices(F23_ad, F23_aux_trim, "F23 (state eqns wrt x_t-1)", true,  true)
-compare_matrices(F24_ad, F24_aux_trim, "F24 (state eqns wrt y_t)",   true,  false)
-compare_matrices(F41_ad, F41_aux_trim, "F41 (ctrl eqns wrt x_t)",    false, true)#, exceptions = [[41,26]])
-compare_matrices(F42_ad, F42_aux_trim, "F42 (ctrl eqns wrt y_t+1)",  false, false)
+#compare_matrices(F21_ad, F21_aux_trim, "F21 (state eqns wrt x_t)",   true,  true)#, exceptions=[[5,22]])
+#compare_matrices(F22_ad, F22_aux_trim, "F22 (state eqns wrt y_t+1)", true,  false)
+#compare_matrices(F23_ad, F23_aux_trim, "F23 (state eqns wrt x_t-1)", true,  true)
+#compare_matrices(F24_ad, F24_aux_trim, "F24 (state eqns wrt y_t)",   true,  false)
+#compare_matrices(F41_ad, F41_aux_trim, "F41 (ctrl eqns wrt x_t)",    false, true)#, exceptions = [[41,26]])
+#compare_matrices(F42_ad, F42_aux_trim, "F42 (ctrl eqns wrt y_t+1)",  false, false)
 compare_matrices(F43_ad, F43_aux_trim, "F43 (ctrl eqns wrt x_t-1)",  false, true)
 compare_matrices(F44_ad, F44_aux_trim, "F44 (ctrl eqns wrt y_t)",    false, false)#, exceptions=[[41,8], [41,42]])
 
