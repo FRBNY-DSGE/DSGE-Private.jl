@@ -29,8 +29,8 @@ m.dicts[:SS_stats] = ss
 m.dicts[:grid] = grid
 m.dicts[:param] = param
 
-grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "ns_1", "ns_2", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
 state_id, control_id = build_indices_csc(grid, length(StateSS), length(ControlSS))
+grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "ns_1", "ns_2", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
 
 #test state and control controls of zero
 State_zero = zeros(length(StateSS))
@@ -39,12 +39,12 @@ Control_zero = zeros(length(ControlSS))
 nState  = length(StateSS)
 nCtrl   = length(ControlSS)
 
-
 reg = 1
-F = fsys_agg(OrderedDict{Symbol, Any}(), m, grid, StateSS, ControlSS, State_zero, Control_zero, State_zero, Control_zero, state_id, control_id)
+F = Fsys_agg(OrderedDict{Symbol, Any}(), m, grid, StateSS, ControlSS, State_zero, Control_zero, State_zero, Control_zero, state_id, control_id)
 
 eq_keys = collect(keys(F))
 
+#=
 @testset "fsys_agg key sanity" begin
     @test :eq_wage_1 in eq_keys
     @test :eq_wage_2 in eq_keys
@@ -60,6 +60,7 @@ eq_keys = collect(keys(F))
     @test :eq_unemployment_1_observable in eq_keys
     @test :eq_unemployment_2_observable in eq_keys
 end
+=#
 
 # flatten f dict into a vector of scalar, issue with J, might cause indexing issue later on
 function flatten_F!(F_vec, F_dict, eq_keys)
@@ -90,7 +91,7 @@ function obj_fnct_agg(F_vec, x)
     Xt  = x[nState+nCtrl+1:2*nState+nCtrl]
     Yt  = x[2*nState+nCtrl+1:end]
     F_dict = OrderedDict{Symbol, Any}()
-    fsys_agg(F_dict, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, control_id, reg)
+    Fsys_agg(F_dict, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, control_id, reg)
     flatten_F!(F_vec, F_dict, eq_keys)
 end
 

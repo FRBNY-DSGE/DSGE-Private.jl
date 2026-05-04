@@ -12,7 +12,7 @@ input_data = matread(input_path)
 final_table = input_data["final_table"]
 
 # result = DSGE.ss_CSC()
-# @save "ss_CSC_result.jld2" result
+@save "ss_CSC_result.jld2" result
 
 @load "ss_CSC_result.jld2" result
 
