@@ -488,6 +488,22 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     # ── CONTROL EQUATIONS ──────────────────────────────────────────────
     #===================================================================#
 
+   # summaryexit()
+   F[:MRS_ind] = 0.
+   F[:A_hh_ind] = 0.
+   F[:B_hh_ind] = 0.
+   F[:C_ind] = 0.
+   F[:N_ind_1] = 0.
+   F[:N_ind_2] = 0.
+   F[:L_ind_1] = 0.
+   F[:L_ind_2] = 0.
+   F[:UB_ind] = 0.
+   F[:unemp_ind_1] = 0.
+   F[:unemp_ind_2] = 0.
+   F[:unemp_ind] = 0.
+   F[:U1] = 0.
+   F[:U2] = 0.
+
     #===================================================================#
     #control eq1: capital market clearing (includes entrepreneur capital A_F)
     @sslogdeviations2levels K_t, A_hh_t = Yt, control_id, ControlSS

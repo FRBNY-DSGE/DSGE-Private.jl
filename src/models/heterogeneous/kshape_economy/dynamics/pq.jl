@@ -42,11 +42,11 @@ function pq(
     nvars = Int(get(grid, "num_endo", nse + nc))
 
     #temp for testing with old jacobian
-    nse = 119
-    ns = 129
-    nc = 405
-    nsh = 10
-    nvars = 524
+    # nse = 119
+    # ns = 129
+    # nc = 405
+    # nsh = 10
+    # nvars = 524
 
     F1 = vcat(F1_aux[1:nse, :], F1_aux[(ns+1):end, :])
     F2 = vcat(F2_aux[1:nse, :], F2_aux[(ns+1):end, :])
