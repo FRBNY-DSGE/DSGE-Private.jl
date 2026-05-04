@@ -99,3 +99,92 @@ function update_ss_csc!(SS_stats, param, param_update, grid)
 
     return SS_stats_base, param_base
 end
+
+
+
+
+function update_ss_csc!(m)
+    # m.dicts[:SS_stats]_base = copy(m.dicts[:SS_stats])
+    # param_base = copy(param)
+
+
+    ns_1 = Int(m.dicts[:grid]["ns_1"])
+    ns_2 = Int(m.dicts[:grid]["ns_2"])
+    ns = Int(m.dicts[:grid]["ns"])
+
+    r_l_1 = m.dicts[:SS_stats]["r_l_1"]
+    r_l_2 = m.dicts[:SS_stats]["r_l_2"]
+    V_1 = m.dicts[:SS_stats]["V_1"]
+    V_2 = m.dicts[:SS_stats]["V_2"]
+    M_1 = m.dicts[:SS_stats]["M_1"]
+    M_2 = m.dicts[:SS_stats]["M_2"]
+    s = vec(m.dicts[:grid]["s"])
+    se_dist = vec(m.dicts[:grid]["se_dist"])
+
+    lambda_aux = [
+        (1 - m.dicts[:param]["lambda_1"]) * Matrix(1.0I, ns_1, ns_1) zeros(ns_1, ns_2);
+        zeros(ns_2, ns_1) (1 - m.dicts[:param]["lambda_2"]) * Matrix(1.0I, ns_2, ns_2)
+    ]
+    A = Matrix(1.0I, ns, ns) -
+        m[:β] * (1 - m[:dr]) * (1 - m[:in]) *
+        m.dicts[:param]["P_SS"] * lambda_aux
+
+    function job_value_stats(fix_L_1, fix_L_2)
+        J_inst = vcat(
+            (r_l_1 - fix_L_1 - m[:w_bar_1]) * m[:n_1] .* s[1:ns_1],
+            (r_l_2 - fix_L_2 - m[:w_bar_2]) * m[:n_2] .* s[(ns_1 + 1):ns],
+        )
+        J = A \ J_inst
+        J_bar_1 = dot(J[1:ns_1], se_dist[1:ns_1]) / sum(se_dist[1:ns_1])
+        J_bar_2 = dot(J[(ns_1 + 1):ns], se_dist[(ns_1 + 1):ns]) / sum(se_dist[(ns_1 + 1):ns])
+        return J, J_bar_1, J_bar_2
+    end
+
+    function find_fix_Ls!(F, x)
+        _, J_bar_1, J_bar_2 = job_value_stats(x[1], x[2])
+        F[1] = m.dicts[:param]["iota_1"] - (M_1 / V_1) * J_bar_1
+        F[2] = m.dicts[:param]["iota_2"] - (M_2 / V_2) * J_bar_2
+        return nothing
+    end
+
+    sol = nlsolve(find_fix_Ls!, [0.05, 0.05]; ftol=1e-10, xtol=1e-10, show_trace=false)
+    if !(sol.f_converged || sol.x_converged)
+        error("update_ss_csc!: NLsolve failed to converge for fix_L_1/fix_L_2")
+    end
+
+    m[:fix_L_1] = sol.zero[1]
+    m[:fix_L_2] = sol.zero[2]
+
+    J, J_bar_1, J_bar_2 = job_value_stats(m[:fix_L_1], m[:fix_L_2])
+    m.dicts[:SS_stats]["J"] = J
+    m.dicts[:SS_stats]["J_bar_1"] = J_bar_1
+    m.dicts[:SS_stats]["J_bar_2"] = J_bar_2
+
+    m.dicts[:SS_stats]["Profit_L"] =
+        (r_l_1 - m[:fix_L_1] - m[:w_bar_1]) * m.dicts[:grid]["L_1"] -
+        m.dicts[:param]["iota_1"] * V_1 +
+        (r_l_2 - m[:fix_L_2] - m[:w_bar_2]) * m.dicts[:grid]["L_2"] -
+        m.dicts[:param]["iota_2"] * V_2
+
+    m[:fix] =
+        m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["mc"] * m.dicts[:SS_stats]["Y"] +
+        m.dicts[:SS_stats]["Profit_L"] + m.dicts[:SS_stats]["Profit_K"] - m.dicts[:SS_stats]["Profit"]
+
+    m.dicts[:SS_stats]["Profit"] =
+        m.dicts[:SS_stats]["Y"] - m.dicts[:SS_stats]["mc"] * m.dicts[:SS_stats]["Y"] +
+        m.dicts[:SS_stats]["Profit_L"] + m.dicts[:SS_stats]["Profit_K"] - m[:fix]
+
+    m.dicts[:SS_stats]["Profit_int"] = (1 - m.dicts[:SS_stats]["mc"]) * m.dicts[:SS_stats]["Y"] - m[:fix]
+
+    m.dicts[:SS_stats]["AvgC"] =
+        (m[:δ_ss] * m.dicts[:grid]["K"] +
+         m[:w_bar_1] * m.dicts[:grid]["L_1"] +
+         m[:w_bar_2] * m.dicts[:grid]["L_2"] +
+         m.dicts[:param]["iota_1"] * V_1 +
+         m.dicts[:param]["iota_2"] * V_2 +
+         m[:fix]) / m.dicts[:SS_stats]["Y"]
+
+    m[:fix_ratio] = m[:fix] / m.dicts[:SS_stats]["Y"]
+
+    
+end
