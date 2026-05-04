@@ -9,7 +9,7 @@ Build the single-regime (no ZLB) objects used for filtering:
 
 
 function pq(
-    m::mBBQ,
+    m,
     hx,
     gx,
     F1_aux,

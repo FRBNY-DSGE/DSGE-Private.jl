@@ -20,7 +20,7 @@ If a keyword is omitted, the corresponding outputs are returned as `nothing` (ex
 
 
 function pq(
-    m::mBBQ,
+    m,
     hx,
     gx,
     F1_aux,
