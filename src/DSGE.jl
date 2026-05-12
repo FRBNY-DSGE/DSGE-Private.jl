@@ -171,7 +171,7 @@ export
     init_pseudo_observable_mappings!,
     Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
     PoolModel, OnionModel, SectoralOnionModel, eqcond, measurement, pseudo_measurement,
-    shock_groupings, transition, DSGEVAR, DSGEVECM, DSSW, mBBQ, kCSC,
+    shock_groupings, transition, DSGEVAR, DSGEVECM, DSSW, mBBQ, kCSC, kCSC9,
 
     # models/heterogeneous/
     KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
@@ -688,6 +688,9 @@ include("models/heterogeneous/kshape_economy/dynamics/state_reduc_laypunov.jl")
  include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/update_ss_csc.jl")
  include("models/heterogeneous/kshape_economy/models/kCSC/dynamics/state_reduc_csc.jl")
  include("models/heterogeneous/kshape_economy/models/kCSC/compute_system.jl")
+
+    ## 9KCSC
+    include("models/heterogeneous/kshape_economy/models/9kCSC/9kCSC.jl")
 
 
 

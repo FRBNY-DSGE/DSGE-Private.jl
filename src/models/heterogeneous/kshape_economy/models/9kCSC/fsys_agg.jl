@@ -894,6 +894,7 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     @sslogdeviations2levels_unprimekeys l_λ_2′_t = Yt1, control_id, ControlSS
     @sslogdeviations2levels l_λ_2_t = Yt, control_id, ControlSS
     F[:eq_l_lambda_2] = l_λ_2_t - l_λ_2′_t
+
     #control eq62: past Q
     @sslogdeviations2levels Q_lag_t = Yt, control_id, ControlSS
     F[:eq_past_q] = Q_lag_t - Q_t
