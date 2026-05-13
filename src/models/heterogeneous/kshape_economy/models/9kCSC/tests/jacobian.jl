@@ -1,6 +1,5 @@
 using Revise
 using Test
-using JLD2
 using DSGE
 using MAT
 using OrderedCollections: OrderedDict
@@ -10,23 +9,14 @@ using DataFrames
 
 include("../jacobian.jl")
 
-# jld2file = "XssYss.jld2"
-# @load jld2file StateSS ControlSS SS_stats grid param
-# grid = Dict{Symbol, Any}(Symbol(k) => grid[k] for k in ["nb", "na", "nse", "ns", "nCOP", "oc", "os", "numstates", "s_dist", "s", "K"])
-# input = matread("../input_data/update_Jacob.mat")
+input = matread("../input_data/update_Jacob.mat")
+param = input["param"]
+grid  = input["grid"]
+SS_stats = input["SS_stats"]
+Xss = vec(input["Xss"])
+Yss = vec(input["Yss"])
 
-# param = input["param"]
-# grid = input["grid"]
-# SS_stats = input["SS_stats"]
-# Xss = input["Xss"]
-# Yss = input["Yss"]
-# StateSS = vec(Xss)
-# ControlSS = vec(Yss)
-
-@load "XssYss.jld2" Xss Yss SS_stats grid param
-
-
-m = DSGE.kCSC()
+m = DSGE.kCSC9()
 
 m.dicts[:grid] = grid
 m.dicts[:SS_stats] = SS_stats
@@ -62,14 +52,16 @@ os = Int(getgrid(grid, :os))
 oc = Int(getgrid(grid, :oc))
 
 F21_aux_trim = F21_aux[: , end-os+1:end]
+n_hh_summary_matlab = 17
+
 F23_aux_trim = F23_aux[: , end-os+1:end]
-F41_aux_trim = F41_aux[: , end-os+1:end]
-F43_aux_trim = F43_aux[: , end-os+1:end]
+F41_aux_trim = F41_aux[n_hh_summary_matlab+1:end, end-os+1:end]
+F43_aux_trim = F43_aux[n_hh_summary_matlab+1:end, end-os+1:end]
 
 F22_aux_trim = F22_aux[: , end-oc+1:end]
 F24_aux_trim = F24_aux[: , end-oc+1:end]
-F42_aux_trim = F42_aux[: , end-oc+1:end]
-F44_aux_trim = F44_aux[: , end-oc+1:end]
+F42_aux_trim = F42_aux[n_hh_summary_matlab+1:end, end-oc+1:end]
+F44_aux_trim = F44_aux[n_hh_summary_matlab+1:end, end-oc+1:end]
 
 
 
