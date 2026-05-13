@@ -406,9 +406,10 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
 
     #===================================================================#
     #control eq4: taxes (labour income tax from hetfsys + capital income)
-    @sslogdeviations2levels_unprimekeys Income_Tax′_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels Income_Tax_t = Yt, control_id, ControlSS
+    #= archived future-period form: @sslogdeviations2levels_unprimekeys Income_Tax′_t = Yt1, control_id, ControlSS =#
     #= archived direct formula: T = τ_w*(w_1′*L_1 + w_2′*L_2 + UB) + τ_a*Profit =#
-    F[:eq_control_tax] = T_t - (Income_Tax′_t + m[:τ_a] * (1 - m[:Eratio]) * Profit_t)
+    F[:eq_control_tax] = T_t - (Income_Tax_t + m[:τ_a] * (1 - m[:Eratio]) * Profit_t)
 
     #===================================================================#
     #control eq5: lump-sum transfers (G regime)
@@ -437,19 +438,28 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     #===================================================================#
     #control eq9: vacancy posting sector 1
     @sslogdeviations2levels V_1_t, V_2_t, M_1_t, M_2_t, J_t = Yt, control_id, ControlSS
+    @sslogdeviations2levels J_bar_1_t, J_bar_2_t = Yt, control_id, ControlSS
 
+    F[:eq_control_vacancies_1] = V_1_t - (M_1_t / m[:ι_1] * J_bar_1_t)
+
+    #= archived weighted-J form (matches MATLAB J_bar def, not vacancy posting):
     se_dist = m.dicts[:grid]["se_dist"]
     F[:eq_control_vacancies_1] = V_1_t -
         (M_1_t / m[:ι_1] *
          (J_t[1:ns_1]' * se_dist[1:ns_1]) /
          sum(se_dist[1:ns_1]))
+    =#
 
     #===================================================================#
     #control eq10: vacancy posting sector 2
+    F[:eq_control_vacancies_2] = V_2_t - (M_2_t / m[:ι_2] * J_bar_2_t)
+
+    #= archived weighted-J form:
     F[:eq_control_vacancies_2] = V_2_t -
         (M_2_t / m[:ι_2] *
          (J_t[ns_1+1:ns_1+ns_2]' * se_dist[ns_1+1:ns_1+ns_2]) /
          sum(se_dist[ns_1+1:ns_1+ns_2]))
+    =#
 
     #===================================================================#
     #control eq11: job values J (vector over skill types)
@@ -498,8 +508,9 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     @sslogdeviations2levels r_k_t = Yt, control_id, ControlSS
     @sslogdeviations2levels_unprimekeys v′_t = Yt1, control_id, ControlSS
 
-    #= archived FOC: F[:eq_control_elasticity_v] = r_k_t - m[:δ_0] * m[:δ_1] * v_t^(m[:δ_1] - 1) =#
-    F[:eq_control_elasticity_v] = v_t - v′_t
+    #= archived inverted form: F[:eq_control_elasticity_v] = r_k_t - m[:δ_0] * m[:δ_1] * v_t^(m[:δ_1] - 1) =#
+    #= archived identity: F[:eq_control_elasticity_v] = v_t - v′_t =#
+    F[:eq_control_elasticity_v] = v_t - (r_k_t / (m[:δ_0] * m[:δ_1]))^(1 / (m[:δ_1] - 1))
 
     #===================================================================#
     #control eq15: output Y (nested-CES)
@@ -544,24 +555,16 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
          log(pi′_t / (pi_t^m[:γ] * m[:π_bar]^(1 - m[:γ])))) / m[:κ])
 
     #===================================================================#
-    #control eq20: hours per worker sector 1 — GHH with compound payroll tax
-    #= archived (m[:GHH]==1 check was always false; old simple formula):
-       if m[:GHH] == 1
-           F[:eq_control_n_1] = n_1_t - ((1 - m[:τ_w]) * w_1′_t / m[:ψ_1])^(1 / m[:ξ])
-       else
-           F[:eq_control_n_1] = n_1_t - 1.0
-       end =#
-    F[:eq_control_n_1] = n_1_t - ((1 - m[:τ_L]) * (1 - m[:τ_P]) * w_1′_t^(1 - m[:τ_P]) / m[:ψ_1])^(m[:ξ] / (1 + m[:ξ] * m[:τ_P]))
+    #control eq20: hours per worker sector 1
+    #= archived GHH formula (m[:GHH] ≠ 1 in practice, so MATLAB takes else branch → n=1):
+       F[:eq_control_n_1] = n_1_t - ((1 - m[:τ_L]) * (1 - m[:τ_P]) * w_1′_t^(1 - m[:τ_P]) / m[:ψ_1])^(m[:ξ] / (1 + m[:ξ] * m[:τ_P])) =#
+    F[:eq_control_n_1] = n_1_t - 1.0
 
     #===================================================================#
-    #control eq21: hours per worker sector 2 — GHH with compound payroll tax
-    #= archived:
-       if m[:GHH] == 1
-           F[:eq_control_n_2] = n_2_t - ((1 - m[:τ_w]) * w_2′_t / m[:ψ_2])^(1 / m[:ξ])
-       else
-           F[:eq_control_n_2] = n_2_t - 1.0
-       end =#
-    F[:eq_control_n_2] = n_2_t - ((1 - m[:τ_L]) * (1 - m[:τ_P]) * w_2′_t^(1 - m[:τ_P]) / m[:ψ_2])^(m[:ξ] / (1 + m[:ξ] * m[:τ_P]))
+    #control eq21: hours per worker sector 2
+    #= archived GHH formula (MATLAB GHH ≠ 1 → else branch → n=1):
+       F[:eq_control_n_2] = n_2_t - ((1 - m[:τ_L]) * (1 - m[:τ_P]) * w_2′_t^(1 - m[:τ_P]) / m[:ψ_2])^(m[:ξ] / (1 + m[:ξ] * m[:τ_P])) =#
+    F[:eq_control_n_2] = n_2_t - 1.0
 
     #===================================================================#
     #control eq22: matching function sector 1
@@ -750,15 +753,19 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     @sslogdeviations2levels A_g_lag_t = Yt, control_id, ControlSS
     F[:eq_past_A_g] = A_g_lag_t - A_g_t
 
-    #control eq66: l_lambda_1 (fixed at calibrated value)
-    @sslogdeviations2levels_unprimekeys l_λ_1′_t = Yt1, control_id, ControlSS
+    #control eq66: l_lambda_1 (fixed at calibrated value — MATLAB: l_lambda_1 = param["lambda_1"])
     @sslogdeviations2levels l_λ_1_t = Yt, control_id, ControlSS
-    F[:eq_l_lambda_1] = l_λ_1_t - l_λ_1′_t
+    #= archived identity form (wrong: introduces spurious F42 l_λ_1′ dependence):
+       @sslogdeviations2levels_unprimekeys l_λ_1′_t = Yt1, control_id, ControlSS
+       F[:eq_l_lambda_1] = l_λ_1_t - l_λ_1′_t =#
+    F[:eq_l_lambda_1] = l_λ_1_t - m[:λ_1]
 
-    #control eq67: l_lambda_2 (fixed at calibrated value)
-    @sslogdeviations2levels_unprimekeys l_λ_2′_t = Yt1, control_id, ControlSS
+    #control eq67: l_lambda_2 (fixed at calibrated value — MATLAB: l_lambda_2 = param["lambda_2"])
     @sslogdeviations2levels l_λ_2_t = Yt, control_id, ControlSS
-    F[:eq_l_lambda_2] = l_λ_2_t - l_λ_2′_t
+    #= archived identity form:
+       @sslogdeviations2levels_unprimekeys l_λ_2′_t = Yt1, control_id, ControlSS
+       F[:eq_l_lambda_2] = l_λ_2_t - l_λ_2′_t =#
+    F[:eq_l_lambda_2] = l_λ_2_t - m[:λ_2]
 
     #control eq62: past Q
     @sslogdeviations2levels Q_lag_t = Yt, control_id, ControlSS
