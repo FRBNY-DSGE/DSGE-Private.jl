@@ -550,7 +550,7 @@ function init_parameters!(m::kCSC9)
 
     # 1) Households
     m <= parameter(:σ, 1.5, fixed = true, description = "CRRA coefficient", tex_label = "\\sigma")
-    m <= parameter(:ξ, 3.0, fixed = true, description = "Inverse Frisch elasticity", tex_label = "\\xi")
+    m <= parameter(:ξ, 0.3333333333333333, fixed = true, description = "Inverse Frisch elasticity", tex_label = "\\xi")
     m <= parameter(:σ_χ, 3.4204542765, fixed = true, description = "σ_χ: Logit scale parameter", tex_label = "\\sigma_\\chi")
     m <= parameter(:logitratio, 2.6455668209, fixed = true, description = "Logit ratio for entrepreneur share")
     m <= parameter(:μ_χ, m[:logitratio].value * m[:σ_χ].value, fixed = true, description = "μ_χ: Logit location parameter", tex_label = "\\mu_\\chi")
@@ -562,7 +562,6 @@ function init_parameters!(m::kCSC9)
     m <= parameter(:β, 0.9875, fixed = true, description = "β: Household discount factor", tex_label = "\\beta")
     m <= parameter(:dr, 1.0 / 180.0, fixed = true, description = "Death rate")
     m <= parameter(:reinvest, 0.0, fixed = true, description = "Reinvestment fraction")
-    m <= parameter(:GHH, (1 + m[:ξ].value) / m[:ξ].value, fixed = true, description = "GHH labor aggregator = (1+ξ)/ξ")
 
     # 2) Idiosyncratic productivity
     m <= parameter(:ρ_S, 0.99, fixed = true, description = "Persistence of productivity shocks", tex_label = "\\rho_S")
@@ -581,9 +580,9 @@ function init_parameters!(m::kCSC9)
     # 3) Intermediate goods firms
     m <= parameter(:η, 3.0, fixed = true, description = "η", tex_label = "\\eta")
     m <= parameter(:π_bar, 1.005, fixed = true, description = "Steady state inflation rate", tex_label = "\\bar{\\pi}")
-    m <= parameter(:Eratio, 0.3, fixed = true, description = "Entrepreneur wealth ratio", tex_label = "\\mathrm{Eratio}")
+    m <= parameter(:Eratio, 0.21681840237248617, fixed = true, description = "Entrepreneur wealth ratio", tex_label = "\\mathrm{Eratio}")
     m <= parameter(:fix_ratio, 0.201538837260750, fixed = true, description = "Fixed cost ratio")
-    m <= parameter(:fix, -0.006006602974961139, fixed = true, description = "Fixed cost")
+    m <= parameter(:fix, 0.31156278698524453, fixed = true, description = "Fixed cost")
     m <= parameter(:b_share, 0.0, fixed = true, tex_label = "b_{\\mathrm{share}}")
     m <= parameter(:b_aux, 1.6335, fixed = true, description = "Exponent on bonus component of worker income")
     m <= parameter(:ζ, 0.401, fixed = true, description = "ζ: CES weight on capital", tex_label = "\\zeta")
@@ -597,18 +596,18 @@ function init_parameters!(m::kCSC9)
     m <= parameter(:δ_ss, 0.01, fixed = true, description = "Steady-state depreciation rate", tex_label = "\\delta_{ss}")
 
     # 5) Labor agencies
-    m <= parameter(:u_1, 0.0215, fixed = true, description = "Unemployment rate market 1")
-    m <= parameter(:v_f_1, 0.710, fixed = true, description = "Vacancy fill rate market 1")
+    m <= parameter(:u_1, 0.054, fixed = true, description = "Unemployment rate market 1")
+    m <= parameter(:v_f_1, 0.312, fixed = true, description = "Vacancy fill rate market 1")
     m <= parameter(:f_1, 0.85, fixed = true, description = "Job finding rate market 1")
     m <= parameter(:ι_1, 0.03168618124805551, fixed = true, description = "ι_1: Matching elasticity market 1", tex_label = "\\iota_1")
-    m <= parameter(:λ_1, 0.022, fixed = true, description = "λ_1: Separation rate market 1", tex_label = "\\lambda_1")
-    m <= parameter(:fix_L_1, -0.001855452309049102, fixed = true, description = "Fixed cost vacancy market 1")
-    m <= parameter(:u_2, 0.054, fixed = true, description = "Unemployment rate market 2")
-    m <= parameter(:v_f_2, 0.312, fixed = true, description = "Vacancy fill rate market 2")
+    m <= parameter(:λ_1, 0.055, fixed = true, description = "λ_1: Separation rate market 1", tex_label = "\\lambda_1")
+    m <= parameter(:fix_L_1, 0.003800982225166005, fixed = true, description = "Fixed cost vacancy market 1")
+    m <= parameter(:u_2, 0.0215, fixed = true, description = "Unemployment rate market 2")
+    m <= parameter(:v_f_2, 0.610, fixed = true, description = "Vacancy fill rate market 2")
     m <= parameter(:f_2, 0.664, fixed = true, description = "Job finding rate market 2")
     m <= parameter(:ι_2, 0.03168618124805551, fixed = true, description = "ι_2: Matching elasticity market 2", tex_label = "\\iota_2")
-    m <= parameter(:λ_2, 0.055, fixed = true, description = "λ_2: Separation rate market 2", tex_label = "\\lambda_2")
-    m <= parameter(:fix_L_2, 0.5368115823411628, fixed = true, description = "Fixed cost vacancy market 2")
+    m <= parameter(:λ_2, 0.022, fixed = true, description = "λ_2: Separation rate market 2", tex_label = "\\lambda_2")
+    m <= parameter(:fix_L_2, -0.08376121639897338, fixed = true, description = "Fixed cost vacancy market 2")
     m <= parameter(:earning_ratio, 2.016, fixed = true, description = "Earnings ratio market 1 / market 2")
 
     # 6) Fiscal
@@ -625,7 +624,7 @@ function init_parameters!(m::kCSC9)
     m <= parameter(:Rprem, 0.038285657, fixed = true, description = "Risk premium")
     m <= parameter(:b_min, -1.3006141532, fixed = true, description = "Borrowing constraint", tex_label = "b_{\\min}")
     m <= parameter(:A_g_ratio, 0.05, fixed = true, description = "Central bank asset share")
-    m <= parameter(:θ_b, 0.97, fixed = true, description = "θ_b: Parameter", tex_label = "\\theta_b")
+    m <= parameter(:θ_b, 0.90, fixed = true, description = "θ_b: Parameter", tex_label = "\\theta_b")
     m <= parameter(:Θ, 3.0, fixed = true, description = "Steady-state leverage ratio", tex_label = "\\Theta")
     m <= parameter(:Ab_ratio, 0.271426003778368, fixed = true, description = "Bank equity share")
     m <= parameter(:b_a_aux, 0.994444444444444, fixed = true, description = "", tex_label = "b_{\\text{aux}}")
@@ -639,9 +638,9 @@ function init_parameters!(m::kCSC9)
     m <= parameter(:frac_b, 0.0, fixed = true, description = "Fraction of banker households", tex_label = "\\text{frac}_b")
 
     # Other fixed parameters retained for existing 9kCSC code paths.
-    m <= parameter(:ε_w, 1.0, fixed = true, description = "ε_w: Parameter", tex_label = "\\varepsilon_w")
+    m <= parameter(:ε_w, 1.0, fixed = true, description = "ε_w: Parameter", tex_label = "\\vareψlon_w")
     m <= parameter(:ϕ_x, 0.0, fixed = true, description = "ϕ_x: Parameter", tex_label = "\\varphi_x")
-    m <= parameter(:ρ_ψ_w, 0.0, fixed = true, description = "ρ_ψ_w: Parameter", tex_label = "\\rho_{\\psi_w}")
+    m <= parameter(:ρ_ψ_w, 0.0, fixed = true, description = "ρ_ψ_w: Parameter", tex_label = "\\rho_{\\ψ_w}")
     m <= parameter(:ϕ_var, 0.0, fixed = true, description = "ϕ_var: Parameter", tex_label = "\\varphi")
     m <= parameter(:α_lk, 0.0, fixed = true, description = "α_lk: Parameter", tex_label = "\\alpha_{lk}")
     m <= parameter(:γ_B, 0.0, fixed = true, description = "γ_B: Parameter", tex_label = "\\gamma_B")
@@ -652,17 +651,18 @@ function init_parameters!(m::kCSC9)
     m <= parameter(:ρ_ψ_rp, 0.0, fixed = true, description = "ρ_Ψ_RP: Parameter", tex_label = "\\rho_{\\Psi_RP}")
     m <= parameter(:σ_RP, 0.1/100, fixed = true, description = "σ_RP: Parameter", tex_label = "\\sigma_{RP}")
     m <= parameter(:Calvo, 0.7, fixed = true, description = "Calvo: Calvo parameter", tex_label = "Calvo")
-    m <= parameter(:psi_cp, 0.0, fixed = true, description = "Equity payout share of financial intermediaries", tex_label = "\\psi_{cp}")
-    m <= parameter(:ω, 0.0014672533266109067, fixed = true, description = "")
+    m <= parameter(:ψ_cp, 0.0, fixed = true, description = "Equity payout share of financial intermediaries", tex_label = "\\ψ_{cp}")
+    m <= parameter(:ω, 0.023163631056401252, fixed = true, description = "")
     m <= parameter(:σ_s, 0.03, fixed = true, description = "Standard deviation of productivity shock")
     m <= parameter(:ϕ, 50.01728408708132, fixed = true, description = "", tex_label = "\\phi")
     m <= parameter(:λ_aux, 0.9889399981706188, fixed = true, description = "", tex_label = "\\lambda_aux")
-    m <= parameter(:λ_b_aux, 0.9989732179906115, fixed = true, description = " ", tex_label = "\\lambda_aux")
+    m <= parameter(:λ_b_aux, 1.0021601572481933, fixed = true, description = " ", tex_label = "\\lambda_aux")
     m <= parameter(:θ_2, 0.73, fixed = true, description = "", tex_label = "")
     m <= parameter(:θ, 0.27, fixed = true, description = "", tex_label = "")
     m <= parameter(:α_ll, 0.0, fixed = true, description = "", tex_label = "")
-    m <= parameter(:δ_0, 0.01, fixed = true, description = "", tex_label = "")
-    m <= parameter(:δ_1, 0.26421369934443084, fixed = true, description = "", tex_label = "")
+    m <= parameter(:δ_0, 0.0025, fixed = true, description = "", tex_label = "")
+    m <= parameter(:δ_1, 1.2662753642832159, fixed = true, description = "", tex_label = "")
+    m <= parameter(:δ_00, 0.0, fixed = true, description = "", tex_label = "\\delta 0")
     m <= parameter(:α_kk, 0.0, fixed = true, description = "", tex_label = "")
     m <= parameter(:ψ, 0.785159222538979, fixed = true, tex_label = "b_{\\mathrm{share}}")
     m <= parameter(:α, 1.7127143830661984, fixed = true, description = "", tex_label = "")
@@ -681,9 +681,9 @@ function init_parameters!(m::kCSC9)
     m <= parameter(:d_2, 0.8164683082325113, fixed = true, description = "Wage indexation market 2")
     m <= parameter(:w_bar_1, 1.0769550326163633, fixed = true, description = "Steady-state wage market 1")
     m <= parameter(:w_bar_2, 1.4045367809181948, fixed = true, description = "Steady-state wage market 2")
-    m <= parameter(:psi_1, 1.0, fixed = true, description = "Labor disutility scale market 1")
-    m <= parameter(:psi_2, 1.0, fixed = true, description = "Labor disutility scale market 2")
-    m <= parameter(:ρ_ZZ_1, 0.0, fixed = true, description = "AR(1) coefficient for ZZ_1", tex_label = "\\rho_{ZZ,1}")
+    m <= parameter(:ψ_1, 1.0445409029018848, fixed = true, description = "Labor disutility scale market 1")
+    m <= parameter(:ψ_2, 1.2868123612118891, fixed = true, description = "Labor disutility scale market 2")
+    m <= parameter(:ρ_ZZ_1, 0.9, fixed = true, description = "AR(1) coefficient for ZZ_1", tex_label = "\\rho_{ZZ,1}")
     m <= parameter(:ρ_ZZ_2, 0.9, fixed = true, description = "AR(1) coefficient for ZZ_2", tex_label = "\\rho_{ZZ,2}")
     m <= parameter(:ρ_ZZ_3, 0.9, fixed = true, description = "AR(1) coefficient for ZZ_3", tex_label = "\\rho_{ZZ,3}")
     m <= parameter(:ρ_ZZ_4, 0.9, fixed = true, description = "AR(1) coefficient for ZZ_4", tex_label = "\\rho_{ZZ,4}")
@@ -694,13 +694,13 @@ function init_parameters!(m::kCSC9)
     m <= parameter(:σ_ZZ_3, 0.0, fixed = true, description = "Standard deviation for ZZ_3 shock", tex_label = "\\sigma_{ZZ,3}")
     m <= parameter(:σ_ZZ_4, 0.0, fixed = true, description = "Standard deviation for ZZ_4 shock", tex_label = "\\sigma_{ZZ,4}")
 
-    m <= parameter(:fix2, 0.11029079205659971, fixed = true)
+    m <= parameter(:fix2, 0.1509006086724765, fixed = true)
     m <= parameter(:Z, 3.0, fixed = true)
     m <= parameter(:w, 0.35, fixed = true)
-    m <= parameter(:a, 0.4, fixed = true)
+    m <= parameter(:a, 0.4886993718200781, fixed = true)
     m<= parameter(:ρ, -0.495, fixed = true)
-    m <= parameter(:α_1, 1.4233334480878406, fixed = true)
-    m <= parameter(:α_2, 0.7578613035589008, fixed = true)
+    m <= parameter(:α_1, 0.7477979066460869, fixed = true)
+    m <= parameter(:α_2, 1.2170014089881964, fixed = true)
     m <= parameter(:σ2, 1.5, fixed = true)
     # Estimated parameters
     #m <= parameter(:κ, 0.0276503, (1e-5, 5.0), (1e-5, 5.0), SquareRoot(), GammaAlt(0.1, 0.02), fixed = false,
@@ -728,7 +728,7 @@ function init_parameters!(m::kCSC9)
                    Normal(1.7, 0.3), fixed = false,
                    description = "ϕ_π: Weight on inflation gap in monetary policy rule.",
                    tex_label = "\\varphi_\\pi")
-    m <= parameter(:ϕ_u, 0.0, (-0.5, 0.5), (-0.5, 0.5), Untransformed(),
+    m <= parameter(:ϕ_u, 0.37475243192750335, (-0.5, 0.5), (-0.5, 0.5), Untransformed(),
                    Normal(0.1, 0.05), fixed = false,
                    description = "ϕ_u: Weight on unemployment gap in monetary policy rule",
                    tex_label = "\\varphi_u")
@@ -737,11 +737,11 @@ function init_parameters!(m::kCSC9)
                    description = "ρ_R: AR(1) coefficient in the monetary policy rule.",
                    tex_label = "\\rho_R")
 
-    m <= parameter(:ρ_BB, 0.5057547780246887, (1e-5, 1 - 1e-5), (1e-5, 1 - 1e-5), SquareRoot(),
+    m <= parameter(:ρ_BB, 0.9886677881949328, (1e-5, 1 - 1e-5), (1e-5, 1 - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_BB: AR(1) coefficient in the BB process.",
                    tex_label = "\\rho_{BB}")
-    m <= parameter(:ρ_B, 0.792722753458172, (1e-5, 1 - 1e-5), (1e-5, 1 - 1e-5), SquareRoot(),
+    m <= parameter(:ρ_B, 0.5057547780246887, (1e-5, 1 - 1e-5), (1e-5, 1 - 1e-5), SquareRoot(),
                    BetaAlt(0.5, 0.2), fixed = false,
                    description = "ρ_B: AR(1) coefficient in the intertemporal preference shifter process.",
                    tex_label = "\\rho_B")
@@ -811,7 +811,15 @@ function init_parameters!(m::kCSC9)
                    BetaAlt(0.5, 0.15), fixed = false,
                    description = "γ: The log of the steady-state growth rate of technology",
                    tex_label = "\\gamma")
-    
+   
+    ## NEW PARAMS
+
+    m <= parameter(:τ_L, 0.180, fixed = true, description = "τ_L: Labour income tax rate", tex_label = "\\tau_L")
+    m <= parameter(:τ_P, 0.102, fixed = true, description = "τ_P: Payroll tax rate", tex_label = "\\tau_P")
+    m <= parameter(:GHH, (1 + m[:ξ].value) / (m[:ξ].value + m[:τ_P].value), fixed = true, description = "GHH labor aggregator = (1+ξ)/ξ")
+
+
+
     # Setting steady-state parameters
     nx = get_setting(m, :nx)
     ns = get_setting(m, :ns)
