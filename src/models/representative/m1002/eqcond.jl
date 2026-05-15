@@ -450,7 +450,7 @@ function eqcond(m::Model1002, reg::Int)
     end
     =#
 
-    if subspec(m) ∈ ["ss108", "ss31"]
+    if subspec(m) ∈ ["ss108", "ss31", "ss33"]
         # HLW-style two-shock permanent TFP. In this codebase z_t is the GROWTH RATE
         # of TFP and baseline zp_t is its AR(1) growth-rate component — that's exactly
         # the user's "permanent growth-rate component" p2. Here we add one new IID
@@ -654,6 +654,24 @@ end
     Γ1[eq[:eq_π_star], endo[:π_star_t]] = m[:ρ_π_star]
     Ψ[eq[:eq_π_star], exo[:π_star_sh]]  = nopish
 
+    # Anticipated TFP Shocks
+    if subspec(m) ∈ ["ss32", "ss33"]
+        # Shock enters 4 periods before
+        Γ0[eq[:eq_z_ant_tl4], endo[:z_ant_tl4]] = 1.
+        Ψ[eq[:eq_z_ant_tl4], exo[:z_ant_sh]] = 1.
+
+        # Propagation chain
+        Γ0[eq[:eq_z_ant_tl3], endo[:z_ant_tl3]] = 1.
+        Γ1[eq[:eq_z_ant_tl3], endo[:z_ant_tl4]] = 1.
+        Γ0[eq[:eq_z_ant_tl2], endo[:z_ant_tl2]] = 1.
+        Γ1[eq[:eq_z_ant_tl2], endo[:z_ant_tl3]] = 1.
+        Γ0[eq[:eq_z_ant_tl1], endo[:z_ant_tl1]] = 1.
+        Γ1[eq[:eq_z_ant_tl1], endo[:z_ant_tl2]] = 1.
+
+        # Hit: z_ant_tl1(t-1) = e(t-4) enters today's TFP growth z_t
+        Γ1[eq[:eq_z], endo[:z_ant_tl1]] = 1.
+    end
+
     # Anticipated policy shocks
     if n_mon_anticipated_shocks(m) > 0
 
@@ -679,6 +697,7 @@ end
             end
         end
     end
+
 
     if !isempty(mon_anticipated_ait_shocks(m))
         ## remove this if conditional

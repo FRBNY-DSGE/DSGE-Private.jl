@@ -320,7 +320,7 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
     # the permanent-LEVEL component (p1) and permanent-GROWTH component (p2). These
     # are post-gensys accumulators, modeled on the cum_z_t pattern above, so they
     # carry unit-root self-loops without entering the canonical QZ decomposition.
-    if subspec(m) ∈ ["ss108", "ss31"]
+    if subspec(m) ∈ ["ss108", "ss31", "ss33"]
         # p1 level: zp_level_t = zp_level_{t-1} + zp_level_sh  (RW on the level)
         TTT_aug[endo_new[:zp_level_t], endo_new[:zp_level_t]] = 1.0
         RRR_aug[endo_new[:zp_level_t], exo[:zp_level_sh]]     = 1.0
@@ -329,6 +329,12 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
         # AR(1) growth-rate component zp_t — same idea as cum_z_t integrating z_t)
         TTT_aug[endo_new[:zp_growth_t], endo[:zp_t]]            = 1.0
         TTT_aug[endo_new[:zp_growth_t], endo_new[:zp_growth_t]] = 1.0
+    end
+
+    ## Anticipated TFP Shocks
+    if subspec(m) ∈ ["ss32", "ss33"]
+        TTT_aug[endo_new[:z_ant_level_t], endo_new[:z_ant_level_t]] = 1.0
+        TTT_aug[endo_new[:z_ant_level_t], endo[:z_ant_tl1]] = 1.0
     end
 
     ### CCC Modifications

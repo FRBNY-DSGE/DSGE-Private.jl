@@ -137,6 +137,10 @@ function init_subspec!(m::Model1002)
         return ss108!(m)
     elseif subspec(m) == "ss31"
         return ss31!(m)
+    elseif subspec(m) == "ss32"
+        return ss32!(m)
+    elseif subspec(m) == "ss33"
+        return ss33!(m)
     else
         error("This subspec is not defined.")
     end
@@ -7119,22 +7123,28 @@ end
 =#
 function ss108!(m)
     ss104!(m)
-
-    m <= parameter(:σ_zp_level, 0.1662, (1e-8, 5.), (1e-8, 5.),
-                   ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false,
-                   description = "σ_zp_level: std. dev. of the permanent-LEVEL TFP shock (p1, IID).",
-                   tex_label   = "\\sigma_{zp,\\text{level}}")
+    # σ_zp_level is declared in init_parameters! (m1002.jl) to avoid the
+    # m.keys off-by-len(steady_state) bug. Body intentionally empty here.
 end
 
 
 function ss31!(m)
     ss10!(m)
-
-    m <= parameter(:σ_zp_level, 0.1662, (1e-8, 5.), (1e-8, 5.),
-                   ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false,
-                   description = "σ_zp_level: std. dev. of the permanent-LEVEL TFP shock (p1, IID).",
-                   tex_label   = "\\sigma_{zp,\\text{level}}")
+    # σ_zp_level is declared in init_parameters! (m1002.jl) to avoid the
+    # m.keys off-by-len(steady_state) bug. Body intentionally empty here.
 end
+
+function ss32!(m)
+    ss10!(m)
+    # σ_z_ant is declared in init_parameters! (m1002.jl) to avoid the
+    # m.keys off-by-len(steady_state) bug. Body intentionally empty here.
+end
+
+function ss33!(m)
+    ss31!(m)
+    # σ_z_ant is declared in init_parameters! (m1002.jl). Body intentionally empty.
+end
+
 
 """
 '''

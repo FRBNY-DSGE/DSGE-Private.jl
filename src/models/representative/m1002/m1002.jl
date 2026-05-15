@@ -248,7 +248,7 @@ function init_model_indices!(m::Model1002)
     end
     =#
 
-    if subspec(m) ∈ ["ss108", "ss31"]
+    if subspec(m) ∈ ["ss108", "ss31", "ss33"]
         # One new IID shock for the permanent LEVEL component (p1). The AR(1)
         # growth component (p2) is already baseline zp_t / zp_sh.
         push!(exogenous_shocks, :zp_level_sh)
@@ -259,6 +259,16 @@ function init_model_indices!(m::Model1002)
         push!(endogenous_states_augmented, :zp_level_t)
         push!(endogenous_states_augmented, :zp_growth_t)
     end
+
+    if subspec(m) ∈ ["ss32", "ss33"]
+        push!(exogenous_shocks, :z_ant_sh)
+        for i ∈ 1:4
+            push!(endogenous_states, Symbol("z_ant_tl$i"))
+            push!(equilibrium_conditions, Symbol("eq_z_ant_tl$i"))
+        end
+        push!(endogenous_states_augmented, :z_ant_level_t)
+    end
+
 
     # COVID counterparts for standard business cycle shocks
     if subspec(m) in ["ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83"]
@@ -315,12 +325,25 @@ function init_model_indices!(m::Model1002)
         end
         m <= Setting(:integrated_series, integ_series)
     end
-    if subspec(m) ∈ ["ss108", "ss31"]
+    if subspec(m) ∈ ["ss108", "ss31", "ss33"]
         # Register the two HLW-style level trackers as integrated series so that
         # measurement's k_periods_ahead_expected_sums takes the integ_series=true
         # branch instead of computing (I - TTT) \ ..., which is singular whenever
         # TTT_aug has unit-root self-loops (as these trackers do).
         prod_integ = [:zp_level_t, :zp_growth_t]
+        if haskey(get_settings(m), :integrated_series)
+            m <= Setting(:integrated_series,
+                         union(get_setting(m, :integrated_series), prod_integ))
+        else
+            m <= Setting(:integrated_series, prod_integ)
+        end
+    end
+    if subspec(m) ∈ ["ss32", "ss33"]
+        # z_ant_level_t has a unit-root self-loop (post-gensys accumulator), so it
+        # must be registered as an integrated series for the same reason zp_level_t
+        # and zp_growth_t are above — otherwise (I - TTT_aug) is singular in
+        # k_periods_ahead_expected_sums.
+        prod_integ = [:z_ant_level_t]
         if haskey(get_settings(m), :integrated_series)
             m <= Setting(:integrated_series,
                          union(get_setting(m, :integrated_series), prod_integ))
@@ -1013,6 +1036,25 @@ if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_an
 
 
 end
+
+    # Declared here (rather than in ss31!/ss108!/ss32!/ss33!) so that
+    # m.keys[name] resolves to the correct slot. When a parameter is appended
+    # after steady_state slots exist, the `<=` operator's key-index formula
+    # mis-counts and m[name] returns the wrong (steady-state) entry → NaN
+    # in QQ. init_parameters! runs before any steady_state slots are added,
+    # so the formula works correctly here.
+    if subspec(m) ∈ ["ss108", "ss31", "ss33"]
+        m <= parameter(:σ_zp_level, 0.1662, (1e-8, 5.), (1e-8, 5.),
+                       ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false,
+                       description = "σ_zp_level: std. dev. of the permanent-LEVEL TFP shock (p1, IID).",
+                       tex_label   = "\\sigma_{zp,\\text{level}}")
+    end
+    if subspec(m) ∈ ["ss32", "ss33"]
+        m <= parameter(:σ_z_ant, 0.1662, (1e-8, 5.), (1e-8, 5.),
+                       ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed = false,
+                       description = "σ_z_ant: std. dev. of the 4-period anticipated TFP-level shock.",
+                       tex_label   = "\\sigma_{z,\\text{ant}}")
+    end
 
 
 

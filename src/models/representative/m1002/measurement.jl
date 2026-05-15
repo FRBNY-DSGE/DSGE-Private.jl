@@ -348,9 +348,15 @@ end
         QQ[exo[:x_sh], exo[:x_sh]]    = m[:σ_x]^2
     end
     =#
-    if subspec(m) ∈ ["ss108", "ss31"]
+    if subspec(m) ∈ ["ss108", "ss31", "ss33"]
         QQ[exo[:zp_level_sh], exo[:zp_level_sh]] = m[:σ_zp_level]^2
     end
+
+    # Anticipated TFP shock
+    if subspec(m) ∈ ["ss32", "ss33"]
+        QQ[exo[:z_ant_sh], exo[:z_ant_sh]] = m[:σ_z_ant]^2
+    end
+
     QQ[exo[:tfp_sh], exo[:tfp_sh]]         = m[:σ_tfp]^2
     QQ[exo[:gdpdef_sh], exo[:gdpdef_sh]]   = m[:σ_gdpdef]^2
     QQ[exo[:corepce_sh], exo[:corepce_sh]] = m[:σ_corepce]^2
