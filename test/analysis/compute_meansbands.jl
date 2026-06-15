@@ -1,14 +1,16 @@
 using Nullables
+using JLD2
+using FileIO
 path = dirname(@__FILE__)
 
 # Initialize model object
-m = AnSchorfheide(testing = true)
-m <= Setting(:saveroot, tempdir())
-m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
-m <= Setting(:date_conditional_end, quartertodate("2015-Q4"))
-m <= Setting(:forecast_uncertainty_override, Nullables.Nullable(false))
-m <= Setting(:use_population_forecast, true)
-m <= Setting(:compute_shockdec_bands, true)
+m = DSGE.AnSchorfheide(testing = true)
+m <= DSGE.Setting(:saveroot, tempdir())
+m <= DSGE.Setting(:date_forecast_start, quartertodate("2015-Q4"))
+m <= DSGE.Setting(:date_conditional_end, quartertodate("2015-Q4"))
+m <= DSGE.Setting(:forecast_uncertainty_override, Nullables.Nullable(false))
+m <= DSGE.Setting(:use_population_forecast, true)
+m <= DSGE.Setting(:compute_shockdec_bands, true)
 
 estroot = normpath(joinpath(dirname(@__FILE__), "..", "reference"))
 overrides = forecast_input_file_overrides(m)
@@ -46,7 +48,7 @@ end
 
 # Full-distribution
 @everywhere using DSGE
-m <= Setting(:forecast_block_size, 5)
+m <= DSGE.Setting(:forecast_block_size, 5)
 forecast_one(m, :full, :none, output_vars, verbose = :none)
 compute_meansbands(m, :full, :none, output_vars; compute_shockdec_bands = true, verbose = :none)
 meansbands_to_matrix(m, :full, :none, output_vars; verbose = :none)
