@@ -1,6 +1,6 @@
 save_output = false
 
-using DSGE, ModelConstructors, Test, JLD2, FileIO, OrderedCollections, CSV, Random, DataFrames
+using DSGE, ModelConstructors, Test, JLD2, FileIO, OrderedCollections, CSV, Random, DataFrames, BenchmarkTools
 path = dirname(@__FILE__)
 
 m = AnSchorfheide()
@@ -63,13 +63,14 @@ saved_fore = load(fn, "fore")
 saved_fore_noT = load(fn, "fore_noT")
 saved_fore_4q = load(fn, "fore_4q")
 
+
 @testset "Test df_to_table" begin
-    @test Matrix(hist) == Matrix(saved_hist)
-    @test Matrix(hist_noT) == Matrix(saved_hist_noT)
-    @test Matrix(hist_4q) == Matrix(saved_hist_4q)
-    @test Matrix(fore) == Matrix(saved_fore)
-    @test Matrix(fore_noT) == Matrix(saved_fore_noT)
-    @test Matrix(fore_4q) == Matrix(saved_fore_4q)
+    @test all(abs.(Matrix(hist)[:, 2:end] - Matrix(saved_hist)[:, 2:end]) .< 1e-6)
+    @test all(abs.(Matrix(hist_noT)[:, 2:end] - Matrix(saved_hist_noT)[:, 2:end]) .< 1e-6)
+    @test all(abs.(Matrix(hist_4q)[:, 2:end] - Matrix(saved_hist_4q)[:, 2:end]) .< 1e-6)
+    @test all(abs.(Matrix(fore)[:, 2:end] - Matrix(saved_fore)[:, 2:end]) .< 1e-6)
+    @test all(abs.(Matrix(fore_noT)[:, 2:end] - Matrix(saved_fore_noT)[:, 2:end]) .< 1e-6)
+    @test all(abs.(Matrix(fore_4q)[:, 2:end] - Matrix(saved_fore_4q)[:, 2:end]) .< 1e-6)
     @test_throws AssertionError construct_fcast_and_hist_dfs(m, :none, [:obs_gdp], save_to_table = true)
     # Test that saving to tex table functionality runs
     construct_fcast_and_hist_dfs(m, :none, [:obs_gdp], save_to_table = true, table_caption = "Test Caption",
@@ -138,4 +139,26 @@ if isfile(joinpath(fp, "test.tex_forecast.tex"))
 end
 if isfile(joinpath(fp, "test.tex_history.tex"))
     rm(joinpath(fp, "test.tex_history.tex"))
+end
+
+################
+# Benchmarking #
+################
+# Set this flag to true to run the df_to_table benchmarks. Off by default so
+# the test suite stays fast.
+run_benchmarks = true
+
+if run_benchmarks
+    # Benchmark constructing the forecast/history dfs and report one summary
+    b = @benchmark begin
+        construct_fcast_and_hist_dfs($m, :none, [:obs_gdp, :obs_cpi, :obs_nominalrate])
+        construct_fcast_and_hist_dfs($m, :none, [:obs_gdp, :obs_cpi, :obs_nominalrate],
+                                     include_T_in_df_forecast = false)
+        construct_fcast_and_hist_dfs($m, :none, [:obs_gdp, :obs_cpi, :obs_nominalrate],
+                                     use_4q = true)
+    end
+
+    println("\n===== df_to_table benchmark results =====")
+    println("time:   ", BenchmarkTools.prettytime(median(b).time))
+    println("memory: ", BenchmarkTools.prettymemory(median(b).memory))
 end

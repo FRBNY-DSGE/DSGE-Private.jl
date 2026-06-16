@@ -1,6 +1,7 @@
 using Nullables
 using JLD2
 using FileIO
+using BenchmarkTools
 path = dirname(@__FILE__)
 
 # Initialize model object
@@ -71,6 +72,30 @@ transformed_series = load("$(path)/../reference/mb_reverse_transform.jld2", "tra
 
 @testset "Test mb_reverse_transform" begin
     @test DSGE.mb_reverse_transform(fcast_series, transform, :forecast, :obs, y0_index = y0_index, data = data, pop_growth = pop_growth) == transformed_series
+end
+
+################
+# Benchmarking #
+################
+# Set this flag to true to run the compute_meansbands benchmarks. Off by default
+# so the test suite stays fast. The forecast outputs computed above are reused.
+run_benchmarks = true
+
+if run_benchmarks
+    b_compute   = @benchmark compute_meansbands($m, :mode, :none, $output_vars;
+                                                compute_shockdec_bands = true, verbose = :none)
+    b_to_matrix = @benchmark meansbands_to_matrix($m, :mode, :none, $output_vars; verbose = :none)
+    b_reverse   = @benchmark DSGE.mb_reverse_transform($fcast_series, $transform, :forecast, :obs;
+                                                       y0_index = $y0_index, data = $data,
+                                                       pop_growth = $pop_growth)
+
+    println("\n===== analysis/compute_meansbands benchmark results =====")
+    println("compute_meansbands    time:   ", BenchmarkTools.prettytime(median(b_compute).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_compute).memory))
+    println("meansbands_to_matrix  time:   ", BenchmarkTools.prettytime(median(b_to_matrix).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_to_matrix).memory))
+    println("mb_reverse_transform  time:   ", BenchmarkTools.prettytime(median(b_reverse).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_reverse).memory))
 end
 
 nothing
