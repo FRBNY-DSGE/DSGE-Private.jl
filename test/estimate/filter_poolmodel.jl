@@ -1,3 +1,5 @@
+using Statistics, StateSpaceRoutines
+
 # Note that this test assumes TPF properly works
 pm = PoolModel("ss1")
 pm <= Setting(:data_vintage, "190822")

@@ -28,7 +28,7 @@ expect = hessian_expected[1:max_free_ind, 1:max_free_ind]
 actual = hessian[1:max_free_ind, 1:max_free_ind]
 
 @testset "Check Hessian calculation" begin
-    @test @test_matrix_approx_eq_eps expect actual 0.1 3.0
+    @test @test_matrix_approx_eq_eps(expect, actual, 0.1, 3.0)
 end
 
 m.testing = false

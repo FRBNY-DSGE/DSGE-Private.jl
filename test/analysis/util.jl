@@ -1,4 +1,4 @@
-using DSGE, Test, ModelConstructors
+using DSGE, Test, ModelConstructors, SparseArrays
 
 m = AnSchorfheide()
 homedirpath = Sys.iswindows() ? joinpath(homedir(),".freddatarc") : joinpath(ENV["HOME"],".freddatarc")

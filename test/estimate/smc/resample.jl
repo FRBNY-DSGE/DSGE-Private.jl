@@ -7,6 +7,8 @@ else
     ver = "160"
 end
 
+path = dirname(@__FILE__)
+
 @everywhere Random.seed!(42)
 
 weights = rand(400)
@@ -17,7 +19,7 @@ test_multi_resample  = SMC.resample(weights, method = :multinomial)
 test_poly_resample   = SMC.resample(weights, method = :polyalgo)
 
 if writing_output
-    jldopen("reference/resample_version=" * ver * ".jld2",
+    jldopen("$path/reference/resample_version=" * ver * ".jld2",
             true, true, true, IOStream) do file
         write(file, "sys", test_sys_resample)
         write(file, "multi", test_multi_resample)
@@ -25,9 +27,9 @@ if writing_output
     end
 end
 
-saved_sys_resample   = load("reference/resample_version=" * ver * ".jld2", "sys")
-saved_multi_resample = load("reference/resample_version=" * ver * ".jld2", "multi")
-saved_poly_resample  = load("reference/resample_version=" * ver * ".jld2", "poly")
+saved_sys_resample   = load("$path/../../reference/resample_version=" * ver * ".jld2", "sys")
+saved_multi_resample = load("$path/../../reference/resample_version=" * ver * ".jld2", "multi")
+saved_poly_resample  = load("$path/../../reference/resample_version=" * ver * ".jld2", "poly")
 
 ####################################################################
 

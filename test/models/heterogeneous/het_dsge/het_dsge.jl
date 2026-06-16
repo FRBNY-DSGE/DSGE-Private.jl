@@ -1,6 +1,7 @@
 using DSGE
 using Test, BenchmarkTools
 using JLD2
+using DSGEModels
 
 import DSGE: klein_transition_matrices, n_model_states, n_backward_looking_states
 
@@ -12,7 +13,7 @@ check_irfs = true
 
 path = dirname(@__FILE__)
 
-m = HetDSGE()
+m = DSGEModels.HetDSGE()
 
 # Steady-state computation
 if check_steady_state

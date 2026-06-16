@@ -1,3 +1,5 @@
+using JLD, Test, FileIO
+
 path = dirname(@__FILE__)
 
 # Set up arguments
@@ -50,7 +52,7 @@ states, obs, pseudo = impulse_responses(m, system, horizon, shock_names, shock_v
 end
 
 exp_states_shockset, exp_obs_shockset, exp_pseudo_shockset =
-    jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
+    JLD2.jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
         read(file, "exp_states_shockset"), read(file, "exp_obs_shockset"), read(file, "exp_pseudo_shockset")
     end
 
@@ -72,7 +74,7 @@ states, obs, pseudo = impulse_responses(m, system, horizon, shock_name, state_na
 end
 
 exp_states_shockstates, exp_obs_shockstates, exp_pseudo_shockstates =
-    jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
+    JLD2.jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
         read(file, "exp_states_shockstate"), read(file, "exp_obs_shockstate"), read(file, "exp_pseudo_shockstate")
     end
 
@@ -94,7 +96,7 @@ states, obs, pseudo = impulse_responses(m, system, horizon, shock_name, obs_name
 end
 
 exp_states_shockobs, exp_obs_shockobs, exp_pseudo_shockobs =
-    jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
+    JLD2.jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
         read(file, "exp_states_shockobs"), read(file, "exp_obs_shockobs"), read(file, "exp_pseudo_shockobs")
     end
 
@@ -132,7 +134,7 @@ states, obs, pseudo = impulse_responses(m, system, horizon, shock_names, shock_v
 end
 
 exp_states_shockset, exp_obs_shockset, exp_pseudo_shockset =
-    jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
+    JLD2.jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
         read(file, "exp_states_shockset"), read(file, "exp_obs_shockset"), read(file, "exp_pseudo_shockset")
     end
 
@@ -154,7 +156,7 @@ states, obs, pseudo = impulse_responses(m, system, horizon, shock_name, state_na
 end
 
 exp_states_shockstates, exp_obs_shockstates, exp_pseudo_shockstates =
-    jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
+    JLD2.jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
         read(file, "exp_states_shockstate"), read(file, "exp_obs_shockstate"), read(file, "exp_pseudo_shockstate")
     end
 
@@ -176,7 +178,7 @@ states, obs, pseudo = impulse_responses(m, system, horizon, shock_name, obs_name
 end
 
 exp_states_shockobs, exp_obs_shockobs, exp_pseudo_shockobs =
-    jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
+    JLD2.jldopen("$path/../reference/impulse_responses_out.jld2", "r") do file
         read(file, "exp_states_shockobs"), read(file, "exp_obs_shockobs"), read(file, "exp_pseudo_shockobs")
     end
 

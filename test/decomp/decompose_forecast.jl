@@ -12,6 +12,9 @@ function make_test_model(year::Int)
     m <= Setting(:date_forecast_start, DSGE.quartertodate("$year-Q1"))
     m <= Setting(:date_conditional_end, DSGE.quartertodate("$year-Q1"))
     m <= Setting(:forecast_horizons, 16)
+    m <= Setting(:n_hist_regimes, 1)
+    m <= Setting(:model2para_regime, Dict{Symbol, Dict{Int, Int}}())
+
     return m
 end
 

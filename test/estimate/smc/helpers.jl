@@ -1,3 +1,5 @@
+using SMC
+
 writing_output = false
 if VERSION < v"1.5"
     ver = "111"

@@ -1,4 +1,4 @@
-using JLD2
+using JLD2, StateSpaceRoutines
 
 # Verifies that tpf works properly with a PoolModel object
 tpf_main_input = load(joinpath(dirname(@__FILE__), "../reference/tpf_poolmodel.jld2"))

@@ -1,11 +1,11 @@
-using DSGE
+using DSGE, DelimitedFiles
 
 path = dirname(@__FILE__)
 # Set parameters for testing
-custom_settings = [Setting(:date_forecast_start, quartertodate("2015-Q4"))]
+custom_settings = [DSGE.Setting(:date_forecast_start, quartertodate("2015-Q4"))]
 m = AnSchorfheide(custom_settings = custom_settings, testing = true)
-m <= Setting(:use_parallel_workers, true)
-parallel = get_setting(m, :use_parallel_workers)
+m <= DSGE.Setting(:use_parallel_workers, true)
+parallel = DSGE.get_setting(m, :use_parallel_workers)
 
 # Set number of draws
 draws = 10000
@@ -45,14 +45,14 @@ for weights in weights_vec
     end
 
     count = count./(draws*n_parts)
-    count = round(count,3)
-    act_weights = round(weights./sum(weights),3)
+    count = round.(count; digits=3)
+    act_weights = round.(weights./sum(weights); digits=3)
 
     open("$path/../reference/systematic_resampling_test.csv","a") do file
         write(file,"\nActual Probabilities: ")
-        writecsv(file,act_weights')
+        writedlm(file,act_weights',',')
         write(file,"Tested Probabilities: ")
-        writecsv(file,count')
+        writedlm(file,count',',')
         write(file,"---------------------")
     end
 

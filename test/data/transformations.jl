@@ -1,4 +1,4 @@
-# using DSGE, ModelConstructors, Dates, CSV, FileIO, Random, JLD2, Test, Nullables
+using DSGE, ModelConstructors, Dates, CSV, FileIO, Random, JLD2, Test, Nullables
 # Load data to use for tests and prep model objet
 path = dirname(@__FILE__)
 data = JLD2.jldopen("$path/../reference/load_data_out.jld2", "r") do file

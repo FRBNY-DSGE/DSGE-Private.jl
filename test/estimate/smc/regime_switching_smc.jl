@@ -74,7 +74,7 @@ regswitch_lik = DSGE.likelihood(m, data)
     # Regime switching estimation
     true_para = ModelConstructors.get_values(m.parameters)
     Random.seed!(1793)
-    DSGE.smc2(m, data, regime_switching = true, run_csminwel = false,
+    DSGE.smc2(m, data; regime_switching = true, run_csminwel = false,
               verbose = :none)
 
     posterior_means = vec(mean(load_draws(m, :full), dims = 1))
