@@ -1,4 +1,5 @@
 using SMC
+using BenchmarkTools
 
 writing_output = false
 if VERSION < v"1.5"
@@ -205,4 +206,46 @@ saved_blocks      = load(joinpath(dirname(@__FILE__),"reference/helpers_blocking
     @test test_blocks_free == saved_blocks_free
     @test test_blocks_all  == saved_blocks_all
     @test test_blocks      == saved_blocks
+end
+
+####################################################################
+# Benchmarking
+####################################################################
+# Flip to true to run; off by default. 
+run_benchmarks = true
+
+if run_benchmarks
+    refdir = joinpath(dirname(@__FILE__), "reference")
+    sa  = load(joinpath(refdir, "solve_adaptive_phi.jld2"))
+    mv  = load(joinpath(refdir, "mvnormal_inputs.jld2"))
+    pd  = load(joinpath(refdir, "proposal_densities_in.jld2"))
+    es  = load(joinpath(refdir, "ess_inputs.jld2"))
+    mut = load(joinpath(refdir, "mutation_inputs.jld2"))
+
+    d_full = mut["d"]
+    d_deg  = DegenerateMvNormal(d_full.μ, d_full.Σ.mat)
+
+    b_solve = @benchmark SMC.solve_adaptive_ϕ($(sa["cloud"]), $(sa["proposed_fixed_schedule"]),
+                                              $(sa["i"]), $(sa["j"]), $(sa["phi_prop"]),
+                                              $(sa["phi_n1"]), $(sa["tempering_target"]),
+                                              $(sa["resampled_last_period"]))
+    b_mvdraw = @benchmark SMC.mvnormal_mixture_draw($(mv["para_subset"]), $(mv["d_subset"]);
+                                                   c = $(mv["c"]), α = $(mv["α"]))
+    b_getcov = @benchmark SMC.get_cov($d_full)
+    b_propd  = @benchmark SMC.compute_proposal_densities($(pd["para_draw"]), $(pd["para_subset"]),
+                                                        $(pd["d_subset"]); α = $(pd["α"]), c = $(pd["c"]))
+    b_ess    = @benchmark SMC.compute_ESS($(es["loglh"]), $(es["current_weights"]),
+                                         $(es["ϕ_n"]), $(es["ϕ_n1"]))
+    b_blocks = @benchmark SMC.generate_free_blocks($n_free_para, $n_blocks)
+
+    println("\n===== estimate/smc/helpers benchmark results =====")
+    for (name, b) in [("solve_adaptive_ϕ        ", b_solve),
+                      ("mvnormal_mixture_draw   ", b_mvdraw),
+                      ("get_cov                 ", b_getcov),
+                      ("compute_proposal_densities", b_propd),
+                      ("compute_ESS             ", b_ess),
+                      ("generate_free_blocks    ", b_blocks)]
+        println(name, "  time:   ", BenchmarkTools.prettytime(median(b).time),
+                "   memory: ", BenchmarkTools.prettymemory(median(b).memory))
+    end
 end

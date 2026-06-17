@@ -1,3 +1,5 @@
+using BenchmarkTools
+
 write_test_output = false
 if VERSION < v"1.5"
     ver = "111"
@@ -72,4 +74,25 @@ saved_particles = load(joinpath(path, "reference/mutation_outputs_version=" * ve
     for i = 1:length(saved_particles)
         @test isapprox(saved_particles[i], new_particles[i], nans = true)
     end
+end
+
+###################################################################
+# Benchmarking
+###################################################################
+# Flip to true to run; off by default. 
+run_benchmarks = true
+
+if run_benchmarks
+    Σ_mat = Matrix(d.Σ)
+
+    # Full per-stage sweep: mutate every particle (cost ~ n_parts single moves).
+    b_all = @benchmark [SMC.mutation(my_likelihood, $(m.parameters), $data,
+                                     $old_part_cloud.particles[j, vcat(1:16, 18:22)],
+                                     $(d.μ), $Σ_mat, 16, $blocks_free, $blocks_all,
+                                     $ϕ_n, $ϕ_n1; c = $c, α = $α, old_data = $old_data)
+                        for j = 1:$n_parts]
+
+    println("\n===== estimate/smc/mutation benchmark results =====")
+    println("mutation (400 particles)  time:   ", BenchmarkTools.prettytime(median(b_all).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_all).memory))
 end
