@@ -1,3 +1,5 @@
+using BenchmarkTools
+
 # Load data to use for tests
 path = dirname(@__FILE__)
 fred = CSV.read("$path/../reference/fred_160812.csv", DataFrame)
@@ -72,6 +74,30 @@ end
     df = df[start_date .<= df[!,:date] .<= end_date, :]
     DSGE.missing_cond_vars!(m, df, cond_type = :full, check_empty_columns = false)
     @test @test_matrix_approx_eq df_to_matrix(m,df, cond_type = :full) exp_cond_data
+end
+
+################
+# Benchmarking #
+################
+# Flip to true to run; off by default. Inputs are local CSV/JLD2, no FRED API.
+run_benchmarks = true
+
+if run_benchmarks
+    b_collect   = @benchmark collect_data_transforms($m)
+    b_transform = @benchmark transform_data($m, $levels; cond_type = :none, verbose = :none)
+    b_pop_hp    = @benchmark DSGE.transform_population_data($fred, $pop_forecast, :CNP16OV,
+                                                            pad_forecast_start = true)
+    b_pop_nohp  = @benchmark DSGE.transform_population_data($fred, $pop_forecast, :CNP16OV,
+                                                            use_hpfilter = false)
+
+    println("\n===== data/transform_data benchmark results =====")
+    for (name, b) in [("collect_data_transforms        ", b_collect),
+                      ("transform_data (none)          ", b_transform),
+                      ("transform_population_data (hp) ", b_pop_hp),
+                      ("transform_population_data (nohp)", b_pop_nohp)]
+        println(name, "  time:   ", BenchmarkTools.prettytime(median(b).time),
+                "   memory: ", BenchmarkTools.prettymemory(median(b).memory))
+    end
 end
 
 nothing
