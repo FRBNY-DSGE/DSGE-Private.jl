@@ -1,4 +1,4 @@
-using DSGE, DelimitedFiles
+using DSGE, DelimitedFiles, BenchmarkTools
 
 path = dirname(@__FILE__)
 # Set parameters for testing
@@ -56,6 +56,23 @@ for weights in weights_vec
         write(file,"---------------------")
     end
 
+end
+
+################
+# Benchmarking #
+################
+# Flip to true to run; off by default. Pure numerics, no FRED API.
+run_benchmarks = true
+
+if run_benchmarks
+    # Particle-filter-scale weight vector (n=1000, matching n_particles).
+    w_large = collect(1.0:1000.0)
+
+    b_large = @benchmark resample($w_large; method = :systematic, parallel = false)
+
+    println("\n===== estimate/resample benchmark results =====")
+    println("resample systematic (n=1000)  time:   ", BenchmarkTools.prettytime(median(b_large).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_large).memory))
 end
 
 nothing
