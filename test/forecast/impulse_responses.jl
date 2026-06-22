@@ -1,3 +1,5 @@
+using BenchmarkTools
+
 path = dirname(@__FILE__)
 
 # Set up arguments
@@ -9,6 +11,8 @@ end
 
 # Run impulse responses
 states, obs, pseudo = impulse_responses(m, system)
+
+display(@benchmark impulse_responses($m, $system))
 
 # Compare to expected output
 exp_states, exp_obs, exp_pseudo =

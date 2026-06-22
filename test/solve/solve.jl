@@ -1,4 +1,4 @@
-using HDF5, Test, DSGE, ModelConstructors
+using HDF5, Test, DSGE, ModelConstructors, BenchmarkTools
 
 path = dirname(@__FILE__)
 
@@ -9,6 +9,8 @@ RRR_expected = h5read(file, "RRR")
 
 m = AnSchorfheide()
 TTT, RRR, CCC = solve(m)
+
+display(@benchmark solve($m))
 
 @testset "Check state-space system matches reference" begin
     @test @test_matrix_approx_eq TTT_expected TTT

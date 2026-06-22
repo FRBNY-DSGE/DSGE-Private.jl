@@ -1,6 +1,8 @@
-using DSGE, FileIO, Random, Test, ModelConstructors
+using DSGE, FileIO, Random, Test, ModelConstructors, BenchmarkTools
 m = AnSchorfheide()
 sys = compute_system(m)
+
+display(@benchmark compute_system($m))
 path = dirname(@__FILE__)
 
 @testset "Testing get_jstep " begin

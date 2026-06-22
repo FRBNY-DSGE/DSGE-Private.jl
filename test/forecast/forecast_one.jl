@@ -1,4 +1,4 @@
-using DSGE, FileIO, JLD2, ModelConstructors, Test, Random, Dates, HDF5
+using DSGE, FileIO, JLD2, ModelConstructors, Test, Random, Dates, HDF5, BenchmarkTools
 path = dirname(@__FILE__)
 
 generate_regime_switch_tests = false # Set to true if you want to regenerate the jld2 files for testing
@@ -55,6 +55,8 @@ output_vars = add_requisite_output_vars([:histpseudo, :histobs, :histstdshocks,
 end
 
 # Run modal forecasts
+display(@benchmark forecast_one($m, :mode, :none, $output_vars, verbose = :none))
+
 out = Dict{Symbol, Dict{Symbol, Array{Float64}}}()
 for cond_type in [:none, :semi, :full]
     forecast_one(m, :mode, cond_type, output_vars, verbose = :none)

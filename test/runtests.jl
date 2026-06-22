@@ -77,9 +77,11 @@ my_tests = [
             "forecast/var/dsgevecm/impulse_responses",
 
             "analysis/compute_meansbands",
+            "analysis/create_q4q4_mb",
             "analysis/df_to_table",
             "analysis/io",
             "analysis/meansbands",
+            "analysis/meansbands_to_matrix",
             "analysis/moments",  # Fix this test!
             "analysis/util",
 

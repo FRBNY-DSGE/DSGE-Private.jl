@@ -1,4 +1,4 @@
-using DSGE, FileIO, JLD2, ModelConstructors, Test, Random, Dates
+using DSGE, FileIO, JLD2, ModelConstructors, Test, Random, Dates, BenchmarkTools
 path = dirname(@__FILE__)
 
 # Set up arguments
@@ -18,6 +18,8 @@ exp_states, exp_obs, exp_pseudo =
 
 # With shockdec_startdate not null
 states, obs, pseudo = shock_decompositions(m, system, histshocks)
+
+display(@benchmark shock_decompositions($m, $system, $histshocks))
 
 @testset "Test shockdec with non-null startdate" begin
     @test @test_matrix_approx_eq exp_states[:startdate] states

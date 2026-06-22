@@ -1,4 +1,4 @@
-using DSGE, Test, JLD2, ModelConstructors, Dates
+using DSGE, Test, JLD2, ModelConstructors, Dates, BenchmarkTools
 path = dirname(@__FILE__)
 
 # Set up arguments
@@ -22,6 +22,8 @@ exp_states, exp_obs, exp_pseudo, exp_shocks =
 
 # Without shocks
 global states, obs, pseudo, shocks = forecast(m, system, z0; draw_shocks = false)
+
+display(@benchmark forecast($m, $system, $z0; draw_shocks = false))
 
 @testset "Testing forecasting without drawing shocks" begin
     @test @test_matrix_approx_eq exp_states states

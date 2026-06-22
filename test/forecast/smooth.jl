@@ -1,4 +1,4 @@
-using DSGE, ModelConstructors, JLD2, FileIO, Test, Dates, Random
+using DSGE, ModelConstructors, JLD2, FileIO, Test, Dates, Random, BenchmarkTools
 
 writing_output = false
 if VERSION < v"1.5"
@@ -27,6 +27,9 @@ exp_pseudo = smooth_out["exp_pseudo"]
 states = Dict{Symbol, Matrix{Float64}}()
 shocks = Dict{Symbol, Matrix{Float64}}()
 pseudo = Dict{Symbol, Matrix{Float64}}()
+
+m <= Setting(:forecast_smoother, :durbin_koopman)
+display(@benchmark smooth($m, $df, $system; draw_states = false))
 
 @testset "Test smoother without drawing states" begin
     for smoother in [:hamilton, :koopman, :carter_kohn, :durbin_koopman]

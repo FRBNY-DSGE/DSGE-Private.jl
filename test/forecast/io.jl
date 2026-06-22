@@ -1,5 +1,5 @@
 using DSGE, Test, Dates
-using JLD2, OrderedCollections, HDF5, Nullables
+using JLD2, OrderedCollections, HDF5, Nullables, BenchmarkTools
 
 path = dirname(@__FILE__)
 save_output = true
@@ -53,6 +53,8 @@ output_vars = [:histstates, :histobs, :histpseudo, :histshocks,
         dict[var] = get_forecast_filename(m, :mode, :none, var)
     end
     @test get_forecast_output_files(m, :mode, :none, output_vars) == dict
+
+    display(@benchmark get_forecast_output_files($m, :mode, :none, $output_vars))
 
     # write_forecast_outputs
     if haskey(ENV, "FRED_API_KEY") || isfile(joinpath(homedir(),".freddatarc"))
