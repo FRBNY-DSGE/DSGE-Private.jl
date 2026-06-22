@@ -217,7 +217,7 @@ end
         end
     end
 
-    file = jldopen(joinpath(dirname(@__FILE__), "../reference/test_dsgevar_lambda_irfs_statespace_output_version=" * ver * ".jld2"), "r")
+    file = JLD2.jldopen(joinpath(dirname(@__FILE__), "../reference/test_dsgevar_lambda_irfs_statespace_output_version=" * ver * ".jld2"), "r")
     saved_β = read(file, "exp_data_beta")
     saved_Σ = read(file, "exp_data_sigma")
     close(file)

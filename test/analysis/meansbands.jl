@@ -1,4 +1,4 @@
-using DSGE, Dates
+using DSGE, Dates, BenchmarkTools
 path = dirname(@__FILE__)
 
 mb_empty =  MeansBands()
@@ -56,4 +56,25 @@ end
 
 @testset "Test meansbands_to_matrix works" begin
     meansbands_to_matrix(mb_full)
+end
+
+################
+# Benchmarking #
+################
+# Set this flag to true to run the MeansBands benchmarks. Off by default so
+# the test suite stays fast.
+run_benchmarks = true
+
+if run_benchmarks
+    b_cat       = @benchmark cat($mb_full, $mb_empty)
+    b_to_matrix = @benchmark meansbands_to_matrix($mb_full)
+    b_table     = @benchmark DSGE.prepare_meansbands_table_timeseries($mb_full, :obs_gdp)
+
+    println("\n===== analysis/meansbands benchmark results =====")
+    println("cat                              time:   ", BenchmarkTools.prettytime(median(b_cat).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_cat).memory))
+    println("meansbands_to_matrix             time:   ", BenchmarkTools.prettytime(median(b_to_matrix).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_to_matrix).memory))
+    println("prepare_meansbands_table_timeseries  time:   ", BenchmarkTools.prettytime(median(b_table).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_table).memory))
 end

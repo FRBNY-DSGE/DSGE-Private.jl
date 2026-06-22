@@ -1,3 +1,5 @@
+using BenchmarkTools
+
 write_test_output = false
 
 path = dirname(@__FILE__)
@@ -167,4 +169,30 @@ end
     @test init_cloud.c           == test_init_cloud.c
     @test init_cloud.total_sampling_time == test_init_cloud.total_sampling_time
     @test init_cloud.tempering_schedule  == test_init_cloud.tempering_schedule
+end
+
+###################################################################
+# Benchmarking
+###################################################################
+run_benchmarks = true
+
+if run_benchmarks
+    n_part = get_setting(m, :n_particles)
+    template_cloud = SMC.Cloud(length(m.parameters), n_part)
+    @everywhere Random.seed!(42)
+    SMC.initial_draw!(loglik_fn, m.parameters, data, template_cloud)
+
+    b_initdraw = @benchmark SMC.initial_draw!(loglik_fn, $(m.parameters), $data, cl) setup=(cl = SMC.Cloud(length($(m.parameters)), $n_part)) evals=1
+    b_drawlik  = @benchmark SMC.draw_likelihood(loglik_fn, $(m.parameters), $data, $(vec(draw[1])))
+    b_initlik  = @benchmark SMC.initialize_likelihoods!(loglik_fn, $(m.parameters), $data, cl) setup=(cl = deepcopy($template_cloud)) evals=1
+    b_cloudset = @benchmark SMC.initialize_cloud_settings!(cl) setup=(cl = deepcopy($template_cloud)) evals=1
+
+    println("\n===== estimate/smc/initialization benchmark results =====")
+    for (name, b) in [("initial_draw! (n=400)       ", b_initdraw),
+                      ("draw_likelihood             ", b_drawlik),
+                      ("initialize_likelihoods! (n=400)", b_initlik),
+                      ("initialize_cloud_settings!  ", b_cloudset)]
+        println(name, "  time:   ", BenchmarkTools.prettytime(median(b).time),
+                "   memory: ", BenchmarkTools.prettymemory(median(b).memory))
+    end
 end

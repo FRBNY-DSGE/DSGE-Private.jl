@@ -229,11 +229,11 @@ end
     @test_throws AssertionError load_parameters_from_file(m, "$path/reference/load_params_float32.h5")
 
     m.parameters[1].value = 1.
-    specify_mode!(m, "reference/load_params.h5")
+    specify_mode!(m, "$path/reference/load_params.h5")
     out_params = map(x -> x.value, m.parameters)
     @test @test_matrix_approx_eq out_params load_parameters_from_file(m, "$path/reference/load_params.h5")
 
-    specify_hessian!(m, "reference/hessian.h5")
+    specify_hessian!(m, "$path/reference/hessian.h5")
     @test get_setting(m, :calculate_hessian) == false
     @test get_setting(m, :hessian_path) == joinpath(dirname("$path"), "test", "reference", "hessian.h5")
 

@@ -1,5 +1,5 @@
 using DSGE, DataFrames, JLD2
-using Dates, Test
+using Dates, Test, BenchmarkTools
 
 path = dirname(@__FILE__)
 
@@ -51,5 +51,22 @@ end
     end
 end
 
+################
+# Benchmarking #
+################
+# Flip to true to run; off by default.
+run_benchmarks = true
+
+if run_benchmarks
+    b_default = @benchmark DSGE.filter($m, $df, $system)
+    b_init    = @benchmark DSGE.filter($m, $df, $system, $z0, $P0)
+
+    println("\n===== estimate/filter benchmark results =====")
+    for (name, b) in [("filter (default init)", b_default),
+                      ("filter (z0/P0 init)  ", b_init)]
+        println(name, "  time:   ", BenchmarkTools.prettytime(median(b).time),
+                "   memory: ", BenchmarkTools.prettymemory(median(b).memory))
+    end
+end
 
 nothing

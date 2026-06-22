@@ -1,5 +1,5 @@
 path = dirname(@__FILE__)
-using DSGE
+using DSGE, BenchmarkTools
 
 m = AnSchorfheide()
 
@@ -30,4 +30,24 @@ end
         [:histobs, :shockdecpseudo, :dettrendpseudo, :trendpseudo, :histforecastpseudo]
     @test DSGE.add_requisite_output_vars_meansbands([:histobs, :shockdecobs]) ==
         [:histobs, :shockdecobs, :dettrendobs, :trendobs, :histforecastobs]
+end
+
+################
+# Benchmarking #
+################
+# Set this flag to true to run the MeansBands IO benchmarks. Off by default so
+# the test suite stays fast.
+run_benchmarks = true
+
+if run_benchmarks
+    # Benchmark reading MeansBands objects back from disk.
+    b_read_mb = @benchmark read_mb($("$path/../reference/mbhistobs.jld2"))
+    b_bdd     = @benchmark read_bdd_and_unbdd_mb($("$path/../reference/mbbddforecastobs.jld2"),
+                                                 $("$path/../reference/mbforecastobs.jld2"))
+
+    println("\n===== analysis/io benchmark results =====")
+    println("read_mb                time:   ", BenchmarkTools.prettytime(median(b_read_mb).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_read_mb).memory))
+    println("read_bdd_and_unbdd_mb  time:   ", BenchmarkTools.prettytime(median(b_bdd).time),
+            "   memory: ", BenchmarkTools.prettymemory(median(b_bdd).memory))
 end
