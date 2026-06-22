@@ -264,7 +264,6 @@ end
 =#
 
 
-#=
 # Implementation (2025Q3)
 
 # There is only one quarter left (Q4) in 2025 on which we are taking inflation expectations
@@ -282,25 +281,6 @@ if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinf
     ZZ[obs[:obs_avgshortinflation], endo[:π_t2]] = 0.25 # Add extra endogenous state to cover 2025Q1 (t-2) observed inflation
     ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
     ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
-    ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
-    DD[obs[:obs_avgshortinflation]] = (CCC1_f ./ 4) + 100*(m[:π_star]-1)
-end
-=#
-
-# Implementation (2026Q1)
-
-# All 4 quarters of 2026 are unobserved as of 2026Q1 forecast start
-TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 4, 29;
-                                                           integ_series = integ_series,
-                                                         memo = use_fwd_exp_sum ? memo : nothing)
-T_sum = TTT1Econo
-C_sum = CCC1Econo
-
-TTT1_f = view(T_sum, endo[:π_t], :)
-CCC1_f = C_sum[endo[:π_t]]
-
-
-if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
     ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
     DD[obs[:obs_avgshortinflation]] = (CCC1_f ./ 4) + 100*(m[:π_star]-1)
 end
