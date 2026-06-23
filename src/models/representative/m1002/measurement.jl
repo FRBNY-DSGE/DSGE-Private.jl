@@ -254,7 +254,14 @@ if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
 end
 
 
-#Implementation (2025Q2)
+# Implementation
+# obs_avgshortinflation matches the SPF COREPCEAVG series, defined (see observables.jl) as
+# the average over the rolling 4-quarter window {t-1, t, t+1, t+2}, i.e. "-1, 0, +1, +2
+# periods ahead" anchored on the data quarter t = reg. π_t1 (t-1) and π_t (t) are the
+# realized quarters; t+1 and t+2 come from the k=2 expected sum (TTT1Econo computed above
+# with k=2). This window is rolling, NOT a calendar year -- do not re-anchor it to a fixed
+# year (that is what broke the 2026Q1 attempt in 21f6b4a2d: it summed t+1..t+4 via k=4 and
+# dropped the t-1, t realized quarters).
 if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
     ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
     ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
