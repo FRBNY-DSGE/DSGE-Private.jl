@@ -429,14 +429,14 @@ module DSGE
     include("models/heterogeneous/real_bond_mkup/measurement.jl")
     include("models/heterogeneous/real_bond_mkup/augment_states.jl")
 
-    #=include("models/heterogeneous/het_dsge/het_dsge.jl")
+    include("models/heterogeneous/het_dsge/het_dsge.jl")
     include("models/heterogeneous/het_dsge/steady_state.jl")
     include("models/heterogeneous/het_dsge/subspecs.jl")
     include("models/heterogeneous/het_dsge/jacobian.jl")
     include("models/heterogeneous/het_dsge/shock_loading.jl")
     include("models/heterogeneous/het_dsge/observables.jl")
     include("models/heterogeneous/het_dsge/measurement.jl")
-    include("models/heterogeneous/het_dsge/augment_states.jl")=#
+    include("models/heterogeneous/het_dsge/augment_states.jl")
 
     include("models/heterogeneous/het_dsge_gov_debt/util.jl")
     include("models/heterogeneous/het_dsge_gov_debt/het_dsge_gov_debt.jl")
