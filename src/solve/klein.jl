@@ -3,7 +3,8 @@ function klein(m::AbstractModel)
     #################
     # Linearization:
     #################
-    Jac1 = Matrix{Float64}(jacobian(m))
+    JJ, _, _, _ = jacobian(m)
+    Jac1 = Matrix{Float64}(JJ)
     ##################################################################################
     # Klein Solution Method---apply generalized Schur decomposition a la Klein (2000)
     ##################################################################################
