@@ -105,7 +105,11 @@ my_tests = [
             "models/representative/m805/m805",
             "models/poolmodel/poolmodel",
             "models/var/dsgevar/dsgevar",
+            "models/var/dsgevar/subspecs",
+            "models/var/dsgevar/measurement_error",
             "models/var/dsgevecm/dsgevecm",
+            "models/var/dsgevecm/subspecs",
+            "models/var/dsgevecm/measurement_error",
             "models/var/util",
             "models/heterogeneous/het_dsge_gov_debt/het_dsge_gov_debt_reduce_ell"
             # "models/heterogeneous/het_dsge_gov_debt/het_dsge_gov_debt"
