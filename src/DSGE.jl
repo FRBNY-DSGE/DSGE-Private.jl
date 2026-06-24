@@ -158,7 +158,7 @@ module DSGE
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
-        PoolModel, eqcond, measurement, pseudo_measurement,
+        PoolModel, eqcond, measurement, pseudo_measurement, augment_states,
         shock_groupings, transition, DSGEVAR, DSGEVECM,
 
         # models/heterogeneous/
