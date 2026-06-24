@@ -98,6 +98,8 @@ my_tests = [
 
             "models/representative/smets_wouters/smets_wouters",
             "models/representative/smets_wouters/augment_states",
+            "models/representative/smets_wouters/observables",
+            "models/representative/smets_wouters/subspecs",
             "models/representative/smets_wouters_orig/smets_wouters_orig",
             "models/representative/m990/m990",
             "models/representative/m1002/m1002",
