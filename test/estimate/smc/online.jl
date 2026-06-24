@@ -11,7 +11,7 @@ else
 end
 
 # set to true if you want to reestimate models
-estimate = false
+estimate = true
 
 if estimate == true
     # set number of workers and assign them
@@ -97,7 +97,10 @@ if estimate == true
 end
 
 old_file   = load(rawpath(m_old, "estimate", "smc_cloud.jld2"))
-old_cloud  = full_file["cloud"]
+old_cloud  = old_file["cloud"]
+
+# marginal data density of the first-half (old) estimation; passed to the online run below
+mdd_old = marginal_data_density(m_old, data[:, 1:Int(floor(end/2))])
 
 m_new = deepcopy(m)
 
@@ -122,7 +125,9 @@ if estimate == true
     println("Finished online estimation")
 end
 
-rmprocs(myprocs)
+if estimate == true
+    rmprocs(myprocs)
+end
 
 # load in online cloud and weights
 loadpath_new = replace(loadpath_old, r"vint=[0-9]{6}" => "vint=" * new_vint)

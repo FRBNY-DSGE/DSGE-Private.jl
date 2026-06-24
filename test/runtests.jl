@@ -49,13 +49,18 @@ my_tests = [
             "estimate/var/dsgevar_likelihood",
             "estimate/var/dsgevecm_likelihood",=#
 
+            "solve/klein",
+
+            "estimate/estimate",
+            "estimate/marginal_data_density",
             "estimate/metropolis_hastings", # Tests failing
-            # "estimate/regime_switching_mh", # Tests failing
+            # "estimate/regime_switching_mh", # MH estimation hangs for regime-switching; root cause documented + @test_broken in the file
             ## "estimate/smc/helpers", # Tests failing (by design)
             "estimate/smc/initialization",
             "estimate/smc/mutation",
             "estimate/smc/resample",
             "estimate/smc/particle",
+            "estimate/backwards_compatibility",
             "estimate/smc/smc",
             "estimate/smc/regime_switching_smc",
 
