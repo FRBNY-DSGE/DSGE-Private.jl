@@ -158,7 +158,7 @@ module DSGE
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
-        PoolModel, eqcond, measurement, pseudo_measurement,
+        PoolModel, eqcond, measurement, pseudo_measurement, augment_states,
         shock_groupings, transition, DSGEVAR, DSGEVECM,
 
         # models/heterogeneous/
@@ -429,14 +429,14 @@ module DSGE
     include("models/heterogeneous/real_bond_mkup/measurement.jl")
     include("models/heterogeneous/real_bond_mkup/augment_states.jl")
 
-    #=include("models/heterogeneous/het_dsge/het_dsge.jl")
+    include("models/heterogeneous/het_dsge/het_dsge.jl")
     include("models/heterogeneous/het_dsge/steady_state.jl")
     include("models/heterogeneous/het_dsge/subspecs.jl")
     include("models/heterogeneous/het_dsge/jacobian.jl")
     include("models/heterogeneous/het_dsge/shock_loading.jl")
     include("models/heterogeneous/het_dsge/observables.jl")
     include("models/heterogeneous/het_dsge/measurement.jl")
-    include("models/heterogeneous/het_dsge/augment_states.jl")=#
+    include("models/heterogeneous/het_dsge/augment_states.jl")
 
     include("models/heterogeneous/het_dsge_gov_debt/util.jl")
     include("models/heterogeneous/het_dsge_gov_debt/het_dsge_gov_debt.jl")
