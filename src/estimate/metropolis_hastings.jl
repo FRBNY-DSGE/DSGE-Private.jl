@@ -157,7 +157,7 @@ function metropolis_hastings(proposal_dist::Distribution,
     end
 
     state_tracker = Vector{Float64}[] #New
-    push!(sample_mean_tracker, para_old) #New
+    #push!(sample_mean_tracker, para_old) #New
 
 
     # Keep track of how long metropolis_hastings has been sampling
