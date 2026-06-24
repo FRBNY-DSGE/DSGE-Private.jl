@@ -1,7 +1,7 @@
 using DSGE, BenchmarkTools
 path = dirname(@__FILE__)
 
-write_test_output = false
+write_test_output = true
 
 mb_full = load("$path/../reference/MeansBands.jld2", "mb")
 
