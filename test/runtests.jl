@@ -130,8 +130,8 @@ my_tests = [
 
 if VERSION >= v"1.3"
     my_tests = vcat([
-                     #"packet/packet", # These two tests generate segmentation fault errors
-                     #"plot/plot",     # in lower versions of Julia (at least w/1.0 and 1.1)
+                     "packet/packet",
+                     "plot/plot",
                     ],
                     my_tests)
 end
