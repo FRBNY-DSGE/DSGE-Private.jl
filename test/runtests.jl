@@ -96,6 +96,7 @@ my_tests = [
 
             "plot/util",
 
+            "models/representative/an_schorfheide/an_schorfheide",
             "models/representative/smets_wouters/smets_wouters",
             "models/representative/smets_wouters_orig/smets_wouters_orig",
             "models/representative/m990/m990",
