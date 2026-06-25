@@ -48,7 +48,7 @@ end
     end
 end
 
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks && run_err === nothing
     b = @benchmark CTBlockScaffold.ct_block_kalman_filter($y, $T, $R, $C, $Q, $Z, $D, $E;
                                                           n_simulate_states = 1,

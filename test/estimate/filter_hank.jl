@@ -40,7 +40,7 @@ end
     end
 end
 
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks && run_err === nothing
     b = @benchmark DSGE.filter($m, $data, $system, $s_0, $P_0)
     println("\nfilter(::AbstractCTModel)  time: ", BenchmarkTools.prettytime(median(b).time),

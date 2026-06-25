@@ -26,7 +26,15 @@ exp_states, exp_obs, exp_pseudo, exp_shocks =
 # Without shocks
 global states, obs, pseudo, shocks = forecast(m, system, z0; draw_shocks = false)
 
-display(@benchmark forecast($m, $system, $z0; draw_shocks = false))
+run_benchmarks = false
+
+if run_benchmarks
+    b_forecast = @benchmark forecast($m, $system, $z0; draw_shocks = false)
+
+    println("\n===== forecast benchmark results =====")
+    println(rpad("forecast", 18), " time: ", rpad(BenchmarkTools.prettytime(median(b_forecast).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_forecast).memory))
+end
 
 @testset "Testing forecasting without drawing shocks" begin
     @test @test_matrix_approx_eq exp_states states

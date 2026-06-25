@@ -86,7 +86,7 @@ end
 
 # --- benchmarks ------------------------------------------------------
 # Timings for the two solve routines. Set `run_benchmarks = false` to skip.
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     println("\nklein benchmarks (HetDSGE, nx = $(get_setting(m, :nx))):")
     print("  klein(m):                    "); @btime klein($m);

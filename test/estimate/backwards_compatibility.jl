@@ -65,7 +65,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. Inputs are local JLD2 data, no FRED API.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     pc = ParticleCloud(dsge_cloud, para_symbols)

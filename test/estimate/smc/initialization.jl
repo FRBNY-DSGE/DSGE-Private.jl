@@ -174,7 +174,7 @@ end
 ###################################################################
 # Benchmarking
 ###################################################################
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     n_part = get_setting(m, :n_particles)

@@ -54,7 +54,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     df_new = mkdf(T0 + T)

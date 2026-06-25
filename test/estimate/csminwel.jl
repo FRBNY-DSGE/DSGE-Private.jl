@@ -36,7 +36,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. Pure optimization, no FRED API.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     b_analytic = @benchmark csminwel(rosenbrock_csminwel, rosenbrock_grad, $x_init)

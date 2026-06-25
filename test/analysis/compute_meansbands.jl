@@ -79,7 +79,7 @@ end
 ################
 # Set this flag to true to run the compute_meansbands benchmarks. Off by default
 # so the test suite stays fast. The forecast outputs computed above are reused.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     b_compute   = @benchmark compute_meansbands($m, :mode, :none, $output_vars;

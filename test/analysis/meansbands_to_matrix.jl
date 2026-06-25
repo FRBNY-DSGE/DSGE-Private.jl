@@ -1,7 +1,7 @@
 using DSGE, BenchmarkTools
 path = dirname(@__FILE__)
 
-write_test_output = true
+write_test_output = false
 
 mb_full = load("$path/../reference/MeansBands.jld2", "mb")
 
@@ -36,4 +36,12 @@ nbands   = length(which_density_bands(mb_full))
     @test bands == saved_bands
 end
 
-display(@benchmark meansbands_to_matrix($mb_full))
+run_benchmarks = false
+
+if run_benchmarks
+    b_m2m = @benchmark meansbands_to_matrix($mb_full)
+
+    println("\n===== meansbands_to_matrix benchmark results =====")
+    println(rpad("meansbands_to_matrix", 22), " time: ", rpad(BenchmarkTools.prettytime(median(b_m2m).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_m2m).memory))
+end

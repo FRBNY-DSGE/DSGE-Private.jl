@@ -106,7 +106,7 @@ end
 #
 # Build self-contained objects here: the module-level pm/data/tuning above have
 # all been rebound (and `tuning` mutated to n_particles=10) by the testsets.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     bench_path = dirname(@__FILE__)

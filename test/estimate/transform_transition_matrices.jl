@@ -50,7 +50,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     b = @benchmark transform_transition_matrices($m, $TT, $R, $C; track_lag = false)
     println("\ntransform_transition_matrices (track_lag=false)  time: ",

@@ -36,7 +36,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     # Subset: testing mode caps n_hessian_test_params at 3 — what the test checks.

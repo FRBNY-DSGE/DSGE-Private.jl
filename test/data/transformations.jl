@@ -120,7 +120,7 @@ end
 ################
 # Flip to true to run; off by default. Series are local CSV, no FRED API.
 # Model-free forms are used so the testsets' mutations to m don't matter.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     pop  = Float64.(fred[!,:CNP16OV])      # real-sized quarterly series

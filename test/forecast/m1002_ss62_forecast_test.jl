@@ -192,7 +192,7 @@ end
 # Benchmarking #
 ################
 # The forecast is heavy (Model1002 ss62 regime switching), so samples are capped.
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     b = @benchmark DSGE.forecast_one_draw($m, :mode, :full, $output_vars, $modal_params, $df,
                                           regime_switching = true,

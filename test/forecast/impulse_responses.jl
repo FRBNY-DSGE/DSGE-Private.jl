@@ -14,7 +14,15 @@ end
 # Run impulse responses
 states, obs, pseudo = impulse_responses(m, system)
 
-display(@benchmark impulse_responses($m, $system))
+run_benchmarks = false
+
+if run_benchmarks
+    b_irf = @benchmark impulse_responses($m, $system)
+
+    println("\n===== impulse_responses benchmark results =====")
+    println(rpad("impulse_responses", 18), " time: ", rpad(BenchmarkTools.prettytime(median(b_irf).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_irf).memory))
+end
 
 # Compare to expected output
 exp_states, exp_obs, exp_pseudo =

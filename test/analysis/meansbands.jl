@@ -63,7 +63,7 @@ end
 ################
 # Set this flag to true to run the MeansBands benchmarks. Off by default so
 # the test suite stays fast.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     b_cat       = @benchmark cat($mb_full, $mb_empty)

@@ -27,7 +27,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. None hit the FRED API.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     bench_periods = 200   # longer than the test (n=1) so the sim loop runs

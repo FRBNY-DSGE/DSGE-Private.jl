@@ -19,7 +19,15 @@ exp_states, exp_obs, exp_pseudo =
 # With shockdec_startdate not null
 states, obs, pseudo = shock_decompositions(m, system, histshocks)
 
-display(@benchmark shock_decompositions($m, $system, $histshocks))
+run_benchmarks = false
+
+if run_benchmarks
+    b_shockdec = @benchmark shock_decompositions($m, $system, $histshocks)
+
+    println("\n===== shock_decompositions benchmark results =====")
+    println(rpad("shock_decompositions", 22), " time: ", rpad(BenchmarkTools.prettytime(median(b_shockdec).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_shockdec).memory))
+end
 
 @testset "Test shockdec with non-null startdate" begin
     @test @test_matrix_approx_eq exp_states[:startdate] states

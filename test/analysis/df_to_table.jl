@@ -1,4 +1,4 @@
-save_output = true
+save_output = false
 
 using DSGE, ModelConstructors, Test, JLD2, FileIO, OrderedCollections, CSV, Random, DataFrames, BenchmarkTools
 path = dirname(@__FILE__)
@@ -157,7 +157,7 @@ end
 ################
 # Set this flag to true to run the df_to_table benchmarks. Off by default so
 # the test suite stays fast.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     # Benchmark constructing the forecast/history dfs and report one summary

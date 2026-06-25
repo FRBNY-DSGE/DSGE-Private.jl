@@ -48,7 +48,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. Pure numerics, no FRED API.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     # At the minimum (with the negative-diagonal check) and at an off-mode point.

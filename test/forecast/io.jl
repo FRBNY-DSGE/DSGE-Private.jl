@@ -2,7 +2,8 @@ using DSGE, Test, Dates
 using JLD2, OrderedCollections, HDF5, Nullables, BenchmarkTools
 
 path = dirname(@__FILE__)
-save_output = true
+save_output = false
+run_benchmarks = false
 
 # Initialize model object
 m = AnSchorfheide(testing = true)
@@ -54,7 +55,13 @@ output_vars = [:histstates, :histobs, :histpseudo, :histshocks,
     end
     @test get_forecast_output_files(m, :mode, :none, output_vars) == dict
 
-    display(@benchmark get_forecast_output_files($m, :mode, :none, $output_vars))
+    if run_benchmarks
+        b_files = @benchmark get_forecast_output_files($m, :mode, :none, $output_vars)
+        println("\n===== get_forecast_output_files benchmark results =====")
+        println(rpad("get_forecast_output_files", 27), " time: ",
+                rpad(BenchmarkTools.prettytime(median(b_files).time), 12),
+                "memory: ", BenchmarkTools.prettymemory(median(b_files).memory))
+    end
 
     # write_forecast_outputs
     if haskey(ENV, "FRED_API_KEY") || isfile(joinpath(homedir(),".freddatarc"))

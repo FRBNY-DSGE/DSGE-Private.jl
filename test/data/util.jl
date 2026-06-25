@@ -66,7 +66,7 @@ end
 ################
 # Flip to true to run; off by default. Only the key-free utilities are here;
 # the load_data calls above hit the FRED API and are excluded.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     bench_nan_df = DataFrame(:a => vcat(1., NaN))

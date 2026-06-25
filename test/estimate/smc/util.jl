@@ -87,7 +87,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     blocks_free = [[1, 3], [2], [4, 5]]
     free_inds   = [10, 20, 30, 40, 50]

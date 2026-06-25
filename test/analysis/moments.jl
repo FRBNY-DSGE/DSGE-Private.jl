@@ -2,7 +2,7 @@ using DSGE, Test, FileIO, Random, ModelConstructors
 
 # Set to true to regenerate the reference outputs in moments_poolmodel_outputs.jld2,
 # then set back to false and rerun to confirm the test passes against them.
-save_output = true
+save_output = false
 
 m = AnSchorfheide()
 @testset "Test moments" begin

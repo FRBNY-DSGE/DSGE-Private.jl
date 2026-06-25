@@ -16,7 +16,7 @@ out = lbfgs(rosenbrock, copy(x0); iterations = 1000)
     @test out.minimum   <  1e-6
 end
 
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     b = @benchmark lbfgs($rosenbrock, $(copy(x0)); iterations = 1000)
     println("\nlbfgs [Rosenbrock]  time: ", BenchmarkTools.prettytime(median(b).time),

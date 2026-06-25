@@ -38,7 +38,7 @@ end
     end
 end
 
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks && run_err === nothing
     b = @benchmark CTSimpleScaffold.ct_kalman_simple($T, $Z, $Q, $E, $mean_0,
                                                      $var_0, $data_y, $dt)

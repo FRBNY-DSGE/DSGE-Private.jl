@@ -124,7 +124,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     b_mods = @benchmark DSGE.post_covid_data_mods($m, make_df(), :none, DataFrame();

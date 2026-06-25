@@ -10,7 +10,15 @@ RRR_expected = h5read(file, "RRR")
 m = AnSchorfheide()
 TTT, RRR, CCC = solve(m)
 
-display(@benchmark solve($m))
+run_benchmarks = false
+
+if run_benchmarks
+    b_solve = @benchmark solve($m)
+
+    println("\n===== solve benchmark results =====")
+    println(rpad("solve", 18), " time: ", rpad(BenchmarkTools.prettytime(median(b_solve).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_solve).memory))
+end
 
 @testset "Check state-space system matches reference" begin
     @test @test_matrix_approx_eq TTT_expected TTT

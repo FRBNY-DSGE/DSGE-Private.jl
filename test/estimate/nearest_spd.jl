@@ -30,7 +30,7 @@ end
     @test_throws ErrorException nearest_spd(randn(3, 4))
 end
 
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     A = randn(20, 20)
     b = @benchmark nearest_spd($A)

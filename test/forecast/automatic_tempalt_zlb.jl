@@ -133,7 +133,7 @@ end
 # NOTE: this only runs once forecast_one above succeeds (currently it crashes with
 # KeyError: :regime_eqcond_info — see the missing-setting issue). The forecast is heavy and
 # writes output files, so samples are capped.
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     b = @benchmark forecast_one($m, :full, :full, $output_vars; verbose = :none, params = $mparas,
                                 df = $df_full, zlb_method = :temporary_altpolicy,

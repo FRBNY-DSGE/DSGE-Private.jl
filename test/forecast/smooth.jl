@@ -1,6 +1,6 @@
 using DSGE, ModelConstructors, JLD2, FileIO, Test, Dates, Random, BenchmarkTools
 
-writing_output = true
+writing_output = false
 if VERSION < v"1.5"
     ver = "111"
 else
@@ -29,7 +29,15 @@ shocks = Dict{Symbol, Matrix{Float64}}()
 pseudo = Dict{Symbol, Matrix{Float64}}()
 
 m <= Setting(:forecast_smoother, :durbin_koopman)
-display(@benchmark smooth($m, $df, $system; draw_states = false))
+run_benchmarks = false
+
+if run_benchmarks
+    b_smooth = @benchmark smooth($m, $df, $system; draw_states = false)
+
+    println("\n===== smooth benchmark results =====")
+    println(rpad("smooth", 18), " time: ", rpad(BenchmarkTools.prettytime(median(b_smooth).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_smooth).memory))
+end
 
 @testset "Test smoother without drawing states" begin
     for smoother in [:hamilton, :koopman, :carter_kohn, :durbin_koopman]

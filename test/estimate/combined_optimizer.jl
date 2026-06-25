@@ -33,7 +33,7 @@ end
 end
 
 # Benchmark (skipped while the function errors).
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks && run_err === nothing
     b = @benchmark combined_optimizer($rosenbrock, $(copy(x0));
                                       iterations = 100, max_cycles = 2,

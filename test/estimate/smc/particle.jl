@@ -26,7 +26,7 @@ end
 ################
 # Flip to true to run; off by default. Inputs are local JLD2, no FRED API.
 # split_cloud/join_cloud are disk I/O; each writes/reads "_part*.jld2" next to `file`.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     b_split = @benchmark split_cloud($file, 2)

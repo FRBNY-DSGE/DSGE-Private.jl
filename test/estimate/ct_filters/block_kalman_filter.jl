@@ -43,7 +43,7 @@ end
     end
 end
 
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks && run_err === nothing
     b = @benchmark block_kalman_filter($y, $Ttild, $Rtild, $Ctild, $Qtild, $Ztild,
                                        $Dtild, $Etild, $M, $Mtild, $block_dims,

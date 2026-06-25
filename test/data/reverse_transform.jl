@@ -64,7 +64,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. None hit the FRED API.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     obs_keys    = collect(keys(m.observables))

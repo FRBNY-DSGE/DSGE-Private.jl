@@ -589,7 +589,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     mb = DSGEModels.HetDSGE()

@@ -53,7 +53,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. None hit the FRED API.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     bench_y     = Float64[sin(i / 4) for i in 1:280]   # ~70yr quarterly series

@@ -198,7 +198,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     jlddata = load(joinpath(fp, "../../reference/test_dsgevar_lambda_irfs.jld2"))
     m = Model1002("ss10", custom_settings = [Setting(:add_laborshare_measurement, true),

@@ -89,7 +89,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     b_mdd  = @benchmark marginal_data_density($params, $logpost, $free_para_inds)
     b_wmdd = @benchmark DSGE.marginal_data_density_weighted($params, $logpost,

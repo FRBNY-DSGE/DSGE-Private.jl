@@ -37,7 +37,7 @@ end
     end
 end
 
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks && run_err === nothing
     b = @benchmark ct_kalman_filter($y, $T, $R, $C, $Q, $Z, $D, $E, $tspan)
     println("\nct_kalman_filter  time: ", BenchmarkTools.prettytime(median(b).time),

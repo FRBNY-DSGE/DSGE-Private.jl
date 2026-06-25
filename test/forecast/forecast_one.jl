@@ -55,7 +55,15 @@ output_vars = add_requisite_output_vars([:histpseudo, :histobs, :histstdshocks,
 end
 
 # Run modal forecasts
-display(@benchmark forecast_one($m, :mode, :none, $output_vars, verbose = :none))
+run_benchmarks = false
+
+if run_benchmarks
+    b_forecast_one = @benchmark forecast_one($m, :mode, :none, $output_vars, verbose = :none)
+
+    println("\n===== forecast_one benchmark results =====")
+    println(rpad("forecast_one", 18), " time: ", rpad(BenchmarkTools.prettytime(median(b_forecast_one).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_forecast_one).memory))
+end
 
 out = Dict{Symbol, Dict{Symbol, Array{Float64}}}()
 for cond_type in [:none, :semi, :full]

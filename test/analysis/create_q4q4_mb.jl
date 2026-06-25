@@ -54,4 +54,15 @@ saved_mb_q4q4 = load("$path/../reference/create_q4q4_mb_out.jld2", "mb_q4q4")
     end
 end
 
-display(@benchmark create_q4q4_mb($mb_4q))
+################
+# Benchmarking #
+################
+run_benchmarks = false
+
+if run_benchmarks
+    b_q4q4 = @benchmark create_q4q4_mb($mb_4q)
+
+    println("\n===== create_q4q4_mb benchmark results =====")
+    println(rpad("create_q4q4_mb", 18), " time: ", rpad(BenchmarkTools.prettytime(median(b_q4q4).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_q4q4).memory))
+end

@@ -62,7 +62,7 @@ end
 ################
 # Set this flag to true to run the alt_inflation benchmarks. Off by default so
 # the test suite stays fast.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     mb = Model990()

@@ -65,7 +65,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     b_fname = @benchmark DSGE.get_decomp_filename($m_new, $m_old, :full, :none, :none, :decomptotal, :obs)
