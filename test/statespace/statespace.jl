@@ -1,6 +1,6 @@
 using DSGE, ModelConstructors, Dates, Test, LinearAlgebra, FileIO, Random, JLD2
 
-writing_output = false # Write output for tests which use random values
+writing_output = true # Write output for tests which use random values
 if VERSION < v"1.5"
     ver = "111"
 else
@@ -971,15 +971,25 @@ end
     m <= Setting(:uncertain_altpolicy, true)
     sys_unczlb_uncalt = compute_system(m)
 
+    # :Econometricians10YearRateGap is, by design, the rate gap "from the perspective of the
+    # econometrician who has no forward looking uncertainty" (see pseudo_observables.jl). It is
+    # intentionally computed under a permanent-policy assumption and is therefore NOT part of the
+    # imperfect-credibility weighting, so it is excluded from the weighted-average checks of the
+    # pseudo-measurement equation below.
+    pseudo_inds = setdiff(1:DSGE.n_pseudo_observables(m),
+                          [m.pseudo_observables[:Econometricians10YearRateGap]])
+
     for i in sort!(collect(keys(get_setting(m, :regime_eqcond_info))))
         @test sys_unczlb_uncalt[i, :ZZ] ≈ imperfect_cred_new * sys_perfcred[i, :ZZ] +
             imperfect_cred_old * sys_taylor[:ZZ]
-        @test sys_unczlb_uncalt[i, :ZZ_pseudo] ≈ imperfect_cred_new * sys_perfcred[i, :ZZ_pseudo] +
-            imperfect_cred_old * sys_taylor[:ZZ_pseudo]
+        @test sys_unczlb_uncalt[i, :ZZ_pseudo][pseudo_inds, :] ≈
+            imperfect_cred_new * sys_perfcred[i, :ZZ_pseudo][pseudo_inds, :] +
+            imperfect_cred_old * sys_taylor[:ZZ_pseudo][pseudo_inds, :]
         @test sys_unczlb_uncalt[i, :DD] ≈ imperfect_cred_new * sys_perfcred[i, :DD] +
             imperfect_cred_old * sys_taylor[:DD]
-        @test sys_unczlb_uncalt[i, :DD_pseudo] ≈ imperfect_cred_new * sys_perfcred[i, :DD_pseudo] +
-            imperfect_cred_old * sys_taylor[:DD_pseudo]
+        @test sys_unczlb_uncalt[i, :DD_pseudo][pseudo_inds] ≈
+            imperfect_cred_new * sys_perfcred[i, :DD_pseudo][pseudo_inds] +
+            imperfect_cred_old * sys_taylor[:DD_pseudo][pseudo_inds]
     end
 end
 

@@ -4,13 +4,15 @@ using JLD2
 
 path = dirname(@__FILE__)
 
+run_benchmarks = false
+
 m = BondLabor()
 
 # Steady-state computation
 steadystate!(m)
-@btime steadystate!(m)
+run_benchmarks && @btime steadystate!(m)
 
-file = jldopen("$path/reference/steady_state.jld2", "r")
+file = JLD2.jldopen("$path/reference/steady_state.jld2", "r")
 saved_ell  = read(file, "ell")
 saved_c    = read(file, "c")
 saved_η    = read(file, "eta")
@@ -31,9 +33,9 @@ end
 # Jacobian computation
 m.testing = true        # So that it will test against the unnormalized Jacobian
 JJ = DSGE.jacobian(m)
-@btime JJ = DSGE.jacobian(m)
+run_benchmarks && @btime JJ = DSGE.jacobian(m)
 
-file = jldopen("$path/reference/jacobian.jld2", "r")
+file = JLD2.jldopen("$path/reference/jacobian.jld2", "r")
 saved_JJ  = read(file, "JJ")
 close(file)
 
@@ -92,9 +94,9 @@ end
 # Solve
 m.testing = false      # So the Jacobian will be normalized within the klein solution
 gx, hx = klein(m)
-@btime klein(m)
+run_benchmarks && @btime klein(m)
 
-@load "$path/reference/solve.jld2" saved_gx saved_hx
+@JLD2.load "$path/reference/solve.jld2" saved_gx saved_hx
 
 @testset "Check solve outputs" begin
     @test saved_gx  ≈ gx
@@ -103,13 +105,13 @@ end
 
 # State-space transition matrices (klein returns TTT_jump, TTT_state = gx, hx)
 TTT, RRR = DSGE.klein_transition_matrices(m, hx, gx)
-@btime DSGE.klein_transition_matrices(m, hx, gx)
+run_benchmarks && @btime DSGE.klein_transition_matrices(m, hx, gx)
 
 CCC = zeros(DSGE.n_model_states(m))
 
 # Shock loading
 RRR_shock = DSGE.shock_loading(m, gx)
-@btime DSGE.shock_loading(m, gx)
+run_benchmarks && @btime DSGE.shock_loading(m, gx)
 
 @testset "Check shock loading" begin
     nb   = DSGE.n_backward_looking_states(m)
@@ -125,7 +127,7 @@ end
 
 # Measurement equation
 meas = DSGE.measurement(m, TTT, gx, RRR, CCC)
-@btime DSGE.measurement(m, TTT, gx, RRR, CCC)
+run_benchmarks && @btime DSGE.measurement(m, TTT, gx, RRR, CCC)
 
 @testset "Check measurement equation" begin
     obs = m.observables

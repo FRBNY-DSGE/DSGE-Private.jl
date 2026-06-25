@@ -71,16 +71,20 @@ end
 ####################
 # Benchmarks
 ####################
-@info "Benchmarking financial_frictions.jl"
-let
-    @btime FF.ω_fn($z0, $σ0)
-    @btime FF.G_fn($z0, $σ0)
-    @btime FF.Γ_fn($z0, $σ0)
-    @btime FF.μ_fn($z0, $σ0, $spr0)
-    @btime FF.nk_fn($z0, $σ0, $spr0)
-    @btime FF.ζ_zω_fn($z0, $σ0, $spr0)
-    @btime FF.ζ_bω_fn($z0, $σ0, $spr0)
-    @btime FF.ζ_spb_fn($z0, $σ0, $spr0)
+run_benchmarks = false
+
+if run_benchmarks
+    @info "Benchmarking financial_frictions.jl"
+    let
+        @btime FF.ω_fn($z0, $σ0)
+        @btime FF.G_fn($z0, $σ0)
+        @btime FF.Γ_fn($z0, $σ0)
+        @btime FF.μ_fn($z0, $σ0, $spr0)
+        @btime FF.nk_fn($z0, $σ0, $spr0)
+        @btime FF.ζ_zω_fn($z0, $σ0, $spr0)
+        @btime FF.ζ_bω_fn($z0, $σ0, $spr0)
+        @btime FF.ζ_spb_fn($z0, $σ0, $spr0)
+    end
 end
 
 nothing

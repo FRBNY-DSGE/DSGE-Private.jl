@@ -205,7 +205,7 @@ out_temp_flexible_ait = DSGE.forecast_one_draw(m, :mode, :full, output_vars, mod
                                                regime_switching = true, n_regimes = get_setting(m, :n_regimes))
 
 if regenerate_reference_forecasts
-    h5open(joinpath(dirname(@__FILE__), "../reference/multiple_altpol_imperfect_awareness_output.h5"), "w") do file
+    h5open(joinpath(dirname(@__FILE__), "../reference/multiple_altpol_imperfect_awareness_output_version=$(ver).h5"), "w") do file
         write(file, "forecastobs", out_temp_flexible_ait[:forecastobs])
         write(file, "forecastpseudo", out_temp_flexible_ait[:forecastpseudo])
     end
