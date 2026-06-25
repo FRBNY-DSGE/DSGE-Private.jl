@@ -8,7 +8,7 @@ jobs:
     # 1.5.0 is the currently-supported version and must pass. 1.12 also spins up, but is
     # allowed to fail for now (codebase still uses 1.5-era patterns) so it doesn't block PRs.
     # Remove this line to make 1.12 a required check once the codebase supports it.
-    continue-on-error: ${{ matrix.version == '1.12' }}1
+    continue-on-error: ${{ matrix.version == '1.12' }}
     strategy:
       fail-fast: false
       matrix:
