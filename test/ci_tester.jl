@@ -3,7 +3,6 @@ using Dates, DataFrames, OrderedCollections, FileIO, DataStructures, LinearAlgeb
 using StatsBase, Random, CSV, StateSpaceRoutines, HDF5, JLD2, MAT, Plots, Optim
 import ModelConstructors: @test_matrix_approx_eq, @test_matrix_approx_eq_eps
 @everywhere using DSGE, JLD2, Printf, LinearAlgebra, ModelConstructors, SMC
-HETDSGEGOVDEBT = "../src/models/heterogeneous/het_dsge_gov_debt/reference"
 
 my_tests = [
     "parameters",
@@ -98,8 +97,27 @@ my_tests = [
 ]
 
 
+failures = Tuple{String, Any}[]
 for test in my_tests
     test_file = string("$test.jl")
     @printf " * %s\n" test_file
-    include(test_file)
+    try
+        include(test_file)
+    catch err
+        push!(failures, (test_file, err))
+        @error "Test file failed" test_file exception = (err, catch_backtrace())
+    end
+end
+
+# Full report across all test files (run to completion even if some throw).
+println("\n", "="^70)
+@printf "CI SUMMARY: %d of %d test files passed\n" (length(my_tests) - length(failures)) length(my_tests)
+if !isempty(failures)
+    println("Failed test files:")
+    for (test_file, _) in failures
+        println("  ✗ ", test_file)
+    end
+    error("$(length(failures)) test file(s) failed")
+else
+    println("All test files passed.")
 end
