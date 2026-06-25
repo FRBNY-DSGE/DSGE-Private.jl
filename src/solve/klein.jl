@@ -3,7 +3,10 @@ function klein(m::AbstractModel)
     #################
     # Linearization:
     #################
-    JJ, _, _, _ = jacobian(m)
+    jac_out = jacobian(m)
+    # het_dsge's jacobian returns a tuple (JJ, dF2_dRZ, dF2_dWH, dF2_dTT); other
+    # models return the Jacobian matrix directly.
+    JJ = isa(jac_out, Tuple) ? first(jac_out) : jac_out
     Jac1 = Matrix{Float64}(JJ)
     ##################################################################################
     # Klein Solution Method---apply generalized Schur decomposition a la Klein (2000)
