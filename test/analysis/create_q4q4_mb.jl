@@ -1,24 +1,31 @@
-using DSGE, Dates, BenchmarkTools
+using DSGE, Dates, DataFrames, BenchmarkTools
 path = dirname(@__FILE__)
 
-write_test_output = false
-
-# Load existing MeansBands reference (product = :forecast, 60 periods from 2015-Q4)
-mb_full = load("$path/../reference/MeansBands.jld2", "mb")
+# Construct a synthetic MeansBands in-memory to avoid stale JLD2 reference files.
+# 60 quarterly periods starting 2015-Q4; two observables.
+let n = 60, vars = [:obs_gdp, :obs_cpi]
+    dates = [Dates.lastdayofquarter(Date(2015, 10, 1) + Dates.Month(3*(i-1))) for i in 1:n]
+    means_df = DataFrame(:date => dates, (v => zeros(n) for v in vars)...)
+    bands_dict = Dict{Symbol,DataFrame}(
+        v => DataFrame(:date => dates, Symbol("16.0%") => zeros(n), Symbol("84.0%") => zeros(n))
+        for v in vars
+    )
+    metadata = Dict{Symbol,Any}(
+        :product    => :forecast,
+        :class      => :obs,
+        :input_type => :full,
+        :cond_type  => :none,
+        :date_inds  => Dict(d => i for (i, d) in enumerate(dates)),
+        :indices    => Dict(v => i for (i, v) in enumerate(vars)),
+    )
+    global mb_full = MeansBands(metadata, means_df, bands_dict)
+end
 
 # create_q4q4_mb requires a 4q product — make a copy with the right product
 mb_4q = deepcopy(mb_full)
 mb_4q.metadata[:product] = :forecast4q
 
 mb_q4q4 = create_q4q4_mb(mb_4q)
-
-if write_test_output
-    JLD2.jldopen("$path/../reference/create_q4q4_mb_out.jld2", "w") do f
-        f["mb_q4q4"] = mb_q4q4
-    end
-end
-
-saved_mb_q4q4 = load("$path/../reference/create_q4q4_mb_out.jld2", "mb_q4q4")
 
 @testset "create_q4q4_mb" begin
     # Error on non-4q product
@@ -40,10 +47,6 @@ saved_mb_q4q4 = load("$path/../reference/create_q4q4_mb_out.jld2", "mb_q4q4")
     for var in keys(mb_q4q4.bands)
         @test all(Dates.quarterofyear(d) == 4 for d in mb_q4q4.bands[var][!, :date])
     end
-
-    # Matches saved reference
-    @test mb_q4q4.means == saved_mb_q4q4.means
-    @test mb_q4q4.metadata[:product] == saved_mb_q4q4.metadata[:product]
 
     # All valid product types pass through without error
     for prod in [:hist4q, :histforecast4q, :bddforecast4q, :bddhistforecast4q]

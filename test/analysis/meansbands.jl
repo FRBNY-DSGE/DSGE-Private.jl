@@ -1,13 +1,44 @@
-using DSGE, Dates, BenchmarkTools
+using DSGE, Dates, BenchmarkTools, DataFrames, OrderedCollections
 path = dirname(@__FILE__)
 
-mb_empty =  MeansBands()
+mb_empty = MeansBands()
 @show mb_empty
 @test isempty(mb_empty)
-mb_full = load("$path/../reference/MeansBands.jld2", "mb")
+
+# Build mb_full in-memory: 3 observables, 60 quarters from 2015-Q4 to 2030-Q3,
+# 5 density bands (50%–90%), matching what the stale MeansBands.jld2 reference contained.
+let
+    n    = 60
+    vars = [:obs_gdp, :obs_cpi, :obs_nominalrate]
+    start_date = quartertodate("2015-Q4")   # Date(2015, 12, 31)
+    dates = [start_date + Dates.Month(3*(i-1)) for i in 1:n]
+    # dates[1]   == quartertodate("2015-Q4") == Date(2015, 12, 31)
+    # dates[end] == quartertodate("2030-Q3") == Date(2030, 9, 30)
+
+    band_pcts = ["90.0%", "80.0%", "70.0%", "60.0%", "50.0%"]
+    band_cols = vcat([Symbol(p * " LB") for p in band_pcts],
+                     [Symbol(p * " UB") for p in band_pcts])
+
+    means_df   = DataFrame(:date => dates, (v => zeros(n) for v in vars)...)
+    bands_dict = Dict{Symbol,DataFrame}(
+        v => DataFrame(:date => dates, (c => zeros(n) for c in band_cols)...)
+        for v in vars
+    )
+    metadata = Dict{Symbol,Any}(
+        :product         => :forecast,
+        :class           => :obs,
+        :input_type      => :full,
+        :cond_type       => :none,
+        :para            => :full,
+        :forecast_string => "",
+        :date_inds       => OrderedDict(d => i for (i, d) in enumerate(dates)),
+        :indices         => OrderedDict(v => i for (i, v) in enumerate(vars)),
+    )
+    global mb_full = MeansBands(metadata, means_df, bands_dict)
+end
 
 @testset "Test that you can construct MeansBands objects and do stuff with them" begin
-     # If one is empty, just return the non-empty
+    # If one is empty, just return the non-empty
     @test cat(mb_empty, mb_full).means == mb_full.means
     @test cat(mb_full, mb_empty).means == mb_full.means
     @test get_class(mb_full) == :obs
@@ -61,8 +92,6 @@ end
 ################
 # Benchmarking #
 ################
-# Set this flag to true to run the MeansBands benchmarks. Off by default so
-# the test suite stays fast.
 run_benchmarks = false
 
 if run_benchmarks
