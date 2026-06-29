@@ -163,6 +163,7 @@ function metropolis_hastings(proposal_dist::Distribution,
     # Keep track of how long metropolis_hastings has been sampling
     total_sampling_time = 0.
 
+    try
     for block = 1:n_blocks
 
         begin_time = time_ns()
@@ -289,7 +290,9 @@ function metropolis_hastings(proposal_dist::Distribution,
                 "$expected_time_remaining_minutes minutes")
         println(verbose, :low, "Block $block acceptance rate: $(1. - block_rejection_rate) \n")
     end # of loop over blocks
-    close(simfile)
+    finally
+        close(simfile)
+    end
 
     rejection_rate = all_rejections / (n_blocks * n_sim * mhthin * n_param_blocks)
     println(verbose, :low, "Overall acceptance rate: $(1. - rejection_rate)")
