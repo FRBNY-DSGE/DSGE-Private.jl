@@ -14,6 +14,12 @@ Manifest.toml
 *.orig
 *.swp
 
+# Backup files
+*.bak*
+
+# Claude
+.claude/
+
 # Data
 *.mat
 *core.[0-9]*

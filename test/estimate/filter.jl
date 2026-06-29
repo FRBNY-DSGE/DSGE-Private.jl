@@ -2,13 +2,14 @@ using DSGE, DataFrames, JLD2
 using Dates, Test, BenchmarkTools
 
 path = dirname(@__FILE__)
+isdefined(@__MODULE__, :as_dataframe) || include(joinpath(@__DIR__, "..", "jld2_compat.jl"))
 
 # Set up arguments
 m = AnSchorfheide(testing = true)
 m <= Setting(:date_forecast_start, quartertodate("2015-Q4"))
 
 df, system, z0, P0 = JLD2.jldopen("$path/../reference/forecast_args.jld2", "r") do file
-    read(file, "df"), read(file, "system"), read(file, "z0"), read(file, "P0")
+    as_dataframe(read(file, "df")), read(file, "system"), read(file, "z0"), read(file, "P0")
 end
 
 # Read expected output
