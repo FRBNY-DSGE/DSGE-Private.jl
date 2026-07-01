@@ -1,12 +1,17 @@
 using BenchmarkTools
 
 write_test_output = false
+# RNG-dependent references (mutation outputs): Julia 1.7+ switched the default RNG to a
+# per-Task Xoshiro256++, so the seeded MH mutation draws differ from the "150"/"160" data —
+# regenerate with write_test_output on under the target Julia.
 if VERSION < v"1.5"
     ver = "111"
 elseif VERSION < v"1.6"
     ver = "150"
-else
+elseif VERSION < v"1.7"
     ver = "160"
+else
+    ver = "1126"
 end
 
 path = dirname(@__FILE__)
@@ -80,7 +85,7 @@ end
 # Benchmarking
 ###################################################################
 # Flip to true to run; off by default. 
-run_benchmarks = false
+run_benchmarks = true
 
 if run_benchmarks
     Σ_mat = Matrix(d.Σ)
