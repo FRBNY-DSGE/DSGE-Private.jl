@@ -24,7 +24,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default.
-run_benchmarks = false
+run_benchmarks = true
 
 if run_benchmarks
     # Full sample (not the 2-period test slice) so the BMA recursion runs out.

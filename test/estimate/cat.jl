@@ -27,7 +27,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. Inputs are local JLD2, no FRED API.
-run_benchmarks = false
+run_benchmarks = true
 
 if run_benchmarks
     b_cat = @benchmark cat($m, $kal1, $kal2)

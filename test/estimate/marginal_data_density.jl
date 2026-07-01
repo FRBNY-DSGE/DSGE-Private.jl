@@ -102,7 +102,8 @@ if run_benchmarks
                       ("tt2string", b_tt)]
         println(rpad(name, 30), " time: ", BenchmarkTools.prettytime(median(b).time),
                 "   memory: ", BenchmarkTools.prettymemory(median(b).memory))
-    end
+   
+            end
 end
 
 nothing
