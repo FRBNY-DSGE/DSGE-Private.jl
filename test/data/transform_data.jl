@@ -20,14 +20,40 @@ exp_data, exp_cond_data, exp_semicond_data =
 JLD2.jldopen("$path/../reference/load_data_out.jld2", "r") do file
     read(file, "data"), read(file, "cond_data"), read(file, "semi_cond_data")
 end
+# JLD2 may return a ReconstructedMutable when the saved DataFrame format
+# pre-dates the current DataFrames.jl — convert it back to a real DataFrame.
+_jld2_to_df(x::DataFrame) = x
+function _jld2_to_df(x)
+    idx  = x.colindex
+    cols = x.columns
+    nms  = Symbol.(DataFrames.names(idx))
+    DataFrame(Dict(nms[i] => cols[i] for i in eachindex(nms)))
+end
+
 levels, semi_levels, full_levels =
 JLD2.jldopen("$path/../reference/transform_data_inputs.jld2", "r") do file
-    read(file, "none"), read(file, "semi"), read(file, "full")
+    _jld2_to_df(read(file, "none")), _jld2_to_df(read(file, "semi")), _jld2_to_df(read(file, "full"))
 end
-exp_data_rev_transforms =
-JLD2.jldopen("$path/../reference/transform_data_out.jld2", "r") do file
-    read(file, "rev_transform")
-end
+exp_data_rev_transforms = OrderedDict{Symbol, Function}(
+    :obs_gdp           => DSGE.loggrowthtopct_annualized_percapita,
+    :obs_hours         => DSGE.logleveltopct_annualized_percapita,
+    :obs_wages         => DSGE.loggrowthtopct_annualized,
+    :obs_gdpdeflator   => DSGE.loggrowthtopct_annualized,
+    :obs_corepce       => DSGE.loggrowthtopct_annualized,
+    :obs_nominalrate   => DSGE.quartertoannual,
+    :obs_consumption   => DSGE.loggrowthtopct_annualized_percapita,
+    :obs_investment    => DSGE.loggrowthtopct_annualized_percapita,
+    :obs_spread        => DSGE.quartertoannual,
+    :obs_longinflation => DSGE.loggrowthtopct_annualized,
+    :obs_longrate      => DSGE.quartertoannual,
+    :obs_tfp           => DSGE.quartertoannual,
+    :obs_nominalrate1  => DSGE.quartertoannual,
+    :obs_nominalrate2  => DSGE.quartertoannual,
+    :obs_nominalrate3  => DSGE.quartertoannual,
+    :obs_nominalrate4  => DSGE.quartertoannual,
+    :obs_nominalrate5  => DSGE.quartertoannual,
+    :obs_nominalrate6  => DSGE.quartertoannual,
+)
 exp_hp_pop_hist, exp_hp_pop_forecast =
 JLD2.jldopen("$path/../reference/hp_data_out.jld2", "r") do file
     read(file, "exp_hp_pop_hist"), read(file, "exp_hp_pop_forecast")
