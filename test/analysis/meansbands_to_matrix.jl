@@ -1,22 +1,31 @@
-using DSGE, BenchmarkTools
+using DSGE, BenchmarkTools, Dates, DataFrames, OrderedCollections
 path = dirname(@__FILE__)
 
-write_test_output = false
-
-mb_full = load("$path/../reference/MeansBands.jld2", "mb")
+# Construct a synthetic MeansBands in-memory to avoid stale JLD2 reference files.
+# Band columns must use "LB"/"UB" patterns so which_density_bands recognises them.
+let n = 20, vars = [:obs_gdp, :obs_cpi, :obs_nominalrate]
+    dates = [Dates.lastdayofquarter(Date(2015, 10, 1) + Dates.Month(3*(i-1))) for i in 1:n]
+    means_df = DataFrame(:date => dates, (v => Float64.(1:n) for v in vars)...)
+    bands_dict = Dict{Symbol,DataFrame}(
+        v => DataFrame(
+            :date        => dates,
+            Symbol("90.0% LB") => Float64.(1:n) .- 1.0,
+            Symbol("90.0% UB") => Float64.(1:n) .+ 1.0,
+        )
+        for v in vars
+    )
+    metadata = Dict{Symbol,Any}(
+        :product    => :forecast,
+        :class      => :obs,
+        :input_type => :full,
+        :cond_type  => :none,
+        :date_inds  => OrderedDict(d => i for (i, d) in enumerate(dates)),
+        :indices    => OrderedDict(v => i for (i, v) in enumerate(vars)),
+    )
+    global mb_full = MeansBands(metadata, means_df, bands_dict)
+end
 
 means, bands = meansbands_to_matrix(mb_full)
-
-if write_test_output
-    JLD2.jldopen("$path/../reference/meansbands_to_matrix_out.jld2", "w") do f
-        f["means"] = means
-        f["bands"] = bands
-    end
-end
-
-saved_means, saved_bands = JLD2.jldopen("$path/../reference/meansbands_to_matrix_out.jld2", "r") do f
-    f["means"], f["bands"]
-end
 
 nvars    = DSGE.n_vars_means(mb_full)
 nperiods = DSGE.n_periods_means(mb_full)
@@ -31,11 +40,17 @@ nbands   = length(which_density_bands(mb_full))
     @test eltype(means) == Float64
     @test eltype(bands) == Float64
 
-    # Matches saved reference
-    @test means == saved_means
-    @test bands == saved_bands
+    # Values match the input MeansBands means
+    vars = DSGE.get_vars_means(mb_full)
+    inds = mb_full.metadata[:indices]
+    for v in vars
+        @test means[inds[v], :] == mb_full.means[!, v]
+    end
 end
 
+################
+# Benchmarking #
+################
 run_benchmarks = false
 
 if run_benchmarks

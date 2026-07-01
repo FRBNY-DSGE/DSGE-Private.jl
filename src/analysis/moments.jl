@@ -1065,7 +1065,7 @@ function sample_λ(m::PoolModel{S}, pred_dens::Matrix{S}, T::Int64 = -1;
 
     # Compute posterior from a static pool
     data = (T == 1) ? reshape(pred_dens[:,1], 2, 1) : pred_dens[:,1:T] # make sure it is matrix
-    estimate(m, data; filestring_addl = filestring_addl, proposal_covariance = ones(1,1))
+    estimate(m, data; filestring_addl = filestring_addl)
     m <= Setting(:sampling_method, orig_samp_method)
 
     return h5read(rawpath(m, "estimate", "mhsave.h5", filestring_addl), "mhparams")

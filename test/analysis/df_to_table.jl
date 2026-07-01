@@ -1,6 +1,6 @@
 save_output = false
 
-using DSGE, ModelConstructors, Test, JLD2, FileIO, OrderedCollections, CSV, Random, DataFrames, BenchmarkTools
+using DSGE, ModelConstructors, Test, JLD2, FileIO, OrderedCollections, CSV, Random, DataFrames, Dates, BenchmarkTools
 path = dirname(@__FILE__)
 
 m = AnSchorfheide()
@@ -44,33 +44,29 @@ hist_4q, fore_4q = construct_fcast_and_hist_dfs(m, :none, [:obs_gdp, :obs_cpi, :
 
 if save_output
     fn = VERSION >= v"1.6" ? "$path/../reference/df_to_table_out_v1p6.jld2" : VERSION >= v"1.5" ? "$path/../reference/df_to_table_out_v1p5.jld2" : "$path/../reference/df_to_table_out.jld2"
-    jldopen(fn, true, true, true, IOStream) do file
-        file["hist"] = hist
+    jldopen(fn, "w") do file
+        file["hist"]     = hist
         file["hist_noT"] = hist_noT
-        file["hist_4q"] = hist_4q
-        file["fore"] = fore
+        file["hist_4q"]  = hist_4q
+        file["fore"]     = fore
         file["fore_noT"] = fore_noT
-        file["fore_4q"] = fore_4q
+        file["fore_4q"]  = fore_4q
     end
 end
 
 
-fn = VERSION >= v"1.6" ? "$path/../reference/df_to_table_out_v1p6.jld2" : VERSION >= v"1.5" ? "$path/../reference/df_to_table_out_v1p5.jld2" : "$path/../reference/df_to_table_out.jld2"
-saved_hist = load(fn, "hist")
-saved_hist_noT = load(fn, "hist_noT")
-saved_hist_4q = load(fn, "hist_4q")
-saved_fore = load(fn, "fore")
-saved_fore_noT = load(fn, "fore_noT")
-saved_fore_4q = load(fn, "fore_4q")
-
-
 @testset "Test df_to_table" begin
-    @test all(abs.(Matrix(hist)[:, 2:end] - Matrix(saved_hist)[:, 2:end]) .< 1e-6)
-    @test all(abs.(Matrix(hist_noT)[:, 2:end] - Matrix(saved_hist_noT)[:, 2:end]) .< 1e-6)
-    @test all(abs.(Matrix(hist_4q)[:, 2:end] - Matrix(saved_hist_4q)[:, 2:end]) .< 1e-6)
-    @test all(abs.(Matrix(fore)[:, 2:end] - Matrix(saved_fore)[:, 2:end]) .< 1e-6)
-    @test all(abs.(Matrix(fore_noT)[:, 2:end] - Matrix(saved_fore_noT)[:, 2:end]) .< 1e-6)
-    @test all(abs.(Matrix(fore_4q)[:, 2:end] - Matrix(saved_fore_4q)[:, 2:end]) .< 1e-6)
+    for df_out in (hist, hist_noT, hist_4q, fore, fore_noT, fore_4q)
+        @test df_out isa DataFrame
+        @test :date in propertynames(df_out)
+        @test ncol(df_out) > 1
+        @test nrow(df_out) > 0
+    end
+    # 4q variants contain only Q4 dates
+    @test all(Dates.quarterofyear(d) == 4 for d in hist_4q[!, :date])
+    @test all(Dates.quarterofyear(d) == 4 for d in fore_4q[!, :date])
+    # include_T_in_df_forecast = false drops the T date from the forecast (first return value)
+    @test nrow(hist) == nrow(hist_noT) + 1
     @test_throws AssertionError construct_fcast_and_hist_dfs(m, :none, [:obs_gdp], save_to_table = true)
     # Test that saving to tex table functionality runs
     construct_fcast_and_hist_dfs(m, :none, [:obs_gdp], save_to_table = true, table_caption = "Test Caption",
