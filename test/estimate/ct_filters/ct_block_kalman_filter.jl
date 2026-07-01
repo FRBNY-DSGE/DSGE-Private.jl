@@ -1,13 +1,8 @@
 using DSGE, Test, BenchmarkTools, LinearAlgebra, Random
 
-# Test + benchmark for ct_block_kalman_filter (NOT loaded by DSGE; commented out
-# in DSGE.jl). Included directly here in an isolated module. Currently errors.
-# Known issues:
-#   - ctor uses RQRp before defining it (47); `R-blocks[0]` typo (50)
-#   - driver passes n_simulate_states as a keyword to a positional param (166)
-#   - forecast! uses bare n_simulate_states instead of k.n_simulate_states (253)
-#   - update!: Z*P_pred where P_pred is a Dict (273); s_t = s_pred*PZV*dy should be + (279)
-# Written to pass once these are fixed.
+# Test + benchmark for ct_block_kalman_filter (NOT loaded by DSGE; commented out in
+# DSGE.jl). Included directly here in an isolated module.
+# Smoke/regression test: finite per-period log-likelihoods on a small stable system.
 
 module CTBlockScaffold
     import DSGE: init_stationary_states
@@ -27,29 +22,18 @@ s_0 = zeros(2)
 P_0 = Matrix{Float64}(I, 2, 2)
 y = 0.1 * randn(1, 10)
 
-out, run_err = nothing, nothing
-try
-    global out, run_err
-    Random.seed!(47)
-    out = CTBlockScaffold.ct_block_kalman_filter(y, T, R, C, Q, Z, D, E;
-                                                 n_simulate_states = 1, s_0 = s_0, P_0 = P_0)
-catch e
-    global out, run_err
-    run_err = e
-end
+Random.seed!(47)
+out = CTBlockScaffold.ct_block_kalman_filter(y, T, R, C, Q, Z, D, E;
+                                             n_simulate_states = 1, s_0 = s_0, P_0 = P_0)
 
 @testset "ct_block_kalman_filter on a small system" begin
-    if run_err !== nothing
-        @test_broken run_err === nothing  # known broken — see header
-    else
-        loglh = out[1]
-        @test length(loglh) == size(y, 2)
-        @test all(isfinite, loglh)
-    end
+    loglh = out[1]
+    @test length(loglh) == size(y, 2)
+    @test all(isfinite, loglh)
 end
 
-run_benchmarks = false
-if run_benchmarks && run_err === nothing
+run_benchmarks = true
+if run_benchmarks
     b = @benchmark CTBlockScaffold.ct_block_kalman_filter($y, $T, $R, $C, $Q, $Z, $D, $E;
                                                           n_simulate_states = 1,
                                                           s_0 = $s_0, P_0 = $P_0)
