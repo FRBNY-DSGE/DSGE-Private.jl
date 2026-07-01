@@ -52,7 +52,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     results = Tuple{String, Any}[]
 

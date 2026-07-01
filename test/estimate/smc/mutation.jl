@@ -85,7 +85,7 @@ end
 # Benchmarking
 ###################################################################
 # Flip to true to run; off by default. 
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     Σ_mat = Matrix(d.Σ)

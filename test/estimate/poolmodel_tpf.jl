@@ -20,7 +20,7 @@ outputs_path = joinpath(dirname(@__FILE__),
                         "../reference/tpf_aux_outputs_poolmodel_version=$(ver).jld2")
 
 # Flip to true to regenerate the saved reference outputs (RNG-dependent), then flip back.
-writing_output = true
+writing_output = false
 
 # Guard the load: on a first regen run the version-tagged file may not exist yet (the
 # writing_output blocks below create it). When writing, comparisons are self-consistent.
@@ -134,7 +134,7 @@ end
 ################
 # Benchmarking #
 ################
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     results = Tuple{String, Any}[]
 

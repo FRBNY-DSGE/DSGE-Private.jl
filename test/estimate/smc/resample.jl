@@ -52,7 +52,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. Pure numerics, no FRED API.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     b_sys   = @benchmark SMC.resample($weights, method = :systematic)

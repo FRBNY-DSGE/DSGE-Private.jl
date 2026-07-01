@@ -26,7 +26,7 @@ out = block_kalman_filter(y, Ttild, Rtild, Ctild, Qtild, Ztild, Dtild, Etild,
     @test all(isfinite, loglh)
 end
 
-run_benchmarks = true
+run_benchmarks = false
 if run_benchmarks
     b = @benchmark block_kalman_filter($y, $Ttild, $Rtild, $Ctild, $Qtild, $Ztild,
                                        $Dtild, $Etild, $M, $Mtild, $block_dims,

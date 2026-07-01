@@ -75,7 +75,7 @@ end
 # Benchmarking #
 ################
 # Flip to true to run; off by default. compute_parameter_covariance is disk I/O.
-run_benchmarks = true
+run_benchmarks = false
 
 if run_benchmarks
     draws = randn(200, 6)

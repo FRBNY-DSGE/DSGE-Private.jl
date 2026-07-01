@@ -1,6 +1,6 @@
 using DSGE, ModelConstructors, Dates, Test, LinearAlgebra, FileIO, Random, JLD2
 
-writing_output = true # Write output for tests which use random values
+writing_output = false # Write output for tests which use random values
 if VERSION < v"1.5"
     ver = "111"
 else
