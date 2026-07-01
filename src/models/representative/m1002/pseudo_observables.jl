@@ -483,9 +483,9 @@ pseudo[:Expected10YearNaturalRate].rev_transform = quartertoannual
 
     # Needed to implement pseudo-measurement equation correctly
     if haskey(get_settings(m), :add_expected_long_naturalrate) && get_setting(m, :add_expected_long_naturalrate)
-        m <= Setting(:forward_looking_pseudo_observables, [:Expected10YearRateGap, :Econometricians10YearRateGap, :Expected10YearRate, :Expected10YearNaturalRate, :Expected5YearNaturalRate, :Expected10YearRealNaturalRate, :Expected5YearRealNaturalRate])
+        m <= Setting(:forward_looking_pseudo_observables, [:Expected10YearRateGap, :Expected10YearRate, :Expected10YearNaturalRate, :Expected5YearNaturalRate, :Expected10YearRealNaturalRate, :Expected5YearRealNaturalRate])
     else
-        m <= Setting(:forward_looking_pseudo_observables, [:Expected10YearRateGap, :Econometricians10YearRateGap, :Expected10YearRate, :Expected10YearNaturalRate])
+        m <= Setting(:forward_looking_pseudo_observables, [:Expected10YearRateGap, :Expected10YearRate, :Expected10YearNaturalRate])
     end
 
     if haskey(get_settings(m), :add_expected_FFR_pseudo) && get_setting(m, :add_expected_FFR_pseudo) >= 1
