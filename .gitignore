@@ -40,3 +40,6 @@ docs/.documenter.pub
 
 # Outputs of test
 test/estimate/smc/save/output_data/an_schorfheide/ss0/estimate/raw
+
+*.o*
+*.e*

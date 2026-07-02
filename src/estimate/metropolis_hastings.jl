@@ -83,9 +83,14 @@ function metropolis_hastings(proposal_dist::Distribution,
                              toggle::Bool           = true,
                              testing::Bool          = false) where {S<:Number, T<:AbstractFloat}
 
-    # If testing, set the random seeds at fixed numbers
+    # If testing, set the random seeds at fixed numbers. Seed BOTH the local `rng` (used by
+    # rand(propdist, rng) for para_old) AND the global default RNG: the migrated SMC's mutation
+    # helpers — mvnormal_mixture_draw's rand(d_mix_old) and generate_free_blocks' shuffle — draw
+    # from the global RNG, not `rng`, so without this the mutation draws are non-reproducible
+    # across runs and the reference-draw test fails.
     if testing
         Random.seed!(rng, 654)
+        Random.seed!(654)
     end
 
     if adaptive_accept

@@ -54,7 +54,7 @@ function combined_optimizer(fcn::Function,
         # first, run LBFGS
         println(verbose, :low, "Running L-BFGS...")
         out_lbfgs = Optim.optimize(fcn, x_opt, lbfgs(),
-                   Optim.Options(autodiff=autodiff, g_tol = grtol, f_tol = ftol, x_tol = xtol,
+                   Optim.Options(autodiff=autodiff, g_abstol = grtol, f_reltol = ftol, x_abstol = xtol,
                    iterations = iterations, store_trace = store_trace, show_trace = show_trace,
                    extended_trace = extended_trace))
 

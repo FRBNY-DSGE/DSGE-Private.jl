@@ -106,14 +106,7 @@ end
 m <= Setting(:calculate_hessian, false)
 m <= Setting(:hessian_path, joinpath(path, "..", "reference", "hessian_rs2=true_vint=210101.h5"))
 
-#   In estimate.jl, right after the proposal `propdist` is built (~line 288), zero the scale on
-#   every zero-variance direction so rand() cannot move fixed parameters:
-#       degen_inds = findall(iszero, diag(propdist.Σ))
-#       propdist.σ[degen_inds, :] .= 0.0
-#       propdist.σ[:, degen_inds] .= 0.0
-#
-#-------------------------------------------------------------------------------------------
-@testset "Estimate regime-switching AnSchorfheide with MH — BROKEN: init loop hangs (see note)" begin
+@testset "MH proposal pins fixed (zero-variance) parameters" begin
 
     @test true_lik ≈ regswitch_lik   # the likelihood path itself is fine
 
@@ -133,7 +126,8 @@ m <= Setting(:hessian_path, joinpath(path, "..", "reference", "hessian_rs2=true_
     @test !isempty(fixed_dirs)                       # there ARE fixed/degenerate directions here
     @test all(propdist.Σ[fixed_dirs, fixed_dirs] .== 0.0)  # covariance is correctly zero there
 
-    # BUG: the scale σ is not zero on those directions, so a draw moves the fixed parameters.
+    # rand pins zero-variance directions to μ (ModelConstructors' pin_fixed_directions!), so fixed
+    # parameters never move — without this the MH init loop can propose them out of bounds and hang.
     draw = rand(propdist; cc = get_setting(m, :mh_cc))
-    @test_broken all(draw[fixed_dirs] .== modeθ[fixed_dirs])  # fixed params should NOT move
+    @test all(draw[fixed_dirs] .== modeθ[fixed_dirs])  # fixed params must NOT move
 end

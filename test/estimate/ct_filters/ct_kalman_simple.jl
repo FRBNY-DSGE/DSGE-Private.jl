@@ -1,8 +1,7 @@
 using DSGE, Test, BenchmarkTools, LinearAlgebra, Random
 
 # Test + benchmark for ct_kalman_simple (src/estimate/ct_filters/ct_kalman_simple.jl).
-# Not loaded by DSGE; included directly in an isolated module. This one runs.
-# Smoke/regression test: a finite scalar log-likelihood on a small stable system.
+
 
 module CTSimpleScaffold
     using LinearAlgebra

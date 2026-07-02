@@ -2,12 +2,15 @@ using SMC
 using BenchmarkTools
 
 writing_output = false
-if VERSION < v"1.5"
-    ver = "111"
-else
-    ver = "150"
-end
-@everywhere Random.seed!(42)
+# RNG-dependent references (mvnormal_mixture_draw, block generation) tier by Julia version:
+# 1.7+ switched the default RNG to Xoshiro256++, so seeded draws differ from the "150" data.
+# Deterministic references (solve_adaptive_ϕ, proposal densities, ESS) don't touch the RNG,
+# so they stay version-independent on `dver`.
+ver  = VERSION < v"1.5" ? "111" : (VERSION < v"1.7" ? "150" : "1126")
+dver = VERSION < v"1.5" ? "111" : "150"
+# Plain seed (not @everywhere): in a single process @everywhere doesn't pin the task-local
+# RNG the seeded draws use, leaving the RNG references unreproducible.
+Random.seed!(42)
 
 ####################################################################
 # Testing Adaptive Φ Solution
@@ -29,7 +32,7 @@ test_ϕ_n, test_resampled_last_period, test_j, test_ϕ_prop = SMC.solve_adaptive
                                                                 tempering_target,
                                                                 resampled_last_period)
 if writing_output
-    jldopen(joinpath(dirname(@__FILE__), "reference/helpers_output_version=" * ver * ".jld2"),
+    jldopen(joinpath(dirname(@__FILE__), "reference/helpers_output_version=" * dver * ".jld2"),
             true, true, true, IOStream) do file
         write(file, "phi_n", test_ϕ_n)
         write(file, "resampled_last_period", test_resampled_last_period)
@@ -39,7 +42,7 @@ if writing_output
 end
 
 file = JLD2.jldopen(joinpath(dirname(@__FILE__), "reference/helpers_output_version="
-                             * ver * ".jld2"), "r")
+                             * dver * ".jld2"), "r")
 saved_ϕ_n = read(file, "phi_n")
 saved_resampled_last_period = read(file, "resampled_last_period")
 saved_j = read(file, "j")
@@ -111,13 +114,13 @@ close(file)
 q0, q1 = SMC.compute_proposal_densities(para_draw, para_subset, d_subset; α = α,
                                         c = c)
 if writing_output
-    JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/proposal_densities_output_version=" * ver * ".jld2"), true, true, true, IOStream) do file
+    JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/proposal_densities_output_version=" * dver * ".jld2"), true, true, true, IOStream) do file
         file["q0"] = q0
         file["q1"] = q1
     end
 end
 
-file = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/proposal_densities_output_version=" * ver * ".jld2"))
+file = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/proposal_densities_output_version=" * dver * ".jld2"))
     saved_q0 = read(file, "q0")
     saved_q1 = read(file, "q1")
 close(file)
@@ -162,12 +165,12 @@ if writing_output
         write(file, "old_loglh", old_loglh)
     end
 
-    JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/ess_output_version=" * ver * ".jld2"), true, true, true, IOStream) do file
+    JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/ess_output_version=" * dver * ".jld2"), true, true, true, IOStream) do file
         write(file, "ess", test_ESS)
     end
 end
 
-file = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/ess_output_version=" * ver * ".jld2"))
+file = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/ess_output_version=" * dver * ".jld2"))
     saved_ESS = read(file, "ess")
 close(file)
 

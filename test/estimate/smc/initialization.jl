@@ -38,7 +38,9 @@ m <= Setting(:use_fixed_schedule, true)
 ####################################################################
 init_cloud = SMC.Cloud(length(m.parameters), get_setting(m, :n_particles))
 
-@everywhere Random.seed!(42)
+# Plain seed (not @everywhere): in a single process @everywhere doesn't pin the task-local
+# RNG the seeded draws use, leaving the RNG-dependent references unreproducible.
+Random.seed!(42)
 SMC.initial_draw!(loglik_fn, m.parameters, data, init_cloud)
 
 if write_test_output
@@ -179,7 +181,7 @@ run_benchmarks = false
 if run_benchmarks
     n_part = get_setting(m, :n_particles)
     template_cloud = SMC.Cloud(length(m.parameters), n_part)
-    @everywhere Random.seed!(42)
+    Random.seed!(42)
     SMC.initial_draw!(loglik_fn, m.parameters, data, template_cloud)
 
     b_initdraw = @benchmark SMC.initial_draw!(loglik_fn, $(m.parameters), $data, cl) setup=(cl = SMC.Cloud(length($(m.parameters)), $n_part)) evals=1

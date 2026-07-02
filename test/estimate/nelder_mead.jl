@@ -2,38 +2,24 @@ using DSGE, Test, BenchmarkTools, Random
 import Optim
 
 # Tests + benchmark for src/estimate/nelder_mead.jl.
-#   - nelder_mead(fcn, x0): runs on the installed Optim (its `method=` API is still
-#     present). We check the objective improves substantially; try/catch keeps it
-#     robust if a newer Optim drops `method=`.
-#   - MatlabSimplexer constructors: ok.
-#   - Optim.simplexer(MatlabSimplexer, x): runs, but aliases the initial point
-#     (`[initial_x for i=...]` doesn't copy), so the loop mutates one shared array
-#     and all simplex vertices come out identical. (The zero/nonzero perturbation
-#     branches also look inverted vs MATLAB fminsearch.)
+#   - nelder_mead(fcn, x0): uses Optim's positional method + Options API; we check the
+#     objective improves substantially on Rosenbrock.
+#   - MatlabSimplexer constructors.
+#   - Optim.simplexer(MatlabSimplexer, x): n+1 distinct vertices (copies the initial point;
+#     perturbs each coordinate, matching MATLAB fminsearch).
 
 #-----------------------------------------------------------------
-# nelder_mead — broken (old Optim API)
+# nelder_mead
 #-----------------------------------------------------------------
 rosenbrock(x::Vector) = (1.0 - x[1])^2 + 100.0 * (x[2] - x[1]^2)^2
 x0 = [-1.2, 1.0]
 
-out, run_err = nothing, nothing
-try
-    global out, run_err
-    Random.seed!(47)
-    out = DSGE.nelder_mead(rosenbrock, copy(x0); iterations = 1000)
-catch e
-    global out, run_err
-    run_err = e
-end
+Random.seed!(47)
+out = DSGE.nelder_mead(rosenbrock, copy(x0); iterations = 1000)
 
 @testset "nelder_mead on Rosenbrock" begin
-    if run_err !== nothing
-        @test_broken run_err === nothing  # only if a newer Optim drops the method= API
-    else
-        @test isfinite(out.minimum)
-        @test out.minimum < 1.0           # big improvement from f(x0) ≈ 24.2
-    end
+    @test isfinite(out.minimum)
+    @test out.minimum < 1.0           # big improvement from f(x0) ≈ 24.2
 end
 
 #-----------------------------------------------------------------
@@ -60,7 +46,7 @@ end
     x = [1.0, 2.0, 3.0]
     simplex = Optim.simplexer(DSGE.MatlabSimplexer(), x)
     @test length(simplex) == length(x) + 1          # n+1 vertices
-    @test_broken allunique(simplex)                 # aliasing: vertices are all the same array
+    @test allunique(simplex)                         # each vertex is a distinct, perturbed copy
 end
 
 ################
@@ -70,11 +56,8 @@ run_benchmarks = false
 if run_benchmarks
     results = Tuple{String, Any}[]
 
-    # The optimizer itself — only if it ran (skipped if a newer Optim drops method=).
-    if run_err === nothing
-        b_nm = @benchmark DSGE.nelder_mead($rosenbrock, $(copy(x0)); iterations = 1000)
-        push!(results, ("nelder_mead", b_nm))
-    end
+    b_nm = @benchmark DSGE.nelder_mead($rosenbrock, $(copy(x0)); iterations = 1000)
+    push!(results, ("nelder_mead", b_nm))
 
     b_simplex = @benchmark Optim.simplexer(DSGE.MatlabSimplexer(), x) setup = (x = [1.0, 2.0, 3.0, 4.0])
     push!(results, ("Optim.simplexer (4-vec)", b_simplex))
