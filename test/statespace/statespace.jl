@@ -4,8 +4,13 @@ isdefined(@__MODULE__, :as_dataframe) || include(joinpath(@__DIR__, "..", "jld2_
 writing_output = false # Write output for tests which use random values
 if VERSION < v"1.5"
     ver = "111"
-else
+elseif VERSION < v"1.7"
     ver = "150"
+else
+    # Julia 1.7 switched the default RNG from a single process-wide
+    # MersenneTwister to a per-Task Xoshiro256++ (TaskLocalRNG), so seeded
+    # draws no longer match the "150" reference data.
+    ver = "1126"
 end
 
 m = AnSchorfheide()
