@@ -1,5 +1,6 @@
 using DSGE, FileIO, JLD2, ModelConstructors, Test, Random, Dates, BenchmarkTools
 path = dirname(@__FILE__)
+isdefined(@__MODULE__, :as_dataframe) || include(joinpath(@__DIR__, "..", "jld2_compat.jl"))
 
 # Set up arguments
 m = AnSchorfheide(testing = true)
@@ -120,7 +121,7 @@ m <= Setting(:regime_eqcond_info, Dict(3 => deepcopy(zlb_rule_eqcond),
                                              6 => DSGE.EqcondEntry(DSGE.flexible_ait(), [1., 0.])))
 m <= Setting(:temporary_altpolicy_names, [:zlb_rule])
 setup_regime_switching_inds!(m; cond_type = :full)
-df = load(joinpath(path, "..", "reference", "regime_switch_data.jld2"), "regime_switch_df_full")
+df = as_dataframe(load(joinpath(path, "..", "reference", "regime_switch_data.jld2"), "regime_switch_df_full"))
 sys = compute_system(m; tvis = true)
 _, histshocks, _, init_states = smooth(m, df, sys; cond_type = :full)
 output = DSGE.forecast_one_draw(m, :mode, :full, [:forecastobs, :histpseudo, :forecastpseudo,

@@ -1,6 +1,7 @@
 using DSGE, ModelConstructors, Dates, Test, LinearAlgebra, FileIO, Random, JLD2
+isdefined(@__MODULE__, :as_dataframe) || include(joinpath(@__DIR__, "..", "jld2_compat.jl"))
 
-writing_output = true # Write output for tests which use random values
+writing_output = false # Write output for tests which use random values
 if VERSION < v"1.5"
     ver = "111"
 else
@@ -435,7 +436,7 @@ end
     m <= Setting(:forecast_horizons, 12)
 
     fp = dirname(@__FILE__)
-    df = load(joinpath(fp, "../reference", "regime_switch_data.jld2"), "regime_switch_df_none")
+    df = as_dataframe(load(joinpath(fp, "../reference", "regime_switch_data.jld2"), "regime_switch_df_none"))
 
     m <= Setting(:replace_eqcond, true)
     m <= Setting(:regime_eqcond_info, Dict{Int, DSGE.EqcondEntry}(

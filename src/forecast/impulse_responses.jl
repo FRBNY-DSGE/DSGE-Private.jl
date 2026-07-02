@@ -577,13 +577,23 @@ function impulse_responses(system::System{S}, horizon::Int, permute_mat::Abstrac
     end
 
     obs_cov = obs_std * obs_std'
+    # obs_cov is a Gram matrix (positive semidefinite by construction), but on some
+    # BLAS/LAPACK builds roundoff can leave it slightly asymmetric or with a tiny negative
+    # eigenvalue, so Cholesky throws PosDefException. Symmetrize first; if it is still not
+    # positive definite, add a minimal diagonal ridge so the factorization succeeds. The
+    # ridge only activates on the path that would otherwise error — matrices that already
+    # factor cleanly take the first branch and are unaffected.
     cholmat = try
         cholesky(obs_cov).L
     catch e
-        if isa(e, PosDefException)
-            cholesky((obs_cov + obs_cov') ./ 2).L
-        else
-            rethrow(e)
+        isa(e, PosDefException) || rethrow(e)
+        sym = (obs_cov + obs_cov') ./ 2
+        try
+            cholesky(sym).L
+        catch e2
+            isa(e2, PosDefException) || rethrow(e2)
+            ridge = eps(real(S)) * max(maximum(abs, diag(sym)), one(real(S)))
+            cholesky(sym + ridge * I).L
         end
     end
     structural_shock = obs_std \ (cholmat * shocks)

@@ -2,6 +2,7 @@ using DSGE, JLD2, Dates, ModelConstructors, DataFrames
 using Test, FileIO
 
 path = dirname(@__FILE__)
+isdefined(@__MODULE__, :as_dataframe) || include(joinpath(@__DIR__, "..", "jld2_compat.jl"))
 
 # Initialize models
 function make_test_model(year::Int)
@@ -29,6 +30,8 @@ m_old = make_test_model(2014)
 
 # Read in data and parameters
 @load "$path/../reference/decompose_forecast_args.jld2" df_new df_old params_new params_old
+df_new = as_dataframe(df_new)
+df_old = as_dataframe(df_old)
 
 run_decomp(cond_new, cond_old) =
     decompose_forecast(m_new, m_old,
@@ -115,7 +118,7 @@ setup_regime_switching_inds!(m_rs)
 m_rs <= Setting(:model2para_regime,
                 Dict{Symbol, Dict{Int, Int}}(:σ_condgdp     => Dict{Int, Int}(),
                                              :σ_condcorepce => Dict{Int, Int}()))
-df = load("$path/../reference/regime_switch_data.jld2", "none")
+df = as_dataframe(load("$path/../reference/regime_switch_data.jld2", "none"))
 
 for i in 1:3
     adj = (i == 1) ? 1. : .95

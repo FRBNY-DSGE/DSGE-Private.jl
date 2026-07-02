@@ -3,9 +3,20 @@ using BenchmarkTools
 fp = dirname(@__FILE__)
 if VERSION < v"1.5"
     ver = "111"
-else
+elseif VERSION < v"1.6"
     ver = "150"
+elseif VERSION < v"1.12"
+    ver = "160"
+else
+    ver = "1120"
 end
+
+# The references are generated sequentially, and the parallel path (pmap) only matches them
+# when real worker processes exist; in a single process it diverges. So only exercise the
+# parallel branch when extra workers are present — otherwise run sequentially (which is what
+# the committed references assert against). Add workers (addprocs + @everywhere using DSGE)
+# before this file to actually test the parallel path.
+use_parallel = nworkers() > 1
 
 @testset "Impulse responses of a VAR using a DSGE as a prior (wrapper function)" begin
     jlddata = load(joinpath(fp, "../../reference/test_dsgevar_lambda_irfs.jld2"))
@@ -105,29 +116,29 @@ end
     Random.seed!(1793)
     out = impulse_responses(dsgevar, jlddata["modal_param"],
                             jlddata["data"],
-                            :mode, :cholesky; parallel = true,
+                            :mode, :cholesky; parallel = use_parallel,
                             create_meansbands = false, flip_shocks = false,
                             n_obs_shock = 1)
     out_lr = impulse_responses(dsgevar, jlddata["modal_param"], jlddata["data"],
-                               :mode, :choleskyLR; parallel = true,
+                               :mode, :choleskyLR; parallel = use_parallel,
                                create_meansbands = false, flip_shocks = false,
                                n_obs_shock = 1)
     out_maxbc = impulse_responses(dsgevar,  jlddata["modal_param"], jlddata["data"],
-                                  :mode, :maxBC; parallel = true,
+                                  :mode, :maxBC; parallel = use_parallel,
                                   create_meansbands = false, flip_shocks = false,
                                   n_obs_shock = 1)
 
     Random.seed!(1793)
     out_flip = impulse_responses(dsgevar, jlddata["modal_param"], jlddata["data"],
-                                 :mode, :cholesky; parallel = true,
+                                 :mode, :cholesky; parallel = use_parallel,
                                  create_meansbands = false, flip_shocks = true,
                                  n_obs_shock = 1)
     out_lr_flip = impulse_responses(dsgevar, jlddata["modal_param"], jlddata["data"],
-                                    :mode, :choleskyLR; parallel = true,
+                                    :mode, :choleskyLR; parallel = use_parallel,
                                     create_meansbands = false, flip_shocks = true,
                                     n_obs_shock = 1)
     out_maxbc_flip = impulse_responses(dsgevar, jlddata["modal_param"], jlddata["data"],
-                                       :mode, :maxBC; parallel = true,
+                                       :mode, :maxBC; parallel = use_parallel,
                                        create_meansbands = false, flip_shocks = true,
                                        n_obs_shock = 1)
 
@@ -165,16 +176,16 @@ end
 
 
     Random.seed!(1793)
-    out_parallel = impulse_responses(dsgevar, params, jlddata["data"], :full, :rotation, parallel = true, normalize_rotation = false)
+    out_parallel = impulse_responses(dsgevar, params, jlddata["data"], :full, :rotation, parallel = use_parallel, normalize_rotation = false)
     Random.seed!(1793)
     out_draw_parallel = impulse_responses(dsgevar, params, jlddata["data"], :full, :rotation,
-                                          draw_shocks = true, parallel = true, normalize_rotation = false)
+                                          draw_shocks = true, parallel = use_parallel, normalize_rotation = false)
     Random.seed!(1793)
     out_dev_parallel = impulse_responses(dsgevar, params, jlddata["data"], :full, :rotation,
-                                         deviations = true, parallel = true, normalize_rotation = false)
+                                         deviations = true, parallel = use_parallel, normalize_rotation = false)
     Random.seed!(1793)
     out_dev_draw_parallel = impulse_responses(dsgevar, params, jlddata["data"], :full, :rotation, draw_shocks = true,
-                                              deviations = true, parallel = true, normalize_rotation = false)
+                                              deviations = true, parallel = use_parallel, normalize_rotation = false)
 
 
     # Not testing but just checking no error when creating MeansBands

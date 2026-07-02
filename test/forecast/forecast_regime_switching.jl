@@ -1,7 +1,8 @@
-using Test, ModelConstructors, DSGE, Dates, FileIO, Random, JLD2, HDF5
+using Test, ModelConstructors, DSGE, Dates, FileIO, Random, JLD2, HDF5, BenchmarkTools
+isdefined(@__MODULE__, :as_dataframe) || include(joinpath(@__DIR__, "..", "jld2_compat.jl"))
 
-generate_fulldist_forecast_data = true
-generate_time_varying_system_for_SSR = true
+generate_fulldist_forecast_data = false
+generate_time_varying_system_for_SSR = false
 
 if VERSION < v"1.5"
     ver = "111"
@@ -191,7 +192,7 @@ end
     setup_regime_switching_inds!(m; cond_type = :full)
 
     fp = dirname(@__FILE__)
-    df = load(joinpath(fp, "../reference/regime_switch_data.jld2"), "regime_switch_df_full")
+    df = as_dataframe(load(joinpath(fp, "../reference/regime_switch_data.jld2"), "regime_switch_df_full"))
     date_ind = findfirst(df[!, :date] .== Date(2020, 6, 30))
     df[date_ind, :obs_nominalrate] = .3 / 4.
     m <= Setting(:replace_eqcond, true)
@@ -348,9 +349,9 @@ end
     output_vars = [:forecastobs, :forecast4qobs, :forecastpseudo, :histpseudo]
     dfs = Dict()
     fp = dirname(@__FILE__)
-    dfs[:full] = load(joinpath(fp, "../reference/regime_switch_data.jld2"), "regime_switch_df_full")
-    dfs[:semi] = load(joinpath(fp, "../reference/regime_switch_data.jld2"), "regime_switch_df_semi")
-    dfs[:none] = load(joinpath(fp, "../reference/regime_switch_data.jld2"), "regime_switch_df_none")
+    dfs[:full] = as_dataframe(load(joinpath(fp, "../reference/regime_switch_data.jld2"), "regime_switch_df_full"))
+    dfs[:semi] = as_dataframe(load(joinpath(fp, "../reference/regime_switch_data.jld2"), "regime_switch_df_semi"))
+    dfs[:none] = as_dataframe(load(joinpath(fp, "../reference/regime_switch_data.jld2"), "regime_switch_df_none"))
 
     if !generate_fulldist_forecast_data
         check_results = load(joinpath(fp, "../reference/regime_switching_fulldist_forecast_version=" * ver * ".jld2"), "fcast_out")
@@ -494,7 +495,7 @@ end
         m <= Setting(:tvis_information_set, [1:1, 2:2, [i:get_setting(m, :n_regimes) for i in 3:get_setting(m, :n_regimes)]...])
 
         sys = compute_system(m; tvis = true)
-        df = load(joinpath(dirname(@__FILE__), "../reference/regime_switch_data.jld2"), "regime_switch_df_none")
+        df = as_dataframe(load(joinpath(dirname(@__FILE__), "../reference/regime_switch_data.jld2"), "regime_switch_df_none"))
         df[end, :obs_hours] = NaN
         df[end, :obs_wages] = NaN
         df[end, :obs_consumption] = NaN
@@ -611,6 +612,28 @@ end
             end
         end
     end
+end
+
+####################
+# Benchmark
+####################
+# Primary computation exercised throughout this file: solving the state-space system for a
+# regime-switching Model1002. Build a self-contained 3-regime model (testset-local vars are
+# not visible here) and benchmark compute_system on it.
+run_benchmarks = false
+if run_benchmarks
+    bm = Model1002("ss10")
+    bm <= Setting(:regime_switching, true)
+    bm <= Setting(:regime_dates, Dict{Int, Date}(1 => date_presample_start(bm),
+                                                 2 => Date(2020, 3, 31),
+                                                 3 => Date(2020, 6, 30)))
+    bm = setup_regime_switching_inds!(bm)
+
+    b_cs = @benchmark compute_system($bm)
+    println("\n===== compute_system (regime-switching) benchmark results =====")
+    println(rpad("compute_system (regime-switching)", 35), " time: ",
+            rpad(BenchmarkTools.prettytime(median(b_cs).time), 12),
+            "memory: ", BenchmarkTools.prettymemory(median(b_cs).memory))
 end
 
 nothing

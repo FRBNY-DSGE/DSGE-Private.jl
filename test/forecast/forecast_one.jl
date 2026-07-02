@@ -199,10 +199,11 @@ end
 
 m = Model1002("ss10", custom_settings = custom_settings, testing = true)
 m <= Setting(:rate_expectations_source, :ois)
+isdefined(@__MODULE__, :as_dataframe) || include(joinpath(@__DIR__, "..", "jld2_compat.jl"))
 dfs = Dict()
-dfs[:none] = load("$path/../reference/regime_switch_data.jld2", "none")
-dfs[:semi] = load("$path/../reference/regime_switch_data.jld2", "semi")
-dfs[:full] = load("$path/../reference/regime_switch_data.jld2", "full")
+dfs[:none] = as_dataframe(load("$path/../reference/regime_switch_data.jld2", "none"))
+dfs[:semi] = as_dataframe(load("$path/../reference/regime_switch_data.jld2", "semi"))
+dfs[:full] = as_dataframe(load("$path/../reference/regime_switch_data.jld2", "full"))
 
 if generate_regime_switch_tests
     exp_out_dict_new = exp_out_dict # We won't be testing, but we want to have the same structure as the existing one dict
