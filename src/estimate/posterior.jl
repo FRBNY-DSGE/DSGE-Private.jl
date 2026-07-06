@@ -133,6 +133,12 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
         return -Inf
     end
 
+    if haskey(get_settings(m), :enforce_rho_gdp_ge_gdi) && get_setting(m, :enforce_rho_gdp_ge_gdi)
+        if m[:ρ_gdp].value < m[:ρ_gdi].value
+            return -Inf
+        end
+    end
+
     # During Metropolis-Hastings, return -∞ if any parameters are not within their bounds
     if sampler
         for θ in m.parameters

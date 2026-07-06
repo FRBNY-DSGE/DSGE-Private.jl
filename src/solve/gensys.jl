@@ -104,7 +104,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         end
     end
     nunstab = n - sum(select)
-    @show nunstab, sum(select), n
+    # @show nunstab, sum(select), n  # debug print — silenced (was flooding logs on every solve)
 
 
 
