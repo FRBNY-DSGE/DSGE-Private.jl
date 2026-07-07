@@ -33,7 +33,7 @@ pred_dens = load("$(fp)/../reference/moments_poolmodel_inputs.jld2", "pred_dens"
 Random.seed!(1793)
 sm = PoolModel("ss1"; weight_type = :static)
 sm <= Setting(:saveroot, "$(fp)/../reference/")
-sm <= Setting(:hessian_path, "$(fp)/../reference/mh_hessian_poolmodel.h5")
+sm <= Setting(:calculate_hessian, true)
 sm <= Setting(:n_mh_simulations, 1)
 sλmat_noparallel = sample_λ(sm, pred_dens, 1)
 sλmat_parallel   = sample_λ(sm, pred_dens, 1; parallel = true)
