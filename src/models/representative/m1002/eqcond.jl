@@ -581,9 +581,12 @@ end
     Ψ[eq[:eq_γ], exo[:γ_sh]]  = 1.
 
     # Long-term inflation expectations
-if subspec_ind >= 207
-    nopish = haskey(m.settings, :rm_pi_star) &&
-        reg >= get_setting(m, :rm_pi_star) && reg < 10 ? 0.0 : 1.0
+if haskey(m.settings, :restore_pistar_post2022) && get_setting(m, :restore_pistar_post2022) &&
+        parse(Int, SubString(subspec(m), 3, subspec_ind)) >= 207
+    # ss207+ corrected intent: π_star off during covid (from :remove_pistar_shocks),
+    # back ON from reg 10 (2022Q1). Toggle defaults off ⇒ identical for all current runs.
+    nopish = haskey(m.settings, :remove_pistar_shocks) &&
+        reg >= get_setting(m, :remove_pistar_shocks) && reg < 10 ? 0.0 : 1.0
 else
      nopish = haskey(m.settings, :remove_pistar_shocks) &&
         reg >= get_setting(m, :remove_pistar_shocks) ? 0.0 : 1.0

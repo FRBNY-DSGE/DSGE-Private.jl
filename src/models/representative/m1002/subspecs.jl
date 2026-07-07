@@ -7505,7 +7505,7 @@ Continuation of ss206 with additional changes
 
 
     #Fix all inflation and inflation target σs to regime 1
-    #NOTE THAT THERE IS A SETTING (rm_pi_star) that takes in an integer, which denotes in which regime pi_star shocks turn off. This tends to be set as 5 (2020 Q4) in the current specification. (I believe this means they shut off in 2021 Q1, but it should be validated)
+    #NOTE: :remove_pistar_shocks (Int, set to 5 = 2020 Q4) denotes the regime from which pi_star shocks turn off. For subspec>=207, setting :restore_pistar_post2022=true additionally brings them BACK from regime 10 (2022 Q1); default (unset) leaves them off permanently. (The old name :rm_pi_star was never actually set — a phantom; see eqcond.jl.)
     for pk in [:σ_corepce, :σ_π_star]
          m2p[pk] = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
     end
