@@ -28,7 +28,7 @@ test_multi_resample  = SMC.resample(weights, method = :multinomial)
 test_poly_resample   = SMC.resample(weights, method = :polyalgo)
 
 if writing_output
-    jldopen("$path/../../reference/resample_version=" * ver * ".jld2",
+    JLD2.jldopen("$path/../../reference/resample_version=" * ver * ".jld2",
             true, true, true, IOStream) do file
         write(file, "sys", test_sys_resample)
         write(file, "multi", test_multi_resample)
