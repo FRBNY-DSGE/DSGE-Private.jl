@@ -164,7 +164,6 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     T, k, H = decomposition_periods(m_new, m_old, df_new, df_old, cond_new, cond_old)
 
     gap_exists = (k > 0)
-    @show gap_exists
 
     # Forecast
     f(m::AbstractDSGEModel, df::DataFrame, params::Vector{Float64}, cond_type::Symbol; kwargs...) =
@@ -198,10 +197,10 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
         end
     end
 
-    new_regime = get_setting(m_new, :n_hist_regimes) + 1
-    old_regime = get_setting(m_old, :n_hist_regimes) + 1
-    @show new_regime
-    @show old_regime
+    # Default n_hist_regimes to 1 when unset (non-regime-switching), matching the
+    # convention used in forecast.jl; these indices are only used below when gap_exists.
+    new_regime = (haskey(get_settings(m_new), :n_hist_regimes) ? get_setting(m_new, :n_hist_regimes) : 1) + 1
+    old_regime = (haskey(get_settings(m_old), :n_hist_regimes) ? get_setting(m_old, :n_hist_regimes) : 1) + 1
 
     #the point of out1-out1_5 should be to see just the effect of updating the spd data (out1 contains the completely new dataframe
     #with all new SPD values, while out1_5 contains most of the new dataframe, but where the expected nominal rate 1-6 periods ahead
@@ -214,7 +213,7 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
 
     #new code to remove cond meas err from current regime from new model - this keeps the effect of cond meas err being on for
     #current quarter within new conditional data category
-    if gap_exists #do not do unless there is a gap in forecasts
+    if gap_exists && haskey(m_new.settings, :model2para_regime) #do not do unless there is a gap in forecasts and there are regime-switching cond meas err params
         get_setting(m_new, :model2para_regime)[:σ_condgdp][new_regime] = 1
         get_setting(m_new, :model2para_regime)[:σ_condcorepce][new_regime] = 1
         #turn on for m_old's conditional quarter
@@ -265,12 +264,15 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     #forecast with m_new, new params, and df without latest quarter of data, in which the last row is what the df_old's last row is
     #so out2-out3 or out1_5-out3 shows you what the effect of new data in that last quarter of old df is
 
-    if gap_exists
+    old_cond_rows = .&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
+                       df_old[!, :date] .>= get_setting(m_old, :date_forecast_start))
+    if gap_exists && any(old_cond_rows) # only copy if m_old actually has conditional-quarter data (e.g. cond_old == :full)
        df_new_lesscond[.&(df_new_lesscond[!, :date] .<= get_setting(m_old, :date_conditional_end), #quarter of conditional data
                                                                                                    #for m_old
                         df_new_lesscond[!, :date] .>= get_setting(m_old, :date_forecast_start)), #first forecast quarter of m_old
-                        names(df_old)] = df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
-                        df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), :]
+                        names(df_old)] = df_old[old_cond_rows, :]
+    elseif gap_exists
+       # gap exists but m_old has no conditional-quarter row (cond_old == :none): nothing to inject
     else
        df_new_lesscond = vcat(df_new_lesscond, df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
                                                          df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), :])
@@ -339,13 +341,17 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     m_old_mod2par = haskey(m_old.settings, :model2para_regime) ? get_setting(m_old, :model2para_regime) : nothing
 
     #comment out the following lines before out4 if working with m1010
-    get_setting(m_new_olddf, :model2para_regime)[:σ_condgdp] = get_setting(m_old, :model2para_regime)[:σ_condgdp]
-    get_setting(m_new_olddf, :model2para_regime)[:σ_condcorepce] = get_setting(m_old, :model2para_regime)[:σ_condcorepce]
+    if haskey(m_new_olddf.settings, :model2para_regime) && haskey(m_old.settings, :model2para_regime)
+        get_setting(m_new_olddf, :model2para_regime)[:σ_condgdp] = get_setting(m_old, :model2para_regime)[:σ_condgdp]
+        get_setting(m_new_olddf, :model2para_regime)[:σ_condcorepce] = get_setting(m_old, :model2para_regime)[:σ_condcorepce]
+    end
 
-    # Use new model's initial pgap and ygap
+    # Use new model's initial pgap and ygap (only for models that carry pgap/ygap settings)
     ind_init = findfirst(df_old[!, :date] .== Date("2020-06-30"))
-    df_old[ind_init, :obs_ygap] = -get_setting(m_new, :ygap_value)
-    df_old[ind_init, :obs_pgap] = -get_setting(m_new, :pgap_value)
+    if !isnothing(ind_init) && haskey(m_new.settings, :ygap_value) && haskey(m_new.settings, :pgap_value)
+        df_old[ind_init, :obs_ygap] = -get_setting(m_new, :ygap_value)
+        df_old[ind_init, :obs_pgap] = -get_setting(m_new, :pgap_value)
+    end
 
     #m_new with changes made to allow for forecasting with old data, old_df, new params so out3 - out4 shows the effect of the
     #difference between df_new_lesscond with last row of df_old as last row of df_new_lesscond and df_old - so this is the
@@ -372,10 +378,12 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     #m_new_olddf <= Setting(:ygap_value, get_setting(m_old,:ygap_value))
     #m_new_olddf <= Setting(:flexible_ait_ρ_smooth, get_setting(m_old,:flexible_ait_ρ_smooth))
 
-    # Reset to old initial pgap and ygap
+    # Reset to old initial pgap and ygap (only for models that carry pgap/ygap settings)
     ind_init = findfirst(df_old[!, :date] .== Date("2020-06-30"))
-    df_old[ind_init, :obs_ygap] = -get_setting(m_old, :ygap_value)
-    df_old[ind_init, :obs_pgap] = -get_setting(m_old, :pgap_value)
+    if !isnothing(ind_init) && haskey(m_old.settings, :ygap_value) && haskey(m_old.settings, :pgap_value)
+        df_old[ind_init, :obs_ygap] = -get_setting(m_old, :ygap_value)
+        df_old[ind_init, :obs_pgap] = -get_setting(m_old, :pgap_value)
+    end
 
     #when out4 and out5 are subtracted, we are just seeing the effect of the changes made to the model for AIT
     #out5 = f(m_new_olddf, df_old, params_new, cond_old, outputs = [:forecast, :shockdec],
