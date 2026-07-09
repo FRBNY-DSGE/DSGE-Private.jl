@@ -1175,8 +1175,14 @@ function propagate_λ(λ::T, h::Int64, m::PoolModel,
         update!(m, θvec)
     end
     Φ, ~, ~ = solve(m)
+    # The transition Φ operates on the latent state x, where λ = cdf(Normal(), x)
+    # (see PoolModel transition/measurement). Propagating a λ sample forward therefore
+    # requires mapping λ -> x via the probit inverse, iterating the AR transition on x,
+    # then mapping back x -> λ. Applying Φ directly to λ (as before) treats λ as the
+    # latent state and produces the wrong dynamics (e.g. decaying 0.5 -> ρ^h·0.5).
+    x = quantile(Normal(), λ)
     for j in 1:h
-        λ = Φ([λ; 1 - λ], [0.])[1]
+        x = Φ(x, 0.)
     end
-    return λ
+    return cdf(Normal(), x)
 end

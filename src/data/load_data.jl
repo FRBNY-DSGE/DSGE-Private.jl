@@ -316,7 +316,7 @@ function load_data_levels(m::AbstractDSGEModel; verbose::Symbol=:low,
     if !m.testing
         filename = inpath(m, "raw", "population_data_levels_$vint.csv")
         mnemonic = parse_population_mnemonic(m)[1]
-        if !isnull(mnemonic) && get(mnemonic) ∈ names(df)
+        if !isnull(mnemonic) && get(mnemonic) ∈ propertynames(df) # names(df) returns Strings in DataFrames 1.x; mnemonic is a Symbol
             CSV.write(filename, df[!,[:date, get(mnemonic)]])
         end
     end
