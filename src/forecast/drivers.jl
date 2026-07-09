@@ -306,7 +306,10 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
             init_parameters!(m)
         end =#
         tmp = map(α -> α.value, m.parameters)
-        params = convert(Vector{Union{Vector{Float64}, Float64}}, tmp)
+        # Only widen to the heterogeneous Union container when some parameter value
+        # is itself a vector (e.g. regime-switching params); for the common all-scalar
+        # case keep the concrete Vector{Float64} that map already produced.
+        params = eltype(tmp) == Float64 ? tmp : convert(Vector{Union{Vector{Float64}, Float64}}, tmp)
 
     end
 

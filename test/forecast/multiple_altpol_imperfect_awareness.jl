@@ -3,6 +3,17 @@ include("tvcred_parameterize.jl")
 
 regenerate_reference_forecasts = false
 
+if VERSION < v"1.5"
+    ver = "111"
+elseif VERSION < v"1.6"
+    ver = "150"
+elseif VERSION < v"1.7"
+    ver = "160"
+else
+    # Julia 1.7 switched the default RNG from MersenneTwister to per-Task Xoshiro256++
+    ver = "1126"
+end
+
 # Forecast settings
 fcast_date = DSGE.quartertodate("2020-Q4")
 date_fcast_end  = iterate_quarters(fcast_date, 60)
@@ -205,7 +216,7 @@ out_temp_flexible_ait = DSGE.forecast_one_draw(m, :mode, :full, output_vars, mod
                                                regime_switching = true, n_regimes = get_setting(m, :n_regimes))
 
 if regenerate_reference_forecasts
-    h5open(joinpath(dirname(@__FILE__), "../reference/multiple_altpol_imperfect_awareness_output.h5"), "w") do file
+    h5open(joinpath(dirname(@__FILE__), "../reference/multiple_altpol_imperfect_awareness_output_version=$(ver).h5"), "w") do file
         write(file, "forecastobs", out_temp_flexible_ait[:forecastobs])
         write(file, "forecastpseudo", out_temp_flexible_ait[:forecastpseudo])
     end

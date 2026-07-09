@@ -3,8 +3,12 @@ using DSGE, ModelConstructors, JLD2, FileIO, Test, Dates, Random
 writing_output = false
 if VERSION < v"1.5"
     ver = "111"
-else
+elseif VERSION < v"1.7"
     ver = "150"
+else
+    # Julia 1.7 switched default RNG from MersenneTwister to per-Task Xoshiro256++,
+    # so the draw_states=true smoother output differs and needs its own fixture.
+    ver = "1126"
 end
 
 path = dirname(@__FILE__())
@@ -210,11 +214,11 @@ pseudo_sv = Matrix{Float64}[]
     if smoother == :durbin_koopman
         @test @test_matrix_approx_eq states_rs3[smoother] exp_states_regime_switch
         @test @test_matrix_approx_eq shocks_rs3[smoother] exp_shocks_regime_switch
-        @test @test_matrix_approx_eq pseudo_rs3[smoother]  exp_pseudo_regime_switch[1:24, :] # extra rows b/c used more pseudo-obs when generating the test file
+        @test @test_matrix_approx_eq pseudo_rs3[smoother]  exp_pseudo_regime_switch[1:size(pseudo_rs3[smoother], 1), :] # extra rows b/c used more pseudo-obs when generating the test file
     else # the other smoothers should generate similar output, but may not be the exact same thing
         @test maximum(abs.(states_rs3[smoother] - exp_states_regime_switch))  < 9e-1
         @test maximum(abs.(shocks_rs3[smoother] - exp_shocks_regime_switch))  < 2e-1
-        @test maximum(abs.(pseudo_rs3[smoother] - exp_pseudo_regime_switch[1:24, :])) < 3e-1
+        @test maximum(abs.(pseudo_rs3[smoother] - exp_pseudo_regime_switch[1:size(pseudo_rs3[smoother], 1), :])) < 3e-1
     end
 end
 

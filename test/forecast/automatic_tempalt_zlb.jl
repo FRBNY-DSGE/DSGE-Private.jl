@@ -2,6 +2,14 @@ using DSGE, ModelConstructors, Dates, OrderedCollections, Test, CSV, DataFrames,
 
 regenerate_output = false
 
+# Julia 1.7 switched the default RNG from MersenneTwister to per-Task Xoshiro256++,
+# so the prior draws (and hence the full-distribution forecast output) differ and
+# need their own reference fixture.
+fulldist_ref = joinpath(dirname(@__FILE__),
+                        VERSION >= v"1.7" ? "../reference/automatic_tempalt_zlb_fulldist_1.12.jld2" :
+                        (VERSION >= v"1.5" ? "../reference/automatic_tempalt_zlb_fulldist_v1p5.jld2" :
+                                             "../reference/automatic_tempalt_zlb_fulldist.jld2"))
+
 ## Regime switching and full-distribution
 # Initialize model objects
 Random.seed!(1793 * 10)
@@ -80,25 +88,13 @@ forecast_one(m, :full, :full, output_vars, verbose = :none, params = mparas, df 
 output_files = get_forecast_output_files(m, :full, :full, output_vars)
 if regenerate_output
 using JLD2, FileIO
-if (VERSION >= v"1.5")
-JLD2.jldopen(joinpath(dirname(@__FILE__), "../reference/automatic_tempalt_zlb_fulldist_v1p5.jld2"),
-             true, true, true, IOStream) do file
-for (k, v) in output_files
-    write(file, string(k), load(v, "arr"))
-end
-        end
-    else
-        JLD2.jldopen(joinpath(dirname(@__FILE__), "../reference/automatic_tempalt_zlb_fulldist.jld2"),
-                     true, true, true, IOStream) do file
-        for (k, v) in output_files
-            write(file, string(k), load(v, "arr"))
-        end
+JLD2.jldopen(fulldist_ref, true, true, true, IOStream) do file
+    for (k, v) in output_files
+        write(file, string(k), load(v, "arr"))
     end
 end
 else
-    refdata = (VERSION >= v"1.5") ?
-    load(joinpath(dirname(@__FILE__), "../reference/automatic_tempalt_zlb_fulldist_v1p5.jld2")) :
-    load(joinpath(dirname(@__FILE__), "../reference/automatic_tempalt_zlb_fulldist.jld2"))
+    refdata = load(fulldist_ref)
     @testset "Automatic enforcement of ZLB as a temporary alternative policy during full-distribution forecast" begin
         for (k, v) in output_files # Test variables which don't have forward-looking measurement equations
 
