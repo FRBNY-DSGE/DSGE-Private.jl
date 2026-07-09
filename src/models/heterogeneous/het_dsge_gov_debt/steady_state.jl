@@ -346,7 +346,7 @@ end
 
     # Find eigenvalue closest to 1
     (D,V) = (eigen(LPMKF)...,)
-    max_D = argmax(abs.(D))
+    max_D = argmin(abs.(D .- 1))  # eigen does not guarantee ordering; pick eigenvalue nearest 1
     D = D[max_D]
 
     if abs(D - 1) > tol && print_warning
