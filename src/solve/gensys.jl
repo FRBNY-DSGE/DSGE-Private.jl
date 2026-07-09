@@ -104,7 +104,6 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         end
     end
     nunstab = n - sum(select)
-    @show nunstab, sum(select), n
 
 
 
