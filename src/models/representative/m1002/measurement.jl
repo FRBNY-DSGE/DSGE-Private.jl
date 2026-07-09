@@ -266,7 +266,11 @@ TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, r
 =#
 #Econometrician's views
 
-TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
+# permanent_t (not a hardcoded 29): passing a permanent regime index larger than
+# the number of regimes causes an out-of-bounds access in k_periods_ahead_expectations
+# when the model has fewer regimes (e.g. temporary alt-policy forecasts). All sibling
+# calls above use permanent_t.
+TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, permanent_t;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
 
