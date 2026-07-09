@@ -1,5 +1,16 @@
 write_test_output = false
 
+if VERSION < v"1.5"
+    ver = "111"
+elseif VERSION < v"1.6"
+    ver = "150"
+elseif VERSION < v"1.7"
+    ver = "160"
+else
+    # Julia 1.7 switched default RNG from MersenneTwister to per-Task Xoshiro256++
+    ver = "1126"
+end
+
 path = dirname(@__FILE__)
 
 ###################################################################
@@ -36,16 +47,16 @@ m <= Setting(:use_fixed_schedule, true)
 ####################################################################
 init_cloud = SMC.Cloud(length(m.parameters), get_setting(m, :n_particles))
 
-@everywhere Random.seed!(42)
+Random.seed!(42)  # use_parallel_workers=false, so no @everywhere needed; @everywhere advances calling-task RNG non-deterministically
 SMC.initial_draw!(loglik_fn, m.parameters, data, init_cloud)
 
 if write_test_output
-    JLD2.jldopen(joinpath(path, "reference/initial_draw_out.jld2"), "w") do file
+    JLD2.jldopen(joinpath(path, "reference/initial_draw_out_version=" * ver * ".jld2"), "w") do file
         write(file, "cloud", init_cloud)
     end
 end
 
-saved_init_cloud = load(joinpath(path, "reference/initial_draw_out.jld2"), "cloud")
+saved_init_cloud = load(joinpath(path, "reference/initial_draw_out_version=" * ver * ".jld2"), "cloud")
 
 @testset "Initial draw" begin
     @test @test_matrix_approx_eq SMC.get_vals(init_cloud) SMC.get_vals(saved_init_cloud)
@@ -129,11 +140,11 @@ end
 SMC.initialize_likelihoods!(loglik_fn, parameters, data, init_cloud)
 
 if write_test_output
-    JLD2.jldopen(joinpath(path, "reference/initialize_likelihood_out.jld2"), true, true, true, IOStream) do file
+    JLD2.jldopen(joinpath(path, "reference/initialize_likelihood_out_version=" * ver * ".jld2"), true, true, true, IOStream) do file
         file["init_lik_cloud"] = init_cloud
     end
 end
-test_init_cloud = JLD2.jldopen(joinpath(path, "reference/initialize_likelihood_out.jld2"), "r") do file
+test_init_cloud = JLD2.jldopen(joinpath(path, "reference/initialize_likelihood_out_version=" * ver * ".jld2"), "r") do file
     file["init_lik_cloud"]
 end
 

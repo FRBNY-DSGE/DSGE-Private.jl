@@ -6,8 +6,11 @@ if VERSION < v"1.5"
     ver = "111"
 elseif VERSION < v"1.6"
     ver = "150"
-else
+elseif VERSION < v"1.7"
     ver = "160"
+else
+    # Julia 1.7 switched default RNG from MersenneTwister to per-Task Xoshiro256++
+    ver = "1126"
 end
 
 m = AnSchorfheide()
@@ -33,7 +36,8 @@ m <= Setting(:resampling_threshold, .5)
 m <= Setting(:smc_iteration, 0)
 m <= Setting(:use_chand_recursion, true)
 
-@everywhere Random.seed!(42)
+Random.seed!(42)  # plain seed!: @everywhere spawns a task that advances the
+                  # calling-task RNG non-deterministically on Julia 1.7+ (Xoshiro)
 
 println("Estimating AnSchorfheide Model... (approx. 2 minutes)")
 DSGE.smc2(m, data, verbose = :none, run_csminwel = false) # Uncomment once new DSGE version comes out: run_csminwel = false, verbose = :none) # us.txt gives equiv to periods 95:174 in our current dataset

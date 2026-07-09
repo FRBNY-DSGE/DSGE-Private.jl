@@ -3,8 +3,11 @@ if VERSION < v"1.5"
     ver = "111"
 elseif VERSION < v"1.6"
     ver = "150"
-else
+elseif VERSION < v"1.7"
     ver = "160"
+else
+    # Julia 1.7 switched default RNG from MersenneTwister to per-Task Xoshiro256++
+    ver = "1126"
 end
 
 path = dirname(@__FILE__)

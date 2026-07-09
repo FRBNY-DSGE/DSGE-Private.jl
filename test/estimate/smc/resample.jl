@@ -3,11 +3,19 @@ if VERSION < v"1.5"
     ver = "111"
 elseif VERSION < v"1.6"
     ver = "150"
-else
+elseif VERSION < v"1.7"
     ver = "160"
+else
+    # Julia 1.7 switched default RNG from MersenneTwister to per-Task Xoshiro256++
+    ver = "1126"
 end
 
-@everywhere Random.seed!(42)
+Random.seed!(42)  # use_parallel_workers=false; @everywhere advances calling-task RNG non-deterministically
+
+# Anchor fixture path to the test file's location so this works from any CWD
+# (the resample fixtures live in test/reference/, two levels up from here).
+resample_ref = joinpath(dirname(@__FILE__), "..", "..", "reference",
+                        "resample_version=" * ver * ".jld2")
 
 weights = rand(400)
 weights = weights ./ sum(weights)
@@ -17,7 +25,7 @@ test_multi_resample  = SMC.resample(weights, method = :multinomial)
 test_poly_resample   = SMC.resample(weights, method = :polyalgo)
 
 if writing_output
-    jldopen("reference/resample_version=" * ver * ".jld2",
+    jldopen(resample_ref,
             true, true, true, IOStream) do file
         write(file, "sys", test_sys_resample)
         write(file, "multi", test_multi_resample)
@@ -25,9 +33,9 @@ if writing_output
     end
 end
 
-saved_sys_resample   = load("reference/resample_version=" * ver * ".jld2", "sys")
-saved_multi_resample = load("reference/resample_version=" * ver * ".jld2", "multi")
-saved_poly_resample  = load("reference/resample_version=" * ver * ".jld2", "poly")
+saved_sys_resample   = load(resample_ref, "sys")
+saved_multi_resample = load(resample_ref, "multi")
+saved_poly_resample  = load(resample_ref, "poly")
 
 ####################################################################
 

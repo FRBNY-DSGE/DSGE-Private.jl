@@ -342,8 +342,8 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
 	        tempered_update_prior_weight = tempered_update_prior_weight,
 
             regime_switching = regime_switching,
-            debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data,
-            add_zlb_duration = add_zlb_duration)#,
+            debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data)#,
+            # add_zlb_duration removed: not in SMC.jl API; captured in _my_likelihood_dsge closure
             #timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
 
     if run_csminwel
