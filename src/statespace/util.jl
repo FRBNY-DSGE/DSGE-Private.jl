@@ -557,7 +557,7 @@ function k_periods_ahead_expected_sums(TTT::AbstractMatrix, CCC::AbstractVector,
             for q in 2:k
                 TTTʲmemo[q] = TTTʲmemo[q - 1] * TTT
             end
-            return Tᵏsum, (I + sum([(I - TTT) \ (I - TTTʲmemo[k - q + 1]) for q in 1:(k - 1)])) * CCC
+            return Tᵏsum, (I + sum([(I - TTT) \ (I - TTTʲmemo[k - q + 1]) for q in 1:(k - 1)]; init = zero(TTT))) * CCC
         end
     else
         if t + k <= permanent_t
@@ -606,7 +606,7 @@ function k_periods_ahead_expected_sums(TTT::AbstractMatrix, CCC::AbstractVector,
                 for q in 2:k
                     TTTʲmemo[q] = TTTʲmemo[q - 1] * TTTs[permanent_t]
                 end
-                return Tᵏsum, (I + sum([(I - TTTs[permanent_t]) \ (I - TTTʲmemo[k - q + 1]) for q in 1:(k - 1)])) * CCCs[permanent_t]
+                return Tᵏsum, (I + sum([(I - TTTs[permanent_t]) \ (I - TTTʲmemo[k - q + 1]) for q in 1:(k - 1)]; init = zero(TTTs[permanent_t]))) * CCCs[permanent_t]
             end
         else
             # Computation time can be saved by realizing some matrices are not time-varying
