@@ -17,6 +17,7 @@ module DSGE
     import Base.isempty, Base.<, Base.min, Base.max
     import LinearAlgebra: rank
     import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
+    import ADTypes: AutoForwardDiff, AutoFiniteDiff   # Optim 2 autodiff selection (Optim imports ADTypes but doesn't re-export it)
     import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks, solve_discrete_lyapunov
     import ModelConstructors
     import ModelConstructors: posterior!, posterior, <=, n_states,

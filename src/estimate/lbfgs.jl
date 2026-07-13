@@ -19,7 +19,8 @@ function lbfgs(fcn::Function,
                                      show_trace = show_trace,
                                      extended_trace = extended_trace))
     else
-        Optim.optimize(fcn, x0, LBFGS(), autodiff=:forward,
+        # Optim 2 moved autodiff selection to ADTypes: :forward -> AutoForwardDiff() (imported in DSGE.jl).
+        Optim.optimize(fcn, x0, LBFGS(), autodiff=AutoForwardDiff(),
                        Optim.Options(g_abstol = grtol, f_reltol = ftol, x_abstol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,

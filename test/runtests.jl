@@ -3,7 +3,16 @@ using Dates, DataFrames, OrderedCollections, FileIO, DataStructures, LinearAlgeb
 using StatsBase, Random, CSV, StateSpaceRoutines, HDF5, JLD2, MAT, Plots
 import ModelConstructors: @test_matrix_approx_eq, @test_matrix_approx_eq_eps
 @everywhere using DSGE, JLD2, Printf, LinearAlgebra, ModelConstructors, SMC
-HETDSGEGOVDEBT = "../src/models/heterogeneous/het_dsge_gov_debt/reference"
+HETDSGEGOVDEBT = normpath(joinpath(@__DIR__, "..", "src", "models", "heterogeneous",
+                                   "het_dsge_gov_debt", "reference"))
+
+# Shared JLD2-proxy converter: reference MvNormals serialized under older PDMats/Distributions come
+# back as JLD2-reconstructed proxies on the current stack; rebuild a real MvNormal from μ/Σ. Defined
+# here (not per-test) so it's available no matter which test files run. Mirrors _jld2_to_df in
+# test/data/transform_data.jl.
+_jld2_to_mvnormal(x::Distribution) = x
+_jld2_to_mvnormal(x) = MvNormal(collect(Float64, x.μ),
+                                Matrix{Float64}(x.Σ isa AbstractMatrix ? x.Σ : x.Σ.mat))
 
 # MAXIMAL list: every *.jl under test/ except the three runner scripts
 # (runtests.jl, run_all_tests.jl, ci_tester.jl). Prune from here.

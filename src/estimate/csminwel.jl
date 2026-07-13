@@ -348,7 +348,9 @@ function csminwel(fcn::Function,
     return MultivariateOptimizationResults(Csminwel(), x0, x, convert(Float64, f_x),
                                            iteration, xtol, xtol, x_resid, x_resid,
                                            ftol, ftol, f_resid, f_resid, grtol, gr_resid,
-                                           tr, f_calls, g_calls, 0, NaN, NaN,
+                                           # Optim 2 MultivariateOptimizationResults added jvp_calls & hvp_calls;
+                                           # csminwel is gradient-only: f_calls, g_calls, jvp=0, h_calls=0, hvp=0, time_limit, time_run
+                                           tr, f_calls, g_calls, 0, 0, 0, NaN, NaN,
                                            stopped_by, termination_code), H  # also return H
 
 # the NaNs are for time and timelimit--apparently if they're NaN, there is no time limit
@@ -612,7 +614,8 @@ function assess_convergence(x::Array,
                             grtol::Real)
     x_converged, f_converged, gr_converged = false, false, false
 
-    if Optim.maxdiff(x, x_previous) < xtol
+    # Optim 2 removed Optim.maxdiff; inline max_i |x_i - x_previous_i|
+    if maximum(abs.(x .- x_previous)) < xtol
         x_converged = true
     end
 
