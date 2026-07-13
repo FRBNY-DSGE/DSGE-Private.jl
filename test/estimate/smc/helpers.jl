@@ -60,9 +60,11 @@ end
 ####################################################################
 # Testing MvNormal Mixture Draw Function
 ####################################################################
+# d_subset / `d` below are proxy MvNormals on the current stack — _jld2_to_mvnormal (runtests.jl)
+# rebuilds a real MvNormal from μ/Σ so SMC's methods dispatch.
 file = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/mvnormal_inputs.jld2"))
     para_subset = read(file, "para_subset")
-    d_subset    = read(file, "d_subset")
+    d_subset    = _jld2_to_mvnormal(read(file, "d_subset"))
     α           = read(file, "α")
     c           = read(file, "c")
 close(file)
@@ -89,7 +91,7 @@ end
 # Test: get_cov()
 ####################################################################
 d = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/mutation_inputs.jld2"), "r") do file
-    file["d"]
+    _jld2_to_mvnormal(file["d"])
 end
 d_deg = DegenerateMvNormal(d.μ, d.Σ.mat)
 
@@ -106,7 +108,7 @@ end
 file = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/proposal_densities_in.jld2"))
     para_draw   = read(file, "para_draw")
     para_subset = read(file, "para_subset")
-    d_subset    = read(file, "d_subset")
+    d_subset    = _jld2_to_mvnormal(read(file, "d_subset"))
     α           = read(file, "α")
     c           = read(file, "c")
 close(file)

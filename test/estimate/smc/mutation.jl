@@ -42,7 +42,7 @@ n_parts = get_setting(m, :n_particles)
 
 file = JLD2.jldopen(joinpath(path, "reference/mutation_inputs.jld2"), "r")
 old_particles = read(file, "particles")
-d = read(file, "d")
+d = _jld2_to_mvnormal(read(file, "d"))
 blocks_free = read(file, "blocks_free")
 blocks_all = read(file, "blocks_all")
 ϕ_n = read(file, "ϕ_n")
