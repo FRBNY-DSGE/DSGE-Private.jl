@@ -26,12 +26,15 @@ function get_quarter_ends(start_date::Dates.Date,end_date::Dates.Date)
 end
 
 """
-`quartertodate(string::String)`
+`quartertodate(string::AbstractString)`
 
 Convert `string` in the form "YYqX", "YYYYqX", or "YYYY-qX" to a Date of the end of
 the indicated quarter. "X" is in `{1,2,3,4}` and the case of "q" is ignored.
+
+Accepts any `AbstractString` (e.g. the `String15`/`InlineString` columns CSV.jl
+produces under Julia 1.12), not just `String`.
 """
-function quartertodate(string::String)
+function quartertodate(string::AbstractString)
     if occursin(r"^[0-9]{2}[qQ][1-4]$", string)
         year = "20"*string[1:2]
         quarter = string[end]
