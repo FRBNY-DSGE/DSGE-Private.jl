@@ -149,3 +149,11 @@ function hessian_step!(m::Union{AbstractDSGEModel, AbstractVARModel},
 
     return hessian
 end
+
+"""
+```
+function recursive_mh_regularization(d_Σ::Matrix{S}) where {S <: Real}
+```
+checks covariance matrix of block and regularizes if cholesky factoriation
+fails
+"""

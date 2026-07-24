@@ -155,6 +155,7 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
     	df_plot_data = DataFrame()
 
         # Call recipe
+
         plots[var] = histforecast(var, histold, forecastold;
 		     		              df_plot_data = df_plot_data, save_as_csv = save_as_csv,
                                   names = old_names, colors = old_colors,
@@ -256,9 +257,7 @@ function plot_forecast_comparison(m_old::AbstractDSGEModel, m_new::AbstractDSGEM
                                   title = title, ylabel = series_ylabel(m_new, var, class),
                                   kwargs...)
 	    if save_as_csv
-            @show names(df_plot_data)
    	        df_plot_data = df_plot_data[!, setdiff(names(df_plot_data), [:mean_history])]
-            @show names(df_plot_data)
             rename!(df_plot_data, :mean_forecast => Symbol("mean_forecast_old"))
 	    end
 

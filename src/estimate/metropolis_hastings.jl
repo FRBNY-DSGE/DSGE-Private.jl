@@ -99,7 +99,8 @@ function metropolis_hastings(proposal_dist::Distribution,
         cc = c
     end
 
-    propdist = init_deg_mvnormal(proposal_dist.μ, proposal_dist.σ)
+    #propdist = init_deg_mvnormal(proposal_dist.μ, proposal_dist.σ) [ID change]
+    propdist = proposal_dist
 
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
@@ -185,7 +186,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
             if reblock # Parameter blocking by randomly drawing blocks every MH draw
                 free_para_inds = ModelConstructors.get_free_para_inds(parameters)
-                blocks_free = SMC.generate_free_blocks(free_para_inds, n_param_blocks)
+                blocks_free = SMC.generate_free_blocks(n_free_para, n_param_blocks)
                 for block_f in blocks_free
                     sort!(block_f)
                 end
@@ -194,12 +195,27 @@ function metropolis_hastings(proposal_dist::Distribution,
             for (k, block_a) in enumerate(blocks_free)
                 # Draw para_new from the proposal distribution
                 para_subset = para_old[block_a]
+
+                #= [ID Change]
                 d_subset    = DegenerateMvNormal(propdist.μ[block_a],
                                        (propdist.σ[block_a, block_a] +
                                        propdist.σ[block_a, block_a]') / 2.,
                                        inv((propdist.σ[block_a, block_a] +
                                        propdist.σ[block_a, block_a]') / 2.),
-                                       propdist.λ_vals[block_a])
+                propdist.λ_vals[block_a]) =#
+
+                # Fix cholesky symmetry problem (ensure positive semi-definite)
+                d_Σ = (propdist.Σ[block_a, block_a] + propdist.Σ[block_a, block_a]') / 2.
+
+                # Regularize matrix
+                try
+                    cholesky(d_Σ)
+                catch
+                    d_Σ = d_Σ + 1e-8 * I
+                end
+
+                d_subset = MvNormal(propdist.μ[block_a], d_Σ)
+                #d_subset = DegenerateMvNormal(propdist.μ[block_a], d_Σ, stdev = false)
 
                 para_draw         = mvnormal_mixture_draw(para_subset, d_subset;
                                                           α = α, c = cc)
@@ -208,7 +224,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
                 q0, q1 = if adaptive_accept
                     # NOT DONE YET, we're not actually computing draws from the mixture yet b/c not using mvnormal_mixture_draw
-                    SMC.compute_proposal_densities(para_draw, para_subset, sample_mean, propdist.σ[block_a, block_a];
+                    SMC.compute_proposal_densities(para_draw, para_subset, d_subset;
                                                    α = α, c = cc, catch_near_zeros = true)#Updated
                 else
                     0.0, 0.0

@@ -12,12 +12,15 @@ module DSGE
     using StatsBase: sample, Weights
     using StatsFuns: chisqinvcdf
     using Statistics: std
+    using MatrixEquations
+    using CMAEvolutionStrategy
 
     import Calculus
     import Base.isempty, Base.<, Base.min, Base.max
     import LinearAlgebra: rank
-    import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults
+    import Optim: optimize, SecondOrderOptimizer, MultivariateOptimizationResults, LineSearches
     import ADTypes: AutoForwardDiff, AutoFiniteDiff   # Optim 2 autodiff selection (Optim imports ADTypes but doesn't re-export it)
+    import BlackBoxOptim
     import StateSpaceRoutines: KalmanFilter, augment_states_with_shocks, solve_discrete_lyapunov
     import ModelConstructors
     import ModelConstructors: posterior!, posterior, <=, n_states,
@@ -96,8 +99,8 @@ module DSGE
         gensys, solve, klein,
 
         # estimate/
-        simulated_annealing, combined_optimizer, lbfgs,
-        filter, filter_shocks, likelihood, posterior, posterior!,
+        simulated_annealing, combined_optimizer, lbfgs, pso, trust_region_newton,
+        conjugate_gradient, cmaes, xnes, filter, filter_shocks, likelihood, posterior, posterior!,
         optimize!, csminwel, hessian!, estimate, proposal_distribution,
         metropolis_hastings, compute_parameter_covariance, prior, get_estimation_output_files,
         find_density_bands, mutation, resample, smc,
@@ -159,8 +162,8 @@ module DSGE
         init_parameters!, steadystate!, init_observable_mappings!,
         init_pseudo_observable_mappings!,
         Model990, Model1002, Model1010, Model805, Model904, SmetsWouters, SmetsWoutersOrig, AnSchorfheide,
-        PoolModel, eqcond, measurement, pseudo_measurement, augment_states,
-        shock_groupings, transition, DSGEVAR, DSGEVECM,
+        PoolModel, OnionModel, SectoralOnionModel, eqcond, measurement, pseudo_measurement,
+        augment_states, shock_groupings, transition, DSGEVAR, DSGEVECM, DSSW,
 
         # models/heterogeneous/
         KrusellSmith, BondLabor, RealBond, RealBondMkup, HetDSGE, HetDSGEGovDebt,
@@ -259,6 +262,11 @@ module DSGE
     include("estimate/simulated_annealing.jl")
     include("estimate/combined_optimizer.jl")
     include("estimate/lbfgs.jl")
+    include("estimate/trust_region_newton.jl")
+    include("estimate/pso.jl")
+    include("estimate/conjugate_gradient.jl")
+    include("estimate/cmaes.jl")
+    include("estimate/xnes.jl")
     include("estimate/nelder_mead.jl")
     include("estimate/marginal_data_density.jl")
     include("estimate/estimate.jl")
@@ -367,6 +375,39 @@ module DSGE
     include("models/representative/m904/pseudo_measurement.jl")
     include("models/representative/m904/augment_states.jl")
 
+    # Default Onion Model
+    include("models/representative/OnionModel/onionmodel.jl")
+    include("models/representative/OnionModel/subspecs.jl")
+    include("models/representative/OnionModel/eqcond.jl")
+    include("models/representative/OnionModel/observables.jl")
+    include("models/representative/OnionModel/measurement.jl")
+    include("models/representative/OnionModel/pseudo_observables.jl")
+    include("models/representative/OnionModel/pseudo_measurement.jl")
+    include("models/representative/OnionModel/augment_states.jl")
+    include("models/representative/OnionModel/InOutData.jl")
+
+    # Sectoral Onion Model
+    #include("models/representative/SectoralOnionModel/sectoral_onionmodel.jl")
+    #include("models/representative/SectoralOnionModel/subspecs.jl")
+    #include("models/representative/SectoralOnionModel/eqcond.jl")
+    #include("models/representative/SectoralOnionModel/observables.jl")
+    #include("models/representative/SectoralOnionModel/measurement.jl")
+    #include("models/representative/SectoralOnionModel/pseudo_observables.jl")
+    #include("models/representative/SectoralOnionModel/pseudo_measurement.jl")
+    #include("models/representative/SectoralOnionModel/augment_states.jl")
+    #include("models/representative/SectoralOnionModel/InOutData.jl")
+
+#=
+include("models/representative/OnionModel/onionmodel_brief.jl")
+include("models/representative/OnionModel/subspecs.jl")
+include("models/representative/OnionModel/eqcond_briefing.jl")
+include("models/representative/OnionModel/observables_briefing.jl")
+include("models/representative/OnionModel/measurement_briefing.jl")
+include("models/representative/OnionModel/pseudo_observables.jl")
+include("models/representative/OnionModel/pseudo_measurement.jl")
+include("models/representative/OnionModel/augment_states.jl")
+include("models/representative/OnionModel/InOutData.jl")
+=#
     include("models/representative/smets_wouters/smets_wouters.jl")
     include("models/representative/smets_wouters/subspecs.jl")
     include("models/representative/smets_wouters/eqcond.jl")
@@ -389,6 +430,13 @@ module DSGE
     include("models/representative/an_schorfheide/pseudo_observables.jl")
     include("models/representative/an_schorfheide/pseudo_measurement.jl")
     include("models/representative/an_schorfheide/augment_states.jl")
+
+    include("models/representative/DSSW/dssw.jl")
+    include("models/representative/DSSW/subspecs.jl")
+    include("models/representative/DSSW/eqcond.jl")
+    include("models/representative/DSSW/observables.jl")
+    include("models/representative/DSSW/measurement.jl")
+    include("models/representative/DSSW/augment_states.jl")
 
     # PoolModel
     include("models/poolmodel/subspecs.jl")

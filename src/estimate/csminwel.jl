@@ -86,6 +86,10 @@ function csminwel(fcn::Function,
                   verbose::Symbol      = :none,
                   rng::AbstractRNG     = MersenneTwister(0),
                   kwargs...)
+    
+    posterior_tracking_ls = Float64[]
+    time_tracking_ls = Float64[]
+    start_time = time()
 
     if show_trace
         @printf "Iter     Function value   Gradient norm \n"
@@ -299,6 +303,9 @@ function csminwel(fcn::Function,
         x = xh
         gr = gh
         badg = badgh
+        
+        push!(time_tracking_ls, time() - start_time)
+        push!(posterior_tracking_ls, f_x)
 
         # Check convergence
         x_converged,
@@ -351,7 +358,8 @@ function csminwel(fcn::Function,
                                            # Optim 2 MultivariateOptimizationResults added jvp_calls & hvp_calls;
                                            # csminwel is gradient-only: f_calls, g_calls, jvp=0, h_calls=0, hvp=0, time_limit, time_run
                                            tr, f_calls, g_calls, 0, 0, 0, NaN, NaN,
-                                           stopped_by, termination_code), H  # also return H
+                                           stopped_by, termination_code),
+           H, time_tracking_ls, posterior_tracking_ls  # also return H + per-iteration tracking
 
 # the NaNs are for time and timelimit--apparently if they're NaN, there is no time limit
 # the last false if ls_success=false...not quite sure?

@@ -233,6 +233,7 @@ function solve_regime_switching(m::AbstractDSGEModel{T};
             # Solve for gensys2 regimes
             if gensys2
                 for reg_range in gensys2_regimes
+
                     solve_gensys2!(m, Γ0s, Γ1s, Cs, Ψs, Πs,
                                    TTTs, RRRs, CCCs; gensys2_regimes = collect(reg_range),
                                    uncertain_altpolicy = uncertain_altpolicy,
@@ -350,6 +351,7 @@ function solve_non_gensys2_regimes!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}
         TTT_gensys, CCC_gensys, RRR_gensys, eu =
             gensys(Γ0s[reg], Γ1s[reg], Cs[reg], Ψs[reg], Πs[reg],
                    1+1e-6, verbose = verbose)
+
 
         # Check for LAPACK exception, existence and uniqueness
         if eu[1] != 1 || eu[2] != 1

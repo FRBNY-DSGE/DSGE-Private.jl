@@ -175,7 +175,7 @@ function init_model_indices!(m::Model1002)
     if subspec(m) in ["ss14", "ss15", "ss16", "ss18", "ss19"]
         push!(endogenous_states_augmented, :e_tfp_t1)
     end
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
         push!(endogenous_states_augmented, :e_meas_π_t, :e_meas_π_t1)
     end
     if subspec(m) in ["ss86", "ss88", "ss89", "ss90", "ss91", "ss92", "ss94", "ss95", "ss96"]
@@ -230,7 +230,7 @@ function init_model_indices!(m::Model1002)
     if subspec(m) in ["ss86", "ss88", "ss89", "ss90", "ss91", "ss92", "ss94", "ss95", "ss96"]
         push!(exogenous_shocks, :λ_f_iid_sh)
     end
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205",  "ss206", "ss207"]
         push!(exogenous_shocks, :meas_π_sh)
     end
 
@@ -654,7 +654,7 @@ buted to steady-state inflation.",
                    description="me_level: Indicator of cointegration of GDP and GDI.",
                    tex_label="\\mathcal{C}_{me}")
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
         m <= parameter(:ρ_meas_π, 0.2320, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                        tex_label="\\rho_{meas_\\pi}")
     end
@@ -731,7 +731,7 @@ buted to steady-state inflation.",
     m <= parameter(:σ_gdi, 0.1, (1e-8, 5.),(1e-8, 5.),ModelConstructors.Exponential(),RootInverseGamma(2, 0.10), fixed=false,
                    tex_label="\\sigma_{gdi}")
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
         m <= parameter(:σ_meas_π, 0.0999, (0.0, 5.),(0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        tex_label="\\sigma_{meas_\\pi}")
     end
@@ -869,14 +869,16 @@ buted to steady-state inflation.",
                        tex_label="\\rho_{smooth}")
     end
 
-    if subspec(m) == "ss103"
-        m <= parameter(:κ_std_bcshocks, 1.0, (0.0, 1.0), (0.0, 1.0), ModelConstructors.SquareRoot(), Uniform(0,1), fixed=false,
+    if subspec(m) == "ss103" || subspec(m) == "ss206" || subspec(m) == "ss207"
+        m <= parameter(:κ_std_bcshocks, 1.0, (0.0, 5.0), (0.0, 5.0), ModelConstructors.Untransformed(), Distributions.Gamma(4., 1/3), fixed=false,
                        description="κ_std_bcshocks: scaling factor for standard business cycle shocks during covid",
                        tex_label="\\kappa_{bcshocks}")
         m <= parameter(:κ_covid, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
                        description="Fraction of regime 2 value used in regime 3 for σ_{covid}",
                        tex_label = "\\kappa_{covid}")
-        m <= parameter(:κ_pce, 1.0, (0.0, 1.0), (0.0, 1.0), Untransformed(), Uniform(0,1), fixed=false,
+
+        #This prior is meant to just be agnostic to see how the model would like to see things: It should probably be a Gamma.
+        m <= parameter(:κ_pce, 1.0, (0.0, 2.0), (0.0, 2.0), Untransformed(), Uniform(0,2), fixed=false,
                        description="Fraction of regime 2 value used in regime 3 for σ_{meas,π}",
                        tex_label = "\\kappa_{pce}")
     end
@@ -1042,7 +1044,8 @@ end
                        tex_label="\\rho_{exp_rm}")
     end
 
-    # Kappa to restrict values to fixed proportion of value in earlier regime
+# Kappa to restrict values to fixed proportion of value in earlier regime
+#= #BP RETURN TO!! MAKE SETTINGS NOT BASED ON REGIME
     if haskey(m.settings, :add_κ_covid) && get_setting(m, :add_κ_covid)
         m <= parameter(:κ_covid, 1.0, (0.0, 2.0), (0.0, 2.0), Untransformed(), Uniform(0,1), fixed=false,
                        description="Fraction of regime 2 value used in regime 3 for σ_{covid}",
@@ -1052,6 +1055,13 @@ end
         m <= parameter(:κ_pce, 1.0, (0.0, 2.0), (0.0, 2.0), Untransformed(), Uniform(0,1), fixed=true,
                        description="Fraction of regime 2 value used in regime 3 for σ_{meas,π}",
                        tex_label = "\\kappa_{pce}")
+    end
+=#
+
+    if haskey(m.settings, :marco_estim_experiment) && get_setting(m, :marco_estim_experiment) == 2
+        m <= parameter(:κ_std_bcshocksf, 1.0, (0.0, 2.0), (0.0, 2.0), Untransformed(), Uniform(0,1), fixed=false,
+                       description="κ_std_bcshocksf: scaling factor for standard business shocks",
+                       tex_label = "\\kappa_{bcshocksf}")
     end
 
     # steady states
@@ -1228,6 +1238,7 @@ function model_settings!(m::Model1002)
     default_settings!(m)
 
     # Anticipated shocks
+
     m <= Setting(:n_mon_anticipated_shocks, 6,
                  "Number of anticipated policy shocks")
     m <= Setting(:n_mon_anticipated_shocks_padding, 20,
@@ -1351,7 +1362,7 @@ function parameter_groupings(m::Model1002)
     error      = [:me_level, :ρ_gdp, :ρ_gdi, :ρ_lr, :ρ_tfp, :ρ_gdpdef, :ρ_corepce,
                   :ρ_gdpvar, :σ_gdp, :σ_gdi, :σ_lr, :σ_tfp, :σ_gdpdef, :σ_corepce]
 
-    if subspec_num >= 87
+    if subspec_num >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
         push!(error, :ρ_meas_π, :σ_meas_π)
     end
     if subspec_num >= 100 && subspec_num != 104
@@ -1461,7 +1472,7 @@ function shock_groupings(m::Model1002)
         mei = ShockGroup("mu", [:μ_sh], :cyan)
 
         mea_vec = [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh, :gdp_sh, :gdi_sh]
-        if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+        if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
             push!(mea_vec, :meas_π_sh)
         end
         if !isempty(expected_ffr(m))

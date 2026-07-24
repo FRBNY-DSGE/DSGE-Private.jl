@@ -73,6 +73,7 @@ not directly related to the behavior of the sampling algorithms
     user is certain that the likelihood is written properly.
 - `log_prob_old_data::Float64 = 0.0`:Log p(\tilde y) which is the log marginal data density
     of the bridge estimation.
+- `check_empty_columns::Bool = true`: Whether to check empty columns in load_data
 """
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   verbose::Symbol = :low,
@@ -91,7 +92,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   run_csminwel::Bool = true,
                   toggle::Bool = true,
                   log_prob_old_data::Float64 = 0.0,
-                  add_zlb_duration::Tuple{Bool, Int} = (false, 1))
+                  add_zlb_duration::Tuple{Bool, Int} = (false, 1),
+                  cholesky_fix = :none)
     data = df_to_matrix(m, df)
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
@@ -101,7 +103,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
              intermediate_stage_increment = intermediate_stage_increment,
              save_intermediate = save_intermediate,
              run_csminwel = run_csminwel, toggle = toggle, log_prob_old_data = log_prob_old_data,
-             add_zlb_duration = add_zlb_duration)
+             add_zlb_duration = add_zlb_duration,
+             cholesky_fix = cholesky_fix)
 end
 
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
@@ -120,9 +123,10 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
 		          save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
                   toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
-                  add_zlb_duration::Tuple{Bool, Int} = (false, 1))
+                  add_zlb_duration::Tuple{Bool, Int} = (false, 1),
+                  check_empty_columns::Bool = true)
     # Load data
-    df = load_data(m; verbose = verbose)
+    df = load_data(m; verbose = verbose, check_empty_columns = check_empty_columns)
     estimate(m, df; verbose = verbose, proposal_covariance = proposal_covariance,
              mle = mle, sampling = sampling,
              old_data = old_data, old_cloud = old_cloud,
@@ -150,7 +154,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
 		          save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
                   toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
-                  add_zlb_duration::Tuple{Bool, Int} = (false, 1))
+                  add_zlb_duration::Tuple{Bool, Int} = (false, 1),
+                  cholesky_fix = :none)
 
     if !(get_setting(m, :sampling_method) in [:SMC, :MH])
         error("method must be :SMC or :MH")
@@ -160,6 +165,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
 
     regime_switching = haskey(get_settings(m), :regime_switching) &&
         get_setting(m, :regime_switching)
+
 
     ########################################################################################
     ### Step 1: Find posterior/likelihood mode (if reoptimizing, run optimization routine)
@@ -218,6 +224,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
 
     params = ModelConstructors.get_values(get_parameters(m); regime_switching = regime_switching)
 
+
     # Sampling does not make sense if mle=true
     if mle || !sampling
         return nothing
@@ -237,7 +244,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
         hessian = if calculate_hessian(m)
             println(verbose, :low, "Recalculating Hessian...")
 
-            hessian, _ = hessian!(m, params, data; toggle = toggle, verbose = verbose)
+            hessian, _ = hessian!(m, params, data; toggle = toggle, verbose = verbose, check_neg_diag = false)
 
             h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
                 file["hessian"] = hessian
@@ -305,6 +312,10 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
         cc0 = get_setting(m, :mh_cc0)
         cc  = get_setting(m, :mh_cc)
 
+        #@show hessian
+        #@show hessian_inv
+        #@show params
+        #@assert false
         metropolis_hastings(propdist, m, data, cc0, cc; regime_switching = regime_switching,
                             toggle = toggle, verbose = verbose, filestring_addl = filestring_addl);
 
@@ -326,7 +337,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
              intermediate_stage_increment = intermediate_stage_increment,
              run_csminwel = run_csminwel,
              regime_switching = regime_switching, log_prob_old_data = log_prob_old_data,
-             add_zlb_duration = add_zlb_duration)
+             add_zlb_duration = add_zlb_duration,
+             cholesky_fix = cholesky_fix)
     end
 
     ########################################################################################

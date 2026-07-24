@@ -351,6 +351,29 @@ function find_param_regimes(m::AbstractDSGEModel, reg::Int64)
     return param_regimes
 end
 
+
+
+"""
+```
+param_regimes_dict(m::AbstractDSGEModel)
+```
+Return a dictionary of type {Symbol, Array{Int32, 1}} with the model parameters as keys and indices in parameter vector for each regime as values.
+Builds off DSGE function find_param_ind(params::Vector{AbstractParameter{Float64}}, para_one::Symbol; regime::Int = 1) to give dictionary of index for all parameter/regime combinations of all parameters in model m.
+"""
+function param_regimes_dict(m::AbstractDSGEModel)
+    para_dict = Dict()
+
+    for p in m.parameters
+
+        para_dict[p.key] = haskey(p.regimes, :value) ? [find_param_ind(m.parameters, p.key; regime = reg) for reg in 1:length(p.regimes[:value])] : [find_param_ind(m.parameters, p.key)]
+
+    end
+    return para_dict
+end
+
+
+
+
 """
 ```
 df_to_mat(df::DataFrame; type_convert::Union{DataType,Union} = Float64)

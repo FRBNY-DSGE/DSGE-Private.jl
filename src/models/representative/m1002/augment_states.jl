@@ -66,10 +66,22 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
 
     for para in m.parameters
         if !isempty(para.regimes)
-            if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
-                ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
-            else
-                ModelConstructors.toggle_regime!(para, reg)
+            if length(para.regimes[:value]) > 1 #BP for old estimation model, change back later
+                if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
+                    try
+                        ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
+                    catch err
+                        if isa(err, KeyError)
+                            @assert false "Key error for parameter $(para.key) in regime $(reg). The regime mapping is $(sort(get_setting(m, :model2para_regime)[para.key])) and the parameter has regime dictionary $(para.regimes)"
+                        else
+                            rethrow(err)
+                        end
+                    end
+
+
+                else
+                    ModelConstructors.toggle_regime!(para, reg)
+                end
             end
         end
     end
@@ -220,7 +232,7 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
         TTT_aug[endo_new[:e_gdi_t], endo_new[:e_gdi_covid_t]] = m[:ρ_gdi_covid]
     end
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"]
         TTT_aug[endo_new[:e_meas_π_t], endo_new[:e_meas_π_t]] = m[:ρ_meas_π]
         TTT_aug[endo_new[:e_meas_π_t1], endo_new[:e_meas_π_t]] = 1.0
     end
@@ -280,7 +292,7 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
     RRR_aug[endo_new[:e_gdi_t], exo[:gdi_sh]] = 1.0
 
     # Measurement Error in Levels on PCE and GDP Deflator
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87
+if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"]
         RRR_aug[endo_new[:e_meas_π_t], exo[:meas_π_sh]] = 1.0
     end
 

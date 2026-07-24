@@ -25,7 +25,7 @@ data = Matrix{Float64}(load("$path/../reference/hessian.jld2", "data")')
 # Read in the covariance matrix for Metropolis-Hastings and reference parameter draws
 # TODO: check that new MH agrees with old MH. (read in metropolis_hastings.h5)
 hessian_inv =
-    h5open("$path/../reference/metropolis_hastings_test.h5", "r") do file
+    h5open("$path/../reference/metropolis_hastings.h5", "r") do file
         read(file, "hessian_inv")
     end
 

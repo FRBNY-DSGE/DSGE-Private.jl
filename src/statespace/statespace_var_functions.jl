@@ -97,7 +97,7 @@ function compute_system(m::AbstractDSGEVARModel{T}, data::Matrix{T};
                         apply_altpolicy::Bool = false,
                         check_system::Bool = false, get_system::Bool = false,
                         get_population_moments::Bool = false,
-                        tvis::Bool = false, verbose::Symbol = :high) where {T<:Real}
+                        tvis::Bool = false, verbose::Symbol = :high, get_posterior_hat = false) where {T<:Real}
 
     if get_λ(m) == Inf
         # Then we just want the VAR approximation of the DSGE
@@ -129,16 +129,26 @@ function compute_system(m::AbstractDSGEVARModel{T}, data::Matrix{T};
                 return out..., YYYY, XXYY, XXXX
             else
                 # Compute prior-weighted population moments
+                #[ID] Weigh lambda by number of observations
+                T_obs = size(data, 2)
+                T_adj = T_obs - lags
                 λ = get_λ(m)
-                YYYYC = YYYY + λ .* out[1]
-                XXYYC = XXYY + λ .* out[2]
-                XXXXC = XXXX + λ .* out[3]
+                λT = λ * T_adj
 
-                # Draw stationary VAR system
-                n_periods = size(data, 2) - lags
-                β, Σ =  draw_stationary_VAR(YYYYC, XXYYC, XXXXC,
-                                            convert(Int, floor(n_periods + λ * n_periods)),
-                                            size(data, 1), lags)
+                YYYYC = YYYY + λT .* out[1]
+                XXYYC = XXYY + λT .* out[2]
+                XXXXC = XXXX + λT .* out[3]
+
+                # Get β hat and Σ hat as opposed to draws of β and Σ from posterior
+                if get_posterior_hat
+                    β, Σ = return_posterior_hat(YYYYC, XXYYC, XXXXC,
+                                                convert(Int, floor(T_adj + λT)),
+                                                size(data, 1), lags)
+                else
+                    β, Σ =  draw_stationary_VAR(YYYYC, XXYYC, XXXXC,
+                                                convert(Int, floor(T_adj + λT)),
+                                                size(data, 1), lags)
+                end
 
                 return β, Σ
             end
@@ -168,12 +178,23 @@ function compute_system(m::AbstractDSGEVECMModel{T}; apply_altpolicy::Bool = fal
     else
         EE, MM = measurement_error(m)
 
-        return vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
+        # if DSGE has cointegrating relationships embedded
+        if haskey(dsge.settings, :n_coint) && get_setting(dsge, :n_coint) > 0
+            n_coint = get_setting(dsge, :n_coint)
+            return vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
+                                       system[:DD], system[:ZZ], EE, MM, n_observables(dsge) - n_coint,
+                                       n_lags(m), n_coint, n_cointegrating_add(m),
+                                       DD_coint_add;
+                                       get_population_moments = get_population_moments,
+                                       use_intercept = use_intercept)
+        else
+            return vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
                                        system[:DD], system[:ZZ], EE, MM, n_observables(m),
                                        n_lags(m), n_cointegrating(m), n_cointegrating_add(m),
                                        DD_coint_add;
                                        get_population_moments = get_population_moments,
                                        use_intercept = use_intercept)
+        end
     end
 end
 
@@ -181,7 +202,7 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
                         apply_altpolicy::Bool = false,
                         check_system::Bool = false, get_system::Bool = false,
                         get_population_moments::Bool = false,
-                        tvis::Bool = false, verbose::Symbol = :high) where {T<:Real}
+                        tvis::Bool = false, verbose::Symbol = :high, get_posterior_hat = false) where {T<:Real}
 
     if get_λ(m) == Inf
         # Then we just want the VECM approximation of the DSGE
@@ -202,30 +223,59 @@ function compute_system(m::AbstractDSGEVECMModel{T}, data::Matrix{T};
         else
             EE, MM = measurement_error(m)
 
+            n_coint = haskey(m.dsge.settings, :n_coint) ? get_setting(m.dsge, :n_coint) : 0
             lags = n_lags(m)
-            YYYY, XXYY, XXXX =
-            compute_var_population_moments(data, lags; use_intercept = true)
-            out = vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
-                                          system[:DD], system[:ZZ], EE, MM, size(data, 1),
-                                          n_lags(m), n_cointegrating(m),
-                                          n_cointegrating_add(m), DD_coint_add;
-                                          get_population_moments = true,
-                                          use_intercept = true)
+
+             # If DSGE matrices take into account cointegrating variables
+            if n_coint > 0
+                coint_data = data[get_setting(m.dsge, :coint_data_inds), :]
+                data = data[get_setting(m.dsge, :main_data_inds), :]
+                YYYY, XXYY, XXXX =
+                    compute_vecm_population_moments(data, lags, n_coint, coint_data; use_intercept = true)
+
+                out = vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
+                                              system[:DD], system[:ZZ], EE, MM, size(data, 1) - n_coint,
+                                              n_lags(m), n_coint,
+                                              n_cointegrating_add(m), DD_coint_add;
+                                              get_population_moments = true,
+                                              use_intercept = true)
+            else
+                YYYY, XXYY, XXXX =
+                    compute_var_population_moments(data, lags; use_intercept = true)
+
+                out = vecm_approx_state_space(system[:TTT], system[:RRR], system[:QQ],
+                                              system[:DD], system[:ZZ], EE, MM, size(data, 1),
+                                              n_lags(m), n_cointegrating(m),
+                                              n_cointegrating_add(m), DD_coint_add;
+                                              get_population_moments = true,
+                                              use_intercept = true)
+            end
 
             if get_population_moments
+
                 return out..., YYYY, XXYY, XXXX
             else
                 # Compute prior-weighted population moments
+                #[ID] Weigh lambda by number of observations
+                T_obs = size(data, 2)
+                T_adj = T_obs - lags
                 λ = get_λ(m)
-                YYYYC = YYYY + λ .* out[1]
-                XXYYC = XXYY + λ .* out[2]
-                XXXXC = XXXX + λ .* out[3]
+                λT = λ * T_adj
 
-                # Draw VECM system
-                n_periods = size(data, 2) - lags
-                β, Σ =  draw_VECM(YYYYC, XXYYC, XXXXC,
-                                  convert(Int, n_periods + λ * n_periods),
-                                  size(data, 1), lags, n_cointegrating(m))
+                YYYYC = YYYY + λT .* out[1]
+                XXYYC = XXYY + λT .* out[2]
+                XXXXC = XXXX + λT .* out[3]
+
+
+                if get_posterior_hat
+                    β, Σ = return_posterior_hat_VECM(YYYYC, XXYYC, XXXXC,
+                                                convert(Int, T_adj + λT),
+                                                size(data, 1), lags, n_cointegrating(m))
+                else
+                    β, Σ = draw_VECM(YYYYC, XXYYC, XXXXC,
+                                     convert(Int, T_adj + λT),
+                                     size(data, 1), lags, n_cointegrating(m))
+                end
 
                 return β, Σ
             end
@@ -387,10 +437,22 @@ function compute_system(m::AbstractDSGEVECMModel{S}, system::System;
     # Cointegrating relationships should exist as observables/pseudo_observables already
     # in the underlying DSGE. We assume cointegrating relationships come after normal observables.
     # Default behavior is to recreate the underlying DSGE's state space representation, however.
-    sys = compute_system(get_dsge(m), system; observables = vcat(observables, cointegrating),
+    dsge = get_dsge(m)
+
+    # If cointegrating relationships already exist in the underlying DSGE, then compute DSGE system w/o adding coints again
+    if get_setting(dsge, :n_coint) > 0
+        sys = compute_system(dsge, system; observables = observables,
+                             pseudo_observables = pseudo_observables,
+                             states = states, shocks = shocks, zero_DD = zero_DD,
+                             zero_DD_pseudo = zero_DD_pseudo, check_system = check_system)
+    else
+        sys = compute_system(dsge, system; observables = vcat(observables, cointegrating),
                          pseudo_observables = pseudo_observables,
                          states = states, shocks = shocks, zero_DD = zero_DD,
                          zero_DD_pseudo = zero_DD_pseudo, check_system = check_system)
+    end
+
+    # Won't go through this block if the underlying DSGE already has cointegrating observables
     if get_DD_coint_add
         mtype = typeof(m)
         DD_coint_add = if hasmethod(compute_DD_coint_add, (mtype, Vector{Symbol}))

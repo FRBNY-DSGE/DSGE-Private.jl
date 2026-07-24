@@ -42,13 +42,13 @@ function krylov_reduction(m::AbstractCTModel{Float64}, Γ0::Matrix{Float64}, Γ1
     B_gg = Γ1[n_jump_vars .+ 1:n_jump_vars + n_state_vars, n_jump_vars .+ 1:n_jump_vars + n_state_vars]
     B_gv = Γ1[n_jump_vars .+ 1:n_jump_vars + n_state_vars, 1:n_jump_vars]
     B_gp = Γ1[n_jump_vars .+ 1:n_jump_vars + n_state_vars, n_total .+ 1:n_vars]
-
+#=
     @show size(B_pv), size(B_pg), size(B_pZ), size(B_gg), size(B_gv), size(B_gp)
     @show n_total .+ 1:n_vars
     @show n_jump_vars .+ 1:n_jump_vars + n_state_vars
     @show n_jump_vars + n_state_vars .+ 1:n_jump_vars + n_state_vars+n_state_vars_unreduce
     @show n_jump_vars .+ 1:n_jump_vars + n_state_vars
-
+=#
     # Drop redundant equations in B_pg
     obs        = B_pg
     ~, d0, V_g = svd(obs)
@@ -102,7 +102,7 @@ function krylov_reduction(m::AbstractModel{Float64}, JJ::Matrix{Float64}) #A::Ma
     n_vars                = Int64(get_setting(m, :n_model_states)) #number of model states
     n_state_vars          = n_state_vars - n_state_vars_unreduce #number of backward looking states -> 302
 
-    @show n_state_vars, n_jump_vars, krylov_dim, n_total, n_vars, n_state_vars
+    #@show n_state_vars, n_jump_vars, krylov_dim, n_total, n_vars, n_state_vars
 
     endo = DSGE.augment_model_states(m.endogenous_states_unnormalized, DSGE.n_model_states_unnormalized(m))
     eq = m.equilibrium_conditions
@@ -123,13 +123,13 @@ function krylov_reduction(m::AbstractModel{Float64}, JJ::Matrix{Float64}) #A::Ma
     B_gv = JJ[n_jump_vars .+ 1:n_jump_vars + n_state_vars, 1:n_jump_vars]
 
     B_gp = JJ[n_jump_vars .+ 1:n_jump_vars + n_state_vars, n_total .+ 1:n_vars]
-
+#=
     @show size(B_pv), size(B_pg), size(B_pZ), size(B_gg), size(B_gv), size(B_gp)
     @show n_total .+ 1:n_vars
     @show n_jump_vars .+ 1:n_jump_vars + n_state_vars
     @show n_jump_vars + n_state_vars .+ 1:n_jump_vars + n_state_vars+n_state_vars_unreduce
     @show n_jump_vars .+ 1:n_jump_vars + n_state_vars
-
+=#
     # Slice Dynamic Equation JJ into different parts. See Why Inequality matters paper.
 #    @show -JJ[exo_states_functions, exo_states]
 #    @show JJ[exo_states_functions, 1:n_jump_vars]
@@ -150,7 +150,7 @@ function krylov_reduction(m::AbstractModel{Float64}, JJ::Matrix{Float64}) #A::Ma
     obs        = B_pg
     F_svd      = svd(obs)
     d0, V_g    = F_svd.S, F_svd.V
-    @show typeof(d0), d0, typeof(V_g), size(V_g), B_pg
+    #@show typeof(d0), d0, typeof(V_g), size(V_g), B_pg
     aux        = d0/d0[1]
     n_Bpg      = Int64(sum(aux .> 10*eps()))
     V_g        = V_g[:, 1:n_Bpg] .* aux[1:n_Bpg]'

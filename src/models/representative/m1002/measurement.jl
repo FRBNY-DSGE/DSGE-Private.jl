@@ -45,11 +45,13 @@ function measurement(m::Model1002{T},
 
     for para in m.parameters
         if !isempty(para.regimes)
-            if haskey(get_settings(m), :model2para_regime) && haskey(get_setting(m, :model2para_regime), para.key)
-                ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
-            else
-                ModelConstructors.toggle_regime!(para, reg)
-            end
+            #if length(para.regimes[:value]) > 1 #BP Change for old estimation model, change back
+                if haskey(get_settings(m), :model2para_regime) && haskey(get_setting(m, :model2para_regime), para.key)
+                    ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
+                else
+                    ModelConstructors.toggle_regime!(para, reg)
+                end
+            #end
         end
     end
 
@@ -158,7 +160,7 @@ function measurement(m::Model1002{T},
     ## Inflation (GDP Deflator)
     ZZ[obs[:obs_gdpdeflator], endo[:π_t]]            = m[:Γ_gdpdef]
     ZZ[obs[:obs_gdpdeflator], endo_new[:e_gdpdef_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"]
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -167,7 +169,7 @@ function measurement(m::Model1002{T},
     ## Inflation (Core PCE)
     ZZ[obs[:obs_corepce], endo[:π_t]]             = 1.0
     ZZ[obs[:obs_corepce], endo_new[:e_corepce_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -197,7 +199,8 @@ function measurement(m::Model1002{T},
     ## Spreads
     ZZ[obs[:obs_spread], endo[:ERktil_t]] = 1.0
     ZZ[obs[:obs_spread], endo[:R_t]]       = -1.0
-    DD[obs[:obs_spread]]                   = 100*log(m[:spr])
+DD[obs[:obs_spread]]                   = 100*log(m[:spr])
+
 
     ## 10 yrs infl exp
     TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 40, permanent_t;
@@ -215,7 +218,41 @@ function measurement(m::Model1002{T},
     ZZ[obs[:obs_longrate], :]                 =  view(TTT10, endo[:R_t], :) # TODO: this is slightly inefficient, do what we do with long inflation
     ZZ[obs[:obs_longrate], endo_new[:e_lr_t]] = 1.0
     DD[obs[:obs_longrate]]                    = m[:Rstarn] + CCC10[endo[:R_t]]
-    # DD[obs[:obs_longrate]]                    = m[:Rstarn] + ZZ_long_rate * CCC10
+# DD[obs[:obs_longrate]]                    = m[:Rstarn] + ZZ_long_rate * CCC10
+
+if subspec(m) ∈ ["ss22", "ss23"]
+    # Add one year yield
+    TTT1, CCC1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 4, permanent_t;
+                                               integ_series = integ_series,
+                                               memo = use_fwd_exp_sum ? memo : nothing)
+    TTT1 = TTT1 ./ 4.
+    CCC1 = CCC1 ./ 4.
+
+    ZZ[obs[:obs_oneyear], :] = view(TTT1, endo[:R_t], :)
+    DD[obs[:obs_oneyear]] = m[:Rstarn] + CCC1[endo[:R_t]]
+
+    # Add two year yield
+    TTT2, CCC2 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 8, permanent_t;
+                                               integ_series = integ_series,
+                                               memo = use_fwd_exp_sum ? memo : nothing)
+    TTT2 = TTT2 ./ 8.
+    CCC2 = CCC2 ./ 8.
+
+    ZZ[obs[:obs_twoyear], :] = view(TTT2, endo[:R_t], :)
+    DD[obs[:obs_twoyear]] = m[:Rstarn] + CCC2[endo[:R_t]]
+
+    # Add three year yield
+    TTT3, CCC3 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 12, permanent_t;
+                                               integ_series = integ_series,
+                                               memo = use_fwd_exp_sum ? memo : nothing)
+    TTT3 = TTT3 ./ 12.
+    CCC3 = CCC3 ./ 12.
+
+    ZZ[obs[:obs_threeyear], :] = view(TTT3, endo[:R_t], :)
+    DD[obs[:obs_threeyear]] = m[:Rstarn] + CCC3[endo[:R_t]]
+
+end
+
 
 
 ###### Short run inflation expectations ################
@@ -294,9 +331,8 @@ end
 
 
 
-
-
-    ## TFP
+## TFP
+if subspec(m) ∉ ["ss21", "ss23"]
     ZZ[obs[:obs_tfp], endo[:z_t]] = (1-m[:α])*m[:Iendoα] + 1*(1-m[:Iendoα])
     if subspec(m) in ["ss14", "ss15", "ss16", "ss18", "ss19"]
         ZZ[obs[:obs_tfp], endo_new[:e_tfp_t]]  = 1.0
@@ -308,6 +344,7 @@ end
         ZZ[obs[:obs_tfp], endo[:u_t]]       = m[:α]/( (1-m[:α])*(1-m[:Iendoα]) + 1*m[:Iendoα] )
         ZZ[obs[:obs_tfp], endo_new[:u_t1]]  = -(m[:α]/( (1-m[:α])*(1-m[:Iendoα]) + 1*m[:Iendoα]) )
     end
+end
 
     # ygap and pgap for Flexible AIT rule
     if (haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ? get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false)
@@ -315,14 +352,34 @@ end
         ZZ[obs[:obs_ygap], endo[:ygap_t]] = 1.
     end
 
+
+######## First pass at short run inflation epectations: #########
+#=
+if false
+    #Want to be in q4/q4: i.e. if I am in Q2, then I want inflation at period t-1, t, t+1, t+2.
+    #If I am in Q3: [t-2, t-1, t, t+1]
+    #If I am in Q4: [t-3, t-2, t-1, t]
+    ZZ[obs[:obs_π1], :] =
+
+
+end
+=#
+
     ## Set up structural shocks covariance matrix
     QQ[exo[:g_sh], exo[:g_sh]]             = m[:σ_g]^2
     QQ[exo[:b_sh], exo[:b_sh]]             = m[:σ_b]^2
     QQ[exo[:μ_sh], exo[:μ_sh]]             = m[:σ_μ]^2
     QQ[exo[:ztil_sh], exo[:ztil_sh]]       = m[:σ_ztil]^2
     QQ[exo[:λ_f_sh], exo[:λ_f_sh]]         = m[:σ_λ_f]^2
-    QQ[exo[:λ_w_sh], exo[:λ_w_sh]]         = m[:σ_λ_w]^2
+QQ[exo[:λ_w_sh], exo[:λ_w_sh]]         = m[:σ_λ_w]^2
+if (haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor))
+    reg_cutoff = (haskey(m.settings, :remove_rm_shocks) && reg <= get_setting(m, :remove_rm_shocks)) ? get_setting(m, :remove_rm_shocks) : get_setting(m, :ait_liftoff_regime)
+    if reg < reg_cutoff
+        QQ[exo[:rm_sh], exo[:rm_sh]]           = m[:σ_r_m]^2
+    end
+else
     QQ[exo[:rm_sh], exo[:rm_sh]]           = m[:σ_r_m]^2
+end
     QQ[exo[:σ_ω_sh], exo[:σ_ω_sh]]         = m[:σ_σ_ω]^2
     QQ[exo[:μ_e_sh], exo[:μ_e_sh]]         = m[:σ_μ_e]^2
     QQ[exo[:γ_sh], exo[:γ_sh]]             = m[:σ_γ]^2
@@ -335,8 +392,8 @@ end
     QQ[exo[:gdp_sh], exo[:gdp_sh]]         = m[:σ_gdp]^2
     QQ[exo[:gdi_sh], exo[:gdi_sh]]         = m[:σ_gdi]^2
 
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59 &&
-        haskey(m.settings, :add_κ_covid) && get_setting(m, :add_κ_covid)
+    if (parse(Int,SubString(subspec(m),3,subspec_ind)) >= 59 &&
+        haskey(m.settings, :add_κ_covid) && get_setting(m, :add_κ_covid)) || subspec(m) ∈ ["ss206", "ss207"]
         QQ[exo[:ziid_sh], exo[:ziid_sh]]   = (m[:κ_covid] * m[:σ_ziid])^2
         QQ[exo[:biidc_sh], exo[:biidc_sh]] = (m[:κ_covid] * m[:σ_biidc])^2
         QQ[exo[:φ_sh], exo[:φ_sh]]         = (m[:κ_covid] * m[:σ_φ])^2
@@ -345,20 +402,55 @@ end
         QQ[exo[:biidc_sh], exo[:biidc_sh]] = m[:σ_biidc]^2
         QQ[exo[:φ_sh], exo[:φ_sh]]         = m[:σ_φ]^2
     end
+
+#Messy, but not the end of the world. We overwrite the above entries in the QQ matrix where needed in these two subspecs.
+if subspec(m) ∈ ["ss206", "ss207"]
+    QQ[exo[:g_sh], exo[:g_sh]]             = (m[:κ_std_bcshocks] * m[:σ_g])^2
+    QQ[exo[:b_sh], exo[:b_sh]]             = (m[:κ_std_bcshocks] * m[:σ_b])^2
+    QQ[exo[:μ_sh], exo[:μ_sh]]             = (m[:κ_std_bcshocks] * m[:σ_μ])^2
+    QQ[exo[:ztil_sh], exo[:ztil_sh]]       = (m[:κ_std_bcshocks] * m[:σ_ztil])^2
+    QQ[exo[:λ_f_sh], exo[:λ_f_sh]]         = (m[:κ_std_bcshocks] * m[:σ_λ_f])^2
+    QQ[exo[:λ_w_sh], exo[:λ_w_sh]]         = (m[:κ_std_bcshocks] * m[:σ_λ_w])^2
+    QQ[exo[:σ_ω_sh], exo[:σ_ω_sh]]         = (m[:κ_std_bcshocks] * m[:σ_σ_ω])^2
+    QQ[exo[:μ_e_sh], exo[:μ_e_sh]]         = (m[:κ_std_bcshocks] * m[:σ_μ_e])^2
+    QQ[exo[:γ_sh], exo[:γ_sh]]             = (m[:κ_std_bcshocks] * m[:σ_γ])^2
+    QQ[exo[:zp_sh], exo[:zp_sh]]           = (m[:κ_std_bcshocks] * m[:σ_z_p])^2
+    if subspec(m) ∈ ["ss207"]
+        QQ[exo[:π_star_sh], exo[:π_star_sh]]   = (m[:κ_std_bcshocks] * m[:σ_π_star])^2
+        QQ[exo[:lr_sh], exo[:lr_sh]]           = (m[:κ_std_bcshocks] * m[:σ_lr])^2
+        QQ[exo[:tfp_sh], exo[:tfp_sh]]         = (m[:κ_std_bcshocks] * m[:σ_tfp])^2
+        QQ[exo[:gdpdef_sh], exo[:gdpdef_sh]]   = (m[:κ_std_bcshocks] * m[:σ_gdpdef])^2
+        QQ[exo[:corepce_sh], exo[:corepce_sh]] = (m[:κ_std_bcshocks] * m[:σ_corepce])^2
+        QQ[exo[:gdp_sh], exo[:gdp_sh]]         = (m[:κ_std_bcshocks] * m[:σ_gdp])^2
+        QQ[exo[:gdi_sh], exo[:gdi_sh]]         = (m[:κ_std_bcshocks] * m[:σ_gdi])^2
+    end
+
+
+end
+
     if subspec(m) in ["ss86", "ss88", "ss89", "ss90", "ss91", "ss92", "ss94", "ss95", "ss96"]
         QQ[exo[:λ_f_iid_sh], exo[:λ_f_iid_sh]] = m[:σ_λ_f_iid]^2
     end
 
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 &&
-        haskey(m.settings, :add_κ_pce) && get_setting(m, :add_κ_pce)
-        QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = (m[:κ_pce] * m[:σ_meas_π])^2
-    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+    if (parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 &&
+        haskey(m.settings, :add_κ_pce) && get_setting(m, :add_κ_pce)) || subspec(m) ∈ ["ss206"]
+        if subspec(m) ∈ ["ss206"]
+            QQ[exo[:corepce_sh], exo[:corepce_sh]] = (m[:κ_pce] * m[:σ_corepce])^2
+        else
+            QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = (m[:κ_pce] * m[:σ_meas_π])^2
+        end
+
+    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
         QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = m[:σ_meas_π]^2
     end
 
-    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm) && reg >= get_setting(m, :ait_liftoff_regime)
+if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm) && reg >= get_setting(m, :ait_liftoff_regime)
+    if haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor)
+        QQ[exo[:rm_ait_sh], exo[:rm_ait_sh]] = m[:σ_r_m]^2
+    else
         QQ[exo[:rm_ait_sh], exo[:rm_ait_sh]] = m[:σ_ait_rm]^2
     end
+end
 
     if subspec(m) in ["ss67", "ss68", "ss69", "ss70", "ss71", "ss72", "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83"]
         QQ[exo[:g_covid_sh], exo[:g_covid_sh]]   = m[:σ_g_covid]^2
@@ -419,10 +511,19 @@ end
         QQ[exo[:condcorepce_sh], exo[:condcorepce_sh]] = m[:σ_condcorepce] ^ 2
     end
 
-    # Automated addition of anticipated shocks to QQ
-    for (k, v) in get_setting(m, :antshocks)
-        for i = 1:v
-            QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k, "$i")]^2
+# Automated addition of anticipated shocks to QQ
+
+for (k, v) in get_setting(m, :antshocks)
+    if subspec(m) ∈ ["ss207"] && haskey(DSGE.get_settings(m), :covid_ant_equal_contemp) &&  get_setting(m, :covid_ant_equal_contemp)
+            #Note: If subspec is 207, set standard deviations of anticipated covid shocks to the contemporaneous.
+            @assert k ∈ [:ziid, :biidc, :φ]
+            for i = 1:v
+                QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k)]^2
+            end
+        else
+            for i = 1:v
+                QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k, "$i")]^2
+            end
         end
     end
 
@@ -437,18 +538,30 @@ end
     use_current_regime = haskey(get_settings(m), :measurement_use_current_regime_matrices) ?
         get_setting(m, :measurement_use_current_regime_matrices) : true
 
-    # Anticipated monetary policy shocks
+# Anticipated monetary policy shocks
     finished_expffr = []
-    TTT_accums, CCC_accums = one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, n_mon_anticipated_shocks(m), permanent_t)
+    if n_mon_anticipated_shocks(m) > 0
+        TTT_accums, CCC_accums = one_to_k_periods_ahead_expectations(TTT, CCC, TTTs, CCCs, reg, n_mon_anticipated_shocks(m), permanent_t)
+    end
 
     for i in 1:n_mon_anticipated_shocks(m)
-        ZZ[obs[Symbol("obs_nominalrate$i")], :] = view(TTT_accums[i], endo[:R_t], :)
-        DD[obs[Symbol("obs_nominalrate$i")]]    = m[:Rstarn] + CCC_accums[i][endo[:R_t]]
+        if subspec(m) ∉ ["ss22", "ss23"]
+            ZZ[obs[Symbol("obs_nominalrate$i")], :] = view(TTT_accums[i], endo[:R_t], :)
+            DD[obs[Symbol("obs_nominalrate$i")]]    = m[:Rstarn] + CCC_accums[i][endo[:R_t]]
+        end
         if subspec(m) == "ss11"
             QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[:σ_r_m]^2 / n_mon_anticipated_shocks(m)
         else
-            QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[Symbol("σ_r_m$i")]^2
+            if (haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor))
+                reg_cutoff = (haskey(m.settings, :remove_rm_shocks) && reg <= get_setting(m, :remove_rm_shocks)) ? get_setting(m, :remove_rm_shocks) : get_setting(m, :ait_liftoff_regime)
+                if reg < reg_cutoff
+                    QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[Symbol("σ_r_m$i")]^2
+                end
+            else
+                QQ[exo[Symbol("rm_shl$i")], exo[Symbol("rm_shl$i")]] = m[Symbol("σ_r_m$i")]^2
+            end
         end
+
 
         # Expected FFR from SPD - here to minimize expectations computations
         if i in expected_ffr(m)
@@ -462,11 +575,19 @@ end
         end
     end
 
-    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+    if haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor)
+        if reg >= get_setting(m, :ait_liftoff_regime)
+            for i in mon_anticipated_ait_shocks(m)
+                QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_r_m$i")]^2
+            end
+        end
+    else
         for i in mon_anticipated_ait_shocks(m)
             QQ[exo[Symbol("rm_ait_shl$i")], exo[Symbol("rm_ait_shl$i")]] = m[Symbol("σ_ait_r_m$i")]^2
         end
     end
+end
 
     spd_left = sort(setdiff(expected_ffr(m), finished_expffr))
     for j in 1:length(spd_left)

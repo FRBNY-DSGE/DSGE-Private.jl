@@ -1,3 +1,5 @@
+@inline eye(x::Integer) = Matrix{Float64}(I,x,x)
+
 function klein(m::AbstractModel)
 
     #################
