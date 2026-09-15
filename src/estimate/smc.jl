@@ -289,13 +289,19 @@ old_cloud_conv = isempty(old_cloud) ? SMC.Cloud(0,0) : SMC.Cloud(old_cloud)
 
     # Initialize Paths
     loadpath = ""
-    if tempered_update
+    # RESUME FIRST -- mirrors the branch order in SMC.smc. Previously this was
+    # `if tempered_update / elseif continue_intermediate`, so a bridge step
+    # (tempered_update true because old_data is passed, and old_cloud non-empty so
+    # the inner branch was skipped) left loadpath = "" and SMC.smc then called
+    # load("", "w"). That made continue_intermediate unusable for exactly the runs
+    # that need it most: multi-day bridge steps killed by a wall-clock limit.
+    if continue_intermediate
+        loadpath = rawpath(m, "estimate", "smc_cloud", filestring_addl) * "_stage=$(intermediate_stage_start).jld2"
+    elseif tempered_update
         if isempty(old_cloud)
             loadpath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
             loadpath = replace(loadpath, r"vint=[0-9]{6}" => "vint=" * old_vintage)
         end
-    elseif continue_intermediate
-        loadpath = rawpath(m, "estimate", "smc_cloud", filestring_addl) * "_stage=$(intermediate_stage_start).jld2"
     end
 savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
     particle_store_path = rawpath(m, "estimate", "smcsave.h5", filestring_addl)
