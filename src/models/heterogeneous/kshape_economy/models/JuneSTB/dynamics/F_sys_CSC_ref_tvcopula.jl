@@ -752,7 +752,8 @@ MU_tilde_Ent   = reshape(MU_tilde_Ent, nb, na, nse)
 
 param["beta_aux"] = param["beta"]
 
-R_A_aux = R_A + (param["death_rate"] / (1 - param["death_rate"])) * Q
+R_A_aux = R_A + param["a_a_aux"] *
+          (param["death_rate"] / (1 - param["death_rate"])) * Q
 
 auxWW1 = ones(nb, na, nse)
 auxWW1[:, :, ns+1:end] .= 0.0
@@ -1035,9 +1036,12 @@ RHS[pastG_ind]       = log(G)
 RHS[pastLT_ind]      = log(LT)
 
 # Labour-market wedge shock processes (ZZ_1 mirrors rho_PSI_W; ZZ_2-4 are calibrated 0.9)
-RHS[ZZ_1_ind] = param["rho_ZZ_1"] * log(ZZ_1minus) + eps_1
-RHS[ZZ_2_ind] = param["rho_ZZ_2"] * log(ZZ_2minus) + eps_2
-RHS[ZZ_3_ind] = param["rho_ZZ_3"] * log(ZZ_3minus) + eps_3
+RHS[ZZ_1_ind] = param["rho_ZZ_1"] * log(ZZ_1minus) +
+                (1 - param["rho_ZZ_1"]) * log(param["ZZ_1"]) + eps_1
+RHS[ZZ_2_ind] = param["rho_ZZ_2"] * log(ZZ_2minus) +
+                (1 - param["rho_ZZ_2"]) * log(param["ZZ_2"]) + eps_2
+RHS[ZZ_3_ind] = param["rho_ZZ_3"] * log(ZZ_3minus) +
+                (1 - param["rho_ZZ_3"]) * log(param["ZZ_3"]) + eps_3
 RHS[ZZ_4_ind] = param["rho_ZZ_4"] * log(ZZ_4minus) + eps_4
 
 # Exogenous processes
@@ -1157,13 +1161,17 @@ RHS[nx+V_2_ind] = M_2 / param["iota_2"] * J_bar_2
 
 # Production (nested CES: unskilled L_1 vs capital-skill composite)
 K_tilde = v * K
-V_aux   = (param["w"] * K_tilde^param["rho"] + (1 - param["w"]) * L_2^param["rho"])^(1/param["rho"])
-F_aux   = (param["a"] * L_1^param["zeta"] + (1 - param["a"]) * V_aux^param["zeta"])^(1/param["zeta"])
+V_aux   = (param["w"] * (ZZ_3 * K_tilde)^param["rho"] +
+           (1 - param["w"]) * (ZZ_2 * L_2)^param["rho"])^(1/param["rho"])
+F_aux   = (param["a"] * (ZZ_1 * L_1)^param["zeta"] +
+           (1 - param["a"]) * V_aux^param["zeta"])^(1/param["zeta"])
 
-RHS[nx+r_l_1_ind] = MC * Z * F_aux^(1-param["zeta"]) * param["a"] * L_1^(param["zeta"]-1)
+RHS[nx+r_l_1_ind] = MC * Z * F_aux^(1-param["zeta"]) * param["a"] *
+                    L_1^(param["zeta"]-1) * ZZ_1^param["zeta"]
 RHS[nx+r_l_2_ind] = MC * Z * F_aux^(1-param["zeta"]) * (1-param["a"]) *
-                    V_aux^(param["zeta"]-param["rho"]) * (1-param["w"]) * L_2^(param["rho"]-1)
-RHS[nx+v_ind]     = (R_K / (param["delta_0"] * param["delta_1"]))^(1/(param["delta_1"]-1))
+                    V_aux^(param["zeta"]-param["rho"]) * (1-param["w"]) *
+                    L_2^(param["rho"]-1) * ZZ_2^param["rho"]
+RHS[nx+v_ind]     = (R_K / (Q * param["delta_0"] * param["delta_1"]))^(1/(param["delta_1"]-1))
 RHS[nx+Y_ind]     = Z * F_aux
 RHS[nx+Profit_ind]= (Y * (1 - eta/(2*param["kappa"]) *
                           (log(PI) - (1-param["GAMMA"])*log(param["pi_cb"]) -
@@ -1172,12 +1180,14 @@ RHS[nx+Profit_ind]= (Y * (1 - eta/(2*param["kappa"]) *
                      (r_l_1 - param["fix_L_1"] - W_1)*L_1 +
                      (r_l_2 - param["fix_L_2"] - W_2)*L_2 -
                      param["iota_1"]*V_1 - param["iota_2"]*V_2) +
-                    (R_K*v - param["delta_00"] - param["delta_0"]*v^param["delta_1"])*K +
-                    Q*(Knext - K) - (Knext - K) -
-                    param["phi"]/2*(Knext/K-1)^2*K + Profit_FI - param["fix2"]
+                    (R_K*v - Q*(param["delta_00"] + param["delta_0"]*v^param["delta_1"]))*K -
+                    Q*K + iota2*K + Q*Knext -
+                    iota2*(Knext + param["phi"]/2*(log(Knext/K))^2*Knext) +
+                    Profit_FI - param["fix2"]
 
 RHS[nx+r_k_ind]   = MC * Z * F_aux^(1-param["zeta"]) * (1-param["a"]) *
-                    V_aux^(param["zeta"]-param["rho"]) * param["w"] * K^(param["rho"]-1)
+                    V_aux^(param["zeta"]-param["rho"]) * param["w"] *
+                    K_tilde^(param["rho"]-1) * ZZ_3^param["rho"]
 RHS[nx+r_a_ind]   = (1 - tau_a) * (1 - param["Eratio"] - param["b_share"]) * PROFIT / K
 RHS[nx+MC_ind]    = 1 - 1/eta +
                     (log(PI/(pastpiminus^param["GAMMA"]*param["pi_bar"]^(1-param["GAMMA"]))) -
