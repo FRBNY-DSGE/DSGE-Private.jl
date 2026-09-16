@@ -524,6 +524,18 @@ module DSGE
     include("forecast/var/dsgevecm/impulse_responses.jl")
     include("forecast/drivers.jl")
 
+    # kshape economy / JuneSTB dynamics
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/9kCSC.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/fsys_agg.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/jacobian.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/helpers/index.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/F_sys_CSC_ref_tvcopula.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/IRFs_CSC_tvcopula.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/parameters_agg_CSC.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/update_ss_csc.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/state_reduc_tvcopula.jl")
+    include("models/heterogeneous/kshape_economy/models/JuneSTB/compute_system.jl")
+
     # include("dsgevar/dsgevar.jl")
     # include("dsgevar/dsgevar_likelihood.jl")
     # include("dsgevar/impulse_responses.jl")
