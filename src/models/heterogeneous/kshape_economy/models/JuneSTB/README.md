@@ -1,0 +1,104 @@
+# JuneSTB / kshape dynamics
+
+This directory contains the JuneSTB version of the kCSC9 model dynamics. The
+package branch containing these files is `integration_kshape`, based on
+`integration_dev`.
+
+## What has been verified
+
+The following has been run under Julia 1.12.6:
+
+1. `using DSGE`
+2. `m = DSGE.kCSC9()`
+3. JuneSTB state reduction
+4. JuneSTB Jacobian construction
+
+The resulting blocks were finite and had dimensions
+
+```text
+F21_ad (53, 53)     F22_ad (53, 103)
+F23_ad (53, 53)     F24_ad (53, 103)
+F41_ad (86, 53)     F42_ad (86, 103)
+F43_ad (86, 53)     F44_ad (86, 103)
+```
+
+These checks establish that the code executes and produces numerically finite
+arrays. They do not, by themselves, establish that the derivatives are
+economically or mathematically correct. Correctness requires residual checks,
+finite-difference or ForwardDiff checks, and comparison with the 9kCSC/MATLAB
+reference outputs where available.
+
+## Main files
+
+| File | Role |
+|---|---|
+| `9kCSC.jl` | Defines the `DSGE.kCSC9` model type and settings. |
+| `helpers/index.jl` | Builds the state and control index maps. |
+| `dynamics/state_reduc_tvcopula.jl` | Reduces the household distribution state. |
+| `dynamics/F_sys_CSC_ref_tvcopula.jl` | Defines the nonlinear dynamic equilibrium system. |
+| `fsys_agg.jl` | Defines the aggregate equilibrium equations. |
+| `jacobian.jl` | Builds the automatic-differentiation Jacobian blocks. |
+| `compute_system.jl` | Connects the model to the DSGE system representation. |
+| `dynamics/IRFs_CSC_tvcopula.jl` | Computes IRFs after a system has been built. |
+| `run_irfs_csc.jl` | Legacy driver; inspect its input/output paths before using it. |
+| `tests/jacobian.jl` | Jacobian test using the JuneSTB test fixtures. |
+| `tests/compute_system.jl` | System-construction test using the JuneSTB fixtures. |
+| `tests/state_reduc_tvcopula.jl` | Reduction test against the supplied MATLAB fixture. |
+
+The complete supporting tree is one level above this directory under
+`kshape_economy/`, especially `helpers/`, `dynamics/`, `steadystate/`, and
+`models/9kCSC/`.
+
+## sep-imf workflow
+
+The sep-imf steady-state solver creates the handoff file consumed by the DSGE
+dynamic code:
+
+```bash
+cd /data/dsge_data_dir/dsgejl/michael/HANK/sep-imf
+julia1126-batch 100 4 code/julia110/altSS/main.jl
+```
+
+This writes:
+
+```text
+code/julia110/altSS/ss_dynamics_input.jld2
+```
+
+Run the JuneSTB reduction and Jacobian from the same sep-imf checkout:
+
+```bash
+julia1126-batch 100 4 code/julia110/altSS/run_junestb_dynamics.jl
+```
+
+This writes:
+
+```text
+code/julia110/altSS/junestb_jacobian.jld2
+```
+
+The bridge reads the steady-state dictionaries as flat key/value datasets so
+the handoff is portable between Julia environments. Do not replace this with
+a nested serialized `Dict` without testing both Julia versions.
+
+## Validation checklist
+
+Before treating a new Jacobian as correct, run all of the following:
+
+1. Confirm the steady-state solver reports a small equilibrium residual.
+2. Confirm the reduced state and control steady states have the expected
+   lengths and contain only finite values.
+3. Confirm each Jacobian block has the expected dimensions and finite values.
+4. Evaluate the equilibrium residual at the supplied steady state; it should
+   be near zero.
+5. Compare selected Jacobian columns against finite differences or
+   ForwardDiff perturbations of `Fsys_agg` and `F_sys_CSC_ref_tvcopula`.
+6. Compare the JuneSTB blocks against the 9kCSC reference CSV/MATLAB outputs
+   where the state ordering and steady state are identical.
+7. Only then run IRFs and check that the resulting responses are economically
+   sensible and stable.
+
+The sep-imf steady state is a new steady-state model set. Therefore, the
+legacy JuneSTB test fixtures are useful regression checks for code paths, but
+they are not automatically a proof that the sep-imf Jacobian matches the old
+steady state.
