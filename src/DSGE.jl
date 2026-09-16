@@ -398,6 +398,7 @@ module DSGE
 
     # Heterogeneous Agent Models
     include("models/heterogeneous/util.jl")
+    include("models/heterogeneous/macros.jl")
 
     include("models/heterogeneous/krusell_smith/krusell_smith.jl")
     include("models/heterogeneous/krusell_smith/steady_state.jl")
