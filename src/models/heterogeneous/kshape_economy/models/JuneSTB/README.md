@@ -22,11 +22,10 @@ F41_ad (86, 53)     F42_ad (86, 103)
 F43_ad (86, 53)     F44_ad (86, 103)
 ```
 
-These checks establish that the code executes and produces numerically finite
-arrays. They do not, by themselves, establish that the derivatives are
-economically or mathematically correct. Correctness requires residual checks,
-finite-difference or ForwardDiff checks, and comparison with the 9kCSC/MATLAB
-reference outputs where available.
+The sep-imf steady-state residual is `2.23e-9`, and an independent centered
+directional finite difference agrees with the production AD Jacobian to a
+relative error of `1.48e-7`. The MATLAB-derived tests below add nonlinear
+equation, policy-output, and complete aggregate-Jacobian comparisons.
 
 ## Main files
 
@@ -48,6 +47,16 @@ reference outputs where available.
 The complete supporting tree is one level above this directory under
 `kshape_economy/`, especially `helpers/`, `dynamics/`, `steadystate/`, and
 `models/9kCSC/`.
+
+## Batch execution
+
+Run Julia jobs through the Julia 1.12.6 batch wrapper:
+
+```bash
+julia1126-batch <memGB> <ncpus> <script.jl>
+# example
+julia1126-batch 100 4 run_smc_SW.jl
+```
 
 ## sep-imf workflow
 
@@ -91,10 +100,10 @@ Before treating a new Jacobian as correct, run all of the following:
 3. Confirm each Jacobian block has the expected dimensions and finite values.
 4. Evaluate the equilibrium residual at the supplied steady state; it should
    be near zero.
-5. Compare selected Jacobian columns against finite differences or
-   ForwardDiff perturbations of `Fsys_agg` and `F_sys_CSC_ref_tvcopula`.
-6. Compare the JuneSTB blocks against the 9kCSC reference CSV/MATLAB outputs
-   where the state ordering and steady state are identical.
+5. Compare the complete aggregate Jacobian against MATLAB and against
+   one-sided Julia finite differences of `Fsys_agg`.
+6. Compare `F_sys_CSC_ref_tvcopula` levels and policy outputs against MATLAB
+   at both baseline and perturbed inputs.
 7. Only then run IRFs and check that the resulting responses are economically
    sensible and stable.
 
@@ -125,3 +134,34 @@ julia1126-batch 100 4 run_matlab_parity.jl
 The accepted tolerance is `atol=1e-9, rtol=1e-11`. The validated fixture has
 maximum `Difference`/`RHS` error `7.17e-11` and maximum `LHS` error
 `8.88e-16` for both the steady-state and perturbed cases.
+
+## Complete aggregate Jacobian parity
+
+`tests/matlab_jacobian_parity.jl` compares every entry of the eight aggregate
+Jacobian blocks (`F21`, `F22`, `F23`, `F24`, `F41`, `F42`, `F43`, and `F44`)
+with `update_Jacob_CSC.m`. This covers 43,368 entries, rather than checking
+only matrix dimensions. Its default fixture is generated at the sep-imf
+steady state:
+
+```text
+/data/dsge_data_dir/dsgejl/michael/HANK/sep-imf/sepimf_matlab_jacobian_fixture.mat
+```
+
+Regenerate and run the fixture with:
+
+```bash
+julia1126-batch 100 4 export_sepimf_matlab_jacobian_input.jl
+matlab24b-batch 8 generate_matlab_jacobian_fixture.m 2
+julia1126-batch 100 4 run_matlab_jacobian_parity.jl
+```
+
+The test has 16 assertions: eight compare the complete MATLAB blocks to Julia
+using MATLAB's one-sided finite-difference step of `1e-5`, and eight compare
+the production automatic-differentiation blocks with an entry-specific
+allowance equal to the measured one-sided truncation error. This prevents a
+global loose tolerance from hiding an equation mismatch. At the validated
+sep-imf steady state, all 43,368 entries pass and the largest MATLAB-versus-
+Julia forward-difference error is `3.56e-10`. The largest MATLAB-versus-AD
+difference is `0.0116`, on a derivative of about `47.14`; the matching Julia
+forward difference agrees with MATLAB exactly, establishing that this gap is
+the expected one-sided finite-difference bias.

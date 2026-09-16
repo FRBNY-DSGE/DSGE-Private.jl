@@ -148,3 +148,53 @@ function parameters_agg_CSC(param::Dict, SS_stats::Dict)
 
     return param
 end
+
+"""
+    sync_kshape_parameters!(m, param)
+
+Copy the scalar MATLAB/steady-state parameter dictionary into the `kCSC9`
+model parameters used by `Fsys_agg`. The two representations use different
+names for Greek symbols, so the handoff must be explicit.
+"""
+function sync_kshape_parameters!(m::kCSC9, param::Dict)
+    mapping = (
+        :Eratio => "Eratio", :GHH => "GHH", :Z => "Z", :a => "a",
+        :b_a_aux2 => "b_a_aux2", :b_share => "b_share", :d_1 => "d_1",
+        :d_2 => "d_2", :dr => "death_rate", :fix2 => "fix2", :fix => "fix",
+        :fix_L_1 => "fix_L_1", :fix_L_2 => "fix_L_2", :in => "in",
+        :w => "w", :w_bar_1 => "w_bar_1", :w_bar_2 => "w_bar_2",
+        :α_1 => "alpha_1", :α_2 => "alpha_2", :β_b => "beta_b",
+        :γ => "GAMMA", :γ_T => "gamma_T", :γ_π => "gamma_pi",
+        :δ => "DELTA", :δ_0 => "delta_0", :δ_1 => "delta_1", :δ_00 => "delta_00",
+        :ε_w => "eps_w", :ζ => "zeta", :η => "eta", :θ_b => "theta_b",
+        :ι_1 => "iota_1", :ι_2 => "iota_2", :κ => "kappa",
+        :λ_1 => "lambda_1", :λ_2 => "lambda_2", :λ_aux => "Lambda_aux",
+        :λ_b_aux => "Lambda_b_aux", :ξ => "xi", :π_bar => "pi_bar",
+        :π_cb => "pi_cb", :ρ => "rho", :ρ_A_g => "rho_A_g",
+        :ρ_BB => "rho_BB", :ρ_B => "rho_B", :ρ_B_F => "rho_B_F",
+        :ρ_D => "rho_D", :ρ_G => "rho_G", :ρ_R => "rho_R",
+        :ρ_X_QE => "rho_X_QE", :ρ_ZZ_1 => "rho_ZZ_1",
+        :ρ_ZZ_2 => "rho_ZZ_2", :ρ_ZZ_3 => "rho_ZZ_3",
+        :ρ_ZZ_4 => "rho_ZZ_4", :ρ_Z => "rho_Z", :ρ_mp => "rho_MP",
+        :ρ_w_1 => "rho_w_1", :ρ_w_2 => "rho_w_2", :ρ_η => "rho_eta",
+        :ρ_ι => "rho_iota", :ρ_ψ_rp => "rho_PSI_RP",
+        :ρ_ψ_w => "rho_PSI_W", :σ2 => "sigma2", :τ_L => "tau_L",
+        :τ_P => "tau_P", :τ_a => "tau_a", :τ_cp => "tau_cp",
+        :ψ_1 => "psi_1", :ψ_2 => "psi_2", :ω => "omega", :ϕ => "phi",
+        :ϕ_b => "phi_b", :ϕ_u => "phi_u", :ϕ_u_QE => "phi_u_QE",
+        :ϕ_π => "phi_pi", :ϕ_π_QE => "phi_pi_QE",
+    )
+
+    for (model_key, dict_key) in mapping
+        if haskey(param, dict_key) && param[dict_key] isa Real
+            m[model_key] = Float64(param[dict_key])
+        end
+    end
+    return m
+end
+
+function parameters_agg_CSC(m::kCSC9, param::Dict, SS_stats::Dict)
+    parameters_agg_CSC(param, SS_stats)
+    sync_kshape_parameters!(m, param)
+    return param
+end

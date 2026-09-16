@@ -40,7 +40,7 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     #===================================================================#
     #eq2: sector-1 wage Phillips curve
     @sslogdeviations2levels w_1_t, π_past_t = Xt, state_id, StateSS
-    @sslogdeviations2levels_unprimekeys w_1′_t, ZZ_1′_t = Xt1, state_id, StateSS
+    @sslogdeviations2levels_unprimekeys w_1′_t, ZZ_4′_t = Xt1, state_id, StateSS
     @sslogdeviations2levels r_l_1_t = Yt, control_id, ControlSS
 
     F[:eq_wage_1] = log(w_1′_t) - (
@@ -48,7 +48,8 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
         m[:ρ_w_1] * (log(w_1_t) - log(m[:w_bar_1])) +
         m[:ρ_w_1] * (m[:d_1] * log(m[:π_bar] / pi_t) +
                       (1 - m[:d_1]) * log(π_past_t / pi_t)) +
-        (1 - m[:ρ_w_1]) * (log(1 / ZZ_1′_t) + m[:ε_w] * log(r_l_1_t / m.dicts[:SS_stats]["r_l_1"])))
+        (1 - m[:ρ_w_1]) * (log(1 / ZZ_4′_t) +
+                            m.dicts[:param]["eps_w_1"] * log(r_l_1_t / m.dicts[:SS_stats]["r_l_1"])))
 
     #===================================================================#
     #eq3: sector-2 wage Phillips curve
@@ -61,7 +62,8 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
         m[:ρ_w_2] * (log(w_2_t) - log(m[:w_bar_2])) +
         m[:ρ_w_2] * (m[:d_2] * log(m[:π_bar] / pi_t) +
                       (1 - m[:d_2]) * log(π_past_t / pi_t)) +
-        (1 - m[:ρ_w_2]) * (log(1 / ψ_w′_t) + m[:ε_w] * log(r_l_2_t / m.dicts[:SS_stats]["r_l_2"])))
+        (1 - m[:ρ_w_2]) * (log(1 / ψ_w′_t) +
+                            m.dicts[:param]["eps_w_2"] * log(r_l_2_t / m.dicts[:SS_stats]["r_l_2"])))
 
     #===================================================================#
     #eq4: average wage  w = (L_1*w_1 + L_2*w_2) / (L_1 + L_2)
@@ -110,11 +112,11 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     #===================================================================#
     #eq8: Tobin's q
     @sslogdeviations2levels ι2_t, x_k_t, λ_t = Yt, control_id, ControlSS
-    @sslogdeviations2levels_unprimekeys ι2′_t, x_k′_t = Yt1, control_id, ControlSS
+    @sslogdeviations2levels_unprimekeys ι2′_t, x_k′_t, x_I′_t = Yt1, control_id, ControlSS
 
     F[:eq_tobins_q] = log(Q′_t) -
         log(ι2_t * (1 + m[:ϕ] * log(x_k_t) + m[:ϕ] / 2 * (log(x_k_t))^2) -
-            ι2′_t * λ_t / m.dicts[:SS_stats]["Lambda"] * m[:ϕ] * log(x_k′_t) * x_k′_t)
+            λ_t * (ι2′_t * (1 + m[:ϕ] * log(x_k′_t) * x_k′_t) - x_I′_t))
 
     #===================================================================#
     #eq9: bank leverage
@@ -227,21 +229,27 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     @sslogdeviations2levels_unprimekeys ZZ_1′_t = Xt1, state_id, StateSS
 
     #= wrong scaling: F[:eq_ZZ_1] = m[:ρ_ZZ_1] * log(ZZ_1′_t) - (m[:ρ_ZZ_1] * log(ZZ_1_t) + log(eps_1_t)) =#
-    F[:eq_ZZ_1] = log(ZZ_1′_t) - (m[:ρ_ZZ_1] * log(ZZ_1_t) + log(eps_1_t))
+    F[:eq_ZZ_1] = log(ZZ_1′_t) - (
+        m[:ρ_ZZ_1] * log(ZZ_1_t) +
+        (1 - m[:ρ_ZZ_1]) * log(m.dicts[:param]["ZZ_1"]) + log(eps_1_t))
 
     #===================================================================#
     #eq24: ZZ_2 AR(1) labour-market wedge
     @sslogdeviations2levels ZZ_2_t, eps_2_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys ZZ_2′_t = Xt1, state_id, StateSS
 
-    F[:eq_ZZ_2] = log(ZZ_2′_t) - (m[:ρ_ZZ_2] * log(ZZ_2_t) + log(eps_2_t))
+    F[:eq_ZZ_2] = log(ZZ_2′_t) - (
+        m[:ρ_ZZ_2] * log(ZZ_2_t) +
+        (1 - m[:ρ_ZZ_2]) * log(m.dicts[:param]["ZZ_2"]) + log(eps_2_t))
 
     #===================================================================#
     #eq25: ZZ_3 AR(1) labour-market wedge
     @sslogdeviations2levels ZZ_3_t, eps_3_t = Xt, state_id, StateSS
     @sslogdeviations2levels_unprimekeys ZZ_3′_t = Xt1, state_id, StateSS
 
-    F[:eq_ZZ_3] = log(ZZ_3′_t) - (m[:ρ_ZZ_3] * log(ZZ_3_t) + log(eps_3_t))
+    F[:eq_ZZ_3] = log(ZZ_3′_t) - (
+        m[:ρ_ZZ_3] * log(ZZ_3_t) +
+        (1 - m[:ρ_ZZ_3]) * log(m.dicts[:param]["ZZ_3"]) + log(eps_3_t))
 
     #===================================================================#
     #eq26: ZZ_4 AR(1) labour-market wedge
@@ -489,19 +497,23 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     @sslogdeviations2levels v_t, MC_t = Yt, control_id, ControlSS
 
     K_tilde = v_t * K_t
-    V_aux   = (m[:w] * K_tilde^m[:ρ] + (1 - m[:w]) * L_2_t^m[:ρ])^(1 / m[:ρ])
-    F_prod  = (m[:a] * L_1_t^m[:ζ] + (1 - m[:a]) * V_aux^m[:ζ])^(1 / m[:ζ])
+    V_aux   = (m[:w] * (ZZ_3′_t * K_tilde)^m[:ρ] +
+               (1 - m[:w]) * (ZZ_2′_t * L_2_t)^m[:ρ])^(1 / m[:ρ])
+    F_prod  = (m[:a] * (ZZ_1′_t * L_1_t)^m[:ζ] +
+               (1 - m[:a]) * V_aux^m[:ζ])^(1 / m[:ζ])
 
     #===================================================================#
     #control eq12: MPL sector 1
     F[:eq_control_mpl_1] = r_l_1_t -
-        (MC_t * Z′_t * F_prod^(1 - m[:ζ]) * m[:a] * L_1_t^(m[:ζ] - 1))
+        (MC_t * Z′_t * F_prod^(1 - m[:ζ]) * m[:a] *
+         L_1_t^(m[:ζ] - 1) * ZZ_1′_t^m[:ζ])
 
     #===================================================================#
     #control eq13: MPL sector 2
     F[:eq_control_mpl_2] = r_l_2_t -
         (MC_t * Z′_t * F_prod^(1 - m[:ζ]) * (1 - m[:a]) *
-         V_aux^(m[:ζ] - m[:ρ]) * (1 - m[:w]) * L_2_t^(m[:ρ] - 1))
+         V_aux^(m[:ζ] - m[:ρ]) * (1 - m[:w]) *
+         L_2_t^(m[:ρ] - 1) * ZZ_2′_t^m[:ρ])
 
     #===================================================================#
     #control eq14: capital utilisation v — FOC: r_k = δ_0 * δ_1 * v^(δ_1−1)
@@ -510,7 +522,8 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
 
     #= archived inverted form: F[:eq_control_elasticity_v] = r_k_t - m[:δ_0] * m[:δ_1] * v_t^(m[:δ_1] - 1) =#
     #= archived identity: F[:eq_control_elasticity_v] = v_t - v′_t =#
-    F[:eq_control_elasticity_v] = v_t - (r_k_t / (m[:δ_0] * m[:δ_1]))^(1 / (m[:δ_1] - 1))
+    F[:eq_control_elasticity_v] = v_t -
+        (r_k_t / (Q′_t * m[:δ_0] * m[:δ_1]))^(1 / (m[:δ_1] - 1))
 
     #===================================================================#
     #control eq15: output Y (nested-CES)
@@ -528,15 +541,17 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
          (r_l_1_t - m[:fix_L_1] - w_1′_t) * L_1_t +
          (r_l_2_t - m[:fix_L_2] - w_2′_t) * L_2_t -
          m[:ι_1] * V_1_t - m[:ι_2] * V_2_t) +
-        (r_k_t * v_t - m[:δ_0] * v_t^m[:δ_1]) * K_t +
-        Q′_t * (K′_t - K_t) - (K′_t - K_t) -
-        m[:ϕ] / 2 * (K′_t / K_t - 1)^2 * K_t + Profit_FI_t - m[:fix2])
+        (r_k_t * v_t - Q′_t * (m[:δ_00] + m[:δ_0] * v_t^m[:δ_1])) * K_t -
+        Q′_t * K_t + ι2_t * K_t + Q′_t * K′_t -
+        ι2_t * (K′_t + m[:ϕ] / 2 * log(K′_t / K_t)^2 * K′_t) +
+        Profit_FI_t - m[:fix2])
 
     #===================================================================#
     #control eq17: MPK (nested-CES)
     F[:eq_control_mpk] = r_k_t -
         (MC_t * Z′_t * F_prod^(1 - m[:ζ]) * (1 - m[:a]) *
-         V_aux^(m[:ζ] - m[:ρ]) * m[:w] * K_tilde^(m[:ρ] - 1))
+         V_aux^(m[:ζ] - m[:ρ]) * m[:w] *
+         K_tilde^(m[:ρ] - 1) * ZZ_3′_t^m[:ρ])
 
     #===================================================================#
     #control eq18: return on illiquid assets r_a
@@ -653,7 +668,7 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
     F[:eq_control_investment] = I_t - (
         ι′_t * (1 + m[:ϕ] / 2 * (log(x_k_t))^2) *
         (A_hh′_t + A_g′_t + A_b′_t + m.dicts[:SS_stats]["A_F"]) -
-        (1 - m[:δ_0] * v_t^m[:δ_1]) * K_t)
+        Q′_t * (1 - (m[:δ_00] + m[:δ_0] * v_t^m[:δ_1])) * K_t)
 
     #===================================================================#
     #control eq35: capital growth x_k
@@ -773,7 +788,7 @@ function Fsys_agg(F, m, grid, StateSS, ControlSS, Xt1, Yt1, Xt, Yt, state_id, co
 
     #control eq68: investment growth x_I
     @sslogdeviations2levels x_I_t = Yt, control_id, ControlSS
-    F[:eq_xI] = x_I_t - I_t / I_past_t
+    F[:eq_xI] = x_I_t - Q′_t
 
     #control eq69: markup auxiliary η2 (= η)
     @sslogdeviations2levels_unprimekeys η′_t = Xt1, state_id, StateSS

@@ -999,7 +999,7 @@ RHS[R_star_ind] = log(param["R_cb"]) + (1-param["rho_R"]) *
 RHS[w_1_ind] = log(param["w_bar_1"]) +
                param["rho_w_1"] * log(W_1minus/param["w_bar_1"]) +
                param["rho_w_1"] * (param["d_1"]*log(param["pi_bar"]/PI) + (1-param["d_1"])*log(pastpiminus/PI)) +
-               (1-param["rho_w_1"]) * log(1/ZZ_1 * r_l_1/SS_stats["r_l_1"])
+               (1-param["rho_w_1"]) * log(1/ZZ_4 * r_l_1/SS_stats["r_l_1"])
 RHS[w_2_ind] = log(param["w_bar_2"]) +
                param["rho_w_2"] * log(W_2minus/param["w_bar_2"]) +
                param["rho_w_2"] * (param["d_2"]*log(param["pi_bar"]/PI) + (1-param["d_2"])*log(pastpiminus/PI)) +
