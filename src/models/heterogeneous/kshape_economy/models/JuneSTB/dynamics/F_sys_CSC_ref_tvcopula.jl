@@ -679,9 +679,15 @@ Uaq = Vector{Float64}(CDF_a_m[:])
 Usq = Vector{Float64}(CDF_se_m[:])
 
 C_SS_atU = myinterpolate3(Vector{Float64}(CDF_b_SS[:]), Vector{Float64}(CDF_a_SS[:]), Vector{Float64}(CDF_se_SS[:]), COP_SS,    Ubq, Uaq, Usq)
-dC_atU   = myinterpolate3(Vector{Float64}(s_m_b[:]),    Vector{Float64}(s_m_a[:]),    Vector{Float64}(s_m_se[:]),    COP_Dev_m, Ubq, Uaq, Usq)
+# dC_atU is the time-varying copula deviation and is intentionally unused in
+# fixed-copula dynamics.
+# dC_atU = myinterpolate3(Vector{Float64}(s_m_b[:]), Vector{Float64}(s_m_a[:]),
+#                         Vector{Float64}(s_m_se[:]), COP_Dev_m, Ubq, Uaq, Usq)
 
-CDF_joint_m = C_SS_atU + dC_atU
+# Fixed-copula dynamics: keep the steady-state copula and update only the
+# marginal CDFs.  This is the fixed-copula path used for dynamic exercises;
+# the time-varying copula deviation is deliberately not added here.
+CDF_joint_m = C_SS_atU
 PDF_joint_m = cdf_to_pdf3D_forwarddiff(CDF_joint_m)
 
 A_gnext = A_gauxnext
