@@ -10,6 +10,7 @@ include(joinpath(@__DIR__, "../../../helpers/cdf_to_pdf3D_forwarddiff.jl"))
 include(joinpath(@__DIR__, "../../../helpers/sub2ind.jl"))
 include(joinpath(@__DIR__, "../steadystate/q_cons.jl"))
 include(joinpath(@__DIR__, "../../../helpers/q_cons2.jl"))
+include(joinpath(@__DIR__, "../../../helpers/Fastroot.jl"))
 include(joinpath(@__DIR__, "../../../dynamics/policies_update.jl"))
 
 """
@@ -1216,7 +1217,7 @@ RHS[nx+RRa_ind]       = (Q + R_A) / Qminus
 RHS[nx+RR_ind]        = R_cbminus / PI
 RHS[nx+I_ind]         = iota*(1 + param["phi"]/2*(log(x_k))^2) *
                          (A_hhnext + A_gnext + A_bnext + SS_stats["A_F"]) -
-                         (1 - (param["delta_00"] + param["delta_0"]*v^param["delta_1"]))*K
+                         Q * (1 - (param["delta_00"] + param["delta_0"]*v^param["delta_1"])) * K
 RHS[nx+x_k_ind]       = Knext / K
 
 # Observable identities
@@ -1249,7 +1250,7 @@ RHS[nx+pastA_g_ind]      = A_g
 RHS[nx+l_lambda_1_ind]   = param["lambda_1"]
 RHS[nx+l_lambda_2_ind]   = param["lambda_2"]
 RHS[nx+pastQ_ind]        = Qminus
-RHS[nx+x_I_ind]          = Inv / pastIminus
+RHS[nx+x_I_ind]          = Q
 RHS[nx+eta2_ind]         = eta
 RHS[nx+iota2_ind]        = iota
 RHS[nx+pastLT2_ind]      = pastLTminus

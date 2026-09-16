@@ -33,11 +33,11 @@ function state_reduc_tvcopula!(param::Dict, grid::Dict, SS_stats::Dict,
         log(SS_stats["Profit"] + SS_stats["Profit_FI"]),
         log(param["u_1"]), log(param["u_2"]), log(SS_stats["u"]),
         log(SS_stats["G"]), log(SS_stats["LT"]), log(param["R_cb"]),
-        0, 0, 0, 0,
+        log(param["ZZ_1"]), log(param["ZZ_2"]), log(param["ZZ_3"]), 0,
         log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["B_F"])),
         log(param["Z"]), log(1), log(param["eta"]), log(1),
         log(SS_stats["Y"] / (SS_stats["Y"] - SS_stats["LT"] - SS_stats["C_b"])),
-        log(1), log(1), log(1), log(1),
+        log(param["q"]), log(1), log(1), log(1),
         log(param["eta"] / (param["eta"] - 1)),
         zeros(15)
     )
@@ -59,7 +59,7 @@ function state_reduc_tvcopula!(param::Dict, grid::Dict, SS_stats::Dict,
         log(SS_stats["Lambda"]), log(param["pi_bar"]),
         log(SS_stats["V_1"]), log(SS_stats["V_2"]), vec(log.(SS_stats["J"])),
         log(SS_stats["r_l_1"]), log(SS_stats["r_l_2"]), log(SS_stats["v"]),
-        log(SS_stats["Y"]), log(SS_stats["Profit"]), log(SS_stats["r_k"]),
+        log(SS_stats["Y"]), log(SS_stats["Profit"] + SS_stats["Profit_FI"] - param["fix2"]), log(SS_stats["r_k"]),
         log(SS_stats["r_a"]), log(SS_stats["mc"]),
         log(param["n_1"]), log(param["n_2"]),
         log(SS_stats["M_1"]), log(SS_stats["M_2"]),
@@ -80,21 +80,21 @@ function state_reduc_tvcopula!(param::Dict, grid::Dict, SS_stats::Dict,
         log(param["u_1"]), log(param["u_2"]), log(SS_stats["u"]),
         log(SS_stats["LT"]), log(SS_stats["A_g"]),
         log(param["lambda_1"]), log(param["lambda_2"]),
-        0, 0, log(param["eta"]), 0,
+        log(param["q"]), log(param["q"]), log(param["eta"]), log(param["q"]),
         log(SS_stats["LT"]), log(SS_stats["G"]), log(SS_stats["LT"]),
         log(SS_stats["B_gov_ncp2"])
     )
 
-    grid["maxdim"] = 12
+    grid["maxdim"] = 10
     nb = Int(grid["nb"])
     na = Int(grid["na"])
     nse = Int(grid["nse"])
     grid["Ng"] = nb * na * nse
     Ng = grid["Ng"]
 
-    grid["nb_copula"] = 10
-    grid["na_copula"] = 10
-    grid["nse_copula"] = 10
+    grid["nb_copula"] = 8
+    grid["na_copula"] = 8
+    grid["nse_copula"] = 6
 
     DC = Vector{Matrix{Float64}}(undef, 3)
     DC[1] = mydctmx(nb)
@@ -138,7 +138,7 @@ function state_reduc_tvcopula!(param::Dict, grid::Dict, SS_stats::Dict,
         transform="none", alpha=0.5, pinPenultimate=true
     )
 
-    grid["reduc_copula"] = 13
+    grid["reduc_copula"] = 4
 
     nb_cop = grid["nb_copula"]
     na_cop = grid["na_copula"]
