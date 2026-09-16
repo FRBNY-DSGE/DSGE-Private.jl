@@ -8,20 +8,24 @@ using DSGE
 include("helpers/index.jl")
 include("fsys_agg.jl")
 
-function jacobian!(m::kCSC9)
+function jacobian!(m::kCSC)
     # t0 = time()
 
-    grid = Dict{Symbol,Any}(Symbol(k) => v for (k,v) in m.dicts[:grid])
-    SS_stats = m.dicts[:SS_stats]
-    param = m.dicts[:param]
+    grid = m.dicts[:grid] 
+    SS_stats = m.dicts[:SS_stats] 
+    param = m.dicts[:param] 
     StateSS = m.grids[:StateSS]
-    ControlSS = m.grids[:ControlSS]
-
+    ControlSS = m.grids[:ControlSS] 
+    getgrid(g, k::Symbol) =
+        haskey(g, k) ? g[k] :
+        haskey(g, String(k)) ? g[String(k)] :
+        error("Missing grid key: $(k)")
+    
     # t1 = time()
     # println("setup: $(t1 - t0) seconds")
 
     #one time setup to move prev donggyu format to bbl format
-    state_id, control_id = build_indices_kCSC9(grid, length(StateSS), length(ControlSS))
+    state_id, control_id = build_indices_csc(grid, length(StateSS), length(ControlSS))
     
     #ss = DSGE.build_ss(param, SS_stats)
 
@@ -281,8 +285,8 @@ function jacobian!(m::kCSC9)
     # println("forwarddiff: $(t1 - t0) seconds")
 
     # aggregate-only columns (drop distribution block indices)
-    dist_state_keys = Set([:marginal_b′_t, :marginal_a′_t, :marginal_se′_t, :COP])
-    dist_ctrl_keys  = Set([:VALUE_t, :mutil_c_t, :Va_t])
+    dist_state_keys = Set([:marginal_pdf_b_t, :marginal_pdf_a_t, :marginal_pdf_se_t, :copula_t])
+    dist_ctrl_keys  = Set([:Value_t, :mutil_c_t, :Va_t])
 
     agg_state_cols = vcat([collect(state_id[s])   for s in keys(state_id)   if s ∉ dist_state_keys]...)
     agg_ctrl_cols  = vcat([collect(control_id[s]) for s in keys(control_id) if s ∉ dist_ctrl_keys]...)
@@ -308,18 +312,17 @@ function jacobian!(m::kCSC9)
     F3_ad = BA_agg[:, nState+nCtrl+1:2*nState+nCtrl][:, agg_state_cols]  # ∂F/∂Xt  (agg cols)
     F4_ad = BA_agg[:, 2*nState+nCtrl+1:end][:, agg_ctrl_cols]            # ∂F/∂Yt  (agg cols)
 
-    os = Int(grid[:os])
-    oc = Int(grid[:oc])
-    n_hh_summary_julia = 3  # Income_Tax, J_bar_1, J_bar_2 remain in fsys_agg
-    F21_ad = F1_ad[1:os, :]
-    F22_ad = F2_ad[1:os, :]
-    F23_ad = F3_ad[1:os, :]
-    F24_ad = F4_ad[1:os, :]
+    os = Int(getgrid(grid, :os))
+    oc = Int(getgrid(grid, :oc))
+    F21_ad = F1_ad[1:os, end-os+1:end]
+    F22_ad = F2_ad[1:os, end-oc+1:end]
+    F23_ad = F3_ad[1:os, end-os+1:end]
+    F24_ad = F4_ad[1:os, end-oc+1:end]
 
-    F41_ad = F1_ad[os+n_hh_summary_julia+1:end, :]
-    F42_ad = F2_ad[os+n_hh_summary_julia+1:end, :]
-    F43_ad = F3_ad[os+n_hh_summary_julia+1:end, :]
-    F44_ad = F4_ad[os+n_hh_summary_julia+1:end, :]
+    F41_ad = F1_ad[os+1:end, end-os+1:end]
+    F42_ad = F2_ad[os+1:end, end-oc+1:end]
+    F43_ad = F3_ad[os+1:end, end-os+1:end]
+    F44_ad = F4_ad[os+1:end, end-oc+1:end]
 
 
 
@@ -350,6 +353,10 @@ function jacobian!(m::kCSC9)
     # F22_ad_zlb = copy(F22_ad)
     # F23_ad_zlb = copy(F23_ad)
     # F24_ad_zlb = copy(F24_ad)
+
+    # trim ag_t
+    F1_ad_trim = F1_ad[:, 1:end-1]
+    F3_ad_trim = F3_ad[:, 1:end-1]
 
     # for (nonzlb_row, zlb_row) in zlb_nonzlb_idx_pairs
     #     F21_ad_zlb[nonzlb_row, :] = F1_ad_trim[zlb_row + 4, :] #TODO instead of maual +4 account for J better
