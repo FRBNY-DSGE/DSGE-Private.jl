@@ -43,3 +43,7 @@ test/estimate/smc/save/output_data/an_schorfheide/ss0/estimate/raw
 
 *.o*
 *.e*
+
+# Large local kshape test fixtures
+src/models/heterogeneous/kshape_economy/models/kCSC/tests/XssYss.jld2
+src/models/heterogeneous/kshape_economy/models/kCSC/tests/ss_CSC_result.jld2
