@@ -533,7 +533,6 @@ module DSGE
     include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/F_sys_CSC_ref_tvcopula.jl")
     include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/IRFs_CSC_tvcopula.jl")
     include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/parameters_agg_CSC.jl")
-    include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/update_ss_csc.jl")
     include("models/heterogeneous/kshape_economy/models/JuneSTB/dynamics/state_reduc_tvcopula.jl")
     include("models/heterogeneous/kshape_economy/models/JuneSTB/compute_system.jl")
 
