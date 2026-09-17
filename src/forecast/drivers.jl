@@ -209,7 +209,7 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
                     Vector{String}(undef, 0), use_highest_posterior_value::Bool = false,
                     input_file_name::String = "")
 
-    if isempty(input_file_name)
+    if isempty(input_file_name) && input_type ∉ [:init]
         input_file_name = get_forecast_input_file(m, input_type, filestring_addl = filestring_addl)
     end
 
@@ -243,7 +243,9 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
                     else
                         cloud.particles[argmax(get_logpost(cloud))].value
                     end
+
                 end
+
             else
                 error("SMC mean not implemented yet")
             end
@@ -304,7 +306,7 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
             init_parameters!(m)
         end =#
         tmp = map(α -> α.value, m.parameters)
-        params = convert(Vector{Float64}, tmp)
+        params = convert(Vector{Union{Vector{Float64}, Float64}}, tmp)
 
     end
 
@@ -781,7 +783,7 @@ Compute `output_vars` for a single parameter draw, `params`. Called by
 ```
 """
 function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, cond_type::Symbol,
-                           output_vars::Vector{Symbol}, params::Vector{Float64}, df::DataFrame; verbose::Symbol = :low,
+                           output_vars::Vector{Symbol}, params::Array{Float64, 1}, df::DataFrame; verbose::Symbol = :low,
                            use_filtered_shocks_in_shockdec::Bool = false,
                            shock_name::Symbol = :none, shock_var_name::Symbol = :none,
                            shock_var_value::Float64 = 0.0, shock_names::Vector{Symbol} = Vector{Symbol}(undef, 0),
@@ -870,7 +872,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
         if filter_smooth && (get_setting(m, :forecast_smoother) == :carter_kohn)
             kal = filter(m, df, system; cond_type = cond_type)
             histstates, histshocks, histpseudo, initial_states =
-                smooth(m, df, system; cond_type = cond_type, draw_states = uncertainty,
+               smooth(m, df, system; cond_type = cond_type, draw_states = uncertainty,
                        s_pred = kal[:s_pred], P_pred = kal[:P_pred], s_filt = kal[:s_filt], P_filt = kal[:P_filt],
                        catch_smoother_lapack = catch_smoother_lapack)
 
@@ -1119,7 +1121,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                 Rht = system[:RRR][:, vcat(shocks[:rm_sh], shocks[:rm_shl1]:shocks[Symbol("rm_shl$H")])]
                 bb = zeros(H+1, 1)
                 MH = zeros(H+1, H+1)
-                @show s_T[m.endogenous_states[:R_t]] + 400*log(m[:Rstarn])
+                #@show s_T[m.endogenous_states[:R_t]] + 400*log(m[:Rstarn])
                 for hh = 1:H+1
                     bb[hh, 1] = (FFRpeg - PsiR1 - PsiR2'*(system[:TTT])^hh*s_T)[1]
                     MH[hh, :] = PsiR2'*(system[:TTT])^(hh-1)*Rht
@@ -1128,8 +1130,8 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
                 etpeg = zeros(nshocks, forecast_horizons(m))
                 etpeg[vcat(shocks[:rm_sh], shocks[:rm_shl1]:shocks[Symbol("rm_shl$H")]), 1] = monshocks
                 forecaststates, forecastobs, forecastpseudo, forecastshocks = forecast(system, s_T, etpeg)
-                @show forecaststates[m.endogenous_states[:R_t], :]
-                @show forecastobs[m.observables[:obs_nominalrate], :]
+                #@show forecaststates[m.endogenous_states[:R_t], :]
+                #@show forecastobs[m.observables[:obs_nominalrate], :]
             elseif zlb_method == :temporary_altpolicy
                 # Run the unbounded forecast if they haven't already been computed
                 if isempty(intersect(output_vars, unbddforecast_vars))

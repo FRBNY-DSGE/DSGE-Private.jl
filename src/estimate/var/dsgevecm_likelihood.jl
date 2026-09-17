@@ -34,7 +34,16 @@ function dsgevecm_likelihood(m::AbstractDSGEVECMModel{S}, data::Matrix{S};
         get_setting(m, :regime_switching) : false # if n_regimes == 1, then no switching needed
 
     # Get population moments
-    YYYY, XXYY, XXXX = compute_var_population_moments(data, lags; use_intercept = use_intercept)
+    n_coint = get_setting(m.dsge, :n_coint)
+
+    if n_coint > 0
+        coint_data = data[get_setting(m.dsge, :coint_data_inds), :]
+        data = data[get_setting(m.dsge, :main_data_inds), :]
+
+        YYYY, XXYY, XXXX = compute_vecm_population_moments(data, lags, n_coint, coint_data; use_intercept = use_intercept)
+    else
+        YYYY, XXYY, XXXX = compute_var_population_moments(data, lags; use_intercept = use_intercept)
+    end
 
     if regime_switching
         error("Regime switching has not been implemented yet.")
@@ -101,10 +110,15 @@ function dsgevecm_likelihood(YYYY::Matrix{S}, XXYY::Matrix{S},
     else
         # Compute DSGEVECM components for weighted population moments
         if n_cointadd > 0
+            λT = λ * T
             Λ⁻¹ = Diagonal{S}(I, size(XXXX, 1))    # these lines are the only ones which distinguish
             Λ⁻¹[1:n_cointadd, 1:n_cointadd] ./= λT # this likelihood from dsgevar_likelihood
+            @show size(Λ⁻¹)
             XXYY = Λ⁻¹ * XXYY
             XXXX = Λ⁻¹ * XXXX * Λ⁻¹
+            @show XXXX
+            @show size(XXYY)
+            @show size(XXXX)
         end
 
         return dsgevar_likelihood(YYYY, XXYY, XXXX, YYYYD, XXYYD, XXXXD, T, λ)

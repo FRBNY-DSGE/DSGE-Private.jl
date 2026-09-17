@@ -83,9 +83,14 @@ function metropolis_hastings(proposal_dist::Distribution,
                              toggle::Bool           = true,
                              testing::Bool          = false) where {S<:Number, T<:AbstractFloat}
 
-    # If testing, set the random seeds at fixed numbers
+    # If testing, set the random seeds at fixed numbers. Seed BOTH the local `rng` (used by
+    # rand(propdist, rng) for para_old) AND the global default RNG: the migrated SMC's mutation
+    # helpers — mvnormal_mixture_draw's rand(d_mix_old) and generate_free_blocks' shuffle — draw
+    # from the global RNG, not `rng`, so without this the mutation draws are non-reproducible
+    # across runs and the reference-draw test fails.
     if testing
         Random.seed!(rng, 654)
+        Random.seed!(654)
     end
 
     if adaptive_accept
@@ -94,7 +99,8 @@ function metropolis_hastings(proposal_dist::Distribution,
         cc = c
     end
 
-    propdist = init_deg_mvnormal(proposal_dist.μ, proposal_dist.σ)
+    #propdist = init_deg_mvnormal(proposal_dist.μ, proposal_dist.σ) [ID change]
+    propdist = proposal_dist
 
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
@@ -157,12 +163,13 @@ function metropolis_hastings(proposal_dist::Distribution,
     end
 
     state_tracker = Vector{Float64}[] #New
-    push!(sample_mean_tracker, para_old) #New
+    #push!(sample_mean_tracker, para_old) #New
 
 
     # Keep track of how long metropolis_hastings has been sampling
     total_sampling_time = 0.
 
+    try
     for block = 1:n_blocks
 
         begin_time = time_ns()
@@ -179,7 +186,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
             if reblock # Parameter blocking by randomly drawing blocks every MH draw
                 free_para_inds = ModelConstructors.get_free_para_inds(parameters)
-                blocks_free = SMC.generate_free_blocks(free_para_inds, n_param_blocks)
+                blocks_free = SMC.generate_free_blocks(n_free_para, n_param_blocks)
                 for block_f in blocks_free
                     sort!(block_f)
                 end
@@ -188,12 +195,27 @@ function metropolis_hastings(proposal_dist::Distribution,
             for (k, block_a) in enumerate(blocks_free)
                 # Draw para_new from the proposal distribution
                 para_subset = para_old[block_a]
+
+                #= [ID Change]
                 d_subset    = DegenerateMvNormal(propdist.μ[block_a],
                                        (propdist.σ[block_a, block_a] +
                                        propdist.σ[block_a, block_a]') / 2.,
                                        inv((propdist.σ[block_a, block_a] +
                                        propdist.σ[block_a, block_a]') / 2.),
-                                       propdist.λ_vals[block_a])
+                propdist.λ_vals[block_a]) =#
+
+                # Fix cholesky symmetry problem (ensure positive semi-definite)
+                d_Σ = (propdist.Σ[block_a, block_a] + propdist.Σ[block_a, block_a]') / 2.
+
+                # Regularize matrix
+                try
+                    cholesky(d_Σ)
+                catch
+                    d_Σ = d_Σ + 1e-8 * I
+                end
+
+                d_subset = MvNormal(propdist.μ[block_a], d_Σ)
+                #d_subset = DegenerateMvNormal(propdist.μ[block_a], d_Σ, stdev = false)
 
                 para_draw         = mvnormal_mixture_draw(para_subset, d_subset;
                                                           α = α, c = cc)
@@ -202,7 +224,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
                 q0, q1 = if adaptive_accept
                     # NOT DONE YET, we're not actually computing draws from the mixture yet b/c not using mvnormal_mixture_draw
-                    SMC.compute_proposal_densities(para_draw, para_subset, sample_mean, propdist.σ[block_a, block_a];
+                    SMC.compute_proposal_densities(para_draw, para_subset, d_subset;
                                                    α = α, c = cc, catch_near_zeros = true)#Updated
                 else
                     0.0, 0.0
@@ -289,7 +311,9 @@ function metropolis_hastings(proposal_dist::Distribution,
                 "$expected_time_remaining_minutes minutes")
         println(verbose, :low, "Block $block acceptance rate: $(1. - block_rejection_rate) \n")
     end # of loop over blocks
-    close(simfile)
+    finally
+        close(simfile)
+    end
 
     rejection_rate = all_rejections / (n_blocks * n_sim * mhthin * n_param_blocks)
     println(verbose, :low, "Overall acceptance rate: $(1. - rejection_rate)")

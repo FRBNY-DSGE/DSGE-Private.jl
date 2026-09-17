@@ -355,8 +355,8 @@ function setup_historical_expectations!(m::AbstractDSGEModel, start_zlb_date::Da
         get_setting(m, :alternative_policies)[7].key = :longzlb_taylor_2020Q4
     end
     if spd_expect && end_zlb_date == Date(2021,12,31)
-        get_setting(m, :alternative_policies)[8].key = :incorrect
-        get_setting(m, :alternative_policies)[9].key = :useless
+        get_setting(m, :alternative_policies)[8].key = :superlongzlb_ait
+        get_setting(m, :alternative_policies)[9].key = :superlongzlb_taylor
     end
     for (i, reg) in get_setting(m, :alternative_policies)[1].regime_eqcond_info
         if spd_expect && end_zlb_date == Date(2021,12,31)

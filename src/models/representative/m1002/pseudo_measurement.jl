@@ -36,11 +36,13 @@ function pseudo_measurement(m::Model1002{T},
     # Set parameters
     for para in m.parameters
         if !isempty(para.regimes)
-            if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
-                ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
-            else
-                ModelConstructors.toggle_regime!(para, reg)
-            end
+            #if length(para.regimes[:value]) > 1 #BP Change for getting at old model from estimation
+                if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
+                    ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
+                else
+                    ModelConstructors.toggle_regime!(para, reg)
+                end
+            #end
         end
     end
 
@@ -78,6 +80,11 @@ function pseudo_measurement(m::Model1002{T},
     end
     integ_series = length(no_integ_inds) != n_states_augmented(m) # Are the series integrated?
 
+    #=
+    Below implements the "Econometrician's 10 year rate gap -- meaning, using expectations from the econometrician's point of view with no imperfect awareness of monetary policy, what the expected natural rate is.
+    As a design choice, we designated regime 11 (liftoff, so ZLB expectations aren't tampered with) as the cutoff. For further documentation, see the k_periods_ahead functions.
+    =#
+
     # Compute TTT^10, used for Expected10YearRateGap, Expected10YearRate, and Expected10YearNaturalRate
     TTT10, CCC10 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 40, permanent_t;
                                                  integ_series = integ_series,
@@ -86,7 +93,7 @@ function pseudo_measurement(m::Model1002{T},
     CCC10        = CCC10 ./ 40.
 
 
-    econo_perm_t = if reg >= 11 length(TTTs) else permanent_t end # THIS IS HARD CODED, IF YOU ARE THINKING ABOUT CHANGING IT REACH OUT TO PG/BP
+    econo_perm_t = if reg >= 11 length(TTTs) else permanent_t end
     TTT10Econo, CCC10Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 40, econo_perm_t;
                                                            integ_series = integ_series,
                                                            memo = use_fwd_exp_sum ? memo : nothing)
@@ -214,7 +221,7 @@ function pseudo_measurement(m::Model1002{T},
             ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_corepce_t]] = 1.0
             DD_pseudo[pseudo[:PseudoCorePCE]]                          = 100. * (m[:π_star] - 1.)
 
-            if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87
+            if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
                 ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t]]  = 1.0
                 ZZ_pseudo[pseudo[:PseudoCorePCE], endo_addl[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
             end

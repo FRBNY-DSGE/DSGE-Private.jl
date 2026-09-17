@@ -114,7 +114,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
               run_csminwel::Bool = true,
               regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
-              add_zlb_duration::Tuple{Bool, Int} = (false, 1))
+              add_zlb_duration::Tuple{Bool, Int} = (false, 1),
+              cholesky_fix = :none)
 
     parallel    = get_setting(m, :use_parallel_workers)
     n_parts     = get_setting(m, :n_particles)
@@ -126,6 +127,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
     λ    = get_setting(m, :λ)
     n_Φ  = get_setting(m, :n_Φ)
+
 
     # Define tempering settings
     tempered_update_prior_weight = get_setting(m, :tempered_update_prior_weight)
@@ -148,9 +150,16 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
     use_chand_recursion = get_setting(m, :use_chand_recursion)
 
+    if typeof(m) <: AbstractVARModel # Account for Brian's testing code causing an error with vecm object
+        old_regime_switching = haskey(DSGE.get_dsge(old_model).settings, :regime_switching) && get_setting(m, :regime_switching)
+    else
+        old_regime_switching = haskey(old_model.settings, :regime_switching) && get_setting(m, :regime_switching)
+    end
+
+
     my_likelihood = if isa(m, AbstractDSGEModel)
         function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
-            update!(m, parameters)
+            update!(m, parameters, regime_switching = regime_switching)
             m <= Setting(:preprocessed_transitions, Dict())
             likelihood(m, data; sampler = false, catch_errors = true,
                        add_zlb_duration = add_zlb_duration,
@@ -158,21 +167,115 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
         end
     else isa(m, AbstractVARModel)
         function _my_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
+            #update!(m, parameters, regime_switching = regime_switching)
             update!(m, parameters)
             m <= Setting(:preprocessed_transitions, Dict())
             likelihood(m, data; sampler = false, catch_errors = true, verbose = verbose)
         end
     end
 
+
+
+    if isa(m, AbstractDSGEModel) #This is Brian's testing code. Added if statement to prevent issues with reading in vecm obj
+        old_model_para_keys = [old_model.parameters[i].key for i in 1:length(old_model.parameters)]
+
+        m_para_keys = [m.parameters[i].key for i in 1:length(m.parameters)]
+
+        key_del = []
+        # reg_del_full = Vector{Int}()
+        reg_del = Dict{Int, Vector{Int}}()
+
+        toggle_regime!(m.parameters, 1)
+        ## Change so its by index and not by key!! Won't work if it is by key i suppose??? BP 09/12/24
+        for i in 1:length(m.parameters)
+            keyed = m.parameters[i].key
+            if !(keyed in old_model_para_keys)
+                push!(key_del, i)
+            elseif haskey(m.parameters[i].regimes, :value) && (isempty(old_model[keyed].regimes) || length(old_model[keyed].regimes[:value]) != length(m.parameters[i].regimes[:value]))
+                if isempty(old_model[keyed].regimes)
+                    # push!(reg_del_full, i)
+                    reg_del[i] = [1]
+
+                    for j in collect(m.parameters[i].regimes[:value])
+                        if j[1] != 1
+                            push!(reg_del[i], j[1]) #BP change, was just j but it is a Pair{Int64, Any} and I need it to be just Int64
+                        end
+                    end
+                    # filter!(x -> x > 1, reg_del[i])
+                else
+                    @assert length(m.parameters[i].regimes[:value]) > length(old_model[keyed].regimes[:value])
+                    for j in collect(m.parameters[i].regimes[:value])
+
+                        if !(j in old_model[keyed].regimes[:value])
+
+                            if haskey(reg_del, i)
+
+
+                                push!(reg_del[i], j[1]) #BP change, was j
+                            else
+
+                                reg_del[i] = [j[1]] #BP Change, was j
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        @assert isnothing(findfirst(x -> !(x in m_para_keys), old_model_para_keys))
+    end
+
+
     my_old_likelihood = if isa(m, AbstractDSGEModel)
-        function _my_old_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
-            update!(old_model, parameters)
+        function _my_old_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64}; new_model_params::Bool = false)::Float64
+            ## Remove parameters and parameter regimes that don't appear in the old model
+            ModelConstructors.toggle_regime!(parameters, 1)
+            para2 = deepcopy(parameters)
+            if new_model_params
+                #println("There are new model parameters. I am iterating over $(collect(keys(reg_del)))")
+                for i in collect(keys(reg_del))
+                    if length(collect(values(reg_del[i]))) == length(para2[i].regimes[:value])
+                        for k in keys(para2[i].regimes)
+
+                            delete!(para2[i].regimes, k)
+                        end
+                    else
+
+                        for k in keys(para2[i].regimes)
+                            for j in collect(values(reg_del[i]))
+
+                                delete!(para2[i].regimes[k], j)
+                            end
+                        end
+                    end
+                end
+                deleteat!(para2, key_del)
+            end
+            #@assert sum(ModelConstructors.n_param_regs(old_model.parameters)) == sum(ModelConstructors.n_param_regs(para2)) "Sum of old model params is $(sum(ModelConstructors.n_param_regs(old_model.parameters))) and sum of para2 is $(sum(ModelConstructors.n_param_regs(para2))) due to reg del dictionary $(reg_del). Furthermore, the regime switching in the old model is $(old_regime_switching)" ## Delete for speed when testing done
+
+
+            og_keys = [p.key for p in parameters]
+            new_keys = [v.key for v in para2]
+            addl_keys = setdiff(og_keys, new_keys)
+
+            update!(old_model, para2, regime_switching = old_regime_switching)
+
+            for (x,p) in enumerate(para2) # Test correct params updated b/c update! assumes ordering is the same
+                @assert old_model[p.key].value == p.value
+                if haskey(p.regimes, :value)
+                    for i in collect(keys(p.regimes[:value]))
+                        @assert old_model[p.key].regimes[:value][i] == p.regimes[:value][i]
+                    end
+                end
+            end
+
             m <= Setting(:preprocessed_transitions, Dict())
             likelihood(old_model, data; sampler = false, catch_errors = true,
                        use_chand_recursion = use_chand_recursion, verbose = verbose)
         end
     else isa(m, AbstractVARModel)
         function _my_old_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
+            #update!(old_model, parameters, regime_switching = old_regime_switching)
             update!(old_model, parameters)
             m <= Setting(:preprocessed_transitions, Dict())
             likelihood(old_model, data; sampler = false, catch_errors = true, verbose = verbose)
@@ -182,24 +285,30 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     tempered_update = !isempty(old_data)
 
     # This step is purely for backwards compatibility purposes
-    old_cloud_conv = isempty(old_cloud) ? SMC.Cloud(0,0) : SMC.Cloud(old_cloud)
+old_cloud_conv = isempty(old_cloud) ? SMC.Cloud(0,0) : SMC.Cloud(old_cloud)
 
     # Initialize Paths
     loadpath = ""
-    if tempered_update
+    # RESUME FIRST -- mirrors the branch order in SMC.smc. Previously this was
+    # `if tempered_update / elseif continue_intermediate`, so a bridge step
+    # (tempered_update true because old_data is passed, and old_cloud non-empty so
+    # the inner branch was skipped) left loadpath = "" and SMC.smc then called
+    # load("", "w"). That made continue_intermediate unusable for exactly the runs
+    # that need it most: multi-day bridge steps killed by a wall-clock limit.
+    if continue_intermediate
+        loadpath = rawpath(m, "estimate", "smc_cloud", filestring_addl) * "_stage=$(intermediate_stage_start).jld2"
+    elseif tempered_update
         if isempty(old_cloud)
             loadpath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
             loadpath = replace(loadpath, r"vint=[0-9]{6}" => "vint=" * old_vintage)
         end
-    elseif continue_intermediate
-        loadpath = rawpath(m, "estimate", "smc_cloud", filestring_addl) *
-            "_stage=$(intermediate_stage_start).jld2"
     end
-    savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
+savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
     particle_store_path = rawpath(m, "estimate", "smcsave.h5", filestring_addl)
 
     # Calls SMC package's generic SMC
     println("Calling SMC.jl's SMC estimation routine...")
+
     SMC.smc(my_likelihood, get_parameters(m), data;
             verbose      = verbose,
             testing      = m.testing,
@@ -241,7 +350,11 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
             regime_switching = regime_switching,
             debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data,
-            add_zlb_duration = add_zlb_duration)
+            # add_zlb_duration is also applied inside the my_likelihood closure (it captures
+            # it); SMC.smc accepts the kwarg but currently ignores it.
+            add_zlb_duration = add_zlb_duration,
+            cholesky_fix = cholesky_fix)#,
+            #timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
 
     if run_csminwel
         m <= Setting(:sampling_method, :SMC)
@@ -264,7 +377,8 @@ function smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame; verb
              save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
              continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
              run_csminwel::Bool = true,
-             regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0)
+             regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
+             cholesky_fix = :none)
 
     data_mat = df_to_matrix(m, data)
     return smc2(m, data_mat, verbose = verbose,
@@ -276,7 +390,8 @@ function smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame; verb
                 continue_intermediate = continue_intermediate,
                 intermediate_stage_start = intermediate_stage_start,
                 run_csminwel = run_csminwel,
-                regime_switching = regime_switching, log_prob_old_data = log_prob_old_data)
+                regime_switching = regime_switching, log_prob_old_data = log_prob_old_data,
+                cholesky_fix = cholesky_fix)
 end
 
 function smc(m::Union{AbstractDSGEModel,AbstractVARModel}; verbose::Symbol = :low,

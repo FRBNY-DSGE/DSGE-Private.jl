@@ -1,3 +1,4 @@
+include("var/dsge_coint_likelihood.jl")
 """
 `prior(m::AbstractDSGEModel{T})`
 
@@ -121,7 +122,7 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
                     catch_errors::Bool = false,
                     use_chand_recursion::Bool = false,
                     tol::Float64 = 0.0, add_zlb_duration::Tuple{Bool, Int} = (false, 1),
-                    verbose::Symbol = :high) where {T<:AbstractFloat}
+                    verbose::Symbol = :high)
 
     catch_errors = catch_errors | sampler
     use_penalty  = try get_setting(m, :use_likelihood_penalty) catch; false end
@@ -130,6 +131,12 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     if auto_reject
         m <= Setting(:auto_reject, false)
         return -Inf
+    end
+
+    if haskey(get_settings(m), :enforce_rho_gdp_ge_gdi) && get_setting(m, :enforce_rho_gdp_ge_gdi)
+        if m[:ρ_gdp].value < m[:ρ_gdi].value
+            return -Inf
+        end
     end
 
     # During Metropolis-Hastings, return -∞ if any parameters are not within their bounds
@@ -145,6 +152,7 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     # Likelihood penalties
     ψ_l, ψ_p, penalty = 1.0, 1.0, 0.0
     if use_penalty
+
         ψ_l         = get_setting(m, :ψ_likelihood)
         ψ_p         = get_setting(m, :ψ_penalty)
         target_vars = get_setting(m, :target_vars)
@@ -165,11 +173,14 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     end
 
     # Compute state-space system
+
     system = try
         compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
     catch err
         if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
             return -Inf
+        #elseif isa(err,KeyError)
+            #@assert false "Key error. Model features: parameters : $(length(m.parameters)), eq conds: $(length(m.equilibrium_conditions))"
         else
             rethrow(err)
         end
@@ -186,12 +197,16 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
             if isa(m, PoolModel)
                 return ψ_l * sum(filter_likelihood(m, data; tol = tol,
                                                    tuning = get_setting(m, :tuning))) + ψ_p * penalty
+            elseif haskey(m.settings, :n_coint) && get_setting(m, :n_coint) > 0
+                return dsge_coint_likelihood(m, data)
             elseif use_chand_recursion==false
+
                 return ψ_l * sum(filter_likelihood(m, data, system; add_zlb_duration = add_zlb_duration,
                                                    include_presample = false, tol = tol)) +
                                                        ψ_p * penalty
             else
                 # TODO: extend chand_recursion for a regime-switching system
+
                 return ψ_l * chand_recursion(data, system[:TTT], system[:RRR], system[:CCC],
                                              system[:QQ], system[:ZZ], system[:DD], system[:EE];
                                              allout = true, Nt0 = n_presample_periods(m),
@@ -229,7 +244,7 @@ Evaluate a VAR likelihood function.
 function likelihood(m::AbstractVARModel, data::AbstractMatrix;
                     sampler::Bool = false,
                     catch_errors::Bool = false,
-                    verbose::Symbol = :high) where {T<:AbstractFloat}
+                    verbose::Symbol = :high)
 
     catch_errors = catch_errors | sampler
     use_penalty  = try get_setting(m, :use_likelihood_penalty) catch; false end
@@ -280,6 +295,8 @@ function likelihood(m::AbstractVARModel, data::AbstractMatrix;
             return ψ_l * dsgevecm_likelihood(m, data) + ψ_p * penalty
         elseif isa(m, AbstractDSGEVARModel)
             return ψ_l * dsgevar_likelihood(m, data) + ψ_p * penalty
+        elseif isa(m, DSSW)
+            return dsge_coint_likelihood(m, data)
         end
     catch err
         if catch_errors && (isa(err, GensysError) || isa(err, KleinError))

@@ -7,8 +7,10 @@ writing_output = false
 
 if VERSION < v"1.5"
     ver = "111"
-else
+elseif VERSION < v"1.7"
     ver = "150"
+else
+    ver = "1126"
 end
 
 # Set up model for testing
@@ -23,7 +25,7 @@ data = Matrix{Float64}(load("$path/../reference/hessian.jld2", "data")')
 # Read in the covariance matrix for Metropolis-Hastings and reference parameter draws
 # TODO: check that new MH agrees with old MH. (read in metropolis_hastings.h5)
 hessian_inv =
-    h5open("$path/../reference/metropolis_hastings_test.h5", "r") do file
+    h5open("$path/../reference/metropolis_hastings.h5", "r") do file
         read(file, "hessian_inv")
     end
 

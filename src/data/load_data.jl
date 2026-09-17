@@ -71,6 +71,7 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
         println(verbose, :low, "Creating dataset...")
 
         levels = load_data_levels(m; verbose=verbose, add_vals = add_vals)
+
         if cond_type in [:semi, :full]
             cond_levels = load_cond_data_levels(m; verbose=verbose)
             levels, cond_levels = reconcile_column_names(levels, cond_levels)
@@ -100,6 +101,7 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
             n_cond = length(dates)
 
             spd_data_want = spd_data[date_mainsample_end(m) .< spd_data[!, :date] .<= date_conditional_end(m), [Symbol("exp_ant$i") for i in expected_ffr(m)]]
+
 
             df[date_mainsample_end(m) .< df[!, :date] .<= date_conditional_end(m), [Symbol("obs_exp_nominalrate$i") for i in expected_ffr(m)]] .= Matrix{Float64}(spd_data_want)
         end
@@ -314,7 +316,7 @@ function load_data_levels(m::AbstractDSGEModel; verbose::Symbol=:low,
     if !m.testing
         filename = inpath(m, "raw", "population_data_levels_$vint.csv")
         mnemonic = parse_population_mnemonic(m)[1]
-        if !isnull(mnemonic)
+        if !isnull(mnemonic) && get(mnemonic) ∈ names(df)
             CSV.write(filename, df[!,[:date, get(mnemonic)]])
         end
     end
@@ -539,6 +541,7 @@ function df_to_matrix(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFram
     cols = collect(keys(get_observables(m)))
     sort!(cols, by = x -> get_observables(m)[x])
     df1 = df1[!,cols]
+    df1 = Matrix{Union{Missing, Float64}}(df1)
 
     return permutedims(Float64.(collect(Missings.replace(Matrix{Union{Missing, Float64}}(df1), NaN))))
 end

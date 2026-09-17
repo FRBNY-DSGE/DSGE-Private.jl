@@ -90,10 +90,18 @@ end
 """
 ```
 mutable struct EqcondEntry
+
 ```
 
 Type to hold the entries in the regime_eqcond_info dictionary for
 alternative policies, regime switching, and imperfect awareness.
+
+### Fields
+
+- `alternative_policy::Union{AltPolicy, Missing}`: A default alternative policy rule
+
+- `weights::Union{Array{Float64, 1}, Missing}`: array of weights to prescribe to each of the
+    set of alternative policy paradigms.
 """
 mutable struct EqcondEntry
     alternative_policy::Union{AltPolicy, Missing}

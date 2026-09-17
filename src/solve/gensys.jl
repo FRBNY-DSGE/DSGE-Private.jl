@@ -91,6 +91,7 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     n       = size(a, 1)
 
     select = BitArray(undef, n)
+
     for i in 1:n
         # nunstab is the variable name used by Chris Sims, but it seems
         # that nunstab should actually correspond to the number of stable λs
@@ -99,9 +100,13 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         select[i] = !(abs(b[i, i]) > div * abs(a[i, i]))
         if (abs(a[i, i]) < ϵ) && (abs(b[i, i]) < ϵ)
             zxz = 1
+
         end
     end
     nunstab = n - sum(select)
+    # @show nunstab, sum(select), n  # debug print — silenced (was flooding logs on every solve)
+
+
 
     if zxz == 1
         @warn "Coincident zeros. Indeterminacy and/or nonexistence."
@@ -142,14 +147,17 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
         veta  = etawtsvd.V[:, bigev]
         deta  = Matrix(Diagonal(etawtsvd.S[bigev]))
     end
-
+    #@show (length(bigev), nunstab)
     existence = length(bigev) >= nunstab
+
     if existence
         eu[1] = 1
     else
+        #=
         if VERBOSITY[verbose] >= VERBOSITY[:high]
             @warn "Nonexistence: number of unstable roots exceeds number of jump variables"
         end
+=#
     end
 
     # Note that existence and uniqueness are not just matters of comparing
@@ -184,9 +192,11 @@ function gensys(F::LinearAlgebra.GeneralizedSchur, c::Array{Float64, 1}, Ψ::Arr
     if unique
         eu[2] = 1
     else
+        #=
         if VERBOSITY[verbose] >= VERBOSITY[:high]
             @warn "Indeterminacy: $(nloose) loose endogenous error(s)"
         end
+=#
     end
 
     tmat = hcat(eye(n - nunstab), -(ueta * (deta \ veta') * veta1 * (deta1 * adjoint(ueta1)))')

@@ -260,14 +260,14 @@ function init_observable_mappings!(m::Model1002)
 
     longinflation_fwd_transform = function (levels)
         # FROM: SPF: 10-Year average yr/yr CPI inflation expectations (annual percent)
-        # TO:   FROM, less 0.5
-        # Note: We subtract 0.5 because 0.5% inflation corresponds to
+        # TO:   FROM, less 0.3 as of 2025 Q2 and beyond (was 0.5)
+        # Note: We subtract 0.3 because 0.3% inflation corresponds to
         #       the assumed long-term rate of 2 percent inflation, but the
         #       data are measuring expectations of actual inflation.
         if subspec(m) == "ss102"
             annualtoquarter(levels[!, :PCE10])
         else
-            annualtoquarter(levels[!,:ASACX10]  .- 0.5)
+            annualtoquarter(levels[!,:ASACX10]  .- 0.3)
         end
     end
 
@@ -284,9 +284,51 @@ function init_observable_mappings!(m::Model1002)
                                                  longinflation_fwd_transform, longinflation_rev_transform,
                                                  "10-year average inflation expectations",
                                                  "10-year average yr/yr CPI inflation expectations")
+   end
+
+    ############################################################################
+    # 10.a Short term inflation expectations
+    ############################################################################
+    if haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl)
+        shortinflation_fwd_transform = function (levels)
+
+            levels[!, :COREPCE]
+            #annualtoquarter(levels[!,:COREPCE])
+        end
+
+        shortinflation_rev_transform = identity #loggrowthtopct_annualized
+
+        observables[:obs_shortinflation] = Observable(:obs_shortinflation, [:COREPCE__SPFINFL],
+                                                      shortinflation_fwd_transform,
+                                                      shortinflation_rev_transform,
+                                                      #"Q4/Q4 value of -1, 0, 1, 2 periods ahead anticipated Core PCE Price Index Level",
+                                                      #"Q4/Q4 value of -1, 0, 1, 2 periods ahead anticipated Core PCE Price Index Level")
+                                                      "Q4/Q4 value of -2, -1, 0, 1 periods ahead anticipated Core PCE Price Index Level",
+                                                      "Q4/Q4 value of -2, -1, 0, 1 periods ahead anticipated Core PCE Price Index Level")
     end
 
 
+    ############################################################################
+    # 10.b AVG Short term inflation expectations -- what we are currently using. 10a is likely redundant and can be removed.
+    ############################################################################
+    if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
+        avgshortinflation_fwd_transform = function (levels)
+            # FROM: SPF: Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points)
+            # 2025Q3 Change: Sum of -2 , -1, 0, 1 period ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price INdex Level (annualized percentage points
+
+            annualtoquarter(levels[!,:COREPCEAVG])
+        end
+
+        avgshortinflation_rev_transform = loggrowthtopct_annualized
+
+        observables[:obs_avgshortinflation] = Observable(:obs_avgshortinflation, [:COREPCEAVG__SPFINFL],
+                                                         avgshortinflation_fwd_transform,
+                                                         avgshortinflation_rev_transform,
+                                                         #"Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)",
+                                                         #"Sum of -1, 0, 1, 2 periods ahead anticipated Q/Q rate of change in the Quarterly-Average Core PCE Price Index Level (annualized percentage points)")
+                                                         "Quarterly-Average short-run inflation",
+                                                         "Quarterly-Average short-run inflation")
+    end
     ############################################################################
     # 11. Long rate (10-year, zero-coupon)
     ############################################################################
@@ -336,7 +378,7 @@ function init_observable_mappings!(m::Model1002)
                                            tfp_fwd_transform, tfp_rev_transform,
                                            "Total Factor Productivity Growth (Fernald)",
                                            "Fernald's TFP, adjusted by Fernald's estimated alpha and utilization capacity")
-    else
+    elseif subspec(m) ∉ ["ss15", "ss16", "ss21", "ss23"]
         tfp_fwd_transform =  function (levels)
             # FROM: Fernald's unadjusted TFP series
             # TO:   De-meaned unadjusted TFP series, adjusted by Fernald's estimated alpha
@@ -387,6 +429,7 @@ function init_observable_mappings!(m::Model1002)
     # Columns 14 - 14 + n_mon_anticipated_shocks
     ############################################################################
 
+if subspec(m) ∉ ["ss22", "ss23"]
     for i = 1:n_mon_anticipated_shocks(m)
         # FROM: OIS expectations of $i-period-ahead interest rates at a quarterly rate
         # TO:   Same
@@ -402,6 +445,48 @@ function init_observable_mappings!(m::Model1002)
                                                       "Anticipated Shock $i",
                                                       "$i-period ahead anticipated monetary policy shock")
     end
+
+else
+    oneyear_fwd_transform = function (levels)
+        # FROM: pre-computed long rate at an annual rate
+        # TO:   1T yield at a quarterly rate
+        annualtoquarter(levels[!,:obs_oneyear]) #Doesn't transform the data since manually loaded in (presuming pre-transformed)
+    end
+
+    oneyear_rev_transform = quartertoannual
+
+    observables[:obs_oneyear] = Observable(:obs_oneyear, [:obs_oneyear],
+                                           oneyear_fwd_transform, oneyear_rev_transform,
+                                           "1-year average interest rate expectations",
+                                           "1T yield")
+
+    twoyear_fwd_transform = function (levels)
+        # FROM: pre-computed long rate at an annual rate
+        # TO:   2T yield at a quarterly rate
+        annualtoquarter(levels[!,:obs_twoyear]) #Doesn't transform the data since manually loaded in (presuming pre-transformed)
+    end
+
+    twoyear_rev_transform = quartertoannual
+
+    observables[:obs_twoyear] = Observable(:obs_twoyear, [:obs_twoyear],
+                                           twoyear_fwd_transform, twoyear_rev_transform,
+                                           "2-year average interest rate expectations",
+                                           "2T yield")
+
+    threeyear_fwd_transform = function (levels)
+        # FROM: pre-computed long rate at an annual rate
+        # TO:   2T yield at a quarterly rate
+        annualtoquarter(levels[!,:obs_threeyear]) #Doesn't transform the data since manually loaded in (presuming pre-transformed)
+    end
+
+    threeyear_rev_transform = quartertoannual
+
+    observables[:obs_threeyear] = Observable(:obs_threeyear, [:obs_threeyear],
+                                             threeyear_fwd_transform, threeyear_rev_transform,
+                                             "3-year average interest rate expectations",
+                                             "3T yield")
+end
+
 
     ############################################################################
     # Other anticipated data
@@ -480,7 +565,11 @@ function init_observable_mappings!(m::Model1002)
                  vcat([:obs_longinflation, :obs_longrate],
                       [Symbol("obs_nominalrate$i") for i in 1:n_mon_anticipated_shocks(m)],
                       haskey(get_settings(m), :add_anticipated_obs_gdp) && get_setting(m, :add_anticipated_obs_gdp) ?
-                      [Symbol("obs_gdp$i") for i in 1:get_setting(m, :n_anticipated_obs_gdp)] : []))
+                      [Symbol("obs_gdp$i") for i in 1:get_setting(m, :n_anticipated_obs_gdp)] : [],
+                      haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl) ?
+                      [:obs_avgshortinflation] : [],
+                      haskey(get_settings(m), :add_shortinfl) && get_setting(m, :add_shortinfl) ?
+                      [:obs_shortinflation] : []))
 
     m.observable_mappings = observables
 

@@ -179,7 +179,11 @@ function flexible_ait_solve(m::AbstractDSGEModel; regime_switching::Bool = false
 
     if length(regimes) == 1
         Γ0, Γ1, C, Ψ, Π  = flexible_ait_eqcond(m, regimes[1])
+
+
+
         TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = :low)
+
 
         # Check for LAPACK exception, existence and uniqueness
         if eu[1] != 1 || eu[2] != 1

@@ -85,6 +85,7 @@ function plot_impulse_response(m::AbstractDSGEModel, shock::Symbol, vars::Vector
                                titles::Vector{String} = String[],
                                addl_text::String = "",
                                verbose::Symbol = :low,
+                               full_title::Bool = false,
                                kwargs...)
     # Read in MeansBands
     mb = read_mb(m, input_type, cond_type, Symbol(:irf, class), forecast_string = forecast_string)
@@ -103,7 +104,13 @@ function plot_impulse_response(m::AbstractDSGEModel, shock::Symbol, vars::Vector
     plots = OrderedDict{Symbol, Plots.Plot}()
     for (var, title) in zip(vars, titles)
         # Call recipe
-        plots[var] = irf(shock, var, mb, mb2; title = title, input_type = input_type, input_type2 = input_type2, kwargs...)
+        if full_title == true
+            title = title * " vs $(shock)"
+            plots[var] = irf(shock, var, mb, mb2; title = title, input_type = input_type, input_type2 = input_type2, kwargs...)
+        else
+            plots[var] = irf(shock, var, mb, mb2; title = title, input_type = input_type, input_type2 = input_type2, kwargs...)
+        end
+
 
         # Save plot
         if !isempty(plotroot)

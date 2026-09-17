@@ -152,11 +152,54 @@ If `bdd_and_unbdd`, then `output_var` must be either `:forecast` or
 If modal line is set to true, then the modal mean rather than the
 full-distribution mean is returned.
 """
+# ---------------------------------------------------------------------------
+# JLD2 cross-version MeansBands healer
+#
+# MeansBands archives serialized on an older stack (e.g. Julia 1.5 / pre-1.0
+# DataFrames / older OrderedCollections) come back from JLD2 as
+# `ReconstructedMutable` stand-ins when read under a newer stack (DataFrames
+# 1.8+ / Julia 1.12), because the serialized struct layouts no longer match the
+# loaded types. The reconstruction is nested at three layers:
+#   1. `MeansBands.means` / each `bands[k]` -> ReconstructedMutable{:DataFrame}
+#   2. the `MeansBands` wrapper itself       -> ReconstructedMutable{:MeansBands}
+#   3. `metadata[:date_inds]` (OrderedDict)  -> ReconstructedMutable{...}
+# `_heal_mb` rebuilds them into real objects at read time. It is a NO-OP for
+# healthy (same-stack) reads — it short-circuits on the real type before any
+# reconstruction handling — so wrapping every read is safe and version-agnostic.
+# NOTE: a `ReconstructedMutable` exposes its fields only via `getproperty` (dot
+# access), never `getfield`.
+# ---------------------------------------------------------------------------
+function _heal_reconstructed_df(x)
+    x isa DataFrame && return x
+    cols     = x.columns
+    idx      = x.colindex
+    colnames = idx.names
+    return DataFrame([colnames[i] => cols[i] for i in eachindex(colnames)]; copycols = false)
+end
+
+function _heal_reconstructed_metaval(v)
+    v isa AbstractDict && return v
+    if hasproperty(v, :keys) && hasproperty(v, :vals)  # a reconstructed OrderedDict/Dict
+        ks = v.keys
+        vs = v.vals
+        return Dict(ks[i] => vs[i] for i in eachindex(ks))
+    end
+    return v
+end
+
+function _heal_mb(mb)
+    mb isa MeansBands && return mb
+    meta  = Dict{Symbol,Any}(k => _heal_reconstructed_metaval(v) for (k, v) in mb.metadata)
+    means = _heal_reconstructed_df(mb.means)
+    bands = Dict{Symbol,DataFrame}(k => _heal_reconstructed_df(v) for (k, v) in mb.bands)
+    return MeansBands(meta, means, bands)
+end
+
 function read_mb(fn::String)
     @assert isfile(fn) "File $fn could not be found"
-    JLD2.jldopen(fn, "r") do f
+    _heal_mb(JLD2.jldopen(fn, "r") do f
         read(f, "mb")
-    end
+    end)
 end
 
 function read_mb(fn1::String, fn2::String)
@@ -165,12 +208,12 @@ function read_mb(fn1::String, fn2::String)
     else
         @assert isfile(fn1) "File $(fn1) could not be found"
         @assert isfile(fn2) "File $(fn2) could not be found"
-        mb1 = JLD2.jldopen(fn1, "r") do f
+        mb1 = _heal_mb(JLD2.jldopen(fn1, "r") do f
             read(f, "mb")
-        end
-        mb2 = JLD2.jldopen(fn2, "r") do f
+        end)
+        mb2 = _heal_mb(JLD2.jldopen(fn2, "r") do f
             read(f, "mb")
-        end
+        end)
 
         # Return MeansBands using the full-distribution metadata
         MeansBands(mb1.metadata, mb2.means, mb1.bands)
@@ -186,6 +229,9 @@ function read_mb(m::Union{AbstractDSGEModel,AbstractVARModel},
     mb_file = get_meansbands_output_file(m, input_type, cond_type, output_var;
                                          forecast_string = forecast_string,
                                          directory = directory)
+
+
+
     modal_file = modal_line ? get_meansbands_output_file(m, :mode, cond_type, output_var;
                                                          forecast_string = forecast_string,
                                                          directory = directory) : ""

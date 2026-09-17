@@ -305,7 +305,7 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
         end
 
         ## Actually get the implied ZLB duration
-        @show [get_setting(m, :regime_eqcond_info)[i].alternative_policy.key for i in collect(keys(get_setting(m, :regime_eqcond_info)))]
+        #@show [get_setting(m, :regime_eqcond_info)[i].alternative_policy.key for i in collect(keys(get_setting(m, :regime_eqcond_info)))]
         _, fcast_obs, _ = forecast(m, zlb_st, zeros(length(zlb_st), horizons), zeros(length(m.observables), horizons),
                  zeros(length(m.pseudo_observables), horizons), zeros(length(m.exogenous_shocks), horizons);
                  cond_type = :none)

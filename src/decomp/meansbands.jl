@@ -95,7 +95,8 @@ function decomposition_means(m_new::M, m_old::M, input_type::Symbol,
             # Read in raw output: ndraws x nperiods
             decomp_series = if comp == :shockdec
                 if verbose in [:low, :high]
-                    @show key
+                    #
+                    #@show key
                 end
                 shock_key = shock_indices[key]
                 read_forecast_series(input_file, var_ind, shock_key)

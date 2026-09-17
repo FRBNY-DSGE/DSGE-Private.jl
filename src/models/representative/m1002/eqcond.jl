@@ -36,10 +36,13 @@ function eqcond(m::Model1002, reg::Int)
 
     for para in m.parameters
         if !isempty(para.regimes)
-            if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
-                ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
-            else
-                ModelConstructors.toggle_regime!(para, reg)
+            if length(para.regimes[:value]) > 2 #BP for special case of old model from estimation! Remove later
+                if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
+                    ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
+
+                else
+                    ModelConstructors.toggle_regime!(para, reg)
+                end
             end
         end
     end
@@ -217,7 +220,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ0[eq[:eq_capev_f], endo[:i_f_t]]    = -m[:istar]/m[:kbarstar]
     Γ0[eq[:eq_capev_f], endo[:μ_t]]      = -m[:istar]*m[:S′′]*exp(2*m[:z_star])*(1 + m[:β]*exp((1 - m[:σ_c])*m[:z_star]))/m[:kbarstar]
 
-    ### 8. Price Markup
+    ### 8. Price Mark-up
 
     # Sticky prices and wages
     Γ0[eq[:eq_mkupp], endo[:mc_t]] =  1.
@@ -240,7 +243,7 @@ function eqcond(m::Model1002, reg::Int)
     Γ0[eq[:eq_phlps], endo[:Eπ_t]] = -m[:β]*exp((1 - m[:σ_c])*m[:z_star])/(1 + m[:ι_p]*m[:β]*
         exp((1 - m[:σ_c])*m[:z_star]))
 
-    # Comment out for counterfactual with no price mark up shock
+    # Comment out for counterfactual with no price mark-up shock
     Γ0[eq[:eq_phlps], endo[:λ_f_t]] = -1.
 
     # Flexible prices and wages not necessary
@@ -452,11 +455,53 @@ function eqcond(m::Model1002, reg::Int)
         Γ0[eq[:eq_λ_f], endo[:λ_f_t]]  = 1.
         Γ1[eq[:eq_λ_f], endo[:λ_f_t]]  = m[:ρ_λ_f]
         Γ1[eq[:eq_λ_f], endo[:λ_f_t1]] = -m[:η_λ_f]
-        Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
+
+        if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+            #Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1. Goes home! I can do this all with just my lag term:
+
+            Γ0[eq[:eq_λ_f], endo[:λ_f_t1]] = -1.0
+        else
+            Ψ[eq[:eq_λ_f], exo[:λ_f_sh]]   = 1.
+        end
+
     end
 
-    Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
-    Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
+Γ0[eq[:eq_λ_f1], endo[:λ_f_t1]] = 1.
+Ψ[eq[:eq_λ_f1], exo[:λ_f_sh]]   = 1.
+
+
+### Adding anticipated mark-up shocks to accomodate short run inflation expectations ###
+# only 2 periods for now, can generalize later?
+
+#=
+The current mark-up process is an ARMA(1,1) -- we want to add anticipated shocks (in the flavor of what we do for MP): Note that the lambda superscript does not denote a power, just that lambda denotes the markup process. Here, specifically price but in a general sense it could be λ_{f,t} (prices in period t) or λ_{w,t} (wages in period t)
+1) we add ε^λ_{1, t-1} and ε^λ_{2, t-2} (shocks anticipated 1 and 2 periods ago, respectively, to hit today IN ADDITION TO the contemporaneous shock ε^λ_t
+2) Given the mark-up process is an ARMA, the moving average term, η^λσ^λϵ^λ_{t-1} needs to account for the shocks that really hit, not just the contemporaneous shock!
+
+REMINDER! ANTICIPATED SHOCKS TURN ON WHEN WE BEGIN TO ANTICIPATE THE SHOCK, NOT WHEN THAT ANTICIPATED SHOCK ACTUALLY HITS!
+
+=#
+
+if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+    #Deal with case of 1-period ahead anticipated markup shock outside of the loop
+    Γ1[eq[:eq_λ_f1], endo[:λ_f_tl1]] = 1.
+    Γ0[eq[:eq_λ_f_tl1], endo[:λ_f_tl1]] = 1.
+    Ψ[eq[:eq_λ_f_tl1], exo[:λ_f_ant_sh1]] = 1.
+    for i in 2:get_setting(m, :add_ant_markup_shocks_ind)
+        Γ1[eq[Symbol("eq_λ_f_tl$(i-1)")], endo[Symbol("λ_f_tl$(i)")]] = 1.
+        Γ0[eq[Symbol("eq_λ_f_tl$(i)")], endo[Symbol("λ_f_tl$(i)")]] = 1.
+        Ψ[eq[Symbol("eq_λ_f_tl$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = 1.
+
+    end
+
+
+end
+
+
+
+
+
+
 
     # Wage mark-up shock
     Γ0[eq[:eq_λ_w], endo[:λ_w_t]]  = 1.
@@ -536,8 +581,16 @@ function eqcond(m::Model1002, reg::Int)
     Ψ[eq[:eq_γ], exo[:γ_sh]]  = 1.
 
     # Long-term inflation expectations
+if haskey(m.settings, :restore_pistar_post2022) && get_setting(m, :restore_pistar_post2022) &&
+        parse(Int, SubString(subspec(m), 3, subspec_ind)) >= 207
+    # ss207+ corrected intent: π_star off during covid (from :remove_pistar_shocks),
+    # back ON from reg 10 (2022Q1). Toggle defaults off ⇒ identical for all current runs.
     nopish = haskey(m.settings, :remove_pistar_shocks) &&
+        reg >= get_setting(m, :remove_pistar_shocks) && reg < 10 ? 0.0 : 1.0
+else
+     nopish = haskey(m.settings, :remove_pistar_shocks) &&
         reg >= get_setting(m, :remove_pistar_shocks) ? 0.0 : 1.0
+end
 
     Γ0[eq[:eq_π_star], endo[:π_star_t]] = 1.
     Γ1[eq[:eq_π_star], endo[:π_star_t]] = m[:ρ_π_star]
@@ -569,7 +622,8 @@ function eqcond(m::Model1002, reg::Int)
         end
     end
 
-    if !isempty(mon_anticipated_ait_shocks(m))
+#= #Current implementation
+if !isempty(mon_anticipated_ait_shocks(m))
         ## remove this if conditional
         if  haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
             Γ1[eq[:eq_ait_rm], endo[Symbol("rm_ait_tl1")]] = 1.0
@@ -586,6 +640,37 @@ function eqcond(m::Model1002, reg::Int)
                 Γ0[eq[Symbol("eq_ait_rml$i")], endo[Symbol("rm_ait_tl$i")]]     = 1.
                 if i in mon_anticipated_ait_shocks(m)
                     Ψ[eq[Symbol("eq_ait_rml$i")], exo[Symbol("rm_ait_shl$i")]]      = 1.0
+                end
+
+            end
+
+        end
+    end
+=#
+#New implementation for ait_shocks_equal_taylor
+#Below: IF you have the setting to have std devation of ait shocks equal to taylor, and we are past the regime where AIT is live, then set it to 1. Otherwise, it should be 0.
+sh_ait_val = (haskey(get_settings(m), :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor) && reg <= get_setting(m, :ait_liftoff_regime)) ? 0. : 1.
+#3 cases:
+#1. I don't have the setting, so it is always 1
+#2. I have the setting, but the regime is post AIT change so it is 1
+#3. I have the setting, and the regime is pre-AIT so it is 0.
+    if !isempty(mon_anticipated_ait_shocks(m))
+        ## remove this if conditional
+        if  haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+            Γ1[eq[:eq_ait_rm], endo[Symbol("rm_ait_tl1")]] = 1.0
+            Γ0[eq[Symbol("eq_ait_rml1")], endo[Symbol("rm_ait_tl1")]]     = 1.
+            if 1 in mon_anticipated_ait_shocks(m)
+                Ψ[eq[Symbol("eq_ait_rml1")], exo[Symbol("rm_ait_shl1")]]      = sh_ait_val
+            end
+        end
+
+        for i in 2:maximum(mon_anticipated_ait_shocks(m))
+            # we can get rid of these if statements once n_mon... fully implemented for ait
+            if  haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+                Γ1[eq[Symbol("eq_ait_rml$(i-1)")], endo[Symbol("rm_ait_tl$i")]] = 1.0
+                Γ0[eq[Symbol("eq_ait_rml$i")], endo[Symbol("rm_ait_tl$i")]]     = 1.
+                if i in mon_anticipated_ait_shocks(m)
+                    Ψ[eq[Symbol("eq_ait_rml$i")], exo[Symbol("rm_ait_shl$i")]]      = sh_ait_val
                 end
 
             end
@@ -891,18 +976,39 @@ function eqcond(m::Model1002, reg::Int)
            end
        end
    end
-
+#= #Current Implementation:
    if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
        Γ0[eq[:eq_ait_rm], endo[:ait_rm_t]] = 1.0
        Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = m[:ρ_ait_rm]
+       #Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = !get_setting(m, :fix_ρ_ait_rm) ? m[:ρ_ait_rm] : 0.2135
        Ψ[eq[:eq_ait_rm], exo[:rm_ait_sh]] = 1.0
        if haskey(m.settings, :add_taylor_rm) && get_setting(m, :add_taylor_rm)
             # Add AIT shocks
             Γ0[eq[:eq_mp], endo[:ait_rm_t]]     = -1.
        end
    end
+=#
+#New implementation for ait_shocks_equal_taylor
+#Below: IF you have the setting to have std devation of ait shocks equal to taylor, and we are past the regime where AIT is live, then set it to 1. Otherwise, it should be 0.
+sh_ait_val = (haskey(get_settings(m), :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_equal_taylor) && reg <= get_setting(m, :ait_liftoff_regime)) ? 0. : 1.
+#3 cases:
+#1. I don't have the setting, so it is always 1
+#2. I have the setting, but the regime is post AIT change so it is 1
+#3. I have the setting, and the regime is pre-AIT so it is 0.
 
-   if subspec(m) == "ss103"
+if haskey(m.settings, :add_ait_rm) && get_setting(m, :add_ait_rm)
+       Γ0[eq[:eq_ait_rm], endo[:ait_rm_t]] = 1.0
+       Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = m[:ρ_ait_rm]
+       #Γ1[eq[:eq_ait_rm], endo[:ait_rm_t]] = !get_setting(m, :fix_ρ_ait_rm) ? m[:ρ_ait_rm] : 0.2135
+       Ψ[eq[:eq_ait_rm], exo[:rm_ait_sh]] = sh_ait_val #1.0
+       if haskey(m.settings, :add_taylor_rm) && get_setting(m, :add_taylor_rm)
+            # Add AIT shocks
+            Γ0[eq[:eq_mp], endo[:ait_rm_t]]     = -1.
+       end
+   end
+
+#Not implemented for ss207 -- the kappa enters multiplicatively inside the standard devaition, so it shouldn't also be multiplying the shock.
+if subspec(m) == "ss103" || subspec(m) == "ss206"
        Ψ[eq[:eq_ziid], exo[:ziid_sh]] = m[:κ_covid]
        Ψ[eq[:eq_biidc], exo[:biidc_sh]] = m[:κ_covid]
        Ψ[eq[:eq_φ], exo[:φ_sh]] = m[:κ_covid]
@@ -916,7 +1022,26 @@ function eqcond(m::Model1002, reg::Int)
        Ψ[eq[:eq_σ_ω], exo[:σ_ω_sh]] = m[:κ_std_bcshocks]
        Ψ[eq[:eq_μ_e], exo[:μ_e_sh]] = m[:κ_std_bcshocks]
        Ψ[eq[:eq_γ], exo[:γ_sh]] = m[:κ_std_bcshocks]
-       Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_std_bcshocks])
+       if subspec(m) == "ss206"
+           Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_pce])
+           #Ψ[eq[:eq_corepce], exo[:π_star_sh]] = (nopish * m[:κ_pce])
+       else
+           Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_std_bcshocks])
+       end
+   end
+
+   if haskey(m.settings, :marco_estim_experiment) && get_setting(m, :marco_estim_experiment) == 2
+
+       Ψ[eq[:eq_ztil], exo[:ztil_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_g], exo[:g_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_b], exo[:b_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_μ], exo[:μ_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_λ_f], exo[:λ_f_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_λ_w], exo[:λ_w_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_σ_ω], exo[:σ_ω_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_μ_e], exo[:μ_e_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_γ], exo[:γ_sh]] = m[:κ_std_bcshocksf]
+       Ψ[eq[:eq_π_star], exo[:π_star_sh]] = (nopish * m[:κ_std_bcshocksf])
    end
 
    for para in m.parameters
