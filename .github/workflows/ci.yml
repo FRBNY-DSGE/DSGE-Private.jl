@@ -27,7 +27,7 @@ jobs:
       # Upstream v0.2.5 widens that bound to DataFrames 1; the DSGE compat range
       # already accepts this version.
       - name: "Use Julia 1.12-compatible ModelConstructors"
-        run: julia --project=. --color=yes -e 'using Pkg; Pkg.develop(PackageSpec(url = "https://github.com/FRBNY-DSGE/ModelConstructors.jl", rev = "v0.2.5"))'
+        run: julia --project=. --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/FRBNY-DSGE/ModelConstructors.jl", rev = "v0.2.5"))'
       - uses: julia-actions/julia-buildpkg@v1
       - name: "Run the complete package test suite"
         env:
