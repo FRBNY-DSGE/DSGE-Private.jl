@@ -1,11 +1,8 @@
 using DSGE, Test, ModelConstructors, SparseArrays, BenchmarkTools
 
-m = AnSchorfheide()
-homedirpath = Sys.iswindows() ? joinpath(homedir(),".freddatarc") : joinpath(ENV["HOME"],".freddatarc")
-if haskey(ENV, "FRED_API_KEY") || isfile(homedirpath)
-    load_data(m)
+m = AnSchorfheide(testing = true)
 
-    @testset "Test util functions" begin
+@testset "Test util functions" begin
         @test get_class(:histobs) == :obs
         @test get_class(:histpseudo) == :pseudo
         @test get_class(:histstates) == :states
@@ -30,7 +27,11 @@ if haskey(ENV, "FRED_API_KEY") || isfile(homedirpath)
         m <= Setting(:hpfilter_population, false)
         DSGE.load_population_growth(m)
         m <= Setting(:use_population_forecast, true)
-        @test_throws ErrorException DSGE.load_population_growth(m)
+        population, forecast = DSGE.load_population_growth(m)
+        @test names(population) == ["date", "population_growth"]
+        @test names(forecast) == ["date", "population_growth"]
+        @test !isempty(population)
+        @test !isempty(forecast)
 
         m <= Setting(:date_forecast_start, DSGE.quartertodate("2019-Q4"))
         m <= Setting(:date_presample_start, DSGE.quartertodate("1959-Q3"))
@@ -48,9 +49,6 @@ if haskey(ENV, "FRED_API_KEY") || isfile(homedirpath)
         # get_population_series
         # get_mb_populuation_series
 
-    end
-else
-    @warn "Skipping fred_data test because FRED_API_KEY not present"
 end
 
 @testset "Test prior_table works" begin
