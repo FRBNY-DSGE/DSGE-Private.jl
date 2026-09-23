@@ -1,5 +1,3 @@
-using BenchmarkTools
-
 path = dirname(@__FILE__)
 
 m = AnSchorfheide()

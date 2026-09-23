@@ -1,11 +1,11 @@
 """
 ```
-default_settings!(m::ModelConstructors.AbstractModel)
+default_settings!(m::AbstractDSGEModel)
 ```
 
 Default Settings are constructed, initialized and added to `m.settings`.
 """
-function default_settings!(m::ModelConstructors.AbstractModel)
+function default_settings!(m::AbstractDSGEModel)
 
     settings = m.settings
 

@@ -223,13 +223,13 @@ end
         end
     end
 
-    @test size(β, 1) == size(xxxxd, 1)
-    @test size(β, 2) == size(yyyyd, 1)
-    @test size(Σ) == (size(yyyyd, 1), size(yyyyd, 1))
-    @test all(isfinite, β)
-    @test all(isfinite, Σ)
-    @test Σ ≈ Σ' atol = 1e-10
-    @test minimum(eigvals(Symmetric(Σ))) >= -1e-8
+    file = JLD2.jldopen(joinpath(dirname(@__FILE__), "../reference/test_dsgevar_lambda_irfs_statespace_output_version=" * ver * ".jld2"), "r")
+    saved_β = read(file, "exp_data_beta")
+    saved_Σ = read(file, "exp_data_sigma")
+    close(file)
+
+    @test @test_matrix_approx_eq saved_β β
+    @test @test_matrix_approx_eq saved_Σ Σ
 end
 
 @testset "VECM approximation of state space" begin
@@ -314,7 +314,6 @@ end
 
 @testset "Updating a system for a DSGEVECM" begin
     dsge = AnSchorfheide()
-    dsge <= Setting(:n_coint, 0)
     m = DSGEVECM(dsge)
     sys = compute_system(dsge)
     Dout1 = DSGE.compute_DD_coint_add(m, sys, [:obs_gdp, :obs_cpi])
@@ -428,8 +427,6 @@ end
     end
 end
 
-# This legacy fixture was serialized with an older DataFrames/JLD2 layout.
-# The alternative-policy behavior is covered by the in-memory system tests.
 @testset "Implement alternative policy using regime_eqcond_info" begin
     output_vars = [:forecastobs, :histobs, :histpseudo, :forecastpseudo]
 
@@ -444,7 +441,7 @@ end
     m <= Setting(:forecast_horizons, 12)
 
     fp = dirname(@__FILE__)
-    df = DataFrame(date = collect(Date(2010, 3, 31):Month(3):Date(2020, 6, 30)))
+    df = as_dataframe(load(joinpath(fp, "../reference", "regime_switch_data.jld2"), "regime_switch_df_none"))
 
     m <= Setting(:replace_eqcond, true)
     m <= Setting(:regime_eqcond_info, Dict{Int, DSGE.EqcondEntry}(

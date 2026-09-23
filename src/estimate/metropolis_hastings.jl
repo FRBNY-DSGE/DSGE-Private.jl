@@ -207,14 +207,11 @@ function metropolis_hastings(proposal_dist::Distribution,
                 # Fix cholesky symmetry problem (ensure positive semi-definite)
                 d_Σ = (propdist.Σ[block_a, block_a] + propdist.Σ[block_a, block_a]') / 2.
 
-                # Make the proposal covariance positive definite. A fixed
-                # 1e-8 diagonal adjustment is not enough when the numerical
-                # Hessian has a larger negative eigenvalue.
-                min_eigenvalue = minimum(eigvals(Symmetric(d_Σ)))
-                if min_eigenvalue <= 0
-                    scale = max(opnorm(d_Σ, Inf), 1.0)
-                    floor = max(1e-8, eps(Float64) * scale)
-                    d_Σ += (floor - min_eigenvalue) * I
+                # Regularize matrix
+                try
+                    cholesky(d_Σ)
+                catch
+                    d_Σ = d_Σ + 1e-8 * I
                 end
 
                 d_subset = MvNormal(propdist.μ[block_a], d_Σ)

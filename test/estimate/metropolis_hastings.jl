@@ -53,16 +53,58 @@ if writing_output
     end
 end
 
-# The saved chains encode a particular Julia RNG stream and are not a stable
-# reference across supported Julia versions. Verify the sampler's output contract.
-@testset "Check Metropolis-Hastings output (1 block)" begin
-    @test size(test_draws, 1) > 1
-    @test size(test_draws, 2) == length(m.parameters)
-    @test all(isfinite, test_draws)
-    @test size(test_cov) == (length(m.parameters), length(m.parameters))
-    @test all(isfinite, test_cov)
-    @test test_cov ≈ test_cov' atol = 1e-10
-    @test minimum(eigvals(Symmetric(test_cov))) >= -1e-8
+ref_draws, ref_cov =
+    h5open("$path/../reference/metropolis_hastings_test_output_version=" * ver * ".h5",
+           "r") do file
+        read(file, "mhparams"),
+        read(file, "ref_cov")
+    end
+
+# Test that the parameter draws and covariance matrices are equal
+@testset "Check equality of parameter draws and cov matrices in MH (1 block)" begin
+    @test @test_matrix_approx_eq ref_draws test_draws
+    @test @test_matrix_approx_eq ref_cov test_cov
+end
+
+# Set up and run metropolis-hastings with three blocks!
+hessian_inv =
+    h5open("$path/../reference/metropolis_hastings_test_3_blocks.h5", "r") do file
+        read(file, "hessian_inv")
+    end
+
+DSGE.update!(m, mode)
+prop_cov = DegenerateMvNormal(mode, hessian_inv)
+m <= Setting(:n_mh_blocks, 3)
+
+metropolis_hastings(prop_cov, m, data, .01, .09; verbose=:none)
+compute_parameter_covariance(m)
+
+# Read in the parameter draws and covariance just generated from estimate.
+test_draws = h5open(rawpath(m, "estimate", "mhsave.h5"), "r") do file
+    read(file, "mhparams")
+end
+test_cov = h5open(workpath(m, "estimate", "parameter_covariance.h5"), "r") do file
+    read(file, "mhcov")
+end
+
+if writing_output
+    h5open("$path/../reference/metropolis_hastings_test_3_blocks_output_version="
+           * ver * ".h5", "w") do file
+        write(file, "mhparams",    test_draws),
+        write(file, "ref_cov",     test_cov)
+    end
+end
+
+ref_draws, ref_cov =
+    h5open("$path/../reference/metropolis_hastings_test_3_blocks_output_version="
+           * ver * ".h5", "r") do file
+        read(file, "mhparams"),
+        read(file, "ref_cov")
+    end
+# Test that the parameter draws and covariance matrices are equal
+@testset "Check equality of parameter draws and cov matrices in MH (3 blocks)" begin
+    @test @test_matrix_approx_eq ref_draws test_draws
+    @test @test_matrix_approx_eq ref_cov test_cov
 end
 
 nothing

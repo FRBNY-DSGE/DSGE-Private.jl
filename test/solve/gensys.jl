@@ -43,11 +43,8 @@ m = Model1002("ss10")
 Γ1[m.equilibrium_conditions[:eq_z], m.endogenous_states[:y_t]] = 1.
 Γ1[m.equilibrium_conditions[:eq_z], m.endogenous_states[:y_f_t]] = 1.
 
-@testset "Check indeterminacy classification" begin
-    # The diagnostic warning was intentionally silenced to avoid flooding the
-    # logs; verify the solver's existence/uniqueness classification instead.
-    _, _, _, eu_indeterminate = gensys(Γ0, Γ1, C, Ψ, Π)
-    @test eu_indeterminate == [1, 0]
+@testset "Check indeterminacy zeros warning" begin
+    @test_logs (:warn, "Indeterminacy: 1 loose endogenous error(s)") gensys(Γ0, Γ1, C, Ψ, Π)
 end
 
 # trigger coincident zeros
@@ -68,11 +65,8 @@ m = Model1002("ss10")
 end
 
 Γ1[1,1] = 1e3
-@testset "Check nonexistence classification" begin
-    # These diagnostics are silenced in gensys.jl; the return code is the
-    # maintained signal that the system has no solution.
-    _, _, _, eu_nonexistent = gensys(Γ0, Γ1, C, Ψ, Π)
-    @test eu_nonexistent[1] == 0
+@testset "Check nonexistence warning" begin
+    @test_logs (:warn, "Nonexistence: number of unstable roots exceeds number of jump variables") (:warn, "Indeterminacy: 1 loose endogenous error(s)") gensys(Γ0, Γ1, C, Ψ, Π)
 end
 
 Random.seed!(1793)

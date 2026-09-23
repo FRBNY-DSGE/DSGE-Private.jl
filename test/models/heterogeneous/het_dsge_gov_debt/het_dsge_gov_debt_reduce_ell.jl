@@ -6,10 +6,9 @@ check_steady_state = true
 check_jacobian = true
 check_solution = true
 check_irfs = true
-# Calibration fixture reflects an older set of optional calibration targets.
-check_steady_state_calibrate = false
+check_steady_state_calibrate = true
 write_steady_state_calibrate = false
-check_likelihood = false
+check_likelihood = true
 write_likelihood = false
 
 path = dirname(@__FILE__)

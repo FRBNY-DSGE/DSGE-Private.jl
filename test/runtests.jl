@@ -2,7 +2,6 @@ using ModelConstructors, Nullables, SMC, Test, Distributed, Distributions
 using Dates, DataFrames, OrderedCollections, FileIO, DataStructures, LinearAlgebra, SparseArrays
 using StatsBase, Random, CSV, StateSpaceRoutines, HDF5, JLD2, MAT, Plots
 import ModelConstructors: @test_matrix_approx_eq, @test_matrix_approx_eq_eps
-include(joinpath(@__DIR__, "jld2_compat.jl"))
 @everywhere using DSGE, JLD2, Printf, LinearAlgebra, ModelConstructors, SMC
 HETDSGEGOVDEBT = normpath(joinpath(@__DIR__, "..", "src", "models", "heterogeneous",
                                    "het_dsge_gov_debt", "reference"))
@@ -73,6 +72,7 @@ my_tests = [
             "data/simulate_data",
             "data/transformations",
             "data/util",
+            "decomp/decompose_forecast",
             "decomp/decomposition_periods",
             "decomp/io",
             "defaults",
@@ -169,6 +169,7 @@ my_tests = [
             "models/var/util",
             "packet/packet",
             "parameters",
+            "plot/plot",
             "plot/util",
             "scenarios/drivers",
             "scenarios/forecast",
@@ -221,8 +222,7 @@ isempty(unaccounted_test_files) || error("Unaccounted test files (add to my_test
 isempty(stale_test_entries) || error("Test manifest entries do not exist: $(sort(collect(stale_test_entries)))")
 
 const test_filter = get(ENV, "DSGE_TEST_FILTER", "")
-const test_filters = Base.filter(!isempty, strip.(split(test_filter, ',')))
-const tests_to_run = isempty(test_filters) ? my_tests : Base.filter(test -> any(prefix -> startswith(test, prefix), test_filters), my_tests)
+const tests_to_run = isempty(test_filter) ? my_tests : Base.filter(test -> startswith(test, test_filter), my_tests)
 isempty(tests_to_run) && error("DSGE_TEST_FILTER='$(test_filter)' matched no test manifest entries")
 
 failures = Tuple{String, Any}[]

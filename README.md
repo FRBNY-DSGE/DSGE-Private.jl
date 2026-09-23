@@ -1,6 +1,6 @@
 # DSGE.jl Development Beta
 
-This is the development beta version of the DSGE package. For the public stable release, please visit [DSGE.jl](https://github.com/FRBNY-DSGE/DSGE.jl).
+This is the development beta version of the DSGE package. For the public stable release, please visit [https://github.com/FRBNY-DSGE/DSGE.jl](https://github.com/FRBNY-DSGE/DSGE.jl).
 
 ![Build Status](https://github.com/FRBNY-DSGE/DSGE.jl/workflows/build/badge.svg?branch=main)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://frbny-dsge.github.io/DSGE.jl/stable)

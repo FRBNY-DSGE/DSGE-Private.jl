@@ -2,6 +2,7 @@ using DSGE
 using Test, BenchmarkTools
 using JLD2
 import DSGE: klein_transition_matrices, n_model_states, n_backward_looking_states
+using DSGEModels
 
 # What do you want to do?
 check_steady_state = true
@@ -12,7 +13,7 @@ check_measurement = true
 
 path = dirname(@__FILE__)
 
-m = HetDSGE()
+m = DSGEModels.HetDSGE()
 
 # Steady-state computation
 if check_steady_state
@@ -591,11 +592,11 @@ end
 run_benchmarks = false
 
 if run_benchmarks
-    mb = HetDSGE()
+    mb = DSGEModels.HetDSGE()
     mb.testing = false
     sys_bench = compute_system(mb)
 
-    b_construct   = @benchmark HetDSGE()
+    b_construct   = @benchmark DSGEModels.HetDSGE()
     b_steadystate = @benchmark steadystate!($mb)
     b_jacobian    = @benchmark DSGE.jacobian($mb)
     b_klein       = @benchmark klein($mb)

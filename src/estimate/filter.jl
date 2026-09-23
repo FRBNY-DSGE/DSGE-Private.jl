@@ -245,20 +245,12 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
     # Run Kalman filter, construct Kalman object, and return
     if !add_zlb_duration[1]
         kalman_likelihood(regime_inds, data, TTTs, RRRs, CCCs, QQs,
-                          ZZs, DDs, EEs, s_0, P_0; Nt0 = Nt0, tol = tol)
+                          ZZs, DDs, EEs, s_0, P_0; add_zlb_duration = add_zlb_duration,
+                          Nt0 = Nt0, tol = tol)
     else
-        # StateSpaceRoutines 0.4 returns only likelihoods from
-        # `kalman_likelihood`; older versions had an `add_zlb_duration`
-        # keyword that also returned the filtered state at a selected period.
-        # Use DSGE's supported filter API to obtain that state explicitly.
-        kal = filter(m, data, system, s_0, P_0; start_date = start_date,
-                     include_presample = include_presample,
-                     outputs = [:loglh, :filt], tol = tol)
-        filter_lik = kal[:loglh]
-        zlb_col = add_zlb_duration[2] - Nt0
-        1 <= zlb_col <= size(kal[:s_filt], 2) ||
-            throw(BoundsError(kal[:s_filt], (:, zlb_col)))
-        zlb_st = kal[:s_filt][:, zlb_col]
+        filter_lik, zlb_st = kalman_likelihood(regime_inds, data, TTTs, RRRs, CCCs, QQs,
+                          ZZs, DDs, EEs, s_0, P_0; add_zlb_duration = add_zlb_duration,
+                          Nt0 = Nt0, tol = tol)
 
         # Compute implied ZLB duration
         zlb_ind = findfirst(x -> add_zlb_duration[2] in x, regime_inds)#regime_indices(m, start_date))

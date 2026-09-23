@@ -30,17 +30,9 @@ function lbfgs(fcn::Function,
         else
             current_state = trace_or_state
         end
-        # Optim 2 passes an LBFGSState to the callback; older Optim versions
-        # passed trace entries whose iterate lived in `metadata`.
-        if hasproperty(current_state, :x) && hasproperty(current_state, :f_x)
-            push!(x_trace, copy(current_state.x))
-            push!(posterior_ls, current_state.f_x)
-        elseif hasproperty(current_state, :metadata) && hasproperty(current_state, :value)
-            metadata = current_state.metadata
-            if haskey(metadata, "x")
-                push!(x_trace, copy(metadata["x"]))
-                push!(posterior_ls, current_state.value)
-            end
+        if haskey(current_state.metadata, "x")
+            push!(x_trace, copy(current_state.metadata["x"]))
+            push!(posterior_ls, current_state.value)
         end
         false
     end
@@ -75,7 +67,7 @@ function lbfgs(fcn::Function,
 )
 =#
     result = if autodiff
-        Optim.optimize(fcn_wrapped, x0, Optim.LBFGS(m=20, linesearch = ls2, damping = true),
+        Optim.optimize(fcn_wrapped, x0, LBFGS(m=20, linesearch = ls2, damping = true),
                        Optim.Options(g_abstol = grtol, f_reltol = ftol, x_abstol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,
@@ -83,7 +75,7 @@ function lbfgs(fcn::Function,
                                      callback = callback,
                                      allow_f_increases = true))
     else
-        Optim.optimize(fcn_wrapped, x0, Optim.LBFGS(m=20, linesearch = ls2),
+        Optim.optimize(fcn_wrapped, x0, LBFGS(m=20, linesearch = ls2),
                        Optim.Options(g_abstol = grtol, f_reltol = ftol, x_abstol = xtol,
                                      iterations = iterations, store_trace = store_trace,
                                      show_trace = show_trace,

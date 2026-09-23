@@ -305,11 +305,8 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
         else
             init_parameters!(m)
         end =#
-        # Return the canonical parameter vector expected by forecast_one_draw.
-        # Regime-valued parameters are stored as vectors on individual Parameter
-        # objects, but the forecasting pipeline requires a flattened vector with
-        # one scalar value per model/regime parameter.
-        params = ModelConstructors.get_values(m.parameters)
+        tmp = map(α -> α.value, m.parameters)
+        params = convert(Vector{Union{Vector{Float64}, Float64}}, tmp)
 
     end
 

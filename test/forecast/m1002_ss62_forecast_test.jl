@@ -181,16 +181,11 @@ if regenerate_reference_output
     end
 end
 
-@testset "Modal forecast for Model 1002 ss62" begin
-    # The old output file is a version-specific golden forecast. Check the
-    # dimensions and finite values of the current regime-switching result.
-    @test size(fcast[:forecastobs], 1) == length(m.observables)
-    @test size(fcast[:forecastpseudo], 1) == length(m.pseudo_observables)
-    @test size(fcast[:histpseudo], 1) == length(m.pseudo_observables)
-    @test size(fcast[:forecastobs], 2) == get_setting(m, :forecast_horizons)
-    @test all(isfinite, fcast[:forecastobs])
-    @test all(isfinite, fcast[:forecastpseudo])
-    @test all(isfinite, fcast[:histpseudo])
+@testset "Compare Modal Forecast for Model 1002 ss62 against reference" begin
+    ref_out = JLD2.jldopen(joinpath(dirname(@__FILE__), "..", "reference", "ss62_modal_forecast_output_version=$(ver).jld2"), "r")
+    @test maximum(abs.(fcast[:forecastobs] - ref_out["forecastobs"])) < 5e-3
+    @test maximum(abs.(fcast[:forecastpseudo] - ref_out["forecastpseudo"])) < 5e-3
+    @test maximum(abs.(fcast[:histpseudo] - ref_out["histpseudo"])) < 5e-3
 end
 
 ################

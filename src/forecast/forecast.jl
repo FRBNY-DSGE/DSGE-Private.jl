@@ -197,20 +197,14 @@ function forecast(m::AbstractDSGEModel, system::Union{RegimeSwitchingSystem{S}, 
     if typeof(m) <: OnionModel
         ind_r = haskey(m.observables, :NominalFFR) ? m.observables[:NominalFFR] : -1
     else
-        nominal_rate = haskey(get_settings(m), :nominal_rate_observable) ?
-            get_setting(m, :nominal_rate_observable) : :obs_nominalrate
-        ind_r = get(m.observables, nominal_rate,
-                    get(m.observables, :obs_nominalrate, -1))
+        ind_r = haskey(get_settings(m), :nominal_rate_observable) ? m.observables[get_setting(m, :nominal_rate_observable)] : -1
     end
 
     if haskey(get_settings(m), :add_ait_rm) ? get_setting(m,:add_ait_rm) : false
         ind_r_sh = [m.exogenous_shocks[get_setting(m, :monetary_policy_shock)],
                     m.exogenous_shocks[get_setting(m, :monetary_policy_ait_shock)]]
     else
-        monetary_policy_shock = haskey(get_settings(m), :monetary_policy_shock) ?
-            get_setting(m, :monetary_policy_shock) : :rm_sh
-        ind_r_sh = [get(m.exogenous_shocks, monetary_policy_shock,
-                        get(m.exogenous_shocks, :rm_sh, -1))]
+        ind_r_sh = haskey(get_settings(m), :monetary_policy_shock) ? [m.exogenous_shocks[get_setting(m, :monetary_policy_shock)]] : [-1]
     end
     zlb_value = haskey(get_settings(m), :forecast_zlb_value) ? forecast_zlb_value(m) : 0.1/4
 
@@ -240,6 +234,8 @@ function forecast(system::System{S}, z0::Vector{S},
     horizon = size(shocks, 2)
 
     # Define our iteration function
+    # [ID] Temp: do not enforce zlb in forecast
+    enforce_zlb = false
     function iterate(z_t1, ϵ_t)
         z_t = C + T*z_t1 + R*ϵ_t
         if enforce_zlb

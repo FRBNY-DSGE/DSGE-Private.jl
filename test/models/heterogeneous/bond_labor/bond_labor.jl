@@ -99,10 +99,8 @@ run_benchmarks && @btime klein(m)
 @JLD2.load "$path/reference/solve.jld2" saved_gx saved_hx
 
 @testset "Check solve outputs" begin
-    @test all(isfinite, gx)
-    @test all(isfinite, hx)
-    @test size(gx) == size(saved_gx)
-    @test size(hx) == size(saved_hx)
+    @test saved_gx  ≈ gx
+    @test saved_hx  ≈ hx
 end
 
 # State-space transition matrices (klein returns TTT_jump, TTT_state = gx, hx)
