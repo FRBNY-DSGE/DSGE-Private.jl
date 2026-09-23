@@ -343,7 +343,11 @@ end
 
     m <= Setting(:gensys2, true)
     m <= Setting(:replace_eqcond, true)
-    m <= Setting(:regime_eqcond_info, Dict(4 => DSGE.EqcondEntry(DSGE.zlb_rule(), [1., 0.])))
+    # End the temporary peg explicitly: an indefinitely fixed nominal rate
+    # has no unique terminal solution for gensys2's backward recursion.
+    m <= Setting(:regime_eqcond_info,
+                 Dict(4 => DSGE.EqcondEntry(DSGE.zlb_rule(), [1., 0.]),
+                      5 => DSGE.EqcondEntry(DSGE.taylor_rule(), [1., 0.])))
     sys1 = compute_system(m)
     m <= Setting(:regime_dates, Dict(1 => date_presample_start(m), #Start
                                      2 => Date(1990, 3, 31), # Parameter switch in history

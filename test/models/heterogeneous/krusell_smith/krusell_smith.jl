@@ -1,4 +1,5 @@
 import DSGE: n_model_states, n_backward_looking_states
+using Random
 
 path = dirname(@__FILE__)
 
@@ -117,7 +118,7 @@ EE  = fill(0.1, (1,1))
 QQ  = meas[:QQ]
 
 # Generate measurement errors and shocks
-srand(42)
+Random.seed!(42)
 u_t     = EE*randn(n_observables(m), N)
 ε_t     = QQ*randn(n_shocks_exogenous(m), N)
 
