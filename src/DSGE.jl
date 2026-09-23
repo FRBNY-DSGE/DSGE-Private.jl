@@ -116,7 +116,7 @@ module DSGE
 
         # analysis/
         find_density_bands, moment_tables, compute_meansbands, MeansBands,
-        meansbands_to_matrix, read_mb, read_bdd_and_unbdd_mb,
+        meansbands_to_matrix, read_mb, read_bdd_and_unbdd_mb, read_bdd_fill_unbdd_mb,
         get_meansbands_input_file, get_meansbands_output_file, get_product, get_class,
         which_density_bands,
         prepare_meansbands_tables_timeseries, prepare_means_tables_shockdec,

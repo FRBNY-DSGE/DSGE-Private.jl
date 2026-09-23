@@ -149,6 +149,10 @@ the file location of the means.
 If `bdd_and_unbdd`, then `output_var` must be either `:forecast` or
 `:forecast4q`. Then this function calls `read_bdd_and_unbdd` to return a
 `MeansBands` with unbounded means and bounded bands.
+If `bdd_fill_unbdd`, `output_var` is likewise restricted to `:forecast` or
+`:forecast4q`, and this function calls `read_bdd_fill_unbdd_mb` to return the
+bounded `MeansBands` with only its undefined (`NaN`) cells taken from the
+unbounded forecast.
 If modal line is set to true, then the modal mean rather than the
 full-distribution mean is returned.
 """
@@ -233,7 +237,7 @@ function read_mb(m::Union{AbstractDSGEModel,AbstractVARModel},
                                                          forecast_string = forecast_string,
                                                          directory = directory) : ""
 
-    if use_bdd in [:bdd, :bdd_and_unbdd]
+    if use_bdd in [:bdd, :bdd_and_unbdd, :bdd_fill_unbdd]
         @assert get_product(output_var) in [:forecast, :forecast4q]
         bdd_output_var = Symbol(:bdd, output_var)
         bdd_file = get_meansbands_output_file(m, input_type, cond_type, bdd_output_var;
@@ -241,6 +245,8 @@ function read_mb(m::Union{AbstractDSGEModel,AbstractVARModel},
                                               directory = directory)
         if use_bdd == :bdd
             read_mb(bdd_file, modal_file)
+        elseif use_bdd == :bdd_fill_unbdd
+            read_bdd_fill_unbdd_mb(bdd_file, modal_line ? modal_file : mb_file, modal_line = modal_line)
         else
             read_bdd_and_unbdd_mb(bdd_file, modal_line ? modal_file : mb_file, modal_line = modal_line)
         end
@@ -310,6 +316,70 @@ function read_bdd_and_unbdd_mb(bdd_fn::String, unbdd_fn::String; modal_line::Boo
 
     # Stick together unbounded means, bounded bands
     return MeansBands(unbdd_mb.metadata, unbdd_mb.means, bdd_mb.bands)
+end
+
+"""
+```
+read_bdd_fill_unbdd_mb(bdd_fn::String, unbdd_fn::String; modal_line::Bool = false)
+```
+
+Read the bounded `MeansBands` at `bdd_fn` and fill any undefined (`NaN`) cell with the
+value at the same date and column of the unbounded `MeansBands` at `unbdd_fn`.
+
+The ZLB-consistent posterior of some variables -- core PCE inflation in particular -- is
+undefined for the first few quarters of the forecast horizon, in both the mean and the
+bands, while the same variable is well defined further out and other variables are
+defined throughout. Reading the unbounded forecast instead (`use_bdd = :unbdd`) would
+also discard the perfectly good bounded quarters, and `:bdd_and_unbdd` substitutes the
+unbounded mean for every variable unconditionally; this substitutes only the cells that
+are genuinely missing.
+"""
+function read_bdd_fill_unbdd_mb(bdd_fn::String, unbdd_fn::String; modal_line::Bool = false)
+    # Check files exist
+    @assert isfile(bdd_fn)   "File $bdd_fn could not be found"
+    @assert isfile(unbdd_fn) "File $unbdd_fn could not be found"
+
+    # Read MeansBands
+    bdd_mb   = read_mb(bdd_fn)
+    unbdd_mb = read_mb(unbdd_fn)
+    if modal_line
+        unbdd_mb.metadata[:para] = bdd_mb.metadata[:para]
+    end
+
+    @assert (bdd_mb.metadata[:product], unbdd_mb.metadata[:product]) in [(:bddforecast, :forecast), (:bddforecast4q, :forecast4q)] "Invalid product fields: $((bdd_mb.metadata[:product], unbdd_mb.metadata[:product]))"
+
+    _fill_nan_from!(bdd_mb.means, unbdd_mb.means)
+    for (var, bdd_band) in bdd_mb.bands
+        haskey(unbdd_mb.bands, var) && _fill_nan_from!(bdd_band, unbdd_mb.bands[var])
+    end
+
+    return bdd_mb
+end
+
+# Replace every NaN entry of `dest` with the entry of `src` at the same date and column.
+# Rows are matched on :date rather than by position so that a differing row count or
+# offset between the two forecasts cannot silently shift values onto the wrong quarter.
+function _fill_nan_from!(dest::DataFrame, src::DataFrame)
+    dest_names = names(dest)
+    src_names  = names(src)
+    ("date" in dest_names && "date" in src_names) || return dest
+
+    src_row = Dict(d => i for (i, d) in enumerate(src[!, :date]))
+    for col in dest_names
+        (col == "date" || !(col in src_names)) && continue
+        dest_col = dest[!, col]
+        src_col  = src[!, col]
+        for i in eachindex(dest_col)
+            v = dest_col[i]
+            (v isa Real && isnan(v)) || continue
+            j = get(src_row, dest[i, :date], 0)
+            j == 0 && continue
+            sv = src_col[j]
+            (sv isa Real && !isnan(sv)) || continue
+            dest_col[i] = sv
+        end
+    end
+    return dest
 end
 
 
