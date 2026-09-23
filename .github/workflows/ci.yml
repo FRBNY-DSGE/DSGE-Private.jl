@@ -5,15 +5,10 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
-    # 1.5.0 is the currently-supported version and must pass. 1.12 also spins up, but is
-    # allowed to fail for now (codebase still uses 1.5-era patterns) so it doesn't block PRs.
-    # Remove this line to make 1.12 a required check once the codebase supports it.
-    continue-on-error: ${{ matrix.version == '1.12' }}
     strategy:
       fail-fast: false
       matrix:
         version:
-            - '1.5.0'
             - '1.12'
         arch:
             - x64
@@ -27,10 +22,16 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      # The registered ModelConstructors 0.2.4 only permits DataFrames <= 0.22,
+      # whose SortingAlgorithms dependency has no Julia 1.12-compatible release.
+      # Upstream v0.2.5 widens that bound to DataFrames 1; the DSGE compat range
+      # already accepts this version.
+      - name: "Use Julia 1.12-compatible ModelConstructors"
+        run: julia --project=. --color=yes -e 'using Pkg; Pkg.develop(PackageSpec(url = "https://github.com/FRBNY-DSGE/ModelConstructors.jl", rev = "v0.2.5"))'
       - uses: julia-actions/julia-buildpkg@v1
-      - name: "Run ci_tester.jl"
+      - name: "Run the complete package test suite"
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-        run: julia --project=. --color=yes --code-coverage=user -e 'using Pkg; Pkg.instantiate(); include("test/ci_tester.jl")'
+        run: julia --project=. --color=yes --code-coverage=user -e 'using Pkg; Pkg.instantiate(); Pkg.test()'
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v1
