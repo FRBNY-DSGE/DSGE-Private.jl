@@ -21,6 +21,14 @@ sout1, ϵout1 = simulate_states(system[:TTT], system[:RRR], system[:CCC],
     @test @test_matrix_approx_eq ϵout ϵ
     @test @test_matrix_approx_eq sout1 s
     @test @test_matrix_approx_eq ϵout1 ϵ
+
+    # Supplied innovations must cover burn-in and sample periods, and the
+    # initial state and covariance must be specified together.
+    @test_throws AssertionError simulate_states(system[:TTT], system[:RRR], system[:CCC],
+        system[:QQ]; burnin = 1, n_periods = 1, ϵ = zeros(size(system[:RRR], 2), 1))
+    @test_throws AssertionError simulate_states(system[:TTT], system[:RRR], system[:CCC],
+        system[:QQ]; burnin = 1, n_periods = 1, ϵ = ϵ,
+        s_0 = s₀)
 end
 
 ################

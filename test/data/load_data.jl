@@ -4,10 +4,6 @@ using Test, DataFrames, HDF5, JLD2, BenchmarkTools
 path = dirname(@__FILE__)
 
 @testset "Test various forms of data loading" begin
-    # Can we actually test? Require that FRED API key exists
-    homedirpath = Sys.iswindows() ? joinpath(homedir(),".freddatarc") : joinpath(ENV["HOME"],".freddatarc")
-    if haskey(ENV, "FRED_API_KEY") || isfile(homedirpath)
-
         # Specify vintage and dates
         global custom_settings = [Setting(:data_vintage, "160812"),
                                   Setting(:cond_vintage, "160812"),
@@ -19,6 +15,7 @@ path = dirname(@__FILE__)
 
         global m = Model990(custom_settings = custom_settings, testing = true)
         m <= Setting(:rate_expectations_source, :ois)
+        install_fred_test_cache!(m)
 
         # Read expected results
         exp_data, exp_cond_data, exp_semicond_data =
@@ -60,9 +57,6 @@ path = dirname(@__FILE__)
         m <= Setting(:cond_vintage, "160813")
         @test_throws ErrorException load_cond_data_levels(m)
         @test_throws ErrorException load_data(m; try_disk = false, verbose=:none)
-    else
-        @warn "Skipping load_data test because FRED_API_KEY not present"
-    end
 end
 
 nothing
