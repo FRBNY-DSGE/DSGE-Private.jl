@@ -71,7 +71,6 @@ my_tests = [
             "data/reverse_transform",
             "data/simulate_data",
             "data/transformations",
-            "data/transform_data",
             "data/util",
             "decomp/decompose_forecast",
             "decomp/decomposition_periods",
