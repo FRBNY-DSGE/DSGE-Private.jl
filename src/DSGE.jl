@@ -3,6 +3,7 @@ isdefined(Base, :__precompile__) && __precompile__(false)
 module DSGE
     using ModelConstructors, SMC
     using Dates, Test, BenchmarkTools
+    using FFTW: ifft
     using BasisMatrices, Distributed, Distributions, FileIO, FredData, ForwardDiff, HDF5, JLD2, LinearAlgebra
     using Missings, Nullables, Optim, Printf, Random, RecipesBase, SparseArrays, SpecialFunctions
     using StateSpaceRoutines, StatsPlots
@@ -204,6 +205,7 @@ module DSGE
     include("statespace/statespace_functions.jl")
     include("statespace/statespace_var_functions.jl")
     include("util.jl")
+    include("chebyshev.jl")
     include("grids.jl")
 
     include("altpolicy/altpolicy.jl")

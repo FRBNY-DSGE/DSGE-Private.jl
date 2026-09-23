@@ -160,7 +160,7 @@ end
 
 
 function KrusellSmithCT(subspec::String="ss0";
-                       custom_settings::Array{Setting} = Array{Setting{Bool}}(undef, 0),
+                       custom_settings::AbstractVector{<:Setting} = Setting[],
                        testing = false)
 
     # Model-specific specifications

@@ -69,7 +69,7 @@ equilibrium conditions.
   user. See `load_data` and `Observable` for further details.
 
 """
-mutable struct RealBondMkup{T} <: AbstractModel{T}
+mutable struct RealBondMkup{T} <: AbstractDSGEModel{T}
     parameters::ParameterVector{T}                         # vector of all time-invariant model parameters
     steady_state::ParameterVector{T}                       # model steady-state values
 
@@ -181,6 +181,8 @@ function init_model_indices!(m::RealBondMkup)
     m.endogenous_states = deepcopy(endo)
     m.state_variables = m.endogenous_states.keys[get_setting(m, :state_indices)]
     m.jump_variables = m.endogenous_states.keys[get_setting(m, :jump_indices)]
+    m <= Setting(:states, m.state_variables)
+    m <= Setting(:jumps, m.jump_variables)
 
     for (i,k) in enumerate(exogenous_shocks);            m.exogenous_shocks[k]            = i end
     for (i,k) in enumerate(model_states_augmented); m.model_states_augmented[k]   = i+length(endogenous_states) end
@@ -188,7 +190,7 @@ function init_model_indices!(m::RealBondMkup)
 end
 
 function RealBondMkup(subspec::String="ss0";
-                   custom_settings::Array{Setting} = Array{Setting{Bool}}(undef, 0),
+                   custom_settings::AbstractVector{<:Setting} = Setting[],
                    testing = false)
 
     # Model-specific specifications

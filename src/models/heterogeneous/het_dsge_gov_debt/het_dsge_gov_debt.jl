@@ -170,7 +170,7 @@ function HetDSGEGovDebt(subspec::String="ss0";
                         ref_dir = "")
 
     # Model-specific specifications
-    spec               = "het_dsge"
+    spec               = "het_dsge_gov_debt"
     subspec            = subspec
     settings           = Dict{Symbol,Setting}()
     test_settings      = Dict{Symbol,Setting}()

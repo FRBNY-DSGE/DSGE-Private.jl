@@ -99,13 +99,13 @@ function steadystate!(m::KrusellSmith, tol::Float64 = 1e-5, maxit::Int64 = 100, 
         # KF is the Kolmogorov forward operator and is the map which moves you
         # from cash on hand distribution today to cash on hand dist tomorrow
 
-        # find eigenvalue closest to 1
+        # Find the stationary eigenvector; eigen does not guarantee ordering.
         D,V = eigen(wgrid.weights[1] * KF)
-
-        if norm(D[1] - 1.0) > 2e-1 # that's the tolerance we are allowing
+        stationary_ind = argmin(abs.(D .- 1.0))
+        if abs(D[stationary_ind] - 1.0) > 2e-1 # that's the tolerance we are allowing
             @warn "your eigenvalue is too far from 1, something is wrong"
         end
-        μ = real(@view(V[:,1]))  # Pick the eigenvector associated with the largest
+        μ = real(@view(V[:,stationary_ind]))  # Pick the stationary eigenvector
                                  # eigenvalue and moving it back to values
 
         μ = μ / (wgrid.weights' * μ)        # Scale of eigenvectors not determinate:

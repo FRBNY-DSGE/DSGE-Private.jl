@@ -48,11 +48,28 @@ function hessian!(m::Union{AbstractDSGEModel,AbstractVARModel},
     n_free_params = length(para_free_inds)
     lb = zeros(n_free_params)
     ub = zeros(n_free_params)
-    
+
     params = get_parameters(m)
+    # ModelConstructors represents regime-specific values as extra entries in
+    # the flattened parameter vector (after the base parameter entries). Build
+    # the matching bounds vector in that same order; indexing `params` directly
+    # fails when `para_free_inds` includes a non-base regime parameter.
+    parameter_bounds = [p.valuebounds for p in params]
+    if regime_switching
+        for p in params
+            haskey(p.regimes, :value) || continue
+            for (i, (regime, _)) in enumerate(p.regimes[:value])
+                i == 1 && continue # regime 1 is already in the base entries
+                bounds = get(p.regimes, :valuebounds, nothing)
+                push!(parameter_bounds,
+                      bounds !== nothing && haskey(bounds, regime) ?
+                      bounds[regime] : p.valuebounds)
+            end
+        end
+    end
     for (i, idx) in enumerate(para_free_inds)
-        lb[i] = params[idx].valuebounds[1]
-        ub[i] = params[idx].valuebounds[2]
+        lb[i] = parameter_bounds[idx][1]
+        ub[i] = parameter_bounds[idx][2]
     end
 
 

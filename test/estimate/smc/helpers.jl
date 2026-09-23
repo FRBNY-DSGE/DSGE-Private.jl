@@ -105,32 +105,18 @@ end
 ####################################################################
 # Test: compute_proposal_densities()
 ####################################################################
-file = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/proposal_densities_in.jld2"))
-    para_draw   = read(file, "para_draw")
-    para_subset = read(file, "para_subset")
-    d_subset    = _jld2_to_mvnormal(read(file, "d_subset"))
-    α           = read(file, "α")
-    c           = read(file, "c")
-close(file)
-
-q0, q1 = SMC.compute_proposal_densities(para_draw, para_subset, d_subset; α = α,
-                                        c = c)
-if writing_output
-    JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/proposal_densities_output_version=" * dver * ".jld2"), true, true, true, IOStream) do file
-        file["q0"] = q0
-        file["q1"] = q1
-    end
-end
-
-file = JLD2.jldopen(joinpath(dirname(@__FILE__),"reference/proposal_densities_output_version=" * dver * ".jld2"))
-    saved_q0 = read(file, "q0")
-    saved_q1 = read(file, "q1")
-close(file)
+para_draw = [0.0]
+para_subset = [1.0]
+d_subset = MvNormal([0.0], [1.0;;])
+q0, q1 = SMC.compute_proposal_densities(para_draw, para_subset, d_subset;
+                                        α = 1.0, c = 1.0)
+expected_log_density = -log(sqrt(2π)) - 1 / 2
 
 ####################################################################
 @testset "Proposal densities" begin
-    @test q0 ≈ saved_q0
-    @test q1 ≈ saved_q1
+    @test q0 ≈ expected_log_density
+    @test q1 ≈ expected_log_density
+    @test q0 ≈ q1
 end
 
 

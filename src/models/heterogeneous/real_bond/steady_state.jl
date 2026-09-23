@@ -91,11 +91,12 @@ function steadystate!(m::RealBond;
 
         # find eigenvalue closest to 1
         (Dee,Vee) = eigen(LPMKF)
-        if abs(Dee[1]-1)>2e-1 # that's the tolerance we are allowing
-            @warn "your eigenvalue is ", Dee[1], " which is too far from 1, something is wrong"
+        stationary_ind = argmin(abs.(Dee .- 1))
+        if abs(Dee[stationary_ind]-1)>2e-1 # that's the tolerance we are allowing
+            @warn "your eigenvalue is ", Dee[stationary_ind], " which is too far from 1, something is wrong"
         end
 
-        μ = real(Vee[:,1]) # Pick the eigen vector associated with the largest
+        μ = real(Vee[:,stationary_ind]) # Pick the eigenvector associated with the stationary
                            # eigenvalue and move it back to values
                            # mdχ: the μ chosen is the eigenvector associated to the largest
                            # eigenvalue of the KF because that means, we have induced the

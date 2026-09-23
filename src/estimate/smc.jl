@@ -309,6 +309,12 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
     # Calls SMC package's generic SMC
     println("Calling SMC.jl's SMC estimation routine...")
 
+    # `add_zlb_duration` is handled by the likelihood closure above. It is not
+    # an SMC.jl keyword in the installed 0.1.x/0.2 API. `cholesky_fix` was a
+    # private fork option and likewise is not part of the registered package
+    # API; reject non-default requests rather than silently ignoring them.
+    cholesky_fix == :none || error("cholesky_fix is not supported by the installed SMC.jl API")
+
     SMC.smc(my_likelihood, get_parameters(m), data;
             verbose      = verbose,
             testing      = m.testing,
@@ -349,11 +355,7 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
 	        tempered_update_prior_weight = tempered_update_prior_weight,
 
             regime_switching = regime_switching,
-            debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data,
-            # add_zlb_duration is also applied inside the my_likelihood closure (it captures
-            # it); SMC.smc accepts the kwarg but currently ignores it.
-            add_zlb_duration = add_zlb_duration,
-            cholesky_fix = cholesky_fix)#,
+            debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data)
             #timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
 
     if run_csminwel
