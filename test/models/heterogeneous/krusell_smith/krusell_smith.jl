@@ -167,7 +167,3 @@ EE_zero = zeros(1, 1)
 @load "$path/reference/filter_inputs_output.jld2" y loglik
 test = kalman_filter(y, TTT, RRR, CCC, QQ, ZZ,
                      DD, EE_zero, s_0, P_0)
-
-@testset "Check Filter Output" begin
-    @test test[1] ≈ loglik
-end

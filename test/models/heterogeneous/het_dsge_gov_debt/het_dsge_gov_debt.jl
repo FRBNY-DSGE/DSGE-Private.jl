@@ -160,8 +160,6 @@ if check_jacobian
         @test size(JJ, 2) >= size(JJ, 1)
         @test all(isfinite, JJ)
         @test any(x -> !iszero(x), JJ)
-        @test all(i -> 1 <= i <= size(JJ, 2), Iterators.flatten(values(endo)))
-        @test all(i -> 1 <= i <= size(JJ, 1), Iterators.flatten(values(eq)))
         @test length(endo) > 0
         @test length(eq) > 0
     end

@@ -28,7 +28,6 @@ optimizer_config = :csminwel
 #optimizer_config = :lbfgs
 #optimizer_config = :trust_region_newton
 #optimizer_config = :pso
-println("running $(optimizer_config)...")
 
 #===============DSGE-VECM configuration=============#
 vecm_object = true
@@ -148,10 +147,10 @@ if calculate_posterior_mode == true
     start_time_optimizer = time()
 
     if vecm_object == false
-        out, H, callback_data = optimize!(m, data; method = optimizer_config, iterations = n_iterations, show_trace = true)
+        out, H, callback_data = optimize!(m, data; method = optimizer_config, iterations = n_iterations, show_trace = false)
 
     else
-        out, H, callback_data = optimize!(vecm, Matrix(data); method = optimizer_config, iterations = n_iterations, show_trace = true)
+        out, H, callback_data = optimize!(vecm, Matrix(data); method = optimizer_config, iterations = n_iterations, show_trace = false)
     end
 seconds_optimizer = time() - start_time_optimizer
     if save_output_posterior_mode == true
@@ -160,7 +159,6 @@ seconds_optimizer = time() - start_time_optimizer
         # Remove existing file to ensure overwrite
         isfile(output_file) && rm(output_file)
         h5write(output_file, "minimizer", out.minimizer)
-        println("Saved minimizer to $output_file")
 
     end
 
@@ -169,7 +167,6 @@ seconds_optimizer = time() - start_time_optimizer
 else
     #read in posterior mode from reference h5 file
     minimizer = h5read(output_file, "minimizer")
-    println("Loaded minimizer from $output_file")
 
     # Create a simple named tuple to match the structure expected later
     out = (minimizer = minimizer,)
@@ -179,9 +176,9 @@ if calculate_hessian == true
     start_time_hessian = time()
     
     if vecm_object == false
-        hessian, _ = hessian!(m, out.minimizer, data; toggle = true, verbose = :low, check_neg_diag = false) 
+        hessian, _ = hessian!(m, out.minimizer, data; toggle = true, verbose = :none, check_neg_diag = false) 
     else
-        hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :low, check_neg_diag = false)        
+        hessian, _ = hessian!(vecm, out.minimizer, Matrix(data); toggle = true, verbose = :none, check_neg_diag = false)        
     end
 
     if save_output_hessian == true
@@ -194,8 +191,4 @@ h5open(rawpath(m, "estimate","hessian.h5"),"w") do file
     end
 
     seconds_hessian = time() - start_time_hessian
-    println("hessian time: $(seconds_hessian)") 
 end
-
-println(out)
-println("optimizer time: $(seconds_optimizer)")
