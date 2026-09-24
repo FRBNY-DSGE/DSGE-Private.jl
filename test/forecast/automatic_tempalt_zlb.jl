@@ -123,7 +123,7 @@ else
         end
     end
     for v in values(output_files)
-    rm(v)
+    Base.rm(v)
 end
 end
 

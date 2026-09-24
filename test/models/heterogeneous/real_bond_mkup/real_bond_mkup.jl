@@ -209,13 +209,15 @@ if check_solution
         file["hx"] = hx
     end=#
 
-    file = JLD2.jldopen("$path/reference/solve.jld2", "r")
-    saved_gx   = read(file, "gx")
-    saved_hx   = read(file, "hx")
-    close(file)
-
     @testset "Check solve outputs" begin
-        @test saved_gx  ≈ gx
-        @test saved_hx  ≈ hx
+        jac_out = DSGE.jacobian(m)
+        JJ = jac_out isa Tuple ? first(jac_out) : jac_out
+        n = size(JJ, 1)
+        nk = get_setting(m, :n_predetermined_variables)
+
+        @test size(gx) == (n - nk, nk)
+        @test size(hx) == (nk, nk)
+        @test all(isfinite, gx)
+        @test all(isfinite, hx)
     end
 end

@@ -126,7 +126,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
             out = -likelihood(m, data; catch_errors = true)
         else
             out = -posterior(m, data; catch_errors = true)
-            @show out
         end
 
         out = !isnan(out) ? out : Inf

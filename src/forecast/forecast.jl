@@ -218,7 +218,6 @@ function forecast(m::AbstractDSGEModel, system::Union{RegimeSwitchingSystem{S}, 
         forecast(m, system, z0, shocks; cond_type = cond_type, enforce_zlb = enforce_zlb,
                  ind_r = ind_r, ind_r_sh = ind_r_sh, zlb_value = zlb_value)
     else
-        @show enforce_zlb
         forecast(system, z0, shocks; enforce_zlb = enforce_zlb,
                  ind_r = ind_r, ind_r_sh = ind_r_sh, zlb_value = zlb_value)
     end
