@@ -52,7 +52,7 @@ function mutation(m::AbstractDSGEModel, data::Matrix{S}, p::Vector{S},
     d_Σ = Matrix(Symmetric((d_Σ + d_Σ') / 2))
     λ_min = minimum(eigvals(Symmetric(d_Σ)))
     if λ_min <= 0
-        scale = max(opnorm(d_Σ, Inf), 1.0)
+        scale = max(opnorm(d_Σ, Inf), eps(S))
         d_Σ += (sqrt(eps(S)) * scale - λ_min) * I
     end
     d = MvNormal(d_μ, d_Σ)
