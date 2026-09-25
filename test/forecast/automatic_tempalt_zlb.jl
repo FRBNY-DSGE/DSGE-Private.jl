@@ -122,7 +122,7 @@ else
             end
         end
     end
-    for v in values(output_files)
+    for v in Base.values(output_files)
         Base.rm(v)
     end
 end

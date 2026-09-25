@@ -90,23 +90,23 @@ output_vars = [:histstates, :histobs, :histpseudo, :histshocks,
             @test dates[date_mainsample_start(m)] == 1
             @test dates[date_mainsample_end(m)] == length(dates)
             @test read(file, "state_indices") == merge(m.endogenous_states, m.endogenous_states_augmented)
-            @test all((x -> x == Symbol("identity")), values(read(file, "state_revtransforms")))
+            @test all((x -> x == Symbol("identity")), Base.values(read(file, "state_revtransforms")))
         end
         JLD2.jldopen(dict[:histobs], "r") do file
             @test read(file, "observable_indices") == m.observables
-            @test !all((x -> x == Symbol("identity")), values(read(file, "observable_revtransforms")))
+            @test !all((x -> x == Symbol("identity")), Base.values(read(file, "observable_revtransforms")))
         end
         JLD2.jldopen(dict[:histpseudo], "r") do file
             @test read(file, "pseudoobservable_indices") == m.pseudo_observables
-            @test !all((x -> x == Symbol("identity")), values(read(file, "pseudoobservable_revtransforms")))
+            @test !all((x -> x == Symbol("identity")), Base.values(read(file, "pseudoobservable_revtransforms")))
         end
         JLD2.jldopen(dict[:histshocks], "r") do file
             @test read(file, "shock_indices") == m.exogenous_shocks
-            @test all((x -> x == Symbol("identity")), values(read(file, "shock_revtransforms")))
+            @test all((x -> x == Symbol("identity")), Base.values(read(file, "shock_revtransforms")))
         end
         JLD2.jldopen(dict[:histshocks], "r") do file
             @test read(file, "shock_indices") == m.exogenous_shocks
-            @test all((x -> x == Symbol("identity")), values(read(file, "shock_revtransforms")))
+            @test all((x -> x == Symbol("identity")), Base.values(read(file, "shock_revtransforms")))
         end
         JLD2.jldopen(dict[:forecastobs], "r") do file
             dates = read(file, "date_indices")
@@ -122,7 +122,7 @@ output_vars = [:histstates, :histobs, :histpseudo, :histshocks,
         end
         JLD2.jldopen(dict[:irfobs], "r") do file
             @test !haskey(file, "date_indices")
-            @test all((x -> x == Symbol("identity")), values(read(file, "observable_revtransforms")))
+            @test all((x -> x == Symbol("identity")), Base.values(read(file, "observable_revtransforms")))
         end
     else
         @warn "Skipping some tests because FRED_API_KEY not present"
