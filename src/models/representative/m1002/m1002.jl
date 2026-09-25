@@ -1428,6 +1428,13 @@ function parameter_groupings(m::Model1002)
         get_setting(m, :add_iid_cond_obs_corepce_meas_err) : false
         push!(excl_params_sym, :σ_condcorepce, :ρ_condcorepce)
     end
+    # Anticipated mark-up shock stds are fixed at σ_λ_f in the regimes set in the subspec
+    # (ss104!), not estimated, so they are left out of the prior/posterior tables
+    if haskey(get_settings(m), :add_ant_markup_shocks_ind)
+        for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
+            push!(excl_params_sym, Symbol("σ_λ_f$(i)"))
+        end
+    end
     excl_params = [m[θ] for θ in excl_params_sym]
 
     @assert isempty(setdiff(m.parameters, vcat(incl_params, excl_params)))

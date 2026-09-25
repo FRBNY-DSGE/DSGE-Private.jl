@@ -308,21 +308,24 @@ end
 =#
 
 
-# Implementation (2025Q3)
-
-# There is only one quarter left (Q4) in 2025 on which we are taking inflation expectations
-TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 1, 29;
+# Implementation
+# obs_avgshortinflation is SPF COREPCEAVG/4, with COREPCEAVG = mean(COREPCE1..COREPCE4), where
+# COREPCE1 is the t-1 quarter (it equals the previous survey's COREPCE2). So the window is the
+# rolling {t-1, t, t+1, t+2}: π_t1 and π_t realized, t+1 and t+2 from the k=2 expected sum.
+# This replaces the "Implementation (2025Q3)" calendar-year window {t-2, t-1, t, t+1}, which
+# was applied to every quarter of the series (2007Q1-2025Q3) and needed large corepce_sh /
+# gdpdef_sh measurement errors to fit it.
+# The series intentionally ends in 2025Q3 (no more AIT), so this only affects the history.
+TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
-T_sum = TTT1Econo #TTT
-C_sum = CCC1Econo #CCC
+T_sum = TTT1Econo
+C_sum = CCC1Econo
 
 TTT1_f = view(T_sum, endo[:π_t], :)
 CCC1_f = C_sum[endo[:π_t]]
 
-
 if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
-    ZZ[obs[:obs_avgshortinflation], endo[:π_t2]] = 0.25 # Add extra endogenous state to cover 2025Q1 (t-2) observed inflation
     ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
     ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
     ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
