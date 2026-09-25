@@ -523,14 +523,14 @@ function init_model_indices!(m::OnionModel)
 
     if subspec(m) ∈ ["ss0.4", "ss0.7", "ss0.9", "ss0.10" ]
         push!(exogenous_shocks, [Symbol("μ_iid_$(i)_sh") for i in 1:get_setting(m, :n_sectors)])
-        push!(equilibrium_conditions, [Symbol("eq_mkup_iid_$(i)")for i in 1:get_setting(m, :n_sectors)])
-        push!(endogenous_states, [Symbol("mkup_iid_$(i)")for i in 1:get_setting(m, :n_sectors)])
+        push!(equilibrium_conditions, [Symbol("eq_mkup_iid_$(i)") for i in 1:get_setting(m, :n_sectors)])
+        push!(endogenous_states, [Symbol("mkup_iid_$(i)") for i in 1:get_setting(m, :n_sectors)])
     end
 
     if subspec(m) ∈ ["ss0.5", "ss0.6", "ss0.7", "ss0.9", "ss0.10"]
         push!(exogenous_shocks, [Symbol("μ_trend_$(i)_sh") for i in 1:get_setting(m, :n_sectors)])
-        push!(equilibrium_conditions, [Symbol("eq_mkup_trend_$(i)")for i in 1:get_setting(m, :n_sectors)])
-        push!(endogenous_states, [Symbol("mkup_trend_$(i)")for i in 1:get_setting(m, :n_sectors)])
+        push!(equilibrium_conditions, [Symbol("eq_mkup_trend_$(i)") for i in 1:get_setting(m, :n_sectors)])
+        push!(endogenous_states, [Symbol("mkup_trend_$(i)") for i in 1:get_setting(m, :n_sectors)])
     end
 
     if subspec(m) ∈ ["ss0.2", "ss0.11"]
@@ -667,4 +667,3 @@ function shock_groupings(m::OnionModel)
     #return [core_goods_mkp, core_services_mkp, energy_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
         return [shock_group_dictionary[sh] for sh in m.exogenous_shocks]
     end
-end

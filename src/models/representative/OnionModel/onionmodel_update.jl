@@ -667,4 +667,3 @@ function shock_groupings(m::OnionModel)
     #return [core_goods_mkp, core_services_mkp, energy_mkp, common_mkup, wage_pmu, pis, pol, tfp, bet]
         return [shock_group_dictionary[sh] for sh in m.exogenous_shocks]
     end
-end
