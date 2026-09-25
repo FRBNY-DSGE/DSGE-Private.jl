@@ -122,6 +122,11 @@ m <= Setting(:hessian_path, joinpath(path, "..", "reference", "hessian_rs2=true_
     end
     propdist   = DegenerateMvNormal(modeθ, F.V * S_inv * F.U'; stdev = false)
     fixed_dirs = findall(iszero, diag(propdist.Σ))   # zero-variance (fixed-parameter) directions
+    # Match estimate.jl: keep these directions exactly fixed in the proposal scale matrix.
+    if !isempty(fixed_dirs)
+        propdist.σ[fixed_dirs, :] .= 0.0
+        propdist.σ[:, fixed_dirs] .= 0.0
+    end
 
     @test !isempty(fixed_dirs)                       # there ARE fixed/degenerate directions here
     @test all(propdist.Σ[fixed_dirs, fixed_dirs] .== 0.0)  # covariance is correctly zero there

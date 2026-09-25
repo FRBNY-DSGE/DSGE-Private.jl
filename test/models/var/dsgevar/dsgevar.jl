@@ -93,8 +93,8 @@ end
     @test collect(keys(m1.observables))  == [:obs_hours, :obs_gdpdeflator]
     @test collect(keys(m10.observables)) == [:obs_hours, :obs_gdpdeflator,
                                             :laborshare_t, :NominalWageGrowth]
-    @test collect(values(m1.observables))  == collect(1:2)
-    @test collect(values(m10.observables)) == collect(1:4)
+    @test collect(Base.values(m1.observables))  == collect(1:2)
+    @test collect(Base.values(m10.observables)) == collect(1:4)
 end
 
 nothing

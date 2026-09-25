@@ -175,8 +175,6 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
 
     vint = get_setting(m, :data_vintage)
     if reoptimize(m) && method == :MH
-        println("Reoptimizing...")
-
         # Inputs to optimization algorithm
         n_iterations       = get_setting(m, :optimization_iterations)
         ftol               = get_setting(m, :optimization_ftol)
@@ -197,7 +195,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
             out, H = optimize!(m, data;
                                method = get_setting(m, :optimization_method),
                                ftol = ftol, grtol = gtol, xtol = xtol,
-                               iterations = n_iterations, show_trace = true, step_size = step_size,
+                               iterations = n_iterations, show_trace = false,
+                               extended_trace = false, step_size = step_size,
                                mle = mle, toggle = toggle, verbose = verbose)
 
 

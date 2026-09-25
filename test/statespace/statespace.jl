@@ -229,7 +229,7 @@ end
     @test all(isfinite, β)
     @test all(isfinite, Σ)
     @test Σ ≈ Σ' atol = 1e-10
-    @test minimum(eigvals(Symmetric(Σ))) >= -1e-8
+    @test Base.minimum(eigvals(Symmetric(Σ))) >= -1e-8
 end
 
 @testset "VECM approximation of state space" begin

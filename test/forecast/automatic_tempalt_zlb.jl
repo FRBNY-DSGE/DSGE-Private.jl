@@ -122,9 +122,9 @@ else
             end
         end
     end
-    for v in values(output_files)
-    rm(v)
-end
+    for v in Base.values(output_files)
+        Base.rm(v)
+    end
 end
 
 ################

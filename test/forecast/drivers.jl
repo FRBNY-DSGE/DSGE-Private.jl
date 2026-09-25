@@ -10,7 +10,10 @@ m = AnSchorfheide()
     # Go back to normal policy rule
     m <= Setting(:alternative_policy, AltPolicy(:historical, eqcond, solve))
     # Test with df passed in
-    if haskey(ENV, "FRED_API_KEY") || isfile(joinpath(homedir(), ".freddatarc"))
+    fred_key_available = (haskey(ENV, "FRED_API_KEY") && length(ENV["FRED_API_KEY"]) == 32) ||
+                         (isfile(joinpath(homedir(), ".freddatarc")) &&
+                          length(strip(read(joinpath(homedir(), ".freddatarc"), String))) == 32)
+    if fred_key_available
         df_in = load_data(m)
         global output_vars, df_out = DSGE.prepare_forecast_inputs!(m, :mode, :none, [:histobs, :forecastobs], df = df_in)
         @test output_vars == [:histobs, :forecastobs, :bddforecastobs]

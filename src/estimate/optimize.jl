@@ -43,9 +43,9 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
                    ftol::Float64        = 1e-14,  # Default from csminwel
                    grtol::Real          = 1e-8,   # default from Optim.jl
                    iterations::Int      = 1000,
-                   store_trace::Bool    = true,
-                   show_trace::Bool     = true,
-                   extended_trace::Bool = true,
+                   store_trace::Bool    = false,
+                   show_trace::Bool     = false,
+                   extended_trace::Bool = false,
                    mle::Bool            = false, # default from estimate.jl
                    step_size::Float64   = .01,
                    toggle::Bool         = true,  # default from estimate.jl
@@ -95,7 +95,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
         x_model = [p.value for p in get_parameters(m)]
         n_params = length(x_model)
         x_opt = x_model[para_free_inds]
-        println("THIS IS WHERE WE DEFINE X_OPT")
     else
 
         x_model        = transform_to_real_line(get_parameters(m); regime_switching = regime_switching)
@@ -126,7 +125,6 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
             out = -likelihood(m, data; catch_errors = true)
         else
             out = -posterior(m, data; catch_errors = true)
-            @show out
         end
 
         out = !isnan(out) ? out : Inf
@@ -376,9 +374,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
 
         
         if get_setting(m, :use_parallel_workers) 
-            println("Hello, parallel workers true")
             @everywhere function f_opt_part_par(x_opt::AbstractVector{<:Real})::Float64
-                println("Hello from worker ", myid())
                 local m_local = deepcopy(m)
                 para_free_inds = ModelConstructors.get_free_para_inds(DSGE.get_parameters(m_local))
 
@@ -500,9 +496,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     ### Step 4: transform output, populate Hessian
     ########################################################################################
     x_model[para_free_inds] = out.minimizer
-    if method == :cmaes || method == :xnes
-        println("")
-    elseif typeof(m) <: AbstractDSGEVARModel
+    if typeof(m) <: AbstractDSGEVARModel
         transform_to_model_space!(m, x_model)
     else
         transform_to_model_space!(m, x_model; regime_switching = regime_switching)

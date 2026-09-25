@@ -44,6 +44,17 @@ function mutation(m::AbstractDSGEModel, data::Matrix{S}, p::Vector{S},
     like_prev = p[ind_old_loglh(N)] # Likelihood evaluated at the old data (for time tempering)
     accept    = 0.0
 
+    # The weighted particle covariance can be singular when particles collapse
+    # onto a lower-dimensional subspace (or when a parameter has no variation).
+    # MvNormal requires a strictly positive-definite covariance, so add the
+    # smallest scale-aware diagonal correction needed to make it positive
+    # definite before constructing the proposal distribution.
+    d_Σ = Matrix(Symmetric((d_Σ + d_Σ') / 2))
+    λ_min = minimum(eigvals(Symmetric(d_Σ)))
+    if λ_min <= 0
+        scale = max(opnorm(d_Σ, Inf), eps(S))
+        d_Σ += (sqrt(eps(S)) * scale - λ_min) * I
+    end
     d = MvNormal(d_μ, d_Σ)
 
     for step in 1:n_steps

@@ -506,7 +506,6 @@ function compute_DD_coint_add(m::AbstractDSGEVECMModel{S}, system::System,
         end
         return Dout
     else
-        @warn "No additional cointegrating relationships specified. Returning an empty vector."
         return Vector{S}(undef, 0)
     end
 end

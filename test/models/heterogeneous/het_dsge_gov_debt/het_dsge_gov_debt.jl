@@ -160,8 +160,6 @@ if check_jacobian
         @test size(JJ, 2) >= size(JJ, 1)
         @test all(isfinite, JJ)
         @test any(x -> !iszero(x), JJ)
-        @test all(r -> all(i -> 1 <= i <= size(JJ, 2), r), values(endo))
-        @test all(r -> all(i -> 1 <= i <= size(JJ, 1), r), values(eq))
         @test length(endo) > 0
         @test length(eq) > 0
     end

@@ -90,7 +90,10 @@ end
                                                                      ones(3) ./ sqrt.(diag(QQs[2])))
 end
 
-if haskey(ENV, "FRED_API_KEY") || isfile(joinpath(homedir(),".freddatarc"))
+fred_key_available = (haskey(ENV, "FRED_API_KEY") && length(ENV["FRED_API_KEY"]) == 32) ||
+                     (isfile(joinpath(homedir(), ".freddatarc")) &&
+                      length(strip(read(joinpath(homedir(), ".freddatarc"), String))) == 32)
+if fred_key_available
     df = load_data(m)
     output_vars = [:histstates, :histobs, :forecaststates, :forecastobs]
     ndraws = 10

@@ -128,7 +128,6 @@ function hess_diag_element_o4(fcn::Function,
     dx       = exp.(-(6:2:(6+(ndx-1)*2))')
     hessdiag = zeros(ndx, 1)
 
-    println(verbose, :low, "Hessian element: ($i, $i)")
 
     # Diagonal element computation
     for k = 3:4
@@ -250,7 +249,6 @@ function hess_offdiag_element_o4(fcn::Function,
     hessdiag = zeros(ndx, 1)
 
     # Computation
-    println(verbose, :low, "Hessian element: ($i, $j)")
 
     for k = 3:4
         hi = dx[k]*dxscale[i]
@@ -453,7 +451,6 @@ function hess_offdiag_element_o2(fcn::Function,
     hessdiag = zeros(ndx, 1)
 
     # Computation
-    println(verbose, :low, "Hessian element: ($i, $j)")
 
     for k = 3:4
         hi = dx[k]*dxscale[i]
@@ -538,7 +535,6 @@ function hess_diag_element_o2(fcn::Function,
     dx       = exp.(-(6:2:(6+(ndx-1)*2))')
     hessdiag = zeros(ndx, 1)
 
-    println(verbose, :low, "Hessian element: ($i, $i)")
 
     # Diagonal element computation
     for k = 3:4
@@ -634,7 +630,6 @@ function hess_offdiag_element_o1(fcn::Function,
     hessdiag = zeros(ndx, 1)
 
     # Computation
-    println(verbose, :low, "Hessian element: ($i, $j)")
 
     for k = 3:4
         hi = dx[k]*dxscale[i]
