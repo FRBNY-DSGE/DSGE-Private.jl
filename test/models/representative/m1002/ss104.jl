@@ -138,3 +138,23 @@ end
     end
 end
 
+@testset "ss104 (bugs doc §1.10): regime-switching smooth with filter_smooth = true" begin
+    m10 = deepcopy(m)
+    dates = DSGE.quarter_range(date_presample_start(m10), DSGE.iterate_quarters(date_forecast_start(m10), -1))
+    df = DataFrame(:date => collect(dates))
+    # Only GDP growth observed: avoids the singular pegged-rate rows that all-zero data gives, and
+    # keeps a numeric data matrix (an all-missing frame becomes Matrix{Missing})
+    for k in keys(m10.observables)
+        df[!, k] = k == :obs_gdp ? zeros(length(dates)) : fill(NaN, length(dates))
+    end
+    kal = DSGE.filter(m10, df, sys)
+    for smoother in [:durbin_koopman, :koopman, :hamilton, :carter_kohn]
+        m10 <= Setting(:forecast_smoother, smoother)
+        base = smooth(m10, df, sys; draw_states = false)
+        # Used to throw UndefVarError (stil_pred etc.) for every smoother except Carter-Kohn
+        withfilt = smooth(m10, df, sys; draw_states = false, filter_smooth = true,
+                          s_pred = kal[:s_pred], P_pred = kal[:P_pred], s_filt = kal[:s_filt], P_filt = kal[:P_filt])
+        @test withfilt[1] ≈ base[1]   # smoothed states
+        @test withfilt[2] ≈ base[2]   # smoothed shocks
+    end
+end

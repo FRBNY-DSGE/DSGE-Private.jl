@@ -203,15 +203,16 @@ function smooth(m::AbstractDSGEModel, df::DataFrame, system::RegimeSwitchingSyst
             smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
                      s_0, P_0)
         elseif smoother == koopman_smoother
-            kal = filter(m, data, system)
-            smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
-                     s_0, P_0, kal[:s_pred], kal[:P_pred])
-        elseif smoother == carter_kohn_smoother && filter_smooth
-            smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
-                     s_0, P_0; draw_states = draw_states)
-        elseif filter_smooth
-            smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
-                     s_0, P_0, stil_pred, Ptil_pred, stil_filt, Ptil_filt; draw_states = draw_states)
+            # Only the Koopman smoother takes filter output. With filter_smooth, use what the caller
+            # passed instead of filtering again; the other smoothers run their own filter.
+            if filter_smooth && !isempty(s_pred) && !isempty(P_pred)
+                smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
+                         s_0, P_0, s_pred, P_pred)
+            else
+                kal = filter(m, data, system)
+                smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
+                         s_0, P_0, kal[:s_pred], kal[:P_pred])
+            end
         elseif smoother == carter_kohn_smoother
             smoother(regime_inds, data, TTTs, RRRs, CCCs, QQs, ZZs, DDs, EEs,
                      s_0, P_0; draw_states = draw_states)
