@@ -22,7 +22,7 @@ end
 m = build_ss104()
 sys = compute_system(m)
 exo = m.exogenous_shocks
-n_regimes = get_setting(m, :n_regimes)
+n_regs = get_setting(m, :n_regimes)   # not `n_regimes`: that would shadow DSGE.n_regimes for later test files
 
 # Variance the anticipated mark-up shock i should have in model regime r: σ_λ_f$i only marks the
 # shock as on (> 0) or off (0); when on, the standard deviation is σ_λ_f (bugs doc §1.2)
@@ -31,11 +31,11 @@ ant_var(m, i, r) = ant_on(m, i, r) ? regime_value(m, :σ_λ_f, r)^2 : 0.0
 ant_qq(sys, m, i, r) = sys[r, :QQ][m.exogenous_shocks[Symbol("λ_f_ant_sh$i")], m.exogenous_shocks[Symbol("λ_f_ant_sh$i")]]
 
 @testset "ss104 (bugs doc §1.1): QQ holds variances for the anticipated mark-up shocks" begin
-    for r in 1:n_regimes, i in 1:get_setting(m, :add_ant_markup_shocks_ind)
+    for r in 1:n_regs, i in 1:get_setting(m, :add_ant_markup_shocks_ind)
         @test ant_qq(sys, m, i, r) ≈ ant_var(m, i, r) atol = 1e-15
     end
     # Same convention as the contemporaneous mark-up shock
-    for r in 1:n_regimes
+    for r in 1:n_regs
         @test sys[r, :QQ][exo[:λ_f_sh], exo[:λ_f_sh]] ≈ regime_value(m, :σ_λ_f, r)^2
     end
 end
@@ -44,7 +44,7 @@ end
     m2 = deepcopy(m)
     ModelConstructors.set_regime_val!(m2[:σ_λ_f], 1, 0.25)   # e.g. a posterior draw
     sys2 = compute_system(m2)
-    on_regs = [r for r in 1:n_regimes if ant_on(m2, 1, r)]
+    on_regs = [r for r in 1:n_regs if ant_on(m2, 1, r)]
     @test !isempty(on_regs)
     for r in on_regs
         @test regime_value(m2, :σ_λ_f, r) == 0.25
@@ -55,7 +55,7 @@ end
         m2[Symbol("σ_λ_f$i")].regimes[:value][r] = 0.
     end
     sys3 = compute_system(m2)
-    for r in 1:n_regimes, i in 1:2
+    for r in 1:n_regs, i in 1:2
         @test ant_qq(sys3, m2, i, r) == 0.
     end
 end
