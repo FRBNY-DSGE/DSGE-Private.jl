@@ -84,3 +84,26 @@ ant_on_dates(m, i) = sort([get_setting(m, :regime_dates)[r] for r in 1:get_setti
     # More shocks than ss104 defines on-regimes for is an error, not silently dead shocks
     @test_throws AssertionError build_ss104(extra = [Setting(:add_ant_markup_shocks_ind, 3)])
 end
+
+@testset "m1002 (bugs doc §1.6): the 2020:Q3 flexible-AIT regime is found when it is not regime 4" begin
+    m6 = deepcopy(m)
+    m6 <= Setting(:flexible_ait_policy_change_date, Date(2020, 9, 30))
+    rd = get_setting(m6, :regime_dates)
+    r_q3 = only([r for (r, d) in rd if d == Date(2020, 9, 30)])
+    @test DSGE.flexible_ait_policy_change_regime(m6) == r_q3
+
+    # Shift every regime after the first by one (as an extra early regime would): the lookup must
+    # follow the date. It used to assign the result to a misspelled variable and return 0.
+    shifted = Dict{Int, Date}(1 => rd[1])
+    for r in 2:get_setting(m6, :n_regimes)
+        shifted[r + 1] = rd[r]
+    end
+    shifted[2] = Date(1990, 3, 31)
+    m6 <= Setting(:regime_dates, shifted)
+    m6 <= Setting(:n_regimes, length(shifted))
+    @test DSGE.flexible_ait_policy_change_regime(m6) == r_q3 + 1
+
+    # No regime starts on the date: a clear AssertionError, not an UndefVarError
+    m6 <= Setting(:flexible_ait_policy_change_date, Date(2020, 8, 15))
+    @test_throws AssertionError DSGE.flexible_ait_policy_change_regime(m6)
+end

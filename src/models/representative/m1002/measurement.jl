@@ -1,5 +1,23 @@
 """
 ```
+flexible_ait_policy_change_regime(m::Model1002)
+```
+
+Index of the regime that starts on `:flexible_ait_policy_change_date` (2020:Q3). Throws an
+`AssertionError` if no regime starts on that date.
+"""
+function flexible_ait_policy_change_regime(m::Model1002)
+    regime_dates = get_setting(m, :regime_dates)
+    change_date  = get_setting(m, :flexible_ait_policy_change_date)
+    get(regime_dates, 4, nothing) == change_date && return 4
+    for i in 1:get_setting(m, :n_regimes)
+        regime_dates[i] == change_date && return i
+    end
+    @assert false "The setting :regime_dates does not contain the date 2020:Q3, which is required if the setting :flexible_ait_policy_change is true."
+end
+
+"""
+```
 measurement(m::Model1002{T}, TTT::Matrix{T}, RRR::Matrix{T},
     CCC::Vector{T}; reg::Int = 1) where {T<:AbstractFloat}
 ```
@@ -84,19 +102,7 @@ function measurement(m::Model1002{T},
     # before 2020:Q3, the measurement equation should reflect the belief that the "permanent" regime is the
     # regime before 2020:Q3 starts.
     if flex_ait_2020Q3
-        if get_setting(m, :regime_dates)[4] != get_setting(m, :flexible_ait_policy_change_date)
-            reg_2020Q3 = 0
-            for i in 1:get_setting(m, :n_regimes)
-                if get_setting(m, :regime_dates)[i] == get_setting(m, :flexible_ait_policy_change_date)
-                    reg_2020Q2 = i
-                    break
-                end
-            end
-            @assert reg_2020Q2 != 0 "The setting :regime_dates does not contain the date 2020:Q3, which is required if the setting :flexible_ait_policy_change is true."
-        else
-            reg_2020Q3 = 4
-        end
-
+        reg_2020Q3 = flexible_ait_policy_change_regime(m)
         permanent_t = reg < reg_2020Q3 ? reg_2020Q3 - 1 : permanent_t
     end
 
