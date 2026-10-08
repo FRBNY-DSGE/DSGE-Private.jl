@@ -532,7 +532,7 @@ for (k, v) in get_setting(m, :antshocks)
 
 if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
     for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
-        QQ[exo[Symbol("λ_f_ant_sh$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = m[Symbol("σ_λ_f$(i)")]
+        QQ[exo[Symbol("λ_f_ant_sh$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = m[Symbol("σ_λ_f$(i)")]^2
     end
 
 end

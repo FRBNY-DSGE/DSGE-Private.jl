@@ -150,6 +150,7 @@ my_tests = [
             "models/poolmodel/poolmodel",
             "models/representative/an_schorfheide/an_schorfheide",
             "models/representative/m1002/m1002",
+            "models/representative/m1002/ss104",
             "models/representative/m1010/m1010",
             "models/representative/m805/m805",
             "models/representative/m904/m904",
