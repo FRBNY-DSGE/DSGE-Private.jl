@@ -73,6 +73,7 @@ my_tests = [
             "data/simulate_data",
             "data/transformations",
             "data/util",
+            "decomp/decompose_forecast",
             "decomp/decomposition_periods",
             "decomp/io",
             "defaults",
