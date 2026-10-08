@@ -94,7 +94,7 @@ module DSGE
         logleveltopct_annualized_approx, loggrowthtopct_4q_approx, logleveltopct_4q_approx,
         parse_data_series, collect_data_transforms, reverse_transform,
         subtract_quarters, iterate_quarters,
-        simulate_data, simulate_observables, simulate_states, post_covid_data_mods!,
+        simulate_data, simulate_observables, simulate_states, post_covid_data_mods,
 
         # solve/
         gensys, solve, klein,

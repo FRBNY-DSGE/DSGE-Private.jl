@@ -31,11 +31,9 @@ function post_covid_data_mods(m, df, cond_type, fomc_dates; cm_ffr::DataFrame = 
         if !keep_Q1_spd
             df[1:end-1, exp_inds] .= missing
         else
-            q2_expected_ffr = expected_ffr #.- 1
-            q3_expected_ffr = expected_ffr
-            deleteat!(q2_expected_ffr, q2_expected_ffr .== 0)
-            q4_expected_ffr = expected_ffr #.+ 1
-            deleteat!(q4_expected_ffr, q4_expected_ffr .== 0)
+            # filter (not deleteat!) so the caller's `expected_ffr` is never mutated
+            q2_expected_ffr = Base.filter(!=(0), expected_ffr) #.- 1
+            q4_expected_ffr = Base.filter(!=(0), expected_ffr) #.+ 1
             # handle the missings
             for i in all_ffr_qs[findall(!in(expected_ffr), all_ffr_qs)]
                 df[end-1, Symbol("obs_exp_nominalrate$(i)")] = missing
@@ -62,34 +60,39 @@ function post_covid_data_mods(m, df, cond_type, fomc_dates; cm_ffr::DataFrame = 
         end
         rm_inds = findall(x -> ismissing(x) || x <= 0.033, Matrix(df[:,exp_inds]))
         for k in rm_inds
-            df[k[1],k[2]+minimum(exp_inds)-1] = missing
+            df[k[1], exp_inds[k[2]]] = missing # map back by column position, not by offset (columns need not be contiguous)
         end
     end
 
-    if spd_expect_data && fcast_date >= Date(2022,4,1) && cond_type == :none
+    # May 2022 market-expected FFR path, hard-coded for the 2022Q2 unconditional forecast only.
+    # Applying it to later forecasts would overwrite their own expected-rate data with 2022 values.
+    if spd_expect_data && Date(2022,4,1) <= fcast_date <= Date(2022,6,30) && cond_type == :none
         antffr_may = [0.19939,0.435,0.523,0.643,0.746,0.783]
-        for i in mon_ant_ait_shocks
+        for i in Base.filter(i -> i <= length(antffr_may), expected_ffr)
             df[end,"obs_exp_nominalrate$(i)"] = antffr_may[i]
         end
     end
 
     if spd_expect_data && add_22Q1_ffr && !isempty(cm_ffr)
         col_ind = 2 #it's 4 if using 220314.csv
-        exp_cm_vec = zeros(10)
+        exp_cm_vec = fill(NaN, 10) # only horizons 2, 3, 6 and 10 are filled below
         if false## Last day
             exp_cm_vec[2] = cm_ffr[findfirst(x -> x == "9/30/2022", cm_ffr[!,:Maturity]), col_ind]
             exp_cm_vec[6] = cm_ffr[findfirst(x -> x == "9/30/2023", cm_ffr[!,:Maturity]), col_ind]
             exp_cm_vec[10] = cm_ffr[findfirst(x -> x == "9/30/2024", cm_ffr[!,:Maturity]), col_ind]
         else ## Average
-            cm_ffr[!,:Maturity] .= Date.(cm_ffr[!,:Maturity], DateFormat("m/d/y"))
-            exp_cm_vec[2] = mean(skipmissing(cm_ffr[findall(x -> x <= Date(2022,9,30) && x >= Date(2022,7,1), cm_ffr[!,:Maturity]), col_ind]))
-            exp_cm_vec[3] = mean(skipmissing(cm_ffr[findall(x -> x > Date(2022,9,30) && x <= Date(2022,12,31), cm_ffr[!,:Maturity]), col_ind]))
-            exp_cm_vec[6] = mean(skipmissing(cm_ffr[findall(x -> x <= Date(2023,9,30) && x >= Date(2023,7,1), cm_ffr[!,:Maturity]), col_ind]))
-            exp_cm_vec[10] = mean(skipmissing(cm_ffr[findall(x -> x <= Date(2024,9,30) && x >= Date(2024,7,1), cm_ffr[!,:Maturity]), col_ind]))
+            # Parse into a local vector: assigning Dates into the caller's String column throws, and
+            # mutating cm_ffr would make a second call fail
+            maturity = [x isa Date ? x : Date(x, DateFormat("m/d/y")) for x in cm_ffr[!,:Maturity]]
+            exp_cm_vec[2] = mean(skipmissing(cm_ffr[findall(x -> x <= Date(2022,9,30) && x >= Date(2022,7,1), maturity), col_ind]))
+            exp_cm_vec[3] = mean(skipmissing(cm_ffr[findall(x -> x > Date(2022,9,30) && x <= Date(2022,12,31), maturity), col_ind]))
+            exp_cm_vec[6] = mean(skipmissing(cm_ffr[findall(x -> x <= Date(2023,9,30) && x >= Date(2023,7,1), maturity), col_ind]))
+            exp_cm_vec[10] = mean(skipmissing(cm_ffr[findall(x -> x <= Date(2024,9,30) && x >= Date(2024,7,1), maturity), col_ind]))
         end
 
         for i in expected_ffr
-            df[end, Symbol("obs_exp_nominalrate$(i)")] = exp_cm_vec[i] / 4.0
+            # Horizons without a futures value are set to missing instead of an expected rate of 0
+            df[end, Symbol("obs_exp_nominalrate$(i)")] = isnan(exp_cm_vec[i]) ? missing : exp_cm_vec[i] / 4.0
         end
     end
 
@@ -101,8 +104,10 @@ function post_covid_data_mods(m, df, cond_type, fomc_dates; cm_ffr::DataFrame = 
     df[!, :obs_ygap] .= NaN
 
     ind_init = findfirst(df[!, :date] .== pgap_ygap_init_date)
-    df[ind_init, :obs_pgap] = -0.125
-    df[ind_init, :obs_ygap] = -12.
+    if !isnothing(ind_init)
+        df[ind_init, :obs_pgap] = -0.125
+        df[ind_init, :obs_ygap] = -12.
+    end
 
     start_ind = findfirst(df[!, :date] .== start_zlb_date)
     if !isnothing(start_ind)

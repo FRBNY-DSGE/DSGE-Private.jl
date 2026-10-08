@@ -97,40 +97,66 @@ end
     @test DSGE.ss104_estimation(df) === df
 end
 
-####################
-# Known source bugs #
-####################
-# The following are flagged @test_broken: they document real defects in
-# src/data/manual_data_adjustments.jl. Each will flip to an "Unexpected Pass"
-# (erroring the testset) once the source is fixed, prompting these to be updated.
+#################################################
+# Regression tests for fixed bugs (bugs doc §1.11) #
+#################################################
 
-@testset "BUG: mon_ant_ait_shocks branch references an undefined global" begin
-    # When spd_expect_data && fcast_date >= 2022-04-01 && cond_type == :none, the
-    # function hits `for i in mon_ant_ait_shocks` (manual_data_adjustments.jl:61),
-    # but `mon_ant_ait_shocks` is defined nowhere in the source, so the call throws
-    # an UndefVarError. Likely meant to be a kwarg or `expected_ffr`.
-    @test_broken (DSGE.post_covid_data_mods(m, make_df(), :none, DataFrame();
-                                            fcast_date = Date(2022, 6, 1)); true)
+@testset "§1.11: the 2022Q2 market-expected FFR block runs, and only for 2022Q2" begin
+    # Used to throw UndefVarError (`mon_ant_ait_shocks` was defined nowhere).
+    out_q2 = DSGE.post_covid_data_mods(m, make_df(), :none, DataFrame(); fcast_date = Date(2022, 6, 1))
+    @test out_q2[end, "obs_exp_nominalrate1"] == 0.19939
+    @test out_q2[end, "obs_exp_nominalrate6"] == 0.783
+    # A later unconditional forecast must keep its own data, not the May 2022 values.
+    out_later = DSGE.post_covid_data_mods(m, make_df(), :none, DataFrame(); fcast_date = Date(2026, 9, 30))
+    for i in 1:N
+        @test out_later[end, "obs_exp_nominalrate$i"] == 0.5
+    end
 end
 
-@testset "BUG: pgap/ygap init date is not nothing-guarded" begin
-    # ind_init = findfirst(date == 2020-06-30) is used unguarded at line 94, unlike
-    # start_ind which is guarded with `if !isnothing(...)` at line 98. If the data
-    # doesn't contain 2020-06-30, ind_init is nothing and df[nothing, :obs_pgap]
-    # throws. Feed a frame whose presample start excludes the init date.
+@testset "§1.11: data without the pgap/ygap init date does not throw" begin
     mbug = AnSchorfheide()
     mbug <= Setting(:n_mon_anticipated_shocks, N)
     mbug <= Setting(:date_presample_start, Date(2020, 9, 30))   # drops 2020-06-30
-    @test_broken (DSGE.post_covid_data_mods(mbug, make_df(), :none, DataFrame();
-                                            fcast_date = Date(2021, 1, 1)); true)
+    out_bug = DSGE.post_covid_data_mods(mbug, make_df(), :none, DataFrame(); fcast_date = Date(2021, 1, 1))
+    @test all(isnan, out_bug[!, :obs_pgap])
+    @test all(isnan, out_bug[!, :obs_ygap])
 end
 
-@testset "BUG: exported name post_covid_data_mods! does not exist" begin
-    # DSGE.jl exports `post_covid_data_mods!` (with a bang), but the function is
-    # defined as `post_covid_data_mods` (no bang), so the exported binding is
-    # undefined.
-    @test isdefined(DSGE, :post_covid_data_mods)                      # the real one
-    @test_broken isdefined(DSGE, Symbol("post_covid_data_mods!"))     # the exported name
+@testset "§1.11: exported name matches the function" begin
+    @test isdefined(DSGE, :post_covid_data_mods)
+    @test :post_covid_data_mods in names(DSGE)
+    @test !(Symbol("post_covid_data_mods!") in names(DSGE))
+end
+
+@testset "§1.11: the caller's expected_ffr vector is not mutated" begin
+    exp_ffr = [0, 1, 2, 3, 4, 5, 6]
+    DSGE.post_covid_data_mods(m, make_df(), :none, DataFrame(); fcast_date = Date(2021, 1, 1),
+                              expected_ffr = exp_ffr)
+    @test exp_ffr == [0, 1, 2, 3, 4, 5, 6]
+end
+
+@testset "§1.11: expected-rate masking works when the columns are not contiguous" begin
+    df = make_df()
+    df[!, "obs_exp_nominalrate3"] = allowmissing(fill(0.01, nrow(df)))   # <= 0.033, must be masked
+    front = ["date", "obs_exp_nominalrate1", "obs_nominalrate"]   # exp1 now sits apart from exp2..exp6
+    df = select(df, front, Not(front))
+    out_nc = DSGE.post_covid_data_mods(m, df, :none, DataFrame(); fcast_date = Date(2021, 1, 1))
+    @test all(ismissing, out_nc[!, "obs_exp_nominalrate3"])
+    @test all(out_nc[end-2:end, "obs_exp_nominalrate1"] .== 0.5)
+    @test !any(ismissing, out_nc[!, :obs_nominalrate][1:3])               # a neighboring column is untouched
+end
+
+@testset "§1.11: add_22Q1_ffr leaves unfilled horizons missing instead of 0" begin
+    cm = DataFrame(:Maturity => ["8/15/2022", "11/15/2022", "8/15/2023", "8/15/2024"],
+                   :rate     => [1.0, 2.0, 3.0, 4.0])
+    out_cm = DSGE.post_covid_data_mods(m, make_df(), :full, DataFrame(); cm_ffr = cm, add_22Q1_ffr = true,
+                                       fcast_date = Date(2021, 1, 1))
+    @test out_cm[end, "obs_exp_nominalrate2"] == 0.25
+    @test out_cm[end, "obs_exp_nominalrate3"] == 0.5
+    @test out_cm[end, "obs_exp_nominalrate6"] == 0.75
+    for i in (1, 4, 5)
+        @test ismissing(out_cm[end, "obs_exp_nominalrate$i"])
+    end
 end
 
 ################
