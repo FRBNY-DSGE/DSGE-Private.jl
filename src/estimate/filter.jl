@@ -266,7 +266,8 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
 
         ### Save settings that need to change to forecast from add_zlb_duration[2]
         horizons = get_setting(m, :forecast_horizons)
-        orig_regime_eqcond_info = get_setting(m, :regime_eqcond_info)
+        # deepcopy: the loop below rewrites the entries in place, so a reference would "restore" the rewritten policies
+        orig_regime_eqcond_info = deepcopy(get_setting(m, :regime_eqcond_info))
         orig_temp_altpol_len = get_setting(m, :temporary_altpolicy_length)
         orig_reg_forecast_start = get_setting(m, :reg_forecast_start)
         orig_reg_post_conditional_end = get_setting(m, :reg_post_conditional_end)
@@ -279,75 +280,78 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
         orig_perf_cred = haskey(m.settings, :perfect_credibility_identical_transitions) ? get_setting(m, :perfect_credibility_identical_transitions) : nothing
         orig_iden_eqcond = haskey(m.settings, :identical_eqcond_regimes) ? get_setting(m, :identical_eqcond_regimes) : nothing
 
-        ### Reset settings for add_zlb_duration[2]
-        for a in collect(keys(get_setting(m, :regime_eqcond_info)))#zlb_ind+1:length(get_setting(m, :regime_eqcond_info))
-            #=if get_setting(m, :regime_eqcond_info)[a].alternative_policy in [DSGE.zlb_rule(), DSGE.zero_rate()]
-                get_setting(m, :temporary_altpolicy_length) += 1
-            end=#
-            if a >= zlb_ind ## = included b/c Great Recession ZLB adds 1 to regime_inds
-                # get_setting(m, :regime_eqcond_info)[a].weights = get_setting(m, :regime_eqcond_info)[zlb_ind].weights
-                get_setting(m, :regime_eqcond_info)[a].alternative_policy = DSGE.flexible_ait()
-                # get_setting(m, :regime_eqcond_info)[a].temporary_altpolicy_length = zlb_ind - 1
+        # Restore the settings in `finally`, so an error in the forecast below does not leave the model changed
+        implied_zlb_duration = try
+            ### Reset settings for add_zlb_duration[2]
+            for a in collect(keys(get_setting(m, :regime_eqcond_info)))#zlb_ind+1:length(get_setting(m, :regime_eqcond_info))
+                #=if get_setting(m, :regime_eqcond_info)[a].alternative_policy in [DSGE.zlb_rule(), DSGE.zero_rate()]
+                    get_setting(m, :temporary_altpolicy_length) += 1
+                end=#
+                if a >= zlb_ind ## = included b/c Great Recession ZLB adds 1 to regime_inds
+                    # get_setting(m, :regime_eqcond_info)[a].weights = get_setting(m, :regime_eqcond_info)[zlb_ind].weights
+                    get_setting(m, :regime_eqcond_info)[a].alternative_policy = DSGE.flexible_ait()
+                    # get_setting(m, :regime_eqcond_info)[a].temporary_altpolicy_length = zlb_ind - 1
+                end
+            end ## TODO: Change expectations? No, leave alternative_policies as is.
+            first_eqcond_key = sort(collect(keys(get_setting(m, :regime_eqcond_info))))[1]
+            m <= Setting(:temporary_altpolicy_length, max(0,zlb_ind - first_eqcond_key + 1)) ## subtract 1 implicitly for ZLB regime
+            m <= Setting(:reg_forecast_start, zlb_ind)
+            m <= Setting(:reg_post_conditional_end, zlb_ind)
+            m <= Setting(:n_fcast_regimes, get_setting(m, :n_regimes) - zlb_ind + 1)
+            m <= Setting(:n_hist_regimes, zlb_ind - 1)
+            if !isnothing(orig_min_temp_altpol_len)
+                m <= Setting(:min_temporary_altpolicy_length, 0)
             end
-        end ## TODO: Change expectations? No, leave alternative_policies as is.
-        first_eqcond_key = sort(collect(keys(get_setting(m, :regime_eqcond_info))))[1]
-        m <= Setting(:temporary_altpolicy_length, max(0,zlb_ind - first_eqcond_key + 1)) ## subtract 1 implicitly for ZLB regime
-        m <= Setting(:reg_forecast_start, zlb_ind)
-        m <= Setting(:reg_post_conditional_end, zlb_ind)
-        m <= Setting(:n_fcast_regimes, get_setting(m, :n_regimes) - zlb_ind + 1)
-        m <= Setting(:n_hist_regimes, zlb_ind - 1)
-        if !isnothing(orig_min_temp_altpol_len)
-            m <= Setting(:min_temporary_altpolicy_length, 0)
-        end
-        if !isnothing(orig_max_temp_altpol_len)
-            delete!(m.settings, :max_temporary_altpolicy_length)
-            # m <= Setting(:max_temporary_altpolicy_length, 30)
-        end
-        m <= Setting(:historical_temporary_altpolicy_length, max(0,zlb_ind - first_eqcond_key)) ## subtract 1 for ZLB regime
-        # m <= Setting(:cred_vary_until, get_setting(m, :n_regimes))
-        if !isnothing(orig_perf_cred)
-            delete!(m.settings, :perfect_credibility_identical_transitions)
-        end
-        if !isnothing(orig_iden_eqcond)
-            delete!(m.settings, :identical_eqcond_regimes)
-        end
+            if !isnothing(orig_max_temp_altpol_len)
+                delete!(m.settings, :max_temporary_altpolicy_length)
+                # m <= Setting(:max_temporary_altpolicy_length, 30)
+            end
+            m <= Setting(:historical_temporary_altpolicy_length, max(0,zlb_ind - first_eqcond_key)) ## subtract 1 for ZLB regime
+            # m <= Setting(:cred_vary_until, get_setting(m, :n_regimes))
+            if !isnothing(orig_perf_cred)
+                delete!(m.settings, :perfect_credibility_identical_transitions)
+            end
+            if !isnothing(orig_iden_eqcond)
+                delete!(m.settings, :identical_eqcond_regimes)
+            end
 
-        ## Actually get the implied ZLB duration
-        #@show [get_setting(m, :regime_eqcond_info)[i].alternative_policy.key for i in collect(keys(get_setting(m, :regime_eqcond_info)))]
-        _, fcast_obs, _ = forecast(m, zlb_st, zeros(length(zlb_st), horizons), zeros(length(m.observables), horizons),
-                 zeros(length(m.pseudo_observables), horizons), zeros(length(m.exogenous_shocks), horizons);
-                 cond_type = :none)
+            ## Actually get the implied ZLB duration
+            #@show [get_setting(m, :regime_eqcond_info)[i].alternative_policy.key for i in collect(keys(get_setting(m, :regime_eqcond_info)))]
+            _, fcast_obs, _ = forecast(m, zlb_st, zeros(length(zlb_st), horizons), zeros(length(m.observables), horizons),
+                     zeros(length(m.pseudo_observables), horizons), zeros(length(m.exogenous_shocks), horizons);
+                     cond_type = :none)
 
-        implied_zlb_duration = findfirst(x -> x > get_setting(m, :zlb_rule_value) / 4.0 + 1e-5, fcast_obs[m.observables[:obs_nominalrate],:]) - 1
-
-        ### Reset to original model settings
-        m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
-        m <= Setting(:reg_forecast_start, orig_reg_forecast_start)
-        m <= Setting(:reg_post_conditional_end, orig_reg_post_conditional_end)
-        m <= Setting(:n_fcast_regimes, orig_n_fcast_regimes)
-        m <= Setting(:n_hist_regimes, orig_n_hist_regimes)
-        m <= Setting(:temporary_altpolicy_length, orig_temp_altpol_len)
-        if !isnothing(orig_min_temp_altpol_len)
-            m <= Setting(:min_temporary_altpolicy_length, orig_min_temp_altpol_len)
-        end
-        if !isnothing(orig_max_temp_altpol_len)
-            m <= Setting(:max_temporary_altpolicy_length, orig_max_temp_altpol_len)
-        end
-        if isnothing(orig_hist_temp_altpol_len)
-            delete!(m.settings, :historical_temporary_altpolicy_length)
-        else
-            m <= Setting(:historical_temporary_altpolicy_length, orig_hist_temp_altpol_len)
-        end
-        if isnothing(orig_cred_vary_until)
-            delete!(m.settings, :cred_vary_until)
-        else
-            m <= Setting(:cred_vary_until, orig_cred_vary_until)
-        end
-        if !isnothing(orig_perf_cred)
-            m <= Setting(:perfect_credibility_identical_transitions, orig_perf_cred)
-        end
-        if !isnothing(orig_iden_eqcond)
-            m <= Setting(:identical_eqcond_regimes, orig_iden_eqcond)
+            findfirst(x -> x > get_setting(m, :zlb_rule_value) / 4.0 + 1e-5, fcast_obs[m.observables[:obs_nominalrate],:]) - 1
+        finally
+            ### Reset to original model settings
+            m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
+            m <= Setting(:reg_forecast_start, orig_reg_forecast_start)
+            m <= Setting(:reg_post_conditional_end, orig_reg_post_conditional_end)
+            m <= Setting(:n_fcast_regimes, orig_n_fcast_regimes)
+            m <= Setting(:n_hist_regimes, orig_n_hist_regimes)
+            m <= Setting(:temporary_altpolicy_length, orig_temp_altpol_len)
+            if !isnothing(orig_min_temp_altpol_len)
+                m <= Setting(:min_temporary_altpolicy_length, orig_min_temp_altpol_len)
+            end
+            if !isnothing(orig_max_temp_altpol_len)
+                m <= Setting(:max_temporary_altpolicy_length, orig_max_temp_altpol_len)
+            end
+            if isnothing(orig_hist_temp_altpol_len)
+                delete!(m.settings, :historical_temporary_altpolicy_length)
+            else
+                m <= Setting(:historical_temporary_altpolicy_length, orig_hist_temp_altpol_len)
+            end
+            if isnothing(orig_cred_vary_until)
+                delete!(m.settings, :cred_vary_until)
+            else
+                m <= Setting(:cred_vary_until, orig_cred_vary_until)
+            end
+            if !isnothing(orig_perf_cred)
+                m <= Setting(:perfect_credibility_identical_transitions, orig_perf_cred)
+            end
+            if !isnothing(orig_iden_eqcond)
+                m <= Setting(:identical_eqcond_regimes, orig_iden_eqcond)
+            end
         end
 
         # Compute loss for ZLB duration

@@ -1,4 +1,4 @@
-using DSGE, ModelConstructors, Test, Dates
+using DSGE, ModelConstructors, Test, Dates, DataFrames
 
 # Model1002 ss104, configured as the production forecast builds it (2026Q3 forecast,
 # two anticipated mark-up shocks switched on). No data or saved output is needed.
@@ -107,3 +107,34 @@ end
     m6 <= Setting(:flexible_ait_policy_change_date, Date(2020, 8, 15))
     @test_throws AssertionError DSGE.flexible_ait_policy_change_regime(m6)
 end
+
+@testset "ss104 (bugs doc §1.4): filter with add_zlb_duration leaves the model's policies unchanged" begin
+    m4 = deepcopy(m)
+    m4 <= Setting(:zlb_duration, 4)
+    policies(mm) = Dict(r => e.alternative_policy.key for (r, e) in get_setting(mm, :regime_eqcond_info))
+    settings_to_keep = [:reg_forecast_start, :reg_post_conditional_end, :n_fcast_regimes, :n_hist_regimes,
+                        :temporary_altpolicy_length]
+    before_pol = policies(m4)
+    before_set = Dict(k => get_setting(m4, k) for k in settings_to_keep)
+    @test any(!=(:flexible_ait), values(before_pol))   # otherwise the test could not see the bug
+
+    nT   = DSGE.subtract_quarters(date_forecast_start(m4), date_presample_start(m4))
+    data = fill(NaN, n_observables(m4), nT)   # all missing: the filter runs without singular-variance rows
+    t_zlb = DSGE.subtract_quarters(Date(2020, 12, 31), date_presample_start(m4)) + 1
+    # Whether or not the implied-duration forecast succeeds on this artificial data, the model's
+    # settings must be restored afterwards
+    # The settings are only changed once the filter has run, so the filter itself must succeed here
+    # or the test could not see the bug
+    kal = DSGE.filter(m4, data, sys; outputs = [:loglh, :filt])
+    @test size(kal[:s_filt], 2) == nT
+    try
+        DSGE.filter_likelihood(m4, data, sys; add_zlb_duration = (true, t_zlb))
+    catch e
+        @info "filter_likelihood threw after the filter (settings are still checked)" e
+    end
+    @test policies(m4) == before_pol
+    for k in settings_to_keep
+        @test get_setting(m4, k) == before_set[k]
+    end
+end
+
