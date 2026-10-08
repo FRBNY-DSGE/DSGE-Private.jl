@@ -531,8 +531,15 @@ for (k, v) in get_setting(m, :antshocks)
     end
 
 if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+    # With :ant_markup_σ_from_σ_λ_f (set by ss104), σ_λ_f$i only switches the shock on (> 0) or off (0)
+    # in this regime, and the standard deviation is the estimated σ_λ_f of this regime
+    σ_from_σ_λ_f = haskey(get_settings(m), :ant_markup_σ_from_σ_λ_f) && get_setting(m, :ant_markup_σ_from_σ_λ_f)
     for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
-        QQ[exo[Symbol("λ_f_ant_sh$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = m[Symbol("σ_λ_f$(i)")]^2
+        σ_ant = m[Symbol("σ_λ_f$(i)")].value
+        if σ_from_σ_λ_f
+            σ_ant = σ_ant > 0 ? m[:σ_λ_f].value : zero(σ_ant)
+        end
+        QQ[exo[Symbol("λ_f_ant_sh$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = σ_ant^2
     end
 
 end

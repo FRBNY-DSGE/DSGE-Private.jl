@@ -7084,6 +7084,10 @@ function ss104!(m)
             m2p_regs[24] = 2
         end
 
+        # σ_λ_f$(i) regime 1 = shock off, regime 2 = shock on. When on, the shock's standard deviation is
+        # the estimated σ_λ_f (measurement.jl reads it through :ant_markup_σ_from_σ_λ_f), so it follows
+        # the mode / posterior draws. The regime-2 value below only marks the shock as on.
+        m <= Setting(:ant_markup_σ_from_σ_λ_f, true)
         for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
             set_regime_val!(m[Symbol("σ_λ_f$(i)")], 1, 0.)
             set_regime_val!(m[Symbol("σ_λ_f$(i)")], 2, m[:σ_λ_f].value)
