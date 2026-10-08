@@ -7078,10 +7078,21 @@ function ss104!(m)
         m2p_regs = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
         #Turn on std deviation for anticipated markup shocks on in 2025 Q2 and 3. To be clear, this means that in 2025 Q2 and Q3, we anticipate 1 period ahead mkup shocks to hit in Q3 and Q4. Likewise, 2 period ahead mkup shocks to hit in Q4 and 2026 Q1.The goal of this was to include short run inflation expectations (and a structural shock to support it) given the tariff announcements and ensuing uncertainty that had yet to materialize in hard inflation data up to this point. This allowed the model to better capture the "stagflation"-like dynamics that were pervasive in narratives and judgemental forecasting models of low growth and high inflation.
 
-        if haskey(get_settings(m), :fix_ant_markup_shocks_0) && !get_setting(m, :fix_ant_markup_shocks_0)
-            #m2p_regs[22] = 2
-            m2p_regs[23] = 2
-            m2p_regs[24] = 2
+        @assert get_setting(m, :add_ant_markup_shocks_ind) <= 2 "ss104 only defines when the 1- and 2-quarter-ahead anticipated mark-up shocks are on; :add_ant_markup_shocks_ind = $(get_setting(m, :add_ant_markup_shocks_ind)) would add shocks that are never switched on"
+
+        # Look the regimes up by date, so they stay right if :regime_dates changes. If a date is not
+        # the start of a regime (e.g. a forecast origin before 2025), the shocks stay off there.
+        ant_markup_reg(d) = begin
+            regs = [r for (r, rd) in get_setting(m, :regime_dates) if rd == d]
+            isempty(regs) && @warn "ss104: no regime starts on $d, so the anticipated mark-up shocks are off then"
+            regs
+        end
+        ant_markup_on = haskey(get_settings(m), :fix_ant_markup_shocks_0) && !get_setting(m, :fix_ant_markup_shocks_0)
+        regs_2025Q2 = ant_markup_on ? ant_markup_reg(Date(2025, 6, 30)) : Int[]
+        regs_2025Q3 = ant_markup_on ? ant_markup_reg(Date(2025, 9, 30)) : Int[]
+
+        for r in vcat(regs_2025Q2, regs_2025Q3)
+            m2p_regs[r] = 2
         end
 
         # σ_λ_f$(i) regime 1 = shock off, regime 2 = shock on. When on, the shock's standard deviation is
@@ -7096,9 +7107,12 @@ function ss104!(m)
             set_regime_fixed!(m[Symbol("σ_λ_f$(i)")], 2, true) #For now, maybe we estimate in the future
         end
 
-        # mp_regs_aug = Set the second period ahead anticipated markup shock to 0 for regime 24 (2025Q3) - Short-term implementation -
+        # mp_regs_aug = Set the second period ahead anticipated markup shock to 0 for 2025Q3 - Short-term implementation -
+        # (on in 2025Q2 only, and only when the shocks are switched on at all)
         m2p_regs_aug = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
-        m2p_regs_aug[23] = 2
+        for r in regs_2025Q2
+            m2p_regs_aug[r] = 2
+        end
 
         m2p[:σ_λ_f1] = m2p_regs
         #m2p[:σ_λ_f2] = m2p_regs

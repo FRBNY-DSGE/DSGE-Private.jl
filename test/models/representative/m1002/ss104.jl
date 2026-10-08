@@ -59,3 +59,28 @@ end
         @test ant_qq(sys3, m2, i, r) == 0.
     end
 end
+
+# Dates of the model regimes in which anticipated mark-up shock i is on
+ant_on_dates(m, i) = sort([get_setting(m, :regime_dates)[r] for r in 1:get_setting(m, :n_regimes) if ant_on(m, i, r)])
+
+@testset "ss104 (bugs doc §1.3): anticipated mark-up regimes are found by date and switched as a pair" begin
+    # Production: 1-quarter-ahead shock on in 2025Q2-Q3, 2-quarter-ahead shock in 2025Q2 only
+    @test ant_on_dates(m, 1) == [Date(2025, 6, 30), Date(2025, 9, 30)]
+    @test ant_on_dates(m, 2) == [Date(2025, 6, 30)]
+
+    # A different forecast origin gives a different regime layout; the dates must not move
+    m_q2 = build_ss104(fcast_date = Date(2026, 6, 30))
+    @test ant_on_dates(m_q2, 1) == [Date(2025, 6, 30), Date(2025, 9, 30)]
+    @test ant_on_dates(m_q2, 2) == [Date(2025, 6, 30)]
+
+    # fix_ant_markup_shocks_0 = true switches both shocks off (σ_λ_f2 used to stay on in 2025Q2)
+    m_off = build_ss104(extra = [Setting(:fix_ant_markup_shocks_0, true)])
+    sys_off = compute_system(m_off)
+    for i in 1:2
+        @test isempty(ant_on_dates(m_off, i))
+        @test all(ant_qq(sys_off, m_off, i, r) == 0. for r in 1:get_setting(m_off, :n_regimes))
+    end
+
+    # More shocks than ss104 defines on-regimes for is an error, not silently dead shocks
+    @test_throws AssertionError build_ss104(extra = [Setting(:add_ant_markup_shocks_ind, 3)])
+end
