@@ -397,6 +397,9 @@ function forecast(m::AbstractDSGEModel, system::RegimeSwitchingSystem{S}, z0::Ve
                     end
 
                     # Subtract a small number to deal with numerical imprecision
+                    if interest_rate_forecast < zlb_value - 0.01
+                        @warn "ZLB enforcement missed the bound" interest_rate_forecast nonzero_ind ind_r_sh impacts = [Z[ind_r, :]' * R[:, k] for k in ind_r_sh] shock = ϵ_t[nonzero_ind] max_abs_state = maximum(abs.(z_t)) max_abs_prev_state = maximum(abs.(z_t1)) rate_before = getindex(D + Z*z_t_old, ind_r)
+                    end
                     @assert interest_rate_forecast >= zlb_value - 0.01 "interest_rate_forecast = $interest_rate_forecast must be >= zlb_value - 0.01 = $(zlb_value - 0.01)."
                 end
             end

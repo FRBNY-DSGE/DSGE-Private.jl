@@ -46,8 +46,18 @@ function post_covid_data_mods(m, df, cond_type, fomc_dates; cm_ffr::DataFrame = 
             for i in all_ffr_qs[findall(!in(q4_expected_ffr), all_ffr_qs)]
                 df[end-2, Symbol("obs_exp_nominalrate$(i)")] = missing
             end
-            for i in all_ffr_qs
-                df[1:end-3, Symbol("obs_exp_nominalrate$(i)")] .= missing
+            # By default only the last 3 rows are kept. That was written for the 2022Q3 forecast, when
+            # the last 3 rows were all the post-liftoff quarters, and drops the earlier quarters in
+            # later vintages. Setting :exp_ffr_data_start_date keeps the whole path from that date on.
+            if haskey(get_settings(m), :exp_ffr_data_start_date)
+                pre_start = df[!, :date] .< get_setting(m, :exp_ffr_data_start_date)
+                for i in all_ffr_qs
+                    df[pre_start, Symbol("obs_exp_nominalrate$(i)")] .= missing
+                end
+            else
+                for i in all_ffr_qs
+                    df[1:end-3, Symbol("obs_exp_nominalrate$(i)")] .= missing
+                end
             end
         end
         rm_inds = findall(x -> ismissing(x) || x <= 0.033, Matrix(df[:,exp_inds]))
