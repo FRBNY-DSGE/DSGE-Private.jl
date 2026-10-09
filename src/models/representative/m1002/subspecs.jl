@@ -7365,6 +7365,14 @@ expected_nominal_rates!(m)
 
 #Note we do not include any σ_meas_π, ρ_meas_π, etc
 
+# The model keeps the pgap/ygap states (:add_pgap/:add_ygap are on for subspecs >= 62), and eqcond
+# reads :pgap_type/:ygap_type for them. ss205 has no AIT rule, so these only set up the accumulation
+# equations. Defaults are those setup_flexait_tempzlb! applies in the ss205 forecast driver; a driver
+# or a later subspec (ss206, ss305) can still set its own.
+haskey(get_settings(m), :pgap_type)  || (m <= Setting(:pgap_type, :flexible_ait))
+haskey(get_settings(m), :pgap_value) || (m <= Setting(:pgap_value, 0.125))
+haskey(get_settings(m), :ygap_type)  || (m <= Setting(:ygap_type, :flexible_ait))
+haskey(get_settings(m), :ygap_value) || (m <= Setting(:ygap_value, 12.))
 
 
 end
