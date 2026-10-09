@@ -28,3 +28,18 @@ m205d = Model1002("ss205", custom_settings = ss205_driver_settings(Date(2025, 12
     # ss207 builds on ss205, so it solves now too
     @test compute_system(Model1002("ss207")) isa RegimeSwitchingSystem
 end
+
+@testset "ss205: parameter_groupings works without anticipated AIT shocks" begin
+    # mon_anticipated_ait_shocks returned `false` when unset; looping over it built :σ_ait_r_mfalse
+    @test isempty(DSGE.mon_anticipated_ait_shocks(m205))
+    for mm in (m205, m205d, Model1002("ss10"))
+        g = DSGE.parameter_groupings(mm)
+        keys_in_groups = vcat([[p.key for p in v] for v in values(g)]...)
+        @test !any(k -> occursin("false", string(k)), keys_in_groups)
+        @test :σ_r_m in keys_in_groups
+    end
+    # Models that do have them keep the list
+    m_ait = deepcopy(m205)
+    m_ait <= Setting(:mon_anticipated_ait_shocks, [1, 2])
+    @test DSGE.mon_anticipated_ait_shocks(m_ait) == [1, 2]
+end

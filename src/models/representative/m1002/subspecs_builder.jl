@@ -681,7 +681,7 @@ function rm_iid_pce_meas_err!(m::AbstractDSGEModel)
 end
 
 function expected_nominal_rates!(m::AbstractDSGEModel; irf_reg::Integer = Dict(map(reverse, collect(get_setting(m, :regime_dates))))[date_forecast_start(m)])
-    if mon_anticipated_ait_shocks(m) != false
+    if !isempty(mon_anticipated_ait_shocks(m))
         for i in mon_anticipated_ait_shocks(m) ## AIT expected FFR
             symb_i = Symbol("σ_ait_r_m$(i)")
             get_setting(m, :model2para_regime)[symb_i] = Dict(1 => 1)

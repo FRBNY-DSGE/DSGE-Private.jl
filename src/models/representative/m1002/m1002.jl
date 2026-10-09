@@ -1365,7 +1365,8 @@ function parameter_groupings(m::Model1002)
     if subspec_num >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
         push!(error, :ρ_meas_π, :σ_meas_π)
     end
-    if subspec_num >= 100 && subspec_num != 104
+    # AIT rule parameters, when the model has them (ss205-ss207 have no AIT rule)
+    if subspec_num >= 100 && subspec_num != 104 && all(k -> haskey(m.keys, k), (:φ_π, :φ_y, :ρ_smooth))
         push!(policy, :φ_π, :φ_y, :ρ_smooth)
     end
     if haskey(get_settings(m), :add_ait_rm) && get_setting(m, :add_ait_rm)
