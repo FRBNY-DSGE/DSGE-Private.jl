@@ -7360,8 +7360,9 @@ ModelConstructors.toggle_regime!(m.parameters, 1) # ensure that regimes are togg
 
 
 #FFR:
-#Note, this does nothing! Need AIT for this
-expected_nominal_rates!(m)
+# No AIT, so the Taylor-rule policy shocks stay on after the 2022Q1 liftoff (by default this function
+# switches them off then, for the AIT subspecs). Same as the hand fix in the 2026 ss205 forecast driver.
+expected_nominal_rates!(m; taylor_shocks_after_liftoff = true)
 
 #Note we do not include any σ_meas_π, ρ_meas_π, etc
 

@@ -680,7 +680,19 @@ function rm_iid_pce_meas_err!(m::AbstractDSGEModel)
     set_regime_val!(m[:σ_corepce], 2, 0.0)
 end
 
-function expected_nominal_rates!(m::AbstractDSGEModel; irf_reg::Integer = Dict(map(reverse, collect(get_setting(m, :regime_dates))))[date_forecast_start(m)])
+"""
+```
+expected_nominal_rates!(m; irf_reg, taylor_shocks_after_liftoff = false)
+```
+
+Regime set-up for the policy shocks and expected-FFR measurement errors. By default (AIT models such as
+ss97/ss104) the Taylor-rule shocks σ_r_m and σ_r_m\$i are switched off from regime 10 (2022Q1, liftoff)
+on, when the AIT shocks take over. Models without AIT (ss205 and the subspecs built on it) pass
+`taylor_shocks_after_liftoff = true` to keep the Taylor-rule shocks (parameter regime 1) in every
+regime. The regime-2 entries still exist (fixed at 0), so the parameter vector layout is the same.
+"""
+function expected_nominal_rates!(m::AbstractDSGEModel; irf_reg::Integer = Dict(map(reverse, collect(get_setting(m, :regime_dates))))[date_forecast_start(m)],
+                                 taylor_shocks_after_liftoff::Bool = false)
     if !isempty(mon_anticipated_ait_shocks(m))
         for i in mon_anticipated_ait_shocks(m) ## AIT expected FFR
             symb_i = Symbol("σ_ait_r_m$(i)")
@@ -709,7 +721,7 @@ function expected_nominal_rates!(m::AbstractDSGEModel; irf_reg::Integer = Dict(m
         if symb_i in [m.parameters[j].key for j in 1:length(m.parameters)] && !m[symb_i].fixed
             get_setting(m, :model2para_regime)[symb_i] = Dict(1 => 1)
             for j in 1:irf_reg
-                if j < 10
+                if j < 10 || taylor_shocks_after_liftoff
                     get_setting(m, :model2para_regime)[symb_i][j] = 1
                 else
                     get_setting(m, :model2para_regime)[symb_i][j] = 2
@@ -753,7 +765,7 @@ function expected_nominal_rates!(m::AbstractDSGEModel; irf_reg::Integer = Dict(m
         get_setting(m, :model2para_regime)[:σ_r_m][i] = 1
     end
     for i in 10:irf_reg
-        get_setting(m, :model2para_regime)[:σ_r_m][i] = 2
+        get_setting(m, :model2para_regime)[:σ_r_m][i] = taylor_shocks_after_liftoff ? 1 : 2
     end
     set_regime_valuebounds!(m[:σ_r_m], 1, m[:σ_r_m].valuebounds)
     set_regime_valuebounds!(m[:σ_r_m], 2, m[:σ_r_m].valuebounds)

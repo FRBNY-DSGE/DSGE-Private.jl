@@ -43,3 +43,29 @@ end
     m_ait <= Setting(:mon_anticipated_ait_shocks, [1, 2])
     @test DSGE.mon_anticipated_ait_shocks(m_ait) == [1, 2]
 end
+
+@testset "ss205: Taylor-rule policy shocks stay on after the 2022Q1 liftoff (no AIT)" begin
+    for mm in (m205, m205d)
+        m2p = get_setting(mm, :model2para_regime)
+        nreg = get_setting(mm, :n_regimes)
+        taylor = [:σ_r_m; [Symbol("σ_r_m$i") for i in 1:n_mon_anticipated_shocks(mm) if !mm[Symbol("σ_r_m$i")].fixed]]
+        for k in taylor
+            # Used to map regimes >= 10 (2022Q1 on) to a parameter regime fixed at 0
+            @test all(m2p[k][r] == 1 for r in 1:nreg)
+        end
+        sys = compute_system(mm)
+        rm = mm.exogenous_shocks[:rm_sh]
+        @test all(sys[r, :QQ][rm, rm] ≈ mm[:σ_r_m].regimes[:value][1]^2 for r in 10:nreg)
+        rm1 = mm.exogenous_shocks[:rm_shl1]
+        @test all(sys[r, :QQ][rm1, rm1] > 0 for r in 10:nreg)
+    end
+    # The parameter vector layout is unchanged (the 2026 ss205 estimate loads)
+    @test ModelConstructors.n_parameters_regime_switching(m205d.parameters) == 158
+    # AIT subspecs keep switching the Taylor shocks off at liftoff
+    m104 = Model1002("ss104", custom_settings = [Setting(:date_forecast_start, Date(2026, 9, 30)),
+                                                 Setting(:date_conditional_end, Date(2026, 9, 30)),
+                                                 Setting(:add_ant_markup_shocks_ind, 2),
+                                                 Setting(:fix_ant_markup_shocks_0, false),
+                                                 Setting(:add_avgshortinfl, true)])
+    @test all(get_setting(m104, :model2para_regime)[:σ_r_m][r] == 2 for r in 10:get_setting(m104, :cur_model_regime))
+end
