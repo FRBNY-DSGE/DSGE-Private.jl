@@ -473,6 +473,14 @@ function isvalid_data(m::AbstractDSGEModel, df::DataFrame; cond_type::Symbol = :
         println(datesdiff)
     end
 
+    # Each quarter appears once. A repeated date (e.g. the conditional quarter stored twice) passes the
+    # check above but shifts the history/forecast split in the smoother and forecast.
+    repeated_dates = sort([d for d in unique(actual_dates) if count(==(d), actual_dates) > 1])
+    valid = valid && isempty(repeated_dates)
+    if !isempty(repeated_dates)
+        println("Dates of 'df' are repeated: ", repeated_dates)
+    end
+
     # Ensure that no series is all missing or NaNs
     if check_empty_columns
         empty_cols = Vector{String}(undef,0)

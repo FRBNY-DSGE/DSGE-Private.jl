@@ -1,4 +1,4 @@
-using DSGE, ModelConstructors, Test, Dates
+using DSGE, ModelConstructors, Test, Dates, DataFrames
 
 # Model1002 ss205 (no AIT), built from the subspec alone and with the settings the 2026 ss205
 # forecast driver passes (2025Q4 forecast). No data or saved output is needed.
@@ -68,4 +68,17 @@ end
                                                  Setting(:fix_ant_markup_shocks_0, false),
                                                  Setting(:add_avgshortinfl, true)])
     @test all(get_setting(m104, :model2para_regime)[:σ_r_m][r] == 2 for r in 10:get_setting(m104, :cur_model_regime))
+end
+
+@testset "load_data: a cached dataset with repeated dates is rejected" begin
+    # The cached 260113 dataset had 2025Q4 four times; the check passed it, and the smoother and
+    # forecast then treated the extra rows as conditional periods (43 forecast columns for 40 dates)
+    dates = DSGE.get_quarter_ends(date_presample_start(m205d), date_conditional_end(m205d))
+    df_ok = DataFrame(:date => dates)
+    for k in keys(m205d.observable_mappings)
+        df_ok[!, k] = zeros(length(dates))
+    end
+    @test DSGE.isvalid_data(m205d, df_ok; cond_type = :full, check_empty_columns = false)
+    df_dup = vcat(df_ok, df_ok[end:end, :], df_ok[end:end, :])
+    @test !DSGE.isvalid_data(m205d, df_dup; cond_type = :full, check_empty_columns = false)
 end
