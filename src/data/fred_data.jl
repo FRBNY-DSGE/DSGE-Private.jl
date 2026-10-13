@@ -12,6 +12,7 @@ package. The full dataset is written to the appropriate data vintage file and re
 - `m::AbstractDSGEModel`: the model object
 - `start_date`: starting date.
 - `end_date`: ending date.
+- `mnemonics`: series to load. Defaults to the model's `__FRED` series.
 
 # Notes
 
@@ -21,10 +22,13 @@ returns data indexed by quarter-end date for compatibility with other datasets.
 function load_fred_data(m::AbstractDSGEModel;
                         start_date::Dates.Date = Dates.Date("1959-01-01", "y-m-d"),
                         end_date::Dates.Date   = prev_quarter(),
-                        verbose::Symbol  = :low)
+                        verbose::Symbol  = :low,
+                        mnemonics::Union{Nothing, Vector{Symbol}} = nothing)
 
     data_series = parse_data_series(m)
-    if haskey(data_series, :FRED)
+    if !isnothing(mnemonics)
+        # Caller chose the series (e.g. Haver series loaded from FRED when haver_<vint>.csv is missing)
+    elseif haskey(data_series, :FRED)
         mnemonics = data_series[:FRED]
     else
         # Then no FRED data used, return DataFrame with dates
