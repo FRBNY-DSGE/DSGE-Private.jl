@@ -68,7 +68,7 @@ function post_covid_data_mods(m, df, cond_type, fomc_dates; cm_ffr::DataFrame = 
     # Applying it to later forecasts would overwrite their own expected-rate data with 2022 values.
     if spd_expect_data && Date(2022,4,1) <= fcast_date <= Date(2022,6,30) && cond_type == :none
         antffr_may = [0.19939,0.435,0.523,0.643,0.746,0.783]
-        for i in Base.filter(i -> i <= length(antffr_may), expected_ffr)
+        for i in Base.filter(i -> 1 <= i <= length(antffr_may), expected_ffr)   # 0 (current quarter) has no entry
             df[end,"obs_exp_nominalrate$(i)"] = antffr_may[i]
         end
     end
@@ -90,7 +90,7 @@ function post_covid_data_mods(m, df, cond_type, fomc_dates; cm_ffr::DataFrame = 
             exp_cm_vec[10] = mean(skipmissing(cm_ffr[findall(x -> x <= Date(2024,9,30) && x >= Date(2024,7,1), maturity), col_ind]))
         end
 
-        for i in expected_ffr
+        for i in Base.filter(!=(0), expected_ffr)   # 0 (current quarter) has no futures horizon
             # Horizons without a futures value are set to missing instead of an expected rate of 0
             df[end, Symbol("obs_exp_nominalrate$(i)")] = isnan(exp_cm_vec[i]) ? missing : exp_cm_vec[i] / 4.0
         end

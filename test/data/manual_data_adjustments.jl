@@ -159,6 +159,21 @@ end
     end
 end
 
+@testset "§1.11: an expected_ffr that includes 0 (current quarter) is accepted" begin
+    # Before the §1.11 fix the alias-and-deleteat! dropped the 0 from the caller's vector; once the caller's
+    # vector was left alone, both expected-rate blocks indexed position 0 (BoundsError)
+    exp0 = [0, 1, 2, 3, 4, 5, 6]
+    cm = DataFrame(:Maturity => ["8/15/2022", "11/15/2022", "8/15/2023", "8/15/2024"],
+                   :rate     => [1.0, 2.0, 3.0, 4.0])
+    out_cm0 = DSGE.post_covid_data_mods(m, make_df(), :full, DataFrame(); cm_ffr = cm, add_22Q1_ffr = true,
+                                        fcast_date = Date(2021, 1, 1), expected_ffr = exp0)
+    @test out_cm0[end, "obs_exp_nominalrate2"] == 0.25
+    out_q2_0 = DSGE.post_covid_data_mods(m, make_df(), :none, DataFrame(); fcast_date = Date(2022, 6, 1),
+                                         expected_ffr = exp0)
+    @test out_q2_0[end, "obs_exp_nominalrate1"] == 0.19939
+    @test exp0 == [0, 1, 2, 3, 4, 5, 6]
+end
+
 ################
 # Benchmarking #
 ################
