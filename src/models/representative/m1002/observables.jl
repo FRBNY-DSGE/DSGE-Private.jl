@@ -253,9 +253,10 @@ function init_observable_mappings!(m::Model1002)
         #       Bank of America (BAMLC8A0C15PYEY).
         # Update (Oct 2026): levels now come from Haver (haver_<vint>.csv). FRED only
         #       serves 3 years of BAMLC8A0C15PYEY, so it is pulled from Haver's
-        #       FMLCU@USECON (same index; full history from 1997). BAA is Haver's
-        #       FBAA@USECON, which is discontinued after 2016Q3 -- fine, since BAA is
-        #       only used before the splice date.
+        #       FMLCU@USECON (same index; full history from 1997). In a fresh Haver
+        #       pull BAA is FBAA@USECON, which ends in 2016Q3; files backfilled from a
+        #       FRED pull (backfill_haver_from_fred) keep FRED's BAA. Either is fine,
+        #       since BAA is only used before the splice date.
 
         splice_date   = quartertodate("2016-Q4") # quarter at which we start using new series
         old_series    = levels[levels[!,:date] .<  splice_date, :BAA]

@@ -119,7 +119,10 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
                            check_empty_columns = check_empty_columns)
 
         # check that dataset is valid
-        isvalid_data(m, df; check_empty_columns = check_empty_columns)
+        isvalid_data(m, df; cond_type = cond_type, check_empty_columns = check_empty_columns)
+
+        # Stop on gaps/stale series in the core observables (before anything is saved)
+        allow_data_gaps(m) || check_data(m, df)
 
         if !m.testing
             save_data(m, df; cond_type=cond_type)
@@ -259,10 +262,22 @@ function load_data_levels(m::AbstractDSGEModel; verbose::Symbol=:low,
         file = inpath(m, "raw", "$(lowercase(string(source)))_$vint.csv")
 
         # Haver levels replaced the FRED pull (Oct 2026) and use the same column names.
-        # Vintages created before then only have fred_<vint>.csv, so fall back to it.
-        if source == :HAVER && !isfile(file) && isfile(inpath(m, "raw", "fred_$vint.csv"))
+        # Without haver_<vint>.csv (older and realtime vintages), load the same series the
+        # old way: fred_<vint>.csv, or the FRED/ALFRED API at this vintage. FRED's
+        # BAMLC8A0C15PYEY only has 3 years of history from Apr 2026 on, so those vintages
+        # fail the gap check below; make haver_<vint>.csv with backfill_haver_from_fred
+        # (proc/data/data_automation/pull_haver_levels.jl).
+        #= if source == :HAVER && !isfile(file) && isfile(inpath(m, "raw", "fred_$vint.csv"))
             @warn "$file not found; using $(inpath(m, "raw", "fred_$vint.csv")) instead"
             file = inpath(m, "raw", "fred_$vint.csv")
+        end =#
+        if source == :HAVER && !isfile(file)
+            @warn "$file not found; loading the Haver series from fred_$vint.csv / the FRED API instead"
+            addl_data = load_fred_data(m; start_date = firstdayofquarter(start_date),
+                                       end_date = end_date, verbose = verbose, mnemonics = mnemonics)
+            df = isdefined(DataFrames, :outerjoin) ? outerjoin(df, addl_data, on = :date) :
+                join(df, addl_data, on = :date, kind = :outer)
+            continue
         end
 
         if isfile(file)
@@ -522,11 +537,17 @@ function isvalid_data(m::AbstractDSGEModel, df::DataFrame; cond_type::Symbol = :
     for (col, gap_dates) in observable_gaps(m, df)
         @warn "df[$col] has $(length(gap_dates)) NaN/missing values inside its sample " *
             "($(gap_dates[1]) to $(gap_dates[end])). Check the raw data."
+        valid = valid && allow_data_gaps(m)
     end
 
 
     return valid
 end
+
+# `true` lets load_data return/cache data with gaps in CORE_OBSERVABLES (e.g. to rerun
+# an old forecast on its original data). Off unless the :allow_data_gaps setting is set.
+allow_data_gaps(m::AbstractDSGEModel) =
+    haskey(m.settings, :allow_data_gaps) && get_setting(m, :allow_data_gaps)
 
 # Observables that should have no gaps inside their sample. Others (obs_longinflation,
 # obs_nominalrate1-6, obs_exp_nominalrate1-6, ...) have gaps by construction.
@@ -542,10 +563,12 @@ observable_gaps(m, df; observables = CORE_OBSERVABLES)
 Return an `OrderedDict` mapping each of `observables` (that is in both `m` and `df`) with
 NaN/missing values strictly inside its sample (between its first and last observed
 values) to the dates of those gaps. Leading NaNs (series starting late) and trailing
-NaNs (publication lags, conditional rows) are not gaps.
+NaNs (publication lags) are not gaps. Rows after `date_mainsample_end(m)` (conditional
+data) are ignored.
 """
 function observable_gaps(m::AbstractDSGEModel, df::DataFrame; observables = CORE_OBSERVABLES)
     gaps = OrderedDict{Symbol, Vector{Date}}()
+    df   = df[Date.(df[!, :date]) .<= date_mainsample_end(m), :]
     for col in intersect(observables, collect(keys(m.observable_mappings)), propertynames(df))
         is_obs  = map(x -> !ismissing(x) && !isnan(x), df[!, col])
         obs_ind = findall(is_obs)
@@ -566,11 +589,13 @@ Throw an error if the loaded data look wrong for estimation/forecasting:
 - any of `observables` is all NaN/missing, or
 - any of `observables` ends more than `max_lag_quarters` quarters before
   `date_mainsample_end(m)` (a stale or truncated series).
-Returns `true` if all checks pass.
+Returns `true` if all checks pass. Only main-sample rows are checked. `load_data` calls
+this on every dataset it builds unless the `:allow_data_gaps` setting is `true`.
 """
 function check_data(m::AbstractDSGEModel, df::DataFrame; observables = CORE_OBSERVABLES,
                     max_lag_quarters::Int = 1)
     errs    = String[]
+    df      = df[Date.(df[!, :date]) .<= date_mainsample_end(m), :]
     dates   = Date.(df[!, :date])
     min_end = date_mainsample_end(m) - Dates.Month(3 * max_lag_quarters)
     min_end = lastdayofquarter(min_end)
