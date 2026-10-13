@@ -181,3 +181,29 @@ end
     Ψ[3] = zeros(3, 1)
     @test DSGE.zlb_eqcond_time_varying(Γ[[1, 1, 1, 1]], Γ[[2, 2, 2, 2]], C, Ψ, Π, 2:4)
 end
+
+@testset "ss104: avg. short-run inflation expectations use the final regime as permanent, not regime 29" begin
+    # The econometrician's view of E_t[π_{t+1} + π_{t+2}] took regime 29 as permanent. That only bites in
+    # a regime t >= 28 whose information set looks ahead (ss104's single-regime sets there hide it), in a
+    # forecast with more than 29 regimes. Build that case: 2027Q4 (33 regimes), regime 28 looking ahead
+    # to the end, and a transition that changes from regime 30 on (ρ_λ_f; eqcond only switches
+    # parameters with more than two regime values)
+    fd = Date(2027, 12, 31)
+    m_a, m_b = build_ss104(fcast_date = fd), build_ss104(fcast_date = fd)
+    nr = get_setting(m_b, :n_regimes)
+    @test nr > 30
+    for mm in (m_a, m_b)
+        get_setting(mm, :tvis_information_set)[28] = 28:nr
+    end
+    for (i, v) in enumerate((m_b[:ρ_λ_f].value, m_b[:ρ_λ_f].value, 0.1))
+        ModelConstructors.set_regime_val!(m_b[:ρ_λ_f], i, v)
+    end
+    get_setting(m_b, :model2para_regime)[:ρ_λ_f] = Dict(r => (r >= 30 ? 3 : 1) for r in 1:nr)
+    sys_a, sys_b = compute_system(m_a; tvis = true), compute_system(m_b; tvis = true)   # as forecasts compute it
+    o = m_a.observables[:obs_avgshortinflation]
+    Δzz(r) = maximum(abs, sys_a[r, :ZZ][o, :] - sys_b[r, :ZZ][o, :])
+    @test maximum(abs, sys_a[29, :TTT] - sys_b[29, :TTT]) == 0
+    @test maximum(abs, sys_a[30, :TTT] - sys_b[30, :TTT]) > 1
+    @test Δzz(27) == 0          # needs regimes 28–29 only
+    @test Δzz(28) > 1e-3        # needs regime 30, which a permanent regime 29 replaced with regime 29
+end
