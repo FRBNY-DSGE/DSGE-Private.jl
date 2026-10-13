@@ -69,6 +69,18 @@ end
     end
 end
 
+@testset "post_covid_data_mods keeps the expected-rate path from :exp_ffr_data_start_date" begin
+    m3 = AnSchorfheide()
+    m3 <= Setting(:n_mon_anticipated_shocks, N)
+    m3 <= Setting(:date_presample_start, Date(2019, 12, 31))
+    m3 <= Setting(:exp_ffr_data_start_date, Date(2021, 3, 31))
+    out3 = DSGE.post_covid_data_mods(m3, make_df(), :none, DataFrame(); fcast_date = Date(2021, 1, 1))
+    for i in 1:N
+        @test all(ismissing, out3[out3[!, :date] .< Date(2021, 3, 31), "obs_exp_nominalrate$i"])
+        @test all(out3[out3[!, :date] .>= Date(2021, 3, 31), "obs_exp_nominalrate$i"] .== 0.5)
+    end
+end
+
 @testset "post_covid_data_mods drops out-of-sample (pre-presample) rows" begin
     m2 = AnSchorfheide()
     m2 <= Setting(:n_mon_anticipated_shocks, N)
