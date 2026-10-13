@@ -158,3 +158,26 @@ end
         @test withfilt[2] ≈ base[2]   # smoothed shocks
     end
 end
+
+@testset "ss104: no Taylor-rule policy shock from :remove_rm_t_shocks on (regimes 8–9 too)" begin
+    # eqcond switches rm_sh off from :remove_rm_t_shocks (2021Q3). The uncertain-ZLB solve used to
+    # take one ZLB regime's equilibrium conditions for all of them, and measurement kept σ_r_m² until
+    # :ait_liftoff_regime, so 2021Q3–Q4 had a live policy shock
+    endo = m.endogenous_states
+    cut  = get_setting(m, :remove_rm_t_shocks)
+    @test cut < get_setting(m, :ait_liftoff_regime)        # the case that broke: the switch is inside the ZLB
+    for r in 1:n_regs
+        if r >= cut
+            @test sys[r, :QQ][exo[:rm_sh], exo[:rm_sh]] == 0
+            @test maximum(abs, sys[r, :RRR][:, exo[:rm_sh]]) < 1e-12
+        else
+            @test sys[r, :QQ][exo[:rm_sh], exo[:rm_sh]] ≈ regime_value(m, :σ_r_m, r)^2
+            @test sys[r, :RRR][endo[:rm_t], exo[:rm_sh]] ≈ 1 atol = 1e-10
+        end
+    end
+    # Equilibrium conditions that don't change over the ZLB keep using a single regime's
+    Γ = [rand(3, 3) for _ in 1:4]; C = [zeros(3) for _ in 1:4]; Ψ = [ones(3, 1) for _ in 1:4]; Π = [ones(3, 1) for _ in 1:4]
+    @test !DSGE.zlb_eqcond_time_varying(Γ[[1, 1, 1, 1]], Γ[[2, 2, 2, 2]], C, Ψ, Π, 2:4)
+    Ψ[3] = zeros(3, 1)
+    @test DSGE.zlb_eqcond_time_varying(Γ[[1, 1, 1, 1]], Γ[[2, 2, 2, 2]], C, Ψ, Π, 2:4)
+end

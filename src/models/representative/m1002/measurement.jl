@@ -389,6 +389,11 @@ if (haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_e
 else
     QQ[exo[:rm_sh], exo[:rm_sh]]           = m[:σ_r_m]^2
 end
+# eqcond switches the policy shock off from :remove_rm_t_shocks on (Ψ[eq_rm, rm_sh] = 0); its variance
+# has to be off from the same regime, or the shock stays live where the model has none
+if haskey(m.settings, :remove_rm_t_shocks) && reg >= get_setting(m, :remove_rm_t_shocks)
+    QQ[exo[:rm_sh], exo[:rm_sh]]           = 0.
+end
     QQ[exo[:σ_ω_sh], exo[:σ_ω_sh]]         = m[:σ_σ_ω]^2
     QQ[exo[:μ_e_sh], exo[:μ_e_sh]]         = m[:σ_μ_e]^2
     QQ[exo[:γ_sh], exo[:γ_sh]]             = m[:σ_γ]^2
