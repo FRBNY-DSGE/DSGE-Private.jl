@@ -1237,6 +1237,10 @@ function model_settings!(m::Model1002)
 
     default_settings!(m)
 
+    # Levels data (incl. population) come from Haver, read from haver_<vint>.csv
+    m <= Setting(:population_mnemonic, Nullable(:CNP16OV__HAVER),
+                 "Mnemonic of data series for computing per-capita values (a Nullable{Symbol})")
+
     # Anticipated shocks
 
     m <= Setting(:n_mon_anticipated_shocks, 6,

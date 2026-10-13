@@ -258,6 +258,13 @@ function load_data_levels(m::AbstractDSGEModel; verbose::Symbol=:low,
         # Read and merge data from this source
         file = inpath(m, "raw", "$(lowercase(string(source)))_$vint.csv")
 
+        # Haver levels replaced the FRED pull (Oct 2026) and use the same column names.
+        # Vintages created before then only have fred_<vint>.csv, so fall back to it.
+        if source == :HAVER && !isfile(file) && isfile(inpath(m, "raw", "fred_$vint.csv"))
+            @warn "$file not found; using $(inpath(m, "raw", "fred_$vint.csv")) instead"
+            file = inpath(m, "raw", "fred_$vint.csv")
+        end
+
         if isfile(file)
             println(verbose, :low, "Reading data from $file...")
 
@@ -500,8 +507,90 @@ function isvalid_data(m::AbstractDSGEModel, df::DataFrame; cond_type::Symbol = :
         end
     end
 
+    # Warn about gaps strictly inside a series (NaNs/missings between its first and last
+    # observed values). Trailing NaNs from publication lags are not flagged.
+    #= for col in intersect(m_series, df_series)
+        is_obs  = map(x -> !ismissing(x) && !isnan(x), df[!, col])
+        obs_ind = findall(is_obs)
+        isempty(obs_ind) && continue
+        gap_ind = findall(.!is_obs[obs_ind[1]:obs_ind[end]]) .+ (obs_ind[1] - 1)
+        if !isempty(gap_ind)
+            @warn "df[$col] has $(length(gap_ind)) NaN/missing values inside its sample " *
+                "($(df[gap_ind[1], :date]) to $(df[gap_ind[end], :date])). Check the raw data."
+        end
+    end =#
+    for (col, gap_dates) in observable_gaps(m, df)
+        @warn "df[$col] has $(length(gap_dates)) NaN/missing values inside its sample " *
+            "($(gap_dates[1]) to $(gap_dates[end])). Check the raw data."
+    end
+
 
     return valid
+end
+
+# Observables that should have no gaps inside their sample. Others (obs_longinflation,
+# obs_nominalrate1-6, obs_exp_nominalrate1-6, ...) have gaps by construction.
+const CORE_OBSERVABLES = [:obs_gdp, :obs_hours, :obs_wages, :obs_gdpdeflator, :obs_corepce,
+                          :obs_nominalrate, :obs_consumption, :obs_investment, :obs_spread,
+                          :obs_longrate, :obs_tfp, :obs_gdi]
+
+"""
+```
+observable_gaps(m, df; observables = CORE_OBSERVABLES)
+```
+
+Return an `OrderedDict` mapping each of `observables` (that is in both `m` and `df`) with
+NaN/missing values strictly inside its sample (between its first and last observed
+values) to the dates of those gaps. Leading NaNs (series starting late) and trailing
+NaNs (publication lags, conditional rows) are not gaps.
+"""
+function observable_gaps(m::AbstractDSGEModel, df::DataFrame; observables = CORE_OBSERVABLES)
+    gaps = OrderedDict{Symbol, Vector{Date}}()
+    for col in intersect(observables, collect(keys(m.observable_mappings)), propertynames(df))
+        is_obs  = map(x -> !ismissing(x) && !isnan(x), df[!, col])
+        obs_ind = findall(is_obs)
+        isempty(obs_ind) && continue
+        gap_ind = findall(.!is_obs[obs_ind[1]:obs_ind[end]]) .+ (obs_ind[1] - 1)
+        isempty(gap_ind) || (gaps[col] = Date.(df[gap_ind, :date]))
+    end
+    return gaps
+end
+
+"""
+```
+check_data(m, df; observables = CORE_OBSERVABLES, max_lag_quarters = 1)
+```
+
+Throw an error if the loaded data look wrong for estimation/forecasting:
+- any of `observables` has NaN/missing values inside its sample (see `observable_gaps`),
+- any of `observables` is all NaN/missing, or
+- any of `observables` ends more than `max_lag_quarters` quarters before
+  `date_mainsample_end(m)` (a stale or truncated series).
+Returns `true` if all checks pass.
+"""
+function check_data(m::AbstractDSGEModel, df::DataFrame; observables = CORE_OBSERVABLES,
+                    max_lag_quarters::Int = 1)
+    errs    = String[]
+    dates   = Date.(df[!, :date])
+    min_end = date_mainsample_end(m) - Dates.Month(3 * max_lag_quarters)
+    min_end = lastdayofquarter(min_end)
+
+    for (col, gap_dates) in observable_gaps(m, df; observables = observables)
+        push!(errs, "$col has $(length(gap_dates)) NaN/missing quarters inside its sample " *
+                    "($(gap_dates[1]) to $(gap_dates[end]))")
+    end
+    for col in intersect(observables, collect(keys(m.observable_mappings)), propertynames(df))
+        obs_ind = findall(x -> !ismissing(x) && !isnan(x), df[!, col])
+        if isempty(obs_ind)
+            push!(errs, "$col has no data")
+        elseif dates[obs_ind[end]] < min_end
+            push!(errs, "$col ends $(dates[obs_ind[end]]); expected data through at least $min_end")
+        end
+    end
+
+    isempty(errs) || error("Data check failed for vintage $(data_vintage(m)):\n  - " * join(errs, "\n  - ") *
+                           "\nFix the raw data (input_data/raw) before estimating or forecasting.")
+    return true
 end
 
 """
