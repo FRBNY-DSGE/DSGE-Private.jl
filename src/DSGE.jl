@@ -80,7 +80,7 @@ module DSGE
         print_all_benchmarks, construct_trial_group, write_ref_trial, write_ref_trial_group,
 
         # data/
-        load_data, load_data_levels, load_cond_data_levels, load_fred_data,
+        load_data, load_data_levels, load_cond_data_levels, load_fred_data, observable_gaps, check_data,
         transform_data, save_data, get_data_filename,
         df_to_matrix, hpfilter, difflog, quartertodate, percapita, nominal_to_real,
         oneqtrpctchange, annualtoquarter, quartertoannual, quartertoannualpercent,

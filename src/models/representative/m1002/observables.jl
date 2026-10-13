@@ -44,25 +44,31 @@ function init_observable_mappings!(m::Model1002)
 
     if haskey(m.settings, :hours_first_observable)
         if get_setting(m, :hours_first_observable)
-            observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__FRED, :CE16OV__FRED],
+            # observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__FRED, :CE16OV__FRED],
+            observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__HAVER, :CE16OV__HAVER],
                                                  hrs_fwd_transform, hrs_rev_transform,
                                                  "Hours Per Capita", "Log Hours Per Capita")
-            observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
+            # observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
+            observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__HAVER, population_mnemonic, :GDPDEF__HAVER],
                                                gdp_fwd_transform, gdp_rev_transform,
                                                "Real GDP Growth", "Real GDP Growth Per Capita")
         else
-            observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
+            # observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
+            observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__HAVER, population_mnemonic, :GDPDEF__HAVER],
                                                gdp_fwd_transform, gdp_rev_transform,
                                                "Real GDP Growth", "Real GDP Growth Per Capita")
-            observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__FRED, :CE16OV__FRED],
+            # observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__FRED, :CE16OV__FRED],
+            observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__HAVER, :CE16OV__HAVER],
                                                  hrs_fwd_transform, hrs_rev_transform,
                                                  "Hours Per Capita", "Log Hours Per Capita")
         end
     else
-        observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
+        # observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__FRED, population_mnemonic, :GDPDEF__FRED],
+        observables[:obs_gdp] = Observable(:obs_gdp, [:GDP__HAVER, population_mnemonic, :GDPDEF__HAVER],
                                            gdp_fwd_transform, gdp_rev_transform,
                                            "Real GDP Growth", "Real GDP Growth Per Capita")
-        observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__FRED, :CE16OV__FRED],
+        # observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__FRED, :CE16OV__FRED],
+        observables[:obs_hours] = Observable(:obs_hours, [:AWHNONAG__HAVER, :CE16OV__HAVER],
                                              hrs_fwd_transform, hrs_rev_transform,
                                              "Hours Per Capita", "Log Hours Per Capita")
     end
@@ -101,8 +107,10 @@ function init_observable_mappings!(m::Model1002)
 
         laborshare_rev_transform = logleveltopct_annualized_percapita
 
-        observables[:obs_laborshare] = Observable(:obs_laborshare, [:COMPNFB__FRED, :GDPDEF__FRED,
-                                                                   :COE__FRED],
+        # observables[:obs_laborshare] = Observable(:obs_laborshare, [:COMPNFB__FRED, :GDPDEF__FRED,
+        observables[:obs_laborshare] = Observable(:obs_laborshare, [:COMPNFB__HAVER, :GDPDEF__HAVER,
+                                                                   # :COE__FRED],
+                                                                   :COE__HAVER],
                                              laborshare_fwd_transform, laborshare_rev_transform,
                                              "Log Labor Share",
                                              "Quarterly Log Labor Share of Real GDP")
@@ -116,7 +124,8 @@ function init_observable_mappings!(m::Model1002)
 
         wages_rev_transform = loggrowthtopct_annualized
 
-        observables[:obs_wages] = Observable(:obs_wages, [:COMPNFB__FRED, :GDPDEF__FRED],
+        # observables[:obs_wages] = Observable(:obs_wages, [:COMPNFB__FRED, :GDPDEF__FRED],
+        observables[:obs_wages] = Observable(:obs_wages, [:COMPNFB__HAVER, :GDPDEF__HAVER],
                                              wages_fwd_transform, wages_rev_transform,
                                              "Real Wage Growth",
                                              "Q-to-Q Percent Change of Real Compensation (using GDP deflator)")
@@ -136,7 +145,8 @@ function init_observable_mappings!(m::Model1002)
 
     gdpdeflator_rev_transform = loggrowthtopct_annualized
 
-    observables[:obs_gdpdeflator] = Observable(:obs_gdpdeflator, [:GDPDEF__FRED],
+    # observables[:obs_gdpdeflator] = Observable(:obs_gdpdeflator, [:GDPDEF__FRED],
+    observables[:obs_gdpdeflator] = Observable(:obs_gdpdeflator, [:GDPDEF__HAVER],
                                                gdpdeflator_fwd_transform, gdpdeflator_rev_transform,
                                                "GDP Deflator",
                                                "Q-to-Q Percent Change of GDP Deflator")
@@ -155,7 +165,8 @@ function init_observable_mappings!(m::Model1002)
 
     pce_rev_transform = loggrowthtopct_annualized
 
-    observables[:obs_corepce] = Observable(:obs_corepce, [:PCEPILFE__FRED],
+    # observables[:obs_corepce] = Observable(:obs_corepce, [:PCEPILFE__FRED],
+    observables[:obs_corepce] = Observable(:obs_corepce, [:PCEPILFE__HAVER],
                                            pce_fwd_transform, pce_rev_transform,
                                            "Core PCE Inflation",
                                            "Core PCE Inflation")
@@ -175,7 +186,8 @@ function init_observable_mappings!(m::Model1002)
 
     nominalrate_rev_transform = quartertoannual
 
-    observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:DFF__FRED],
+    # observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:DFF__FRED],
+    observables[:obs_nominalrate] = Observable(:obs_nominalrate, [:DFF__HAVER],
                                                nominalrate_fwd_transform, nominalrate_rev_transform,
                                                "Nominal FFR",
                                                "Nominal Effective Fed Funds Rate")
@@ -196,7 +208,8 @@ function init_observable_mappings!(m::Model1002)
 
     consumption_rev_transform = loggrowthtopct_annualized_percapita
 
-    observables[:obs_consumption] = Observable(:obs_consumption, [:PCE__FRED, population_mnemonic],
+    # observables[:obs_consumption] = Observable(:obs_consumption, [:PCE__FRED, population_mnemonic],
+    observables[:obs_consumption] = Observable(:obs_consumption, [:PCE__HAVER, population_mnemonic],
                                                consumption_fwd_transform, consumption_rev_transform,
                                                "Consumption Growth",
                                                "Consumption growth adjusted for population filtering")
@@ -218,7 +231,8 @@ function init_observable_mappings!(m::Model1002)
 
     investment_rev_transform  = loggrowthtopct_annualized_percapita
 
-    observables[:obs_investment] = Observable(:obs_investment, [:FPI__FRED, population_mnemonic],
+    # observables[:obs_investment] = Observable(:obs_investment, [:FPI__FRED, population_mnemonic],
+    observables[:obs_investment] = Observable(:obs_investment, [:FPI__HAVER, population_mnemonic],
                                               investment_fwd_transform, investment_rev_transform,
                                               "Investment Growth",
                                               "Real investment per capita, adjusted for population filtering")
@@ -237,6 +251,11 @@ function init_observable_mappings!(m::Model1002)
         #       The Moody's series (BAA) ends partway through 2016-Q4. Hence
         #       beginning in 2016-Q4, we replace it with a similar series from
         #       Bank of America (BAMLC8A0C15PYEY).
+        # Update (Oct 2026): levels now come from Haver (haver_<vint>.csv). FRED only
+        #       serves 3 years of BAMLC8A0C15PYEY, so it is pulled from Haver's
+        #       FMLCU@USECON (same index; full history from 1997). BAA is Haver's
+        #       FBAA@USECON, which is discontinued after 2016Q3 -- fine, since BAA is
+        #       only used before the splice date.
 
         splice_date   = quartertodate("2016-Q4") # quarter at which we start using new series
         old_series    = levels[levels[!,:date] .<  splice_date, :BAA]
@@ -248,7 +267,8 @@ function init_observable_mappings!(m::Model1002)
 
     spread_rev_transform = quartertoannual
 
-    observables[:obs_spread] = Observable(:obs_spread, [:BAA__FRED, :BAMLC8A0C15PYEY__FRED, :GS10__FRED],
+    # observables[:obs_spread] = Observable(:obs_spread, [:BAA__FRED, :BAMLC8A0C15PYEY__FRED, :GS10__FRED],
+    observables[:obs_spread] = Observable(:obs_spread, [:BAA__HAVER, :BAMLC8A0C15PYEY__HAVER, :GS10__HAVER],
                                           spread_fwd_transform, spread_rev_transform,
                                           "BAA - 10yr Treasury Spread",
                                           "BAA - 10yr Treasury Spread")
@@ -422,7 +442,8 @@ function init_observable_mappings!(m::Model1002)
 
     gdi_rev_transform = loggrowthtopct_annualized_percapita
 
-    observables[:obs_gdi] = Observable(:obs_gdi, [:GDI__FRED],
+    # observables[:obs_gdi] = Observable(:obs_gdi, [:GDI__FRED],
+    observables[:obs_gdi] = Observable(:obs_gdi, [:GDI__HAVER],
                                        gdi_fwd_transform, gdi_rev_transform,
                                        "Real GDI Growth",
                                        "Real GDI Growth Per Capita")
