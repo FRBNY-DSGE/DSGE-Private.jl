@@ -1,3 +1,5 @@
+module TestGDPGDIMeasErr   # isolated from other test files' globals
+
 using DSGE, ModelConstructors, Test, Dates, LinearAlgebra
 
 # The GDP and GDI measurement errors e_gdp, e_gdi are AR(1) states whose innovations load on gdp_sh and
@@ -36,3 +38,5 @@ set_value!(m, k, v) = (m.parameters[m.keys[k]] = parameter(m[k], v))
         end
     end
 end
+
+end # module TestGDPGDIMeasErr

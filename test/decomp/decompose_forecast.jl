@@ -1,3 +1,5 @@
+module TestDecomposeForecast   # isolated from other test files' globals
+
 using DSGE, Test, ModelConstructors, DataFrames, Dates
 
 @testset "decompose_forecast (bugs doc §1.5): old data is placed on the new dates by date" begin
@@ -70,3 +72,5 @@ if get(ENV, "DSGE_SLOW_TESTS", "false") == "true"
     @test isequal(df_old, df_old_copy)                                # pgap/ygap rows and columns were edited
 end
 end
+
+end # module TestDecomposeForecast
