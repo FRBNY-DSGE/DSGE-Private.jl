@@ -166,7 +166,8 @@ function measurement(m::Model1002{T},
     ## Inflation (GDP Deflator)
     ZZ[obs[:obs_gdpdeflator], endo[:π_t]]            = m[:Γ_gdpdef]
     ZZ[obs[:obs_gdpdeflator], endo_new[:e_gdpdef_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"]
+    #= if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -175,7 +176,8 @@ function measurement(m::Model1002{T},
     ## Inflation (Core PCE)
     ZZ[obs[:obs_corepce], endo[:π_t]]             = 1.0
     ZZ[obs[:obs_corepce], endo_new[:e_corepce_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+    #= if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -432,6 +434,9 @@ if subspec(m) ∈ ["ss206", "ss207"]
         QQ[exo[:corepce_sh], exo[:corepce_sh]] = (m[:κ_std_bcshocks] * m[:σ_corepce])^2
         QQ[exo[:gdp_sh], exo[:gdp_sh]]         = (m[:κ_std_bcshocks] * m[:σ_gdp])^2
         QQ[exo[:gdi_sh], exo[:gdi_sh]]         = (m[:κ_std_bcshocks] * m[:σ_gdi])^2
+        # σ_r_m was the only shock not scaled by κ_std_bcshocks. Only binds 2020Q1-Q3 (κ regime 2);
+        # σ_r_m is 0 from 2022Q1 (expected_nominal_rates!) and anticipated σ_r_m1..6 are not scaled.
+        QQ[exo[:rm_sh], exo[:rm_sh]]           = (m[:κ_std_bcshocks] * m[:σ_r_m])^2
     end
 
 
@@ -449,7 +454,8 @@ end
             QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = (m[:κ_pce] * m[:σ_meas_π])^2
         end
 
-    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+    #= elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = m[:σ_meas_π]^2
     end
 
@@ -527,7 +533,9 @@ for (k, v) in get_setting(m, :antshocks)
             #Note: If subspec is 207, set standard deviations of anticipated covid shocks to the contemporaneous.
             @assert k ∈ [:ziid, :biidc, :φ]
             for i = 1:v
-                QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k)]^2
+                #= QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k)]^2 =#
+                # Match the contemporaneous std, which is κ_covid-scaled above
+                QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = (m[:κ_covid] * m[Symbol("σ_", k)])^2
             end
         else
             for i = 1:v

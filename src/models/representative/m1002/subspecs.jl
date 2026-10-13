@@ -7386,13 +7386,15 @@ function ss206!(m::Model1002)
      for pk in [:σ_g, :σ_b, :σ_μ, :σ_ztil, :σ_λ_f, :σ_λ_w,
                    :σ_σ_ω, :σ_μ_e, :σ_γ, :σ_z_p]
 
-         m2p[pk] = Dict(i => 1 for i in 1:29)
+         #= m2p[pk] = Dict(i => 1 for i in 1:29) =# # hard-coded 29 breaks once n_regimes >= 30 (forecast start >= 2027Q1)
+         m2p[pk] = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
      end
 
     #Get rid of regime 3 for all covid parameters:
     covid_dict = Dict(i => 2 for i in 2:7) #Covid parameters in regime 2 from 2020 Q1-2021 Q4, inclusive
     covid_dict[1] = 1
-    for per in 8:29
+    #= for per in 8:29 =#
+    for per in 8:get_setting(m, :n_regimes)
         covid_dict[per] = 1
     end
 
@@ -7404,7 +7406,8 @@ function ss206!(m::Model1002)
     #Fix all inflation and inflation target σs to regime 1 so we use κ_pce
     for pk in [:σ_corepce]
 
-         m2p[pk] = Dict(i => 1 for i in 1:29)
+         #= m2p[pk] = Dict(i => 1 for i in 1:29) =#
+         m2p[pk] = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
      end
 
 
@@ -7493,7 +7496,7 @@ function ss207!(m)
 Continuation of ss206 with additional changes
 
 1) κ_std_bcshocks that scales UP standard business cycle shocks, measurement errors, AND inflation. We use a Γ distribution centered at 1 as the prior
-2) κ_covid that scales DOWN covid shocks (σ_biidc, σ_ziid, σ_φ) in later periods from 2020 Q4 - 2021 Q4 to reflect that these shocks were not hitting as hard in these periods. Estimated with prior N(0,1)
+2) κ_covid that scales DOWN covid shocks (σ_biidc, σ_ziid, σ_φ) in later periods from 2020 Q4 - 2021 Q4 to reflect that these shocks were not hitting as hard in these periods. Estimated with prior Uniform(0,1)
 3) Regimes for all parameters affected by κ reverted either to 1) precovid regime (κ_std_bcshocks) or 2) early covid regime (κ_covid)
 4) Removing AIT (all Taylor, all the time) and no expected FFR Measurement error σ_exp_rm(1:6) (fixed at 0)
 5) Alternative specification asserting that std deviation of anticipated covid shocks (σ_biidc1) is equal to the std deviation of contemporaneous shocks (σ_biidc) -- use setting :covid_ant_equal_contemp
@@ -7504,7 +7507,17 @@ Continuation of ss206 with additional changes
         ss205!(m)
 
     m2p = get_setting(m, :model2para_regime)
-    m <= Setting(:covid_ant_equal_contemp, true)
+    #= m <= Setting(:covid_ant_equal_contemp, true) =#
+    # Default to true, but don't clobber a value passed via custom_settings (applied before init_subspec!)
+    if !haskey(m.settings, :covid_ant_equal_contemp)
+        m <= Setting(:covid_ant_equal_contemp, true)
+    end
+
+    # π_star shocks off from regime 5 (2020 Q4), per docstring item 6. Previously never set for ss207
+    # (only ss104 set it), so nopish was always 1 in eqcond. Don't clobber a custom_settings value.
+    if !haskey(m.settings, :remove_pistar_shocks)
+        m <= Setting(:remove_pistar_shocks, 5)
+    end
 
     #Fix all standard business cycle shocks to regime 1, so that we only use κ_SBC.
 
@@ -7512,13 +7525,16 @@ Continuation of ss206 with additional changes
                 :σ_σ_ω, :σ_μ_e, :σ_γ, :σ_z_p,
                 :σ_lr, :σ_gdp, :σ_gdi, :σ_tfp, :σ_gdpdef]
 
-         m2p[pk] = Dict(i => 1 for i in 1:29)
+         #= m2p[pk] = Dict(i => 1 for i in 1:29) =# # hard-coded 29 breaks once n_regimes >= 30 (forecast start >= 2027Q1)
+         m2p[pk] = Dict(i => 1 for i in 1:get_setting(m, :n_regimes))
      end
 
     #Get rid of regime 3 for all covid parameters: Regime three is a fossil which was estimated separetely, and we don't want to do that anymore.
-    covid_dict = Dict(i => 2 for i in 2:7) #Covid parameters in regime 2 from 2020 Q1-2021 Q4, inclusive
+    #= covid_dict = Dict(i => 2 for i in 2:7) =# # 2:7 is 2020Q1-2021Q2, not 2021Q4; κ_covid (regimes 5:9) was scaling a zero σ in 2021Q3-Q4
+    covid_dict = Dict(i => 2 for i in 2:9) #Covid parameters in regime 2 from 2020 Q1-2021 Q4, inclusive
     covid_dict[1] = 1
-    for per in 8:29
+    #= for per in 8:29 =#
+    for per in 10:get_setting(m, :n_regimes)
         covid_dict[per] = 1
     end
 
@@ -7593,6 +7609,49 @@ Continuation of ss206 with additional changes
     m2p[:κ_covid] = m2p_dict
     toggle_regime!(m[:κ_covid], 1)
 
+
+    ############ INFLATION MEASUREMENT ERROR (re-added from ss97) ##########################
+    # Mean-reverting measurement error on GDP deflator and Core PCE inflation (e_meas_π_t - e_meas_π_t1),
+    # with AR persistence ρ_meas_π. On 2020 Q1 - 2021 Q4 (σ_meas_π para regime 2), off from 2022 Q1.
+    # Same construction as ss305 (ss205 + ss97 features). The iid Core PCE error (σ_corepce) is kept as
+    # set above, i.e. rm_iid_pce_meas_err! (ss97) is NOT applied.
+    add_meas_pi!(m)
+    # ss97 prior on the mean-reverting measurement error (deepcopy so the regime-1 prior isn't mutated too)
+    prior2 = deepcopy(get(m[:σ_meas_π].prior))
+    prior2.τ = 0.4
+    set_regime_prior!(m[:σ_meas_π], 2, prior2)
+    toggle_regime!(m[:σ_meas_π], 1)
+    toggle_regime!(m[:ρ_meas_π], 1)
+
+
+    ############ FIX ORPHANED PARAMETER REGIMES ##########################
+    # ss207 remaps the σ's above so that some parameter regimes created by ss205! are never used
+    # (no model regime maps to them), but they were left free, so the sampler drew them from their
+    # priors without affecting the likelihood. Fix them instead of removing them, so the parameter
+    # vector keeps its length and existing ss207 draws still load.
+    for pk in [:σ_g, :σ_b, :σ_μ, :σ_ztil, :σ_λ_f, :σ_λ_w, :σ_σ_ω, :σ_μ_e, :σ_γ, :σ_z_p,
+               :σ_lr, :σ_gdp, :σ_gdi, :σ_tfp, :σ_gdpdef, :σ_corepce, :σ_π_star]
+        if haskey(m[pk].regimes, :value) && length(m[pk].regimes[:value]) >= 2
+            # set_regime_fixed! creates the :fixed/:valuebounds regime dicts if missing; register
+            # regime 1 first (with its current status) or toggle_regime!(p, 1) errors.
+            if !haskey(m[pk].regimes, :fixed) || !haskey(m[pk].regimes[:fixed], 1)
+                set_regime_fixed!(m[pk], 1, m[pk].fixed)
+            end
+            set_regime_fixed!(m[pk], 2, true)
+        end
+    end
+    for pk in [:σ_biidc, :σ_ziid, :σ_φ] # regime 3 is no longer mapped to by covid_dict
+        if haskey(m[pk].regimes, :value) && length(m[pk].regimes[:value]) >= 3
+            set_regime_fixed!(m[pk], 3, true)
+        end
+    end
+    # With :covid_ant_equal_contemp, anticipated biidc uses σ_biidc (measurement.jl), so σ_biidc1 is unused
+    if get_setting(m, :covid_ant_equal_contemp) &&
+        haskey(m[:σ_biidc1].regimes, :value) && length(m[:σ_biidc1].regimes[:value]) >= 2
+        set_regime_fixed!(m[:σ_biidc1], 2, true)
+    end
+    # κ_pce is defined for ss207 (m1002.jl) but only used by ss206
+    m[:κ_pce].fixed = true
 
 end
 
