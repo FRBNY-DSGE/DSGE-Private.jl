@@ -266,21 +266,19 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
 
         ### Save settings that need to change to forecast from add_zlb_duration[2]
         horizons = get_setting(m, :forecast_horizons)
-        # deepcopy: the loop below rewrites the entries in place, so a reference would "restore" the rewritten policies
-        orig_regime_eqcond_info = deepcopy(get_setting(m, :regime_eqcond_info))
-        orig_temp_altpol_len = get_setting(m, :temporary_altpolicy_length)
-        orig_reg_forecast_start = get_setting(m, :reg_forecast_start)
-        orig_reg_post_conditional_end = get_setting(m, :reg_post_conditional_end)
-        orig_n_fcast_regimes = get_setting(m, :n_fcast_regimes)
-        orig_n_hist_regimes = get_setting(m, :n_hist_regimes)
+        # The loop below rewrites :regime_eqcond_info in place, and forecast() changes further settings
+        # (:regime_dates, :n_regimes, :model2para_regime, ...) that it only restores if it doesn't throw.
+        # So work on deep copies of all settings and put the original Setting objects back in `finally`:
+        # the model, and anything sharing its settings, is unchanged whether or not this succeeds
+        orig_settings = copy(m.settings)
+        for (k, s) in orig_settings
+            m.settings[k] = deepcopy(s)
+        end
         orig_min_temp_altpol_len = haskey(m.settings, :min_temporary_altpolicy_length) ? get_setting(m, :min_temporary_altpolicy_length) : nothing
         orig_max_temp_altpol_len = haskey(m.settings, :max_temporary_altpolicy_length) ? get_setting(m, :max_temporary_altpolicy_length) : nothing
-        orig_hist_temp_altpol_len = haskey(m.settings, :historical_temporary_altpolicy_length) ? get_setting(m, :historical_temporary_altpolicy_length) : nothing
-        orig_cred_vary_until = haskey(m.settings, :cred_vary_until) ? get_setting(m, :cred_vary_until) : nothing
         orig_perf_cred = haskey(m.settings, :perfect_credibility_identical_transitions) ? get_setting(m, :perfect_credibility_identical_transitions) : nothing
         orig_iden_eqcond = haskey(m.settings, :identical_eqcond_regimes) ? get_setting(m, :identical_eqcond_regimes) : nothing
 
-        # Restore the settings in `finally`, so an error in the forecast below does not leave the model changed
         implied_zlb_duration = try
             ### Reset settings for add_zlb_duration[2]
             for a in collect(keys(get_setting(m, :regime_eqcond_info)))#zlb_ind+1:length(get_setting(m, :regime_eqcond_info))
@@ -323,35 +321,9 @@ function filter_likelihood(m::AbstractDSGEModel, data::AbstractArray,
 
             findfirst(x -> x > get_setting(m, :zlb_rule_value) / 4.0 + 1e-5, fcast_obs[m.observables[:obs_nominalrate],:]) - 1
         finally
-            ### Reset to original model settings
-            m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
-            m <= Setting(:reg_forecast_start, orig_reg_forecast_start)
-            m <= Setting(:reg_post_conditional_end, orig_reg_post_conditional_end)
-            m <= Setting(:n_fcast_regimes, orig_n_fcast_regimes)
-            m <= Setting(:n_hist_regimes, orig_n_hist_regimes)
-            m <= Setting(:temporary_altpolicy_length, orig_temp_altpol_len)
-            if !isnothing(orig_min_temp_altpol_len)
-                m <= Setting(:min_temporary_altpolicy_length, orig_min_temp_altpol_len)
-            end
-            if !isnothing(orig_max_temp_altpol_len)
-                m <= Setting(:max_temporary_altpolicy_length, orig_max_temp_altpol_len)
-            end
-            if isnothing(orig_hist_temp_altpol_len)
-                delete!(m.settings, :historical_temporary_altpolicy_length)
-            else
-                m <= Setting(:historical_temporary_altpolicy_length, orig_hist_temp_altpol_len)
-            end
-            if isnothing(orig_cred_vary_until)
-                delete!(m.settings, :cred_vary_until)
-            else
-                m <= Setting(:cred_vary_until, orig_cred_vary_until)
-            end
-            if !isnothing(orig_perf_cred)
-                m <= Setting(:perfect_credibility_identical_transitions, orig_perf_cred)
-            end
-            if !isnothing(orig_iden_eqcond)
-                m <= Setting(:identical_eqcond_regimes, orig_iden_eqcond)
-            end
+            ### Reset to the original model settings (the same objects)
+            empty!(m.settings)
+            merge!(m.settings, orig_settings)
         end
 
         # Compute loss for ZLB duration

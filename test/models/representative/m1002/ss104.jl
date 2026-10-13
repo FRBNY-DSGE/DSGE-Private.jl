@@ -1,3 +1,7 @@
+# A module, so globals of other test files run in the same session (e.g. `values` in
+# estimate/hessizero_prior.jl) can't shadow names used here, and this file's can't leak out
+module TestSS104
+
 using DSGE, ModelConstructors, Test, Dates, DataFrames
 
 # Model1002 ss104, configured as the production forecast builds it (2026Q3 forecast,
@@ -112,10 +116,14 @@ end
     m4 = deepcopy(m)
     m4 <= Setting(:zlb_duration, 4)
     policies(mm) = Dict(r => e.alternative_policy.key for (r, e) in get_setting(mm, :regime_eqcond_info))
+    # The settings filter_likelihood changes, and those forecast() changes and restores only on success
     settings_to_keep = [:reg_forecast_start, :reg_post_conditional_end, :n_fcast_regimes, :n_hist_regimes,
-                        :temporary_altpolicy_length]
+                        :temporary_altpolicy_length, :regime_dates, :n_regimes, :tvis_information_set,
+                        :n_cond_regimes, :model2para_regime, :uncertain_altpolicy, :uncertain_temporary_altpolicy]
+    settings_to_keep = Base.filter(k -> haskey(m4.settings, k), settings_to_keep)
+    eqcond_info = get_setting(m4, :regime_eqcond_info)   # the object a caller (or another model) may share
     before_pol = policies(m4)
-    before_set = Dict(k => get_setting(m4, k) for k in settings_to_keep)
+    before_set = Dict(k => deepcopy(get_setting(m4, k)) for k in settings_to_keep)
     @test any(!=(:flexible_ait), values(before_pol))   # otherwise the test could not see the bug
 
     nT   = DSGE.subtract_quarters(date_forecast_start(m4), date_presample_start(m4))
@@ -134,8 +142,11 @@ end
     end
     @test policies(m4) == before_pol
     for k in settings_to_keep
-        @test get_setting(m4, k) == before_set[k]
+        @test isequal(get_setting(m4, k), before_set[k])
     end
+    # The original :regime_eqcond_info is the one put back, and its entries were never rewritten
+    @test get_setting(m4, :regime_eqcond_info) === eqcond_info
+    @test Dict(r => e.alternative_policy.key for (r, e) in eqcond_info) == before_pol
 end
 
 @testset "ss104 (bugs doc §1.10): regime-switching smooth with filter_smooth = true" begin
@@ -207,3 +218,6 @@ end
     @test Δzz(27) == 0          # needs regimes 28–29 only
     @test Δzz(28) > 1e-3        # needs regime 30, which a permanent regime 29 replaced with regime 29
 end
+
+
+end # module TestSS104
