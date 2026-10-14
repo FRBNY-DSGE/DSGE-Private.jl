@@ -193,6 +193,36 @@ end
     @test DSGE.zlb_eqcond_time_varying(Γ[[1, 1, 1, 1]], Γ[[2, 2, 2, 2]], C, Ψ, Π, 2:4)
 end
 
+@testset "ss104: sparse and single-policy time-varying ZLB solves" begin
+    sparse_model = deepcopy(m)
+    sparse_model <= Setting(:gensys2_sparse_matrices, true)
+    sparse_sys = compute_system(sparse_model)
+    for r in 1:n_regs, key in (:TTT, :RRR, :CCC)
+        @test sparse_sys[r, key] ≈ sys[r, key]
+    end
+
+    single = deepcopy(m)
+    single <= Setting(:alternative_policies, AltPolicy[DSGE.taylor_rule()])
+    single <= Setting(:uncertain_temporary_altpolicy, true)
+    single <= Setting(:uncertain_altpolicy, false)
+    for entry in values(get_setting(single, :regime_eqcond_info))
+        entry.weights = [0.5, 0.5]
+    end
+    dense_sys = compute_system(single)
+    single <= Setting(:gensys2_sparse_matrices, true)
+    single_sparse_sys = compute_system(single)
+    for r in 1:n_regs
+        for key in (:TTT, :RRR, :CCC)
+            @test single_sparse_sys[r, key] ≈ dense_sys[r, key]
+        end
+        if r >= get_setting(single, :remove_rm_t_shocks)
+            @test maximum(abs, dense_sys[r, :RRR][:, exo[:rm_sh]]) < 1e-12
+        else
+            @test dense_sys[r, :RRR][single.endogenous_states[:rm_t], exo[:rm_sh]] ≈ 1 atol = 1e-10
+        end
+    end
+end
+
 @testset "ss104: avg. short-run inflation expectations use the final regime as permanent, not regime 29" begin
     # The econometrician's view of E_t[π_{t+1} + π_{t+2}] took regime 29 as permanent. That only bites in
     # a regime t >= 28 whose information set looks ahead (ss104's single-regime sets there hide it), in a
