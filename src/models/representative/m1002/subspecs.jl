@@ -7026,7 +7026,7 @@ function ss104!(m)
         for mreg in 9:get_setting(m, :cur_model_regime)
             get_setting(m, :model2para_regime)[Symbol("σ_ait_r_m$(i)")][mreg] = 2
         end
-        for mreg in get_setting(m, :cur_model_regime)+1:29
+        for mreg in get_setting(m, :cur_model_regime)+1:get_setting(m, :n_regimes)
             get_setting(m, :model2para_regime)[Symbol("σ_ait_r_m$(i)")][mreg] = 1
         end
     end

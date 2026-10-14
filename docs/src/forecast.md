@@ -43,6 +43,26 @@ m = AnSchorfheide()
 forecast_one(m, :mode, :none, [:forecaststates, forecastobs])
 ```
 
+### Forecasts with a mode estimated before the GDP/GDI loading fix
+
+Commit `7d5a0a916` corrected the interpretation of `ρ_gdpvar` in Model1002
+and Model1010. A mode estimated with earlier code used the old GDP/GDI
+measurement-error loading. To reproduce that model while waiting for a new
+estimate, opt in to the old loading before forecasting:
+
+```julia
+m <= Setting(:legacy_gdp_gdi_meas_err_loadings, true)
+forecast_one(m, :mode, :none, [:histobs, :forecastobs])
+```
+
+The option also applies to the COVID GDP/GDI measurement-error shocks where
+present. It is off by default; modes estimated after the fix should use the
+default. A modal forecast logs the selected loading and loaded `ρ_gdpvar`.
+The output filename does not encode this option. Use a separate saveroot for
+comparison runs; if the old mode lives in the original saveroot, point
+`forecast_input_file_overrides(m)[:mode]` to that file. Record the mode file
+and option alongside the forecast.
+
 **Full-Distribution Forecasts:**
 
 Full-distribution forecasts are computed in blocks. The size of each block

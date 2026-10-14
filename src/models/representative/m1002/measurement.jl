@@ -275,7 +275,7 @@ TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, r
 #Econometrician's views
 
 #= (2025Q2)
-TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
+TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, length(TTTs);
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
 
@@ -324,7 +324,10 @@ end
 # was applied to every quarter of the series (2007Q1-2025Q3) and needed large corepce_sh /
 # gdpdef_sh measurement errors to fit it.
 # The series intentionally ends in 2025Q3 (no more AIT), so this only affects the history.
-TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
+# Econometrician's view: the final regime (length(TTTs)) is the permanent one. This was hard-coded
+# to 29, which is wrong once a forecast has more regimes than that. Without TTTs (one regime, or a
+# single-regime information set) it isn't used.
+TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, length(TTTs);
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
 T_sum = TTT1Econo
@@ -390,6 +393,11 @@ if (haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_e
     end
 else
     QQ[exo[:rm_sh], exo[:rm_sh]]           = m[:σ_r_m]^2
+end
+# eqcond switches the policy shock off from :remove_rm_t_shocks on (Ψ[eq_rm, rm_sh] = 0); its variance
+# has to be off from the same regime, or the shock stays live where the model has none
+if haskey(m.settings, :remove_rm_t_shocks) && reg >= get_setting(m, :remove_rm_t_shocks)
+    QQ[exo[:rm_sh], exo[:rm_sh]]           = 0.
 end
     QQ[exo[:σ_ω_sh], exo[:σ_ω_sh]]         = m[:σ_σ_ω]^2
     QQ[exo[:μ_e_sh], exo[:μ_e_sh]]         = m[:σ_μ_e]^2

@@ -397,6 +397,19 @@ function solve_non_gensys2_regimes!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}
     return TTTs, RRRs, CCCs
 end
 
+"""
+```
+zlb_eqcond_time_varying(Γ0s, Γ1s, Cs, Ψs, Πs, regs)
+```
+is true if the equilibrium conditions are not the same in all regimes `regs` (the temporary-ZLB
+regimes), in which case the uncertain-ZLB solve has to use each regime's own conditions.
+"""
+function zlb_eqcond_time_varying(Γ0s, Γ1s, Cs, Ψs, Πs, regs)
+    r1 = first(regs)
+    return any(r -> Γ0s[r] != Γ0s[r1] || Γ1s[r] != Γ1s[r1] || Cs[r] != Cs[r1] ||
+               Ψs[r] != Ψs[r1] || Πs[r] != Πs[r1], regs)
+end
+
 function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vector{Matrix{S}},
                         Cs::Vector{Vector{S}}, Ψs::Vector{Matrix{S}}, Πs::Vector{Matrix{S}},
                         TTTs::Vector{Matrix{S}}, RRRs::Vector{Matrix{S}}, CCCs::Vector{Vector{S}};
@@ -517,13 +530,13 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
 
         # Now calculate transition matrices under an uncertain ZLB
         # Γ0_til, etc., are eqcond matrices implementing ZLB, i.e. zero_rate_rule
-        # It is assumed that there is no time variation in the equilibrium conditions
-        # for the ZLB, so we can just use ffreg to identify the correct set of
-        # equilibrium conditions.
-        ## This assumption is relaxed when set_pgap1 = true
+        # If the equilibrium conditions are the same in every ZLB regime, ffreg's are used for all of
+        # them. Otherwise (set_pgap1, or e.g. ss104's :remove_rm_t_shocks switching the policy shock
+        # off mid-ZLB) each regime uses its own.
         use_sparse = (haskey(get_settings(m), :gensys2_sparse_matrices) &&
                       get_setting(m, :gensys2_sparse_matrices))
-        if haskey(get_settings(m), :set_pgap1) # Time variation in ZLB eqcond
+        if haskey(get_settings(m), :set_pgap1) ||
+            zlb_eqcond_time_varying(Γ0s, Γ1s, Cs, Ψs, Πs, ffreg:(ffreg + nzlb - 1)) # Time variation in ZLB eqcond
             Γ0_til = use_sparse ? Vector{SparseMatrixCSC{Float64,Int64}}(undef, nzlb) : Vector{Matrix{Float64}}(undef, nzlb)
             Γ1_til = Vector{Matrix{Float64}}(undef, nzlb)
             Γ2_til = similar(Γ0_til)
@@ -715,15 +728,15 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
 
     # Now calculate transition matrices under an uncertain ZLB
     # Γ0_til, etc., are eqcond matrices implementing ZLB, i.e. zero_rate_rule
-    # It is assumed that there is no time variation in the equilibrium conditions
-    # for the ZLB, so we can just use ffreg to identify the correct set of
-    # equilibrium conditions.
+    # If the equilibrium conditions are the same in every ZLB regime, ffreg's are used for all of
+    # them. Otherwise (set_pgap1, or e.g. ss104's :remove_rm_t_shocks) each regime uses its own.
     ffreg = first(gensys2_regimes) + 1
     use_sparse = haskey(get_settings(m), :gensys2_sparse_matrices) &&
                   get_setting(m, :gensys2_sparse_matrices)
 
-    if haskey(get_settings(m), :set_pgap1) # Time variation in ZLB eqcond
-        nzlb = haskey(get_settings(m), :temporary_altpolicy_length) ? get_setting(m, :temporary_altpolicy_length) : length(gensys2_regimes) - 2
+    nzlb = haskey(get_settings(m), :temporary_altpolicy_length) ? get_setting(m, :temporary_altpolicy_length) : length(gensys2_regimes) - 2
+    if haskey(get_settings(m), :set_pgap1) ||
+        zlb_eqcond_time_varying(Γ0s, Γ1s, Cs, Ψs, Πs, ffreg:(ffreg + nzlb - 1)) # Time variation in ZLB eqcond
         Γ0_til = use_sparse ? Vector{SparseMatrixCSC{Float64,Int64}}(undef, nzlb) : Vector{Matrix{Float64}}(undef, nzlb)
         Γ1_til = Vector{Matrix{Float64}}(undef, nzlb)
         Γ2_til = similar(Γ0_til)

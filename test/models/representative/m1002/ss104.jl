@@ -1,3 +1,7 @@
+# A module, so globals of other test files run in the same session (e.g. `values` in
+# estimate/hessizero_prior.jl) can't shadow names used here, and this file's can't leak out
+module TestSS104
+
 using DSGE, ModelConstructors, Test, Dates, DataFrames
 
 # Model1002 ss104, configured as the production forecast builds it (2026Q3 forecast,
@@ -112,10 +116,14 @@ end
     m4 = deepcopy(m)
     m4 <= Setting(:zlb_duration, 4)
     policies(mm) = Dict(r => e.alternative_policy.key for (r, e) in get_setting(mm, :regime_eqcond_info))
+    # The settings filter_likelihood changes, and those forecast() changes and restores only on success
     settings_to_keep = [:reg_forecast_start, :reg_post_conditional_end, :n_fcast_regimes, :n_hist_regimes,
-                        :temporary_altpolicy_length]
+                        :temporary_altpolicy_length, :regime_dates, :n_regimes, :tvis_information_set,
+                        :n_cond_regimes, :model2para_regime, :uncertain_altpolicy, :uncertain_temporary_altpolicy]
+    settings_to_keep = Base.filter(k -> haskey(m4.settings, k), settings_to_keep)
+    eqcond_info = get_setting(m4, :regime_eqcond_info)   # the object a caller (or another model) may share
     before_pol = policies(m4)
-    before_set = Dict(k => get_setting(m4, k) for k in settings_to_keep)
+    before_set = Dict(k => deepcopy(get_setting(m4, k)) for k in settings_to_keep)
     @test any(!=(:flexible_ait), values(before_pol))   # otherwise the test could not see the bug
 
     nT   = DSGE.subtract_quarters(date_forecast_start(m4), date_presample_start(m4))
@@ -134,8 +142,11 @@ end
     end
     @test policies(m4) == before_pol
     for k in settings_to_keep
-        @test get_setting(m4, k) == before_set[k]
+        @test isequal(get_setting(m4, k), before_set[k])
     end
+    # The original :regime_eqcond_info is the one put back, and its entries were never rewritten
+    @test get_setting(m4, :regime_eqcond_info) === eqcond_info
+    @test Dict(r => e.alternative_policy.key for (r, e) in eqcond_info) == before_pol
 end
 
 @testset "ss104 (bugs doc §1.10): regime-switching smooth with filter_smooth = true" begin
@@ -158,3 +169,85 @@ end
         @test withfilt[2] ≈ base[2]   # smoothed shocks
     end
 end
+
+@testset "ss104: no Taylor-rule policy shock from :remove_rm_t_shocks on (regimes 8–9 too)" begin
+    # eqcond switches rm_sh off from :remove_rm_t_shocks (2021Q3). The uncertain-ZLB solve used to
+    # take one ZLB regime's equilibrium conditions for all of them, and measurement kept σ_r_m² until
+    # :ait_liftoff_regime, so 2021Q3–Q4 had a live policy shock
+    endo = m.endogenous_states
+    cut  = get_setting(m, :remove_rm_t_shocks)
+    @test cut < get_setting(m, :ait_liftoff_regime)        # the case that broke: the switch is inside the ZLB
+    for r in 1:n_regs
+        if r >= cut
+            @test sys[r, :QQ][exo[:rm_sh], exo[:rm_sh]] == 0
+            @test maximum(abs, sys[r, :RRR][:, exo[:rm_sh]]) < 1e-12
+        else
+            @test sys[r, :QQ][exo[:rm_sh], exo[:rm_sh]] ≈ regime_value(m, :σ_r_m, r)^2
+            @test sys[r, :RRR][endo[:rm_t], exo[:rm_sh]] ≈ 1 atol = 1e-10
+        end
+    end
+    # Equilibrium conditions that don't change over the ZLB keep using a single regime's
+    Γ = [rand(3, 3) for _ in 1:4]; C = [zeros(3) for _ in 1:4]; Ψ = [ones(3, 1) for _ in 1:4]; Π = [ones(3, 1) for _ in 1:4]
+    @test !DSGE.zlb_eqcond_time_varying(Γ[[1, 1, 1, 1]], Γ[[2, 2, 2, 2]], C, Ψ, Π, 2:4)
+    Ψ[3] = zeros(3, 1)
+    @test DSGE.zlb_eqcond_time_varying(Γ[[1, 1, 1, 1]], Γ[[2, 2, 2, 2]], C, Ψ, Π, 2:4)
+end
+
+@testset "ss104: sparse and single-policy time-varying ZLB solves" begin
+    sparse_model = deepcopy(m)
+    sparse_model <= Setting(:gensys2_sparse_matrices, true)
+    sparse_sys = compute_system(sparse_model)
+    for r in 1:n_regs, key in (:TTT, :RRR, :CCC)
+        @test sparse_sys[r, key] ≈ sys[r, key]
+    end
+
+    single = deepcopy(m)
+    single <= Setting(:alternative_policies, AltPolicy[DSGE.taylor_rule()])
+    single <= Setting(:uncertain_temporary_altpolicy, true)
+    single <= Setting(:uncertain_altpolicy, false)
+    for entry in values(get_setting(single, :regime_eqcond_info))
+        entry.weights = [0.5, 0.5]
+    end
+    dense_sys = compute_system(single)
+    single <= Setting(:gensys2_sparse_matrices, true)
+    single_sparse_sys = compute_system(single)
+    for r in 1:n_regs
+        for key in (:TTT, :RRR, :CCC)
+            @test single_sparse_sys[r, key] ≈ dense_sys[r, key]
+        end
+        if r >= get_setting(single, :remove_rm_t_shocks)
+            @test maximum(abs, dense_sys[r, :RRR][:, exo[:rm_sh]]) < 1e-12
+        else
+            @test dense_sys[r, :RRR][single.endogenous_states[:rm_t], exo[:rm_sh]] ≈ 1 atol = 1e-10
+        end
+    end
+end
+
+@testset "ss104: avg. short-run inflation expectations use the final regime as permanent, not regime 29" begin
+    # The econometrician's view of E_t[π_{t+1} + π_{t+2}] took regime 29 as permanent. That only bites in
+    # a regime t >= 28 whose information set looks ahead (ss104's single-regime sets there hide it), in a
+    # forecast with more than 29 regimes. Build that case: 2027Q4 (33 regimes), regime 28 looking ahead
+    # to the end, and a transition that changes from regime 30 on (ρ_λ_f; eqcond only switches
+    # parameters with more than two regime values)
+    fd = Date(2027, 12, 31)
+    m_a, m_b = build_ss104(fcast_date = fd), build_ss104(fcast_date = fd)
+    nr = get_setting(m_b, :n_regimes)
+    @test nr > 30
+    for mm in (m_a, m_b)
+        get_setting(mm, :tvis_information_set)[28] = 28:nr
+    end
+    for (i, v) in enumerate((m_b[:ρ_λ_f].value, m_b[:ρ_λ_f].value, 0.1))
+        ModelConstructors.set_regime_val!(m_b[:ρ_λ_f], i, v)
+    end
+    get_setting(m_b, :model2para_regime)[:ρ_λ_f] = Dict(r => (r >= 30 ? 3 : 1) for r in 1:nr)
+    sys_a, sys_b = compute_system(m_a; tvis = true), compute_system(m_b; tvis = true)   # as forecasts compute it
+    o = m_a.observables[:obs_avgshortinflation]
+    Δzz(r) = maximum(abs, sys_a[r, :ZZ][o, :] - sys_b[r, :ZZ][o, :])
+    @test maximum(abs, sys_a[29, :TTT] - sys_b[29, :TTT]) == 0
+    @test maximum(abs, sys_a[30, :TTT] - sys_b[30, :TTT]) > 1
+    @test Δzz(27) == 0          # needs regimes 28–29 only
+    @test Δzz(28) > 1e-3        # needs regime 30, which a permanent regime 29 replaced with regime 29
+end
+
+
+end # module TestSS104
