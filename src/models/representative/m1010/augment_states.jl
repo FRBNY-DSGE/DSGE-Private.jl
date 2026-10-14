@@ -107,7 +107,8 @@ function augment_states(m::Model1010, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
 
     # Measurement Error on GDP Deflator
     RRR_aug[endo_new[:e_gdp_t], exo[:gdp_sh]], RRR_aug[endo_new[:e_gdp_t], exo[:gdi_sh]] =
-        gdp_gdi_meas_err_loadings(m[:ρ_gdpvar], m[:σ_gdp], m[:σ_gdi])
+        gdp_gdi_meas_err_loadings(m[:ρ_gdpvar], m[:σ_gdp], m[:σ_gdi];
+                                  legacy = use_legacy_gdp_gdi_meas_err_loadings(m))
 
     RRR_aug[endo_new[:e_gdi_t], exo[:gdi_sh]] = 1.0
 
