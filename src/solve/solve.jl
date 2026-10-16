@@ -1,3 +1,6 @@
+gensys_for_model(m::AbstractDSGEModel, Γ0, Γ1, C, Ψ, Π, div; verbose::Symbol = :high) =
+    gensys(Γ0, Γ1, C, Ψ, Π, div; verbose = verbose)
+
 """
 ```
 solve(m::AbstractDSGEModel)
@@ -44,7 +47,7 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
                 Γ0, Γ1, C, Ψ, Π = eqcond(m)
 
                 # Solve model
-                TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = verbose)
+                TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys_for_model(m, Γ0, Γ1, C, Ψ, Π, 1+1e-6; verbose = verbose)
 
                 # Check for LAPACK exception, existence and uniqueness
                 if eu[1] != 1 || eu[2] != 1
@@ -264,7 +267,7 @@ function solve_one_regime(m::AbstractDSGEModel{T}; regime::Int = 1, uncertain_al
         Γ0, Γ1, C, Ψ, Π  = eqcond(m, regime)
 
         # Solve model
-        TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys(Γ0, Γ1, C, Ψ, Π, 1+1e-6, verbose = verbose)
+        TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys_for_model(m, Γ0, Γ1, C, Ψ, Π, 1+1e-6; verbose = verbose)
 
         # Check for LAPACK exception, existence and uniqueness
         if eu[1] != 1 || eu[2] != 1
@@ -349,8 +352,8 @@ function solve_non_gensys2_regimes!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}
         end
 
         TTT_gensys, CCC_gensys, RRR_gensys, eu =
-            gensys(Γ0s[reg], Γ1s[reg], Cs[reg], Ψs[reg], Πs[reg],
-                   1+1e-6, verbose = verbose)
+            gensys_for_model(m, Γ0s[reg], Γ1s[reg], Cs[reg], Ψs[reg], Πs[reg],
+                             1+1e-6; verbose = verbose)
 
 
         # Check for LAPACK exception, existence and uniqueness
@@ -682,8 +685,8 @@ function solve_non_gensys2_regimes!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}
                 gensys_uncertain_altpol(m, weights, reg, system_perfect_cred_totpolicies, is_altpol)
         else
             TTT_gensys, CCC_gensys, RRR_gensys, eu =
-                gensys(Γ0s[reg], Γ1s[reg], Cs[reg], Ψs[reg], Πs[reg],
-                       1+1e-6, verbose = verbose)
+                gensys_for_model(m, Γ0s[reg], Γ1s[reg], Cs[reg], Ψs[reg], Πs[reg],
+                                 1+1e-6; verbose = verbose)
 
             # Check for LAPACK exception, existence and uniqueness
             if eu[1] != 1 || eu[2] != 1
@@ -799,8 +802,8 @@ function solve_non_gensys2_regimes!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}
                 gensys_uncertain_altpol(m, weights, reg, system_perfect_cred_totpolicies, trues(length(weights) - 1))
         else
             TTT_gensys, CCC_gensys, RRR_gensys, eu =
-                gensys(Γ0s[reg], Γ1s[reg], Cs[reg], Ψs[reg], Πs[reg],
-                       1+1e-6, verbose = verbose)
+                gensys_for_model(m, Γ0s[reg], Γ1s[reg], Cs[reg], Ψs[reg], Πs[reg],
+                                 1+1e-6; verbose = verbose)
 
             # Check for LAPACK exception, existence and uniqueness
             if eu[1] != 1 || eu[2] != 1

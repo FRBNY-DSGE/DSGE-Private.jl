@@ -351,6 +351,7 @@ module DSGE
     include("models/representative/m1002/pseudo_observables.jl")
     include("models/representative/m1002/pseudo_measurement.jl")
     include("models/representative/m1002/augment_states.jl")
+    include("models/representative/m1002/estimation_cache.jl")
 
     include("models/representative/m1010/m1010.jl")
     include("models/representative/m1010/subspecs.jl")

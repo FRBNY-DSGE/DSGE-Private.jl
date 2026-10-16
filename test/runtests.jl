@@ -151,6 +151,7 @@ my_tests = [
             "models/poolmodel/poolmodel",
             "models/representative/an_schorfheide/an_schorfheide",
             "models/representative/m1002/m1002",
+            "models/representative/m1002/estimation_cache",
             "models/representative/m1002/ss104",
             "models/representative/gdp_gdi_meas_err",
             "models/representative/m1010/m1010",

@@ -421,9 +421,10 @@ parameter values.
 function transform_to_model_space!(m::AbstractDSGEModel, values::Vector{T};
                                    regime_switching::Bool = false) where {T<:AbstractFloat}
     new_values = transform_to_model_space(m.parameters, values; regime_switching = regime_switching)
-    DSGE.update!(m, new_values)
-    steadystate!(m)
+    return DSGE.update!(m, new_values)
 end
+
+skip_steadystate_update(m::AbstractDSGEModel, values) = false
 
 """
 ```
@@ -437,8 +438,12 @@ Update `m.parameters` with `values`, recomputing the steady-state parameter valu
 - `values`: the new values to assign to non-steady-state parameters.
 """
 function update!(m::AbstractDSGEModel, values::AbstractVector{T}) where {T <: Real}
+    skip_steadystate = skip_steadystate_update(m, values)
     ModelConstructors.update!(m.parameters, values)
-    steadystate!(m)
+    if skip_steadystate
+        return m
+    end
+    return steadystate!(m)
 end
 
 """
@@ -470,6 +475,8 @@ function update!(m::AbstractDSGEModel, values::ParameterVector{T};
             ModelConstructors.toggle_regime!(values, 1)
         end
 
+        skip_steadystate = skip_steadystate_update(m, values)
+
         # Update first-regime values
         ModelConstructors.update!(m.parameters, [θ.value for θ in values])
 
@@ -486,10 +493,14 @@ function update!(m::AbstractDSGEModel, values::ParameterVector{T};
             end
         end
     else
+        skip_steadystate = skip_steadystate_update(m, values)
         ModelConstructors.update!(m.parameters, [θ.value for θ in values])
     end
 
-    steadystate!(m)
+    if skip_steadystate
+        return m
+    end
+    return steadystate!(m)
 end
 
 """
