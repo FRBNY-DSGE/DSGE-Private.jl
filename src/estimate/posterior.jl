@@ -117,8 +117,9 @@ filter over the main sample all at once.
     transition matrices for the zero-lower-bound period are returned in a dictionary.
 - `catch_errors`: If `sampler = true`, `GensysErrors` should always be caught.
 - `system_cache`: Optional reference for two likelihoods at the same model parameters.
-    The first call stores the state-space system; the caller must clear the reference
-    before changing parameters or model settings.
+    The first call stores the state-space system. A longer sample rebuilds it if
+    additional regimes are needed. Clear the reference after changing parameters
+    or model settings.
 """
 function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
                     sampler::Bool = false,
@@ -179,15 +180,22 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     # Compute state-space system
 
     system = try
-        if isnothing(system_cache) || isnothing(system_cache[])
-            computed = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set),
-                                      verbose = verbose)
+        sample_end_date = m isa PoolModel || isempty(data) ? nothing :
+            iterate_quarters(date_presample_start(m), size(data, 2) - 1)
+        cached_system = isnothing(system_cache) ? nothing : system_cache[]
+        missing_sample_regimes = cached_system isa RegimeSwitchingSystem &&
+            length(cached_system.transitions) < likelihood_regime_count(
+                m, sample_end_date, get_setting(m, :n_regimes))
+        if isnothing(cached_system) || missing_sample_regimes
+            computed = m isa PoolModel ? compute_system(m; verbose = verbose) :
+                compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set),
+                               sample_end_date = sample_end_date, verbose = verbose)
             if !isnothing(system_cache)
                 system_cache[] = computed
             end
             computed
         else
-            system_cache[]
+            cached_system
         end
     catch err
         if catch_errors && (isa(err, GensysError) || isa(err, KleinError))

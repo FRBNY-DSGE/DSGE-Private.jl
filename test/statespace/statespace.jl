@@ -507,6 +507,11 @@ end
     m <= Setting(:tvis_information_set, [1:1, 2:7, 3:7, 4:7, 5:7, 6:7, 7:7])
     m <= Setting(:tvis_select_system, ones(Int, 7))
     sys = compute_system(m)
+    sampled_sys = compute_system(m; sample_end_date = Date(2020, 12, 31))
+    @test length(sampled_sys.transitions) == 2
+    for reg in 1:2, matrix in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
+        @test sampled_sys[reg, matrix] ≈ sys[reg, matrix]
+    end
 
     # Test k-periods ahead expectations with empty TTTs
     T_acc1, C_acc1 = DSGE.k_periods_ahead_expectations(sys_constant[:TTT], sys_constant[:CCC], typeof(sys_constant[:TTT])[],

@@ -16,10 +16,12 @@ computing state-space systems with time-varying information sets.
 compute_system just runs compute_system_helper (which actually computes
 the system) and then in the case of imperfect but positive credibility,
 adjusts the anticipated observables and pseudo-observables' measurement
-equations.
+equations. `sample_end_date` limits likelihood systems to regimes used by the
+observed sample; omit it when constructing a system for forecasting.
 """
 function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
                         set_regime_eqcond_info!::Union{Function, Nothing} = nothing,
+                        sample_end_date::Union{Date, Nothing} = nothing,
                         verbose::Symbol = :high) where {T <: Real}
 
     # do NOT delete the second part of the Boolean for apply_altpolicy; it is needed for
@@ -92,10 +94,12 @@ function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
             # Handle this special case on its own
             compute_uncertain_altpolicy_system_helper(m; tvis = tvis, verbose = verbose)
         else
-            compute_system_helper(m; tvis = tvis, verbose = verbose)
+            compute_system_helper(m; tvis = tvis, sample_end_date = sample_end_date,
+                                  verbose = verbose)
         end
     else
-        system_main = compute_system_helper(m; tvis = tvis, verbose = verbose)
+        system_main = compute_system_helper(m; tvis = tvis, sample_end_date = sample_end_date,
+                                            verbose = verbose)
     end
 
     # If correcting measurement eqs for anticipated (pseudo) observables is unnecessary
@@ -119,7 +123,27 @@ function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
     return system_main
 end
 
-function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verbose::Symbol = :high) where {T <: Real}
+"""
+Return the last regime the likelihood filter can use for the observed sample.
+Missing or incomplete regime dates leave the ordinary full-system path intact.
+"""
+function likelihood_regime_count(m::AbstractDSGEModel, sample_end_date::Union{Date, Nothing},
+                                 n_regimes::Int)
+    isnothing(sample_end_date) && return n_regimes
+    settings = get_settings(m)
+    haskey(settings, :regime_dates) || return n_regimes
+    dates = get_setting(m, :regime_dates)
+    all(reg -> haskey(dates, reg), 1:n_regimes) || return n_regimes
+    haskey(settings, :n_hist_regimes) && !haskey(settings, :n_cond_regimes) && return n_regimes
+    filter_regimes = haskey(settings, :n_hist_regimes) ?
+        min(n_regimes, get_setting(m, :n_hist_regimes) + get_setting(m, :n_cond_regimes)) : n_regimes
+    last_observed = findlast(reg -> dates[reg] <= sample_end_date, 1:filter_regimes)
+    return isnothing(last_observed) ? n_regimes : last_observed
+end
+
+function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false,
+                               sample_end_date::Union{Date, Nothing} = nothing,
+                               verbose::Symbol = :high) where {T <: Real}
 
     if tvis
         @assert haskey(get_settings(m), :tvis_information_set) "The setting :tvis_information_set is not defined"
@@ -152,20 +176,47 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verb
 
     # Solve model
     if regime_switching
-        n_regimes      = (regime_switching && haskey(get_settings(m), :n_regimes)) ? get_setting(m, :n_regimes) : 1
-        n_hist_regimes = (regime_switching && haskey(get_settings(m), :n_hist_regimes)) ? get_setting(m, :n_hist_regimes) : 1
+        n_regimes = haskey(get_settings(m), :n_regimes) ? get_setting(m, :n_regimes) : 1
+        n_sample_regimes = likelihood_regime_count(m, sample_end_date, n_regimes)
 
         if solution_method == :gensys
             # Determine which regimes should use gensys2/gensys
             gensys_regimes, gensys2_regimes = compute_gensys_gensys2_regimes(m)
 
+            # Gensys2 and forward-expectations measurements can depend on future
+            # transitions. Only independent Gensys regimes may skip their solves.
+            # Request vector output for a one-regime sample so the same solver
+            # path is used as when the full set of regimes is constructed.
+            has_forward_memo = (haskey(get_settings(m), :use_forward_expected_sum_memo) &&
+                                get_setting(m, :use_forward_expected_sum_memo)) ||
+                               (haskey(get_settings(m), :use_forward_expectations_memo) &&
+                                get_setting(m, :use_forward_expectations_memo))
+            has_vector_measurement = hasmethod(measurement,
+                (typeof(m), Vector{Matrix{T}}, Vector{Matrix{T}}, Vector{Vector{T}}))
+            has_vector_pseudo = hasmethod(pseudo_measurement,
+                (typeof(m), Vector{Matrix{T}}, Vector{Matrix{T}}, Vector{Vector{T}}))
+            can_limit_solve = n_sample_regimes >= 1 && n_sample_regimes < n_regimes &&
+                              !tvis && isempty(gensys2_regimes) && !has_forward_memo &&
+                              !has_vector_measurement && !has_vector_pseudo &&
+                              !(haskey(get_settings(m), :uncertain_temporary_altpolicy) &&
+                                get_setting(m, :uncertain_temporary_altpolicy)) &&
+                              all(range -> first(range) == 1 && last(range) == n_regimes,
+                                  gensys_regimes) && length(gensys_regimes) == 1 &&
+                              all(key -> !haskey(get_settings(m), key) ||
+                                  all(pair -> first(pair) > n_sample_regimes || last(pair) <= n_sample_regimes,
+                                      get_setting(m, key)),
+                                  (:identical_eqcond_regimes, :perfect_credibility_identical_transitions))
+            solve_regimes = can_limit_solve ? n_sample_regimes : n_regimes
+            solve_gensys_regimes = can_limit_solve ? UnitRange{Int}[1:solve_regimes] : gensys_regimes
+
             #println(gensys_regimes)
             #println(gensys2_regimes)
             # Solve!
             TTTs, RRRs, CCCs = solve(m; regime_switching = regime_switching,
-                                     regimes = collect(1:n_regimes),
-                                     gensys_regimes = gensys_regimes,
+                                     regimes = collect(1:solve_regimes),
+                                     gensys_regimes = solve_gensys_regimes,
                                      gensys2_regimes = gensys2_regimes,
+                                     force_regime_vectors = can_limit_solve && solve_regimes == 1,
                                      verbose = verbose)
 
 
@@ -182,7 +233,9 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verb
 
             memo_gensys2_regimes = isempty(gensys2_regimes) ? (1:1) : gensys2_regimes[1]
 
-            return RegimeSwitchingSystem(m, TTTs, RRRs, CCCs, n_regimes, tvis;
+            system_regimes = !tvis && !has_vector_measurement && !has_vector_pseudo ?
+                n_sample_regimes : n_regimes
+            return RegimeSwitchingSystem(m, TTTs, RRRs, CCCs, system_regimes, tvis;
                                          gensys2_regimes = memo_gensys2_regimes) # handles formation of transition and measurement equations
         else
             error("Regime switching with solution algorithms other than gensys has not been implemented.")

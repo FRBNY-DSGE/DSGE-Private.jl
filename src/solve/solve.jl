@@ -27,6 +27,7 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
                gensys_regimes::Vector{UnitRange{Int64}} = UnitRange{Int64}[1:1],
                gensys2_regimes::Vector{UnitRange{Int64}} = Vector{UnitRange{Int}}(undef, 0),
                regimes::Vector{Int} = Int[1],
+               force_regime_vectors::Bool = false,
                verbose::Symbol = :high) where {T <: Real}
 
     uncertain_altpolicy = haskey(get_settings(m), :uncertain_altpolicy) && get_setting(m, :uncertain_altpolicy)
@@ -34,6 +35,7 @@ function solve(m::AbstractDSGEModel{T}; regime_switching::Bool = false,
         return solve_regime_switching(m; gensys_regimes = gensys_regimes,
                                       gensys2_regimes = gensys2_regimes, regimes = regimes,
                                       uncertain_altpolicy = uncertain_altpolicy,
+                                      force_regime_vectors = force_regime_vectors,
                                       verbose = verbose)
     else
         # do NOT delete this Boolean for apply_altpolicy; it is needed for
@@ -187,6 +189,7 @@ function solve_regime_switching(m::AbstractDSGEModel{T};
                                 gensys_regimes::Vector{UnitRange{Int64}} = UnitRange{Int64}[1:1],
                                 gensys2_regimes::Vector{UnitRange{Int64}} = Vector{UnitRange{Int64}}(undef, 0),
                                 regimes::Vector{Int} = Int[1],
+                                force_regime_vectors::Bool = false,
                                 verbose::Symbol = :high) where {T <: Real}
 
     altpolicy_solve = alternative_policy(m).solve
@@ -195,7 +198,7 @@ function solve_regime_switching(m::AbstractDSGEModel{T};
     replace_eqcond = haskey(get_settings(m), :replace_eqcond) && get_setting(m, :replace_eqcond)
 
     if get_setting(m, :solution_method) == :gensys
-        if length(regimes) == 1 # Calculate the solution to a specific regime
+        if length(regimes) == 1 && !force_regime_vectors # Calculate the solution to a specific regime
             return solve_one_regime(m; regime = regimes[1],
                                     uncertain_altpolicy = uncertain_altpolicy, verbose = verbose)
         else # Calculate the reduced-form state space matrices for all regimes
