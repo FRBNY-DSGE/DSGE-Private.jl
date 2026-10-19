@@ -116,13 +116,17 @@ filter over the main sample all at once.
 - `sampler`: Whether metropolis_hastings or smc is the caller. If `sampler=true`, the
     transition matrices for the zero-lower-bound period are returned in a dictionary.
 - `catch_errors`: If `sampler = true`, `GensysErrors` should always be caught.
+- `system_cache`: Optional reference for two likelihoods at the same model parameters.
+    The first call stores the state-space system; the caller must clear the reference
+    before changing parameters or model settings.
 """
 function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
                     sampler::Bool = false,
                     catch_errors::Bool = false,
                     use_chand_recursion::Bool = false,
                     tol::Float64 = 0.0, add_zlb_duration::Tuple{Bool, Int} = (false, 1),
-                    verbose::Symbol = :high)
+                    verbose::Symbol = :high,
+                    system_cache::Union{Nothing, Base.RefValue} = nothing)
 
     catch_errors = catch_errors | sampler
     use_penalty  = try get_setting(m, :use_likelihood_penalty) catch; false end
@@ -175,7 +179,16 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
     # Compute state-space system
 
     system = try
-        compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
+        if isnothing(system_cache) || isnothing(system_cache[])
+            computed = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set),
+                                      verbose = verbose)
+            if !isnothing(system_cache)
+                system_cache[] = computed
+            end
+            computed
+        else
+            system_cache[]
+        end
     catch err
         if catch_errors && (isa(err, GensysError) || isa(err, KleinError))
             return -Inf

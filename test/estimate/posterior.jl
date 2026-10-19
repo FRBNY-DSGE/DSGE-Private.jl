@@ -43,6 +43,32 @@ end
     @test isinf(likelihood(m, data; sampler = true))
 end
 
+@testset "Reuse one state-space system for time-tempered likelihoods" begin
+    m = AnSchorfheide(testing = true)
+    data = Matrix{Float64}(load(joinpath(@__DIR__, "../reference/posterior.jld2"), "data")')
+    old_data = data[:, 1:div(size(data, 2), 2)]
+
+    for use_chand_recursion in (false, true)
+        expected_new = likelihood(m, data; use_chand_recursion = use_chand_recursion)
+        expected_old = likelihood(m, old_data; use_chand_recursion = use_chand_recursion)
+        shared_system = Ref{Any}(nothing)
+        actual_new = likelihood(m, data; use_chand_recursion = use_chand_recursion,
+                                system_cache = shared_system)
+        @test !isnothing(shared_system[])
+        cached = shared_system[]
+        actual_old = likelihood(m, old_data; use_chand_recursion = use_chand_recursion,
+                                system_cache = shared_system)
+        @test shared_system[] === cached
+        @test actual_new ≈ expected_new
+        @test actual_old ≈ expected_old
+    end
+
+    m <= Setting(:auto_reject, true)
+    shared_system = Ref{Any}(nothing)
+    @test likelihood(m, data; system_cache = shared_system) == -Inf
+    @test isnothing(shared_system[])
+end
+
 @testset "Check DSGEVAR likelihood and posterior calculations" begin
     dsge = Model1002("ss10")
     obs_i = [dsge.observables[:obs_nominalrate], dsge.observables[:obs_gdp],
