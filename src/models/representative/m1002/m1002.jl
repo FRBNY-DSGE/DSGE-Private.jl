@@ -1417,9 +1417,24 @@ function parameter_groupings(m::Model1002)
         if haskey(m.settings, :add_κ_pce) && get_setting(m, :add_κ_pce)
             push!(covid, :κ_pce)
         end
+        # The COVID shock specification adds separate persistence and scale
+        # parameters in several subspecs. Keep them in the prior table when
+        # present, without changing the groupings of earlier subspecs.
+        append!(covid, [p.key for p in m.parameters if
+                        endswith(string(p.key), "_covid") && p.key ∉ covid])
+        for key in (:damp_standard_shocks, :amplify_σ_r_m, :amplify_inflation_me)
+            haskey(m.keys, key) && push!(covid, key)
+        end
         push!(all_keys, covid)
         push!(descriptions, "COVID-19 Parameters")
     end
+
+    # Later subspecs add an iid markup process, a lagged COVID shock, and an
+    # inflation measurement loading. Put each beside its related parameters.
+    for key in (:σ_λ_f_iid, :ρ_λ_f_iid, :ρ_biidc_sh)
+        haskey(m.keys, key) && push!(processes, key)
+    end
+    haskey(m.keys, :meas_π1) && push!(error, :meas_π1)
 
     all_params = map(keys -> [m[θ]::Parameter for θ in keys], all_keys)
     groupings  = OrderedDict{String, Vector{Parameter}}(zip(descriptions, all_params))

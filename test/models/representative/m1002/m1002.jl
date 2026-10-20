@@ -1,6 +1,36 @@
 using DSGE, ModelConstructors, HDF5, Test, Dates
 path = dirname(@__FILE__)
 
+@testset "Model1002 parameter groupings across subspecs" begin
+    formerly_ungrouped = ("ss62", "ss67", "ss68", "ss69", "ss70", "ss71", "ss72",
+        "ss73", "ss74", "ss75", "ss76", "ss77", "ss78", "ss80", "ss82", "ss83",
+        "ss86", "ss88", "ss89", "ss90", "ss91", "ss92", "ss94", "ss95",
+        "ss96", "ss98", "ss99")
+    for ss in formerly_ungrouped
+        m = Model1002(ss)
+        groups = DSGE.parameter_groupings(m)
+        keys = [p.key for group in Base.values(groups) for p in group]
+        @test length(keys) == length(unique(keys))
+        @test !isempty(keys)
+    end
+
+    m207 = Model1002("ss207")
+    @test m207[:κ_pce].fixed
+    @test all(p.key != :κ_pce for group in Base.values(DSGE.parameter_groupings(m207)) for p in group)
+
+    m207_history = Model1002("ss207"; custom_settings=[
+        Setting(:date_forecast_start, Date(2026, 9, 30)),
+        Setting(:date_conditional_end, Date(2026, 9, 30))])
+    sample_end = Date(2026, 6, 30)
+    periods = DSGE.subtract_quarters(sample_end, date_presample_start(m207_history)) + 1
+    indices, _, splice = DSGE.zlb_plus_regime_indices(m207_history, zeros(1, periods))
+    @test splice
+    @test all(!isempty, indices)
+    @test last(indices[end]) == periods
+    @test length(indices) == DSGE.likelihood_regime_count(m207_history, sample_end,
+        get_setting(m207_history, :n_regimes)) + 1
+end
+
 ### Model
 model = Model1002("ss10")
 
