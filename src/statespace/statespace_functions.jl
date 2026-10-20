@@ -764,6 +764,7 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
         ## if weight on true policy > 0 before pgap1 set.
         ## This ensures that the new pgap is unexpected.
         if any([orig_regime_eqcond_info[i].weights[1] > 0.0 for i in 1:maximum(set_pgap1[1])])
+            error("set_pgap1 with weight on the true policy is broken (statespace_functions.jl:766-770); do not use until fixed")
             orig_regime_eqcond_info2 = copy(orig_regime_eqcond_info)
             for i in collect(keys(orig_regime_eqcond_info2))
                 orig_regime_eqcond_info2[i].weights = [1.0]
