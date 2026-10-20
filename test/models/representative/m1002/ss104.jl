@@ -249,5 +249,32 @@ end
     @test Δzz(28) > 1e-3        # needs regime 30, which a permanent regime 29 replaced with regime 29
 end
 
+@testset "ss104: a solve that throws leaves the imperfect-credibility settings unchanged" begin
+    # perfect_cred_multiperiod_altpolicy_systems switches :uncertain_altpolicy and
+    # :uncertain_temporary_altpolicy off and the :regime_eqcond_info weights to [1, 0, ...]. A draw
+    # whose solve throws (GensysError, which `likelihood` turns into -Inf) used to skip the restore,
+    # so every later system from the same model object was the perfect-credibility one.
+    @test get_setting(m, :uncertain_altpolicy) && get_setting(m, :uncertain_temporary_altpolicy)
+    throws_gensys(mm) = try compute_system(mm); false catch e; e isa DSGE.GensysError end
+
+    m_seq = deepcopy(m)
+    sys_before = compute_system(m_seq)
+    weights_before = Dict(r => copy(e.weights) for (r, e) in get_setting(m_seq, :regime_eqcond_info))
+
+    # ψ1 < 1 (Taylor principle violated) makes the solve throw a GensysError
+    ψ1 = m_seq[:ψ1].value
+    m_seq[:ψ1] = 0.9
+    @test throws_gensys(m_seq)
+    @test get_setting(m_seq, :uncertain_altpolicy)
+    @test get_setting(m_seq, :uncertain_temporary_altpolicy)
+    @test Dict(r => e.weights for (r, e) in get_setting(m_seq, :regime_eqcond_info)) == weights_before
+
+    m_seq[:ψ1] = ψ1
+    sys_after = compute_system(m_seq)
+    for r in 1:n_regs, key in (:TTT, :RRR, :CCC, :ZZ, :DD)
+        @test sys_after[r, key] == sys_before[r, key]   # bitwise
+    end
+end
+
 
 end # module TestSS104

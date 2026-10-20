@@ -489,12 +489,19 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
             else
                 revert_unc_altpol = false
             end
-            Talt, _, Calt = altpols[1].solve(m)
+            # Restore :uncertain_altpolicy in `finally`, so a solve that throws doesn't leave it off
+            Talt, _, Calt = try
+                altpols[1].solve(m)
+            finally
+                if revert_unc_altpol
+                    m <= Setting(:uncertain_altpolicy, true)
+                end
+            end
             Talt = Talt[1:n_endo,1:n_endo]
             Calt = Calt[1:n_endo]
-            if revert_unc_altpol
+            #= if revert_unc_altpol
                 m <= Setting(:uncertain_altpolicy, true)
-            end
+            end =#
         else
             @assert all(isa.(altpols, AltPolicy)) "All policies in `get_setting(m, :alternative_policies)` should have type AltPolicy."
 
@@ -508,15 +515,18 @@ function solve_gensys2!(m::AbstractDSGEModel, Γ0s::Vector{Matrix{S}}, Γ1s::Vec
                 revert_unc_altpol = false
             end
 
+            # Restore :uncertain_altpolicy in `finally`, so a solve that throws doesn't leave it off
+            try
             for i in 1:length(altpols)
                 Talt[i], _, Calt[i] = altpols[i].solve(m)
                 Talt[i] = Talt[i][1:n_endo,1:n_endo]
                 Calt[i] = Calt[i][1:n_endo]
             end
-
+            finally
             if revert_unc_altpol
                 m <= Setting(:uncertain_altpolicy, true)
             end
+            end # try
         end
 
         # Calculate gensys2 matrices under belief that the desired lift-off policy will occur

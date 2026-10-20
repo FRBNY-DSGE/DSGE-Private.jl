@@ -42,7 +42,9 @@ function gensys_uncertain_altpol(m::AbstractDSGEModel, prob_vec::AbstractVector{
                 m <= Setting(:uncertain_altpolicy, false)
             end
 
-            # Solve each alternative policy
+            # Solve each alternative policy. uncertain_altpolicy is turned back on in `finally`,
+            # so a solve that throws doesn't leave it off
+            try
             for (i, altpolicy) in enumerate(altpolicies)
                 j = i + 1
                 tmpT, _, tmpC = if altpolicy.solve == solve      # if solve is being called for gensys_uncertain_altpol
@@ -53,11 +55,13 @@ function gensys_uncertain_altpol(m::AbstractDSGEModel, prob_vec::AbstractVector{
                 Td[j] = tmpT[inds, inds]
                 Cd[j] = tmpC[inds]
             end
+            finally
 
             # Turn uncertain_altpolicy back on
             if is_uncertain_altpol
                 m <= Setting(:uncertain_altpolicy, true)
             end
+            end # try
 
             T̄ = sum([p .* Td[i] for (i, p) in enumerate(prob_vec)])
             C̄ = sum([p .* Cd[i] for (i, p) in enumerate(prob_vec)])
@@ -153,17 +157,21 @@ function gensys_uncertain_altpol(m::AbstractDSGEModel, prob_vec::AbstractVector{
         Cd = Vector{Vector{S}}(undef, length(prob_vec))
         Td[1] = TTT[inds, inds]
         Cd[1] = C[inds]
+        # uncertain_altpolicy is turned back on in `finally`, so a solve that throws doesn't leave it off
+        try
         for (i, altpolicy) in enumerate(altpolicies)
             j = i + 1
             tmpT, _, tmpC = altpolicy.solve(m) # regime_switching is false, so it is assumed that it is unnecessary here
             Td[j] = tmpT[inds, inds]
             Cd[j] = tmpC[inds]
         end
+        finally
 
         # Turn uncertain_altpolicy back on
         if is_uncertain_altpol
             m <= Setting(:uncertain_altpolicy, true)
         end
+        end # try
 
         T̄ = sum([p .* Td[i] for (i, p) in enumerate(prob_vec)])
         C̄ = sum([p .* Cd[i] for (i, p) in enumerate(prob_vec)])

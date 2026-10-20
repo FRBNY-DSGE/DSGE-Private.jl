@@ -610,6 +610,12 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
     orig_regime_eqcond_info = deepcopy(get_setting(m, :regime_eqcond_info))
     orig_altpol             = haskey(get_settings(m), :alternative_policy) ? get_setting(m, :alternative_policy) : nothing
     is_gensys2              = haskey(get_settings(m), :gensys2) && get_setting(m, :gensys2)
+    orig_regime_switching   = haskey(get_settings(m), :regime_switching) ? get_setting(m, :regime_switching) : nothing
+
+    # The original settings are restored in `finally`, so a solve that throws (e.g. a GensysError on an
+    # indeterminate draw, which `likelihood` turns into -Inf) doesn't leave the model in perfect credibility
+    finished = false
+    try
 
     ## Now calculate the perfectly credible transition matrices for all alternative policies
     sys_totpolicies[1] = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
@@ -639,6 +645,9 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
         end
     end
 
+    finished = true
+    finally
+
     # Now add original settings back
     m <= Setting(:n_regimes, orig_n_regimes)
     m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
@@ -650,6 +659,13 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
     if haskey(get_settings(m), :uncertain_temporary_altpolicy) && orig_temp_altpol
         m <= Setting(:uncertain_temporary_altpolicy, orig_temp_altpol)
     end
+    # Only after an error: a throw inside the loop above can leave these changed
+    if !finished
+        !isnothing(orig_regime_switching) && (m <= Setting(:regime_switching, orig_regime_switching))
+        isnothing(orig_altpol) && delete!(get_settings(m), :alternative_policy)
+    end
+
+    end # try
 
     return sys_totpolicies
 end
@@ -675,6 +691,14 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     orig_perf_cred_same_reg = haskey(get_settings(m), :perfect_credibility_identical_transitions) ? get_setting(m, :perfect_credibility_identical_transitions) : nothing
     orig_iden_eqcond_reg    = haskey(get_settings(m), :identical_eqcond_regimes) ? get_setting(m, :identical_eqcond_regimes) : nothing
     is_gensys2              = haskey(get_settings(m), :gensys2) && get_setting(m, :gensys2)
+    orig_regime_switching   = haskey(get_settings(m), :regime_switching) ? get_setting(m, :regime_switching) : nothing
+
+    # The original settings are restored in `finally`, so a solve that throws (e.g. a GensysError on an
+    # indeterminate draw, which `likelihood` turns into -Inf) doesn't leave the model in perfect credibility
+    set_pgap1_check = false
+    set_pgap1 = ([1], 0.0)
+    finished = false
+    try
 
     ## If set_pgap1, change identical_eqcond_regimes & perfect_credibility_identical_transitions to adjust
     ### For safety, just removing all references to a set_pgap1 regime
@@ -728,8 +752,8 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     delete!(get_settings(m), :perfect_credibility_identical_transitions) # does nothing if temporary_altpolicy_names is not a key in get_settings(m)
     delete!(get_settings(m), :identical_eqcond_regimes) # does nothing if temporary_altpolicy_names is not a key in get_settings(m)
 
-    set_pgap1_check = false
-    set_pgap1 = ([1], 0.0)
+    #= set_pgap1_check = false
+    set_pgap1 = ([1], 0.0) =# # now set before the `try`, since the restore in `finally` reads them
     if haskey(get_settings(m), :set_pgap1) && (!haskey(get_settings(m), :set_pgap1_expected) || !get_setting(m, :set_pgap1_expected))
         ## set_pgap1_expected notes whether pgap change is expected across policies
         set_pgap1 = get_setting(m, :set_pgap1)
@@ -798,6 +822,9 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
         end
     end
 
+    finished = true
+    finally
+
     # Now add original settings back
     m <= Setting(:n_regimes, orig_n_regimes)
     m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
@@ -828,6 +855,13 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     if set_pgap1_check && (!haskey(get_settings(m), :set_pgap1_expected) || !get_setting(m, :set_pgap1_expected))
         m <= Setting(:set_pgap1, set_pgap1)
     end
+    # Only after an error: a throw inside the loop above can leave these changed
+    if !finished
+        !isnothing(orig_regime_switching) && (m <= Setting(:regime_switching, orig_regime_switching))
+        isnothing(orig_altpol) && delete!(get_settings(m), :alternative_policy)
+    end
+
+    end # try
 
     return sys_totpolicies
 end
