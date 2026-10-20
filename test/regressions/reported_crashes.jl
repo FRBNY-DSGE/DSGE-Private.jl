@@ -18,7 +18,7 @@ using DSGE, ModelConstructors, Test, Dates, DataFrames, OrderedCollections, CSV
     end
     combined = cat(mb(dates[1], 1.0), mb(dates[2], 2.0); forecast_string="new")
     @test collect(keys(combined.metadata[:date_inds])) == dates
-    @test collect(values(combined.metadata[:date_inds])) == [1, 2]
+    @test collect(Base.values(combined.metadata[:date_inds])) == [1, 2]
     @test combined.metadata[:forecast_string] == "new"
 
     scen_model = AnSchorfheide(testing=true)
