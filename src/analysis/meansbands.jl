@@ -232,7 +232,7 @@ function Base.cat(mb1::MeansBands, mb2::MeansBands;
     end
 
     # date indices
-    date_indices = Dict(d::Dates.Date => i::Int for (i, d) in enumerate(means[!, :date]))
+    date_indices = OrderedDict(d::Dates.Date => i::Int for (i, d) in enumerate(means[!, :date]))
 
     # variable indices
     indices = Dict(var::Symbol => i::Int for (i, var) in enumerate(propertynames(means)))
@@ -241,7 +241,7 @@ function Base.cat(mb1::MeansBands, mb2::MeansBands;
     if isempty(forecast_string) && (mb1.metadata[:forecast_string] != mb2.metadata[:forecast_string])
         @warn "No forecast_string provided: using $(mb1.metadata[:forecast_string])"
     end
-    forecast_string = mb1.metadata[:forecast_string]
+    forecast_string = isempty(forecast_string) ? mb1.metadata[:forecast_string] : forecast_string
 
     metadata = Dict{Symbol, Any}(
                    :para            => get_para(mb1),
@@ -250,7 +250,7 @@ function Base.cat(mb1::MeansBands, mb2::MeansBands;
                    :product         => product,
                    :indices         => indices,
                    :forecast_string => forecast_string,
-                   :date_inds       => sort(date_indices, by = x -> date_indices[x]))
+                   :date_inds       => date_indices)
     if haskey(mb1.metadata, :scenario_key)
         metadata[:scenario_key] = mb1.metadata[:scenario_key]
         metadata[:scenario_vint] = mb1.metadata[:scenario_vint]

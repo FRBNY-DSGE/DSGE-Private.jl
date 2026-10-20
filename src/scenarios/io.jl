@@ -41,7 +41,7 @@ function load_scenario_targets!(m::AbstractDSGEModel, scen::Scenario, draw_index
     if isempty(scen.target_names)
         n_periods = forecast_horizons(m)
         for target in keys(m.observables)
-            scen.targets[target] = fill(NaN, n_periods)
+            scen.targets[!, target] = fill(NaN, n_periods)
         end
     else
         path = get_scenario_input_file(m, scen)
@@ -65,12 +65,6 @@ function load_scenario_targets!(m::AbstractDSGEModel, scen::Scenario, draw_index
         for (target_name, target_index) in target_inds
             scen.targets[!, target_name] = raw_targets[target_index, :]
         end
-    end
-
-    @assert collect(keys(target_inds)) == scen.target_names "Target indices in $path do not match target names in $(scen.key)"
-
-    for (target_name, target_index) in target_inds
-        scen.targets[!, target_name] = raw_targets[target_index, :]
     end
 
     return scen.targets

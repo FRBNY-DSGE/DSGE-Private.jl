@@ -7506,6 +7506,16 @@ Continuation of ss206 with additional changes
 
         ss205!(m)
 
+    # The gap states remain in the model even though this subspec uses the
+    # historical Taylor rule. Give their equations the same default types as
+    # the other post-ss62 subspecs, while respecting caller overrides.
+    if !haskey(m.settings, :pgap_type)
+        m <= Setting(:pgap_type, :flexible_ait)
+    end
+    if !haskey(m.settings, :ygap_type)
+        m <= Setting(:ygap_type, :flexible_ait)
+    end
+
     m2p = get_setting(m, :model2para_regime)
     #= m <= Setting(:covid_ant_equal_contemp, true) =#
     # Default to true, but don't clobber a value passed via custom_settings (applied before init_subspec!)

@@ -824,7 +824,7 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
 
     if input_type == :mode && m isa Union{Model1002, Model1010}
         loading = use_legacy_gdp_gdi_meas_err_loadings(m) ? "legacy (pre-7d5a0a916)" : "corrected correlation"
-        info_print(verbose, :low, "GDP/GDI measurement-error loading: $loading; ρ_gdpvar = $(m[:ρ_gdpvar])")
+        info_print(verbose, :low, "GDP/GDI measurement-error loading: $loading; ρ_gdpvar = $(m[:ρ_gdpvar].value)")
     end
 
     # Initialize the preprocessed mats

@@ -1360,7 +1360,7 @@ function parameter_groupings(m::Model1002)
 
     policy     = [[:ψ1, :ψ2, :ψ3, :ρ, :ρ_rm, :σ_r_m];
                   [Symbol("σ_r_m$i") for i = 1:n_mon_anticipated_shocks(m)];
-                  [Symbol("σ_ait_r_m$i") for i in mon_anticipated_ait_shocks(m)]]
+                  [Symbol("σ_ait_r_m$i") for i in (mon_anticipated_ait_shocks(m) === false ? Int[] : mon_anticipated_ait_shocks(m))]]
     sticky     = [:ζ_p, :ι_p, :ϵ_p, :ζ_w, :ι_w, :ϵ_w]
     other_endo = [:γ, :α, :β, :σ_c, :h, :ν_l, :δ, :Φ, :S′′, :ppsi, :π_star,
                   :Γ_gdpdef, :δ_gdpdef, :Lmean, :λ_w, :g_star]
@@ -1374,7 +1374,7 @@ function parameter_groupings(m::Model1002)
     if subspec_num >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         push!(error, :ρ_meas_π, :σ_meas_π)
     end
-    if subspec_num >= 100 && subspec_num != 104
+    if subspec(m) == "ss100"
         push!(policy, :φ_π, :φ_y, :ρ_smooth)
     end
     if haskey(get_settings(m), :add_ait_rm) && get_setting(m, :add_ait_rm)
@@ -1397,6 +1397,12 @@ function parameter_groupings(m::Model1002)
 
     if subspec_num >= 59
         covid = [:σ_ziid, :σ_biidc, :σ_φ]
+        if subspec(m) in ("ss103", "ss206", "ss207")
+            append!(covid, [:κ_std_bcshocks, :κ_covid])
+            if subspec(m) != "ss207"
+                push!(covid, :κ_pce)
+            end
+        end
         for (sh, ant_num) in get_setting(m, :antshocks)
             for i in 1:ant_num
                 push!(covid, Symbol("σ_$(sh)$i"))
@@ -1425,6 +1431,9 @@ function parameter_groupings(m::Model1002)
     if subspec_num >= 59
         push!(excl_params_sym, :ρ_ziid, :ρ_biidc, :ρ_φ)
     end
+    if subspec(m) == "ss207"
+        push!(excl_params_sym, :κ_pce)
+    end
     if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
         get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false
         push!(excl_params_sym, :σ_pgap, :σ_ygap)
@@ -1446,7 +1455,8 @@ function parameter_groupings(m::Model1002)
     end
     excl_params = [m[θ] for θ in excl_params_sym]
 
-    @assert isempty(setdiff(m.parameters, vcat(incl_params, excl_params)))
+    missing_params = setdiff(m.parameters, vcat(incl_params, excl_params))
+    @assert isempty(missing_params) "Ungrouped parameters: $(getfield.(missing_params, :key))"
 
     return groupings
 end

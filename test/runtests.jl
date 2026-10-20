@@ -174,6 +174,7 @@ my_tests = [
             "packet/packet",
             "parameters",
             "plot/util",
+            "regressions/reported_crashes",
             "scenarios/drivers",
             "scenarios/forecast",
             "scenarios/scenario",

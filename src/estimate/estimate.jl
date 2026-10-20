@@ -81,7 +81,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   mle::Bool = false,
                   sampling::Bool = true,
                   filestring_addl::Vector{String} = Vector{String}(),
-                  old_data::Matrix{Float64} = Matrix{Float64}(undef, size(data, 1), 0),
+                  old_data::Matrix{Float64} = Matrix{Float64}(undef, 0, 0),
                   old_cloud::Union{DSGE.ParticleCloud, DSGE.Cloud,
                                    SMC.Cloud} = DSGE.ParticleCloud(m, 0),
                   old_model::Union{AbstractDSGEModel, AbstractVARModel} = m,
@@ -96,10 +96,11 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   cholesky_fix = :none)
     data = df_to_matrix(m, df)
     estimate(m, data; verbose = verbose, proposal_covariance = proposal_covariance,
-             mle = mle, sampling = sampling,
+             mle = mle, sampling = sampling, filestring_addl = filestring_addl,
              old_data = old_data, old_cloud = old_cloud,
              old_model = old_model,
              continue_intermediate = continue_intermediate,
+             intermediate_stage_start = intermediate_stage_start,
              intermediate_stage_increment = intermediate_stage_increment,
              save_intermediate = save_intermediate,
              run_csminwel = run_csminwel, toggle = toggle, log_prob_old_data = log_prob_old_data,
@@ -113,7 +114,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
                   mle::Bool = false,
                   sampling::Bool = true,
                   filestring_addl::Vector{String} = Vector{String}(),
-                  old_data::Matrix{Float64} = Matrix{Float64}(undef, size(data, 1), 0),
+                  old_data::Matrix{Float64} = Matrix{Float64}(undef, 0, 0),
                   old_cloud::Union{DSGE.ParticleCloud, DSGE.Cloud,
                                    SMC.Cloud} = DSGE.ParticleCloud(m, 0),
                   old_model::Union{AbstractDSGEModel, AbstractVARModel} = m,
@@ -124,18 +125,20 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
                   run_csminwel::Bool = true,
                   toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
                   add_zlb_duration::Tuple{Bool, Int} = (false, 1),
-                  check_empty_columns::Bool = true)
+                  check_empty_columns::Bool = true,
+                  cholesky_fix = :none)
     # Load data
     df = load_data(m; verbose = verbose, check_empty_columns = check_empty_columns)
     estimate(m, df; verbose = verbose, proposal_covariance = proposal_covariance,
-             mle = mle, sampling = sampling,
+             mle = mle, sampling = sampling, filestring_addl = filestring_addl,
              old_data = old_data, old_cloud = old_cloud,
              old_model = old_model,
              continue_intermediate = continue_intermediate,
+             intermediate_stage_start = intermediate_stage_start,
              intermediate_stage_increment = intermediate_stage_increment,
 	         save_intermediate = save_intermediate,
              run_csminwel = run_csminwel, toggle = toggle, log_prob_old_data = log_prob_old_data,
-             add_zlb_duration = add_zlb_duration)
+             add_zlb_duration = add_zlb_duration, cholesky_fix = cholesky_fix)
 end
 
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractArray;
