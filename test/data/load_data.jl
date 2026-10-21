@@ -59,4 +59,47 @@ path = dirname(@__FILE__)
         @test_throws ErrorException load_data(m; try_disk = false, verbose=:none)
 end
 
+@testset "check_data flags series that start late, end early or have gaps" begin
+    m = Model1002("ss10", testing = true,
+                  custom_settings = [Setting(:date_forecast_start, DSGE.quartertodate("2016-Q4")),
+                                     Setting(:date_conditional_end, DSGE.quartertodate("2016-Q4"))])
+    dates = DSGE.quarter_range(date_presample_start(m), date_mainsample_end(m))
+    obs   = intersect(DSGE.CORE_OBSERVABLES, collect(keys(m.observable_mappings)))
+    clean = DataFrame(date = dates)
+    for col in obs
+        clean[!, col] = fill(1.0, length(dates))
+    end
+    # Hours and the long rate start late by design
+    clean[dates .< Date(1964, 3, 31), :obs_hours]      .= NaN
+    :obs_longrate in obs && (clean[dates .< Date(1971, 9, 30), :obs_longrate] .= NaN)
+    @test all(c in obs for c in (:obs_gdp, :obs_hours, :obs_gdpdeflator, :obs_spread))
+    @test check_data(m, clean)
+
+    late(col, d) = (df = copy(clean); df[dates .< d, col] .= NaN; df)
+    # A spread that starts years late (realtime ois_vint=230410 started in 2016Q4) is caught
+    @test_throws ErrorException check_data(m, late(:obs_spread, Date(2010, 12, 31)))
+    err = try check_data(m, late(:obs_spread, Date(2010, 12, 31))); "" catch e; e.msg end
+    @test occursin("obs_spread starts 2010-12-31", err)
+    # A series starting in 1981 (realtime bluechip_vint=040110 consumption) is caught
+    @test_throws ErrorException check_data(m, late(:obs_investment in obs ? :obs_investment : :obs_gdp, Date(1981, 6, 30)))
+    # Within max_lead_quarters is allowed (old vintages start core PCE one quarter late)
+    @test check_data(m, late(:obs_gdp, Date(1959, 12, 31)))
+    @test_throws ErrorException check_data(m, late(:obs_gdp, Date(1959, 12, 31)); max_lead_quarters = 0)
+    # Hours starting after its own expected start is caught
+    @test_throws ErrorException check_data(m, late(:obs_hours, Date(1970, 3, 31)))
+    # Models without :observable_start_dates (e.g. m990, whose long rate starts in 1990)
+    # skip the late-start check
+    m_nostart = deepcopy(m)
+    delete!(m_nostart.settings, :observable_start_dates); delete!(m_nostart.test_settings, :observable_start_dates)
+    @test check_data(m_nostart, late(:obs_spread, Date(2010, 12, 31)))
+
+    # The existing checks still fire
+    gap = copy(clean); gap[dates .== Date(2000, 3, 31), :obs_gdp] .= NaN
+    @test_throws ErrorException check_data(m, gap)
+    short = copy(clean); short[dates .> Date(2015, 12, 31), :obs_gdpdeflator] .= NaN
+    @test_throws ErrorException check_data(m, short)
+    empty = copy(clean); empty[!, :obs_spread] .= NaN
+    @test_throws ErrorException check_data(m, empty)
+end
+
 nothing

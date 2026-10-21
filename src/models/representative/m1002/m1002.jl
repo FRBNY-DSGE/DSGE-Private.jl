@@ -1245,6 +1245,13 @@ function model_settings!(m::Model1002)
     m <= Setting(:population_mnemonic, Nullable(:CNP16OV__HAVER),
                  "Mnemonic of data series for computing per-capita values (a Nullable{Symbol})")
 
+    # Where core observables start, for check_data's late-start check. Observables not
+    # listed are expected from date_presample_start(m). Matches every complete 2026
+    # production vintage (input_data/data, 260225-261013) and the realtime datasets.
+    m <= Setting(:observable_start_dates,
+                 Dict{Symbol, Date}(:obs_hours => Date(1964, 3, 31), :obs_longrate => Date(1971, 9, 30)),
+                 "Expected first observation of core observables that start after the presample")
+
     # Anticipated shocks
 
     m <= Setting(:n_mon_anticipated_shocks, 6,

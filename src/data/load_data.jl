@@ -555,6 +555,17 @@ const CORE_OBSERVABLES = [:obs_gdp, :obs_hours, :obs_wages, :obs_gdpdeflator, :o
                           :obs_nominalrate, :obs_consumption, :obs_investment, :obs_spread,
                           :obs_longrate, :obs_tfp, :obs_gdi]
 
+# Expected first observation of core observables, for check_data's late-start check.
+# Where a series starts depends on the model's data definitions (e.g. m990's long
+# rate starts in 1990), so the check runs only for models that set
+# :observable_start_dates (Dict{Symbol, Date}; unlisted observables are expected from
+# date_presample_start(m)). Returns nothing when the model does not set it.
+# (A testing model stores settings set with `<=` in m.test_settings, so check both.)
+observable_start_dates(m::AbstractDSGEModel) =
+    haskey(m.settings, :observable_start_dates) ||
+    (m.testing && haskey(m.test_settings, :observable_start_dates)) ?
+    get_setting(m, :observable_start_dates) : nothing
+
 """
 ```
 observable_gaps(m, df; observables = CORE_OBSERVABLES)
@@ -581,24 +592,32 @@ end
 
 """
 ```
-check_data(m, df; observables = CORE_OBSERVABLES, max_lag_quarters = 1)
+check_data(m, df; observables = CORE_OBSERVABLES, max_lag_quarters = 1,
+           max_lead_quarters = 4)
 ```
 
 Throw an error if the loaded data look wrong for estimation/forecasting:
 - any of `observables` has NaN/missing values inside its sample (see `observable_gaps`),
-- any of `observables` is all NaN/missing, or
+- any of `observables` is all NaN/missing,
 - any of `observables` ends more than `max_lag_quarters` quarters before
-  `date_mainsample_end(m)` (a stale or truncated series).
+  `date_mainsample_end(m)` (a stale or truncated series), or
+- any of `observables` starts more than `max_lead_quarters` quarters after its expected
+  start (a series missing its early history). Only for models that set
+  `:observable_start_dates`; the expected start is the later of `date_presample_start(m)`,
+  the first row of `df`, and the observable's entry in that setting.
 Returns `true` if all checks pass. Only main-sample rows are checked. `load_data` calls
 this on every dataset it builds unless the `:allow_data_gaps` setting is `true`.
 """
 function check_data(m::AbstractDSGEModel, df::DataFrame; observables = CORE_OBSERVABLES,
-                    max_lag_quarters::Int = 1)
+                    max_lag_quarters::Int = 1, max_lead_quarters::Int = 4)
     errs    = String[]
     df      = df[Date.(df[!, :date]) .<= date_mainsample_end(m), :]
     dates   = Date.(df[!, :date])
     min_end = date_mainsample_end(m) - Dates.Month(3 * max_lag_quarters)
     min_end = lastdayofquarter(min_end)
+    isempty(dates) && error("Data check failed for vintage $(data_vintage(m)): no rows up to $(date_mainsample_end(m))")
+    sample_start = max(lastdayofquarter(date_presample_start(m)), minimum(dates))
+    start_dates  = observable_start_dates(m)
 
     for (col, gap_dates) in observable_gaps(m, df; observables = observables)
         push!(errs, "$col has $(length(gap_dates)) NaN/missing quarters inside its sample " *
@@ -608,9 +627,22 @@ function check_data(m::AbstractDSGEModel, df::DataFrame; observables = CORE_OBSE
         obs_ind = findall(x -> !ismissing(x) && !isnan(x), df[!, col])
         if isempty(obs_ind)
             push!(errs, "$col has no data")
+        else
+            if dates[obs_ind[end]] < min_end
+                push!(errs, "$col ends $(dates[obs_ind[end]]); expected data through at least $min_end")
+            end
+            if !isnothing(start_dates)
+                expected_start = max(sample_start, get(start_dates, col, sample_start))
+                if subtract_quarters(dates[obs_ind[1]], expected_start) > max_lead_quarters
+                    push!(errs, "$col starts $(dates[obs_ind[1]]); expected data from $expected_start")
+                end
+            end
+        end
+        #= Old: no check on where a series starts
         elseif dates[obs_ind[end]] < min_end
             push!(errs, "$col ends $(dates[obs_ind[end]]); expected data through at least $min_end")
         end
+        =#
     end
 
     isempty(errs) || error("Data check failed for vintage $(data_vintage(m)):\n  - " * join(errs, "\n  - ") *
