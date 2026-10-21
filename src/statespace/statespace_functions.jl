@@ -692,11 +692,14 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     orig_iden_eqcond_reg    = haskey(get_settings(m), :identical_eqcond_regimes) ? get_setting(m, :identical_eqcond_regimes) : nothing
     is_gensys2              = haskey(get_settings(m), :gensys2) && get_setting(m, :gensys2)
     orig_regime_switching   = haskey(get_settings(m), :regime_switching) ? get_setting(m, :regime_switching) : nothing
+    orig_altpolicies        = get_setting(m, :alternative_policies)
 
     # The original settings are restored in `finally`, so a solve that throws (e.g. a GensysError on an
     # indeterminate draw, which `likelihood` turns into -Inf) doesn't leave the model in perfect credibility
     set_pgap1_check = false
     set_pgap1 = ([1], 0.0)
+    orig_regime_eqcond_info_unmodified = nothing
+    added_true_pol = false
     finished = false
     try
 
@@ -763,18 +766,34 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
         # Create a new alternative policy equivalent to the true policy but without setting pgap1
         ## if weight on true policy > 0 before pgap1 set.
         ## This ensures that the new pgap is unexpected.
-        if any([orig_regime_eqcond_info[i].weights[1] > 0.0 for i in 1:maximum(set_pgap1[1])])
-            error("set_pgap1 with weight on the true policy is broken (statespace_functions.jl:766-770); do not use until fixed")
-            orig_regime_eqcond_info2 = copy(orig_regime_eqcond_info)
-            for i in collect(keys(orig_regime_eqcond_info2))
-                orig_regime_eqcond_info2[i].weights = [1.0]
-                orig_regime_eqcond_info[i].weights = [0.0, orig_regime_eqcond_info[i].weights[2:end], orig_regime_eqcond_info[i][1]]
+        if any(haskey(orig_regime_eqcond_info, i) &&
+               !ismissing(orig_regime_eqcond_info[i].weights) &&
+               !isempty(orig_regime_eqcond_info[i].weights) &&
+               orig_regime_eqcond_info[i].weights[1] > 0.0 for i in 1:maximum(set_pgap1[1]))
+            # The implemented policy now sets pgap1, but agents who did not
+            # anticipate that change still assign its former weight to the old
+            # rule. Keep an independent copy for that old-rule system.
+            orig_regime_eqcond_info_unmodified = deepcopy(orig_regime_eqcond_info)
+            orig_regime_eqcond_info2 = deepcopy(orig_regime_eqcond_info)
+            for entry in values(orig_regime_eqcond_info2)
+                entry.weights = [1.0]
+            end
+            for entry in values(orig_regime_eqcond_info)
+                if !ismissing(entry.weights)
+                    old_weights = entry.weights
+                    @assert length(old_weights) == n_totpol
+                    entry.weights = vcat(0.0, old_weights[2:end], old_weights[1])
+                end
             end
             true_pol = MultiPeriodAltPolicy(:true_rule, get_setting(m, :n_regimes), orig_regime_eqcond_info2, gensys2 = is_gensys2,
                                  temporary_altpolicy_names = orig_temp_altpol_names,
                                  temporary_altpolicy_length = !isnothing(orig_temp_altpol_len) ? orig_temp_altpol_len : length(orig_regime_eqcond_info) - 1,
                                  infoset = orig_tvis_infoset)
-            m <= Setting(:alternative_policies, vcat(get_setting(m, :alternative_policies), true_pol))
+            m <= Setting(:alternative_policies, vcat(orig_altpolicies, true_pol))
+            added_true_pol = true
+            push!(is_altpol, false)
+            n_totpol += 1
+            resize!(sys_totpolicies, n_totpol)
         end
     end
 
@@ -828,7 +847,9 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
 
     # Now add original settings back
     m <= Setting(:n_regimes, orig_n_regimes)
-    m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
+    m <= Setting(:regime_eqcond_info,
+                 !finished && !isnothing(orig_regime_eqcond_info_unmodified) ?
+                 orig_regime_eqcond_info_unmodified : orig_regime_eqcond_info)
     m <= Setting(:gensys2, is_gensys2)
     m <= Setting(:uncertain_altpolicy,           true)
     m <= Setting(:uncertain_temporary_altpolicy, true)
@@ -858,6 +879,10 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     end
     # Only after an error: a throw inside the loop above can leave these changed
     if !finished
+        if added_true_pol
+            m <= Setting(:alternative_policies, orig_altpolicies)
+            pop!(is_altpol)
+        end
         !isnothing(orig_regime_switching) && (m <= Setting(:regime_switching, orig_regime_switching))
         isnothing(orig_altpol) && delete!(get_settings(m), :alternative_policy)
     end
