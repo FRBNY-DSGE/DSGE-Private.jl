@@ -927,6 +927,7 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
     # original is put back so later solves from this model don't use a tvis set's equilibrium conditions
     orig_regime_eqcond_info = haskey(get_settings(m), :regime_eqcond_info) ? get_setting(m, :regime_eqcond_info) : nothing
     finished = false
+    local has_pseudo, measurement_eqns, pseudo_measurement_eqns # assigned in the `try`, used after it
     try
 
     for (i, regime_eqcond_info) in enumerate(tvis_regime_eqcond_info) # For each set of equilibrium conditions,
