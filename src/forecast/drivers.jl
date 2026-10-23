@@ -822,6 +822,11 @@ function forecast_one_draw(m::AbstractDSGEModel{Float64}, input_type::Symbol, co
     # Compute state space
     update!(m, params) # Note that params is a Vector{Float64}, not a ParameterVector. This `update!` infers if the forecast is regime-switching if length(params) > length(m.parameters)
 
+    if input_type == :mode && m isa Union{Model1002, Model1010}
+        loading = use_legacy_gdp_gdi_meas_err_loadings(m) ? "legacy (pre-7d5a0a916)" : "corrected correlation"
+        info_print(verbose, :low, "GDP/GDI measurement-error loading: $loading; ρ_gdpvar = $(m[:ρ_gdpvar].value)")
+    end
+
     # Initialize the preprocessed mats
     m <= Setting(:preprocessed_transitions, Dict())
     system = compute_system(m; tvis = tvis)

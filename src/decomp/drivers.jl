@@ -144,6 +144,19 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     println(verbose, :low, "\nForecast decomposition complete: $(now())")
 end
 
+"""
+```
+align_by_date(new_dates, old_dates, old_values)
+```
+
+`old_values` (observed on `old_dates`) placed on `new_dates`, with `missing` where `old_dates` has no
+observation. Unlike padding the end, this works whatever the two date ranges are.
+"""
+function align_by_date(new_dates::AbstractVector{Date}, old_dates::AbstractVector{Date}, old_values::AbstractVector)
+    old_rows = Dict(zip(old_dates, old_values))
+    return [get(old_rows, d, missing) for d in new_dates]
+end
+
 function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataFrame,
                             params_new::Vector{Float64}, params_old::Vector{Float64},
                             cond_new::Symbol, cond_old::Symbol, classes::Vector{Symbol};
@@ -160,11 +173,17 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
                             para_oldspd::Union{Nothing, Vector{Float64}} = nothing,
                             ) where M<:AbstractDSGEModel
 
+    # Work on copies. The steps below change model settings and parameters and edit df_old; none of
+    # that may leak back to the caller (or into the next draw's decomposition), and the two models
+    # must not end up sharing parameter objects or dicts.
+    m_new  = deepcopy(m_new)
+    m_old  = deepcopy(m_old)
+    df_old = deepcopy(df_old)
+
     # Check numbers of periods
     T, k, H = decomposition_periods(m_new, m_old, df_new, df_old, cond_new, cond_old)
 
     gap_exists = (k > 0)
-    @show gap_exists
 
     # Forecast
     f(m::AbstractDSGEModel, df::DataFrame, params::Vector{Float64}, cond_type::Symbol; kwargs...) =
@@ -194,14 +213,12 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
             #pad missings to the old df data (here, we replace the spd data in the new df with the old df's data, adding missings to
             #account for quarter differences)
             #if both forecasts have same conditional quarter, df_new_oldspd is just the old spd with no missings
-            df_new_oldspd[!, var] = vcat(df_old[!, var], repeat([missing], length(df_new[!, :date]) - length(df_old[!, :date])))
+            df_new_oldspd[!, var] = align_by_date(df_new[!, :date], df_old[!, :date], df_old[!, var])
         end
     end
 
     new_regime = get_setting(m_new, :n_hist_regimes) + 1
     old_regime = get_setting(m_old, :n_hist_regimes) + 1
-    @show new_regime
-    @show old_regime
 
     #the point of out1-out1_5 should be to see just the effect of updating the spd data (out1 contains the completely new dataframe
     #with all new SPD values, while out1_5 contains most of the new dataframe, but where the expected nominal rate 1-6 periods ahead
@@ -214,12 +231,14 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
 
     #new code to remove cond meas err from current regime from new model - this keeps the effect of cond meas err being on for
     #current quarter within new conditional data category
+    cond_meas_err_paras = haskey(m_new.settings, :model2para_regime) ?
+        Base.filter(k -> haskey(get_setting(m_new, :model2para_regime), k), [:σ_condgdp, :σ_condcorepce]) : Symbol[]
     if gap_exists #do not do unless there is a gap in forecasts
-        get_setting(m_new, :model2para_regime)[:σ_condgdp][new_regime] = 1
-        get_setting(m_new, :model2para_regime)[:σ_condcorepce][new_regime] = 1
-        #turn on for m_old's conditional quarter
-        get_setting(m_new, :model2para_regime)[:σ_condgdp][old_regime] = 2
-        get_setting(m_new, :model2para_regime)[:σ_condcorepce][old_regime] = 2
+        for k in cond_meas_err_paras
+            get_setting(m_new, :model2para_regime)[k][new_regime] = 1
+            #turn on for m_old's conditional quarter
+            get_setting(m_new, :model2para_regime)[k][old_regime] = 2
+        end
     end
 
 
@@ -335,17 +354,20 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     end
 
     # Save settings for future resetting
-    m_old_params = copy(m_old.parameters)
-    m_old_mod2par = haskey(m_old.settings, :model2para_regime) ? get_setting(m_old, :model2para_regime) : nothing
+    m_old_params = deepcopy(m_old.parameters)
+    m_old_mod2par = haskey(m_old.settings, :model2para_regime) ? deepcopy(get_setting(m_old, :model2para_regime)) : nothing
 
-    #comment out the following lines before out4 if working with m1010
-    get_setting(m_new_olddf, :model2para_regime)[:σ_condgdp] = get_setting(m_old, :model2para_regime)[:σ_condgdp]
-    get_setting(m_new_olddf, :model2para_regime)[:σ_condcorepce] = get_setting(m_old, :model2para_regime)[:σ_condcorepce]
+    for k in cond_meas_err_paras
+        haskey(get_setting(m_old, :model2para_regime), k) || continue
+        get_setting(m_new_olddf, :model2para_regime)[k] = deepcopy(get_setting(m_old, :model2para_regime)[k])
+    end
 
     # Use new model's initial pgap and ygap
     ind_init = findfirst(df_old[!, :date] .== Date("2020-06-30"))
-    df_old[ind_init, :obs_ygap] = -get_setting(m_new, :ygap_value)
-    df_old[ind_init, :obs_pgap] = -get_setting(m_new, :pgap_value)
+    if !isnothing(ind_init)
+        df_old[ind_init, :obs_ygap] = -get_setting(m_new, :ygap_value)
+        df_old[ind_init, :obs_pgap] = -get_setting(m_new, :pgap_value)
+    end
 
     #m_new with changes made to allow for forecasting with old data, old_df, new params so out3 - out4 shows the effect of the
     #difference between df_new_lesscond with last row of df_old as last row of df_new_lesscond and df_old - so this is the
@@ -374,8 +396,10 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
 
     # Reset to old initial pgap and ygap
     ind_init = findfirst(df_old[!, :date] .== Date("2020-06-30"))
-    df_old[ind_init, :obs_ygap] = -get_setting(m_old, :ygap_value)
-    df_old[ind_init, :obs_pgap] = -get_setting(m_old, :pgap_value)
+    if !isnothing(ind_init)
+        df_old[ind_init, :obs_ygap] = -get_setting(m_old, :ygap_value)
+        df_old[ind_init, :obs_pgap] = -get_setting(m_old, :pgap_value)
+    end
 
     #when out4 and out5 are subtracted, we are just seeing the effect of the changes made to the model for AIT
     #out5 = f(m_new_olddf, df_old, params_new, cond_old, outputs = [:forecast, :shockdec],
@@ -397,9 +421,9 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
 
 
     # Other Model Settings
-    m_old.parameters = copy(m_new.parameters)
+    m_old.parameters = deepcopy(m_new.parameters)
     if haskey(m_new.settings, :model2para_regime)
-        m_old <= Setting(:model2para_regime, get_setting(m_new, :model2para_regime))
+        m_old <= Setting(:model2para_regime, deepcopy(get_setting(m_new, :model2para_regime)))
     end
 
     out7 = f(m_old, df_old, params_new, cond_old, outputs = [:forecast, :shockdec],

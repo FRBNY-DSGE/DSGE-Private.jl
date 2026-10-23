@@ -32,13 +32,13 @@ gensys2_uncertain_altpol(prob_vec::Vector{Vector{S}}, gensys2_regimes::Vector{In
 
 gensys2_uncertain_altpol(prob_vec::Vector{Vector{S}}, T_alt::Vector{Matrix{S}}, C_alt::Vector{Vector{S}},
                          T_impl::Vector{Matrix{S}}, R_impl::Vector{Matrix{S}}, C_impl::Vector{Vector{S}},
-                         Γ0_til::Vector{Matrix{S}}, Γ1_til::Vector{Matrix{S}}, Γ2_til::Vector{Matrix{S}},
-                         C_til::Vector{Vector{S}}, Ψ_til::Vector{Matrix{S}}) where {S <: Real}
+                         Γ0_til::AbstractVector{<:AbstractMatrix{S}}, Γ1_til::AbstractVector{<:AbstractMatrix{S}}, Γ2_til::AbstractVector{<:AbstractMatrix{S}},
+                         C_til::AbstractVector{<:AbstractVector{S}}, Ψ_til::AbstractVector{<:AbstractMatrix{S}}) where {S <: Real}
 
 gensys2_uncertain_altpol(prob_vec::Vector{Vector{S}}, gensys2_regimes::Vector{Int64}, inds::UnitRange{Int64},
                          systems::Vector{Union{System, RegimeSwitchingSystem}}, is_altpol::Vector{Bool},
-                         Γ0_til::Vector{Matrix{S}}, Γ1_til::Vector{Matrix{S}}, Γ2_til::Vector{Matrix{S}},
-                         C_til::Vector{Vector{S}}, Ψ_til::Vector{Matrix{S}}) where {S <: Real}
+                         Γ0_til::AbstractVector{<:AbstractMatrix{S}}, Γ1_til::AbstractVector{<:AbstractMatrix{S}}, Γ2_til::AbstractVector{<:AbstractMatrix{S}},
+                         C_til::AbstractVector{<:AbstractVector{S}}, Ψ_til::AbstractVector{<:AbstractMatrix{S}}) where {S <: Real}
 ```
 
 calculates the transition matrices when there is a temporary alternative policy with imperfect awareness.
@@ -270,10 +270,19 @@ function gensys2_uncertain_altpol(prob_vec::Vector{Vector{S}}, gensys2_regimes::
 end
 
 # Time-varying til matrices to allow ZLB matrices to vary over time
+# A single alternative policy uses the same calculation as a one-element policy list.
+function gensys2_uncertain_altpol(prob_vec::Vector{Vector{S}}, T_alt::AbstractMatrix{S}, C_alt::AbstractVector{S},
+                                  T_impl::Vector{Matrix{S}}, R_impl::Vector{Matrix{S}}, C_impl::Vector{Vector{S}},
+                                  Γ0_til::AbstractVector{<:AbstractMatrix{S}}, Γ1_til::AbstractVector{<:AbstractMatrix{S}}, Γ2_til::AbstractVector{<:AbstractMatrix{S}},
+                                  C_til::AbstractVector{<:AbstractVector{S}}, Ψ_til::AbstractVector{<:AbstractMatrix{S}}) where {S <: Real}
+    return gensys2_uncertain_altpol(prob_vec, [Matrix(T_alt)], [Vector(C_alt)],
+                                   T_impl, R_impl, C_impl, Γ0_til, Γ1_til, Γ2_til, C_til, Ψ_til)
+end
+
 function gensys2_uncertain_altpol(prob_vec::Vector{Vector{S}}, T_alt::Vector{Matrix{S}}, C_alt::Vector{Vector{S}},
                                   T_impl::Vector{Matrix{S}}, R_impl::Vector{Matrix{S}}, C_impl::Vector{Vector{S}},
-                                  Γ0_til::Vector{Matrix{S}}, Γ1_til::Vector{Matrix{S}}, Γ2_til::Vector{Matrix{S}},
-                                  C_til::Vector{Vector{S}}, Ψ_til::Vector{Matrix{S}}) where {S <: Real}
+                                  Γ0_til::AbstractVector{<:AbstractMatrix{S}}, Γ1_til::AbstractVector{<:AbstractMatrix{S}}, Γ2_til::AbstractVector{<:AbstractMatrix{S}},
+                                  C_til::AbstractVector{<:AbstractVector{S}}, Ψ_til::AbstractVector{<:AbstractMatrix{S}}) where {S <: Real}
 
     Tout  = Vector{Matrix{S}}(undef, length(T_impl) + 1)
     Rout  = Vector{Matrix{S}}(undef, length(T_impl) + 1)
@@ -302,8 +311,8 @@ end
 # # Time-varying til matrices to allow ZLB matrices to vary over time with time-varying credibility
 function gensys2_uncertain_altpol(prob_vec::Vector{Vector{S}}, gensys2_regimes::Vector{Int64}, inds::UnitRange{Int64},
                                   systems::Vector{Union{System, RegimeSwitchingSystem}}, is_altpol::Vector{Bool},
-                                  Γ0_til::Vector{Matrix{S}}, Γ1_til::Vector{Matrix{S}}, Γ2_til::Vector{Matrix{S}},
-                                  C_til::Vector{Vector{S}}, Ψ_til::Vector{Matrix{S}}) where {S <: Real}
+                                  Γ0_til::AbstractVector{<:AbstractMatrix{S}}, Γ1_til::AbstractVector{<:AbstractMatrix{S}}, Γ2_til::AbstractVector{<:AbstractMatrix{S}},
+                                  C_til::AbstractVector{<:AbstractVector{S}}, Ψ_til::AbstractVector{<:AbstractMatrix{S}}) where {S <: Real}
 
     Tout  = Vector{Matrix{S}}(undef, length(gensys2_regimes) - 1)
     Rout  = Vector{Matrix{S}}(undef, length(gensys2_regimes) - 1)

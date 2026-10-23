@@ -84,7 +84,7 @@ module DSGE
         print_all_benchmarks, construct_trial_group, write_ref_trial, write_ref_trial_group,
 
         # data/
-        load_data, load_data_levels, load_cond_data_levels, load_fred_data,
+        load_data, load_data_levels, load_cond_data_levels, load_fred_data, observable_gaps, check_data, allow_data_gaps,
         transform_data, save_data, get_data_filename,
         df_to_matrix, hpfilter, difflog, quartertodate, percapita, nominal_to_real,
         oneqtrpctchange, annualtoquarter, quartertoannual, quartertoannualpercent,
@@ -94,7 +94,7 @@ module DSGE
         logleveltopct_annualized_approx, loggrowthtopct_4q_approx, logleveltopct_4q_approx,
         parse_data_series, collect_data_transforms, reverse_transform,
         subtract_quarters, iterate_quarters,
-        simulate_data, simulate_observables, simulate_states, post_covid_data_mods!,
+        simulate_data, simulate_observables, simulate_states, post_covid_data_mods,
 
         # solve/
         gensys, solve, klein,
@@ -351,6 +351,7 @@ module DSGE
     include("models/representative/m1002/pseudo_observables.jl")
     include("models/representative/m1002/pseudo_measurement.jl")
     include("models/representative/m1002/augment_states.jl")
+    include("models/representative/m1002/estimation_cache.jl")
 
     include("models/representative/m1010/m1010.jl")
     include("models/representative/m1010/subspecs.jl")

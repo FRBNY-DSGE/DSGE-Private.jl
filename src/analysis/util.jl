@@ -341,8 +341,8 @@ function get_mb_metadata(m::AbstractDSGEModel, input_type::Symbol, cond_type::Sy
                    :cond_type       => cond_type,
                    :product         => product,
                    :class           => class,
-                   :indices         => sort(variable_indices, by = x -> variable_indices[x]),
-                   :date_inds       => sort(date_indices, by = x -> date_indices[x]),
+                   :indices         => OrderedDict(sort(collect(variable_indices), by = last)),
+                   :date_inds       => OrderedDict(sort(collect(date_indices), by = last)),
                    :forecast_string => forecast_string)
 
     if product in [:shockdec, :irf, :shockdecseq, :shockdecqtrs]

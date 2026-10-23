@@ -1,5 +1,23 @@
 """
 ```
+flexible_ait_policy_change_regime(m::Model1002)
+```
+
+Index of the regime that starts on `:flexible_ait_policy_change_date` (2020:Q3). Throws an
+`AssertionError` if no regime starts on that date.
+"""
+function flexible_ait_policy_change_regime(m::Model1002)
+    regime_dates = get_setting(m, :regime_dates)
+    change_date  = get_setting(m, :flexible_ait_policy_change_date)
+    get(regime_dates, 4, nothing) == change_date && return 4
+    for i in 1:get_setting(m, :n_regimes)
+        regime_dates[i] == change_date && return i
+    end
+    @assert false "The setting :regime_dates does not contain the date 2020:Q3, which is required if the setting :flexible_ait_policy_change is true."
+end
+
+"""
+```
 measurement(m::Model1002{T}, TTT::Matrix{T}, RRR::Matrix{T},
     CCC::Vector{T}; reg::Int = 1) where {T<:AbstractFloat}
 ```
@@ -84,19 +102,7 @@ function measurement(m::Model1002{T},
     # before 2020:Q3, the measurement equation should reflect the belief that the "permanent" regime is the
     # regime before 2020:Q3 starts.
     if flex_ait_2020Q3
-        if get_setting(m, :regime_dates)[4] != get_setting(m, :flexible_ait_policy_change_date)
-            reg_2020Q3 = 0
-            for i in 1:get_setting(m, :n_regimes)
-                if get_setting(m, :regime_dates)[i] == get_setting(m, :flexible_ait_policy_change_date)
-                    reg_2020Q2 = i
-                    break
-                end
-            end
-            @assert reg_2020Q2 != 0 "The setting :regime_dates does not contain the date 2020:Q3, which is required if the setting :flexible_ait_policy_change is true."
-        else
-            reg_2020Q3 = 4
-        end
-
+        reg_2020Q3 = flexible_ait_policy_change_regime(m)
         permanent_t = reg < reg_2020Q3 ? reg_2020Q3 - 1 : permanent_t
     end
 
@@ -160,7 +166,8 @@ function measurement(m::Model1002{T},
     ## Inflation (GDP Deflator)
     ZZ[obs[:obs_gdpdeflator], endo[:π_t]]            = m[:Γ_gdpdef]
     ZZ[obs[:obs_gdpdeflator], endo_new[:e_gdpdef_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"]
+    #= if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_gdpdeflator], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -169,7 +176,8 @@ function measurement(m::Model1002{T},
     ## Inflation (Core PCE)
     ZZ[obs[:obs_corepce], endo[:π_t]]             = 1.0
     ZZ[obs[:obs_corepce], endo_new[:e_corepce_t]] = 1.0
-    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+    #= if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t]]  = 1.0
         ZZ[obs[:obs_corepce], endo_new[:e_meas_π_t1]] = subspec(m) == "ss99" ? -m[:meas_π1] : -1.0
     end
@@ -267,7 +275,7 @@ TTT1Econo_1, CCC1Econo_1 = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, r
 #Econometrician's views
 
 #= (2025Q2)
-TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, 29;
+TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, length(TTTs);
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
 
@@ -308,21 +316,27 @@ end
 =#
 
 
-# Implementation (2025Q3)
-
-# There is only one quarter left (Q4) in 2025 on which we are taking inflation expectations
-TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 1, 29;
+# Implementation
+# obs_avgshortinflation is SPF COREPCEAVG/4, with COREPCEAVG = mean(COREPCE1..COREPCE4), where
+# COREPCE1 is the t-1 quarter (it equals the previous survey's COREPCE2). So the window is the
+# rolling {t-1, t, t+1, t+2}: π_t1 and π_t realized, t+1 and t+2 from the k=2 expected sum.
+# This replaces the "Implementation (2025Q3)" calendar-year window {t-2, t-1, t, t+1}, which
+# was applied to every quarter of the series (2007Q1-2025Q3) and needed large corepce_sh /
+# gdpdef_sh measurement errors to fit it.
+# The series intentionally ends in 2025Q3 (no more AIT), so this only affects the history.
+# Econometrician's view: the final regime (length(TTTs)) is the permanent one. This was hard-coded
+# to 29, which is wrong once a forecast has more regimes than that. Without TTTs (one regime, or a
+# single-regime information set) it isn't used.
+TTT1Econo, CCC1Econo = k_periods_ahead_expected_sums(TTT, CCC, TTTs, CCCs, reg, 2, length(TTTs);
                                                            integ_series = integ_series,
                                                          memo = use_fwd_exp_sum ? memo : nothing)
-T_sum = TTT1Econo #TTT
-C_sum = CCC1Econo #CCC
+T_sum = TTT1Econo
+C_sum = CCC1Econo
 
 TTT1_f = view(T_sum, endo[:π_t], :)
 CCC1_f = C_sum[endo[:π_t]]
 
-
 if haskey(get_settings(m), :add_avgshortinfl) && get_setting(m, :add_avgshortinfl)
-    ZZ[obs[:obs_avgshortinflation], endo[:π_t2]] = 0.25 # Add extra endogenous state to cover 2025Q1 (t-2) observed inflation
     ZZ[obs[:obs_avgshortinflation], endo[:π_t1]] = 0.25
     ZZ[obs[:obs_avgshortinflation], endo[:π_t]] =  0.25
     ZZ[obs[:obs_avgshortinflation], :] .+= TTT1_f ./ 4
@@ -380,6 +394,11 @@ if (haskey(m.settings, :ait_shocks_equal_taylor) && get_setting(m, :ait_shocks_e
 else
     QQ[exo[:rm_sh], exo[:rm_sh]]           = m[:σ_r_m]^2
 end
+# eqcond switches the policy shock off from :remove_rm_t_shocks on (Ψ[eq_rm, rm_sh] = 0); its variance
+# has to be off from the same regime, or the shock stays live where the model has none
+if haskey(m.settings, :remove_rm_t_shocks) && reg >= get_setting(m, :remove_rm_t_shocks)
+    QQ[exo[:rm_sh], exo[:rm_sh]]           = 0.
+end
     QQ[exo[:σ_ω_sh], exo[:σ_ω_sh]]         = m[:σ_σ_ω]^2
     QQ[exo[:μ_e_sh], exo[:μ_e_sh]]         = m[:σ_μ_e]^2
     QQ[exo[:γ_sh], exo[:γ_sh]]             = m[:σ_γ]^2
@@ -423,6 +442,9 @@ if subspec(m) ∈ ["ss206", "ss207"]
         QQ[exo[:corepce_sh], exo[:corepce_sh]] = (m[:κ_std_bcshocks] * m[:σ_corepce])^2
         QQ[exo[:gdp_sh], exo[:gdp_sh]]         = (m[:κ_std_bcshocks] * m[:σ_gdp])^2
         QQ[exo[:gdi_sh], exo[:gdi_sh]]         = (m[:κ_std_bcshocks] * m[:σ_gdi])^2
+        # σ_r_m was the only shock not scaled by κ_std_bcshocks. Only binds 2020Q1-Q3 (κ regime 2);
+        # σ_r_m is 0 from 2022Q1 (expected_nominal_rates!) and anticipated σ_r_m1..6 are not scaled.
+        QQ[exo[:rm_sh], exo[:rm_sh]]           = (m[:κ_std_bcshocks] * m[:σ_r_m])^2
     end
 
 
@@ -440,7 +462,8 @@ end
             QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = (m[:κ_pce] * m[:σ_meas_π])^2
         end
 
-    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+    #= elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    elseif parse(Int,SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         QQ[exo[:meas_π_sh], exo[:meas_π_sh]]   = m[:σ_meas_π]^2
     end
 
@@ -518,7 +541,9 @@ for (k, v) in get_setting(m, :antshocks)
             #Note: If subspec is 207, set standard deviations of anticipated covid shocks to the contemporaneous.
             @assert k ∈ [:ziid, :biidc, :φ]
             for i = 1:v
-                QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k)]^2
+                #= QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = m[Symbol("σ_", k)]^2 =#
+                # Match the contemporaneous std, which is κ_covid-scaled above
+                QQ[exo[Symbol(k, "_shl$i")], exo[Symbol(k, "_shl$i")]] = (m[:κ_covid] * m[Symbol("σ_", k)])^2
             end
         else
             for i = 1:v
@@ -528,8 +553,15 @@ for (k, v) in get_setting(m, :antshocks)
     end
 
 if haskey(get_settings(m), :add_ant_markup_shocks_ind) && get_setting(m, :add_ant_markup_shocks_ind) > 0
+    # With :ant_markup_σ_from_σ_λ_f (set by ss104), σ_λ_f$i only switches the shock on (> 0) or off (0)
+    # in this regime, and the standard deviation is the estimated σ_λ_f of this regime
+    σ_from_σ_λ_f = haskey(get_settings(m), :ant_markup_σ_from_σ_λ_f) && get_setting(m, :ant_markup_σ_from_σ_λ_f)
     for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
-        QQ[exo[Symbol("λ_f_ant_sh$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = m[Symbol("σ_λ_f$(i)")]
+        σ_ant = m[Symbol("σ_λ_f$(i)")].value
+        if σ_from_σ_λ_f
+            σ_ant = σ_ant > 0 ? m[:σ_λ_f].value : zero(σ_ant)
+        end
+        QQ[exo[Symbol("λ_f_ant_sh$(i)")], exo[Symbol("λ_f_ant_sh$(i)")]] = σ_ant^2
     end
 
 end

@@ -1,5 +1,27 @@
 """
 ```
+gdp_gdi_meas_err_loadings(ρ_gdpvar, σ_gdp, σ_gdi)
+```
+returns the loadings of the GDP measurement error on its own shock and on the GDI shock (whose
+variances in `QQ` are σ_gdp² and σ_gdi²). By default they are the Cholesky factor of the errors'
+covariance, so `ρ_gdpvar` is their correlation and `σ_gdp` the GDP error's standard deviation.
+With σ_gdi = 0 the errors can't be correlated, and the GDI loading is 0. Set `legacy = true`
+only when forecasting from a mode estimated with the loading used before commit `7d5a0a916`.
+"""
+function gdp_gdi_meas_err_loadings(ρ_gdpvar, σ_gdp, σ_gdi; legacy::Bool = false)
+    # Modes estimated before 7d5a0a916 used this loading. Keep it available for
+    # forecasts with those modes until they are re-estimated under the fixed model.
+    legacy && return 1.0, ρ_gdpvar * σ_gdp^2
+    σ_gdi <= 0 && return 1.0, 0.0
+    return sqrt(1 - ρ_gdpvar^2), ρ_gdpvar * σ_gdp / σ_gdi
+end
+
+use_legacy_gdp_gdi_meas_err_loadings(m) =
+    haskey(get_settings(m), :legacy_gdp_gdi_meas_err_loadings) &&
+    get_setting(m, :legacy_gdp_gdi_meas_err_loadings)
+
+"""
+```
 augment_states(m::AbstractDSGEModel, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Matrix{T}) where {T<:AbstractFloat}
 ```
 
@@ -232,7 +254,8 @@ function augment_states(m::Model1002, TTT::Matrix{T}, RRR::Matrix{T}, CCC::Vecto
         TTT_aug[endo_new[:e_gdi_t], endo_new[:e_gdi_covid_t]] = m[:ρ_gdi_covid]
     end
 
-if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"]
+#= if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         TTT_aug[endo_new[:e_meas_π_t], endo_new[:e_meas_π_t]] = m[:ρ_meas_π]
         TTT_aug[endo_new[:e_meas_π_t1], endo_new[:e_meas_π_t]] = 1.0
     end
@@ -286,13 +309,15 @@ if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss2
     RRR_aug[endo_new[:e_corepce_t], exo[:corepce_sh]] = 1.0
 
     # Measurement Error on GDP and GDI
-    RRR_aug[endo_new[:e_gdp_t], exo[:gdp_sh]] = 1.0
-    RRR_aug[endo_new[:e_gdp_t], exo[:gdi_sh]] = m[:ρ_gdpvar] * m[:σ_gdp] ^ 2
+    RRR_aug[endo_new[:e_gdp_t], exo[:gdp_sh]], RRR_aug[endo_new[:e_gdp_t], exo[:gdi_sh]] =
+        gdp_gdi_meas_err_loadings(m[:ρ_gdpvar], m[:σ_gdp], m[:σ_gdi];
+                                  legacy = use_legacy_gdp_gdi_meas_err_loadings(m))
 
     RRR_aug[endo_new[:e_gdi_t], exo[:gdi_sh]] = 1.0
 
     # Measurement Error in Levels on PCE and GDP Deflator
-if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"]
+#= if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205","ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         RRR_aug[endo_new[:e_meas_π_t], exo[:meas_π_sh]] = 1.0
     end
 
@@ -301,8 +326,9 @@ if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss2
         RRR_aug[endo_new[:e_lr_t], exo[:lr_covid_sh]]   = 1.0
         RRR_aug[endo_new[:e_tfp_t], exo[:tfp_covid_sh]] = 1.0
 
-        RRR_aug[endo_new[:e_gdp_t], exo[:gdp_covid_sh]] = 1.0
-        RRR_aug[endo_new[:e_gdp_t], exo[:gdi_covid_sh]] = m[:ρ_gdpvar_covid] * m[:σ_gdp_covid] ^ 2
+        RRR_aug[endo_new[:e_gdp_t], exo[:gdp_covid_sh]], RRR_aug[endo_new[:e_gdp_t], exo[:gdi_covid_sh]] =
+            gdp_gdi_meas_err_loadings(m[:ρ_gdpvar_covid], m[:σ_gdp_covid], m[:σ_gdi_covid];
+                                      legacy = use_legacy_gdp_gdi_meas_err_loadings(m))
 
         RRR_aug[endo_new[:e_gdi_t], exo[:gdi_covid_sh]] = 1.0
     end

@@ -507,6 +507,11 @@ end
     m <= Setting(:tvis_information_set, [1:1, 2:7, 3:7, 4:7, 5:7, 6:7, 7:7])
     m <= Setting(:tvis_select_system, ones(Int, 7))
     sys = compute_system(m)
+    sampled_sys = compute_system(m; sample_end_date = Date(2020, 12, 31))
+    @test length(sampled_sys.transitions) == 2
+    for reg in 1:2, matrix in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
+        @test sampled_sys[reg, matrix] ≈ sys[reg, matrix]
+    end
 
     # Test k-periods ahead expectations with empty TTTs
     T_acc1, C_acc1 = DSGE.k_periods_ahead_expectations(sys_constant[:TTT], sys_constant[:CCC], typeof(sys_constant[:TTT])[],
@@ -1000,6 +1005,40 @@ end
             imperfect_cred_new * sys_perfcred[i, :DD_pseudo][pseudo_inds] +
             imperfect_cred_old * sys_taylor[:DD_pseudo][pseudo_inds]
     end
+end
+
+@testset "Unexpected pgap1 with weight on implemented policy" begin
+    m = Model1002("ss10"; custom_settings = [Setting(:add_altpolicy_pgap, true)])
+    m <= Setting(:date_forecast_start, Date(2020, 6, 30))
+    m <= Setting(:regime_switching, true)
+    m <= Setting(:regime_dates, Dict(1 => date_presample_start(m),
+                                     2 => Date(2020, 3, 31), 3 => Date(2020, 6, 30)))
+    setup_regime_switching_inds!(m)
+    m <= Setting(:pgap_type, :flexible_ait)
+    entries = Dict(i => DSGE.EqcondEntry(DSGE.taylor_rule(), [0.4, 0.6]) for i in 1:3)
+    m <= Setting(:regime_eqcond_info, entries)
+    m <= Setting(:alternative_policies,
+                 [DSGE.MultiPeriodAltPolicy(:old_rule, 3, deepcopy(entries);
+                                            gensys2 = false, temporary_altpolicy_names = Symbol[])])
+    m <= Setting(:replace_eqcond, true)
+    m <= Setting(:temporary_altpolicy_names, Symbol[])
+    m <= Setting(:gensys2, false)
+    m <= Setting(:uncertain_altpolicy, true)
+    m <= Setting(:uncertain_temporary_altpolicy, true)
+    m <= Setting(:set_pgap1, ([2], 1.0))
+
+    system = compute_system(m; verbose = :none)
+    policies = get_setting(m, :alternative_policies)
+    @test length(policies) == 2
+    @test all(isfinite, system[2, :TTT])
+    @test get_setting(m, :regime_eqcond_info)[2].weights == [0.0, 0.6, 0.4]
+    @test policies[2].regime_eqcond_info[2].weights == [1.0]
+    @test policies[2].regime_eqcond_info[2] !== get_setting(m, :regime_eqcond_info)[2]
+
+    system_again = compute_system(m; verbose = :none)
+    @test length(get_setting(m, :alternative_policies)) == 2
+    @test system_again[2, :TTT] ≈ system[2, :TTT]
+    @test system_again[2, :CCC] ≈ system[2, :CCC]
 end
 
 nothing

@@ -233,6 +233,13 @@ function zlb_plus_regime_indices(m::AbstractDSGEModel{S}, data::AbstractArray,
         regime_inds[end] = first(regime_inds[end]):T
     end
 
+    # A forecast regime beginning just after the sample is represented by
+    # (T + 1):T. Its last index equals T, so the check above does not remove it.
+    # Keeping it makes the filter request a system for an unobserved regime.
+    while !isempty(data) && !isempty(regime_inds) && isempty(regime_inds[end])
+        pop!(regime_inds)
+    end
+
     return regime_inds, i_zlb_start, splice_zlb_regime
 end
 

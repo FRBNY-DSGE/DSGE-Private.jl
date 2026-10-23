@@ -41,14 +41,23 @@ function load_scenario_targets!(m::AbstractDSGEModel, scen::Scenario, draw_index
     if isempty(scen.target_names)
         n_periods = forecast_horizons(m)
         for target in keys(m.observables)
-            scen.targets[target] = fill(NaN, n_periods)
+            scen.targets[!, target] = fill(NaN, n_periods)
         end
     else
         path = get_scenario_input_file(m, scen)
         raw_targets, target_inds = JLD2.jldopen(path, "r") do file
             arr = read(file, "arr")
             inds = read(file, "target_indices")
+            # Older scenario files may contain a DataStructures.OrderedDict
+            # that JLD2 cannot reconstruct after the package's type changed.
+            # Scenario target columns are stored in target_names order, so
+            # recover that mapping when the serialized value is unreadable.
+            inds = inds isa AbstractDict ? inds : OrderedDict{Symbol,Int}()
             arr[draw_index, :, :], inds
+        end
+
+        if isempty(target_inds)
+            target_inds = OrderedDict{Symbol,Int}(name => i for (i, name) in enumerate(scen.target_names))
         end
 
         @assert collect(keys(target_inds)) == scen.target_names "Target indices in $path do not match target names in $(scen.key)"
@@ -56,12 +65,6 @@ function load_scenario_targets!(m::AbstractDSGEModel, scen::Scenario, draw_index
         for (target_name, target_index) in target_inds
             scen.targets[!, target_name] = raw_targets[target_index, :]
         end
-    end
-
-    @assert collect(keys(target_inds)) == scen.target_names "Target indices in $path do not match target names in $(scen.key)"
-
-    for (target_name, target_index) in target_inds
-        scen.targets[!, target_name] = raw_targets[target_index, :]
     end
 
     return scen.targets

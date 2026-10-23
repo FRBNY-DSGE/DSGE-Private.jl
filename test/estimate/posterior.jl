@@ -43,6 +43,75 @@ end
     @test isinf(likelihood(m, data; sampler = true))
 end
 
+@testset "Reuse one state-space system for time-tempered likelihoods" begin
+    m = AnSchorfheide(testing = true)
+    data = Matrix{Float64}(load(joinpath(@__DIR__, "../reference/posterior.jld2"), "data")')
+    old_data = data[:, 1:div(size(data, 2), 2)]
+
+    for use_chand_recursion in (false, true)
+        expected_new = likelihood(m, data; use_chand_recursion = use_chand_recursion)
+        expected_old = likelihood(m, old_data; use_chand_recursion = use_chand_recursion)
+        shared_system = Ref{Any}(nothing)
+        actual_new = likelihood(m, data; use_chand_recursion = use_chand_recursion,
+                                system_cache = shared_system)
+        @test !isnothing(shared_system[])
+        cached = shared_system[]
+        actual_old = likelihood(m, old_data; use_chand_recursion = use_chand_recursion,
+                                system_cache = shared_system)
+        @test shared_system[] === cached
+        @test actual_new ≈ expected_new
+        @test actual_old ≈ expected_old
+    end
+
+    m <= Setting(:auto_reject, true)
+    shared_system = Ref{Any}(nothing)
+    @test likelihood(m, data; system_cache = shared_system) == -Inf
+    @test isnothing(shared_system[])
+end
+
+@testset "Likelihood constructs only observed independent regimes" begin
+    m = AnSchorfheide(testing = true)
+    m <= Setting(:regime_switching, true)
+    m <= Setting(:n_regimes, 4)
+    first_date = date_presample_start(m)
+    m <= Setting(:date_zlb_start, first_date)
+    m <= Setting(:regime_dates, Dict(1 => first_date,
+                                     2 => DSGE.iterate_quarters(first_date, 6),
+                                     3 => DSGE.iterate_quarters(first_date, 48),
+                                     4 => DSGE.iterate_quarters(first_date, 60)))
+    setup_regime_switching_inds!(m)
+    data = Matrix{Float64}(load(joinpath(@__DIR__, "../reference/posterior.jld2"), "data")')[:, 1:24]
+    full = compute_system(m)
+    observed = compute_system(m; sample_end_date = DSGE.iterate_quarters(first_date, 23))
+
+    @test length(full.transitions) == 4
+    @test length(observed.transitions) == 2
+    @test length(observed.measurements) == 2
+    @test length(observed.pseudo_measurements) == 2
+    for reg in 1:2, matrix in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
+        @test observed[reg, matrix] == full[reg, matrix]
+    end
+    first_only = compute_system(m; sample_end_date = DSGE.iterate_quarters(first_date, 5))
+    @test length(first_only.transitions) == 1
+    for matrix in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
+        @test first_only[1, matrix] == full[1, matrix]
+    end
+    @test length(compute_system(m; sample_end_date = DSGE.iterate_quarters(first_date, 65)).transitions) == 4
+
+    cached = Ref{Any}(nothing)
+    actual = likelihood(m, data; system_cache = cached)
+    expected = likelihood(m, data; system_cache = Ref{Any}(full))
+    @test length(cached[].transitions) == 2
+    @test actual ≈ expected
+
+    shorter_first = Ref{Any}(nothing)
+    short_likelihood = likelihood(m, data[:, 1:6]; system_cache = shorter_first)
+    @test short_likelihood ≈ likelihood(m, data[:, 1:6]; system_cache = Ref{Any}(full))
+    @test length(shorter_first[].transitions) == 1
+    @test likelihood(m, data; system_cache = shorter_first) ≈ actual
+    @test length(shorter_first[].transitions) == 2
+end
+
 @testset "Check DSGEVAR likelihood and posterior calculations" begin
     dsge = Model1002("ss10")
     obs_i = [dsge.observables[:obs_nominalrate], dsge.observables[:obs_gdp],

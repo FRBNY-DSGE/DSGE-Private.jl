@@ -157,13 +157,27 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
     end
 
 
+    # SMC evaluates new and old data consecutively for each proposal. Reuse
+    # the system only when both likelihoods use this same model. The new-data
+    # call resets the reference, so an early rejection cannot reuse a system
+    # from an earlier particle.
+    reuse_same_model_system = !isempty(old_data) && old_model === m
+    shared_system = Ref{Any}(nothing)
+    last_new_likelihood = Ref(NaN)
     my_likelihood = if isa(m, AbstractDSGEModel)
         function _my_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64})::Float64
+            last_new_likelihood[] = NaN
+            if reuse_same_model_system
+                shared_system[] = nothing
+            end
             update!(m, parameters, regime_switching = regime_switching)
             m <= Setting(:preprocessed_transitions, Dict())
-            likelihood(m, data; sampler = false, catch_errors = true,
-                       add_zlb_duration = add_zlb_duration,
-                       use_chand_recursion = use_chand_recursion, verbose = verbose)
+            new_like = likelihood(m, data; sampler = false, catch_errors = true,
+                                  add_zlb_duration = add_zlb_duration,
+                                  use_chand_recursion = use_chand_recursion, verbose = verbose,
+                                  system_cache = reuse_same_model_system ? shared_system : nothing)
+            last_new_likelihood[] = new_like
+            return new_like
         end
     else isa(m, AbstractVARModel)
         function _my_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
@@ -228,6 +242,25 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
     my_old_likelihood = if isa(m, AbstractDSGEModel)
         function _my_old_likelihood_dsge(parameters::ParameterVector, data::Matrix{Float64}; new_model_params::Bool = false)::Float64
+            # SMC rejects the proposal when the new-data likelihood is -Inf.
+            # Its mutation routine still calls this callback, so avoid another
+            # system build and filter for a proposal that cannot be accepted.
+            if last_new_likelihood[] == -Inf
+                last_new_likelihood[] = NaN
+                shared_system[] = nothing
+                return -Inf
+            end
+            last_new_likelihood[] = NaN
+            if reuse_same_model_system && !new_model_params && !isnothing(shared_system[])
+                try
+                    return likelihood(m, data; sampler = false, catch_errors = true,
+                                      use_chand_recursion = use_chand_recursion,
+                                      verbose = verbose, system_cache = shared_system)
+                finally
+                    shared_system[] = nothing
+                end
+            end
+
             ## Remove parameters and parameter regimes that don't appear in the old model
             ModelConstructors.toggle_regime!(parameters, 1)
             para2 = deepcopy(parameters)

@@ -16,10 +16,12 @@ computing state-space systems with time-varying information sets.
 compute_system just runs compute_system_helper (which actually computes
 the system) and then in the case of imperfect but positive credibility,
 adjusts the anticipated observables and pseudo-observables' measurement
-equations.
+equations. `sample_end_date` limits likelihood systems to regimes used by the
+observed sample; omit it when constructing a system for forecasting.
 """
 function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
                         set_regime_eqcond_info!::Union{Function, Nothing} = nothing,
+                        sample_end_date::Union{Date, Nothing} = nothing,
                         verbose::Symbol = :high) where {T <: Real}
 
     # do NOT delete the second part of the Boolean for apply_altpolicy; it is needed for
@@ -92,10 +94,12 @@ function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
             # Handle this special case on its own
             compute_uncertain_altpolicy_system_helper(m; tvis = tvis, verbose = verbose)
         else
-            compute_system_helper(m; tvis = tvis, verbose = verbose)
+            compute_system_helper(m; tvis = tvis, sample_end_date = sample_end_date,
+                                  verbose = verbose)
         end
     else
-        system_main = compute_system_helper(m; tvis = tvis, verbose = verbose)
+        system_main = compute_system_helper(m; tvis = tvis, sample_end_date = sample_end_date,
+                                            verbose = verbose)
     end
 
     # If correcting measurement eqs for anticipated (pseudo) observables is unnecessary
@@ -119,7 +123,27 @@ function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
     return system_main
 end
 
-function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verbose::Symbol = :high) where {T <: Real}
+"""
+Return the last regime the likelihood filter can use for the observed sample.
+Missing or incomplete regime dates leave the ordinary full-system path intact.
+"""
+function likelihood_regime_count(m::AbstractDSGEModel, sample_end_date::Union{Date, Nothing},
+                                 n_regimes::Int)
+    isnothing(sample_end_date) && return n_regimes
+    settings = get_settings(m)
+    haskey(settings, :regime_dates) || return n_regimes
+    dates = get_setting(m, :regime_dates)
+    all(reg -> haskey(dates, reg), 1:n_regimes) || return n_regimes
+    haskey(settings, :n_hist_regimes) && !haskey(settings, :n_cond_regimes) && return n_regimes
+    filter_regimes = haskey(settings, :n_hist_regimes) ?
+        min(n_regimes, get_setting(m, :n_hist_regimes) + get_setting(m, :n_cond_regimes)) : n_regimes
+    last_observed = findlast(reg -> dates[reg] <= sample_end_date, 1:filter_regimes)
+    return isnothing(last_observed) ? n_regimes : last_observed
+end
+
+function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false,
+                               sample_end_date::Union{Date, Nothing} = nothing,
+                               verbose::Symbol = :high) where {T <: Real}
 
     if tvis
         @assert haskey(get_settings(m), :tvis_information_set) "The setting :tvis_information_set is not defined"
@@ -152,20 +176,47 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verb
 
     # Solve model
     if regime_switching
-        n_regimes      = (regime_switching && haskey(get_settings(m), :n_regimes)) ? get_setting(m, :n_regimes) : 1
-        n_hist_regimes = (regime_switching && haskey(get_settings(m), :n_hist_regimes)) ? get_setting(m, :n_hist_regimes) : 1
+        n_regimes = haskey(get_settings(m), :n_regimes) ? get_setting(m, :n_regimes) : 1
+        n_sample_regimes = likelihood_regime_count(m, sample_end_date, n_regimes)
 
         if solution_method == :gensys
             # Determine which regimes should use gensys2/gensys
             gensys_regimes, gensys2_regimes = compute_gensys_gensys2_regimes(m)
 
+            # Gensys2 and forward-expectations measurements can depend on future
+            # transitions. Only independent Gensys regimes may skip their solves.
+            # Request vector output for a one-regime sample so the same solver
+            # path is used as when the full set of regimes is constructed.
+            has_forward_memo = (haskey(get_settings(m), :use_forward_expected_sum_memo) &&
+                                get_setting(m, :use_forward_expected_sum_memo)) ||
+                               (haskey(get_settings(m), :use_forward_expectations_memo) &&
+                                get_setting(m, :use_forward_expectations_memo))
+            has_vector_measurement = hasmethod(measurement,
+                (typeof(m), Vector{Matrix{T}}, Vector{Matrix{T}}, Vector{Vector{T}}))
+            has_vector_pseudo = hasmethod(pseudo_measurement,
+                (typeof(m), Vector{Matrix{T}}, Vector{Matrix{T}}, Vector{Vector{T}}))
+            can_limit_solve = n_sample_regimes >= 1 && n_sample_regimes < n_regimes &&
+                              !tvis && isempty(gensys2_regimes) && !has_forward_memo &&
+                              !has_vector_measurement && !has_vector_pseudo &&
+                              !(haskey(get_settings(m), :uncertain_temporary_altpolicy) &&
+                                get_setting(m, :uncertain_temporary_altpolicy)) &&
+                              all(range -> first(range) == 1 && last(range) == n_regimes,
+                                  gensys_regimes) && length(gensys_regimes) == 1 &&
+                              all(key -> !haskey(get_settings(m), key) ||
+                                  all(pair -> first(pair) > n_sample_regimes || last(pair) <= n_sample_regimes,
+                                      get_setting(m, key)),
+                                  (:identical_eqcond_regimes, :perfect_credibility_identical_transitions))
+            solve_regimes = can_limit_solve ? n_sample_regimes : n_regimes
+            solve_gensys_regimes = can_limit_solve ? UnitRange{Int}[1:solve_regimes] : gensys_regimes
+
             #println(gensys_regimes)
             #println(gensys2_regimes)
             # Solve!
             TTTs, RRRs, CCCs = solve(m; regime_switching = regime_switching,
-                                     regimes = collect(1:n_regimes),
-                                     gensys_regimes = gensys_regimes,
+                                     regimes = collect(1:solve_regimes),
+                                     gensys_regimes = solve_gensys_regimes,
                                      gensys2_regimes = gensys2_regimes,
+                                     force_regime_vectors = can_limit_solve && solve_regimes == 1,
                                      verbose = verbose)
 
 
@@ -182,7 +233,9 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false, verb
 
             memo_gensys2_regimes = isempty(gensys2_regimes) ? (1:1) : gensys2_regimes[1]
 
-            return RegimeSwitchingSystem(m, TTTs, RRRs, CCCs, n_regimes, tvis;
+            system_regimes = !tvis && !has_vector_measurement && !has_vector_pseudo ?
+                n_sample_regimes : n_regimes
+            return RegimeSwitchingSystem(m, TTTs, RRRs, CCCs, system_regimes, tvis;
                                          gensys2_regimes = memo_gensys2_regimes) # handles formation of transition and measurement equations
         else
             error("Regime switching with solution algorithms other than gensys has not been implemented.")
@@ -557,6 +610,12 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
     orig_regime_eqcond_info = deepcopy(get_setting(m, :regime_eqcond_info))
     orig_altpol             = haskey(get_settings(m), :alternative_policy) ? get_setting(m, :alternative_policy) : nothing
     is_gensys2              = haskey(get_settings(m), :gensys2) && get_setting(m, :gensys2)
+    orig_regime_switching   = haskey(get_settings(m), :regime_switching) ? get_setting(m, :regime_switching) : nothing
+
+    # The original settings are restored in `finally`, so a solve that throws (e.g. a GensysError on an
+    # indeterminate draw, which `likelihood` turns into -Inf) doesn't leave the model in perfect credibility
+    finished = false
+    try
 
     ## Now calculate the perfectly credible transition matrices for all alternative policies
     sys_totpolicies[1] = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
@@ -586,6 +645,9 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
         end
     end
 
+    finished = true
+    finally
+
     # Now add original settings back
     m <= Setting(:n_regimes, orig_n_regimes)
     m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
@@ -597,6 +659,13 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
     if haskey(get_settings(m), :uncertain_temporary_altpolicy) && orig_temp_altpol
         m <= Setting(:uncertain_temporary_altpolicy, orig_temp_altpol)
     end
+    # Only after an error: a throw inside the loop above can leave these changed
+    if !finished
+        !isnothing(orig_regime_switching) && (m <= Setting(:regime_switching, orig_regime_switching))
+        isnothing(orig_altpol) && delete!(get_settings(m), :alternative_policy)
+    end
+
+    end # try
 
     return sys_totpolicies
 end
@@ -622,6 +691,17 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     orig_perf_cred_same_reg = haskey(get_settings(m), :perfect_credibility_identical_transitions) ? get_setting(m, :perfect_credibility_identical_transitions) : nothing
     orig_iden_eqcond_reg    = haskey(get_settings(m), :identical_eqcond_regimes) ? get_setting(m, :identical_eqcond_regimes) : nothing
     is_gensys2              = haskey(get_settings(m), :gensys2) && get_setting(m, :gensys2)
+    orig_regime_switching   = haskey(get_settings(m), :regime_switching) ? get_setting(m, :regime_switching) : nothing
+    orig_altpolicies        = get_setting(m, :alternative_policies)
+
+    # The original settings are restored in `finally`, so a solve that throws (e.g. a GensysError on an
+    # indeterminate draw, which `likelihood` turns into -Inf) doesn't leave the model in perfect credibility
+    set_pgap1_check = false
+    set_pgap1 = ([1], 0.0)
+    orig_regime_eqcond_info_unmodified = nothing
+    added_true_pol = false
+    finished = false
+    try
 
     ## If set_pgap1, change identical_eqcond_regimes & perfect_credibility_identical_transitions to adjust
     ### For safety, just removing all references to a set_pgap1 regime
@@ -675,8 +755,8 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     delete!(get_settings(m), :perfect_credibility_identical_transitions) # does nothing if temporary_altpolicy_names is not a key in get_settings(m)
     delete!(get_settings(m), :identical_eqcond_regimes) # does nothing if temporary_altpolicy_names is not a key in get_settings(m)
 
-    set_pgap1_check = false
-    set_pgap1 = ([1], 0.0)
+    #= set_pgap1_check = false
+    set_pgap1 = ([1], 0.0) =# # now set before the `try`, since the restore in `finally` reads them
     if haskey(get_settings(m), :set_pgap1) && (!haskey(get_settings(m), :set_pgap1_expected) || !get_setting(m, :set_pgap1_expected))
         ## set_pgap1_expected notes whether pgap change is expected across policies
         set_pgap1 = get_setting(m, :set_pgap1)
@@ -686,17 +766,34 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
         # Create a new alternative policy equivalent to the true policy but without setting pgap1
         ## if weight on true policy > 0 before pgap1 set.
         ## This ensures that the new pgap is unexpected.
-        if any([orig_regime_eqcond_info[i].weights[1] > 0.0 for i in 1:maximum(set_pgap1[1])])
-            orig_regime_eqcond_info2 = copy(orig_regime_eqcond_info)
-            for i in collect(keys(orig_regime_eqcond_info2))
-                orig_regime_eqcond_info2[i].weights = [1.0]
-                orig_regime_eqcond_info[i].weights = [0.0, orig_regime_eqcond_info[i].weights[2:end], orig_regime_eqcond_info[i][1]]
+        if any(haskey(orig_regime_eqcond_info, i) &&
+               !ismissing(orig_regime_eqcond_info[i].weights) &&
+               !isempty(orig_regime_eqcond_info[i].weights) &&
+               orig_regime_eqcond_info[i].weights[1] > 0.0 for i in 1:maximum(set_pgap1[1]))
+            # The implemented policy now sets pgap1, but agents who did not
+            # anticipate that change still assign its former weight to the old
+            # rule. Keep an independent copy for that old-rule system.
+            orig_regime_eqcond_info_unmodified = deepcopy(orig_regime_eqcond_info)
+            orig_regime_eqcond_info2 = deepcopy(orig_regime_eqcond_info)
+            for entry in values(orig_regime_eqcond_info2)
+                entry.weights = [1.0]
+            end
+            for entry in values(orig_regime_eqcond_info)
+                if !ismissing(entry.weights)
+                    old_weights = entry.weights
+                    @assert length(old_weights) == n_totpol
+                    entry.weights = vcat(0.0, old_weights[2:end], old_weights[1])
+                end
             end
             true_pol = MultiPeriodAltPolicy(:true_rule, get_setting(m, :n_regimes), orig_regime_eqcond_info2, gensys2 = is_gensys2,
                                  temporary_altpolicy_names = orig_temp_altpol_names,
                                  temporary_altpolicy_length = !isnothing(orig_temp_altpol_len) ? orig_temp_altpol_len : length(orig_regime_eqcond_info) - 1,
                                  infoset = orig_tvis_infoset)
-            m <= Setting(:alternative_policies, vcat(get_setting(m, :alternative_policies), true_pol))
+            m <= Setting(:alternative_policies, vcat(orig_altpolicies, true_pol))
+            added_true_pol = true
+            push!(is_altpol, false)
+            n_totpol += 1
+            resize!(sys_totpolicies, n_totpol)
         end
     end
 
@@ -745,9 +842,14 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
         end
     end
 
+    finished = true
+    finally
+
     # Now add original settings back
     m <= Setting(:n_regimes, orig_n_regimes)
-    m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
+    m <= Setting(:regime_eqcond_info,
+                 !finished && !isnothing(orig_regime_eqcond_info_unmodified) ?
+                 orig_regime_eqcond_info_unmodified : orig_regime_eqcond_info)
     m <= Setting(:gensys2, is_gensys2)
     m <= Setting(:uncertain_altpolicy,           true)
     m <= Setting(:uncertain_temporary_altpolicy, true)
@@ -775,6 +877,17 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     if set_pgap1_check && (!haskey(get_settings(m), :set_pgap1_expected) || !get_setting(m, :set_pgap1_expected))
         m <= Setting(:set_pgap1, set_pgap1)
     end
+    # Only after an error: a throw inside the loop above can leave these changed
+    if !finished
+        if added_true_pol
+            m <= Setting(:alternative_policies, orig_altpolicies)
+            pop!(is_altpol)
+        end
+        !isnothing(orig_regime_switching) && (m <= Setting(:regime_switching, orig_regime_switching))
+        isnothing(orig_altpol) && delete!(get_settings(m), :alternative_policy)
+    end
+
+    end # try
 
     return sys_totpolicies
 end

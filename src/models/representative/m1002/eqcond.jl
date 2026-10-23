@@ -36,7 +36,12 @@ function eqcond(m::Model1002, reg::Int)
 
     for para in m.parameters
         if !isempty(para.regimes)
-            if length(para.regimes[:value]) > 2 #BP for special case of old model from estimation! Remove later
+            #= if length(para.regimes[:value]) > 2 #BP for special case of old model from estimation! Remove later =#
+            # ss207: 2-regime parameters that enter Ψ (σ_φ_prop, σ_ziid_prop, σ_biidc_prop, set by ss205!)
+            # were never toggled here, so their 2020Q1 value (2.0) never took effect. Kept the old
+            # >2 guard for every other subspec, and for every other ss207 parameter.
+            if length(para.regimes[:value]) > 2 ||
+                (subspec(m) == "ss207" && para.key in (:σ_φ_prop, :σ_ziid_prop, :σ_biidc_prop))
                 if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
                     ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
 

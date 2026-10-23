@@ -175,7 +175,8 @@ function init_model_indices!(m::Model1002)
     if subspec(m) in ["ss14", "ss15", "ss16", "ss18", "ss19"]
         push!(endogenous_states_augmented, :e_tfp_t1)
     end
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+    #= if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         push!(endogenous_states_augmented, :e_meas_π_t, :e_meas_π_t1)
     end
     if subspec(m) in ["ss86", "ss88", "ss89", "ss90", "ss91", "ss92", "ss94", "ss95", "ss96"]
@@ -230,7 +231,8 @@ function init_model_indices!(m::Model1002)
     if subspec(m) in ["ss86", "ss88", "ss89", "ss90", "ss91", "ss92", "ss94", "ss95", "ss96"]
         push!(exogenous_shocks, :λ_f_iid_sh)
     end
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205",  "ss206", "ss207"]
+    #= if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205",  "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         push!(exogenous_shocks, :meas_π_sh)
     end
 
@@ -654,7 +656,8 @@ buted to steady-state inflation.",
                    description="me_level: Indicator of cointegration of GDP and GDI.",
                    tex_label="\\mathcal{C}_{me}")
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+    #= if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         m <= parameter(:ρ_meas_π, 0.2320, (0.0, 0.999), (0.0, 0.999), ModelConstructors.SquareRoot(), BetaAlt(0.5, 0.2), fixed=false,
                        tex_label="\\rho_{meas_\\pi}")
     end
@@ -731,7 +734,8 @@ buted to steady-state inflation.",
     m <= parameter(:σ_gdi, 0.1, (1e-8, 5.),(1e-8, 5.),ModelConstructors.Exponential(),RootInverseGamma(2, 0.10), fixed=false,
                    tex_label="\\sigma_{gdi}")
 
-    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+    #= if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         m <= parameter(:σ_meas_π, 0.0999, (0.0, 5.),(0.0, 5.), ModelConstructors.Exponential(), RootInverseGamma(2, 0.10), fixed=false,
                        tex_label="\\sigma_{meas_\\pi}")
     end
@@ -1237,6 +1241,17 @@ function model_settings!(m::Model1002)
 
     default_settings!(m)
 
+    # Levels data (incl. population) come from Haver, read from haver_<vint>.csv
+    m <= Setting(:population_mnemonic, Nullable(:CNP16OV__HAVER),
+                 "Mnemonic of data series for computing per-capita values (a Nullable{Symbol})")
+
+    # Where core observables start, for check_data's late-start check. Observables not
+    # listed are expected from date_presample_start(m). Matches every complete 2026
+    # production vintage (input_data/data, 260225-261013) and the realtime datasets.
+    m <= Setting(:observable_start_dates,
+                 Dict{Symbol, Date}(:obs_hours => Date(1964, 3, 31), :obs_longrate => Date(1971, 9, 30)),
+                 "Expected first observation of core observables that start after the presample")
+
     # Anticipated shocks
 
     m <= Setting(:n_mon_anticipated_shocks, 6,
@@ -1352,7 +1367,7 @@ function parameter_groupings(m::Model1002)
 
     policy     = [[:ψ1, :ψ2, :ψ3, :ρ, :ρ_rm, :σ_r_m];
                   [Symbol("σ_r_m$i") for i = 1:n_mon_anticipated_shocks(m)];
-                  [Symbol("σ_ait_r_m$i") for i in mon_anticipated_ait_shocks(m)]]
+                  [Symbol("σ_ait_r_m$i") for i in (mon_anticipated_ait_shocks(m) === false ? Int[] : mon_anticipated_ait_shocks(m))]]
     sticky     = [:ζ_p, :ι_p, :ϵ_p, :ζ_w, :ι_w, :ϵ_w]
     other_endo = [:γ, :α, :β, :σ_c, :h, :ν_l, :δ, :Φ, :S′′, :ppsi, :π_star,
                   :Γ_gdpdef, :δ_gdpdef, :Lmean, :λ_w, :g_star]
@@ -1362,10 +1377,11 @@ function parameter_groupings(m::Model1002)
     error      = [:me_level, :ρ_gdp, :ρ_gdi, :ρ_lr, :ρ_tfp, :ρ_gdpdef, :ρ_corepce,
                   :ρ_gdpvar, :σ_gdp, :σ_gdi, :σ_lr, :σ_tfp, :σ_gdpdef, :σ_corepce]
 
-    if subspec_num >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+    #= if subspec_num >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+    if subspec_num >= 87 && subspec(m) ∉ ["ss205", "ss206"]
         push!(error, :ρ_meas_π, :σ_meas_π)
     end
-    if subspec_num >= 100 && subspec_num != 104
+    if subspec(m) == "ss100"
         push!(policy, :φ_π, :φ_y, :ρ_smooth)
     end
     if haskey(get_settings(m), :add_ait_rm) && get_setting(m, :add_ait_rm)
@@ -1388,6 +1404,12 @@ function parameter_groupings(m::Model1002)
 
     if subspec_num >= 59
         covid = [:σ_ziid, :σ_biidc, :σ_φ]
+        if subspec(m) in ("ss103", "ss206", "ss207")
+            append!(covid, [:κ_std_bcshocks, :κ_covid])
+            if subspec(m) != "ss207"
+                push!(covid, :κ_pce)
+            end
+        end
         for (sh, ant_num) in get_setting(m, :antshocks)
             for i in 1:ant_num
                 push!(covid, Symbol("σ_$(sh)$i"))
@@ -1402,9 +1424,24 @@ function parameter_groupings(m::Model1002)
         if haskey(m.settings, :add_κ_pce) && get_setting(m, :add_κ_pce)
             push!(covid, :κ_pce)
         end
+        # The COVID shock specification adds separate persistence and scale
+        # parameters in several subspecs. Keep them in the prior table when
+        # present, without changing the groupings of earlier subspecs.
+        append!(covid, [p.key for p in m.parameters if
+                        endswith(string(p.key), "_covid") && p.key ∉ covid])
+        for key in (:damp_standard_shocks, :amplify_σ_r_m, :amplify_inflation_me)
+            haskey(m.keys, key) && push!(covid, key)
+        end
         push!(all_keys, covid)
         push!(descriptions, "COVID-19 Parameters")
     end
+
+    # Later subspecs add an iid markup process, a lagged COVID shock, and an
+    # inflation measurement loading. Put each beside its related parameters.
+    for key in (:σ_λ_f_iid, :ρ_λ_f_iid, :ρ_biidc_sh)
+        haskey(m.keys, key) && push!(processes, key)
+    end
+    haskey(m.keys, :meas_π1) && push!(error, :meas_π1)
 
     all_params = map(keys -> [m[θ]::Parameter for θ in keys], all_keys)
     groupings  = OrderedDict{String, Vector{Parameter}}(zip(descriptions, all_params))
@@ -1415,6 +1452,9 @@ function parameter_groupings(m::Model1002)
                            [Symbol("σ_r_m$i") for i=n_mon_anticipated_shocks(m)+1:n_mon_anticipated_shocks_padding(m)])
     if subspec_num >= 59
         push!(excl_params_sym, :ρ_ziid, :ρ_biidc, :ρ_φ)
+    end
+    if subspec(m) == "ss207"
+        push!(excl_params_sym, :κ_pce)
     end
     if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
         get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false
@@ -1428,9 +1468,17 @@ function parameter_groupings(m::Model1002)
         get_setting(m, :add_iid_cond_obs_corepce_meas_err) : false
         push!(excl_params_sym, :σ_condcorepce, :ρ_condcorepce)
     end
+    # Anticipated mark-up shock stds are fixed at σ_λ_f in the regimes set in the subspec
+    # (ss104!), not estimated, so they are left out of the prior/posterior tables
+    if haskey(get_settings(m), :add_ant_markup_shocks_ind)
+        for i in 1:get_setting(m, :add_ant_markup_shocks_ind)
+            push!(excl_params_sym, Symbol("σ_λ_f$(i)"))
+        end
+    end
     excl_params = [m[θ] for θ in excl_params_sym]
 
-    @assert isempty(setdiff(m.parameters, vcat(incl_params, excl_params)))
+    missing_params = setdiff(m.parameters, vcat(incl_params, excl_params))
+    @assert isempty(missing_params) "Ungrouped parameters: $(getfield.(missing_params, :key))"
 
     return groupings
 end
@@ -1472,7 +1520,8 @@ function shock_groupings(m::Model1002)
         mei = ShockGroup("mu", [:μ_sh], :cyan)
 
         mea_vec = [:lr_sh, :tfp_sh, :gdpdef_sh, :corepce_sh, :gdp_sh, :gdi_sh]
-        if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"]
+        #= if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206", "ss207"] =# # ss207 re-adds inflation meas error (e_meas_π)
+        if parse(Int, SubString(subspec(m),3,subspec_ind)) >= 87 && subspec(m) ∉ ["ss205", "ss206"]
             push!(mea_vec, :meas_π_sh)
         end
         if !isempty(expected_ffr(m))
