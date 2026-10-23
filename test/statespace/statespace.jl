@@ -1039,6 +1039,17 @@ end
     @test length(get_setting(m, :alternative_policies)) == 2
     @test system_again[2, :TTT] ≈ system[2, :TTT]
     @test system_again[2, :CCC] ≈ system[2, :CCC]
+
+    # Resetting the weights to their original length (the solves above leave them reordered,
+    # with the :true_rule policy appended) used to fail with AssertionError: length(old_weights) == n_totpol
+    m <= Setting(:regime_eqcond_info, Dict(i => DSGE.EqcondEntry(DSGE.taylor_rule(), [0.4, 0.6]) for i in 1:3))
+    system_reset = compute_system(m; verbose = :none)
+    @test length(get_setting(m, :alternative_policies)) == 2
+    @test get_setting(m, :regime_eqcond_info)[2].weights == [0.0, 0.6, 0.4]
+    for reg in 1:3
+        @test isequal(system_reset[reg, :TTT], system[reg, :TTT])
+        @test isequal(system_reset[reg, :CCC], system[reg, :CCC])
+    end
 end
 
 nothing
