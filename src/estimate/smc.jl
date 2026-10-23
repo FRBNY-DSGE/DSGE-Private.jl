@@ -26,6 +26,9 @@ as the keyword argument for `SMC.smc`. The names are sometimes different from th
 keyword argument for `SMC.smc` to distinguish the setting from MH estimation settings.
 
 - `n_particles::Int`: Number of particles.
+- `smc_seed::Integer`: Optional reproducible run seed, also accepted as a `smc2` keyword.
+    The keyword takes precedence over the model setting. If neither is supplied, SMC
+    generates and records a seed in the saved JLD2 output.
 - `n_smc_blocks::Int`: Number of parameter blocks in mutation step (corresponds to kwarg `n_blocks` for `SMC.smc`).
 - `n_mh_steps_smc::Int`: Number of Metropolis Hastings steps to attempt during the mutation step (corresponds to kwarg `n_mh_steps` for `SMC.smc`).
 - `λ::S`: The 'bending coefficient' λ in Φ(n) = (n/N(Φ))^λ
@@ -115,12 +118,15 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               run_csminwel::Bool = true,
               regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
               add_zlb_duration::Tuple{Bool, Int} = (false, 1),
-              cholesky_fix = :none)
+              cholesky_fix = :none,
+              smc_seed::Union{Nothing, Integer} = nothing)
 
     parallel    = get_setting(m, :use_parallel_workers)
     n_parts     = get_setting(m, :n_particles)
     n_blocks    = get_setting(m, :n_smc_blocks)
     n_mh_steps  = get_setting(m, :n_mh_steps_smc)
+    smc_seed = smc_seed === nothing && haskey(get_settings(m), :smc_seed) ?
+        get_setting(m, :smc_seed) : smc_seed
     old_vintage = get_setting(m, :previous_data_vintage)
 
     smc_iteration = get_setting(m, :smc_iteration)
@@ -349,6 +355,7 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
     cholesky_fix == :none || error("cholesky_fix is not supported by the installed SMC.jl API")
 
     SMC.smc(my_likelihood, get_parameters(m), data;
+            smc_seed = smc_seed,
             verbose      = verbose,
             testing      = m.testing,
             data_vintage = data_vintage(m),
