@@ -901,6 +901,15 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
 
     @assert haskey(get_settings(m), :replace_eqcond) "The setting :replace_eqcond must be true to calculate a state-space system with time-varying information sets"
 
+    # solve() handles uncertain_altpolicy here through gensys_uncertain_altpol, which only supports
+    # (single-period) AltPolicy's. Fail clearly instead of with a MethodError deep inside solve
+    if haskey(get_settings(m), :uncertain_altpolicy) && get_setting(m, :uncertain_altpolicy) &&
+        haskey(get_settings(m), :alternative_policies) &&
+        any(x -> isa(x, MultiPeriodAltPolicy), get_setting(m, :alternative_policies))
+        error("compute_tvis_system does not support uncertain_altpolicy with MultiPeriodAltPolicy's " *
+              "in the setting :alternative_policies (e.g. ss104): gensys_uncertain_altpol only takes AltPolicy's.")
+    end
+
     # :regime_dates should have the same number of possible regimes. Any differences in eqcond
     # should be specified by tvis_regime_eqcond_info
     tvis_infoset            = get_setting(m, :tvis_information_set)
