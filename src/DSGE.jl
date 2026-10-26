@@ -107,6 +107,8 @@ module DSGE
         find_density_bands, mutation, resample, smc,
         mvnormal_mixture_draw, nearest_spd, marginal_data_density,
         initial_draw!, ParticleCloud, Particle, estimate_bma,
+        plot_smc_stage_health, smc_mode_check, smc_group_estimates, smc_nse_validation,
+        smc_compare_runs, smc_sbc, smc_sbc_uniformity,
 
         # backwards_compatibility.jl
         smc2, old_to_new_cloud, # TO REMOVE
@@ -278,6 +280,7 @@ module DSGE
     include("estimate/metropolis_hastings.jl")
 
     include("estimate/smc.jl")
+    include("estimate/smc_reliability.jl")
     include("estimate/backwards_compatibility.jl")
 
     # CT HANK code

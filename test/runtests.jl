@@ -111,6 +111,7 @@ my_tests = [
             "estimate/smc/mutation",
             "estimate/smc/particle",
             "estimate/smc/regime_switching_smc",
+            "estimate/smc/reliability",
             "estimate/smc/resample",
             "estimate/smc/smc",
             "estimate/smc/util",

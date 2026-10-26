@@ -56,6 +56,14 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
     (corresponds to the kwarg `old_data_vintage` for `SMC.smc`).
 - `smc_iteration::Int`: The iteration index for the number of times SMC has been run on the
      same data vintage. Primarily for numerical accuracy/testing purposes.
+- `n_smc_groups::Int`: Number of independent particle groups (`n_smc_groups` for `SMC.smc`). With
+    more than one, each group is a full SMC run saved with a `_group=g` suffix, and the pooled
+    cloud, numerical standard errors and log MDD estimates are saved at the usual path (the
+    pooled file has no `w`/`W`; `marginal_data_density` reads its pooled log MDD).
+- `smc_bridge_sampling::Bool`, `smc_n_bridge_draws::Int`: Also estimate the log MDD by bridge
+    sampling on the final cloud (`bridge_sampling` and `n_bridge_draws` for `SMC.smc`).
+    Every run also saves its per-stage health record, health flags and the modified harmonic
+    mean log MDD; see `plot_smc_stage_health`.
 
 ### Keyword Arguments
 - `old_data::Matrix{Float64}` = []: A matrix containing the time series of observables of previous data
@@ -103,9 +111,9 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
 
 ### Outputs
 
-- `cloud`: The ParticleCloud object containing all of the information about the
+- `cloud`: The SMC.Cloud containing all of the information about the
     parameter values from the sample, their respective log-likelihoods, the ESS
-    schedule, tempering schedule etc., which is saved in the saveroot.
+    schedule, tempering schedule etc., which is also saved in the saveroot.
 """
 function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64};
               verbose::Symbol = :low,
@@ -356,8 +364,11 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
     # API; reject non-default requests rather than silently ignoring them.
     cholesky_fix == :none || error("cholesky_fix is not supported by the installed SMC.jl API")
 
-    SMC.smc(my_likelihood, get_parameters(m), data;
+    cloud = SMC.smc(my_likelihood, get_parameters(m), data;
             smc_seed = smc_seed,
+            n_smc_groups = haskey(get_settings(m), :n_smc_groups) ? get_setting(m, :n_smc_groups) : 1,
+            bridge_sampling = haskey(get_settings(m), :smc_bridge_sampling) && get_setting(m, :smc_bridge_sampling),
+            n_bridge_draws = haskey(get_settings(m), :smc_n_bridge_draws) ? get_setting(m, :smc_n_bridge_draws) : 0,
             run_info = Dict("dsge_version" => string(pkgversion(DSGE)),
                             "dsge_commit"  => SMC.package_commit(DSGE)),
             verbose      = verbose,
@@ -411,6 +422,7 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
             write(file, "mode", out.minimizer)
         end
     end
+    return cloud
 end
 
 function smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame; verbose::Symbol = :low,

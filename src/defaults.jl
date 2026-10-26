@@ -202,6 +202,14 @@ function default_settings!(m::ModelConstructors.AbstractModel)
         "The mixture proportion for the mutation step's proposal distribution")
     settings[:debug_assertion] = Setting(:debug_assertion, false,
         "Print output (if applicable) when encountering an assertion error during SMC to help with debugging.")
+    settings[:n_smc_groups] = Setting(:n_smc_groups, 1,
+        "Number of independent particle groups in SMC (n_particles must be a multiple). With more " *
+        "than one, the pooled run reports numerical standard errors from the spread across groups")
+    settings[:smc_bridge_sampling] = Setting(:smc_bridge_sampling, false,
+        "Also estimate the log MDD by bridge sampling on the final SMC cloud (costs smc_n_bridge_draws " *
+        "likelihood evaluations)")
+    settings[:smc_n_bridge_draws] = Setting(:smc_n_bridge_draws, 0,
+        "Proposal draws for the SMC bridge-sampling log MDD (0 = n_particles per group)")
 
     # Endogenous ϕ Schedule
     settings[:use_fixed_schedule] = Setting(:use_fixed_schedule, true,

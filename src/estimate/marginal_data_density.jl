@@ -37,6 +37,10 @@ function marginal_data_density(m::Union{AbstractDSGEModel,AbstractVARModel},
         for bridge in length(bridge_vec):-1:1 ## Assuming that all bridges are SMC and so incremental method works
             read_h5 = bridge_vec[bridge][end-1:end] == "h5"
             file        = read_h5 ? h5read(bridge_vec[bridge], "smcparams") : load(bridge_vec[bridge])
+            if haskey(file, "n_smc_groups") # pooled run with particle groups (see below)
+                log_mdd += file["log_mdd_estimates"]["smc"]
+                continue
+            end
 
             cloud, w, W = file["cloud"], file["w"], file["W"]
             n_parts     = sum(W[:, 1])
@@ -47,6 +51,11 @@ function marginal_data_density(m::Union{AbstractDSGEModel,AbstractVARModel},
 
         read_h5 = smc_estimate_file[end-1:end] == "h5"
         file        = read_h5 ? h5read(smc_estimate_file, "smcparams") : load(smc_estimate_file)
+        if haskey(file, "n_smc_groups")
+            # A run with particle groups has no single weight history: use its pooled estimate
+            # (the groups' incremental-weight products, averaged on the level scale)
+            return log_mdd + file["log_mdd_estimates"]["smc"]
+        end
         cloud, w, W = file["cloud"], file["w"], file["W"]
         n_parts     = sum(W[:, 1])
 

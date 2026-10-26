@@ -261,9 +261,10 @@ function load_draws(m::AbstractDSGEModel, input_type::Symbol;
             input_file_name = replace(replace(input_file_name, ".h5" => ".jld2"), "smcsave" => "smc_cloud")
             cloud = load(input_file_name, "cloud")
 
-            # Re-sample SMC draws according to their weights
-            W = load(input_file_name, "W")
-            weights = W[:, end]
+            # Re-sample SMC draws according to their weights (a run with particle groups saves
+            # no weight history, only the pooled cloud's weights)
+            weights = "W" in JLD2.jldopen(keys, input_file_name, "r") ?
+                load(input_file_name, "W")[:, end] : SMC.get_weights(SMC.Cloud(cloud))
             inds = SMC.resample(weights)
 
             params = if isa(cloud, ParticleCloud)
