@@ -10,6 +10,9 @@
 #
 # Settings follow production ss104 (refactor/base_m1002_ss104.jl): adaptive tempering (0.95),
 # 3 MH steps in 1 block, α = 0.975, resampling threshold 0.5, N = 3000, here in J = 10 groups.
+# A production-size run takes about 50 minutes on one core; the environment variables
+# SMC_REL_N, SMC_REL_J and SMC_REL_SBC_N (particles per SBC replication, default 1000) set
+# smaller sizes.
 # The output records the SMC/DSGE commits (run_info), so the same tasks rerun after the step-3
 # fixes give the before/after comparison.
 
@@ -21,8 +24,9 @@ mkpath(OUTDIR)
 
 const DATA   = h5read(joinpath(pkgdir(DSGE), "test", "estimate", "smc", "reference", "smc.h5"), "data")
 const T_OLD  = size(DATA, 2) - 20     # item 6: the bridge adds the last 20 quarters
-const N      = 3000
-const J      = 10
+const N      = parse(Int, get(ENV, "SMC_REL_N", "3000"))
+const J      = parse(Int, get(ENV, "SMC_REL_J", "10"))
+const N_SBC  = parse(Int, get(ENV, "SMC_REL_SBC_N", "1000"))
 
 m = AnSchorfheide()
 m <= Setting(:use_chand_recursion, true)
@@ -37,16 +41,18 @@ settings = (n_parts = N, n_smc_groups = J, n_blocks = 1, n_mh_steps = 3, α = 0.
             threshold_ratio = 0.5, resampling_method = :multinomial, bridge_sampling = true,
             verbose = :low)
 
+# Every run has an explicit seed, so a rerun of a task reuses the groups already finished
 run_smc(name, data; kwargs...) =
     SMC.smc(loglik, m.parameters, data; settings..., savepath = joinpath(OUTDIR, name * ".jld2"),
-            particle_store_path = joinpath(OUTDIR, name * ".h5"), kwargs...)
+            particle_store_path = joinpath(OUTDIR, name * ".h5"), continue_intermediate = true,
+            kwargs...)
 
 if TASK == "nse"
     seed = parse(Int, ARGS[3])
     run_smc(@sprintf("nse_seed=%03d", seed), DATA; smc_seed = seed)
 
 elseif TASK == "nse_summary"
-    files = filter(f -> occursin(r"^nse_seed=\d+\.jld2$", f), readdir(OUTDIR))
+    files = Base.filter(f -> occursin(r"^nse_seed=\d+\.jld2$", f), readdir(OUTDIR))
     v = smc_nse_validation(joinpath.(OUTDIR, files))
     jldopen(joinpath(OUTDIR, "nse_summary.jld2"), "w") do file
         for (key, value) in v
@@ -65,14 +71,14 @@ elseif TASK == "nse_summary"
 elseif TASK == "sbc"
     # Smaller N per replication: SBC tests the sampler's calibration, not its precision
     reps = parse(Int, ARGS[3]):parse(Int, ARGS[4])
-    ranks, names = smc_sbc(m, 100; reps = reps, n_draws = 99, seed = 1793, n_parts = 1000,
+    ranks, names = smc_sbc(m, 100; reps = reps, n_draws = 99, seed = 1793, n_parts = N_SBC,
                            n_blocks = 1, n_mh_steps = 3, α = 0.975, c = 0.5, target = 0.25,
                            use_fixed_schedule = false, tempering_target = 0.95, threshold_ratio = 0.5,
                            resampling_method = :multinomial)
     jldsave(joinpath(OUTDIR, "sbc_$(first(reps))_$(last(reps)).jld2"); ranks, names, reps = collect(reps))
 
 elseif TASK == "sbc_summary"
-    files = filter(f -> occursin(r"^sbc_\d+_\d+\.jld2$", f), readdir(OUTDIR))
+    files = Base.filter(f -> occursin(r"^sbc_\d+_\d+\.jld2$", f), readdir(OUTDIR))
     ranks = reduce(vcat, [load(joinpath(OUTDIR, f), "ranks") for f in files])
     names = load(joinpath(OUTDIR, files[1]), "names")
     p = smc_sbc_uniformity(ranks, 99)
@@ -97,7 +103,7 @@ elseif TASK == "bridge"
     bridge = (old_data = old_data, old_loglikelihood = loglik)
     # μ = 0, same N: each group bridges from the matching old group (branch 1)
     run_smc(tag("mu0_same"), DATA; bridge..., old_cloud = old_groups, smc_seed = seeds[3])
-    # μ = 0, different N: 450 per group from 300 (branch 2: F2, F3, F7)
+    # μ = 0, different N: 1.5× the old group size (branch 2: F2, F3, F7)
     run_smc(tag("mu0_resized"), DATA; bridge..., old_cloud = old_groups, smc_seed = seeds[4],
             n_parts = 3N ÷ 2)
     # μ = 0.25 (F1, F5)
