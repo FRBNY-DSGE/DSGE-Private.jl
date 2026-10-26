@@ -56,8 +56,16 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
         filename = get_data_filename(m, cond_type)
         print(verbose, :low, "Reading dataset $(filename) from disk...")
         df = read_data(m; cond_type = cond_type, check_empty_columns = check_empty_columns)
+        # A cached dataset must also pass check_data (empty, stale or late-starting core
+        # series); otherwise it is recreated, which then stops with check_data's error
+        # if the raw data are still bad
+        if isvalid_data(m, df; cond_type = cond_type, check_empty_columns = check_empty_columns) &&
+           passes_check_data(m, df)
+            println(verbose, :low, "dataset from disk valid")
+        #= Old: the cached path never ran check_data
         if isvalid_data(m, df; cond_type = cond_type, check_empty_columns = check_empty_columns)
             println(verbose, :low, "dataset from disk valid")
+        =#
         else
             println(verbose, :low, "dataset from disk not valid")
             recreate_data = true
@@ -546,8 +554,33 @@ end
 
 # `true` lets load_data return/cache data with gaps in CORE_OBSERVABLES (e.g. to rerun
 # an old forecast on its original data). Off unless the :allow_data_gaps setting is set.
+# (A testing model stores settings set with `<=` in m.test_settings, so check both.)
+allow_data_gaps(m::AbstractDSGEModel) =
+    (haskey(m.settings, :allow_data_gaps) || (m.testing && haskey(m.test_settings, :allow_data_gaps))) &&
+    get_setting(m, :allow_data_gaps)
+#= Old: missed the setting on testing models
 allow_data_gaps(m::AbstractDSGEModel) =
     haskey(m.settings, :allow_data_gaps) && get_setting(m, :allow_data_gaps)
+=#
+
+"""
+```
+passes_check_data(m, df)
+```
+`true` if `df` passes `check_data` (or `:allow_data_gaps` is set). Otherwise warns with
+`check_data`'s message and returns `false`. Used on datasets read from disk, so a bad
+cached file is recreated instead of used.
+"""
+function passes_check_data(m::AbstractDSGEModel, df::DataFrame)
+    allow_data_gaps(m) && return true
+    try
+        return check_data(m, df)
+    catch e
+        e isa ErrorException || rethrow()
+        @warn "Cached dataset fails the data check; recreating it.\n" * e.msg
+        return false
+    end
+end
 
 # Observables that should have no gaps inside their sample. Others (obs_longinflation,
 # obs_nominalrate1-6, obs_exp_nominalrate1-6, ...) have gaps by construction.
