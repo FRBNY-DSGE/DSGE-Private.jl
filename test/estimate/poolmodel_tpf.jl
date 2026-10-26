@@ -118,9 +118,14 @@ if writing_output
 end
 @testset "TPF tests" begin
     @test out_no_parallel[1] ≈ test_file_outputs_pm["out_no_parallel"][1]
-    # Parallel path (DistributedArrays); RNG-stream-sensitive, so compare within tolerance to
-    # the version-tagged saved value (see the `ver` tier above) rather than a hand-set literal.
-    @test abs(out_parallel_one_worker[1] - test_file_outputs_pm["out_parallel_one_worker"][1]) < 0.05
+    # The saved parallel draw was generated with a single process. Additional workers
+    # have independent RNG streams, so compare their MDD to the serial estimate.
+    @test isfinite(out_parallel_one_worker[1])
+    if nprocs() == 1
+        @test abs(out_parallel_one_worker[1] - test_file_outputs_pm["out_parallel_one_worker"][1]) < 0.05
+    else
+        @test abs(out_parallel_one_worker[1] - out_no_parallel[1]) < 0.5
+    end
 end
 
 if writing_output
