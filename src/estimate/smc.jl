@@ -27,8 +27,10 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
 
 - `n_particles::Int`: Number of particles.
 - `smc_seed::Integer`: Optional reproducible run seed, also accepted as a `smc2` keyword.
-    The keyword takes precedence over the model setting. If neither is supplied, SMC
-    generates and records a seed in the saved JLD2 output.
+    The keyword takes precedence over the model setting. If neither is supplied, SMC draws
+    the seed from the task-local RNG, so `Random.seed!(x)` before `smc2` makes the run
+    reproducible; either way the seed is saved in the JLD2 output, with the Julia version and
+    the SMC and DSGE commits under `run_info`.
 - `n_smc_blocks::Int`: Number of parameter blocks in mutation step (corresponds to kwarg `n_blocks` for `SMC.smc`).
 - `n_mh_steps_smc::Int`: Number of Metropolis Hastings steps to attempt during the mutation step (corresponds to kwarg `n_mh_steps` for `SMC.smc`).
 - `λ::S`: The 'bending coefficient' λ in Φ(n) = (n/N(Φ))^λ
@@ -356,6 +358,8 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
 
     SMC.smc(my_likelihood, get_parameters(m), data;
             smc_seed = smc_seed,
+            run_info = Dict("dsge_version" => string(pkgversion(DSGE)),
+                            "dsge_commit"  => SMC.package_commit(DSGE)),
             verbose      = verbose,
             testing      = m.testing,
             data_vintage = data_vintage(m),
