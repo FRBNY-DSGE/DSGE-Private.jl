@@ -111,11 +111,10 @@ m_new = deepcopy(m)
 
 # Estimate with 2nd half of sample
 m_new <= Setting(:data_vintage, "200218")
-# Pure bridge from the old posterior. Do NOT use prior_weight > 0 here: SMC's prior>0 tempered branch
-# (smc_main.jl:274–343) resamples a prior/old mixture and reset_weights!, but w_matrix is zeroed AFTER
-# that, so the initial bridge-correction evidence (~461) is dropped → online MDD is wrong (gap ~460).
-# prior_weight = 0 keeps the old cloud + its weights → increment = log p(Y_full)/p(Y_old), gap ≈ 0.
-m_new <= Setting(:tempered_update_prior_weight, 0.0)
+# Exercise the prior/posterior bridge mixture. The SMC correction weights now
+# include the normalized old posterior factor, so the saved incremental weights
+# recover the full-data MDD without a separate bridge_vec correction.
+m_new <= Setting(:tempered_update_prior_weight, 0.25)
 m_new <= Setting(:tempered_update, true)
 old_vint = "000000"
 new_vint = "200218"
@@ -139,11 +138,9 @@ loadpath_new = replace(loadpath_old, r"vint=[0-9]{6}" => "vint=" * new_vint)
 online_cloud = load(loadpath_new, "cloud")
 online_w     = load(loadpath_new, "w")
 
-# get marginal data density of online estimation. The data-tempered run's cloud only holds
-# the bridge increment log p(Y_full) - log p(Y_old); supply the old (first-half) estimation via
-# bridge_vec so the full MDD is recovered. (The migrated SMC does not auto-fold log_prob_old_data
-# into the saved weights, so the explicit bridge is required — see marginal_data_density docstring.)
-mdd_new = marginal_data_density(m_new, data; bridge_vec = [loadpath_old])
+# The bridge's saved weights include the old-data normalization, so this is
+# already on the full-data MDD scale.
+mdd_new = marginal_data_density(m_new, data)
 
 @testset "Online Estimation: AnSchorf" begin
     @test abs(mdd_new - mdd_full) < 3
