@@ -214,25 +214,33 @@ end
 
 """
 ```
-smc_compare_runs(file_a, file_b; log_mdd_offset_a = 0.0)
+smc_compare_runs(file_a, file_b; log_mdd_offset_a = 0.0, log_mdd_offset_nse_a = 0.0)
 ```
 Item 6: compare two grouped SMC runs of the same posterior, e.g. a bridge (`file_a`) and full
-tempering (`file_b`), with `SMC.compare_estimates` on the means and quantiles: z per estimate,
-the share with |z| > 2 (≈ 5% if they agree) and a KS test of the z's against N(0, 1). The log
-MDDs are compared separately, after adding `log_mdd_offset_a` to the first (e.g. the old run's
-log MDD, for a μ = 0 bridge that reports the increment). Also reports the run times.
+tempering (`file_b`), with `SMC.compare_estimates` on the means and quantiles: z per estimate
+(allowing for NSEs estimated from each run's J groups), the share with |z| > 2 (≈ 5% if they
+agree) and a KS test of the z's against N(0, 1). The log MDDs are compared separately, after
+adding `log_mdd_offset_a` to the first (e.g. the old run's log MDD, for a μ = 0 bridge that
+reports the increment); `log_mdd_offset_nse_a` is that offset's NSE, which enters the z. Also
+reports the run times.
 """
-function smc_compare_runs(file_a::AbstractString, file_b::AbstractString; log_mdd_offset_a::Real = 0.0)
+function smc_compare_runs(file_a::AbstractString, file_b::AbstractString; log_mdd_offset_a::Real = 0.0,
+                          log_mdd_offset_nse_a::Real = 0.0)
     la, a, nse_a = smc_group_estimates(file_a)
     lb, b, nse_b = smc_group_estimates(file_b)
     la == lb || error("smc_compare_runs: the runs estimate different quantities")
+    Ja, Jb = load(file_a, "n_smc_groups"), load(file_b, "n_smc_groups")
     para = 1:length(la)-1
-    c = SMC.compare_estimates(a[para], nse_a[para], b[para], nse_b[para])
-    mdd_z = (a[end] + log_mdd_offset_a - b[end]) / sqrt(nse_a[end]^2 + nse_b[end]^2)
+    c = SMC.compare_estimates(a[para], nse_a[para], b[para], nse_b[para];
+                              n_groups_a = Ja, n_groups_b = Jb)
+    # The offset's NSE comes from another run; its degrees of freedom are ignored (treated as known)
+    mdd_nse_a = sqrt(nse_a[end]^2 + log_mdd_offset_nse_a^2)
+    mdd_z = SMC.comparison_z(a[end] + log_mdd_offset_a - b[end], mdd_nse_a, nse_b[end], Ja, Jb)
     time(file) = load(file, "cloud").total_sampling_time
     return Dict{String, Any}("labels" => la[para], "z" => c.z, "share_above_2" => c.share_above_2,
                              "ks_statistic" => c.ks_statistic, "ks_pvalue" => c.ks_pvalue,
-                             "log_mdd_a" => a[end] + log_mdd_offset_a, "log_mdd_b" => b[end],
+                             "log_mdd_a" => a[end] + log_mdd_offset_a, "log_mdd_nse_a" => mdd_nse_a,
+                             "log_mdd_b" => b[end], "log_mdd_nse_b" => nse_b[end],
                              "log_mdd_z" => mdd_z, "time_a" => time(file_a), "time_b" => time(file_b))
 end
 

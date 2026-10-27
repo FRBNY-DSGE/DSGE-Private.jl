@@ -98,6 +98,7 @@ elseif TASK == "bridge"
     old_file = joinpath(OUTDIR, tag("old") * ".jld2")
     old_groups = [load(replace(old_file, ".jld2" => "_group=$g.jld2"), "cloud") for g in 1:J]
     old_log_mdd = load(old_file, "log_mdd_estimates")["smc_level"]
+    old_log_mdd_nse = smc_group_estimates(old_file)[3][end]
 
     run_smc(tag("full"), DATA; smc_seed = seeds[2])
     bridge = (old_data = old_data, old_loglikelihood = loglik)
@@ -113,9 +114,14 @@ elseif TASK == "bridge"
     full = joinpath(OUTDIR, tag("full") * ".jld2")
     results = Dict{String, Any}("old_log_mdd" => old_log_mdd,
                                 "run_info" => load(full, "run_info"))
-    for (variant, offset) in (("mu0_same", old_log_mdd), ("mu0_resized", old_log_mdd), ("mu025", 0.0))
-        # With μ = 0 the bridge reports the increment log p(Y) - log p(Ỹ) (F4)
-        c = smc_compare_runs(joinpath(OUTDIR, tag(variant) * ".jld2"), full; log_mdd_offset_a = offset)
+    # Without log_prob_old_data a μ = 0 bridge reports the increment log p(Y) - log p(Ỹ) (F4), so
+    # the old log MDD and its error add in. With it (μ = 0.25), an error δ in log p(Ỹ) moves the
+    # result by log(μ + (1 - μ)e^(-δ)) ≈ -(1 - μ)δ: no offset, but (1 - μ) times the old NSE.
+    for (variant, offset, offset_nse) in (("mu0_same", old_log_mdd, old_log_mdd_nse),
+                                          ("mu0_resized", old_log_mdd, old_log_mdd_nse),
+                                          ("mu025", 0.0, 0.75 * old_log_mdd_nse))
+        c = smc_compare_runs(joinpath(OUTDIR, tag(variant) * ".jld2"), full; log_mdd_offset_a = offset,
+                             log_mdd_offset_nse_a = offset_nse)
         results[variant] = c
         @printf "%-12s |z|>2: %5.1f%%  KS p = %.3g  log MDD %.3f vs full %.3f (z = %.2f)  time %.0fs vs %.0fs\n" variant 100c["share_above_2"] c["ks_pvalue"] c["log_mdd_a"] c["log_mdd_b"] c["log_mdd_z"] c["time_a"] c["time_b"]
     end
