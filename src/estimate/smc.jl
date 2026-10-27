@@ -106,8 +106,10 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
 	- `:high`: Status updates for every iteration of SMC is output, which includes
     the mean and standard deviation of each parameter draw after each iteration,
     as well as calculated acceptance rate, ESS, and number of times resampled.
-- `log_prob_old_data::Float64 = 0.0`: Log p(\tilde y) which is the log marginal data density
-    of the bridge estimation.
+- `log_prob_old_data::Union{Nothing,Float64} = nothing`: Log p(\tilde y), the old-data
+    marginal data density. Required when the prior share is strictly between zero and one.
+    Supplying it makes saved bridge weights yield the full-data MDD level; at zero prior
+    share, omitting it retains the incremental-MDD convention.
 
 ### Outputs
 
@@ -126,7 +128,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
               save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
               run_csminwel::Bool = true,
-              regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
+              regime_switching::Bool = false,
+              log_prob_old_data::Union{Nothing, Float64} = nothing,
               add_zlb_duration::Tuple{Bool, Int} = (false, 1),
               cholesky_fix = :none,
               smc_seed::Union{Nothing, Integer} = nothing)
@@ -435,7 +438,8 @@ function smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame; verb
              save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
              continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
              run_csminwel::Bool = true,
-             regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
+             regime_switching::Bool = false,
+             log_prob_old_data::Union{Nothing, Float64} = nothing,
              cholesky_fix = :none)
 
     data_mat = df_to_matrix(m, data)
@@ -462,7 +466,8 @@ function smc(m::Union{AbstractDSGEModel,AbstractVARModel}; verbose::Symbol = :lo
              save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
              continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
              run_csminwel::Bool = true,
-             regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0)
+             regime_switching::Bool = false,
+             log_prob_old_data::Union{Nothing, Float64} = nothing)
 
     data = load_data(m)
     data_mat = df_to_matrix(m, data)

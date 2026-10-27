@@ -71,8 +71,8 @@ not directly related to the behavior of the sampling algorithms
     written to toggle to regime 1 when done, then regime-switching estimation
     will not work properly. Set to `false` to reduce computation time if the
     user is certain that the likelihood is written properly.
-- `log_prob_old_data::Float64 = 0.0`:Log p(\tilde y) which is the log marginal data density
-    of the bridge estimation.
+- `log_prob_old_data::Union{Nothing,Float64} = nothing`: Log p(\tilde y), the old-data
+    marginal data density. Required for a bridge with a prior share between zero and one.
 - `check_empty_columns::Bool = true`: Whether to check empty columns in load_data
 """
 function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
@@ -91,7 +91,7 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, df::DataFrame;
                   save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
                   toggle::Bool = true,
-                  log_prob_old_data::Float64 = 0.0,
+                  log_prob_old_data::Union{Nothing, Float64} = nothing,
                   add_zlb_duration::Tuple{Bool, Int} = (false, 1),
                   cholesky_fix = :none)
     data = df_to_matrix(m, df)
@@ -123,7 +123,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel};
                   intermediate_stage_increment::Int = 10,
 		          save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
-                  toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
+                  toggle::Bool = true,
+                  log_prob_old_data::Union{Nothing, Float64} = nothing,
                   add_zlb_duration::Tuple{Bool, Int} = (false, 1),
                   check_empty_columns::Bool = true,
                   cholesky_fix = :none)
@@ -156,7 +157,8 @@ function estimate(m::Union{AbstractDSGEModel,AbstractVARModel}, data::AbstractAr
                   intermediate_stage_increment::Int = 10,
 		          save_intermediate::Bool = false,
                   run_csminwel::Bool = true,
-                  toggle::Bool = true, log_prob_old_data::Float64 = 0.0,
+                  toggle::Bool = true,
+                  log_prob_old_data::Union{Nothing, Float64} = nothing,
                   add_zlb_duration::Tuple{Bool, Int} = (false, 1),
                   cholesky_fix = :none)
 
