@@ -27,8 +27,9 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
 
 - `n_particles::Int`: Number of particles.
 - `smc_seed::Integer`: Optional reproducible run seed, also accepted as a `smc2` keyword.
-    The keyword takes precedence over the model setting. If neither is supplied, SMC
-    generates and records a seed in the saved JLD2 output.
+    The keyword takes precedence over the model setting. If neither is supplied, SMC draws
+    the seed from the task-local RNG, so `Random.seed!(x)` before `smc2` makes the run
+    reproducible. The seed, Julia version, and SMC and DSGE commits are saved in JLD2.
 - `n_smc_blocks::Int`: Number of parameter blocks in mutation step (corresponds to kwarg `n_blocks` for `SMC.smc`).
 - `n_mh_steps_smc::Int`: Number of Metropolis Hastings steps to attempt during the mutation step (corresponds to kwarg `n_mh_steps` for `SMC.smc`).
 - `λ::S`: The 'bending coefficient' λ in Φ(n) = (n/N(Φ))^λ
@@ -96,8 +97,10 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
 	- `:high`: Status updates for every iteration of SMC is output, which includes
     the mean and standard deviation of each parameter draw after each iteration,
     as well as calculated acceptance rate, ESS, and number of times resampled.
-- `log_prob_old_data::Float64 = 0.0`: Log p(\tilde y) which is the log marginal data density
-    of the bridge estimation.
+- `log_prob_old_data::Union{Nothing,Float64} = nothing`: Log p(\tilde y), the old-data
+    marginal data density. Required when the prior share is strictly between zero and one.
+    Supplying it makes saved bridge weights yield the full-data MDD level; at zero prior
+    share, omitting it retains the incremental-MDD convention.
 
 ### Outputs
 
@@ -116,7 +119,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
               continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
               save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
               run_csminwel::Bool = true,
-              regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
+              regime_switching::Bool = false,
+              log_prob_old_data::Union{Nothing, Float64} = nothing,
               add_zlb_duration::Tuple{Bool, Int} = (false, 1),
               cholesky_fix = :none,
               smc_seed::Union{Nothing, Integer} = nothing)
@@ -356,6 +360,8 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
 
     SMC.smc(my_likelihood, get_parameters(m), data;
             smc_seed = smc_seed,
+            run_info = Dict("dsge_version" => string(pkgversion(DSGE)),
+                            "dsge_commit" => SMC.package_commit(DSGE)),
             verbose      = verbose,
             testing      = m.testing,
             data_vintage = data_vintage(m),
@@ -419,7 +425,8 @@ function smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame; verb
              save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
              continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
              run_csminwel::Bool = true,
-             regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0,
+             regime_switching::Bool = false,
+             log_prob_old_data::Union{Nothing, Float64} = nothing,
              cholesky_fix = :none)
 
     data_mat = df_to_matrix(m, data)
@@ -446,7 +453,8 @@ function smc(m::Union{AbstractDSGEModel,AbstractVARModel}; verbose::Symbol = :lo
              save_intermediate::Bool = false, intermediate_stage_increment::Int = 10,
              continue_intermediate::Bool = false, intermediate_stage_start::Int = 0,
              run_csminwel::Bool = true,
-             regime_switching::Bool = false, log_prob_old_data::Float64 = 0.0)
+             regime_switching::Bool = false,
+             log_prob_old_data::Union{Nothing, Float64} = nothing)
 
     data = load_data(m)
     data_mat = df_to_matrix(m, data)

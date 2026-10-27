@@ -110,7 +110,7 @@ draw = JLD2.jldopen(joinpath(path, "reference/one_draw_out.jld2"), "r") do file
     file["draw"]
 end
 
-draw_lik = SMC.draw_likelihood(loglik_fn, parameters, data, vec(draw[1]))
+draw_lik = SMC.draw_likelihood(loglik_fn, m.parameters, data, vec(draw[1]))
 
 if write_test_output
     JLD2.jldopen(joinpath(path, "reference/draw_likelihood_out.jld2"), true, true, true, IOStream) do file
@@ -130,7 +130,7 @@ end
 ###################################################################
 # Test: initialize_likelihoods!()
 ###################################################################
-SMC.initialize_likelihoods!(loglik_fn, parameters, data, init_cloud)
+SMC.initialize_likelihoods!(loglik_fn, m.parameters, data, init_cloud)
 
 if write_test_output
     JLD2.jldopen(joinpath(path, "reference/initialize_likelihood_out.jld2"), true, true, true, IOStream) do file

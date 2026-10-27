@@ -17,7 +17,8 @@ For calculating the log marginal data density for a given posterior sample.
 - `parallel::Bool`
 - `bridge_vec::Vector{String}`: Estimation cloud files for all the bridges up to a scratch estimation.
     Used for incremental weights calculation of MDD. Scratch is last. Use of this input is ONLY NECESSARY
-    if log_prob_old_data was NOT passed into SMC. Otherwise, MDD will automatically account for bridges.
+    if log_prob_old_data was NOT passed into SMC. Otherwise, the saved weights already
+    include the old-data MDD, and adding the old cloud through `bridge_vec` counts it twice.
 - `smc_estimate_file::String`: Specify estimation cloud file to use if estimation_method is SMC
 """
 function marginal_data_density(m::Union{AbstractDSGEModel,AbstractVARModel},
