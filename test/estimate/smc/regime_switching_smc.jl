@@ -85,11 +85,19 @@ regswitch_lik = DSGE.likelihood(m, data)
 
     # Regime switching estimation
     true_para = ModelConstructors.get_values(m.parameters)
+    # Seed 1793, as before #9: the statistic below is 0.46 there, inside the 0.6 bound
+    # (SMC-CHECK-5), so the switch to seed 2 was not needed.
+    DSGE.smc2(m, data; regime_switching = true, run_csminwel = false,
+              verbose = :none, smc_seed = 1793)
+    saved_smc = load(rawpath(m, "estimate", "smc_cloud.jld2"))
+    @test saved_smc["smc_seed"] == UInt64(1793)
+    #= Old: seed 2
     # Seed 2 keeps this finite-particle accuracy check away from its 0.6 boundary.
     DSGE.smc2(m, data; regime_switching = true, run_csminwel = false,
               verbose = :none, smc_seed = 2)
     saved_smc = load(rawpath(m, "estimate", "smc_cloud.jld2"))
     @test saved_smc["smc_seed"] == UInt64(2)
+    =#
     @test saved_smc["smc_seed_version"] == SMC.SMC_SEED_VERSION
 
     posterior_means = vec(mean(load_draws(m, :full), dims = 1))
