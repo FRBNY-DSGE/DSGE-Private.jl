@@ -927,6 +927,15 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
 
     @assert haskey(get_settings(m), :replace_eqcond) "The setting :replace_eqcond must be true to calculate a state-space system with time-varying information sets"
 
+    # solve() handles uncertain_altpolicy here through gensys_uncertain_altpol, which only supports
+    # (single-period) AltPolicy's. Fail clearly instead of with a MethodError deep inside solve
+    if haskey(get_settings(m), :uncertain_altpolicy) && get_setting(m, :uncertain_altpolicy) &&
+        haskey(get_settings(m), :alternative_policies) &&
+        any(x -> isa(x, MultiPeriodAltPolicy), get_setting(m, :alternative_policies))
+        error("compute_tvis_system does not support uncertain_altpolicy with MultiPeriodAltPolicy's " *
+              "in the setting :alternative_policies (e.g. ss104): gensys_uncertain_altpol only takes AltPolicy's.")
+    end
+
     # :regime_dates should have the same number of possible regimes. Any differences in eqcond
     # should be specified by tvis_regime_eqcond_info
     tvis_infoset            = get_setting(m, :tvis_information_set)
@@ -947,6 +956,14 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
     TTTs_vec    = Vector{Vector{Matrix{T}}}(undef, n_tvis)
     RRRs_vec    = Vector{Vector{Matrix{T}}}(undef, n_tvis)
     CCCs_vec    = Vector{Vector{Vector{T}}}(undef, n_tvis)
+
+    # The loop below sets :regime_eqcond_info to each tvis set in turn. On success the last one is kept,
+    # as before; if a solve throws (e.g. a GensysError, which `likelihood` turns into -Inf), the
+    # original is put back so later solves from this model don't use a tvis set's equilibrium conditions
+    orig_regime_eqcond_info = haskey(get_settings(m), :regime_eqcond_info) ? get_setting(m, :regime_eqcond_info) : nothing
+    finished = false
+    local has_pseudo, measurement_eqns, pseudo_measurement_eqns # assigned in the `try`, used after it
+    try
 
     for (i, regime_eqcond_info) in enumerate(tvis_regime_eqcond_info) # For each set of equilibrium conditions,
         # Update regime_eqcond_info and compute implied gensys/gensys2 regimes
@@ -996,6 +1013,17 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
                                                               information_set = tvis_infoset[reg])
         end
     end
+
+    finished = true
+    finally
+    if !finished
+        if isnothing(orig_regime_eqcond_info)
+            delete!(get_settings(m), :regime_eqcond_info)
+        else
+            m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
+        end
+    end
+    end # try
 
     if has_pseudo
         return TimeVaryingInformationSetSystem(transitions, measurement_eqns, pseudo_measurement_eqns,

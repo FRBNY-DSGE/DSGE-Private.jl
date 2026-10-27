@@ -570,6 +570,11 @@ function forecast(m::AbstractDSGEModel, z0::Vector{S}, states::AbstractMatrix{S}
         hist_temporary_altpolicy_length = haskey(get_settings(m), :historical_temporary_altpolicy_length) ? get_setting(m, :historical_temporary_altpolicy_length) : 0
         last_endo_zlb = min(last_endo_zlb, hist_temporary_altpolicy_length + max_zlb_regimes)
 
+        # The original settings are restored in `finally`, so a solve that throws in the endogenous-ZLB
+        # forecast (e.g. a GensysError) doesn't leave the model with the ZLB regimes set up here.
+        # The branch that enforces the ZLB with the two-rule system returns without restoring, as before.
+        restore_settings = true
+        try
 
         # set up the information sets TODO: add checkfor whether or not we even need to update the tvis_info_set
         if isnothing(first_aware)
@@ -597,6 +602,7 @@ function forecast(m::AbstractDSGEModel, z0::Vector{S}, states::AbstractMatrix{S}
                 states, obs, pseudo = forecast(m, system, z0; cond_type = cond_type, shocks = shocks,
                                                enforce_zlb = true)
             end
+            restore_settings = false
             if rerun_smoother
                 return states, obs, pseudo, histstates, histshocks, histpseudo, initial_states
             else
@@ -708,6 +714,8 @@ function forecast(m::AbstractDSGEModel, z0::Vector{S}, states::AbstractMatrix{S}
             states, obs, pseudo, histstates, histshocks, histpseudo, initial_states =
             endozlb_forecast(first_endo_zlb, last_endo_zlb+1, unant_enforce_zlb = true)
         end
+        finally
+        if restore_settings
         # Restore original settings
         m <= Setting(:regime_switching, is_regime_switch)
         m <= Setting(:regime_dates, orig_regime_dates)
@@ -760,6 +768,8 @@ function forecast(m::AbstractDSGEModel, z0::Vector{S}, states::AbstractMatrix{S}
                 get_setting(m, :alternative_policies)[altpol_ind].perfect_credibility_identical_transitions = orig_altpol_perfect_cred_identical_transitions[altpol_num]
             end
         end
+        end # if restore_settings
+        end # try
 
         if rerun_smoother
             return states, obs, pseudo, histstates, histshocks, histpseudo, initial_states
