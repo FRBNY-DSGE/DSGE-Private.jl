@@ -93,6 +93,16 @@ end
     delete!(m_nostart.settings, :observable_start_dates); delete!(m_nostart.test_settings, :observable_start_dates)
     @test check_data(m_nostart, late(:obs_spread, Date(2010, 12, 31)))
 
+    # Cached datasets (load_data's try_disk path) go through passes_check_data: a bad
+    # file is reported and recreated instead of used, unless :allow_data_gaps is set
+    @test DSGE.passes_check_data(m, clean)
+    ok = @test_logs (:warn, r"fails the data check") DSGE.passes_check_data(m, late(:obs_spread, Date(2010, 12, 31)))
+    @test ok == false
+    m_gaps = deepcopy(m)
+    m_gaps <= Setting(:allow_data_gaps, true)
+    @test DSGE.allow_data_gaps(m_gaps)        # testing models keep it in test_settings
+    @test DSGE.passes_check_data(m_gaps, late(:obs_spread, Date(2010, 12, 31)))
+
     # The existing checks still fire
     gap = copy(clean); gap[dates .== Date(2000, 3, 31), :obs_gdp] .= NaN
     @test_throws ErrorException check_data(m, gap)

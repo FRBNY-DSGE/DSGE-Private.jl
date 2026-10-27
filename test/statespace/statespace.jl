@@ -860,6 +860,36 @@ end
     end
 end
 
+@testset "compute_tvis_system errors clearly for uncertain_altpolicy with MultiPeriodAltPolicy's" begin
+    # As in ss104: gensys_uncertain_altpol only takes AltPolicy's, so this used to be a MethodError inside solve
+    m = Model1002("ss10")
+    m <= Setting(:date_forecast_start, Date(2020, 9, 30))
+    m <= Setting(:date_conditional_end, Date(2020, 9, 30))
+    m <= Setting(:regime_dates, Dict{Int, Date}(1 => date_presample_start(m), 2 => Date(2020, 9, 30),
+                                                3 => Date(2020, 12, 31), 4 => Date(2021, 3, 31)))
+    setup_regime_switching_inds!(m)
+    m <= Setting(:replace_eqcond, true)
+    m <= Setting(:gensys2, true)
+    m <= Setting(:regime_switching, true)
+
+    regime_eqcond_info = Dict{Int, DSGE.EqcondEntry}()
+    for i in 2:3
+        regime_eqcond_info[i] = DSGE.EqcondEntry(DSGE.zlb_rule(), [1., 0.])
+    end
+    regime_eqcond_info[4] = DSGE.EqcondEntry(DSGE.default_policy(), [1., 0.])
+    m <= Setting(:regime_eqcond_info, regime_eqcond_info)
+    m <= Setting(:tvis_regime_eqcond_info, [regime_eqcond_info])
+    m <= Setting(:tvis_information_set, [1:1, 2:4, 3:4, 4:4])
+    m <= Setting(:tvis_select_system, ones(Int, 4))
+    m <= Setting(:temporary_altpolicy_names, [:zlb_rule])
+    m <= Setting(:uncertain_altpolicy, true)
+    m <= Setting(:alternative_policies, DSGE.AbstractAltPolicy[MultiPeriodAltPolicy(:temporary_zlb, get_setting(m, :n_regimes),
+                                                                                    regime_eqcond_info, gensys2 = true,
+                                                                                    temporary_altpolicy_names = [:zlb_rule])])
+
+    @test_throws "does not support uncertain_altpolicy with MultiPeriodAltPolicy" DSGE.compute_tvis_system(m)
+end
+
 @testset "Using gensys2 in historical regimes" begin
     function set_regime_vals_fnct!(m, n)
         if n > 4
@@ -1039,6 +1069,17 @@ end
     @test length(get_setting(m, :alternative_policies)) == 2
     @test system_again[2, :TTT] ≈ system[2, :TTT]
     @test system_again[2, :CCC] ≈ system[2, :CCC]
+
+    # Resetting the weights to their original length (the solves above leave them reordered,
+    # with the :true_rule policy appended) used to fail with AssertionError: length(old_weights) == n_totpol
+    m <= Setting(:regime_eqcond_info, Dict(i => DSGE.EqcondEntry(DSGE.taylor_rule(), [0.4, 0.6]) for i in 1:3))
+    system_reset = compute_system(m; verbose = :none)
+    @test length(get_setting(m, :alternative_policies)) == 2
+    @test get_setting(m, :regime_eqcond_info)[2].weights == [0.0, 0.6, 0.4]
+    for reg in 1:3
+        @test isequal(system_reset[reg, :TTT], system[reg, :TTT])
+        @test isequal(system_reset[reg, :CCC], system[reg, :CCC])
+    end
 end
 
 nothing

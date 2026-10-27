@@ -700,6 +700,7 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     set_pgap1 = ([1], 0.0)
     orig_regime_eqcond_info_unmodified = nothing
     added_true_pol = false
+    removed_stale_true_pol = false
     finished = false
     try
 
@@ -763,6 +764,23 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
         set_pgap1_check = true
         delete!(get_settings(m), :set_pgap1)
 
+        # A previous successful call leaves the :true_rule policy below appended and the weights
+        # reordered, since the caller uses both after this returns. If the weights have since been
+        # reset to their original length, that :true_rule is stale: drop it, so that it is rebuilt
+        # below from the new weights (otherwise the weights are one short of n_totpol)
+        base_altpolicies = orig_altpolicies
+        if !isempty(orig_altpolicies) && isa(last(orig_altpolicies), MultiPeriodAltPolicy) &&
+            last(orig_altpolicies).key == :true_rule &&
+            any(!ismissing(entry.weights) && length(entry.weights) == n_totpol - 1
+                for entry in values(orig_regime_eqcond_info))
+            base_altpolicies = orig_altpolicies[1:end - 1]
+            m <= Setting(:alternative_policies, base_altpolicies)
+            removed_stale_true_pol = true
+            pop!(is_altpol)
+            n_totpol -= 1
+            resize!(sys_totpolicies, n_totpol)
+        end
+
         # Create a new alternative policy equivalent to the true policy but without setting pgap1
         ## if weight on true policy > 0 before pgap1 set.
         ## This ensures that the new pgap is unexpected.
@@ -789,7 +807,7 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
                                  temporary_altpolicy_names = orig_temp_altpol_names,
                                  temporary_altpolicy_length = !isnothing(orig_temp_altpol_len) ? orig_temp_altpol_len : length(orig_regime_eqcond_info) - 1,
                                  infoset = orig_tvis_infoset)
-            m <= Setting(:alternative_policies, vcat(orig_altpolicies, true_pol))
+            m <= Setting(:alternative_policies, vcat(base_altpolicies, true_pol))
             added_true_pol = true
             push!(is_altpol, false)
             n_totpol += 1
@@ -879,9 +897,10 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     end
     # Only after an error: a throw inside the loop above can leave these changed
     if !finished
-        if added_true_pol
+        if added_true_pol || removed_stale_true_pol
             m <= Setting(:alternative_policies, orig_altpolicies)
-            pop!(is_altpol)
+            added_true_pol && pop!(is_altpol)
+            removed_stale_true_pol && push!(is_altpol, false)
         end
         !isnothing(orig_regime_switching) && (m <= Setting(:regime_switching, orig_regime_switching))
         isnothing(orig_altpol) && delete!(get_settings(m), :alternative_policy)
@@ -927,6 +946,15 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
 
     @assert haskey(get_settings(m), :replace_eqcond) "The setting :replace_eqcond must be true to calculate a state-space system with time-varying information sets"
 
+    # solve() handles uncertain_altpolicy here through gensys_uncertain_altpol, which only supports
+    # (single-period) AltPolicy's. Fail clearly instead of with a MethodError deep inside solve
+    if haskey(get_settings(m), :uncertain_altpolicy) && get_setting(m, :uncertain_altpolicy) &&
+        haskey(get_settings(m), :alternative_policies) &&
+        any(x -> isa(x, MultiPeriodAltPolicy), get_setting(m, :alternative_policies))
+        error("compute_tvis_system does not support uncertain_altpolicy with MultiPeriodAltPolicy's " *
+              "in the setting :alternative_policies (e.g. ss104): gensys_uncertain_altpol only takes AltPolicy's.")
+    end
+
     # :regime_dates should have the same number of possible regimes. Any differences in eqcond
     # should be specified by tvis_regime_eqcond_info
     tvis_infoset            = get_setting(m, :tvis_information_set)
@@ -947,6 +975,14 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
     TTTs_vec    = Vector{Vector{Matrix{T}}}(undef, n_tvis)
     RRRs_vec    = Vector{Vector{Matrix{T}}}(undef, n_tvis)
     CCCs_vec    = Vector{Vector{Vector{T}}}(undef, n_tvis)
+
+    # The loop below sets :regime_eqcond_info to each tvis set in turn. On success the last one is kept,
+    # as before; if a solve throws (e.g. a GensysError, which `likelihood` turns into -Inf), the
+    # original is put back so later solves from this model don't use a tvis set's equilibrium conditions
+    orig_regime_eqcond_info = haskey(get_settings(m), :regime_eqcond_info) ? get_setting(m, :regime_eqcond_info) : nothing
+    finished = false
+    local has_pseudo, measurement_eqns, pseudo_measurement_eqns # assigned in the `try`, used after it
+    try
 
     for (i, regime_eqcond_info) in enumerate(tvis_regime_eqcond_info) # For each set of equilibrium conditions,
         # Update regime_eqcond_info and compute implied gensys/gensys2 regimes
@@ -996,6 +1032,17 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
                                                               information_set = tvis_infoset[reg])
         end
     end
+
+    finished = true
+    finally
+    if !finished
+        if isnothing(orig_regime_eqcond_info)
+            delete!(get_settings(m), :regime_eqcond_info)
+        else
+            m <= Setting(:regime_eqcond_info, orig_regime_eqcond_info)
+        end
+    end
+    end # try
 
     if has_pseudo
         return TimeVaryingInformationSetSystem(transitions, measurement_eqns, pseudo_measurement_eqns,

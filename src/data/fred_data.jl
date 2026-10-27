@@ -84,6 +84,20 @@ function load_fred_data(m::AbstractDSGEModel;
         fredseries = Array{FredSeries, 1}(undef, length(missing_series))
         f = Fred()
 
+        # A failed request (rate limit, timeout, maintenance page) used to fall back to
+        # today's unvintaged series, or skip the series, and the file was written anyway,
+        # so a pull could silently cache revised (look-ahead) or missing data. Now each
+        # request is retried, then it is an error and nothing is written. Today's series is
+        # used only when ALFRED says it keeps no vintage of the series, or when the
+        # :fred_allow_unvintaged_fallback setting is true (e.g. old-vintage reruns).
+        allow_unvintaged = get_setting_or(m, :fred_allow_unvintaged_fallback, false)
+        for (i,s) in enumerate(missing_series)
+            println(verbose, :low, "Fetching FRED series $s at vintage $vint_date...")
+            fredseries[i] = fetch_fred_vintage(f, s, start_date, end_date, vint_date;
+                                               allow_unvintaged = allow_unvintaged, verbose = verbose)
+        end
+        #= Old: fell back to the unvintaged series on any error, skipped series that still
+           failed, and printed raw errors (which contain the API key)
         for (i,s) in enumerate(missing_series)
             println(verbose, :low, "Fetching FRED series $s...")
             try
@@ -115,6 +129,7 @@ function load_fred_data(m::AbstractDSGEModel;
                 end
             end
         end
+        =#
 
         # Extract dataframe from each series and merge on date
         has_oj = isdefined(DataFrames, :outerjoin)
@@ -148,4 +163,57 @@ function load_fred_data(m::AbstractDSGEModel;
     rows = start_date .<= data[!, :date] .<= end_date
     cols = [:date; mnemonics]
     return data[rows, cols]
+end
+
+# Seconds to wait between attempts at a FRED request
+const FRED_RETRY_WAITS = [5, 15, 30, 60, 120]
+
+get_setting_or(m::AbstractDSGEModel, key::Symbol, default) =
+    (haskey(m.settings, key) || (m.testing && haskey(m.test_settings, key))) ? get_setting(m, key) : default
+
+# FRED errors echo the request URL, which contains the API key: never print them raw
+fred_error_message(err; n::Int = 300) =
+    first(replace(sprint(showerror, err), r"api_key=[^&\s\"]*" => "api_key=<redacted>"), n)
+
+"""
+```
+fetch_fred_vintage(f, s, start_date, end_date, vint_date; allow_unvintaged = false, verbose = :low,
+                   waits = FRED_RETRY_WAITS)
+```
+Fetch FRED series `s` as of `vint_date`, retrying failed requests (waiting `waits` seconds).
+If every attempt fails it is an error, unless ALFRED reports that it keeps no vintage
+of `s` or `allow_unvintaged` is true: then today's (unvintaged) series is fetched, with
+a warning that it is not real-time.
+"""
+function fetch_fred_vintage(f, s::Symbol, start_date::Dates.Date, end_date::Dates.Date, vint_date::Dates.Date;
+                            allow_unvintaged::Bool = false, verbose::Symbol = :low,
+                            waits::Vector{<:Real} = FRED_RETRY_WAITS)
+    kwargs = (frequency = "q", observation_start = string(start_date), observation_end = string(end_date))
+    msg = ""
+    for (attempt, wait) in enumerate(vcat(waits, 0))
+        try
+            return get_data(f, string(s); kwargs..., vintage_dates = string(vint_date))
+        catch err
+            isa(err, InterruptException) && rethrow()
+            msg = fred_error_message(err)
+            # ALFRED keeps no vintage of this series: retrying will not help
+            occursin("does not exist in ALFRED", msg) && break
+            attempt > length(waits) && break
+            println(verbose, :low, "FRED request for $s failed (attempt $attempt): $(first(msg, 200)). Retrying in $wait s...")
+            sleep(wait)
+        end
+    end
+    if occursin("does not exist in ALFRED", msg) || allow_unvintaged
+        @warn "FRED series $s could not be fetched at vintage $vint_date ($(first(msg, 150))); " *
+              "using today's unvintaged series, which is not real-time"
+        try
+            return get_data(f, string(s); kwargs...)
+        catch err
+            isa(err, InterruptException) && rethrow()
+            error("FRED series $s could not be fetched at vintage $vint_date or unvintaged: " * fred_error_message(err))
+        end
+    end
+    error("FRED series $s could not be fetched at vintage $vint_date after $(length(waits) + 1) " *
+          "attempts; no data written. Last error: $msg. Set :fred_allow_unvintaged_fallback to use today's " *
+          "series instead (look-ahead).")
 end
