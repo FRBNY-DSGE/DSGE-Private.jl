@@ -126,8 +126,18 @@ function load_data(m::AbstractDSGEModel; cond_type::Symbol = :none, try_disk::Bo
         missing_cond_vars!(m, df; cond_type = cond_type,
                            check_empty_columns = check_empty_columns)
 
-        # check that dataset is valid
+        # check that dataset is valid. Missing observables or main-sample dates (or gaps)
+        # are an error and nothing is saved; conditional rows that do not reach
+        # date_conditional_end only warn, as before
+        isvalid_data(m, df; cond_type = :none, check_empty_columns = check_empty_columns) ||
+            error("Created dataset for vintage $(data_vintage(m)) is not valid (see the messages above); not saving it.")
+        if cond_type in [:semi, :full] &&
+           !isvalid_data(m, df; cond_type = cond_type, check_empty_columns = check_empty_columns)
+            @warn "Created dataset for vintage $(data_vintage(m)) does not cover the conditional period through $(date_conditional_end(m))"
+        end
+        #= Old: the result was discarded, so an invalid dataset was saved and returned
         isvalid_data(m, df; cond_type = cond_type, check_empty_columns = check_empty_columns)
+        =#
 
         # Stop on gaps/stale series in the core observables (before anything is saved)
         allow_data_gaps(m) || check_data(m, df)

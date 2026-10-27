@@ -60,6 +60,21 @@ end
                                                                     allow_unvintaged = true, verbose = :none)
     @test r == ("GDP", false)
 
+    # Errors a retry cannot fix fail after one request
+    bad = "HTTP 400 Bad Request. Bad Request.  The series does not exist."
+    f = ScriptedFred(Any[bad, :ok], [])
+    @test_throws ErrorException DSGE.fetch_fred_vintage(f, :NOSUCH, d0, d1, v; waits = [0, 0], verbose = :none)
+    @test length(f.calls) == 1
+    @test DSGE.fred_error_is_permanent("Internal Server Error.  The vintage date \"2026-10-22\" cannot be outside the range")
+    @test !DSGE.fred_error_is_permanent("HTTP.Exceptions.StatusError(429, \"GET\", \"/fred/series/observations\")")
+    @test !DSGE.fred_error_is_permanent("HTTP.Exceptions.StatusError(503, \"GET\", ...) Service Unavailable")
+    @test !DSGE.fred_error_is_permanent("ArgumentError: invalid JSON at byte position 1")   # maintenance page
+
+    # Retry lines show one line: no stacktrace fragment, key still redacted
+    long = ErrorException("HTTP 500 api_key=abcdef0123456789&x=1\nStacktrace:\n [1] request")
+    @test DSGE.fred_error_message(long; short = true) == "HTTP 500 api_key=<redacted>&x=1"
+    @test occursin("Stacktrace", DSGE.fred_error_message(long))
+
     # The setting is read from a testing model too
     @test DSGE.get_setting_or(m, :fred_allow_unvintaged_fallback, false) == false
     m2 = deepcopy(m); m2 <= Setting(:fred_allow_unvintaged_fallback, true)
