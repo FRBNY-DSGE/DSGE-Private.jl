@@ -895,6 +895,40 @@ end
     @test cache.misses > 0
 end
 
+@testset "One expected-sums memo across many calls gives the uncached results" begin
+    # TTTs and CCCs are built from a small pool, so the same slices appear at different
+    # (t, k, permanent_t). Every call shares one memo and is compared (results and errors)
+    # with the uncached function, so a key that misses an input the branch reads fails here.
+    run_call(f, args...) = try f(args...) catch e "error: " * string(typeof(e)) end
+    for seed in 1:3
+        rng = MersenneTwister(seed)
+        n = 4
+        random_T() = (A = randn(rng, n, n); A ./ (1.5 * opnorm(A)))
+        Tpool = [random_T() for _ in 1:3]
+        Cpool = [zeros(n), 0.1 .* randn(rng, n), -zeros(n)]
+        nreg = 10
+        TTTs = [copy(Tpool[rand(rng, 1:2)]) for _ in 1:nreg]
+        CCCs = [copy(Cpool[rand(rng, 1:3)]) for _ in 1:nreg]
+        calls = [(TT, CC, Ts, Cs, t, k, pt)
+                 for (TT, CC) in ((Tpool[3], Cpool[1]), (Tpool[3], Cpool[2]), (Tpool[1], Cpool[3]))
+                 for (Ts, Cs) in ((TTTs, CCCs), (Matrix{Float64}[], Vector{Float64}[]))
+                 for t in 0:nreg, k in 0:12, pt in 0:(nreg + 1)]
+        shuffle!(rng, calls)
+        cache = DSGE.ExpectedSumsCache()
+        n_different = 0
+        task_local_storage(DSGE.EXPECTED_SUMS_CACHE_KEY, cache) do
+            for pass in 1:2, (TT, CC, Ts, Cs, t, k, pt) in calls
+                memoized = run_call(DSGE.k_periods_ahead_expected_sums, TT, CC, Ts, Cs, t, k, pt)
+                uncached = run_call(DSGE.k_periods_ahead_expected_sums_uncached, deepcopy(TT), deepcopy(CC),
+                                    deepcopy(Ts), deepcopy(Cs), t, k, pt)
+                n_different += !isequal(memoized, uncached)
+            end
+        end
+        @test n_different == 0
+        @test cache.hits > 0
+    end
+end
+
 @testset "Time-Varying Information Set state space system" begin
     m = Model1002("ss10")
     system = compute_system(m)
