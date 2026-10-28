@@ -79,6 +79,7 @@ function smc_mode_check(m::AbstractDSGEModel, data::AbstractArray, cloud::SMC.Cl
                         n_starts::Int = 20, max_hessians::Int = 3, distinct_sd::Real = 0.5,
                         k_max::Int = 4, iterations::Int = 1000, rng::AbstractRNG = Xoshiro(0),
                         verbose::Symbol = :low)
+    max_hessians >= 1 || throw(ArgumentError("smc_mode_check: max_hessians must be at least 1"))
     regime_switching = haskey(get_settings(m), :regime_switching) && get_setting(m, :regime_switching)
     free = ModelConstructors.get_free_para_inds(get_parameters(m); regime_switching = regime_switching)
     n_para = SMC.ind_para_end(size(cloud.particles, 2))
@@ -302,7 +303,14 @@ function simulate_from_model(m::AbstractDSGEModel, burnin::Int, n_periods::Int)
                            burnin = burnin, n_periods = n_periods)
     EE = system[:EE]
     n_obs = length(system[:DD])
-    noise = iszero(EE) ? zeros(n_obs, n_periods) : cholesky(Symmetric(EE)).L * randn(n_obs, n_periods)
+    noise = if iszero(EE)
+        zeros(n_obs, n_periods)
+    else
+        F = eigen(Symmetric(EE))
+        minimum(F.values) >= -1e-10 * max(1.0, maximum(abs, F.values)) ||
+            throw(ArgumentError("measurement-error covariance is not positive semidefinite"))
+        F.vectors * Diagonal(sqrt.(max.(F.values, 0.0))) * randn(n_obs, n_periods)
+    end
     return system[:DD] .+ system[:ZZ] * s[:, burnin+1:burnin+n_periods] .+ noise
 end
 
@@ -324,6 +332,7 @@ smc_sbc_uniformity(ranks, n_draws; n_bins = 10)
 values. Returns the p-values, one per parameter.
 """
 function smc_sbc_uniformity(ranks::AbstractMatrix{<:Integer}, n_draws::Int; n_bins::Int = 10)
+    2 <= n_bins <= n_draws + 1 || throw(ArgumentError("n_bins must be between 2 and n_draws + 1"))
     R = size(ranks, 1)
     bin(x) = 1 + floor(Int, x * n_bins / (n_draws + 1))
     expected = [count(x -> bin(x) == b, 0:n_draws) for b in 1:n_bins] .* (R / (n_draws + 1))

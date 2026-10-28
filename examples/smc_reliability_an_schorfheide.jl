@@ -79,6 +79,9 @@ elseif TASK == "sbc"
 
 elseif TASK == "sbc_summary"
     files = Base.filter(f -> occursin(r"^sbc_\d+_\d+\.jld2$", f), readdir(OUTDIR))
+    isempty(files) && error("No SBC chunks found in $OUTDIR")
+    reps = reduce(vcat, [load(joinpath(OUTDIR, f), "reps") for f in files])
+    length(unique(reps)) == length(reps) || error("SBC chunks overlap; remove stale sbc_*.jld2 files from $OUTDIR")
     ranks = reduce(vcat, [load(joinpath(OUTDIR, f), "ranks") for f in files])
     names = load(joinpath(OUTDIR, files[1]), "names")
     p = smc_sbc_uniformity(ranks, 99)

@@ -28,6 +28,9 @@ jobs:
       # already accepts this version.
       - name: "Use Julia 1.12-compatible ModelConstructors"
         run: julia --project=. --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/FRBNY-DSGE/ModelConstructors.jl", rev = "v0.2.5"))'
+      # DSGE's step-3 tests use SMC APIs newer than the latest registered SMC release.
+      - name: "Use reviewed SMC step-3 commit"
+        run: julia --project=. --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/FRBNY-DSGE/SMC.jl", rev = "3b8a0c7c1b8358ace99676cf436ea23cd9b8cf00"))'
       - uses: julia-actions/julia-buildpkg@v1
       - name: "Run the complete package test suite"
         env:
