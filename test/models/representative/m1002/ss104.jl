@@ -276,5 +276,40 @@ end
     end
 end
 
+@testset "ss104: likelihood skips the pseudo-measurement, bitwise, and later systems still have it" begin
+    m_l = deepcopy(m)
+    sys_before = compute_system(m_l)
+    nT   = DSGE.subtract_quarters(date_forecast_start(m_l), date_presample_start(m_l))
+    data = fill(NaN, n_observables(m_l), nT)
+    # A few observed series (steady state plus fixed deviations) give a non-trivial likelihood
+    for (j, k) in enumerate((:obs_gdp, :obs_corepce, :obs_hours))
+        data[m_l.observables[k], :] .= sys_before[1, :DD][m_l.observables[k]] .+ 0.1 .* sin.(j .* (1:nT))
+    end
+    sed = DSGE.iterate_quarters(date_presample_start(m_l), nT - 1)
+
+    sys_full = compute_system(m_l; sample_end_date = sed)
+    values_full = [p.value for p in m_l.parameters]
+    sys_lik = compute_system(m_l; sample_end_date = sed, compute_pseudo = false)
+    @test isequal([p.value for p in m_l.parameters], values_full) # parameter regimes end in the same state
+    @test length(sys_lik.transitions) == length(sys_full.transitions)
+    for r in 1:length(sys_full.transitions)
+        for key in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
+            @test sys_lik[r, key] == sys_full[r, key] # bitwise
+        end
+        @test size(sys_lik[r, :ZZ_pseudo], 1) == 0
+    end
+
+    lh = likelihood(m_l, data)
+    @test isfinite(lh)
+    @test lh == sum(DSGE.filter_likelihood(m_l, data, sys_full; include_presample = false)) # bitwise
+
+    # A likelihood call doesn't change the systems built afterwards from the same model
+    sys_after = compute_system(m_l)
+    @test size(sys_after[1, :ZZ_pseudo], 1) == n_pseudo_observables(m_l)
+    for r in 1:n_regs, key in (:TTT, :ZZ, :DD, :ZZ_pseudo, :DD_pseudo)
+        @test sys_after[r, key] == sys_before[r, key] # bitwise
+    end
+end
+
 
 end # module TestSS104
