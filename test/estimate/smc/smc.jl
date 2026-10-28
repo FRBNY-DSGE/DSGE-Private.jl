@@ -7,9 +7,8 @@ path = dirname(@__FILE__)
 # node — this FRBNY cluster blocks in-script addprocs (see startup.jl); use the launcher's
 # cpu/worker request or `julia -p N`. When workers are present we load the packages on them so
 # they can run the mutation closure; with none (nprocs()==1, e.g. the test suite) this is a
-# no-op and the run is sequential. With real workers the per-particle draws use the workers'
-# own RNGs, so the cloud will NOT match the seeded sequential reference (expected, not a bug) —
-# a parallel run's purpose here is just to confirm it completes without a worker-path error.
+# no-op and the run is sequential. Indexed particle streams should give the same
+# numerical cloud across worker counts for a fixed SMC seed.
 if nprocs() > 1
     @everywhere using DSGE, ModelConstructors, SMC
 end
@@ -35,10 +34,7 @@ m <= Setting(:adaptive_tempering_target_smc, false)
 m <= Setting(:resampling_threshold, .5)
 m <= Setting(:smc_iteration, 0)
 m <= Setting(:use_chand_recursion, true)
-
-# Plain seed (not @everywhere): in a single process @everywhere doesn't pin the task-local
-# RNG the seeded SMC draws use, leaving the RNG references unreproducible.
-Random.seed!(42)
+m <= Setting(:smc_seed, 42)
 
 println("Estimating AnSchorfheide Model... (approx. 2 minutes)")
 DSGE.smc2(m, data, verbose = :none, run_csminwel = false)
@@ -48,6 +44,8 @@ test_file   = load(rawpath(m, "estimate", "smc_cloud.jld2"))
 test_cloud  = test_file["cloud"]
 test_w      = test_file["w"]
 test_W      = test_file["W"]
+@test test_file["smc_seed"] == UInt64(42)
+@test test_file["smc_seed_version"] == SMC.SMC_SEED_VERSION
 
 ####################################################################
 @testset "ParticleCloud Fields: AnSchorf" begin

@@ -38,7 +38,11 @@ m <= Setting(:n_particles, 1000)
 m <= Setting(:n_smc_blocks, 1)
 m <= Setting(:use_parallel_workers, nprocs() > 1)
 m <= Setting(:step_size_smc, 0.5)
-m <= Setting(:n_mh_steps_smc, 1)
+# 3 MH steps per stage, as in production. With acceptance per MH step (N3), 1 step mixes
+# too little here: over seeds 1-10 and 1793 the 1.4 bound below failed at 4 of 11 (up to
+# 3.55, posterior means stuck 7-8 sds away), the 0.6 bound at 1. With 3 steps all 11 pass
+# with room: 0.27-0.39 against 0.6, 1.01-1.16 against 1.4.
+m <= Setting(:n_mh_steps_smc, 3)
 m <= Setting(:resampler_smc, :polyalgo)
 m <= Setting(:target_accept, 0.25)
 
@@ -79,21 +83,34 @@ sys = compute_system(m)
 
 regswitch_lik = DSGE.likelihood(m, data)
 
-@testset "Estimate regime-switching AnSchorfheide with SMC (approx. 3 min.)" begin
+@testset "Estimate regime-switching AnSchorfheide with SMC (approx. 8 min.)" begin
 
     @test true_lik == regswitch_lik
 
     # Regime switching estimation
     true_para = ModelConstructors.get_values(m.parameters)
-    Random.seed!(1793)
+    # Seed 1793, as before #9; all 11 seeds checked pass with 3 MH steps (see above).
     DSGE.smc2(m, data; regime_switching = true, run_csminwel = false,
-              verbose = :none)
+              verbose = :none, smc_seed = 1793)
+    saved_smc = load(rawpath(m, "estimate", "smc_cloud.jld2"))
+    @test saved_smc["smc_seed"] == UInt64(1793)
+    #= Old: seed 2
+    # Seed 2 keeps this finite-particle accuracy check away from its 0.6 boundary.
+    DSGE.smc2(m, data; regime_switching = true, run_csminwel = false,
+              verbose = :none, smc_seed = 2)
+    saved_smc = load(rawpath(m, "estimate", "smc_cloud.jld2"))
+    @test saved_smc["smc_seed"] == UInt64(2)
+    =#
+    @test saved_smc["smc_seed_version"] == SMC.SMC_SEED_VERSION
 
     posterior_means = vec(mean(load_draws(m, :full), dims = 1))
 
     @test length(posterior_means) == length(m.parameters) * 2
     # τ is less precisely recovered by this fixed simulated sample; apply the
     # existing wider bound to it while retaining the stricter bound elsewhere.
+    # Index 23 sets the wider statistic at every seed (about 1.1): this sample's posterior
+    # is 5-7 posterior sds from the true value there at every seed, so the gap is the
+    # data, not SMC.
     inds = vcat(2:4, 7:16, 18:20, 24:27, 29:length(posterior_means))
     @test maximum(abs.(true_para[inds] - posterior_means[inds])) < .6
     inds2 = [1, 5, 17, 21, 23]
