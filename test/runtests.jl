@@ -94,6 +94,7 @@ my_tests = [
             "estimate/hessizero_prior",
             "estimate/kalman",
             "estimate/lbfgs",
+            "estimate/likelihood_memo",
             "estimate/marginal_data_density",
             "estimate/metropolis_hastings",
             "estimate/nearest_spd",
