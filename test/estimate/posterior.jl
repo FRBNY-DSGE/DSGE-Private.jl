@@ -144,6 +144,12 @@ end
         lh = likelihood(m, data)
         @test lh == sum(DSGE.filter_likelihood(m, data, full; include_presample = false))
 
+        # likelihood itself builds the system without the pseudo-measurement
+        cache = Ref{Any}(nothing)
+        @test likelihood(m, data; system_cache = cache) == lh
+        cached = regime_switching ? [System(cache[], reg) for reg in 1:length(cache[].transitions)] : [cache[]]
+        @test all(sys -> size(sys[:ZZ_pseudo], 1) == 0, cached)
+
         # A likelihood call doesn't change the systems built afterwards from the same model
         after = compute_system(m)
         sys_after = regime_switching ? System(after, 1) : after

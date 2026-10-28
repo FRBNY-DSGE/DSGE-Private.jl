@@ -303,6 +303,11 @@ end
     @test isfinite(lh)
     @test lh == sum(DSGE.filter_likelihood(m_l, data, sys_full; include_presample = false)) # bitwise
 
+    # likelihood itself builds the system without the pseudo-measurement
+    cache = Ref{Any}(nothing)
+    @test likelihood(m_l, data; system_cache = cache) == lh
+    @test all(r -> size(cache[][r, :ZZ_pseudo], 1) == 0, 1:length(cache[].transitions))
+
     # A likelihood call doesn't change the systems built afterwards from the same model
     sys_after = compute_system(m_l)
     @test size(sys_after[1, :ZZ_pseudo], 1) == n_pseudo_observables(m_l)
