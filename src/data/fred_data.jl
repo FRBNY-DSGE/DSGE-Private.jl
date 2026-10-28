@@ -171,16 +171,32 @@ const FRED_RETRY_WAITS = [5, 15, 30, 60, 120]
 get_setting_or(m::AbstractDSGEModel, key::Symbol, default) =
     (haskey(m.settings, key) || (m.testing && haskey(m.test_settings, key))) ? get_setting(m, key) : default
 
-# FRED errors echo the request URL, which contains the API key: never print them raw
+# FRED errors echo the request URL, which contains the API key: never print them raw.
+# `short = true` keeps only the first line (no stacktrace fragment), for the retry lines.
+function fred_error_message(err; n::Int = 300, short::Bool = false)
+    msg = replace(sprint(showerror, err), r"api_key=[^&\s\"]*" => "api_key=<redacted>")
+    short && (msg = first(split(strip(msg), '\n')))
+    return first(msg, n)
+end
+#= Old: no single-line form
 fred_error_message(err; n::Int = 300) =
     first(replace(sprint(showerror, err), r"api_key=[^&\s\"]*" => "api_key=<redacted>"), n)
+=#
+
+# Errors that a retry cannot fix: FRED's "Bad Request" (unknown series, bad arguments,
+# invalid API key, no ALFRED vintage), "Not Found", and a vintage date outside FRED's
+# range. Rate limits (429), server errors, timeouts and maintenance pages are retried.
+fred_error_is_permanent(msg::AbstractString) =
+    occursin("Bad Request", msg) || occursin("Not Found", msg) ||
+    occursin(r"StatusError\(40[04]", msg) || occursin("cannot be outside the range", msg)
 
 """
 ```
 fetch_fred_vintage(f, s, start_date, end_date, vint_date; allow_unvintaged = false, verbose = :low,
                    waits = FRED_RETRY_WAITS)
 ```
-Fetch FRED series `s` as of `vint_date`, retrying failed requests (waiting `waits` seconds).
+Fetch FRED series `s` as of `vint_date`, retrying failed requests (waiting `waits` seconds);
+errors a retry cannot fix (`fred_error_is_permanent`) fail at once.
 If every attempt fails it is an error, unless ALFRED reports that it keeps no vintage
 of `s` or `allow_unvintaged` is true: then today's (unvintaged) series is fetched, with
 a warning that it is not real-time.
@@ -196,10 +212,13 @@ function fetch_fred_vintage(f, s::Symbol, start_date::Dates.Date, end_date::Date
         catch err
             isa(err, InterruptException) && rethrow()
             msg = fred_error_message(err)
-            # ALFRED keeps no vintage of this series: retrying will not help
+            # A permanent error (incl. "does not exist in ALFRED") is not retried
+            fred_error_is_permanent(msg) && break
+            #= Old: only the ALFRED case skipped the retries (up to ~230 s per series)
             occursin("does not exist in ALFRED", msg) && break
+            =#
             attempt > length(waits) && break
-            println(verbose, :low, "FRED request for $s failed (attempt $attempt): $(first(msg, 200)). Retrying in $wait s...")
+            println(verbose, :low, "FRED request for $s failed (attempt $attempt): $(fred_error_message(err; n = 200, short = true)). Retrying in $wait s...")
             sleep(wait)
         end
     end
