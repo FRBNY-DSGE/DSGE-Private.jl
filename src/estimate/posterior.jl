@@ -187,6 +187,12 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
             length(cached_system.transitions) < likelihood_regime_count(
                 m, sample_end_date, get_setting(m, :n_regimes))
         if isnothing(cached_system) || missing_sample_regimes
+            # :preprocessed_transitions memoizes transition matrices within one solve. Its key
+            # does not include parameter values, so clear it before solving at new parameters.
+            # A cached system is at these same parameters, so its memo stays valid.
+            if isnothing(cached_system) && haskey(get_settings(m), :preprocessed_transitions)
+                m <= Setting(:preprocessed_transitions, Dict())
+            end
             computed = m isa PoolModel ? compute_system(m; verbose = verbose) :
                 compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set),
                                sample_end_date = sample_end_date, verbose = verbose)
