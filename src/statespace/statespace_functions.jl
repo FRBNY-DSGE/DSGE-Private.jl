@@ -27,6 +27,16 @@ function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
                         compute_pseudo::Bool = true,
                         verbose::Symbol = :high) where {T <: Real}
 
+    # The outermost call holds a fresh memo of k_periods_ahead_expected_sums (see util.jl)
+    # for this system only, including the alternative-policy systems computed inside it.
+    if !haskey(task_local_storage(), EXPECTED_SUMS_CACHE_KEY)
+        return task_local_storage(EXPECTED_SUMS_CACHE_KEY, ExpectedSumsCache()) do
+            compute_system(m; tvis = tvis, set_regime_eqcond_info! = set_regime_eqcond_info!,
+                           sample_end_date = sample_end_date, compute_pseudo = compute_pseudo,
+                           verbose = verbose)
+        end
+    end
+
     # do NOT delete the second part of the Boolean for apply_altpolicy; it is needed for
     # the scenarios code, which continues to use :alternative_policy as a Setting
     # AND for implementing imperfect awareness via uncertain_altpolicy

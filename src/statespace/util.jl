@@ -520,12 +520,110 @@ unnecessary computations.
 memo = ForwardMultipleExpectationsMemo(TTTs, min_t, length(TTTs), length(TTTs), min_t + max_k - length(TTTs),
                                max_t + max_k + 1 - length(TTTs))
 ```
+
+### Notes
+Inside `compute_system`, results are memoized in an `ExpectedSumsCache` (see below)
+that lives only for that call, so repeated calls with the same inputs are computed once.
+Results are returned as fresh copies, so callers may mutate them.
 """
 function k_periods_ahead_expected_sums(TTT::AbstractMatrix, CCC::AbstractVector,
                                        TTTs::Vector{<: AbstractMatrix}, CCCs::Vector{<: AbstractVector},
                                        t::Int, k::Int, permanent_t::Int = length(TTTs);
                                        integ_series::Bool = false,
                                        memo::Union{ForwardMultipleExpectationsMemo, Nothing} = nothing)
+    cache = get(task_local_storage(), EXPECTED_SUMS_CACHE_KEY, nothing)
+    key = (isnothing(cache) || integ_series || !isnothing(memo)) ? nothing :
+        expected_sums_cache_key!(cache, TTT, CCC, TTTs, CCCs, t, k, permanent_t)
+    if isnothing(key)
+        return k_periods_ahead_expected_sums_uncached(TTT, CCC, TTTs, CCCs, t, k, permanent_t;
+                                                      integ_series = integ_series, memo = memo)
+    end
+
+    cached = get(cache.results, key, nothing)
+    if !isnothing(cached)
+        cache.hits += 1
+        return copy(cached[1]), copy(cached[2])
+    end
+    cache.misses += 1
+    Tsum, Csum = k_periods_ahead_expected_sums_uncached(TTT, CCC, TTTs, CCCs, t, k, permanent_t)
+    cache.results[key] = (copy(Tsum), copy(Csum))
+    return Tsum, Csum
+end
+
+# Memo of k_periods_ahead_expected_sums for one state-space system computation.
+# The outermost compute_system call creates it in task-local storage and drops it
+# when it returns, so results never carry over between parameter draws (and each
+# pmap worker or task has its own). Keys use the content of the inputs: each input
+# array is matched to a stored copy by hash and then exact `isequal`, so a hash
+# collision or an array mutated in place cannot return a stale result.
+mutable struct ExpectedSumsCache
+    arrays::Vector{Array{Float64}}            # copies of the distinct input arrays
+    content_ids::Dict{UInt, Vector{Int}}      # hash of an array -> indices into arrays
+    object_ids::IdDict{Any, Int}              # input array object -> index into arrays (checked by isequal)
+    results::Dict{Tuple{Symbol, Vector{Int}, Vector{Int}}, Tuple{Matrix{Float64}, Vector{Float64}}}
+    hits::Int
+    misses::Int
+end
+ExpectedSumsCache() = ExpectedSumsCache(Array{Float64}[], Dict{UInt, Vector{Int}}(), IdDict{Any, Int}(),
+                                        Dict{Tuple{Symbol, Vector{Int}, Vector{Int}}, Tuple{Matrix{Float64}, Vector{Float64}}}(),
+                                        0, 0)
+
+const EXPECTED_SUMS_CACHE_KEY = :DSGE_expected_sums_cache
+
+# Index of an array with the same content as A, adding a copy of A if there is none.
+function expected_sums_cache_id!(cache::ExpectedSumsCache, A::Array{Float64})
+    id = get(cache.object_ids, A, 0)
+    if id != 0 && isequal(cache.arrays[id], A)
+        return id
+    end
+    ids = get!(Vector{Int}, cache.content_ids, hash(A))
+    id = findfirst(j -> isequal(cache.arrays[j], A), ids)
+    if isnothing(id)
+        push!(cache.arrays, copy(A))
+        push!(ids, length(cache.arrays))
+        id = length(cache.arrays)
+    else
+        id = ids[id]
+    end
+    cache.object_ids[A] = id
+    return id
+end
+
+# The key holds exactly what the branch of k_periods_ahead_expected_sums_uncached
+# taken by these inputs reads: the branch, the integers it uses, and the content of the
+# arrays it uses. Returns nothing (do not cache) for non-Float64 inputs or index
+# ranges the computation does not cover.
+function expected_sums_cache_key!(cache::ExpectedSumsCache, TTT::AbstractMatrix, CCC::AbstractVector,
+                                  TTTs::Vector{<: AbstractMatrix}, CCCs::Vector{<: AbstractVector},
+                                  t::Int, k::Int, permanent_t::Int)
+    if !(TTT isa Matrix{Float64} && CCC isa Vector{Float64} &&
+         TTTs isa Vector{Matrix{Float64}} && CCCs isa Vector{Vector{Float64}})
+        return nothing
+    end
+    id(A) = expected_sums_cache_id!(cache, A)
+    n_t = min(length(TTTs), length(CCCs))
+
+    if isempty(TTTs) || isempty(CCCs)
+        return (:empty, [k], [id(TTT), id(CCC)])
+    elseif t + k <= permanent_t
+        (1 <= t && k >= 1 && t + k <= n_t) || return nothing
+        return (:time_varying, [k, size(TTTs[t])..., length(CCCs[t])],
+                [[id(TTTs[i]) for i in (t + 1):(t + k)]; [id(CCCs[i]) for i in (t + 1):(t + k)]])
+    elseif t == permanent_t
+        (1 <= permanent_t <= n_t) || return nothing
+        return (:permanent, [k], [id(TTTs[permanent_t]), id(CCCs[permanent_t]), id(CCC)])
+    else
+        (1 <= t < permanent_t <= n_t) || return nothing
+        return (:mixed, [t + k - permanent_t, size(TTTs[t])..., length(CCCs[t])],
+                [[id(TTTs[i]) for i in (t + 1):permanent_t]; [id(CCCs[i]) for i in (t + 1):permanent_t]])
+    end
+end
+
+function k_periods_ahead_expected_sums_uncached(TTT::AbstractMatrix, CCC::AbstractVector,
+                                                TTTs::Vector{<: AbstractMatrix}, CCCs::Vector{<: AbstractVector},
+                                                t::Int, k::Int, permanent_t::Int = length(TTTs);
+                                                integ_series::Bool = false,
+                                                memo::Union{ForwardMultipleExpectationsMemo, Nothing} = nothing)
 
     if integ_series # Do this by directly summing the k-periods ahead expectations. Not fully efficient but also not the typical case
         T_accum = Vector{eltype(TTTs)}(undef, k)
@@ -573,11 +671,16 @@ function k_periods_ahead_expected_sums(TTT::AbstractMatrix, CCC::AbstractVector,
                 total_Tsum .+= T_accum
                 total_Csum .+= C_accum
 
+                # Products go into two alternating preallocated buffers (same operations
+                # as T_accum = TTTs[i] * T_accum, C_accum = TTTs[i] * C_accum + CCCs[i])
+                T_bufs = (similar(total_Tsum), similar(total_Tsum))
+                C_bufs = (similar(total_Csum), similar(total_Csum))
                 for i in (t+2):(t+k)
-                    T_accum = TTTs[i] * T_accum
+                    T_accum = mul!(T_bufs[1 + i % 2], TTTs[i], T_accum)
                     total_Tsum .+= T_accum
 
-                    C_accum = TTTs[i] * C_accum + CCCs[i]
+                    C_accum = mul!(C_bufs[1 + i % 2], TTTs[i], C_accum)
+                    C_accum .+= CCCs[i]
                     total_Csum .+= C_accum
                 end
             else
@@ -627,26 +730,32 @@ function k_periods_ahead_expected_sums(TTT::AbstractMatrix, CCC::AbstractVector,
                 total_Tsum .+= T_accum
                 total_Csum .+= C_accum
 
-                # Time-varying matrices so need to calculate in loop
+                # Time-varying matrices so need to calculate in loop.
+                # Products go into two alternating preallocated buffers (same operations
+                # as T_accum = TTTs[i] * T_accum, C_accum = TTTs[i] * C_accum + CCCs[i])
+                T_bufs = (similar(total_Tsum), similar(total_Tsum))
+                C_bufs = (similar(total_Csum), similar(total_Csum))
                 for i in (t+2):permanent_t
-                    T_accum = TTTs[i] * T_accum
+                    T_accum = mul!(T_bufs[1 + i % 2], TTTs[i], T_accum)
                     total_Tsum .+= T_accum
 
-                    C_accum = TTTs[i] * C_accum + CCCs[i]
+                    C_accum = mul!(C_bufs[1 + i % 2], TTTs[i], C_accum)
+                    C_accum .+= CCCs[i]
                     total_Csum .+= C_accum
                 end
 
                 # Post permanent_t, fixed matrices, so can compute here
                 T_sums = (I - TTTs[permanent_t]) \ (TTTs[permanent_t] - TTTs[permanent_t]^(t+k-permanent_t+1))
-                total_Tsum .+= T_sums * T_accum
+                total_Tsum .+= mul!(T_accum === T_bufs[1] ? T_bufs[2] : T_bufs[1], T_sums, T_accum)
 
                 # If C unchanging after permanent_t, can compute with sum expression
                 ## else do for loop
                 if !do_C
-                    total_Csum .+= T_sums * C_accum
+                    total_Csum .+= mul!(C_accum === C_bufs[1] ? C_bufs[2] : C_bufs[1], T_sums, C_accum)
                 else
                     for i in (permanent_t+1):(t+k)
-                        C_accum = TTTs[permanent_t] * C_accum + CCCs[permanent_t]
+                        C_accum = mul!(C_accum === C_bufs[1] ? C_bufs[2] : C_bufs[1], TTTs[permanent_t], C_accum)
+                        C_accum .+= CCCs[permanent_t]
                         total_Csum .+= C_accum
                     end
                 end

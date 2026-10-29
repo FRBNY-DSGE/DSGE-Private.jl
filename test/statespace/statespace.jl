@@ -764,6 +764,171 @@ end
     @test C_acc5 ≈ C_acc_memo5
 end
 
+# The allocating loops k_periods_ahead_expected_sums used before its products were
+# preallocated, to check that the in-place version is bitwise equal.
+function expected_sums_allocating_loops(TTTs, CCCs, t, k, permanent_t)
+    total_Tsum = zeros(eltype(TTTs[t]), size(TTTs[t]))
+    total_Csum = zeros(eltype(CCCs[t]), size(CCCs[t]))
+    T_accum = TTTs[t+1]
+    C_accum = CCCs[t+1]
+    total_Tsum .+= T_accum
+    total_Csum .+= C_accum
+    for i in (t+2):min(t + k, permanent_t)
+        T_accum = TTTs[i] * T_accum
+        total_Tsum .+= T_accum
+        C_accum = TTTs[i] * C_accum + CCCs[i]
+        total_Csum .+= C_accum
+    end
+    if t + k > permanent_t
+        T_sums = (I - TTTs[permanent_t]) \ (TTTs[permanent_t] - TTTs[permanent_t]^(t+k-permanent_t+1))
+        total_Tsum .+= T_sums * T_accum
+        if all(CCCs[permanent_t] .≈ 0.0)
+            total_Csum .+= T_sums * C_accum
+        else
+            for i in (permanent_t+1):(t+k)
+                C_accum = TTTs[permanent_t] * C_accum + CCCs[permanent_t]
+                total_Csum .+= C_accum
+            end
+        end
+    end
+    return total_Tsum, total_Csum
+end
+
+@testset "Memoized and in-place k-periods ahead expected sums are bitwise equal" begin
+    m = Model1002("ss10")
+    sys_constant = compute_system(m)
+    m <= Setting(:date_forecast_start, Date(2020, 9, 30))
+    m <= Setting(:date_conditional_end, Date(2020, 9, 30))
+    m <= Setting(:regime_dates, Dict{Int, Date}(1 => date_presample_start(m), 2 => Date(2020, 9, 30),
+                                                3 => Date(2020, 12, 31), 4 => Date(2021, 3, 31),
+                                                5 => Date(2021, 6, 30), 6 => Date(2021, 9, 30), 7 => Date(2021, 12, 31)))
+    m <= Setting(:replace_eqcond, true)
+    m <= Setting(:gensys2, true)
+    m <= Setting(:regime_switching, true)
+    regime_eqcond_info = Dict{Int, DSGE.EqcondEntry}()
+    for i in 2:6
+        regime_eqcond_info[i] = DSGE.EqcondEntry(DSGE.zlb_rule(), [1., 0.])
+    end
+    regime_eqcond_info[7] = DSGE.EqcondEntry(AltPolicy(:historical, eqcond, solve), [1., 0.])
+    m <= Setting(:regime_eqcond_info, regime_eqcond_info)
+    m <= Setting(:temporary_altpolicy_names, [:zlb_rule])
+    setup_regime_switching_inds!(m)
+    sys = compute_system(m)
+    TTTs = [sys[i, :TTT] for i in 1:7]
+    TTT, CCC = sys[1, :TTT], sys[1, :CCC]
+    Tc, Cc = sys_constant[:TTT], sys_constant[:CCC]
+
+    # One case per branch: (TTT, CCC, TTTs, CCCs, t, k, permanent_t)
+    for CCCs in ([sys[i, :CCC] for i in 1:7], [sys[i, :CCC] .+ .1 for i in 1:7])
+        cases = [(Tc, Cc, Matrix{Float64}[], Vector{Float64}[], 1, 3, 0),           # empty TTTs
+                 (Tc, Cc .+ .1, Matrix{Float64}[], Vector{Float64}[], 1, 3, 0),     # empty TTTs, nonzero C
+                 (TTT, CCC, TTTs, CCCs, 2, 3, 7),                                   # t + k <= permanent_t
+                 (TTT, CCC, TTTs, CCCs, 2, 5, 7),
+                 (TTT, CCC, TTTs, CCCs, 7, 3, 7),                                   # t == permanent_t
+                 (TTT, CCC .+ .1, TTTs, CCCs, 7, 3, 7),                             # t == permanent_t, nonzero C
+                 (TTT, CCC, TTTs, CCCs, 2, 7, 7),                                   # t < permanent_t < t + k
+                 (TTT, CCC, TTTs, CCCs, 5, 40, 7),
+                 (TTT, CCC, TTTs, CCCs, 6, 2, 7)]
+        for (TT, CC, Ts, Cs, t, k, pt) in cases
+            T0, C0 = DSGE.k_periods_ahead_expected_sums_uncached(TT, CC, Ts, Cs, t, k, pt)
+            if !isempty(Ts) && t < pt
+                Tr, Cr = expected_sums_allocating_loops(Ts, Cs, t, k, pt)
+                @test isequal(T0, Tr)
+                @test isequal(C0, Cr)
+            end
+            # Outside compute_system there is no memo
+            @test !haskey(task_local_storage(), DSGE.EXPECTED_SUMS_CACHE_KEY)
+            T1, C1 = DSGE.k_periods_ahead_expected_sums(TT, CC, Ts, Cs, t, k, pt)
+            cache = DSGE.ExpectedSumsCache()
+            T2, C2, T3, C3 = task_local_storage(DSGE.EXPECTED_SUMS_CACHE_KEY, cache) do
+                (DSGE.k_periods_ahead_expected_sums(TT, CC, Ts, Cs, t, k, pt)...,
+                 DSGE.k_periods_ahead_expected_sums(deepcopy(TT), deepcopy(CC), deepcopy(Ts), deepcopy(Cs), t, k, pt)...)
+            end
+            @test cache.misses == 1 && cache.hits == 1
+            @test isequal(T1, T0) && isequal(C1, C0)
+            @test isequal(T2, T0) && isequal(C2, C0)
+            @test isequal(T3, T0) && isequal(C3, C0)
+            # Hits return copies, so mutating a result cannot change the memo
+            T3 .= 0.
+            T4, _ = task_local_storage(() -> DSGE.k_periods_ahead_expected_sums(TT, CC, Ts, Cs, t, k, pt),
+                                       DSGE.EXPECTED_SUMS_CACHE_KEY, cache)
+            @test isequal(T4, T0)
+        end
+    end
+
+    # An input mutated in place after it was memoized is not matched to the stale entry
+    CCCs = [sys[i, :CCC] for i in 1:7]
+    Ts = deepcopy(TTTs)
+    cache = DSGE.ExpectedSumsCache()
+    task_local_storage(DSGE.EXPECTED_SUMS_CACHE_KEY, cache) do
+        Ta, _ = DSGE.k_periods_ahead_expected_sums(TTT, CCC, Ts, CCCs, 2, 7, 7)
+        Ts[5] .*= 0.9
+        Tb, Cb = DSGE.k_periods_ahead_expected_sums(TTT, CCC, Ts, CCCs, 2, 7, 7)
+        T0, C0 = DSGE.k_periods_ahead_expected_sums_uncached(TTT, CCC, Ts, CCCs, 2, 7, 7)
+        @test !isequal(Ta, Tb)
+        @test isequal(Tb, T0) && isequal(Cb, C0)
+    end
+    @test cache.hits == 0
+
+    # The memo lives only inside compute_system: two parameter draws in sequence give
+    # the same systems as fresh computations without the memo
+    m <= Setting(:tvis_regime_eqcond_info, [regime_eqcond_info])
+    m <= Setting(:tvis_information_set, [1:1, 2:7, 3:7, 4:7, 5:7, 6:7, 7:7])
+    m <= Setting(:tvis_select_system, ones(Int, 7))
+    vals = [p.value for p in m.parameters]
+    vals2 = copy(vals)
+    vals2[m.keys[:ζ_p]] *= 0.98
+    vals2[m.keys[:ι_p]] *= 1.05
+    for v in (vals, vals2, vals)
+        DSGE.update!(m, v)
+        sys_memo = compute_system(m)
+        @test !haskey(task_local_storage(), DSGE.EXPECTED_SUMS_CACHE_KEY)
+        # A key that is already set (here to nothing) stops compute_system from creating a memo
+        sys_fresh = task_local_storage(() -> compute_system(m), DSGE.EXPECTED_SUMS_CACHE_KEY, nothing)
+        for reg in 1:7, matrix in (:TTT, :RRR, :CCC, :ZZ, :DD, :ZZ_pseudo, :DD_pseudo)
+            @test isequal(sys_memo[reg, matrix], sys_fresh[reg, matrix])
+        end
+    end
+    # compute_system does use the memo
+    cache = DSGE.ExpectedSumsCache()
+    task_local_storage(() -> compute_system(m), DSGE.EXPECTED_SUMS_CACHE_KEY, cache)
+    @test cache.misses > 0
+end
+
+@testset "One expected-sums memo across many calls gives the uncached results" begin
+    # TTTs and CCCs are built from a small pool, so the same slices appear at different
+    # (t, k, permanent_t). Every call shares one memo and is compared (results and errors)
+    # with the uncached function, so a key that misses an input the branch reads fails here.
+    run_call(f, args...) = try f(args...) catch e "error: " * string(typeof(e)) end
+    for seed in 1:3
+        rng = MersenneTwister(seed)
+        n = 4
+        random_T() = (A = randn(rng, n, n); A ./ (1.5 * opnorm(A)))
+        Tpool = [random_T() for _ in 1:3]
+        Cpool = [zeros(n), 0.1 .* randn(rng, n), -zeros(n)]
+        nreg = 10
+        TTTs = [copy(Tpool[rand(rng, 1:2)]) for _ in 1:nreg]
+        CCCs = [copy(Cpool[rand(rng, 1:3)]) for _ in 1:nreg]
+        calls = [(TT, CC, Ts, Cs, t, k, pt)
+                 for (TT, CC) in ((Tpool[3], Cpool[1]), (Tpool[3], Cpool[2]), (Tpool[1], Cpool[3]))
+                 for (Ts, Cs) in ((TTTs, CCCs), (Matrix{Float64}[], Vector{Float64}[]))
+                 for t in 0:nreg, k in 0:12, pt in 0:(nreg + 1)]
+        shuffle!(rng, calls)
+        cache = DSGE.ExpectedSumsCache()
+        n_different = 0
+        task_local_storage(DSGE.EXPECTED_SUMS_CACHE_KEY, cache) do
+            for pass in 1:2, (TT, CC, Ts, Cs, t, k, pt) in calls
+                memoized = run_call(DSGE.k_periods_ahead_expected_sums, TT, CC, Ts, Cs, t, k, pt)
+                uncached = run_call(DSGE.k_periods_ahead_expected_sums_uncached, deepcopy(TT), deepcopy(CC),
+                                    deepcopy(Ts), deepcopy(Cs), t, k, pt)
+                n_different += !isequal(memoized, uncached)
+            end
+        end
+        @test n_different == 0
+        @test cache.hits > 0
+    end
+end
+
 @testset "Time-Varying Information Set state space system" begin
     m = Model1002("ss10")
     system = compute_system(m)
