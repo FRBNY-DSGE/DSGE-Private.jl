@@ -321,7 +321,8 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
                 end
             end
 
-            m <= Setting(:preprocessed_transitions, Dict())
+            # Clear the per-evaluation memo on the model actually evaluated (old_model may not be m)
+            old_model <= Setting(:preprocessed_transitions, Dict())
             likelihood(old_model, data; sampler = false, catch_errors = true,
                        use_chand_recursion = use_chand_recursion, verbose = verbose)
         end
@@ -329,7 +330,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
         function _my_old_likelihood_var(parameters::ParameterVector, data::Matrix{Float64})::Float64
             #update!(old_model, parameters, regime_switching = old_regime_switching)
             update!(old_model, parameters)
-            m <= Setting(:preprocessed_transitions, Dict())
+            old_model <= Setting(:preprocessed_transitions, Dict())
             likelihood(old_model, data; sampler = false, catch_errors = true, verbose = verbose)
         end
     end
