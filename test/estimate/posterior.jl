@@ -112,6 +112,53 @@ end
     @test length(shorter_first[].transitions) == 2
 end
 
+@testset "Likelihood skips the pseudo-measurement equations" begin
+    data = Matrix{Float64}(load(joinpath(@__DIR__, "../reference/posterior.jld2"), "data")')
+    for regime_switching in (false, true)
+        m = AnSchorfheide(testing = true)
+        if regime_switching
+            m <= Setting(:regime_switching, true)
+            m <= Setting(:n_regimes, 4)
+            first_date = date_presample_start(m)
+            m <= Setting(:date_zlb_start, first_date)
+            m <= Setting(:regime_dates, Dict(1 => first_date,
+                                             2 => DSGE.iterate_quarters(first_date, 6),
+                                             3 => DSGE.iterate_quarters(first_date, 48),
+                                             4 => DSGE.iterate_quarters(first_date, 60)))
+            setup_regime_switching_inds!(m)
+        end
+        sample_end_date = DSGE.iterate_quarters(date_presample_start(m), size(data, 2) - 1)
+        full = compute_system(m; sample_end_date = sample_end_date)
+        no_pseudo = compute_system(m; sample_end_date = sample_end_date, compute_pseudo = false)
+        systems = regime_switching ? [(System(full, reg), System(no_pseudo, reg)) for reg in 1:length(full.transitions)] :
+            [(full, no_pseudo)]
+        for (sys_full, sys_no_pseudo) in systems
+            for matrix in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
+                @test sys_no_pseudo[matrix] == sys_full[matrix]
+            end
+            @test size(sys_full[:ZZ_pseudo], 1) == n_pseudo_observables(m)
+            @test size(sys_no_pseudo[:ZZ_pseudo], 1) == 0
+        end
+
+        # Bitwise equal to the likelihood from the full system
+        lh = likelihood(m, data)
+        @test lh == sum(DSGE.filter_likelihood(m, data, full; include_presample = false))
+
+        # likelihood itself builds the system without the pseudo-measurement
+        cache = Ref{Any}(nothing)
+        @test likelihood(m, data; system_cache = cache) == lh
+        cached = regime_switching ? [System(cache[], reg) for reg in 1:length(cache[].transitions)] : [cache[]]
+        @test all(sys -> size(sys[:ZZ_pseudo], 1) == 0, cached)
+
+        # A likelihood call doesn't change the systems built afterwards from the same model
+        after = compute_system(m)
+        sys_after = regime_switching ? System(after, 1) : after
+        @test size(sys_after[:ZZ_pseudo], 1) == n_pseudo_observables(m)
+        @test sys_after[:ZZ_pseudo] == systems[1][1][:ZZ_pseudo]
+        @test sys_after[:DD_pseudo] == systems[1][1][:DD_pseudo]
+    end
+end
+
 @testset "Check DSGEVAR likelihood and posterior calculations" begin
     dsge = Model1002("ss10")
     obs_i = [dsge.observables[:obs_nominalrate], dsge.observables[:obs_gdp],

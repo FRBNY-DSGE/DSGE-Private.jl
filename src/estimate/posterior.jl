@@ -117,7 +117,8 @@ filter over the main sample all at once.
     transition matrices for the zero-lower-bound period are returned in a dictionary.
 - `catch_errors`: If `sampler = true`, `GensysErrors` should always be caught.
 - `system_cache`: Optional reference for two likelihoods at the same model parameters.
-    The first call stores the state-space system. A longer sample rebuilds it if
+    The first call stores the state-space system (built without pseudo-measurement
+    equations, so it is only for likelihoods). A longer sample rebuilds it if
     additional regimes are needed. Clear the reference after changing parameters
     or model settings.
 """
@@ -195,7 +196,9 @@ function likelihood(m::AbstractDSGEModel, data::AbstractMatrix;
             end
             computed = m isa PoolModel ? compute_system(m; verbose = verbose) :
                 compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set),
-                               sample_end_date = sample_end_date, verbose = verbose)
+                               sample_end_date = sample_end_date,
+                               compute_pseudo = false, # the filter does not use pseudo-observables
+                               verbose = verbose)
             if !isnothing(system_cache)
                 system_cache[] = computed
             end
