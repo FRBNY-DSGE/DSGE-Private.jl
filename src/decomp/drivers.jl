@@ -752,8 +752,12 @@ Returns `out::Dict{Symbol, Array{Float64}}`, which has keys determined as follow
 
       regime_switching = haskey(m.settings, :regime_switching) ? get_setting(m, :regime_switching) : false
 
-      # Compute state space
+      # Compute state space. :preprocessed_transitions is keyed without parameter values, so a memo
+      # the caller's model filled at other parameters (e.g. in forecast_one) must not be reused
       DSGE.update!(m, params)
+      if haskey(get_settings(m), :preprocessed_transitions)
+          m <= Setting(:preprocessed_transitions, Dict())
+      end
       system = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set))
 
       # Initialize output dictionary
