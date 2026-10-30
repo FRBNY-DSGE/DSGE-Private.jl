@@ -1,6 +1,6 @@
 module TestDecomposeForecast   # isolated from other test files' globals
 
-using DSGE, Test, ModelConstructors, DataFrames, Dates
+using DSGE, Test, ModelConstructors, DataFrames, Dates, HDF5, Random
 
 @testset "decompose_forecast (bugs doc §1.5): old data is placed on the new dates by date" begin
     q(y, n) = DSGE.quartertodate("$y-Q$n")
@@ -12,6 +12,48 @@ using DSGE, Test, ModelConstructors, DataFrames, Dates
     # Different start dates: used to shift every value by the offset
     @test isequal(DSGE.align_by_date(new_dates, [q(2025, 3), q(2025, 4), q(2026, 1)], [9., 1., 2.]),
                   [1., 2., missing, missing])
+end
+
+@testset "decomposition_forecast solves at its parameters, not from a stale memo" begin
+    # :preprocessed_transitions is keyed without parameter values. A caller's model that carries
+    # a memo filled at other parameters (as after forecast_one) used to have it reused here.
+    ref  = joinpath(dirname(@__FILE__), "..", "reference")
+    data = h5read(joinpath(ref, "sim_data_regswitch_anschorfheide.h5"), "data")
+    m = AnSchorfheide()
+    m <= Setting(:regime_switching, true, true, "rs2", "")
+    m <= Setting(:n_regimes, 3)
+    m <= Setting(:regime_dates, Dict(1 => date_presample_start(m),
+                                     2 => DSGE.iterate_quarters(Date(1960, 3, 31), 50),
+                                     3 => DSGE.iterate_quarters(Date(1960, 3, 31), 100)))
+    setup_regime_switching_inds!(m)
+    m <= Setting(:model2para_regimes, Dict{Int, Int}(1 => 1, 2 => 1, 3 => 2))
+    for i in 1:length(m.parameters), k in 1:2
+        ModelConstructors.set_regime_val!(m.parameters[i], k, m.parameters[i].value)
+    end
+    DSGE.setup_param_regimes!(m, repeat([1 1 2], length(m.parameters)))
+    nT = size(data, 2)
+    m <= Setting(:date_forecast_start, DSGE.iterate_quarters(date_presample_start(m), nT))
+    m <= Setting(:date_conditional_end, DSGE.iterate_quarters(date_presample_start(m), nT))
+    m <= Setting(:forecast_horizons, 8)
+    df = DataFrame(:date => collect(DSGE.quarter_range(date_presample_start(m),
+                                                       DSGE.iterate_quarters(date_presample_start(m), nT - 1))))
+    for (k, i) in m.observables
+        df[!, k] = data[i, :]
+    end
+
+    θ0 = h5read(joinpath(ref, "regime_switching_anschorfheide_paramsmode_output.h5"), "params")
+    Random.seed!(1)
+    θ1 = θ0 .+ 0.3 .* (vec(rand(m.parameters, 1; regime_switching = true)) .- θ0)
+    T, k, H = DSGE.decomposition_periods(m, m, df, df, :none, :none)
+
+    fresh = DSGE.decomposition_forecast(deepcopy(m), df, θ1, :none, T, k, H)
+    mm = deepcopy(m)
+    mm <= Setting(:preprocessed_transitions, Dict())
+    DSGE.update!(mm, θ0)
+    compute_system(mm)                    # memo filled at θ0
+    out = DSGE.decomposition_forecast(mm, df, θ1, :none, T, k, H)
+    @test keys(out) == keys(fresh)
+    @test all(isequal(out[key], fresh[key]) for key in keys(fresh))
 end
 
 # The full decomposition builds and forecasts ss104 several times (about 10 minutes), so it only
