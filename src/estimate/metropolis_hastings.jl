@@ -59,6 +59,14 @@ distribution of the parameters.
 ```
 - `savepath::String = "mhsave.h5"`: String specifying path to output file
 - `rng::MersenneTwister = MersenneTwister(0)`: Chosen seed (overridden if testing = true)
+
+### Randomness
+
+Every draw (the starting draw, the proposals, the parameter blocks and the acceptance draws)
+comes from `rng`; the global RNG is neither used nor advanced. The chain is therefore fully
+determined by the state of `rng`: two runs with the same `rng` seed, data and proposal give
+identical chains. To run independent chains, give each its own seed, e.g.
+`rng = MersenneTwister(seed)`.
 - `testing::Bool = false`: Conditional for use when testing (determines fixed seeding)
 """
 function metropolis_hastings(proposal_dist::Distribution,
@@ -83,14 +91,10 @@ function metropolis_hastings(proposal_dist::Distribution,
                              toggle::Bool           = true,
                              testing::Bool          = false) where {S<:Number, T<:AbstractFloat}
 
-    # If testing, set the random seeds at fixed numbers. Seed BOTH the local `rng` (used by
-    # rand(propdist, rng) for para_old) AND the global default RNG: the migrated SMC's mutation
-    # helpers — mvnormal_mixture_draw's rand(d_mix_old) and generate_free_blocks' shuffle — draw
-    # from the global RNG, not `rng`, so without this the mutation draws are non-reproducible
-    # across runs and the reference-draw test fails.
+    # If testing, set the random seed at a fixed number. All draws (starting point, proposal
+    # blocks, proposals and acceptance) come from `rng`; the global RNG is not used.
     if testing
         Random.seed!(rng, 654)
-        Random.seed!(654)
     end
 
     if adaptive_accept
@@ -100,7 +104,9 @@ function metropolis_hastings(proposal_dist::Distribution,
     end
 
     #propdist = init_deg_mvnormal(proposal_dist.μ, proposal_dist.σ) [ID change]
-    propdist = proposal_dist
+    # A copy: its mean is moved to the starting draw below, which must not change the caller's
+    # proposal (a second run with the same proposal would start elsewhere)
+    propdist = deepcopy(proposal_dist)
 
     # Initialize algorithm by drawing para_old from normal distribution centered at the
     # posterior mode, until parameters within bounds (indicated by posterior value > -∞)
@@ -186,7 +192,7 @@ function metropolis_hastings(proposal_dist::Distribution,
 
             if reblock # Parameter blocking by randomly drawing blocks every MH draw
                 free_para_inds = ModelConstructors.get_free_para_inds(parameters)
-                blocks_free = SMC.generate_free_blocks(n_free_para, n_param_blocks)
+                blocks_free = SMC.generate_free_blocks(n_free_para, n_param_blocks; rng = rng)
                 for block_f in blocks_free
                     sort!(block_f)
                 end
@@ -221,7 +227,7 @@ function metropolis_hastings(proposal_dist::Distribution,
                 #d_subset = DegenerateMvNormal(propdist.μ[block_a], d_Σ, stdev = false)
 
                 para_draw         = mvnormal_mixture_draw(para_subset, d_subset;
-                                                          α = α, c = cc)
+                                                          α = α, c = cc, rng = rng)
                 para_new          = deepcopy(para_old)
                 para_new[block_a] = para_draw #New
 
@@ -363,6 +369,13 @@ to the behavior of the algorithm (e.g. tuning, number of samples).
 - `filestring_addl`: additional strings to add to the names of output files
 - `regime_switching`: do the parameters involve regime-switching?
 - `toggle`: if true, toggle the fields of any regime-switching parameters to regime 1.
+
+### Randomness
+
+All draws come from the model's RNG, `get_rng(m)`. Every model is constructed with
+`rng = MersenneTwister(0)` and nothing reseeds it, so two runs of the same model, data and
+proposal give identical chains. To run independent chains (e.g. in parallel), seed each
+chain's model first: `Random.seed!(get_rng(m), seed)`.
 """
 function metropolis_hastings(propdist::Distribution,
                              m::Union{AbstractDSGEModel,AbstractVARModel},
