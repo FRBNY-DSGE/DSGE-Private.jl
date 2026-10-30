@@ -18,11 +18,24 @@ the system) and then in the case of imperfect but positive credibility,
 adjusts the anticipated observables and pseudo-observables' measurement
 equations. `sample_end_date` limits likelihood systems to regimes used by the
 observed sample; omit it when constructing a system for forecasting.
+`compute_pseudo = false` skips the pseudo-measurement equations (the system then has
+empty ones); `likelihood` uses this. Leave it `true` for forecasting.
 """
 function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
                         set_regime_eqcond_info!::Union{Function, Nothing} = nothing,
                         sample_end_date::Union{Date, Nothing} = nothing,
+                        compute_pseudo::Bool = true,
                         verbose::Symbol = :high) where {T <: Real}
+
+    # The outermost call holds a fresh memo of k_periods_ahead_expected_sums (see util.jl)
+    # for this system only, including the alternative-policy systems computed inside it.
+    if !haskey(task_local_storage(), EXPECTED_SUMS_CACHE_KEY)
+        return task_local_storage(EXPECTED_SUMS_CACHE_KEY, ExpectedSumsCache()) do
+            compute_system(m; tvis = tvis, set_regime_eqcond_info! = set_regime_eqcond_info!,
+                           sample_end_date = sample_end_date, compute_pseudo = compute_pseudo,
+                           verbose = verbose)
+        end
+    end
 
     # do NOT delete the second part of the Boolean for apply_altpolicy; it is needed for
     # the scenarios code, which continues to use :alternative_policy as a Setting
@@ -92,14 +105,15 @@ function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
 
         system_main = if uncertain_altpolicy
             # Handle this special case on its own
-            compute_uncertain_altpolicy_system_helper(m; tvis = tvis, verbose = verbose)
+            compute_uncertain_altpolicy_system_helper(m; tvis = tvis, compute_pseudo = compute_pseudo,
+                                                      verbose = verbose)
         else
             compute_system_helper(m; tvis = tvis, sample_end_date = sample_end_date,
-                                  verbose = verbose)
+                                  compute_pseudo = compute_pseudo, verbose = verbose)
         end
     else
         system_main = compute_system_helper(m; tvis = tvis, sample_end_date = sample_end_date,
-                                            verbose = verbose)
+                                            compute_pseudo = compute_pseudo, verbose = verbose)
     end
 
     # If correcting measurement eqs for anticipated (pseudo) observables is unnecessary
@@ -143,6 +157,7 @@ end
 
 function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false,
                                sample_end_date::Union{Date, Nothing} = nothing,
+                               compute_pseudo::Bool = true,
                                verbose::Symbol = :high) where {T <: Real}
 
     if tvis
@@ -164,7 +179,7 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false,
 
         if n_tvis > 1 # case of n_tvis = 1 handled below to avoid constructing redundant TimeVaryingInformationSetSystem
             @assert haskey(get_settings(m), :tvis_select_system) "The setting :tvis_select_system is not defined"
-            tvis_sys = compute_tvis_system(m; verbose = verbose)
+            tvis_sys = compute_tvis_system(m; compute_pseudo = compute_pseudo, verbose = verbose)
             transition_eqns = Transition{T}[tvis_sys[select, reg, :transition] for (reg, select) in enumerate(tvis_sys[:select])]
 
             return RegimeSwitchingSystem(transition_eqns, tvis_sys[:measurements], tvis_sys[:pseudo_measurements])
@@ -236,7 +251,8 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false,
             system_regimes = !tvis && !has_vector_measurement && !has_vector_pseudo ?
                 n_sample_regimes : n_regimes
             return RegimeSwitchingSystem(m, TTTs, RRRs, CCCs, system_regimes, tvis;
-                                         gensys2_regimes = memo_gensys2_regimes) # handles formation of transition and measurement equations
+                                         gensys2_regimes = memo_gensys2_regimes,
+                                         compute_pseudo = compute_pseudo) # handles formation of transition and measurement equations
         else
             error("Regime switching with solution algorithms other than gensys has not been implemented.")
         end
@@ -288,7 +304,7 @@ function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false,
         end
 
         type_tuple = (typeof(m), Matrix{T}, Matrix{T}, Vector{T})
-        if hasmethod(pseudo_measurement, type_tuple)
+        if compute_pseudo && hasmethod(pseudo_measurement, type_tuple)
             # Solve pseudo-measurement equation
             pseudo_measurement_equation = pseudo_measurement(m, TTT, RRR, CCC)
             return System(transition_equation, measurement_equation, pseudo_measurement_equation)
@@ -300,7 +316,8 @@ end
 
 function RegimeSwitchingSystem(m::AbstractDSGEModel{T}, TTTs::Vector{<: AbstractMatrix{T}}, RRRs::Vector{<: AbstractMatrix{T}},
                                CCCs::Vector{<: AbstractVector{T}}, n_regimes::Int, tvis::Bool;
-                               gensys2_regimes::UnitRange{Int64} = 1:1) where {T <: Real}
+                               gensys2_regimes::UnitRange{Int64} = 1:1,
+                               compute_pseudo::Bool = true) where {T <: Real}
 
     transition_equations = Vector{Transition{T}}(undef, n_regimes)
     for i = 1:n_regimes
@@ -326,8 +343,8 @@ function RegimeSwitchingSystem(m::AbstractDSGEModel{T}, TTTs::Vector{<: Abstract
     # Infer which measurement and pseudo-measurement equations to use
     model_type = typeof(m)
     type_tuple = (model_type, Vector{Matrix{T}}, Vector{Matrix{T}}, Vector{Vector{T}})
-    has_pseudo = hasmethod(pseudo_measurement, type_tuple) ||
-        hasmethod(pseudo_measurement, (model_type, Matrix{T}, Matrix{T}, Vector{T}))
+    has_pseudo = compute_pseudo && (hasmethod(pseudo_measurement, type_tuple) ||
+        hasmethod(pseudo_measurement, (model_type, Matrix{T}, Matrix{T}, Vector{T})))
 
     if tvis
         if hasmethod(measurement, type_tuple)
@@ -350,11 +367,11 @@ function RegimeSwitchingSystem(m::AbstractDSGEModel{T}, TTTs::Vector{<: Abstract
             end
         end
 
-        if hasmethod(pseudo_measurement, type_tuple)
+        if compute_pseudo && hasmethod(pseudo_measurement, type_tuple)
             pseudo_measurement_equations =
                 pseudo_measurement(m, TTTs, RRRs, CCCs;
                                    information_set = get_setting(m, :tvis_information_set), memo = memo)
-        elseif hasmethod(pseudo_measurement, (typeof(m), Matrix{T}, Matrix{T}, Vector{T}))
+        elseif compute_pseudo && hasmethod(pseudo_measurement, (typeof(m), Matrix{T}, Matrix{T}, Vector{T}))
             empty_pseudo_meas_eqn = haskey(get_settings(m), :empty_pseudo_measurement_equation) ?
                 get_setting(m, :empty_pseudo_measurement_equation) : falses(n_regimes)
 
@@ -387,9 +404,9 @@ function RegimeSwitchingSystem(m::AbstractDSGEModel{T}, TTTs::Vector{<: Abstract
             end
         end
 
-        if hasmethod(pseudo_measurement, type_tuple)
+        if compute_pseudo && hasmethod(pseudo_measurement, type_tuple)
             pseudo_measurement_equations = pseudo_measurement(m, TTTs, RRRs, CCCs; memo = memo)
-        elseif hasmethod(pseudo_measurement, (typeof(m), Matrix{T}, Matrix{T}, Vector{T}))
+        elseif compute_pseudo && hasmethod(pseudo_measurement, (typeof(m), Matrix{T}, Matrix{T}, Vector{T}))
             empty_pseudo_meas_eqn = haskey(get_settings(m), :empty_pseudo_measurement_equation) ?
                 get_setting(m, :empty_pseudo_measurement_equation) : falses(n_regimes)
 
@@ -447,6 +464,7 @@ to the state space after calling `gensys`/`gensys2` should be done within the de
 can typically add if-else conditions within `augment_states` to handle state space augmentations for different alternative policy.
 """
 function compute_uncertain_altpolicy_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false,
+                                                   compute_pseudo::Bool = true,
                                                    verbose::Symbol = :high) where {T <: Real}
 
     # Set up
@@ -490,16 +508,18 @@ function compute_uncertain_altpolicy_system_helper(m::AbstractDSGEModel{T}; tvis
     is_altpol = [isa(x, AltPolicy) for x in get_setting(m, :alternative_policies)]
 
     if all(is_altpol)
-        system_perfect_cred_totpolicies = perfect_cred_altpolicy_systems(m; verbose = verbose)
+        system_perfect_cred_totpolicies = perfect_cred_altpolicy_systems(m; compute_pseudo = compute_pseudo,
+                                                                         verbose = verbose)
     else
-        system_perfect_cred_totpolicies = perfect_cred_multiperiod_altpolicy_systems(m, is_altpol; verbose = verbose)
+        system_perfect_cred_totpolicies = perfect_cred_multiperiod_altpolicy_systems(m, is_altpol; compute_pseudo = compute_pseudo,
+                                                                                     verbose = verbose)
     end
     n_tot_policies = length(system_perfect_cred_totpolicies)
 
     # Checks if pseudo measurement is required
     type_tuple = (typeof(m), Vector{Matrix{T}}, Vector{Matrix{T}}, Vector{Vector{T}})
-    has_pseudo = hasmethod(pseudo_measurement, type_tuple) ||
-    hasmethod(pseudo_measurement, (typeof(m), Matrix{T}, Matrix{T}, Vector{T}))
+    has_pseudo = compute_pseudo && (hasmethod(pseudo_measurement, type_tuple) ||
+    hasmethod(pseudo_measurement, (typeof(m), Matrix{T}, Matrix{T}, Vector{T})))
 
     has_fwd_looking_obs = haskey(get_settings(m), :forward_looking_observables)
     if has_pseudo
@@ -525,7 +545,7 @@ function compute_uncertain_altpolicy_system_helper(m::AbstractDSGEModel{T}; tvis
     end
     memo_gensys2_regimes = isempty(gensys2_regimes) ? (1:1) : gensys2_regimes[1]
     system_main = RegimeSwitchingSystem(m, TTTs, RRRs, CCCs, n_regimes, tvis;
-                                        gensys2_regimes = memo_gensys2_regimes)
+                                        gensys2_regimes = memo_gensys2_regimes, compute_pseudo = compute_pseudo)
 
     # Correct the measurement equations for anticipated observables via weighted average
     regime_eqcond_info = get_setting(m, :regime_eqcond_info)
@@ -590,7 +610,8 @@ function compute_uncertain_altpolicy_system_helper(m::AbstractDSGEModel{T}; tvis
     return system_main
 end
 
-function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol = :high) where {T <: Real}
+function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; compute_pseudo::Bool = true,
+                                        verbose::Symbol = :high) where {T <: Real}
 
     # Set up
     m <= Setting(:uncertain_altpolicy, false)
@@ -618,7 +639,8 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
     try
 
     ## Now calculate the perfectly credible transition matrices for all alternative policies
-    sys_totpolicies[1] = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
+    sys_totpolicies[1] = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set),
+                                        compute_pseudo = compute_pseudo, verbose = verbose)
 
     # m <= Setting(:regime_eqcond_info, Dict{Int64, EqcondEntry}()) # TODO: maybe also delete this setting
     delete!(get_settings(m), :regime_eqcond_info)
@@ -638,7 +660,7 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
         if new_altpol.key != :default_policy # in this case, we can save some extra time
             m <= Setting(:alternative_policy, new_altpol)
         end
-        sys_totpolicies[i] = compute_system(m; verbose = verbose)
+        sys_totpolicies[i] = compute_system(m; compute_pseudo = compute_pseudo, verbose = verbose)
         m <= Setting(:regime_switching, true) # turn off regime-switching
         if new_altpol.key != :default_policy
             delete!(get_settings(m), :alternative_policy)
@@ -671,6 +693,7 @@ function perfect_cred_altpolicy_systems(m::AbstractDSGEModel{T}; verbose::Symbol
 end
 
 function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_altpol::Vector{Bool};
+                                                    compute_pseudo::Bool = true,
                                                     verbose::Symbol = :high) where {T <: Real}
 
     # Set up
@@ -746,7 +769,8 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
     end
 
     ## Now calculate the perfectly credible transition matrices for all alternative policies
-    sys_totpolicies[1] = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set), verbose = verbose)
+    sys_totpolicies[1] = compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set),
+                                        compute_pseudo = compute_pseudo, verbose = verbose)
 
     # m <= Setting(:regime_eqcond_info, Dict{Int64, EqcondEntry}()) # TODO: maybe also delete this setting
     delete!(get_settings(m), :regime_eqcond_info)
@@ -830,7 +854,7 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
             if new_altpol.key != :default_policy # in this case, we can save some extra time
                 m <= Setting(:alternative_policy, new_altpol)
             end
-            sys_totpolicies[i] = compute_system(m; verbose = verbose)
+            sys_totpolicies[i] = compute_system(m; compute_pseudo = compute_pseudo, verbose = verbose)
             m <= Setting(:regime_switching, true) # turn off regime-switching
             if new_altpol.key != :default_policy
                 delete!(get_settings(m), :alternative_policy)
@@ -853,9 +877,9 @@ function perfect_cred_multiperiod_altpolicy_systems(m::AbstractDSGEModel{T}, is_
             end
             if !isnothing(new_altpol.infoset)
                 m <= Setting(:tvis_information_set, new_altpol.infoset)
-                sys_totpolicies[i] = compute_system(m; tvis = true, verbose = verbose)
+                sys_totpolicies[i] = compute_system(m; tvis = true, compute_pseudo = compute_pseudo, verbose = verbose)
             else
-                sys_totpolicies[i] = compute_system(m; tvis = false, verbose = verbose)
+                sys_totpolicies[i] = compute_system(m; tvis = false, compute_pseudo = compute_pseudo, verbose = verbose)
             end
         end
     end
@@ -933,7 +957,8 @@ state space system to use when calculating the measurement
 and pseudo measurement equations. These state space systems
 correspond to different sets of equilibrium conditions (usually).
 """
-function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) where {T <: Real}
+function compute_tvis_system(m::AbstractDSGEModel{T}; compute_pseudo::Bool = true,
+                             verbose::Symbol = :high) where {T <: Real}
 
     # TODO: update this compute_tvis_system to compute the average over forward-looking variables
     #       when using uncertain altpol and uncertain zlb. This means that, for each
@@ -1016,7 +1041,7 @@ function compute_tvis_system(m::AbstractDSGEModel{T}; verbose::Symbol = :high) w
 
     # Infer which measurement and pseudo-measurement equations to use
     measurement_eqns = Vector{Measurement{T}}(undef,       n_regimes)
-    has_pseudo       = hasmethod(pseudo_measurement, (typeof(m), Matrix{T}, Matrix{T}, Vector{T}))
+    has_pseudo       = compute_pseudo && hasmethod(pseudo_measurement, (typeof(m), Matrix{T}, Matrix{T}, Vector{T}))
     if has_pseudo # Only calculate PseudoMeasurement equation if the method exists
         pseudo_measurement_eqns = Vector{PseudoMeasurement{T}}(undef, n_regimes)
     end
