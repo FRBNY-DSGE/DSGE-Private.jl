@@ -59,6 +59,14 @@ distribution of the parameters.
 ```
 - `savepath::String = "mhsave.h5"`: String specifying path to output file
 - `rng::MersenneTwister = MersenneTwister(0)`: Chosen seed (overridden if testing = true)
+
+### Randomness
+
+Every draw (the starting draw, the proposals, the parameter blocks and the acceptance draws)
+comes from `rng`; the global RNG is neither used nor advanced. The chain is therefore fully
+determined by the state of `rng`: two runs with the same `rng` seed, data and proposal give
+identical chains. To run independent chains, give each its own seed, e.g.
+`rng = MersenneTwister(seed)`.
 - `testing::Bool = false`: Conditional for use when testing (determines fixed seeding)
 """
 function metropolis_hastings(proposal_dist::Distribution,
@@ -361,6 +369,13 @@ to the behavior of the algorithm (e.g. tuning, number of samples).
 - `filestring_addl`: additional strings to add to the names of output files
 - `regime_switching`: do the parameters involve regime-switching?
 - `toggle`: if true, toggle the fields of any regime-switching parameters to regime 1.
+
+### Randomness
+
+All draws come from the model's RNG, `get_rng(m)`. Every model is constructed with
+`rng = MersenneTwister(0)` and nothing reseeds it, so two runs of the same model, data and
+proposal give identical chains. To run independent chains (e.g. in parallel), seed each
+chain's model first: `Random.seed!(get_rng(m), seed)`.
 """
 function metropolis_hastings(propdist::Distribution,
                              m::Union{AbstractDSGEModel,AbstractVARModel},
