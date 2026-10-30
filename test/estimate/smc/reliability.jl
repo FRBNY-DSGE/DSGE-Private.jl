@@ -93,6 +93,12 @@ end
     again, _ = smc_sbc(m, 80; reps = 2:2, n_draws = 19, seed = 3)
     @test again[1, :] == ranks[2, :]   # replications don't depend on how they are split
     @test all(0 .<= smc_sbc_uniformity(ranks, 19; n_bins = 4) .<= 1)
+
+    # Regime-switching models: a clear error, not a KeyError from deep inside the simulation
+    m_rs = rel_model("sbc_rs"; n_particles = 200)
+    m_rs <= Setting(:regime_switching, true)
+    @test_throws ArgumentError smc_sbc(m_rs, 80; reps = 1:1, n_draws = 19, seed = 3)
+    @test_throws ArgumentError DSGE.simulate_from_model(m_rs, 10, 20)
 end
 
 rm(rel_dir; recursive = true, force = true)

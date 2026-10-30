@@ -260,9 +260,13 @@ from (`seed`, r) only, so `reps` can be split across jobs and the ranks concaten
 Returns the ranks (length(reps) × free parameters) and the parameter names. Under a correct
 sampler each column is uniform on 0:n_draws; see `smc_sbc_uniformity`. The draws are resampled
 particles, not independent draws, so small departures can come from their dependence.
+
+Regime-switching models are not supported (an `ArgumentError`): simulating them would need the
+regime of each simulated period.
 """
 function smc_sbc(m::AbstractDSGEModel, n_periods::Int; n_reps::Int = 200, n_draws::Int = 99,
                  seed::Integer = 0, reps = 1:n_reps, burnin::Int = 100, smc_kwargs...)
+    check_not_regime_switching(m, "smc_sbc")
     free = ModelConstructors.get_free_para_inds(get_parameters(m))
     loglik = function (parameters, data)
         update!(m, parameters)
@@ -295,9 +299,16 @@ function smc_sbc(m::AbstractDSGEModel, n_periods::Int; n_reps::Int = 200, n_draw
     return ranks, [p.key for p in get_parameters(m)][free]
 end
 
+function check_not_regime_switching(m::AbstractDSGEModel, caller::String)
+    if haskey(get_settings(m), :regime_switching) && get_setting(m, :regime_switching)
+        throw(ArgumentError("$caller does not support regime-switching models"))
+    end
+end
+
 # Observables simulated from the state space the likelihood uses, measurement error (EE)
 # included (simulate_observables adds a fixed 1e-3 noise instead)
 function simulate_from_model(m::AbstractDSGEModel, burnin::Int, n_periods::Int)
+    check_not_regime_switching(m, "simulate_from_model")
     system = compute_system(m)
     s, _ = simulate_states(system[:TTT], system[:RRR], system[:CCC], system[:QQ];
                            burnin = burnin, n_periods = n_periods)
