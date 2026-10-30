@@ -1,4 +1,4 @@
-using DSGE, ModelConstructors, Dates, Test, BenchmarkTools
+using DSGE, ModelConstructors, Dates, Test, BenchmarkTools, HDF5, Random
 
 @testset "Calculating indicies and matrices for pre- and post-ZLB regimes" begin
     m  = Model1002("ss10")
@@ -237,4 +237,89 @@ if run_benchmarks
         println(name, "  time:   ", BenchmarkTools.prettytime(median(b).time),
                 "   memory: ", BenchmarkTools.prettymemory(median(b).memory))
     end
+end
+
+@testset "Regime-switching likelihood on a sample that ends before the ZLB" begin
+    # Every regime is pre-ZLB. zlb_plus_regime_indices used to return i_zlb_start = 1 with
+    # splice_zlb_regime = true here, which zlb_plus_regime_matrices could not fill, so the
+    # likelihood threw an UndefRefError.
+    data = h5read(joinpath(dirname(@__FILE__), "..", "reference", "sim_data_regswitch_anschorfheide.h5"), "data")
+    m = AnSchorfheide()
+    m <= Setting(:data_vintage, "210101")
+    m <= Setting(:regime_switching, true, true, "rs2", "")
+    m <= Setting(:n_regimes, 3)
+    m <= Setting(:regime_dates, Dict(1 => date_presample_start(m),
+                                     2 => DSGE.iterate_quarters(Date(1960, 3, 31), 50),
+                                     3 => DSGE.iterate_quarters(Date(1960, 3, 31), 100)))
+    setup_regime_switching_inds!(m)
+    m <= Setting(:model2para_regimes, Dict{Int, Int}(1 => 1, 2 => 1, 3 => 2))
+    for i in 1:length(m.parameters), k in 1:2
+        ModelConstructors.set_regime_val!(m.parameters[i], k, m.parameters[i].value)
+    end
+    DSGE.setup_param_regimes!(m, repeat([1 1 2], length(m.parameters)))
+    n_pre = subtract_quarters(date_zlb_start(m), date_presample_start(m))   # last pre-ZLB period
+
+    # AS has no anticipated shocks, so pre- and post-ZLB systems coincide: the same sample
+    # treated as all post-ZLB must give the same likelihood (with anticipated shocks it does not:
+    # see the ss10 testset below)
+    m_post = deepcopy(m)
+    m_post <= Setting(:date_zlb_start, date_presample_start(m))
+    system = compute_system(m)
+    for k in (40, 60, 120, n_pre)
+        y = data[:, 1:k]
+        ri, izlb, splice = DSGE.zlb_plus_regime_indices(m, y)
+        @test !splice
+        @test izlb == length(ri) + 1
+        @test first(ri[1]) == 1 && last(ri[end]) == k
+        @test all(last(ri[j]) + 1 == first(ri[j + 1]) for j in 1:length(ri) - 1)
+        mats = DSGE.zlb_plus_regime_matrices(m, system, length(ri); ind_zlb_start = izlb,
+                                             splice_zlb_regime = splice)
+        @test all(length(x) == length(ri) for x in mats)
+        @test all(mats[4][j] == system[j, :QQ] for j in 1:length(ri))   # QQ: no anticipated shocks
+        loglh = likelihood(m, y; catch_errors = false)
+        @test isfinite(loglh)
+        @test loglh == likelihood(m_post, y; catch_errors = false)
+    end
+    # The first sample that reaches the ZLB is unchanged: it splices the post-ZLB regime in
+    ri, izlb, splice = DSGE.zlb_plus_regime_indices(m, data[:, 1:(n_pre + 1)])
+    @test splice && izlb == length(ri) && ri[end] == (n_pre + 1):(n_pre + 1)
+end
+
+@testset "Regime-switching likelihood before the ZLB, with anticipated shocks" begin
+    # Model1002 ss10 has 6 anticipated policy shocks, so pre- and post-ZLB systems differ and
+    # "same as treating the sample as post-ZLB" no longer holds. The invariant is that the
+    # regime-switching path (two regimes with identical parameters) gives the same likelihood
+    # as the non-regime-switching path.
+    m_rs = Model1002("ss10")
+    m_rs <= Setting(:regime_switching, true, true, "rs2", "")
+    m_rs <= Setting(:n_regimes, 2)
+    m_rs <= Setting(:regime_dates, Dict(1 => date_presample_start(m_rs), 2 => Date(1970, 3, 31)))
+    setup_regime_switching_inds!(m_rs)
+    m_nrs = Model1002("ss10")
+    @test n_mon_anticipated_shocks(m_rs) > 0
+    n_pre = subtract_quarters(date_zlb_start(m_rs), date_presample_start(m_rs))
+
+    data = 0.3 .* randn(MersenneTwister(1), n_observables(m_rs), n_pre)
+    # As in the real data, the expected-rate observables are missing before the ZLB (the pre-ZLB
+    # system has no anticipated-shock variance, so they would be deterministic)
+    for (k, i) in m_rs.observables
+        occursin(r"^obs_(exp_)?nominalrate\d+$", string(k)) && (data[i, :] .= NaN)
+    end
+
+    sys_rs  = compute_system(m_rs)
+    sys_nrs = compute_system(m_nrs)
+    ant = setdiff(1:size(sys_rs[1, :QQ], 1), DSGE.inds_shocks_no_ant(m_rs))
+    @test any(!iszero, sys_rs[1, :QQ][ant, ant])
+    for T in (40, 100, n_pre)
+        y = data[:, 1:T]
+        ri, izlb, splice = DSGE.zlb_plus_regime_indices(m_rs, y)
+        @test !splice && izlb == length(ri) + 1
+        mats = DSGE.zlb_plus_regime_matrices(m_rs, sys_rs, length(ri); ind_zlb_start = izlb,
+                                             splice_zlb_regime = splice)
+        @test all(all(iszero, q[ant, ant]) for q in mats[4])   # every regime is pre-ZLB
+        @test DSGE.filter(m_rs, y, sys_rs).total_loglh == DSGE.filter(m_nrs, y, sys_nrs).total_loglh
+    end
+    loglh = likelihood(m_rs, data; catch_errors = false)
+    @test isfinite(loglh)
+    @test loglh == likelihood(m_nrs, data; catch_errors = false)
 end

@@ -204,7 +204,8 @@ function zlb_plus_regime_indices(m::AbstractDSGEModel{S}, data::AbstractArray,
                 splice_zlb_regime = true
             end
         else
-            # This is the case that date_zlb_start <= start_date so the first regime is the post-ZLB regime (no pre-ZLB)
+            # Either date_zlb_start <= start_date, so the first regime is the post-ZLB regime (no pre-ZLB),
+            # or the sample ends before date_zlb_start, so every regime is pre-ZLB.
             # Since there is no ZLB regime to splice in, we return the regime_inds corresponding to the user-specified regimes
             regime_inds = Vector{UnitRange{Int64}}(undef, length(n_regime_periods))
             for reg in 1:(length(n_regime_periods) - 1)
@@ -212,9 +213,16 @@ function zlb_plus_regime_indices(m::AbstractDSGEModel{S}, data::AbstractArray,
             end
             regime_inds[end] = (n_regime_periods[end] + 1):T
 
-            i_zlb_start = 1 # start immediately in post-ZLB
+            if subtract_quarters(date_zlb_start(m), start_date) >= T
+                # The whole sample is pre-ZLB. i_zlb_start is set past the last regime once the
+                # forecast-only regimes are removed below.
+                i_zlb_start = 0
+                splice_zlb_regime = false
+            else
+                i_zlb_start = 1 # start immediately in post-ZLB
 
-            splice_zlb_regime = date_zlb_start(m) == start_date ? false : true
+                splice_zlb_regime = date_zlb_start(m) == start_date ? false : true
+            end
         end
     else # Empty, so we ignore regime switching
         regime_inds = UnitRange{Int64}[1:T]
@@ -238,6 +246,11 @@ function zlb_plus_regime_indices(m::AbstractDSGEModel{S}, data::AbstractArray,
     # Keeping it makes the filter request a system for an unobserved regime.
     while !isempty(data) && !isempty(regime_inds) && isempty(regime_inds[end])
         pop!(regime_inds)
+    end
+
+    # Whole sample pre-ZLB: no regime is post-ZLB
+    if !isempty(data) && subtract_quarters(date_zlb_start(m), start_date) >= T
+        i_zlb_start = length(regime_inds) + 1
     end
 
     return regime_inds, i_zlb_start, splice_zlb_regime
@@ -352,8 +365,8 @@ function zlb_plus_regime_matrices(m::AbstractDSGEModel{S}, system::RegimeSwitchi
     if start_date < date_presample_start(m)
         error("Start date $start_date must be >= date_presample_start(m)")
 
-        # TODO: This technically doesn't handle the case where the end_date of the sample
-        # is before the start of the ZLB
+        # If the sample ends before the ZLB starts, zlb_plus_regime_indices returns
+        # ind_zlb_start = n_reg + 1 and splice_zlb_regime = false: every regime is pre-ZLB.
     elseif date_presample_start(m) <= start_date <= date_zlb_start(m)
         TTTs = Vector{Matrix{S}}(undef, n_reg)
         RRRs = Vector{Matrix{S}}(undef, n_reg)
@@ -469,16 +482,18 @@ function zlb_plus_regime_matrices(m::AbstractDSGEModel{S}, system::RegimeSwitchi
                 end
             end
 
-            # Handle regimes after the ZLB split
-            post_zlb_input = ind_zlb_start:n_reg # no minus 1 b/c didn't splice in the regime
+            # Handle regimes after the ZLB split (none if the sample ends before the ZLB)
+            if ind_zlb_start <= n_reg
+                post_zlb_input = ind_zlb_start:n_reg # no minus 1 b/c didn't splice in the regime
 
-            TTTs[post_zlb_input] = [system[i, :TTT] for i in post_zlb_input]::Vector{Matrix{S}}
-            RRRs[post_zlb_input] = [system[i, :RRR] for i in post_zlb_input]::Vector{Matrix{S}}
-            CCCs[post_zlb_input] = [system[i, :CCC] for i in post_zlb_input]::Vector{Vector{S}}
-            ZZs[post_zlb_input]  = [system[i, :ZZ] for i in post_zlb_input]::Vector{Matrix{S}}
-            DDs[post_zlb_input]  = [system[i, :DD] for i in post_zlb_input]::Vector{Vector{S}}
-            QQs[post_zlb_input]  = [system[i, :QQ] for i in post_zlb_input]::Vector{Matrix{S}}
-            EEs[post_zlb_input]  = [system[i, :EE] for i in post_zlb_input]::Vector{Matrix{S}}
+                TTTs[post_zlb_input] = [system[i, :TTT] for i in post_zlb_input]::Vector{Matrix{S}}
+                RRRs[post_zlb_input] = [system[i, :RRR] for i in post_zlb_input]::Vector{Matrix{S}}
+                CCCs[post_zlb_input] = [system[i, :CCC] for i in post_zlb_input]::Vector{Vector{S}}
+                ZZs[post_zlb_input]  = [system[i, :ZZ] for i in post_zlb_input]::Vector{Matrix{S}}
+                DDs[post_zlb_input]  = [system[i, :DD] for i in post_zlb_input]::Vector{Vector{S}}
+                QQs[post_zlb_input]  = [system[i, :QQ] for i in post_zlb_input]::Vector{Matrix{S}}
+                EEs[post_zlb_input]  = [system[i, :EE] for i in post_zlb_input]::Vector{Matrix{S}}
+            end
          end
     elseif date_zlb_start(m) < start_date
         # We always use post-ZLB matrices in this case,
