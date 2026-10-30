@@ -97,3 +97,33 @@ end
 
     rm(root; recursive = true, force = true)
 end
+
+@testset "optimize!'s solvability check solves at the proposal, not from a stale memo" begin
+    root  = mktempdir()
+    m0    = memo_rs_as(root)
+    modeθ = h5read(joinpath(path, "..", "reference", "regime_switching_anschorfheide_paramsmode_output.h5"), "params")
+    Random.seed!(20261030)
+    θ2 = modeθ
+    while true
+        θ2 = modeθ .+ 0.3 .* (vec(rand(m0.parameters, 1; regime_switching = true)) .- modeθ)
+        isfinite(posterior!(deepcopy(m0), θ2, data; catch_errors = true)) && break
+    end
+    mf = deepcopy(m0)                    # no memo
+    DSGE.update!(mf, θ2)
+    fresh = compute_system(mf)
+
+    # A model whose memo was filled at the mode, as after a posterior evaluation there
+    filled() = (mt = deepcopy(m0); mt <= Setting(:preprocessed_transitions, Dict());
+                DSGE.update!(mt, modeθ); compute_system(mt); mt)
+    # Without clearing, the solve at θ2 reuses the mode's transitions
+    ms = filled(); DSGE.update!(ms, θ2)
+    stale = compute_system(ms)
+    @test any(stale[i, :TTT] != fresh[i, :TTT] for i in 1:DSGE.n_regimes(fresh))
+    # solve_at! (used by optimize!'s proposal check) clears the memo first
+    sys = DSGE.solve_at!(filled(), θ2)
+    @test all(sys[i, :TTT] == fresh[i, :TTT] for i in 1:DSGE.n_regimes(fresh))
+    @test all(sys[i, :RRR] == fresh[i, :RRR] for i in 1:DSGE.n_regimes(fresh))
+    @test all(sys[i, :CCC] == fresh[i, :CCC] for i in 1:DSGE.n_regimes(fresh))
+
+    rm(root; recursive = true, force = true)
+end

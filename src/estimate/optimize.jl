@@ -228,8 +228,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
 
                 # check that model can be solved
                 try
-                    DSGE.update!(m, x_proposal_all)
-                    compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set))
+                    solve_at!(m, x_proposal_all)
                     x_proposal_all = transform_to_real_line(get_parameters(m), x_proposal_all;
                                                             regime_switching = regime_switching)
                     success = true
@@ -283,8 +282,7 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
 
                 # check that model can be solved
                 try
-                    DSGE.update!(m, x_proposal_all)
-                    compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set))
+                    solve_at!(m, x_proposal_all)
                     x_proposal_all = transform_to_real_line(get_parameters(m), x_proposal_all;
                                                             regime_switching = regime_switching)
                     success = true
@@ -517,4 +515,20 @@ function optimize!(m::Union{AbstractDSGEModel,AbstractVARModel, AbstractDSGEVECM
     end
 
     return out, H, callback_data
+end
+
+"""
+```
+solve_at!(m, x)
+```
+Update `m` to the parameter values `x` and solve it, clearing the `:preprocessed_transitions`
+memo first: its key does not include parameter values, so a memo left from other parameters
+would be reused. Throws if the model cannot be solved at `x`.
+"""
+function solve_at!(m::AbstractDSGEModel, x::AbstractVector)
+    DSGE.update!(m, x)
+    if haskey(get_settings(m), :preprocessed_transitions)
+        m <= Setting(:preprocessed_transitions, Dict())
+    end
+    return compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set))
 end
