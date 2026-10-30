@@ -127,3 +127,35 @@ end
 
     rm(root; recursive = true, force = true)
 end
+
+@testset "optimize!'s simulated-annealing proposals go through solve_at!" begin
+    # The stale-memo bug cannot be seen from optimize!'s output (the objective clears the memo
+    # itself; only the solvability check of each proposal did not), so check the wiring: both
+    # neighbor functions solve via solve_at!, and optimize! never calls compute_system directly
+    src  = read(joinpath(pkgdir(DSGE), "src", "estimate", "optimize.jl"), String)
+    body = src[1:first(findfirst("\nfunction solve_at!", src))]
+    @test count("solve_at!(m, x_proposal_all)", body) == 2
+    @test !occursin("compute_system(", body)
+end
+
+@testset "solve_at! for a DSGE-VAR clears the memo of its DSGE" begin
+    # optimize!'s DSGE-VAR neighbor calls solve_at!; DSGE-VARs have no `tvis` keyword and keep
+    # the memo in their DSGE
+    function as_var(θ)
+        dsge = AnSchorfheide()
+        DSGE.update!(dsge, θ)
+        mv = DSGE.DSGEVAR(dsge, collect(keys(dsge.exogenous_shocks)))
+        DSGE.update!(mv; observables = [:obs_nominalrate, :obs_gdp, :π_t], lags = 4, λ = 0.5)
+        return mv
+    end
+    θ0 = map(x -> x.value, DSGE.get_parameters(AnSchorfheide()))
+    θ1 = copy(θ0)
+    θ1[findfirst(p -> p.key == :τ, DSGE.get_parameters(AnSchorfheide()))] *= 1.5
+    m = as_var(θ0)
+    DSGE.get_dsge(m) <= Setting(:preprocessed_transitions, Dict{Any, Any}(:stale => true))
+    β, Σ = DSGE.solve_at!(m, θ1)
+    @test !haskey(get_setting(DSGE.get_dsge(m), :preprocessed_transitions), :stale)
+    @test map(x -> x.value, DSGE.get_parameters(m)) == θ1
+    β1, Σ1 = compute_system(as_var(θ1))
+    @test β == β1 && Σ == Σ1
+end

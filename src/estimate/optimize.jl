@@ -532,3 +532,14 @@ function solve_at!(m::AbstractDSGEModel, x::AbstractVector)
     end
     return compute_system(m; tvis = haskey(get_settings(m), :tvis_information_set))
 end
+
+# DSGE-VAR and DSGE-VECM: the memo lives in the underlying DSGE, and their compute_system has
+# no `tvis` keyword
+function solve_at!(m::AbstractDSGEVARModel, x::AbstractVector)
+    DSGE.update!(m, x)
+    dsge = get_dsge(m)
+    if haskey(get_settings(dsge), :preprocessed_transitions)
+        dsge <= Setting(:preprocessed_transitions, Dict())
+    end
+    return compute_system(m)
+end
