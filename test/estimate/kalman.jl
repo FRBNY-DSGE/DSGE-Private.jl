@@ -1,4 +1,4 @@
-using DSGE, ModelConstructors, Dates, Test, BenchmarkTools
+using DSGE, ModelConstructors, Dates, Test, BenchmarkTools, HDF5
 
 @testset "Calculating indicies and matrices for pre- and post-ZLB regimes" begin
     m  = Model1002("ss10")
@@ -237,4 +237,49 @@ if run_benchmarks
         println(name, "  time:   ", BenchmarkTools.prettytime(median(b).time),
                 "   memory: ", BenchmarkTools.prettymemory(median(b).memory))
     end
+end
+
+@testset "Regime-switching likelihood on a sample that ends before the ZLB" begin
+    # Every regime is pre-ZLB. zlb_plus_regime_indices used to return i_zlb_start = 1 with
+    # splice_zlb_regime = true here, which zlb_plus_regime_matrices could not fill, so the
+    # likelihood threw an UndefRefError.
+    data = h5read(joinpath(dirname(@__FILE__), "..", "reference", "sim_data_regswitch_anschorfheide.h5"), "data")
+    m = AnSchorfheide()
+    m <= Setting(:data_vintage, "210101")
+    m <= Setting(:regime_switching, true, true, "rs2", "")
+    m <= Setting(:n_regimes, 3)
+    m <= Setting(:regime_dates, Dict(1 => date_presample_start(m),
+                                     2 => DSGE.iterate_quarters(Date(1960, 3, 31), 50),
+                                     3 => DSGE.iterate_quarters(Date(1960, 3, 31), 100)))
+    setup_regime_switching_inds!(m)
+    m <= Setting(:model2para_regimes, Dict{Int, Int}(1 => 1, 2 => 1, 3 => 2))
+    for i in 1:length(m.parameters), k in 1:2
+        ModelConstructors.set_regime_val!(m.parameters[i], k, m.parameters[i].value)
+    end
+    DSGE.setup_param_regimes!(m, repeat([1 1 2], length(m.parameters)))
+    n_pre = subtract_quarters(date_zlb_start(m), date_presample_start(m))   # last pre-ZLB period
+
+    # AS has no anticipated shocks, so pre- and post-ZLB systems coincide: the same sample
+    # treated as all post-ZLB must give the same likelihood
+    m_post = deepcopy(m)
+    m_post <= Setting(:date_zlb_start, date_presample_start(m))
+    system = compute_system(m)
+    for k in (40, 60, 120, n_pre)
+        y = data[:, 1:k]
+        ri, izlb, splice = DSGE.zlb_plus_regime_indices(m, y)
+        @test !splice
+        @test izlb == length(ri) + 1
+        @test first(ri[1]) == 1 && last(ri[end]) == k
+        @test all(last(ri[j]) + 1 == first(ri[j + 1]) for j in 1:length(ri) - 1)
+        mats = DSGE.zlb_plus_regime_matrices(m, system, length(ri); ind_zlb_start = izlb,
+                                             splice_zlb_regime = splice)
+        @test all(length(x) == length(ri) for x in mats)
+        @test all(mats[4][j] == system[j, :QQ] for j in 1:length(ri))   # QQ: no anticipated shocks
+        loglh = likelihood(m, y; catch_errors = false)
+        @test isfinite(loglh)
+        @test loglh == likelihood(m_post, y; catch_errors = false)
+    end
+    # The first sample that reaches the ZLB is unchanged: it splices the post-ZLB regime in
+    ri, izlb, splice = DSGE.zlb_plus_regime_indices(m, data[:, 1:(n_pre + 1)])
+    @test splice && izlb == length(ri) && ri[end] == (n_pre + 1):(n_pre + 1)
 end
