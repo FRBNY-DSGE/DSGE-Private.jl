@@ -359,4 +359,13 @@ end
     end
 end
 
+@testset "ss104: a forecast start before 2020Q1 is a clear error" begin
+    # Used to be a KeyError: the forecast start is not a regime date
+    for fd in (Date(2019, 12, 31), Date(2015, 3, 31))
+        err = try build_ss104_default(fd); nothing catch e; e end
+        @test err isa AssertionError
+        @test occursin("2020Q1 or later", sprint(showerror, err))
+    end
+end
+
 end # module TestSS104
