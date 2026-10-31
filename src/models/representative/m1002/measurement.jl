@@ -18,6 +18,19 @@ end
 
 """
 ```
+regime_is_self_contained(m::Model1002, reg, information_set)
+```
+
+`eqcond` and `augment_states` read only the settings and the parameters (toggled to `reg`). With an
+information set of regime `reg` alone, `measurement` replaces `TTTs`, `CCCs` and `memo` by empty
+ones before any expectation is formed, so it uses regime `reg`'s matrices only.
+See `?DSGE.insample_regime_count`.
+"""
+regime_is_self_contained(m::Model1002, reg::Int, information_set::UnitRange) =
+    first(information_set) == last(information_set) == reg
+
+"""
+```
 measurement(m::Model1002{T}, TTT::Matrix{T}, RRR::Matrix{T},
     CCC::Vector{T}; reg::Int = 1) where {T<:AbstractFloat}
 ```
