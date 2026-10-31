@@ -88,6 +88,9 @@ data10  = simulated_data(m10, compute_system(m10), Date(2019, 12, 31), collect(k
 n_cols(d) = DSGE.subtract_quarters(d, date_presample_start(m104)) + 1
 pts, pv0, RS = parameter_points(m104)
 
+# One outer testset, so that every inner testset runs and reports even if another fails
+@testset "Likelihood with in-sample regimes only" begin
+
 @testset "In-sample regimes: off unless :likelihood_insample_regimes_only is true" begin
     m = deepcopy(m104)
     d = Date(2019, 12, 31)
@@ -201,11 +204,20 @@ end
 
     # An observed regime with an alternative or temporary policy (the regimes of the temporary ZLB
     # are those in :regime_eqcond_info), or one copied from another regime
+    # (a temporary ZLB in regime 1 also moves the gensys2 regimes; an imperfectly credible
+    # flexible AIT does not, so only :regime_eqcond_info rules it out)
+    for r_from in (5, 10)
+        m_pol = deepcopy(m)
+        rei = deepcopy(get_setting(m_pol, :regime_eqcond_info))
+        rei[1] = rei[r_from]
+        m_pol <= Setting(:regime_eqcond_info, rei)
+        @test DSGE.insample_regime_count(m_pol, d; tvis = true, compute_pseudo = false) == 0
+    end
     m_pol = deepcopy(m)
     rei = deepcopy(get_setting(m_pol, :regime_eqcond_info))
-    rei[1] = rei[5]
+    rei[1] = rei[10]
     m_pol <= Setting(:regime_eqcond_info, rei)
-    @test DSGE.insample_regime_count(m_pol, d; tvis = true, compute_pseudo = false) == 0
+    @test DSGE.compute_gensys_gensys2_regimes(m_pol) == DSGE.compute_gensys_gensys2_regimes(m)
     for key in (:identical_eqcond_regimes, :perfect_credibility_identical_transitions)
         m_copy = deepcopy(m)
         m_copy <= Setting(key, Dict(1 => 1))
@@ -259,5 +271,7 @@ end
     @test isfinite(L_in)
     @test isequal(L_in, lik(deepcopy(m104), data, false)) # regime 1 is unchanged
 end
+
+end # outer testset
 
 end # module
