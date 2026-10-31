@@ -316,5 +316,48 @@ end
     end
 end
 
+@testset "ss104: 2020Q1 anticipated COVID shocks (σ_*_prop) are on, except with the legacy loadings" begin
+    # σ_φ_prop, σ_ziid_prop, σ_biidc_prop have two fixed values: 0, and 2.0 in 2020Q1. eqcond used to
+    # switch only parameters with more than two regime values, so they were 0 in every regime.
+    props  = (:σ_φ_prop, :σ_ziid_prop, :σ_biidc_prop)
+    rows   = ((:eq_φl1, :φ_sh), (:eq_ziidl1, :ziid_sh), (:eq_biidcl1, :biidc_sh))
+    ψprop(mm, r) = (Ψ = DSGE.eqcond(mm, r)[4]; [Ψ[mm.equilibrium_conditions[e], mm.exogenous_shocks[s]] for (e, s) in rows])
+    r_covid = only([r for r in 1:n_regs if get_setting(m, :regime_dates)[r] == Date(2020, 3, 31)])
+    @test !DSGE.use_legacy_gdp_gdi_meas_err_loadings(m)
+    @test all(length(m[k].regimes[:value]) == 2 for k in props)   # not switched by the > 2 rule
+    for r in 1:n_regs
+        @test ψprop(m, r) == fill(r == r_covid ? 2.0 : 0.0, 3)
+    end
+    @test all(m[k].value == 0. for k in props)   # eqcond leaves the parameters in regime 1
+
+    # Zeroing the 2020Q1 values changes the 2020Q1 transition only
+    no_prop(mm) = (mm2 = deepcopy(mm); foreach(k -> ModelConstructors.set_regime_val!(mm2[k], 2, 0.), props); mm2)
+    sys0 = compute_system(no_prop(m))
+    for r in 1:n_regs, key in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
+        r == r_covid && key == :RRR && continue
+        @test sys0[r, key] == sys[r, key]   # bitwise
+    end
+    @test maximum(abs, sys0[r_covid, :RRR] - sys[r_covid, :RRR]) > 0.1
+
+    # Production keeps the legacy loadings to stay consistent with the ss97 cloud, estimated without
+    # these shocks: unchanged there, so the 2020Q1 values have no effect at all
+    m_leg = build_ss104(extra = [Setting(:legacy_gdp_gdi_meas_err_loadings, true)])
+    for r in 1:n_regs
+        @test ψprop(m_leg, r) == zeros(3)
+    end
+    sys_leg, sys_leg0 = compute_system(m_leg), compute_system(no_prop(m_leg))
+    for r in 1:n_regs, key in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
+        @test sys_leg0[r, key] == sys_leg[r, key]   # bitwise
+    end
+
+    # ss207 switches them whatever the loadings
+    for legacy in (false, true)
+        m207 = Model1002("ss207"; custom_settings = [Setting(:legacy_gdp_gdi_meas_err_loadings, legacy)])
+        r207 = only([r for r in 1:get_setting(m207, :n_regimes) if get_setting(m207, :regime_dates)[r] == Date(2020, 3, 31)])
+        for r in 1:get_setting(m207, :n_regimes)
+            @test ψprop(m207, r) == fill(r == r207 ? 2.0 : 0.0, 3)
+        end
+    end
+end
 
 end # module TestSS104
