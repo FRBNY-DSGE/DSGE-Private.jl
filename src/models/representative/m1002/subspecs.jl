@@ -7057,6 +7057,15 @@ function ss104!(m)
         end
     end
 
+    # σ_*_prop (anticipated COVID shocks, toggled in eqcond): para regime 2 in 2020Q1 only. With a 2020Q1
+    # forecast start, ss64! maps them before the later regimes exist (2020Q1 = para regime 2 is then the
+    # last mapping), and setup_flexait_tempzlb! maps every later regime to that last para regime.
+    reg_2020Q1 = only([r for (r, d) in get_setting(m, :regime_dates) if d == Date(2020, 3, 31)])
+    for pk in (:σ_φ_prop, :σ_ziid_prop, :σ_biidc_prop)
+        haskey(get_setting(m, :model2para_regime), pk) || continue   # ss64! skips them if :model2para_regime was a custom setting
+        get_setting(m, :model2para_regime)[pk] = Dict(r => (r == reg_2020Q1 ? 2 : 1) for r in 1:get_setting(m, :n_regimes))
+    end
+
 
 
     # Add settings to speed up computation for estimation

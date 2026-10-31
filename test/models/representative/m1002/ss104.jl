@@ -331,7 +331,9 @@ end
     @test all(m[k].value == 0. for k in props)   # eqcond leaves the parameters in regime 1
 
     # Zeroing the 2020Q1 values changes the 2020Q1 transition only
-    no_prop(mm) = (mm2 = deepcopy(mm); foreach(k -> ModelConstructors.set_regime_val!(mm2[k], 2, 0.), props); mm2)
+    # (set directly: set_regime_val! does not change a fixed regime)
+    no_prop(mm) = (mm2 = deepcopy(mm); foreach(k -> mm2[k].regimes[:value][2] = 0., props); mm2)
+    @test all(no_prop(m)[k].regimes[:value][2] == 0. for k in props)
     sys0 = compute_system(no_prop(m))
     for r in 1:n_regs, key in (:TTT, :RRR, :CCC, :QQ, :ZZ, :DD, :EE)
         r == r_covid && key == :RRR && continue
@@ -356,6 +358,20 @@ end
         r207 = only([r for r in 1:get_setting(m207, :n_regimes) if get_setting(m207, :regime_dates)[r] == Date(2020, 3, 31)])
         for r in 1:get_setting(m207, :n_regimes)
             @test ψprop(m207, r) == fill(r == r207 ? 2.0 : 0.0, 3)
+        end
+    end
+
+    # Early forecast origins: 2020Q1 only. With a 2020Q1 start, every later regime used to map to the
+    # 2020Q1 parameter regime (2.0)
+    for fd in (Date(2020, 3, 31), Date(2020, 6, 30))
+        m_e = build_ss104(fcast_date = fd)
+        nr  = get_setting(m_e, :n_regimes)
+        r_e = only([r for r in 1:nr if get_setting(m_e, :regime_dates)[r] == Date(2020, 3, 31)])
+        for k in props
+            @test get_setting(m_e, :model2para_regime)[k] == Dict(r => (r == r_e ? 2 : 1) for r in 1:nr)
+        end
+        for r in 1:nr
+            @test ψprop(m_e, r) == fill(r == r_e ? 2.0 : 0.0, 3)
         end
     end
 end
