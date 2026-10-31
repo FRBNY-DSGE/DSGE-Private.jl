@@ -34,14 +34,21 @@ function eqcond(m::Model1002, reg::Int)
     Ψ  = zeros(n_states(m), n_shocks_exogenous(m))
     Π  = zeros(n_states(m), n_shocks_expectational(m))
 
+    # ss207: 2-regime parameters that enter Ψ (σ_φ_prop, σ_ziid_prop, σ_biidc_prop, set by ss205!)
+    # were never toggled here, so their 2020Q1 value (2.0) never took effect. Kept the old
+    # >2 guard for every other subspec, and for every other ss207 parameter.
+    # ss104 (σ_*_prop set by ss64!) had the same problem: 2020Q1 had no anticipated COVID shocks.
+    # Toggle them there too, except with :legacy_gdp_gdi_meas_err_loadings = true, the setting
+    # production uses to stay consistent with the ss97 cloud, which was estimated without these
+    # shocks. New ss104 estimations (legacy loadings off, the default) get them.
+    toggle_covid_prop = subspec(m) == "ss207" ||
+        (subspec(m) == "ss104" && !use_legacy_gdp_gdi_meas_err_loadings(m))
+
     for para in m.parameters
         if !isempty(para.regimes)
             #= if length(para.regimes[:value]) > 2 #BP for special case of old model from estimation! Remove later =#
-            # ss207: 2-regime parameters that enter Ψ (σ_φ_prop, σ_ziid_prop, σ_biidc_prop, set by ss205!)
-            # were never toggled here, so their 2020Q1 value (2.0) never took effect. Kept the old
-            # >2 guard for every other subspec, and for every other ss207 parameter.
             if length(para.regimes[:value]) > 2 ||
-                (subspec(m) == "ss207" && para.key in (:σ_φ_prop, :σ_ziid_prop, :σ_biidc_prop))
+                (toggle_covid_prop && para.key in (:σ_φ_prop, :σ_ziid_prop, :σ_biidc_prop))
                 if (haskey(get_settings(m), :model2para_regime) ? haskey(get_setting(m, :model2para_regime), para.key) : false)
                     ModelConstructors.toggle_regime!(para, reg, get_setting(m, :model2para_regime)[para.key])
 
