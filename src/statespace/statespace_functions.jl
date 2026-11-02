@@ -17,7 +17,11 @@ compute_system just runs compute_system_helper (which actually computes
 the system) and then in the case of imperfect but positive credibility,
 adjusts the anticipated observables and pseudo-observables' measurement
 equations. `sample_end_date` limits likelihood systems to regimes used by the
-observed sample; omit it when constructing a system for forecasting.
+observed sample; omit it when constructing a system for forecasting. With the setting
+`:likelihood_insample_regimes_only` set to `true`, this also covers models with
+time-varying information sets, temporary or alternative policies and imperfect
+awareness, when the observed regimes do not depend on later ones (see
+`?DSGE.insample_regime_count`).
 `compute_pseudo = false` skips the pseudo-measurement equations (the system then has
 empty ones); `likelihood` uses this. Leave it `true` for forecasting.
 """
@@ -103,7 +107,13 @@ function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
             end
         end
 
-        system_main = if uncertain_altpolicy
+        # A likelihood whose sample ends before some regimes start may only need the first ones
+        n_insample = insample_regime_count(m, sample_end_date; tvis = tvis, compute_pseudo = compute_pseudo)
+
+        system_main = if n_insample > 0
+            compute_insample_system(m, n_insample; tvis = tvis, uncertain_altpolicy = uncertain_altpolicy,
+                                    verbose = verbose)
+        elseif uncertain_altpolicy
             # Handle this special case on its own
             compute_uncertain_altpolicy_system_helper(m; tvis = tvis, compute_pseudo = compute_pseudo,
                                                       verbose = verbose)
@@ -153,6 +163,159 @@ function likelihood_regime_count(m::AbstractDSGEModel, sample_end_date::Union{Da
         min(n_regimes, get_setting(m, :n_hist_regimes) + get_setting(m, :n_cond_regimes)) : n_regimes
     last_observed = findlast(reg -> dates[reg] <= sample_end_date, 1:filter_regimes)
     return isnothing(last_observed) ? n_regimes : last_observed
+end
+
+"""
+```
+regime_is_self_contained(m, reg, information_set)
+```
+
+is true if `eqcond(m, reg)`, `augment_states(m, TTT, RRR, CCC; reg = reg)` and the measurement
+equation of regime `reg` with the information set `information_set` use only the model's
+settings, its parameters and regime `reg`'s own solution, so that they never read the
+transition matrices of other regimes or a forward-expectations memo. The default is
+`false`; a model opts in by adding a method. See `?DSGE.insample_regime_count`.
+"""
+regime_is_self_contained(m::AbstractDSGEModel, reg::Int, information_set::UnitRange) = false
+
+"""
+```
+insample_regime_count(m, sample_end_date; tvis = false, compute_pseudo = true)
+```
+
+returns the number `k` of regimes that a likelihood on data ending in `sample_end_date`
+uses, if the state-space matrices of regimes `1:k` can be computed without the later
+regimes and are then identical to those of the full system; otherwise 0, meaning that
+the full system is computed. `compute_system` then builds regimes `1:k` only
+(`compute_insample_system`).
+
+It is off unless the setting `:likelihood_insample_regimes_only` is `true`, because the
+later regimes are then not solved: a draw at which only one of them has no unique stable
+solution (a `GensysError`) gets the in-sample likelihood instead of `-Inf`, and the same
+holds for the perfectly credible systems of the alternative policies under imperfect
+awareness. The likelihood is otherwise unchanged.
+
+`k` is used only if
+- the system is for a likelihood (`sample_end_date` given, no pseudo-measurement equations),
+  the solution method is `:gensys` and regimes `1:k` are fewer than all regimes;
+- no regime in `1:k` has an entry in `:regime_eqcond_info` (alternative, temporary or
+  imperfectly credible policies, whose solutions use the later regimes or the alternative
+  policies' systems; measurement equations of those regimes are also averaged across
+  policies under imperfect awareness), is solved by `gensys2` or is copied from another
+  regime (`:identical_eqcond_regimes`, `:perfect_credibility_identical_transitions`);
+- regimes `1:k` are solved first, by `gensys`, in the full solve;
+- `:set_pgap1` and `:tvis_regime_eqcond_info` are not settings (both change other settings
+  while the full system is computed), and the model has no measurement equation that
+  takes all regimes at once;
+- `regime_is_self_contained(m, reg, information_set)` holds for every `reg` in `1:k`, with
+  its own `:tvis_information_set` entry when `tvis` (for `Model1002`: information sets of
+  that regime only). Otherwise expectations formed in the observed regimes use later
+  regimes' transition matrices.
+"""
+function insample_regime_count(m::AbstractDSGEModel, sample_end_date::Union{Date, Nothing};
+                               tvis::Bool = false, compute_pseudo::Bool = true)
+    settings = get_settings(m)
+    (haskey(settings, :likelihood_insample_regimes_only) &&
+     get_setting(m, :likelihood_insample_regimes_only)) || return 0
+    (isnothing(sample_end_date) || compute_pseudo) && return 0
+    (haskey(settings, :regime_switching) && get_setting(m, :regime_switching)) || return 0
+    get_setting(m, :solution_method) == :gensys || return 0
+
+    n_regimes = haskey(settings, :n_regimes) ? get_setting(m, :n_regimes) : 1
+    k = likelihood_regime_count(m, sample_end_date, n_regimes)
+    1 <= k < n_regimes || return 0
+
+    (haskey(settings, :set_pgap1) || haskey(settings, :tvis_regime_eqcond_info)) && return 0
+    if haskey(settings, :regime_eqcond_info) && any(reg -> reg <= k, keys(get_setting(m, :regime_eqcond_info)))
+        return 0
+    end
+    for key in (:identical_eqcond_regimes, :perfect_credibility_identical_transitions)
+        haskey(settings, key) && any(reg -> reg <= k, keys(get_setting(m, key))) && return 0
+    end
+    gensys_regimes, gensys2_regimes = compute_gensys_gensys2_regimes(m)
+    (!isempty(gensys_regimes) && first(gensys_regimes[1]) == 1 && last(gensys_regimes[1]) >= k) || return 0
+    all(range -> first(range) >= k, gensys2_regimes) || return 0 # gensys2 fills first(range) + 1:last(range)
+
+    hasmethod(measurement, (typeof(m), Vector{Matrix{Float64}}, Vector{Matrix{Float64}}, Vector{Vector{Float64}})) &&
+        return 0
+    if tvis
+        information_sets = get_setting(m, :tvis_information_set)
+        length(information_sets) >= k || return 0
+        all(reg -> regime_is_self_contained(m, reg, information_sets[reg]), 1:k) || return 0
+    else
+        all(reg -> regime_is_self_contained(m, reg, reg:reg), 1:k) || return 0
+    end
+
+    return k
+end
+
+"""
+```
+compute_insample_system(m, n_insample; tvis = false, uncertain_altpolicy = false, verbose = :high)
+```
+
+computes the transition and measurement equations of regimes `1:n_insample` only, as the full
+system computes them, when `insample_regime_count` allows it. There are no pseudo-measurement
+equations.
+"""
+function compute_insample_system(m::AbstractDSGEModel{T}, n_insample::Int; tvis::Bool = false,
+                                 uncertain_altpolicy::Bool = false, verbose::Symbol = :high) where {T <: Real}
+
+    regimes = collect(1:n_insample)
+    if uncertain_altpolicy
+        # Solve as solve_uncertain_altpolicy does for regimes without an alternative policy (it does
+        # not use :preprocessed_transitions). It solves them after the perfectly credible systems,
+        # which leave every parameter in regime 1, and eqcond does not toggle parameters
+        # with two regimes, so start from regime 1 as well
+        for para in m.parameters
+            if !isempty(para.regimes)
+                ModelConstructors.toggle_regime!(para, 1)
+            end
+        end
+        eqconds = [eqcond(m, reg) for reg in regimes]
+
+        TTTs = Vector{Matrix{Float64}}(undef, n_insample)
+        RRRs = Vector{Matrix{Float64}}(undef, n_insample)
+        CCCs = Vector{Vector{Float64}}(undef, n_insample)
+        for reg in regimes
+            Γ0, Γ1, C, Ψ, Π = eqconds[reg]
+            TTT_gensys, CCC_gensys, RRR_gensys, eu = gensys_for_model(m, Γ0, Γ1, C, Ψ, Π, 1+1e-6; verbose = verbose)
+
+            # Check for LAPACK exception, existence and uniqueness
+            if eu[1] != 1 || eu[2] != 1
+                throw(GensysError("Error in Gensys, Regime $reg"))
+            end
+
+            TTTs[reg], RRRs[reg], CCCs[reg] =
+                augment_states(m, real(TTT_gensys), real(RRR_gensys), real(CCC_gensys), reg = reg)
+        end
+    else
+        TTTs, RRRs, CCCs = solve(m; regime_switching = true, regimes = regimes,
+                                 gensys_regimes = UnitRange{Int}[1:n_insample],
+                                 gensys2_regimes = Vector{UnitRange{Int}}(undef, 0),
+                                 force_regime_vectors = true, verbose = verbose)
+    end
+
+    # As in RegimeSwitchingSystem. Self-contained regimes do not use the forward-expectations memo.
+    empty_meas_eqn = haskey(get_settings(m), :empty_measurement_equation) ?
+        get_setting(m, :empty_measurement_equation) : falses(n_insample)
+    transition_equations  = Vector{Transition{T}}(undef, n_insample)
+    measurement_equations = Vector{Measurement{T}}(undef, n_insample)
+    for reg in regimes
+        transition_equations[reg] = Transition(TTTs[reg], RRRs[reg], CCCs[reg])
+        measurement_equations[reg] = if empty_meas_eqn[reg]
+            Measurement(Matrix{T}(undef, 0, 0), Vector{T}(undef, 0),
+                        Matrix{T}(undef, 0, 0), Matrix{T}(undef, 0, 0))
+        elseif tvis
+            measurement(m, TTTs[reg], RRRs[reg], CCCs[reg], reg = reg,
+                        TTTs = TTTs, CCCs = CCCs,
+                        information_set = get_setting(m, :tvis_information_set)[reg])
+        else
+            measurement(m, TTTs[reg], RRRs[reg], CCCs[reg]; reg = reg)
+        end
+    end
+
+    return RegimeSwitchingSystem(transition_equations, measurement_equations)
 end
 
 function compute_system_helper(m::AbstractDSGEModel{T}; tvis::Bool = false,
