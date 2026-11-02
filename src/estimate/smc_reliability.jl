@@ -329,6 +329,9 @@ end
 sbc_smc_settings(m::AbstractDSGEModel) =
     (n_parts = get_setting(m, :n_particles), n_blocks = get_setting(m, :n_smc_blocks),
      n_mh_steps = get_setting(m, :n_mh_steps_smc), λ = get_setting(m, :λ), n_Φ = get_setting(m, :n_Φ),
+     param_blocks = haskey(get_settings(m), :smc_param_blocks) ? get_setting(m, :smc_param_blocks) :
+         Vector{Vector{Symbol}}(),
+     blockwise_c = haskey(get_settings(m), :smc_blockwise_c) && get_setting(m, :smc_blockwise_c),
      resampling_method = get_setting(m, :resampler_smc), threshold_ratio = get_setting(m, :resampling_threshold),
      c = get_setting(m, :step_size_smc), α = get_setting(m, :mixture_proportion),
      target = get_setting(m, :target_accept),

@@ -101,4 +101,27 @@ end
     @test_throws ArgumentError DSGE.simulate_from_model(m_rs, 10, 20)
 end
 
+@testset "smc2 with fixed mutation blocks and blockwise c" begin
+    m = rel_model("blocks"; n_particles = 200)
+    m <= Setting(:smc_bridge_sampling, false)
+    @test get_setting(m, :smc_param_blocks) == Vector{Vector{Symbol}}() && !get_setting(m, :smc_blockwise_c)
+    m <= Setting(:smc_param_blocks, [[:ρ_z], [:σ_R, :σ_g]])
+    m <= Setting(:smc_blockwise_c, true)
+    cloud = DSGE.smc2(m, rel_data; verbose = :none, run_csminwel = false)
+    file = rawpath(m, "estimate", "smc_cloud.jld2")
+    out = load(file)
+    @test out["param_blocks"][1:2] == [[:ρ_z], [:σ_R, :σ_g]] && length(out["param_blocks"][3]) == 10
+    h = out["stage_health"]
+    @test h["block_labels"] == ["ρ_z", "block2", "rest"]
+    @test size(h["c_blocks"]) == (3, length(h["stage"]))
+    @test h["c"] == h["c_blocks"][3, :] && cloud.c == h["c_blocks"][3, end]
+    @test all(0 .<= h["accept_blocks"] .<= 1)
+    header = split(readline(replace(file, ".jld2" => "_stage_health.csv")), ",")
+    @test header[end-5:end] == ["accept_ρ_z", "accept_block2", "accept_rest", "c_ρ_z", "c_block2", "c_rest"]
+
+    # Unknown or fixed parameters are rejected
+    m <= Setting(:smc_param_blocks, [[:e_y]])
+    @test_throws ArgumentError DSGE.smc2(m, rel_data; verbose = :none, run_csminwel = false)
+end
+
 rm(rel_dir; recursive = true, force = true)
