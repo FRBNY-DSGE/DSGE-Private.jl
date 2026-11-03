@@ -6951,7 +6951,22 @@ This subspecification was created in an effort to clean the forecasting process 
 """
 
 function ss104!(m)
+    # The regimes below are set up from 2020Q1 on and the forecast start must be one of them
+    @assert date_forecast_start(m) > Date(2019, 12, 31) "ss104 needs a forecast start of 2020Q1 or later (:date_forecast_start = $(date_forecast_start(m)))"
     ss97!(m)
+
+    # ss64! only creates the post-2019 regimes up to the forecast start, so with a forecast start of
+    # 2020Q1 or 2020Q2 the 2020Q2-Q3 regimes are missing and setup_flexait_tempzlb! appends 2020Q4 as
+    # regime 3 or 4. The code below (and setup_flexait_tempzlb!) hard-codes 2020Q4 = regime 5, so
+    # always create the 2020Q1-Q3 regimes. Forecast starts from 2020Q3 on already have them.
+    regime_dates = get_setting(m, :regime_dates)
+    if !all(haskey(regime_dates, i) for i in 2:4)
+        for i in 2:4
+            regime_dates[i] = DSGE.iterate_quarters(Date(2019, 12, 31), i - 1)
+        end
+        m <= Setting(:regime_dates, regime_dates)
+        setup_regime_switching_inds!(m)
+    end
 
     m <= Setting(:cur_model_regime, Dict(map(reverse, collect(get_setting(m, :regime_dates))))[date_forecast_start(m)])
 
