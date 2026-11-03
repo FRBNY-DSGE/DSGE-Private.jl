@@ -316,6 +316,58 @@ end
     end
 end
 
+# ss104 at its default settings (no avg. short-run inflation observable, no anticipated mark-up shocks)
+build_ss104_default(fcast_date) = Model1002("ss104", custom_settings = [Setting(:date_forecast_start, fcast_date),
+                                                                       Setting(:date_conditional_end, fcast_date)])
+
+# Implemented policy and credibility weights in each regime, for the model and for its multi-period
+# alternative policies (e.g. the two-rule ZLB policy)
+eqcond_summary(rei) = Dict(r => (e.alternative_policy.key, e.weights) for (r, e) in rei)
+function policy_summary(mm)
+    aps = get_setting(mm, :alternative_policies)
+    return (eqcond_summary(get_setting(mm, :regime_eqcond_info)),
+            [a.key for a in aps],
+            [a isa DSGE.MultiPeriodAltPolicy ? (eqcond_summary(a.regime_eqcond_info), a.infoset) : nothing for a in aps])
+end
+
+@testset "ss104: forecast starts 2020Q1-Q2 get the same policy calendar as later ones" begin
+    # ss64! only creates regimes up to the forecast start, so a 2020Q1 (2020Q2) start used to put
+    # 2020Q4 in regime 3 (4), while ss104 hard-codes 2020Q4 = regime 5: 2020Q1 threw a GensysError
+    # (the ZLB rule in 2022Q2, solved as a permanent peg) and 2020Q2 had its policy dates shifted
+    m_ref  = build_ss104_default(Date(2026, 9, 30))
+    sys_ref = compute_system(m_ref)
+    nT   = DSGE.subtract_quarters(Date(2020, 3, 31), date_presample_start(m_ref))   # data through 2019Q4
+    data = fill(NaN, n_observables(m_ref), nT)
+    for (j, k) in enumerate((:obs_gdp, :obs_corepce, :obs_hours))
+        data[m_ref.observables[k], :] .= sys_ref[1, :DD][m_ref.observables[k]] .+ 0.1 .* sin.(j .* (1:nT))
+    end
+    lh_ref = likelihood(m_ref, data)
+    @test isfinite(lh_ref)
+
+    for fd in (Date(2020, 3, 31), Date(2020, 6, 30), Date(2020, 9, 30))
+        m_e = build_ss104_default(fd)
+        # Same regimes on the same dates, so everything below compares regimes by date
+        @test get_setting(m_e, :n_regimes) == get_setting(m_ref, :n_regimes) == 29
+        @test get_setting(m_e, :regime_dates) == get_setting(m_ref, :regime_dates)
+        @test get_setting(m_e, :regime_dates)[5] == Date(2020, 12, 31)
+        @test get_setting(m_e, :regime_dates)[get_setting(m_e, :cur_model_regime)] == fd
+        @test DSGE.compute_gensys_gensys2_regimes(m_e) == DSGE.compute_gensys_gensys2_regimes(m_ref) == ([1:4, 11:29], [4:10])
+        @test get_setting(m_e, :tvis_information_set) == get_setting(m_ref, :tvis_information_set)
+        @test isequal(policy_summary(m_e), policy_summary(m_ref))   # weights can be `missing`
+        @test compute_system(m_e) isa RegimeSwitchingSystem
+        @test likelihood(m_e, data) == lh_ref
+    end
+end
+
+@testset "ss104: a forecast start before 2020Q1 is a clear error" begin
+    # Used to be a KeyError: the forecast start is not a regime date
+    for fd in (Date(2019, 12, 31), Date(2015, 3, 31))
+        err = try build_ss104_default(fd); nothing catch e; e end
+        @test err isa AssertionError
+        @test occursin("2020Q1 or later", sprint(showerror, err))
+    end
+end
+
 @testset "ss104: 2020Q1 anticipated COVID shocks (σ_*_prop) are on, except with the legacy loadings" begin
     # σ_φ_prop, σ_ziid_prop, σ_biidc_prop have two fixed values: 0, and 2.0 in 2020Q1. eqcond used to
     # switch only parameters with more than two regime values, so they were 0 in every regime.

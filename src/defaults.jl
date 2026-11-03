@@ -190,6 +190,10 @@ function default_settings!(m::ModelConstructors.AbstractModel)
         "The 'bending coefficient' λ in Φ(n) = (n/N(Φ))^λ")
     settings[:n_smc_blocks] = Setting(:n_smc_blocks, 1,
         "The number of parameter blocks in SMC")
+    settings[:smc_param_blocks] = Setting(:smc_param_blocks, Vector{Vector{Symbol}}(),
+        "Fixed SMC mutation blocks of free parameters by name (the rest form one more block)")
+    settings[:smc_blockwise_c] = Setting(:smc_blockwise_c, false,
+        "Adapt a separate SMC mutation scale for each smc_param_blocks block and for the rest")
     settings[:step_size_smc] = Setting(:step_size_smc, .5,
         "Scaling factor for covariance of the particles. Controls size of steps in mutation step")
     settings[:n_mh_steps_smc] = Setting(:n_mh_steps_smc, 1,

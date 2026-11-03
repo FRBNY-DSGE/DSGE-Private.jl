@@ -32,6 +32,11 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
     reproducible; either way the seed is saved in the JLD2 output, with the Julia version and
     the SMC and DSGE commits under `run_info`.
 - `n_smc_blocks::Int`: Number of parameter blocks in mutation step (corresponds to kwarg `n_blocks` for `SMC.smc`).
+- `smc_param_blocks::Vector{Vector{Symbol}}`: Fixed mutation blocks of free parameters by
+    name, e.g. `[[:ρ_σ_w]]` (kwarg `param_blocks` for `SMC.smc`). The free parameters no block
+    lists form the remaining block, split at random by `n_smc_blocks`. Default: none.
+- `smc_blockwise_c::Bool`: Adapt a separate scale for each `smc_param_blocks` block and one for
+    the remaining parameters, each from its own acceptance rate (kwarg `blockwise_c`). Default: false.
 - `n_mh_steps_smc::Int`: Number of Metropolis Hastings steps to attempt during the mutation step (corresponds to kwarg `n_mh_steps` for `SMC.smc`).
 - `λ::S`: The 'bending coefficient' λ in Φ(n) = (n/N(Φ))^λ
 - `n_Φ::Int`: Number of stages in the tempering schedule.
@@ -373,6 +378,9 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
             n_smc_groups = haskey(get_settings(m), :n_smc_groups) ? get_setting(m, :n_smc_groups) : 1,
             bridge_sampling = haskey(get_settings(m), :smc_bridge_sampling) && get_setting(m, :smc_bridge_sampling),
             n_bridge_draws = haskey(get_settings(m), :smc_n_bridge_draws) ? get_setting(m, :smc_n_bridge_draws) : 0,
+            param_blocks = haskey(get_settings(m), :smc_param_blocks) ? get_setting(m, :smc_param_blocks) :
+                Vector{Vector{Symbol}}(),
+            blockwise_c = haskey(get_settings(m), :smc_blockwise_c) && get_setting(m, :smc_blockwise_c),
             run_info = Dict("dsge_version" => isdefined(Base, :pkgversion) ? string(pkgversion(DSGE)) : "unknown",
                             "dsge_commit"  => SMC.package_commit(DSGE)),
             verbose      = verbose,
