@@ -108,6 +108,7 @@ my_tests = [
             "estimate/regime_switching_mh",
             "estimate/resample",
             "estimate/simulated_annealing",
+            "estimate/smc/bridge_old_model_fixed",
             "estimate/smc/helpers",
             "estimate/smc/initial_c_blocks",
             "estimate/smc/initialization",

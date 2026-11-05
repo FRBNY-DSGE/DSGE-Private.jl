@@ -336,14 +336,10 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
 
             update!(old_model, para2, regime_switching = old_regime_switching)
 
-            for (x,p) in enumerate(para2) # Test correct params updated b/c update! assumes ordering is the same
-                @assert old_model[p.key].value == p.value
-                if haskey(p.regimes, :value)
-                    for i in collect(keys(p.regimes[:value]))
-                        @assert old_model[p.key].regimes[:value][i] == p.regimes[:value][i]
-                    end
-                end
-            end
+            # update! maps para2 onto old_model by position: check every entry it writes went to
+            # the parameter with the same key. Entries fixed in old_model are not written (update!
+            # keeps a fixed value), so the old likelihood uses old_model's fixed value there.
+            check_old_model_update(old_model, para2)
 
             # Clear the per-evaluation memo on the model actually evaluated (old_model may not be m)
             old_model <= Setting(:preprocessed_transitions, Dict())
@@ -461,6 +457,37 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
         end
     end
     return cloud
+end
+
+"""
+```
+check_old_model_update(old_model, para2)
+```
+After `update!(old_model, para2)` in a bridge's old-data likelihood: assert that every value and
+regime value of `old_model` that `update!` writes holds the value of the entry of `para2` with
+the same key. `update!` assigns by position, so a mismatch means the two parameter vectors are
+not aligned. Entries fixed in `old_model` are skipped: `update!` never overwrites them, so they
+keep `old_model`'s fixed value even when the particle (from a model that frees them) differs.
+The rule for which entries are written mirrors `update!`: the value (and regime 1) if the
+parameter is not fixed, regime i if `regimes[:fixed][i]` is false (or, without it, if the
+parameter is not fixed).
+"""
+function check_old_model_update(old_model::AbstractDSGEModel, para2::AbstractVector)
+    regime_flag(q, i) = haskey(q.regimes, :fixed) && haskey(q.regimes[:fixed], i) ?
+        q.regimes[:fixed][i] : nothing
+    for p in para2
+        q = old_model[p.key]
+        q.fixed || @assert q.value == p.value "old_model's $(p.key) = $(q.value) but the particle has $(p.value)"
+        haskey(p.regimes, :value) || continue
+        for i in keys(p.regimes[:value])
+            flag    = regime_flag(q, i)
+            written = i == 1 ? (!q.fixed && flag !== true) : (flag === nothing ? !q.fixed : !flag)
+            written || continue
+            @assert q.regimes[:value][i] == p.regimes[:value][i] "old_model's $(p.key) regime $i = " *
+                "$(q.regimes[:value][i]) but the particle has $(p.regimes[:value][i])"
+        end
+    end
+    return nothing
 end
 
 function smc(m::Union{AbstractDSGEModel,AbstractVARModel}, data::DataFrame; verbose::Symbol = :low,
