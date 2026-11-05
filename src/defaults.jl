@@ -214,6 +214,9 @@ function default_settings!(m::ModelConstructors.AbstractModel)
         "likelihood evaluations)")
     settings[:smc_n_bridge_draws] = Setting(:smc_n_bridge_draws, 0,
         "Proposal draws for the SMC bridge-sampling log MDD (0 = n_particles per group)")
+    settings[:smc_reuse_system_new_params] = Setting(:smc_reuse_system_new_params, false,
+        "In a bridge with old_model === m, evaluate the old-data likelihood on the system just " *
+        "solved for the new data instead of solving it again")
 
     # Endogenous ϕ Schedule
     settings[:use_fixed_schedule] = Setting(:use_fixed_schedule, true,
