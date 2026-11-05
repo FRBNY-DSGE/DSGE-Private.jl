@@ -113,6 +113,7 @@ my_tests = [
             "estimate/smc/mutation",
             "estimate/smc/old_model_memo",
             "estimate/smc/param_blocks",
+            "estimate/smc/param_blocks_insample",
             "estimate/smc/particle",
             "estimate/smc/regime_switching_smc",
             "estimate/smc/reliability",
