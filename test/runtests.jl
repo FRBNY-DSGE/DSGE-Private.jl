@@ -109,6 +109,7 @@ my_tests = [
             "estimate/resample",
             "estimate/simulated_annealing",
             "estimate/smc/helpers",
+            "estimate/smc/initial_c_blocks",
             "estimate/smc/initialization",
             "estimate/smc/mutation",
             "estimate/smc/old_model_memo",

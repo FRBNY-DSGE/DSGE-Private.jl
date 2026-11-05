@@ -37,6 +37,11 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
     lists form the remaining block, split at random by `n_smc_blocks`. Default: none.
 - `smc_blockwise_c::Bool`: Adapt a separate scale for each `smc_param_blocks` block and one for
     the remaining parameters, each from its own acceptance rate (kwarg `blockwise_c`). Default: false.
+- `smc_initial_c_blocks`: With `smc_blockwise_c`, the scale each block group starts from
+    instead of `step_size_smc` (kwarg `initial_c_blocks`), e.g. the final `c_blocks` of the
+    estimation a bridge starts from: a `Dict` from block label (`stage_health["block_labels"]`)
+    to scale, one per group, or a vector of scales in group order. Ignored when resuming with
+    `continue_intermediate`. Default: `nothing` (every group starts at `step_size_smc`).
 - `n_mh_steps_smc::Int`: Number of Metropolis Hastings steps to attempt during the mutation step (corresponds to kwarg `n_mh_steps` for `SMC.smc`).
 - `λ::S`: The 'bending coefficient' λ in Φ(n) = (n/N(Φ))^λ
 - `n_Φ::Int`: Number of stages in the tempering schedule.
@@ -387,6 +392,12 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
     # API; reject non-default requests rather than silently ignoring them.
     cholesky_fix == :none || error("cholesky_fix is not supported by the installed SMC.jl API")
 
+    # Starting block scales: passed only when set, so the default call is unchanged (and works
+    # with an SMC.jl that predates the keyword)
+    initial_c_blocks = haskey(get_settings(m), :smc_initial_c_blocks) ?
+        get_setting(m, :smc_initial_c_blocks) : nothing
+    initial_c_blocks_kw = isnothing(initial_c_blocks) ? NamedTuple() : (initial_c_blocks = initial_c_blocks,)
+
     cloud = SMC.smc(my_likelihood, get_parameters(m), data;
             smc_seed = smc_seed,
             n_smc_groups = haskey(get_settings(m), :n_smc_groups) ? get_setting(m, :n_smc_groups) : 1,
@@ -436,7 +447,8 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
 	        tempered_update_prior_weight = tempered_update_prior_weight,
 
             regime_switching = regime_switching,
-            debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data)
+            debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data,
+            initial_c_blocks_kw...)
             #timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
 
     if run_csminwel
