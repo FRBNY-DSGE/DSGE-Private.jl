@@ -1,4 +1,5 @@
 using DSGE, ModelConstructors, HDF5, Random, JLD2, FileIO, SMC, Test, Dates, OrderedCollections
+using Distributions, LinearAlgebra
 
 # Vintage bridge through DSGE (smc2 / estimate): same model object (old_model === m, the
 # default), same priors, same number of periods; old_data = a "revised" vintage, data = a
@@ -9,6 +10,7 @@ using DSGE, ModelConstructors, HDF5, Random, JLD2, FileIO, SMC, Test, Dates, Ord
 #   3. estimate() passes the bridge arguments through (bitwise equal to smc2);
 #   4. identity bridge (old_data == data as a separate matrix): one stage, constant weights;
 #   5. the same with a regime-switching AnSchorfheide (old_model === m, regime-switching update).
+#   6. marginal_data_density on SMC files of every bridge type (conjugate toy, exact log p(Y)).
 
 path = dirname(@__FILE__)
 vb_dir = mktempdir()
@@ -126,6 +128,10 @@ end
     @test id2["cloud"].tempering_schedule == [0.0, 1.0]
     @test maximum(abs.(log.(id2["w"][:, 2]))) < 1e-8
     @test abs(id2["log_mdd_estimates"]["smc_level"] - lmdd_old) < 1e-8
+    # marginal_data_density reads the file's saved estimate, so it returns the level here too
+    # (recomputing from w, whose μ = 0 bridge weights leave out log p(Ỹ), would give the increment 0)
+    @test abs(marginal_data_density(m, vb_rev; smc_estimate_file = rawpath(m, "estimate", "smc_cloud.jld2",
+                                                                         ["ident_lpod"])) - lmdd_old) < 1e-8
 end
 
 @testset "Vintage bridge, regime-switching AnSchorfheide, old_model === m" begin
@@ -162,6 +168,52 @@ end
     @test maximum(abs.(SMC.get_old_loglh(cloud) .- fo)) < 1e-8
     @test maximum(abs.(SMC.get_loglh(cloud) .- fn)) < 1e-8
     @test maximum(abs.(fo .- fn)) > 1.0
+end
+
+
+# marginal_data_density(:incremental_weights) on SMC files of every bridge type, on a conjugate
+# toy whose log MDD is exact: since SMC fix B1 the saved w of a μ = 0 bridge with
+# log_prob_old_data leave out log p(Ỹ), so the MDD must come from the file's saved estimate.
+@testset "marginal_data_density on bridge files (conjugate toy, exact log p(Y))" begin
+    T, K = 40, 3
+    X  = let r = Xoshiro(17); randn(r, T, K) end
+    Y  = let r = Xoshiro(18); permutedims(X * [0.4, -0.6, 0.7] .+ randn(r, T)) end
+    YR = let r = Xoshiro(19); y = copy(Y); y[1, 21:end] .+= 0.8 .* randn(r, 20); y end
+    ll(θ, y) = -0.5 * T * log(2π) - 0.5 * sum(abs2, vec(y) .- X * θ)
+    lik(p, d) = ll([x.value for x in p], d)
+    oldlik(p, d; kw...) = ll([x.value for x in p], d)
+    function toy_params()
+        g = GenericModel()
+        for k in 1:K
+            g <= parameter(Symbol("θ$k"), 0., (-50., 50.), (-50., 50.), ModelConstructors.Untransformed(),
+                           Normal(0, 1.0), fixed = false)
+        end
+        g.parameters
+    end
+    exact(y) = (S = I + X * X'; -0.5 * T * log(2π) - 0.5 * logdet(S) - 0.5 * dot(vec(y), S \ vec(y)))
+    toy_run(name; data = Y, l = lik, kw...) = (p = joinpath(vb_dir, "toy_" * name * ".jld2");
+        SMC.smc(l, toy_params(), data; savepath = p, particle_store_path = replace(p, ".jld2" => ".h5"),
+                verbose = :none, n_parts = 2000, n_mh_steps = 2, c = 0.5, α = 0.9, use_fixed_schedule = false,
+                tempering_target = 0.95, n_Φ = 100, λ = 2.0, data_vintage = "191231", kw...); p)
+    pold = toy_run("old"; data = YR, l = oldlik, smc_seed = 1)
+    lp   = load(pold)["log_mdd_estimates"]["smc"]
+    B(; kw...) = (old_data = YR, old_cloud = deepcopy(load(pold)["cloud"]), old_loglikelihood = oldlik, kw...)
+    files = Dict("scratch"    => toy_run("s"; smc_seed = 2),
+                 "mu05_lpod"  => toy_run("a"; B(tempered_update_prior_weight = 0.5, log_prob_old_data = lp, smc_seed = 3)...),
+                 "mu0_nolpod" => toy_run("b"; B(smc_seed = 4)...),
+                 "mu0_lpod"   => toy_run("c"; B(log_prob_old_data = lp, smc_seed = 4)...))
+    m_toy = AnSchorfheide()                  # only a carrier for the method; the files are explicit
+    mdd(name; kw...) = marginal_data_density(m_toy, Y; smc_estimate_file = files[name], kw...)
+    for name in keys(files)
+        println("toy $name: marginal_data_density $(mdd(name)), exact log p(Y) $(exact(Y))")
+        @test mdd(name) == load(files[name])["log_mdd_estimates"]["smc"]
+    end
+    for name in ("scratch", "mu05_lpod", "mu0_lpod")      # the level
+        @test abs(mdd(name) - exact(Y)) < 0.1
+    end
+    @test abs(mdd("mu0_nolpod") - (exact(Y) - exact(YR))) < 0.1   # the increment, by convention
+    @test mdd("mu0_lpod") == mdd("mu0_nolpod") + lp              # B1 bookkeeping: level = increment + old MDD
+    @test abs(mdd("mu0_nolpod"; bridge_vec = [pold]) - exact(Y)) < 0.1   # increment + old file = level
 end
 
 rm(vb_dir; recursive = true, force = true)

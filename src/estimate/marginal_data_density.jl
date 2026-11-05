@@ -1,3 +1,16 @@
+# The file's log MDD from the incremental weights. Prefer the estimate SMC saved: since SMC fix B1
+# the saved w of a μ = 0 bridge with log_prob_old_data leave out log p̃(Ỹ), which SMC adds to
+# log_mdd_estimates["smc"] once, so recomputing from w would return the increment, not the level.
+# Pooled (n_smc_groups) files have no single weight history and always carry the estimate.
+# Files without log_mdd_estimates (older SMC) are recomputed from w as before.
+function smc_file_log_mdd(file)
+    haskey(file, "log_mdd_estimates") && return file["log_mdd_estimates"]["smc"]
+    w, W    = file["w"], file["W"]
+    n_parts = sum(W[:, 1])
+    w_W     = w[:, 2:end] .* W[:, 1:end-1] ./ n_parts
+    return sum(log.(sum(w_W, dims = 1)))
+end
+
 """
 ```
 marginal_data_density(m, data; estimation_method = :smc, calculation_method = :incremental_weights)
@@ -17,8 +30,10 @@ For calculating the log marginal data density for a given posterior sample.
 - `parallel::Bool`
 - `bridge_vec::Vector{String}`: Estimation cloud files for all the bridges up to a scratch estimation.
     Used for incremental weights calculation of MDD. Scratch is last. Use of this input is ONLY NECESSARY
-    if log_prob_old_data was NOT passed into SMC. Otherwise, the saved weights already
-    include the old-data MDD, and adding the old cloud through `bridge_vec` counts it twice.
+    if log_prob_old_data was NOT passed into SMC. Otherwise, the file's log MDD estimate already
+    includes the old-data MDD, and adding the old cloud through `bridge_vec` counts it twice.
+    Each file contributes its saved `log_mdd_estimates["smc"]` (see `smc_file_log_mdd`), or, for
+    files written before SMC saved it, the log MDD recomputed from its incremental weights.
 - `smc_estimate_file::String`: Specify estimation cloud file to use if estimation_method is SMC
 """
 function marginal_data_density(m::Union{AbstractDSGEModel,AbstractVARModel},
@@ -38,32 +53,37 @@ function marginal_data_density(m::Union{AbstractDSGEModel,AbstractVARModel},
         for bridge in length(bridge_vec):-1:1 ## Assuming that all bridges are SMC and so incremental method works
             read_h5 = bridge_vec[bridge][end-1:end] == "h5"
             file        = read_h5 ? h5read(bridge_vec[bridge], "smcparams") : load(bridge_vec[bridge])
-            if haskey(file, "n_smc_groups") # pooled run with particle groups (see below)
-                log_mdd += file["log_mdd_estimates"]["smc"]
-                continue
-            end
-
-            cloud, w, W = file["cloud"], file["w"], file["W"]
-            n_parts     = sum(W[:, 1])
-
-            w_W = w[:, 2:end] .* W[:, 1:end-1] ./ n_parts
-            log_mdd += sum(log.(sum(w_W, dims = 1))) # sum over particles, take log, sum over param
+            log_mdd += smc_file_log_mdd(file)    # also covers pooled (n_smc_groups) files
         end
 
         read_h5 = smc_estimate_file[end-1:end] == "h5"
         file        = read_h5 ? h5read(smc_estimate_file, "smcparams") : load(smc_estimate_file)
+        return log_mdd + smc_file_log_mdd(file)
+        #= Old: recomputed from w (except pooled files). Since SMC fix B1 the saved w of a μ = 0
+        # bridge with log_prob_old_data leave out log p̃(Ỹ), so this returned the increment
+        for bridge in length(bridge_vec):-1:1
+            read_h5 = bridge_vec[bridge][end-1:end] == "h5"
+            file        = read_h5 ? h5read(bridge_vec[bridge], "smcparams") : load(bridge_vec[bridge])
+            if haskey(file, "n_smc_groups") # pooled run with particle groups (see below)
+                log_mdd += file["log_mdd_estimates"]["smc"]
+                continue
+            end
+            cloud, w, W = file["cloud"], file["w"], file["W"]
+            n_parts     = sum(W[:, 1])
+            w_W = w[:, 2:end] .* W[:, 1:end-1] ./ n_parts
+            log_mdd += sum(log.(sum(w_W, dims = 1))) # sum over particles, take log, sum over param
+        end
+        read_h5 = smc_estimate_file[end-1:end] == "h5"
+        file        = read_h5 ? h5read(smc_estimate_file, "smcparams") : load(smc_estimate_file)
         if haskey(file, "n_smc_groups")
-            # A run with particle groups has no single weight history: use its pooled estimate
-            # (the groups' incremental-weight products, averaged on the level scale)
             return log_mdd + file["log_mdd_estimates"]["smc"]
         end
         cloud, w, W = file["cloud"], file["w"], file["W"]
         n_parts     = sum(W[:, 1])
-
         w_W = w[:, 2:end] .* W[:, 1:end-1] ./ n_parts
         log_mdd += sum(log.(sum(w_W, dims = 1))) # sum over particles, take log, sum over params
-
         return log_mdd
+        =#
 
     elseif calculation_method == :harmonic_mean
         free_para_inds = findall(x -> x.fixed == false, get_parameters(m))
@@ -310,10 +330,12 @@ function marginal_data_density_frontier(m::AbstractDSGEModel,
     if calculation_method == :incremental_weights
         #file = load(rawpath(m, "estimate", "smc_cloud.jld2", ["adpt="*string(get_setting(m, :tempering_target))]))
         file = load(rawpath(m, "estimate", "smc_cloud.jld2"))
+        return smc_file_log_mdd(file)    # see smc_file_log_mdd (SMC fix B1); also divides by N
+        #= Old: recomputed from w, without ./ n_parts
         cloud, w, W = file["cloud"], file["w"], file["W"]
         w_W = w[:, 2:end] .* W[:, 1:end-1]
-
         return sum(log.(sum(w_W, dims = 1))) # sum across particles, take log, sum across params
+        =#
 
     elseif calculation_method == :harmonic_mean
         free_para_inds = findall(x -> x.fixed == false, m.parameters)
