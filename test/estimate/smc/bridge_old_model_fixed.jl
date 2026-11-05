@@ -132,4 +132,41 @@ end
     @test_throws AssertionError DSGE.check_old_model_update(m_old, para_rs)
 end
 
+@testset "check_old_model_update: fixed parameters with unflagged regimes" begin
+    # A parameter fixed in the old model with regime values but no regimes[:fixed] flags:
+    # set_regime_val! still writes its regime-2 value, so the check must compare it
+    function rs2!(ps, vals)   # key => regime-2 value
+        for p in ps
+            haskey(vals, p.key) || continue
+            ModelConstructors.set_regime_val!(p, 1, p.value; override_bounds = true)
+            ModelConstructors.set_regime_val!(p, 2, vals[p.key]; override_bounds = true)
+        end
+        return ps
+    end
+    function oldm()
+        m = AnSchorfheide()
+        for (s, v) in ((:ρ_g, 0.5), (:ρ_z, 0.5))
+            m <= parameter(s, v, fixed = true)
+        end
+        rs2!(m.parameters, Dict(:ρ_g => 0.2, :ρ_z => 0.3))
+        for s in (:ρ_g, :ρ_z)
+            ModelConstructors.set_regime_valuebounds!(m[s], 2, (0.0, 1.0))
+        end
+        return m
+    end
+    newm = AnSchorfheide()
+    para = rs2!(deepcopy(newm.parameters), Dict(:ρ_g => 0.6, :ρ_z => 0.7))
+    ig, iz = newm.keys[:ρ_g], newm.keys[:ρ_z]
+
+    m = oldm()                                               # aligned: no false alarm
+    DSGE.update!(m, para; regime_switching = true)
+    @test m[:ρ_g].regimes[:value][2] == 0.6                  # written although the parameter is fixed
+    @test DSGE.check_old_model_update(m, para) === nothing
+
+    sw = copy(para); sw[ig], sw[iz] = para[iz], para[ig]     # swap of the two fixed parameters
+    m = oldm()
+    DSGE.update!(m, sw; regime_switching = true)
+    @test_throws AssertionError DSGE.check_old_model_update(m, para)
+end
+
 rm(bf_dir; recursive = true, force = true)

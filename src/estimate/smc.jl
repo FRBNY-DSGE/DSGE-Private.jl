@@ -469,8 +469,9 @@ the same key. `update!` assigns by position, so a mismatch means the two paramet
 not aligned. Entries fixed in `old_model` are skipped: `update!` never overwrites them, so they
 keep `old_model`'s fixed value even when the particle (from a model that frees them) differs.
 The rule for which entries are written mirrors `update!`: the value (and regime 1) if the
-parameter is not fixed, regime i if `regimes[:fixed][i]` is false (or, without it, if the
-parameter is not fixed).
+parameter is not fixed, regime i ≥ 2 if `regimes[:fixed][i]` is not true. A regime i ≥ 2 with
+no `regimes[:fixed]` flag is written even when the parameter is fixed (`set_regime_val!` only
+keeps flagged regimes), so it is checked too; to fix a regime, use `set_regime_fixed!`.
 """
 function check_old_model_update(old_model::AbstractDSGEModel, para2::AbstractVector)
     regime_flag(q, i) = haskey(q.regimes, :fixed) && haskey(q.regimes[:fixed], i) ?
@@ -481,7 +482,7 @@ function check_old_model_update(old_model::AbstractDSGEModel, para2::AbstractVec
         haskey(p.regimes, :value) || continue
         for i in keys(p.regimes[:value])
             flag    = regime_flag(q, i)
-            written = i == 1 ? (!q.fixed && flag !== true) : (flag === nothing ? !q.fixed : !flag)
+            written = i == 1 ? (!q.fixed && flag !== true) : (flag === nothing ? true : !flag)
             written || continue
             @assert q.regimes[:value][i] == p.regimes[:value][i] "old_model's $(p.key) regime $i = " *
                 "$(q.regimes[:value][i]) but the particle has $(p.regimes[:value][i])"
