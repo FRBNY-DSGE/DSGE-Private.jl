@@ -114,16 +114,18 @@ end
     @test isnan(id["log_mdd_estimates"]["smc_level"])
     @test abs(id["log_mdd_estimates"]["smc"]) < 1e-8
 
-    # 4b. the same with log_prob_old_data = the old MDD: exp(Δϕ log p(Ỹ)) underflows once
-    # Δϕ |log p(Ỹ)| > 745, so the run takes an extra stage at the underflow boundary and its MDD
-    # is off (first run, job 343018: schedule [0, 0.6404, 1], MDD level error 0.288). Known bug.
+    # 4b. the same with log_prob_old_data = the old MDD. Before SMC fix B1, exp(Δϕ log p(Ỹ)) underflowed once
+    # Δϕ |log p(Ỹ)| > 745, so the run took an extra stage at the underflow boundary and its MDD
+    # was off (job 343018: schedule [0, 0.6404, 1], MDD level error 0.288). SMC now keeps log p(Ỹ)
+    # out of the weights and adds it to the MDD once: one stage, weights 1, exact level.
     smc2(m, vb_rev; verbose = :none, run_csminwel = false, filestring_addl = ["ident_lpod"],
          old_data = same, old_cloud = deepcopy(old_cloud), log_prob_old_data = lmdd_old)
     id2 = load(rawpath(m, "estimate", "smc_cloud.jld2", ["ident_lpod"]))
     println("identity with log_prob_old_data = $lmdd_old: schedule ", id2["cloud"].tempering_schedule,
             ", MDD level error ", id2["log_mdd_estimates"]["smc_level"] - lmdd_old)
-    @test_broken id2["cloud"].tempering_schedule == [0.0, 1.0]
-    @test_broken abs(id2["log_mdd_estimates"]["smc_level"] - lmdd_old) < 1e-8
+    @test id2["cloud"].tempering_schedule == [0.0, 1.0]
+    @test maximum(abs.(log.(id2["w"][:, 2]))) < 1e-8
+    @test abs(id2["log_mdd_estimates"]["smc_level"] - lmdd_old) < 1e-8
 end
 
 @testset "Vintage bridge, regime-switching AnSchorfheide, old_model === m" begin
