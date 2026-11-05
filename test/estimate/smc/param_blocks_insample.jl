@@ -19,18 +19,19 @@ using DSGE, ModelConstructors, SMC, Test, Dates, Random, LinearAlgebra, JLD2, Fi
 #      uninterrupted run (particles, weights, per-block c), and it really resumed.
 # Workers are used if the session has them (julia -p N), else the run is serial, as in the suite.
 
-# Model1002 ss104 as the production forecast builds it (2026Q3 forecast: 29 regimes, regime 2 starts
-# in 2020Q1). Same as likelihood_insample_regimes.jl.
+# Model1002 ss104 built for a 2026Q3 forecast (29 regimes, regime 2 starts in 2020Q1), with the spec of
+# the blocked 2019Q4 estimation: no SPF short-run inflation expectations (add_avgshortinfl = false)
+# and no anticipated mark-up shocks (add_ant_markup_shocks_ind = 0). likelihood_insample_regimes.jl
+# builds the older production spec, with both on.
 function build_ss104(; extra = Setting[])
     Model1002("ss104", custom_settings = vcat([Setting(:date_forecast_start, Date(2026, 9, 30)),
                                                Setting(:date_conditional_end, Date(2026, 9, 30)),
-                                               Setting(:add_ant_markup_shocks_ind, 2),
-                                               Setting(:fix_ant_markup_shocks_0, false),
-                                               Setting(:add_avgshortinfl, true)], extra))
+                                               Setting(:add_ant_markup_shocks_ind, 0),
+                                               Setting(:add_avgshortinfl, false)], extra))
 end
 
 # Data simulated from regime 1 of `sys`, from date_presample_start(m) to `last_date`. Copied from
-# likelihood_insample_regimes.jl (the same draws: its data104 truncated at 2019Q4).
+# likelihood_insample_regimes.jl (same function and seed; the draws differ, as the spec differs).
 function simulated_data(m, sys, last_date, keep; rng = MersenneTwister(20261031))
     n_periods = DSGE.subtract_quarters(last_date, date_presample_start(m)) + 1
     mat(key) = sys isa RegimeSwitchingSystem ? sys[1, key] : sys[key]
@@ -178,21 +179,30 @@ end
     @test isequal(L, loglh)                          # bitwise (=== per element)
     @test [(ModelConstructors.toggle_regime!(m_ref.parameters, 1); DSGE.update!(m_ref, P[i, :]);
             ModelConstructors.prior(m_ref.parameters)) for i in 1:N_PART] == logprior
-    # Witness: the full solve rejects some of the final particles (a run with full-solve likelihoods
-    # never keeps such a particle). 40 distinct particles are enough: about half are rejected.
-    rows = unique(i -> P[i, :], 1:N_PART)[1:min(40, end)]
-    L_full = [fresh_lik(m_ref, P[i, :]; insample = false) for i in rows]
-    @info "param_blocks_insample: witness: the full solve rejects $(count(==(-Inf), L_full)) of $(length(rows)) distinct final particles"
+    # Witness: the full solve rejects some particles of the stage-2 save (a run with full-solve
+    # likelihoods never holds such a particle: initial draws are redrawn until finite, and MH rejects
+    # -Inf). Stage 2 is used, not the final cloud: the final cloud often descends from 1-4 ancestors
+    # in the non-ρ_σ_w slots, so its count would be 1-4 draws, not 40. At stage 2 the particles are
+    # still distinct prior draws, about 3 in 4 of which the full solve rejects.
+    c2 = load(rawpath(m, "estimate", "smc_cloud") * "_stage=2.jld2", "cloud")
+    P2, loglh2 = c2.particles[:, 1:n_para], SMC.get_loglh(c2)
+    rows = unique(i -> P2[i, :], 1:N_PART)[1:min(20, end)]
+    @test isequal([fresh_lik(m_ref, P2[i, :]) for i in rows], loglh2[rows])
+    L_full = [fresh_lik(m_ref, P2[i, :]; insample = false) for i in rows]
+    @info "param_blocks_insample: witness: the full solve rejects $(count(==(-Inf), L_full)) of $(length(rows)) distinct stage-2 particles"
     @test count(==(-Inf), L_full) > 0
-    @test all(i -> L_full[i] == -Inf || L_full[i] === loglh[rows[i]], eachindex(rows))
+    @test all(i -> L_full[i] == -Inf || L_full[i] === loglh2[rows[i]], eachindex(rows))
 end
 
 @testset "2. Every fixed slot is the same in all particles and equals its fixed value" begin
     fixed_inds = findall(fixed_slot)
     @test all(j -> all(==(v_start[j]), P[:, j]), fixed_inds)
     @test all(P[:, findfirst(==((:ψ1, 2)), all_slots)] .== 0.995)
-    # the free slots did move
-    @test all(j -> length(unique(P[:, j])) > 1, findall(.!fixed_slot))
+    # the free slots were drawn (not left at their start values) and both blocks were mutated. Not
+    # "takes more than one value": with a short schedule the final cloud can collapse onto a single
+    # ancestor in the rest block (seen with the 2019Q4 run's spec)
+    @test all(j -> any(!=(v_start[j]), P[:, j]), findall(.!fixed_slot))
+    @test all(>(0), maximum(full["stage_health"]["accept_blocks"], dims = 2))
 end
 
 @testset "3. Blocks: {ρ_σ_w} and every other free slot; no fixed slot in a block" begin
