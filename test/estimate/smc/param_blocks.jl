@@ -55,6 +55,10 @@ end
     @test resumed["w"] == full["w"] && resumed["W"] == full["W"]
     @test resumed["stage_health"]["c_blocks"] == full["stage_health"]["c_blocks"]
     @test resumed["stage_health"]["accept_blocks"] == full["stage_health"]["accept_blocks"]
+    # SMC's RNG streams are keyed by stage, so a silent restart from stage 1 would also match
+    # bitwise. Stages 1:k-1 must come from the checkpoint: their wall-clock times are carried
+    # over unchanged (a restart re-times them).
+    @test resumed["stage_health"]["time"][1:k-1] == full["stage_health"]["time"][1:k-1]
 
     # Resuming with other blocks, without blocks, or with a shared c is refused
     m2 = deepcopy(m); m2 <= Setting(:smc_param_blocks, [[:ρ_z]])
@@ -66,6 +70,15 @@ end
     m4 = deepcopy(m); m4 <= Setting(:smc_blockwise_c, false)
     @test_throws ArgumentError smc2(m4, blk_data; verbose = :none, run_csminwel = false,
                                     continue_intermediate = true, intermediate_stage_start = k)
+
+    # The resume starts from the checkpoint's particles: perturbing them changes the result
+    # (a restart from stage 1 would ignore the checkpoint and match the full run again)
+    ck = load(ckpt)
+    ck["cloud"].particles[1, 1] += 1e-3
+    save(ckpt, ck)
+    smc2(m, blk_data; verbose = :none, run_csminwel = false, continue_intermediate = true,
+         intermediate_stage_start = k)
+    @test load(final)["cloud"].particles != full["cloud"].particles
 end
 
 @testset "ss104: block names point at the right parameter and regime" begin
@@ -89,6 +102,7 @@ end
     names = only(load(joinpath(dir, "all.jld2"), "param_blocks"))
     free  = ModelConstructors.get_free_para_inds(params; regime_switching = true, toggle = true)
     @test length(names) == length(free)
+    @test length(free) == 101                                  # of the 184 parameter-regime entries
     @test :ρ_σ_w in names && :σ_g_reg2 in names && :σ_ziid_reg3 in names
     @test !(:σ_r_m_reg2 in names) && :σ_r_m in names          # regime 2 fixed, regime 1 free
 
@@ -113,9 +127,9 @@ end
     @test out["param_blocks"] == [[:ρ_σ_w], Base.filter(!=(:ρ_σ_w), names)]
     @test out["stage_health"]["block_labels"] == ["ρ_σ_w", "rest"]
 
-    # Fixed parameters and fixed regimes cannot be blocks
-    @test_throws ArgumentError run_smc("fix1"; param_blocks = [[:σ_r_m_reg2]])
-    @test_throws ArgumentError run_smc("fix2"; param_blocks = [[:σ_φ_prop_reg2]])
+    # Fixed parameters and fixed regimes cannot be blocks (refused as fixed, not as unknown names)
+    @test_throws ArgumentError("param_blocks: parameter σ_r_m_reg2 is fixed") run_smc("fix1"; param_blocks = [[:σ_r_m_reg2]])
+    @test_throws ArgumentError("param_blocks: parameter σ_φ_prop_reg2 is fixed") run_smc("fix2"; param_blocks = [[:σ_φ_prop_reg2]])
     rm(dir; recursive = true, force = true)
 end
 
@@ -123,6 +137,9 @@ end
     m = blk_model("sbc")
     s = DSGE.sbc_smc_settings(m)
     @test s.param_blocks == [[:ρ_z], [:σ_R, :σ_g]] && s.blockwise_c
+    # smc_sbc itself forwards them: a block name SMC rejects stops smc_sbc with SMC's error
+    m <= Setting(:smc_param_blocks, [[:not_a_param]])
+    @test_throws ArgumentError("param_blocks: unknown parameter not_a_param") smc_sbc(m, 80; reps = 1:1, n_draws = 19, seed = 3)
 end
 
 rm(blk_dir; recursive = true, force = true)
