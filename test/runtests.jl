@@ -118,6 +118,7 @@ my_tests = [
             "estimate/smc/regime_switching_smc",
             "estimate/smc/reliability",
             "estimate/smc/resample",
+            "estimate/smc/reuse_system",
             "estimate/smc/smc",
             "estimate/smc/util",
             "estimate/transform_transition_matrices",

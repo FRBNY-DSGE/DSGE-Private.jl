@@ -69,6 +69,11 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
     sampling on the final cloud (`bridge_sampling` and `n_bridge_draws` for `SMC.smc`).
     Every run also saves its per-stage health record, health flags and the modified harmonic
     mean log MDD; see `plot_smc_stage_health`.
+- `smc_reuse_system_new_params::Bool`: In a bridge with `old_model === m` (the default), evaluate
+    each proposal's old-data likelihood on the system just solved for its new-data likelihood
+    instead of solving the model a second time. The old-data likelihood is bitwise the same, as
+    the system depends only on the parameters. Off when parameters or regimes are dropped for
+    the old model or `regime_switching` differs from the `:regime_switching` setting. Default: false.
 
 ### Keyword Arguments
 - `old_data::Matrix{Float64}` = []: A matrix containing the time series of observables of previous data
@@ -261,6 +266,15 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
         end
 
         @assert isnothing(findfirst(x -> !(x in m_para_keys), old_model_para_keys))
+        # SMC calls the old likelihood with new_model_params = true whenever it is a separate
+        # function, which it always is here, so the reuse branch below never ran in a bridge.
+        # With old_model === m, nothing deleted and the same regime_switching for both
+        # update! calls, the new_model_params branch is the identity (para2 == parameters), so
+        # the system just solved for the new data is the one the old data would get: reuse it.
+        # Opt-in via :smc_reuse_system_new_params (default false = the original behaviour).
+        reuse_despite_new_params = reuse_same_model_system && isempty(key_del) && isempty(reg_del) &&
+            old_regime_switching == regime_switching &&
+            haskey(get_settings(m), :smc_reuse_system_new_params) && get_setting(m, :smc_reuse_system_new_params)
     end
 
 
@@ -275,7 +289,7 @@ function smc2(m::Union{AbstractDSGEModel,AbstractVARModel}, data::Matrix{Float64
                 return -Inf
             end
             last_new_likelihood[] = NaN
-            if reuse_same_model_system && !new_model_params && !isnothing(shared_system[])
+            if reuse_same_model_system && (!new_model_params || reuse_despite_new_params) && !isnothing(shared_system[])
                 try
                     return likelihood(m, data; sampler = false, catch_errors = true,
                                       use_chand_recursion = use_chand_recursion,
