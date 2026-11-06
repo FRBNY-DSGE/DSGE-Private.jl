@@ -75,7 +75,7 @@ end
     # (a restart from stage 1 would ignore the checkpoint and match the full run again)
     ck = load(ckpt)
     ck["cloud"].particles[1, 1] += 1e-3
-    save(ckpt, ck)
+    FileIO.save(ckpt, ck)
     smc2(m, blk_data; verbose = :none, run_csminwel = false, continue_intermediate = true,
          intermediate_stage_start = k)
     @test load(final)["cloud"].particles != full["cloud"].particles
