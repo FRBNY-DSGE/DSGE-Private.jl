@@ -42,7 +42,7 @@ function eqcond(m::Model1002, reg::Int)
     # production uses to stay consistent with the ss97 cloud, which was estimated without these
     # shocks. New ss104 estimations (legacy loadings off, the default) get them.
     toggle_covid_prop = subspec(m) == "ss207" ||
-        (subspec(m) == "ss104" && !use_legacy_gdp_gdi_meas_err_loadings(m))
+        (subspec(m) in ("ss104", "ss114") && !use_legacy_gdp_gdi_meas_err_loadings(m)) # ss114 = ss104 without AIT
 
     for para in m.parameters
         if !isempty(para.regimes)

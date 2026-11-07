@@ -139,6 +139,8 @@ function init_subspec!(m::Model1002)
         return ss103!(m)
     elseif subspec(m) == "ss104"
         return ss104!(m)
+    elseif subspec(m) == "ss114"
+        return ss114!(m)
     elseif subspec(m) == "ss110"
         return ss110!(m)
     elseif subspec(m) == "ss205"
@@ -7149,6 +7151,108 @@ function ss104!(m)
 
 
 
+end
+
+"""
+'''
+ss114!(m::Model1002)
+'''
+
+ss114 is ss104 without the switch to flexible AIT, and hence without imperfect credibility between AIT and
+the Taylor rule. It is identical to ss104 through 2020Q3. The realized temporary ZLB is unchanged
+(2020Q4-2021Q4, model regimes 5-9, liftoff in 2022Q1 = regime 10), and so are the ZLB lengths agents expect
+in each ZLB quarter: 2020Q4 through 2024Q1, 2021Q1-Q2 through 2023Q2, 2021Q3 through 2023Q1 and 2021Q4
+through 2022Q1. These beliefs are held with full credibility, with the historical (Taylor) rule after the
+expected liftoff. From liftoff on, the historical rule is implemented and perfectly credible.
+
+Implementation: ss104!, then
+- of ss104's nine perfectly credible alternative policies (`setup_historical_expectations!`), keep the four
+  "expected ZLB length, then Taylor" ones and drop the "then AIT" ones and `two_rule`. Each ZLB regime puts
+  weight 1 on its alternative (the same one that has weight 1 - c_t in ss104). The quarter-specific expected
+  ZLB lengths still need the uncertain-altpolicy machinery: a single perfect-foresight gensys2 path cannot
+  have them, so ss114 keeps `:uncertain_altpolicy` with degenerate (0/1) weights.
+- from liftoff on, every `:regime_eqcond_info` entry is the default (Taylor) policy with weight 1 on it.
+- the Taylor shocks are on again after liftoff, at their regime-1 values: σ_r_m and σ_r_m1-6 map to parameter
+  regime 1 in every model regime, except that the contemporaneous shock stays off in 2021Q3-Q4 (regimes 8-9),
+  as with ss104's `:remove_rm_t_shocks = 8`, now via σ_r_m regime 2 (fixed at 0) in those two regimes.
+- the AIT policy shocks (σ_ait_rm, σ_ait_r_m1-6) enter the Taylor rule through ait_rm_t (`:add_taylor_rm`),
+  so they are switched off in every regime (mapped to their parameter regime 1, fixed at 0); their regime-2
+  values and ρ_ait_rm no longer enter and are fixed at the ss104 defaults.
+- the price- and output-gap states and their 2020Q2 initialization observables are not built
+  (`init_settings!`), and the AIT gap settings are removed.
+"""
+function ss114!(m)
+    ss104!(m)
+
+    regime_dates = get_setting(m, :regime_dates)
+    @assert regime_dates[5] == Date(2020, 12, 31) && regime_dates[9] == Date(2021, 12, 31) && regime_dates[10] == Date(2022, 3, 31) "ss114 expects the ZLB in regimes 5-9 and liftoff in regime 10"
+    eqinfo  = get_setting(m, :regime_eqcond_info)
+    altpols = get_setting(m, :alternative_policies)
+    n_reg   = get_setting(m, :n_regimes)
+
+    # ss104's alternatives: 1 two_rule; 2k / 2k+1 = (expected ZLB length, then AIT / then Taylor)
+    expected_keys = [:two_rule, :longzlb_ait, :longzlb_taylor, :longzlb_ait_2021Q1_Q3, :longzlb_taylor_2021Q1_Q3,
+                     :longzlb_ait_2020Q4, :longzlb_taylor_2020Q4, :superlongzlb_ait, :superlongzlb_taylor]
+    @assert [a.key for a in altpols] == expected_keys "ss114: unexpected ss104 alternative policies $([a.key for a in altpols])"
+
+    # ZLB regime => ss104 index of its "then Taylor" alternative, and the last expected ZLB regime of that alternative
+    taylor_alt = Dict(5 => 9, 6 => 7, 7 => 7, 8 => 5, 9 => 3)
+    last_zlb   = Dict(9 => 18, 7 => 15, 5 => 14, 3 => 10)   # 2024Q1, 2023Q2, 2023Q1, 2022Q1
+    keep = [3, 5, 7, 9]                                      # ss114 alternatives, in this order
+    for (r, a) in taylor_alt
+        w = eqinfo[r].weights
+        @assert eqinfo[r].alternative_policy.key == :zlb_rule && length(w) == length(altpols) + 1 &&
+            w[a + 1] == 1 - w[a] && all(iszero, w[setdiff(1:length(w), [a, a + 1])]) "ss114: unexpected ss104 weights in regime $r: $w"
+    end
+    for a in keep
+        info = altpols[a].regime_eqcond_info
+        @assert all(info[r].alternative_policy.key == (r <= last_zlb[a] ? :zlb_rule : :default_policy) for r in keys(info)) "ss114: alternative $(altpols[a].key) is not ZLB through regime $(last_zlb[a]), then Taylor"
+    end
+
+    # Imperfect awareness with degenerate weights: regime r's beliefs are its alternative, with weight 1
+    new_altpols = DSGE.AbstractAltPolicy[altpols[a] for a in keep]
+    for r in sort!(collect(keys(eqinfo)))
+        w = zeros(length(new_altpols) + 1)
+        if r < 10
+            w[findfirst(==(taylor_alt[r]), keep) + 1] = 1.0
+        else
+            eqinfo[r] = DSGE.EqcondEntry(DSGE.default_policy(), w) # the historical rule is implemented ...
+            w[1] = 1.0                                             # ... and perfectly credible
+        end
+        eqinfo[r].weights = w
+    end
+    @assert sort!(collect(keys(eqinfo))) == collect(5:n_reg)
+    m <= Setting(:regime_eqcond_info, eqinfo)
+    m <= Setting(:alternative_policies, new_altpols)
+
+    m2p = get_setting(m, :model2para_regime)
+    # Taylor-rule shocks at their regime-1 values after 2020; the contemporaneous one stays off in regimes 8-9
+    # (ss104's :remove_rm_t_shocks = 8 switched it off from regime 8 on, by Ψ and QQ)
+    delete!(get_settings(m), :remove_rm_t_shocks)
+    @assert ModelConstructors.regime_val(m[:σ_r_m], 2) == 0.0 && ModelConstructors.regime_fixed(m[:σ_r_m], 2)
+    m2p[:σ_r_m] = Dict(r => (r in (8, 9) ? 2 : 1) for r in 1:n_reg)
+    for i in 1:n_mon_anticipated_shocks(m)
+        m2p[Symbol("σ_r_m$i")] = Dict(r => 1 for r in 1:n_reg)
+    end
+
+    # AIT policy shocks off everywhere (they would enter the Taylor rule via ait_rm_t); fix what no longer enters
+    for k in vcat(:σ_ait_rm, [Symbol("σ_ait_r_m$i") for i in mon_anticipated_ait_shocks(m)])
+        @assert ModelConstructors.regime_val(m[k], 1) == 0.0 && ModelConstructors.regime_fixed(m[k], 1)
+        m2p[k] = Dict(r => 1 for r in 1:n_reg)
+        set_regime_fixed!(m[k], 2, true)
+    end
+    let p = m[:ρ_ait_rm]
+        m <= parameter(p.key, p.value, p.valuebounds, p.transform_parameterization, p.transform, get(p.prior);
+                       fixed = true, description = p.description, tex_label = p.tex_label)
+    end
+    m <= Setting(:model2para_regime, m2p)
+
+    # No AIT gap states in ss114 (init_settings!): drop the AIT gap settings
+    for k in (:pgap_type, :ygap_type, :pgap_value, :ygap_value)
+        delete!(get_settings(m), k)
+    end
+
+    ModelConstructors.toggle_regime!(m.parameters, 1)
 end
 
 """
