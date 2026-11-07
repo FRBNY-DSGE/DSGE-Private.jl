@@ -7231,8 +7231,10 @@ function ss114!(m)
     delete!(get_settings(m), :remove_rm_t_shocks)
     @assert ModelConstructors.regime_val(m[:σ_r_m], 2) == 0.0 && ModelConstructors.regime_fixed(m[:σ_r_m], 2)
     m2p[:σ_r_m] = Dict(r => (r in (8, 9) ? 2 : 1) for r in 1:n_reg)
+    # (anticipated ones off after the forecast-start regime, as ss104 has its anticipated policy shocks there)
     for i in 1:n_mon_anticipated_shocks(m)
-        m2p[Symbol("σ_r_m$i")] = Dict(r => 1 for r in 1:n_reg)
+        @assert ModelConstructors.regime_val(m[Symbol("σ_r_m$i")], 2) == 0.0
+        m2p[Symbol("σ_r_m$i")] = Dict(r => (r > get_setting(m, :cur_model_regime) ? 2 : 1) for r in 1:n_reg)
     end
 
     # AIT policy shocks off everywhere (they would enter the Taylor rule via ait_rm_t); fix what no longer enters
