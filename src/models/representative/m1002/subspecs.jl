@@ -7172,9 +7172,11 @@ Implementation: ss104!, then
   ZLB lengths still need the uncertain-altpolicy machinery: a single perfect-foresight gensys2 path cannot
   have them, so ss114 keeps `:uncertain_altpolicy` with degenerate (0/1) weights.
 - from liftoff on, every `:regime_eqcond_info` entry is the default (Taylor) policy with weight 1 on it.
-- the Taylor shocks are on again after liftoff, at their regime-1 values: σ_r_m and σ_r_m1-6 map to parameter
-  regime 1 in every model regime, except that the contemporaneous shock stays off in 2021Q3-Q4 (regimes 8-9),
-  as with ss104's `:remove_rm_t_shocks = 8`, now via σ_r_m regime 2 (fixed at 0) in those two regimes.
+- the Taylor shocks take their regime-1 values after 2020: the contemporaneous σ_r_m is off for the whole ZLB
+  (2020Q4-2021Q4, regimes 5-9, via its regime 2 fixed at 0) and on from liftoff; the anticipated σ_r_m1-6 are on
+  in 2021Q4 (regime 9, exempt from the ZLB rule's removal via
+  `:zlb_rule_keep_mon_anticipated_shocks_regimes = 9:n_regimes`), off in ZLB regimes 5-8 and in the forecast
+  regime after the forecast start.
 - the AIT policy shocks (σ_ait_rm, σ_ait_r_m1-6) enter the Taylor rule through ait_rm_t (`:add_taylor_rm`),
   so they are switched off in every regime (mapped to their parameter regime 1, fixed at 0); their regime-2
   values and ρ_ait_rm no longer enter and are fixed at the ss104 defaults.
@@ -7226,12 +7228,18 @@ function ss114!(m)
     m <= Setting(:alternative_policies, new_altpols)
 
     m2p = get_setting(m, :model2para_regime)
-    # Taylor-rule shocks at their regime-1 values after 2020; the contemporaneous one stays off in regimes 8-9
-    # (ss104's :remove_rm_t_shocks = 8 switched it off from regime 8 on, by Ψ and QQ)
+    # Taylor-rule shocks at their regime-1 values after 2020 (Marco, 7 Nov):
+    # - the contemporaneous one is off for the whole ZLB, 2020Q4-2021Q4 (regimes 5-9), via its regime 2 (fixed at 0),
+    #   instead of ss104's :remove_rm_t_shocks = 8 (off from regime 8 on, by Ψ and QQ)
     delete!(get_settings(m), :remove_rm_t_shocks)
     @assert ModelConstructors.regime_val(m[:σ_r_m], 2) == 0.0 && ModelConstructors.regime_fixed(m[:σ_r_m], 2)
-    m2p[:σ_r_m] = Dict(r => (r in (8, 9) ? 2 : 1) for r in 1:n_reg)
-    # (anticipated ones off after the forecast-start regime, as ss104 has its anticipated policy shocks there)
+    m2p[:σ_r_m] = Dict(r => (5 <= r <= 9 ? 2 : 1) for r in 1:n_reg)
+    # - the anticipated ones are on in 2021Q4 (regime 9; they replace ss104's anticipated AIT shocks there): the
+    #   ZLB rule keeps them, and their propagation to rm_t, from regime 9 on. In the realized system only regime 9 is
+    #   a ZLB regime from then on; in the belief systems the later expected-ZLB quarters also keep the propagation,
+    #   so news received in 2021Q4 reaches the expected post-liftoff rate. ZLB regimes 5-8 still remove them.
+    m <= Setting(:zlb_rule_keep_mon_anticipated_shocks_regimes, collect(9:n_reg))
+    # - anticipated ones off after the forecast-start regime, as ss104 has its anticipated policy shocks there
     for i in 1:n_mon_anticipated_shocks(m)
         @assert ModelConstructors.regime_val(m[Symbol("σ_r_m$i")], 2) == 0.0
         m2p[Symbol("σ_r_m$i")] = Dict(r => (r > get_setting(m, :cur_model_regime) ? 2 : 1) for r in 1:n_reg)

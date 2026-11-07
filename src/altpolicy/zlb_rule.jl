@@ -26,9 +26,14 @@ function zlb_rule_replace_eq_entries(m::AbstractDSGEModel,
                       forecast_zlb_value(m))) - m[:Rstarn]
 
     # Default behavior of ZLB rule is to remove anticipated monetary policy shocks,
-    # but this setting can turn it off.
-    if !haskey(get_settings(m), :zlb_rule_remove_mon_anticipated_shocks) ||
-        get_setting(m, :zlb_rule_remove_mon_anticipated_shocks)
+    # but this setting can turn it off. The optional setting
+    # :zlb_rule_keep_mon_anticipated_shocks_regimes (a collection of model regimes; absent by
+    # default) exempts those regimes from the removal, so the anticipated shocks and their
+    # propagation to rm_t stay as in eqcond there (e.g. ss114: from 2021Q4 on).
+    keep_ant = haskey(get_settings(m), :zlb_rule_keep_mon_anticipated_shocks_regimes) &&
+        reg in get_setting(m, :zlb_rule_keep_mon_anticipated_shocks_regimes)
+    if (!haskey(get_settings(m), :zlb_rule_remove_mon_anticipated_shocks) ||
+        get_setting(m, :zlb_rule_remove_mon_anticipated_shocks)) && !keep_ant
         Γ1[eq[:eq_rm], endo[:rm_tl1]]   = 0.
         Γ0[eq[:eq_rml1], endo[:rm_tl1]] = 1.
         Ψ[eq[:eq_rml1], exo[:rm_shl1]]  = 0.
