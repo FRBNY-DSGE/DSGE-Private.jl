@@ -101,7 +101,6 @@ my_tests = [
             "estimate/nearest_spd",
             "estimate/nelder_mead",
             "estimate/optimize",
-            "estimate/optimize_dssw",
             "estimate/poolmodel_tpf",
             "estimate/posterior",
             "estimate/posterior_poolmodel",
@@ -212,6 +211,7 @@ const nonstandalone_test_files = Set([
     "estimate/optimize_ss10.jl",              # loads a personal includeall.jl outside the checkout
     "estimate/optimize_ss10_pso.jl",           # loads a personal includeall.jl outside the checkout
     "estimate/optimize2.jl",                  # legacy script depends on globals from another script and has no assertions
+    "estimate/optimize_dssw.jl",              # diagnostic script has no assertions and writes optimizer output into test/reference
     "estimate/optimize_dssw_pso.jl",          # requests unsupported :pso_meta and has no assertions
     "estimate/hessizero_large.jl",            # diagnostic/stress script has no assertions
     "estimate/hessizero_rosenbrock.jl",        # assertions are commented out; diagnostic script only
