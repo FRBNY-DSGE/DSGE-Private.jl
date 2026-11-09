@@ -56,6 +56,87 @@ end
     @test all(isequal(out[key], fresh[key]) for key in keys(fresh))
 end
 
+@testset "align_rows puts an old model's rows on the new model's variables by name" begin
+    x = [1. 2.; 3. 4.; 5. 6.]
+    @test DSGE.align_rows(x, [:a, :b, :c], [:a, :b, :c]) === x       # same variables: untouched
+    y = DSGE.align_rows(x, [:a, :b, :c], [:c, :a])
+    @test y == [5. 6.; 1. 2.]
+    z = DSGE.align_rows(x, [:a, :b, :c], [:b, :d])
+    @test z[1, :] == [3., 4.] && all(isnan, z[2, :])
+    s = reshape(collect(1.:12.), 3, 2, 2)                             # shockdec-shaped
+    @test DSGE.align_rows(s, [:a, :b, :c], [:c, :a]) == s[[3, 1], :, :]
+    @test_throws DimensionMismatch DSGE.align_rows(x, [:a, :b], [:a])
+    @test DSGE.dict_names_by_index(Dict(:b => 2, :a => 1, :c => 3)) == [:a, :b, :c]
+end
+
+# Production's November ss104 (m_new) has no anticipated mark-up shocks and no SPF short-run inflation
+# observable; the September model it is compared with (m_old) has both: 130 vs 132 parameters,
+# 48 vs 50 shocks, 28 vs 29 observables.
+ss104_new(fd) = Model1002("ss104", custom_settings = [Setting(:date_forecast_start, fd),
+                                                      Setting(:date_conditional_end, fd),
+                                                      Setting(:forecast_horizons, 12)])
+ss104_old(fd) = Model1002("ss104", custom_settings = [Setting(:date_forecast_start, fd),
+                                                      Setting(:date_conditional_end, fd),
+                                                      Setting(:add_ant_markup_shocks_ind, 2),
+                                                      Setting(:fix_ant_markup_shocks_0, false),
+                                                      Setting(:add_avgshortinfl, true),
+                                                      Setting(:forecast_horizons, 12)])
+
+# The model's flat parameter vector with each free regime-1 value moved a fraction of the way toward
+# its upper bound (or +1). Some regime-1 defaults (e.g. ρ_meas_π = 0) sit outside their own bounds,
+# which update! rejects, so every value is also kept just inside its bounds.
+function shifted_params(mm, frac)
+    v = ModelConstructors.get_values(mm.parameters; regime_switching = true)
+    for (i, p) in enumerate(mm.parameters)
+        p isa ModelConstructors.Parameter || continue
+        lb, ub = p.valuebounds
+        ub - lb > 2e-6 || continue
+        p.fixed || (v[i] += frac * (min(ub, v[i] + 1) - v[i]))
+        v[i] = clamp(v[i], lb + 1e-6, ub - 1e-6)
+    end
+    v
+end
+
+@testset "new_params_on_old_model: new estimates on an old model with other parameters, by name" begin
+    m_new, m_old = ss104_new(Date(2026, 9, 30)), ss104_old(Date(2026, 6, 30))
+    @test length(m_new.parameters) < length(m_old.parameters)
+    @test !DSGE.same_parameter_names(m_new, m_old)
+    @test DSGE.same_parameter_names(m_old, deepcopy(m_old))
+
+    p_new, p_old = shifted_params(m_new, 0.10), shifted_params(m_old, 0.05)
+    mn = deepcopy(m_new); DSGE.update!(mn, p_new)
+    mo = deepcopy(m_old); DSGE.update!(mo, p_old)
+
+    m_old_copy = deepcopy(m_old)
+    pars, vals = DSGE.new_params_on_old_model(m_new, m_old, p_new, p_old)
+    @test [p.key for p in pars] == [p.key for p in m_old.parameters]       # old model's order
+    is_new(k) = get(mn.keys, k, 0) in 1:length(mn.parameters)
+    val1(p) = haskey(p.regimes, :value) ? p.regimes[:value][1] : p.value   # regime-1 value
+    @test all(val1(p) == val1((is_new(p.key) ? mn : mo)[p.key]) for p in pars)
+    @test all(isequal(get(p.regimes, :value, nothing), get((is_new(p.key) ? mn : mo)[p.key].regimes, :value, nothing))
+              for p in pars)
+    @test val1(pars[m_old.keys[:σ_λ_f1]]) == val1(mo[:σ_λ_f1])              # old-only: old value
+    @test val1(pars[m_old.keys[:σ_g]]) == val1(mn[:σ_g])                    # shared: new value
+    @test val1(mn[:σ_g]) != val1(mo[:σ_g])
+    # Neither input model is changed
+    @test all(m_old.parameters[i].value == m_old_copy.parameters[i].value for i in eachindex(m_old.parameters))
+
+    # The forecast step can use them: update! with the flat values reproduces them, and the
+    # steady state and the system solve
+    mb = deepcopy(m_old)
+    mb.parameters = deepcopy(pars)
+    DSGE.update!(mb, vals)
+    @test ModelConstructors.get_values(mb.parameters; regime_switching = true) == vals
+    @test mb[:σ_λ_f1].key == :σ_λ_f1
+    @test (compute_system(mb; tvis = true); true)
+
+    # The old approach: m_new's parameters on m_old, with m_old's stale name -> index table
+    bad = deepcopy(m_old)
+    bad.parameters = deepcopy(mn.parameters)
+    @test bad[:σ_λ_f1].key != :σ_λ_f1
+    @test_throws BoundsError steadystate!(bad)
+end
+
 # The full decomposition builds and forecasts ss104 several times (about 10 minutes), so it only
 # runs with DSGE_SLOW_TESTS=true.
 if get(ENV, "DSGE_SLOW_TESTS", "false") == "true"
@@ -112,6 +193,34 @@ if get(ENV, "DSGE_SLOW_TESTS", "false") == "true"
     @test all(m_old.parameters[i] !== m_new.parameters[i] for i in eachindex(m_old.parameters))
     @test regime_values(m_old) == vals_old
     @test isequal(df_old, df_old_copy)                                # pgap/ygap rows and columns were edited
+end
+
+@testset "decompose_forecast across a model change (fewer parameters, shocks and observables)" begin
+    m_new, m_old = ss104_new(Date(2026, 9, 30)), ss104_old(Date(2026, 6, 30))
+    function fake_df(m)
+        dates = DSGE.quarter_range(date_presample_start(m), date_conditional_end(m))
+        df = DataFrame(:date => collect(dates))
+        for k in keys(m.observables)
+            df[!, k] = allowmissing(k == :obs_gdp ? zeros(length(dates)) : fill(NaN, length(dates)))
+        end
+        df
+    end
+    df_new, df_old = fake_df(m_new), fake_df(m_old)
+    p_new, p_old = shifted_params(m_new, 0.10), shifted_params(m_old, 0.05)
+
+    # Used to throw a BoundsError in steadystate! (parameters), then in the shockdec mapping (shocks)
+    out = DSGE.decompose_forecast(m_new, m_old, df_new, df_old, p_new, p_old, :full, :full,
+                                  [:obs, :pseudo]; catch_smoother_lapack = true)
+    for (class, vars) in ((:obs, m_new.observables), (:pseudo, m_new.pseudo_observables))
+        total = out[Symbol(:decomptotal, class)]
+        @test size(total, 1) == length(vars)                              # rows are m_new's variables
+        @test size(out[Symbol(:decompshockdec, class)], 3) == length(m_new.exogenous_shocks)
+        # The components add up to the total: spd + release + cond + revise + model + param
+        parts = sum(out[Symbol(:decomp, c, class)] for c in (:spd, :release, :cond, :revise, :model, :param))
+        ok = .!isnan.(total)
+        @test any(ok)
+        @test parts[ok] ≈ total[ok] atol = 1e-8
+    end
 end
 end
 
