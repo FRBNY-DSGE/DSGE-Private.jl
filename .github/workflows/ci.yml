@@ -30,8 +30,10 @@ jobs:
       # DSGE's tests use SMC APIs newer than the latest registered SMC release.
       # Old: rev = "152cdc8003da57fd4a631cc9be88df6c9d4972ee" (fix/mixture-draw-rng). DSGE now passes
       # param_blocks and blockwise_c to SMC.smc, which that commit does not accept.
-      - name: "Use reviewed SMC param-blocks commit"
-        run: julia --project=. --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/FRBNY-DSGE/SMC.jl", rev = "270e28356cc5fbf6f4884f121ae1a29cffdd7ba6"))'
+      # Old: rev = "270e28356cc5fbf6f4884f121ae1a29cffdd7ba6" (feature/smc-param-blocks). The vintage-bridge
+      # tests need SMC bridge fixes B1-B3 (fix/bridge-b1-b3); re-pin to SMC main once that PR merges.
+      - name: "Use reviewed SMC bridge-fix commit"
+        run: julia --project=. --color=yes -e 'using Pkg; Pkg.add(PackageSpec(url = "https://github.com/FRBNY-DSGE/SMC.jl", rev = "31e1f649a641e5ffa295eb579e1a68ae31d07b4e"))'
       - uses: julia-actions/julia-buildpkg@v1
       - name: "Run the complete package test suite"
         env:
