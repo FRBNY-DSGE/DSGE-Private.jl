@@ -157,6 +157,79 @@ function align_by_date(new_dates::AbstractVector{Date}, old_dates::AbstractVecto
     return [get(old_rows, d, missing) for d in new_dates]
 end
 
+# Keys of a name => index dict (observables, shocks, ...) in index order.
+function dict_names_by_index(d::AbstractDict{Symbol, Int})
+    names = Vector{Symbol}(undef, length(d))
+    for (k, i) in d
+        names[i] = k
+    end
+    return names
+end
+
+# The variables (rows) of a decomposition class, in output order.
+function decomp_var_names(class::Symbol, observables::AbstractDict, pseudo_observables::AbstractDict,
+                          m::AbstractDSGEModel)
+    class == :obs    && return dict_names_by_index(observables)
+    class == :pseudo && return dict_names_by_index(pseudo_observables)
+    # Augmented states are numbered after the endogenous states
+    class == :states && return dict_names_by_index(merge(Dict{Symbol, Int}(m.endogenous_states),
+                                                         Dict{Symbol, Int}(m.endogenous_states_augmented)))
+    error("Unknown decomposition class $class")
+end
+
+"""
+```
+align_rows(x, from, to)
+```
+`x`, whose rows are the variables `from`, with its rows put on the variables `to` by name. Rows of
+`to` that are not in `from` are NaN. Returns `x` itself when `from == to`.
+"""
+function align_rows(x::AbstractArray, from::AbstractVector{Symbol}, to::AbstractVector{Symbol})
+    from == to && return x
+    size(x, 1) == length(from) ||
+        throw(DimensionMismatch("$(size(x, 1)) rows but $(length(from)) variable names"))
+    out = fill(NaN, length(to), size(x)[2:end]...)
+    for (j, name) in enumerate(to)
+        i = findfirst(==(name), from)
+        isnothing(i) || (selectdim(out, 1, j) .= selectdim(x, 1, i))
+    end
+    return out
+end
+
+# True when the two models have the same parameters in the same order.
+same_parameter_names(m1::AbstractDSGEModel, m2::AbstractDSGEModel) =
+    length(m1.parameters) == length(m2.parameters) &&
+    all(p1.key == p2.key for (p1, p2) in zip(m1.parameters, m2.parameters))
+
+"""
+```
+new_params_on_old_model(m_new, m_old, params_new, params_old)
+```
+Parameters for forecasting with `m_old` at the new estimates when the two models have different
+parameters. Each parameter of `m_old` that `m_new` also has (by name) is `m_new`'s, at `params_new`;
+every other parameter of `m_old` keeps its value at `params_old`. Returns the parameter vector, in
+`m_old`'s order, and the matching flat values (regime-1 values, then the other regimes' values, as
+`load_draws` returns them and `update!` reads them). Neither model is changed.
+"""
+function new_params_on_old_model(m_new::AbstractDSGEModel, m_old::AbstractDSGEModel,
+                                 params_new::AbstractVector, params_old::AbstractVector)
+    mn = deepcopy(m_new)
+    mo = deepcopy(m_old)
+    DSGE.update!(mn, params_new)
+    DSGE.update!(mo, params_old)
+    n_new = length(mn.parameters)
+    pars  = deepcopy(mo.parameters)
+    for (i, p) in enumerate(pars)
+        j = get(mn.keys, p.key, 0)
+        1 <= j <= n_new && (pars[i] = deepcopy(mn.parameters[j]))
+    end
+    # Solving leaves regime-switching parameters toggled to some regime; update! reads the flat values
+    # as regime 1 first (e.g. ρ_meas_π is fixed at 0 in regime 1 but bounded away from 0 in regime 2)
+    ModelConstructors.toggle_regime!(pars, 1)
+    vals = ModelConstructors.get_values(pars; regime_switching = true)
+    return pars, vals
+end
+
 function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataFrame,
                             params_new::Vector{Float64}, params_old::Vector{Float64},
                             cond_new::Symbol, cond_old::Symbol, classes::Vector{Symbol};
@@ -284,16 +357,32 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     #forecast with m_new, new params, and df without latest quarter of data, in which the last row is what the df_old's last row is
     #so out2-out3 or out1_5-out3 shows you what the effect of new data in that last quarter of old df is
 
+    # Only the columns both data frames have: the old model may observe series the new one doesn't
+    # (e.g. obs_avgshortinflation), and indexing df_new_lesscond with them threw an ArgumentError.
+    # When the columns are the same this is names(df_old), as before.
+    shared_cols = intersect(names(df_old), names(df_new_lesscond))
     if gap_exists
        df_new_lesscond[.&(df_new_lesscond[!, :date] .<= get_setting(m_old, :date_conditional_end), #quarter of conditional data
                                                                                                    #for m_old
                         df_new_lesscond[!, :date] .>= get_setting(m_old, :date_forecast_start)), #first forecast quarter of m_old
+                        shared_cols] = df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
+                        df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), shared_cols]
+    else
+       df_new_lesscond = vcat(df_new_lesscond, df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
+                                                         df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), shared_cols];
+                              cols = :union)
+    end
+    #= Old: used all of df_old's columns
+    if gap_exists
+       df_new_lesscond[.&(df_new_lesscond[!, :date] .<= get_setting(m_old, :date_conditional_end),
+                        df_new_lesscond[!, :date] .>= get_setting(m_old, :date_forecast_start)),
                         names(df_old)] = df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
                         df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), :]
     else
        df_new_lesscond = vcat(df_new_lesscond, df_old[.&(df_old[!, :date] .<= get_setting(m_old, :date_conditional_end),
                                                          df_old[!, :date] .>= get_setting(m_old, :date_forecast_start)), :])
     end
+    =#
 
      #use when the old forecast's cond type is none
     # df_new_lesscond[.&(df_new_lesscond[!, :date] .<= DSGE.iterate_quarters(get_setting(m_old, :date_conditional_end), - 1),
@@ -421,12 +510,34 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
 
 
     # Other Model Settings
+    if same_parameter_names(m_new, m_old)
+        m_old.parameters = deepcopy(m_new.parameters)
+        if haskey(m_new.settings, :model2para_regime)
+            m_old <= Setting(:model2para_regime, deepcopy(get_setting(m_new, :model2para_regime)))
+        end
+        params_new_on_old = params_new
+    else
+        # The models have different parameters (e.g. the old one has the anticipated mark-up σ's).
+        # Copying m_new's parameters onto m_old left m_old's name -> index table stale, so 17 names
+        # pointed at the wrong parameter and steadystate! threw a BoundsError. Map by name instead:
+        # shared parameters take the new values, the old model's own keep their old values.
+        m_old.parameters, params_new_on_old = new_params_on_old_model(m_new, m_old, params_new, params_old)
+        if haskey(m_new.settings, :model2para_regime) && haskey(m_old.settings, :model2para_regime)
+            m2p = deepcopy(get_setting(m_old, :model2para_regime))
+            for (k, v) in get_setting(m_new, :model2para_regime)
+                haskey(m_old.keys, k) && m_old.keys[k] <= length(m_old.parameters) && (m2p[k] = deepcopy(v))
+            end
+            m_old <= Setting(:model2para_regime, m2p)
+        end
+    end
+    #= Old: assumed both models have the same parameters in the same order
     m_old.parameters = deepcopy(m_new.parameters)
     if haskey(m_new.settings, :model2para_regime)
         m_old <= Setting(:model2para_regime, deepcopy(get_setting(m_new, :model2para_regime)))
     end
+    =#
 
-    out7 = f(m_old, df_old, params_new, cond_old, outputs = [:forecast, :shockdec],
+    out7 = f(m_old, df_old, params_new_on_old, cond_old, outputs = [:forecast, :shockdec],
              enforce_zlb = enforce_zlb_new, endogenous_zlb = endogenous_zlb_new,
              set_zlb_regime_vals = set_zlb_regime_vals_new)
 
@@ -453,6 +564,18 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
     decomp = Dict{Symbol, Array{Float64}}()
     # Decomposition
     for class in classes
+        # out7 and out8 come from m_old. If the models have different variables in this class (e.g.
+        # the old one also observes obs_avgshortinflation), put their rows on m_new's variables by
+        # name (NaN where m_old lacks one) so they can be subtracted from the m_new outputs.
+        vars_new = decomp_var_names(class, m_new_obs, m_new_pseudoobs, m_new)
+        vars_old = decomp_var_names(class, m_old.observables, m_old.pseudo_observables, m_old)
+        if vars_new != vars_old
+            for out in (out7, out8), var in (:histforecast, :trend, :dettrend)
+                key = Symbol(var, class)
+                haskey(out, key) && (out[key] = align_rows(out[key], vars_old, vars_new))
+            end
+        end
+
         # All elements of out are of size Ny x Nh, where the second dimension
         # ranges from t = T+1:T+H
         forecastvar = Symbol(:histforecast, class) # Z s_{T+h} + D
@@ -542,14 +665,24 @@ function decompose_forecast(m_new::M, m_old::M, df_new::DataFrame, df_old::DataF
         if (length(m_new_shocks) != length(m_old.exogenous_shocks)) || (class == :pseudo ? length(m_old.pseudo_observables) != length(m_new_pseudoobs) : length(m_old.observables) != length(m_new_obs))
 
             old_shocks = zeros(size(out1[shockdecvar]))
+            # Names in index order (the shockdec's third dimension and first dimension)
+            new_exog_keys = string.(dict_names_by_index(m_new_shocks))
+            old_exog_keys = string.(dict_names_by_index(m_old.exogenous_shocks))
+            new_var_keys  = string.(vars_new)
+            old_var_keys  = string.(vars_old)
+            #= Old: assumed the dicts iterate in index order, and treated :states as :pseudo
             new_exog_keys = string.(keys(m_new_shocks))
             old_exog_keys = string.(keys(m_old.exogenous_shocks))
             new_var_keys  = class == :obs ? string.(keys(m_new_obs)) : string.(keys(m_new_pseudoobs))
             old_var_keys  = class == :obs ? string.(keys(m_old.observables)) : string.(keys(m_old.pseudo_observables))
+            =#
             for i in 1:size(old_shocks, 3)
                 indi = findfirst(x -> x == new_exog_keys[i], old_exog_keys)
                 if !isnothing(indi)
-                    old_shock = zeros(size(out1[shockdecvar][:,:,indi]))
+                    # Size of one shock's slice of the new shockdec. Indexing out1 with the old model's
+                    # shock index indi threw a BoundsError once indi exceeded the new shock count.
+                    old_shock = zeros(size(out1[shockdecvar], 1), size(out1[shockdecvar], 2))
+                    #= Old: old_shock = zeros(size(out1[shockdecvar][:,:,indi])) =#
                     for j in 1:length(new_var_keys)
                         indj = findfirst(x -> x == new_var_keys[j], old_var_keys)
                         if !isnothing(indj)
