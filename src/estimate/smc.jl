@@ -123,8 +123,10 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
     as well as calculated acceptance rate, ESS, and number of times resampled.
 - `log_prob_old_data::Union{Nothing,Float64} = nothing`: Log p(\tilde y), the old-data
     marginal data density. Required when the prior share is strictly between zero and one.
-    Supplying it makes saved bridge weights yield the full-data MDD level; at zero prior
-    share, omitting it retains the incremental-MDD convention.
+    Supplying it puts the saved log MDD estimate (`log_mdd_estimates["smc"]`, which
+    `marginal_data_density` reads) on the full-data level. At zero prior share the saved
+    weights leave log p(\tilde y) out (SMC B1). Omitting it at zero prior share retains the
+    incremental-MDD convention.
 
 ### Outputs
 

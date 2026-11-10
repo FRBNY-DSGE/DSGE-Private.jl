@@ -122,6 +122,7 @@ my_tests = [
             "estimate/smc/reuse_system",
             "estimate/smc/smc",
             "estimate/smc/util",
+            "estimate/smc/vintage_bridge",
             "estimate/transform_transition_matrices",
             "estimate/util",
             "estimate/var/dsgevar_likelihood",

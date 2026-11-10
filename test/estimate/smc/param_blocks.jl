@@ -51,7 +51,7 @@ end
     # forward while leaving the particle state and subsequent SMC computation untouched.
     ck = load(ckpt)
     ck["stage_health"]["time"][1] = -1.0
-    save(ckpt, ck)
+    FileIO.save(ckpt, ck)
 
     smc2(m, blk_data; verbose = :none, run_csminwel = false, continue_intermediate = true,
          intermediate_stage_start = k)
