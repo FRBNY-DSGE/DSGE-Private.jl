@@ -194,6 +194,10 @@ function default_settings!(m::ModelConstructors.AbstractModel)
         "Fixed SMC mutation blocks of free parameters by name (the rest form one more block)")
     settings[:smc_blockwise_c] = Setting(:smc_blockwise_c, false,
         "Adapt a separate SMC mutation scale for each smc_param_blocks block and for the rest")
+    # Setting{Any}, so a Dict or a vector can replace the default nothing
+    settings[:smc_initial_c_blocks] = Setting{Any}(:smc_initial_c_blocks, nothing, false, "",
+        "Starting scale of each SMC block group with smc_blockwise_c (Dict label => scale, or a " *
+        "vector in group order); nothing = all start at step_size_smc")
     settings[:step_size_smc] = Setting(:step_size_smc, .5,
         "Scaling factor for covariance of the particles. Controls size of steps in mutation step")
     settings[:n_mh_steps_smc] = Setting(:n_mh_steps_smc, 1,
