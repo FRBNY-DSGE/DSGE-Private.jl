@@ -446,7 +446,9 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
 
             regime_switching = regime_switching,
             debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data,
-            initial_c_blocks_kw...)
+            # Extra SMC.smc keywords (e.g. the mutation drift options), a NamedTuple or Dict of Symbol => value
+            initial_c_blocks_kw...,
+            (haskey(get_settings(m), :smc_extra_kwargs) ? pairs(get_setting(m, :smc_extra_kwargs)) : ())...)
             #timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
 
     if run_csminwel
