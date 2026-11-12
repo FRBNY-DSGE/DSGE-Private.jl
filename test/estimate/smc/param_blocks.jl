@@ -75,6 +75,15 @@ end
     m4 = deepcopy(m); m4 <= Setting(:smc_blockwise_c, false)
     @test_throws ArgumentError smc2(m4, blk_data; verbose = :none, run_csminwel = false,
                                     continue_intermediate = true, intermediate_stage_start = k)
+
+    # Resuming from perturbed checkpoint particles must change the final cloud.
+    # Change every particle so resampling cannot discard the perturbation.
+    ck = load(ckpt)
+    ck["cloud"].particles[:, 1] .+= 1e-3
+    FileIO.save(ckpt, ck)
+    smc2(m, blk_data; verbose = :none, run_csminwel = false, continue_intermediate = true,
+         intermediate_stage_start = k)
+    @test load(final)["cloud"].particles != full["cloud"].particles
 end
 
 @testset "ss104: block names point at the right parameter and regime" begin
