@@ -26,7 +26,10 @@ For calculating the log marginal data density for a given posterior sample.
 ### Keyword Arguments
 
 - `estimation_method::Symbol`: either `:smc` or `:mh`
-- `calculation_method::Symbol`: either `:incremental_weights` or `:harmonic_mean`
+- `calculation_method::Symbol`: either `:incremental_weights` or `:harmonic_mean`. `:harmonic_mean` calls the
+    deprecated `marginal_data_density(params, logpost, free_para_inds)` (see its warning); use
+    `SMC.bridge_sampling` or `SMC.modified_harmonic_mean` instead. The incremental-weight estimate is biased
+    low when the SMC mutation lags the tempered posterior (see `SMC.smc_log_mdd`).
 - `parallel::Bool`
 - `bridge_vec::Vector{String}`: Estimation cloud files for all the bridges up to a scratch estimation.
     Used for incremental weights calculation of MDD. Scratch is last. Use of this input is ONLY NECESSARY
@@ -144,8 +147,23 @@ function tt2string(time_temper::Symbol)
     end
 end
 
+# Deprecated: the harmonic-mean port of margdensim.m (reviewed 13 Nov 2026). Kept, unchanged,
+# for existing callers; each call emits this deprecation warning (shown with --depwarn=yes).
+const LEGACY_MDD_DEPRECATION =
+    "is deprecated (the harmonic-mean port of margdensim.m) and will be removed. Known defects: " *
+    "(1) its callers pass free_para_inds = the non-fixed parameters, which drops the free regime-switching " *
+    "slots from θ, Σ and d; (2) eigenvalues of Σ below an absolute 1e-6 are dropped from log|Σ| and Σ⁻¹ while " *
+    "d = n_free_para is kept in χ²_d and (2π)^(-d/2), so the dimension is inconsistent; (3) the draws are " *
+    "averaged with equal weights (marginal_data_density_weighted uses the weights only for the mean and " *
+    "covariance); (4) the terms are exponentiated after centering on mean(logpost) instead of being summed " *
+    "in log space, so they can overflow or underflow. Use SMC.bridge_sampling (preferred) or " *
+    "SMC.modified_harmonic_mean (Geweke's estimator on the weighted cloud, with real_line = true for " *
+    "bounded parameters)."
+
 function marginal_data_density(params::Matrix{Float64}, logpost::Vector{Float64},
                                free_para_inds::Vector{Int64})
+    Base.depwarn("marginal_data_density(params, logpost, free_para_inds) " * LEGACY_MDD_DEPRECATION,
+                 :marginal_data_density)
     # From margdensim.m
     n_draws = size(params, 2)
     n_free_para = length(free_para_inds)
@@ -231,6 +249,7 @@ end
 function marginal_data_density_weighted(params::Matrix{Float64},
                                         logpost::Vector{Float64},
                                         free_para_inds::Vector{Int64}, cloud)
+    Base.depwarn("marginal_data_density_weighted " * LEGACY_MDD_DEPRECATION, :marginal_data_density_weighted)
     # From margdensim.m
     n_draws = size(params, 2)
     n_free_para = length(free_para_inds)

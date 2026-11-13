@@ -107,3 +107,12 @@ if run_benchmarks
 end
 
 nothing
+
+#-----------------------------------------------------------------
+# deprecation of the harmonic-mean functions (the warning shows with --depwarn=yes;
+# @test_deprecated only evaluates the call when depwarn is off)
+#-----------------------------------------------------------------
+@testset "legacy harmonic-mean MDD functions are deprecated" begin
+    @test (@test_deprecated r"deprecated.*regime-switching.*SMC.bridge_sampling" marginal_data_density(params, logpost, free_para_inds)) == mdd
+    @test (@test_deprecated r"marginal_data_density_weighted is deprecated" DSGE.marginal_data_density_weighted(params, logpost, free_para_inds, cloud_mat)) == wmdd
+end
