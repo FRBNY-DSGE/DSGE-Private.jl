@@ -426,7 +426,7 @@ Initializes the model's settings as per sub specification. These settings are in
 function init_settings!(m::Model1002)
     subspec_int = parse(Int, subspec(m)[3:end])
 
-    if subspec_int == 104
+    if subspec_int in (104, 114)
         m <= Setting(:mon_anticipated_ait_shocks, [1, 2, 3, 4, 5, 6])
         m <= Setting(:expected_ffr, [1, 2, 3, 4, 5, 6])
         m <= Setting(:all_ffr_qs, [1, 2, 3, 4, 5, 6])
@@ -437,8 +437,20 @@ function init_settings!(m::Model1002)
         m <= Setting(:add_taylor_rm, true)
         m <= Setting(:standard_shocks_mode_adjust, 1, false, "modeadj", "")
         m <= Setting(:standard_shocks_spread_adjust, 2, false, "spreadadj", "")
-        m <= Setting(:add_altpolicy_pgap, true)
-        m <= Setting(:add_altpolicy_ygap, true)
+        if subspec_int == 104
+            m <= Setting(:add_altpolicy_pgap, true)
+            m <= Setting(:add_altpolicy_ygap, true)
+        else
+            # ss114 = ss104 without the AIT switch (see ss114!): the price- and output-gap states only
+            # feed the AIT rule, so they are left out, together with their 2020Q2 initialization
+            # pseudo-observables obs_pgap/obs_ygap and shocks pgap_sh/ygap_sh. The (fixed) σ_pgap and
+            # σ_ygap parameters are kept, unused, so the parameter vector is the same as ss104's.
+            m <= Setting(:add_altpolicy_pgap, false)
+            m <= Setting(:add_altpolicy_ygap, false)
+            m <= Setting(:add_pgap, false)
+            m <= Setting(:add_ygap, false)
+            m <= Setting(:add_initialize_pgap_ygap_pseudoobs, false)
+        end
     end
 end
 
@@ -887,8 +899,10 @@ buted to steady-state inflation.",
                        tex_label = "\\kappa_{pce}")
     end
 
-    if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
-        get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false
+    # ss114 has no pgap/ygap states but keeps these two fixed parameters (unused), so that the subspec
+    # chain it shares with ss104 (ss62!-ss97!) works unchanged and the parameter vector equals ss104's
+    if (haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
+        get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false) || subspec(m) == "ss114"
         m <= parameter(:σ_pgap, 0., (0., 1e2), (0., 5.), ModelConstructors.Exponential(),
                        RootInverseGamma(2. * (20.)^2 ./ .1, sqrt((4.)^2  + .1)), fixed=true,
                        tex_label="\\sigma_{pgap}")
@@ -1456,8 +1470,8 @@ function parameter_groupings(m::Model1002)
     if subspec(m) == "ss207"
         push!(excl_params_sym, :κ_pce)
     end
-    if haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
-        get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false
+    if (haskey(get_settings(m), :add_initialize_pgap_ygap_pseudoobs) ?
+        get_setting(m, :add_initialize_pgap_ygap_pseudoobs) : false) || subspec(m) == "ss114"
         push!(excl_params_sym, :σ_pgap, :σ_ygap)
     end
     if haskey(get_settings(m), :add_iid_cond_obs_gdp_meas_err) ?

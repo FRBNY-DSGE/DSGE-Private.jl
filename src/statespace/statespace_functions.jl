@@ -115,8 +115,18 @@ function compute_system(m::AbstractDSGEModel{T}; tvis::Bool = false,
                                     verbose = verbose)
         elseif uncertain_altpolicy
             # Handle this special case on its own
-            compute_uncertain_altpolicy_system_helper(m; tvis = tvis, compute_pseudo = compute_pseudo,
-                                                      verbose = verbose)
+            n_measured = likelihood_measured_regime_count(m, sample_end_date; compute_pseudo = compute_pseudo)
+            if n_measured > 0
+                # Every transition is still solved; only the measurement equations of regimes
+                # 1:n_measured are formed (see ?DSGE.likelihood_measured_regime_count)
+                task_local_storage(LIKELIHOOD_MEASURED_REGIMES_KEY, n_measured) do
+                    compute_uncertain_altpolicy_system_helper(m; tvis = tvis, compute_pseudo = compute_pseudo,
+                                                              verbose = verbose)
+                end
+            else
+                compute_uncertain_altpolicy_system_helper(m; tvis = tvis, compute_pseudo = compute_pseudo,
+                                                          verbose = verbose)
+            end
         else
             compute_system_helper(m; tvis = tvis, sample_end_date = sample_end_date,
                                   compute_pseudo = compute_pseudo, verbose = verbose)
@@ -164,6 +174,48 @@ function likelihood_regime_count(m::AbstractDSGEModel, sample_end_date::Union{Da
     last_observed = findlast(reg -> dates[reg] <= sample_end_date, 1:filter_regimes)
     return isnothing(last_observed) ? n_regimes : last_observed
 end
+
+const LIKELIHOOD_MEASURED_REGIMES_KEY = :DSGE_likelihood_measured_regimes
+
+"""
+```
+likelihood_measured_regime_count(m, sample_end_date; compute_pseudo = true)
+```
+
+returns the number `k` of regimes whose measurement equations a likelihood on data ending in
+`sample_end_date` uses, when the setting `:likelihood_truncated_regimes` is `true`; otherwise 0.
+Only models solved by `compute_uncertain_altpolicy_system_helper` (imperfect awareness) use it.
+
+With `k > 0`, the state-space system is computed exactly as usual, including every transition
+equation of every regime and of every perfectly credible policy (so a draw at which any regime
+has no unique stable solution still gets `-Inf`), but the measurement equations, and their
+averaging across policies, are formed for regimes `1:k` only, and the system returned has the
+first `k` regimes. The measurement equation of a regime `reg <= k` reads only transition
+matrices (through its information set), never another regime's measurement equation, and
+`measurement` resets the parameters to regime 1 when it returns, so regimes `1:k` are bitwise
+those of the full system.
+
+`k` is used only if the system is for a likelihood (`sample_end_date` given, no
+pseudo-measurement equations), `1 <= k < n_regimes` and the model has no measurement
+equation that takes all regimes at once.
+"""
+function likelihood_measured_regime_count(m::AbstractDSGEModel{T}, sample_end_date::Union{Date, Nothing};
+                                          compute_pseudo::Bool = true) where {T <: Real}
+    settings = get_settings(m)
+    (haskey(settings, :likelihood_truncated_regimes) && get_setting(m, :likelihood_truncated_regimes)) || return 0
+    (isnothing(sample_end_date) || compute_pseudo) && return 0
+    haskey(task_local_storage(), LIKELIHOOD_MEASURED_REGIMES_KEY) && return 0 # only the outermost system
+    (haskey(settings, :regime_switching) && get_setting(m, :regime_switching)) || return 0
+    hasmethod(measurement, (typeof(m), Vector{Matrix{T}}, Vector{Matrix{T}}, Vector{Vector{T}})) &&
+        return 0
+    n_regimes = haskey(settings, :n_regimes) ? get_setting(m, :n_regimes) : 1
+    k = likelihood_regime_count(m, sample_end_date, n_regimes)
+    return 1 <= k < n_regimes ? k : 0
+end
+
+# Number of regimes whose measurement equations RegimeSwitchingSystem(m, ...) forms: all, unless an
+# outer compute_system set LIKELIHOOD_MEASURED_REGIMES_KEY (see likelihood_measured_regime_count)
+measured_regime_count(n_regimes::Int) = min(n_regimes, get(task_local_storage(), LIKELIHOOD_MEASURED_REGIMES_KEY, n_regimes))
 
 """
 ```
@@ -503,6 +555,10 @@ function RegimeSwitchingSystem(m::AbstractDSGEModel{T}, TTTs::Vector{<: Abstract
         nothing
     end
 
+    # Measurement equations of regimes > n_measured are empty placeholders when a likelihood
+    # needs only the first regimes (:likelihood_truncated_regimes; = n_regimes otherwise)
+    n_measured = measured_regime_count(n_regimes)
+
     # Infer which measurement and pseudo-measurement equations to use
     model_type = typeof(m)
     type_tuple = (model_type, Vector{Matrix{T}}, Vector{Matrix{T}}, Vector{Vector{T}})
@@ -519,7 +575,7 @@ function RegimeSwitchingSystem(m::AbstractDSGEModel{T}, TTTs::Vector{<: Abstract
 
             measurement_equations = Vector{Measurement{T}}(undef, n_regimes)
             for reg in 1:n_regimes
-                measurement_equations[reg] = if empty_meas_eqn[reg]
+                measurement_equations[reg] = if empty_meas_eqn[reg] || reg > n_measured # placeholder: not used by the likelihood
                     Measurement(Matrix{T}(undef, 0, 0), Vector{T}(undef, 0),
                                 Matrix{T}(undef, 0, 0), Matrix{T}(undef, 0, 0))
                 else
@@ -558,7 +614,7 @@ function RegimeSwitchingSystem(m::AbstractDSGEModel{T}, TTTs::Vector{<: Abstract
 
             measurement_equations = Vector{Measurement{T}}(undef, n_regimes)
             for reg in 1:n_regimes
-                measurement_equations[reg] = if empty_meas_eqn[reg]
+                measurement_equations[reg] = if empty_meas_eqn[reg] || reg > n_measured # placeholder: not used by the likelihood
                     Measurement(Matrix{T}(undef, 0, 0), Vector{T}(undef, 0),
                                 Matrix{T}(undef, 0, 0), Matrix{T}(undef, 0, 0))
                 else
@@ -717,7 +773,9 @@ function compute_uncertain_altpolicy_system_helper(m::AbstractDSGEModel{T}; tvis
         get_setting(m, :empty_measurement_equation) : falses(n_regimes)
     empty_pseudo_meas_eqn = haskey(get_settings(m), :empty_pseudo_measurement_equation) ?
         get_setting(m, :empty_pseudo_measurement_equation) : falses(n_regimes)
+    n_measured = measured_regime_count(n_regimes) # < n_regimes only for :likelihood_truncated_regimes
     for reg in sort!(collect(keys(regime_eqcond_info)))
+        n_measured < n_regimes && reg > n_measured && continue # placeholder measurement equation, not used by the likelihood
 
         new_wt = regime_eqcond_info[reg].weights
 
@@ -768,6 +826,12 @@ function compute_uncertain_altpolicy_system_helper(m::AbstractDSGEModel{T}; tvis
                 end
             end
         end
+    end
+
+    if n_measured < n_regimes
+        # Return only the regimes the likelihood uses (as compute_insample_system does)
+        return RegimeSwitchingSystem(system_main.transitions[1:n_measured], system_main.measurements[1:n_measured],
+                                     system_main.pseudo_measurements[1:n_measured])
     end
 
     return system_main

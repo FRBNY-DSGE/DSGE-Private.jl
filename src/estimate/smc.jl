@@ -79,6 +79,9 @@ keyword argument for `SMC.smc` to distinguish the setting from MH estimation set
     instead of solving the model a second time. The old-data likelihood is bitwise the same, as
     the system depends only on the parameters. Off when parameters or regimes are dropped for
     the old model or `regime_switching` differs from the `:regime_switching` setting. Default: false.
+- `smc_extra_kwargs::Union{NamedTuple, AbstractDict{Symbol}}`: Additional keywords passed to
+    `SMC.smc`, for options without a dedicated DSGE setting. These take precedence if a keyword
+    is also supplied by a dedicated setting.
 
 ### Keyword Arguments
 - `old_data::Matrix{Float64}` = []: A matrix containing the time series of observables of previous data
@@ -446,7 +449,9 @@ savepath = rawpath(m, "estimate", "smc_cloud.jld2", filestring_addl)
 
             regime_switching = regime_switching,
             debug_assertion = debug_assertion, log_prob_old_data = log_prob_old_data,
-            initial_c_blocks_kw...)
+            # Extra SMC.smc keywords (e.g. the mutation drift options), a NamedTuple or Dict of Symbol => value
+            initial_c_blocks_kw...,
+            (haskey(get_settings(m), :smc_extra_kwargs) ? pairs(get_setting(m, :smc_extra_kwargs)) : ())...)
             #timing_tests = haskey(m.settings, :smc_timing) && get_setting(m, :smc_timing))
 
     if run_csminwel
