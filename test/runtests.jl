@@ -164,6 +164,7 @@ my_tests = [
             "models/representative/m1002/m1002",
             "models/representative/m1002/estimation_cache",
             "models/representative/m1002/ss104",
+            "models/representative/m1002/ss114",
             "models/representative/gdp_gdi_meas_err",
             "models/representative/m1010/m1010",
             "models/representative/m805/m805",
