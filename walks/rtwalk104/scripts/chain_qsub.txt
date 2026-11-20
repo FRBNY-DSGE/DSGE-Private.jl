@@ -1,0 +1,78 @@
+# RTWALK104 chain: paste these qsub lines on the head node (they only submit). Revised after RTWALK104-REVIEW (§5, §6).
+#
+# Chain safety (scripts/run.sh, tested on this site by tests/test_exitcodes.txt, jobs 343093-343096):
+#   - julia runs under `timeout WALL`; on the wall limit run.sh exits 99 -> SGE requeues the SAME job, which resumes from
+#     its newest loadable stage file (INCREMENT = 1). Jobs held on it keep waiting.
+#   - any failure (error, HEALTH_FAIL = exit 2) -> run.sh exits 100 -> the job goes to error state (Eqw) and every later
+#     job, held with -hold_jid on it, STAYS held. A plain non-zero exit would have released the next step (review §6 a).
+#     Inspect the log, then (RTWALK104-FIXVERIFY N1; tested on this site, RTWALK104-N123):
+#       * after an ERROR exit (no HEALTH_* marker in the step dir): fix the cause, then `qmod -cj <jobid>`; the step
+#         resumes from its newest loadable stage file.
+#       * after a HEALTH_FAIL (marker steps/<t>_to_<t+1>/HEALTH_FAIL): `qmod -cj` ALONE IS NOT ENOUGH (step.jl finds the
+#         marker, exits 2, back to Eqw). Add the redo variables, then clear:
+#           qalter -adds v HEALTH_REDO 1 -adds v H_POLISH <k> <jobid>
+#           qmod -cj <jobid>
+#         Use `-adds v KEY VALUE` (adds, or overwrites an existing KEY; `-mods v KEY VALUE` also overwrites), not
+#         `qalter -v ...`: per `man qsub`, -v "defines or redefines" the variable list, so it may drop NW, WALL, ORIGIN,
+#         SEED_CLOUD, FRBNY_NW. (In the N123 test, job 343118, `qalter -v C=3` happened to keep A and B, but -adds is the
+#         documented additive form.) The bridge file is complete, so only the health check reruns.
+#       * or `qdel` the job together with its dependants.
+#   - steps 4-25 (FRBNY_NW=96), after any requeue (exit 99) or Eqw (RTWALK104-FIXVERIFY N4): if the master was killed
+#     while its FRBNY worker job was still PENDING, that worker job (name julia-<pid>, cwd $R/workers) stays queued and
+#     would later start, hold 96 slots until its workers give up on the dead master (JULIA_WORKER_TIMEOUT = 300 s in
+#     the job env here: about 8 slot-h and a few minutes of queue delay per orphan), then exit. run.sh lists such jobs in the step log ("N4 WARNING"); it never
+#     deletes them. Check `qstat -u $USER | grep julia-` and `qdel` a stray one by hand (only a pending julia-* job whose
+#     `qstat -j <id> | grep ^cwd` is $R/workers and that the current master did not submit: compare with the
+#     "worker job" id in the current step log / the newest julia-<pid>).
+#   - -r y: requeued after a node failure. WALL < h_rt < the FRBNY worker cap (38.27 h); the worker job gets
+#     h_rt = 38:00:00 (step.jl, frbnyjuliamemory = "8G,h_rt=38:00:00").
+#   - second line of defence: step.jl refuses a walk seed whose step directory has no HEALTH_PASS.
+#
+# SEED0 (configurable): the final polished 2019Q4 RT cloud of work/rtvint104-health. AS OF 4 Nov 2026 22:30 THAT FILE IS
+# STILL BEING REWRITTEN by the polishing jobs rth_pol2 (running) / rth_pol3 / rth_pol4 (queued) of another agent, so step 1
+# is submitted with a USER HOLD (-h): release it with `qrls <jobid of rtw_2020Q1>` only after rth_pol4 has finished and
+# RTVINT104-HEALTH.md declares cloud_polished.jld2 final (do not touch that directory or its jobs).
+# Settings via -v (defaults = the seed run): PHI_TARGET=0.95, N_PART=<seed size, 15000>, REUSE_SYSTEM=1 (DSGE reuse
+# patch, bitwise-tested), INCREMENT=1, H_PASSES=10, H_POLISH=0. Add H_POLISH=k for polishing (gate = last H_PASSES passes).
+# RTWALK104-STEP1FIX (5 Nov 2026): MH block groups [ρ_σ_w], [covid = the CAND38 slots free at t+1], rest (setup.jl
+#   walk_block_groups; WALK_BLOCKS=two restores the old two groups); c_blocks carried by label; health.jl moves the covid
+#   group by a random walk on log θ (H_COVID_LOG=1) and gates the noise floor of the extrapolated gap (H_GAP_NOISE_MAX).
+#   Step 1 (job 343107, HEALTH_FAIL with the old two groups): recover by POLISHING the existing bridge cloud with the new
+#   kernel, not by re-running the bridge (RTWALK104-STEP1FIX.md §4). After applying n123.diff and step1fix.diff:
+#     qalter -adds v HEALTH_REDO 1 -adds v H_POLISH 140 343107
+#     qmod -cj 343107
+#   (≈ 150 passes × 85 s ≈ 3.6 h wall on 29 slots, ≈ 105 slot-h; the bridge file is complete, so only the health check runs.)
+#   Steps 2-3 (343122/343123, held): suggested `qalter -adds v H_POLISH 30 <jobid>` before step 1 finishes (RTWALK104 §6
+#   already planned H_POLISH=20 for steps 1-4; with polishing the max-correlation gate is taken on the polishing kernel).
+R=/data/dsge_data_dir/estimation-AI/work/rtwalk104
+SEED0=/data/dsge_data_dir/estimation-AI/work/rtvint104-health/cloud_polished.jld2
+# ---- steps 1-3 (samples to 2020Q3: in-sample regimes, 0.04 s likelihood): one node, 29 slots, h_rt 12 h, WALL 11.5 h
+qsub -b y -q all.q -wd $R -j y -r y -h -N rtw_2020Q1 -o $R/logs/step_2019Q4_to_2020Q1.log -l h_vmem=8G,h_rt=12:00:00 -pe smp 29 -v NW=28,WALL=41400,ORIGIN=2019Q4,SEED_CLOUD=$SEED0 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2020Q2 -hold_jid rtw_2020Q1 -o $R/logs/step_2020Q1_to_2020Q2.log -l h_vmem=8G,h_rt=12:00:00 -pe smp 29 -v NW=28,WALL=41400,ORIGIN=2020Q1,SEED_CLOUD=$R/steps/2019Q4_to_2020Q1/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2020Q3 -hold_jid rtw_2020Q2 -o $R/logs/step_2020Q2_to_2020Q3.log -l h_vmem=8G,h_rt=12:00:00 -pe smp 29 -v NW=28,WALL=41400,ORIGIN=2020Q2,SEED_CLOUD=$R/steps/2020Q1_to_2020Q2/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+# ---- steps 4-25 (full 29-regime solve from 2020Q4): 1-slot master (40G) + FRBNY_NW=96 workers, h_rt 38 h, WALL 37 h
+# Step 4 sets REUSE_SYSTEM=1 explicitly (step.jl's default is off there, k(old) = 4). Paired timing on the same 40 θ x 2
+# reps, alternating arm order (RTWALK104-N123, jobs 343112/343113): per proposal 0.623 -> 0.619 s and 0.617 -> 0.610 s
+# (median paired ratio 0.985 in both; the old-data part 0.042 -> 0.035 s), old loglh bitwise 160/160. Exact either way.
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2020Q4 -hold_jid rtw_2020Q3 -o $R/logs/step_2020Q3_to_2020Q4.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,REUSE_SYSTEM=1,ORIGIN=2020Q3,SEED_CLOUD=$R/steps/2020Q2_to_2020Q3/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2021Q1 -hold_jid rtw_2020Q4 -o $R/logs/step_2020Q4_to_2021Q1.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2020Q4,SEED_CLOUD=$R/steps/2020Q3_to_2020Q4/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2021Q2 -hold_jid rtw_2021Q1 -o $R/logs/step_2021Q1_to_2021Q2.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2021Q1,SEED_CLOUD=$R/steps/2020Q4_to_2021Q1/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2021Q3 -hold_jid rtw_2021Q2 -o $R/logs/step_2021Q2_to_2021Q3.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2021Q2,SEED_CLOUD=$R/steps/2021Q1_to_2021Q2/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2021Q4 -hold_jid rtw_2021Q3 -o $R/logs/step_2021Q3_to_2021Q4.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2021Q3,SEED_CLOUD=$R/steps/2021Q2_to_2021Q3/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2022Q1 -hold_jid rtw_2021Q4 -o $R/logs/step_2021Q4_to_2022Q1.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2021Q4,SEED_CLOUD=$R/steps/2021Q3_to_2021Q4/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2022Q2 -hold_jid rtw_2022Q1 -o $R/logs/step_2022Q1_to_2022Q2.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2022Q1,SEED_CLOUD=$R/steps/2021Q4_to_2022Q1/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2022Q3 -hold_jid rtw_2022Q2 -o $R/logs/step_2022Q2_to_2022Q3.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2022Q2,SEED_CLOUD=$R/steps/2022Q1_to_2022Q2/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2022Q4 -hold_jid rtw_2022Q3 -o $R/logs/step_2022Q3_to_2022Q4.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2022Q3,SEED_CLOUD=$R/steps/2022Q2_to_2022Q3/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2023Q1 -hold_jid rtw_2022Q4 -o $R/logs/step_2022Q4_to_2023Q1.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2022Q4,SEED_CLOUD=$R/steps/2022Q3_to_2022Q4/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2023Q2 -hold_jid rtw_2023Q1 -o $R/logs/step_2023Q1_to_2023Q2.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2023Q1,SEED_CLOUD=$R/steps/2022Q4_to_2023Q1/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2023Q3 -hold_jid rtw_2023Q2 -o $R/logs/step_2023Q2_to_2023Q3.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2023Q2,SEED_CLOUD=$R/steps/2023Q1_to_2023Q2/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2023Q4 -hold_jid rtw_2023Q3 -o $R/logs/step_2023Q3_to_2023Q4.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2023Q3,SEED_CLOUD=$R/steps/2023Q2_to_2023Q3/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2024Q1 -hold_jid rtw_2023Q4 -o $R/logs/step_2023Q4_to_2024Q1.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2023Q4,SEED_CLOUD=$R/steps/2023Q3_to_2023Q4/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2024Q2 -hold_jid rtw_2024Q1 -o $R/logs/step_2024Q1_to_2024Q2.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2024Q1,SEED_CLOUD=$R/steps/2023Q4_to_2024Q1/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2024Q3 -hold_jid rtw_2024Q2 -o $R/logs/step_2024Q2_to_2024Q3.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2024Q2,SEED_CLOUD=$R/steps/2024Q1_to_2024Q2/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2024Q4 -hold_jid rtw_2024Q3 -o $R/logs/step_2024Q3_to_2024Q4.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2024Q3,SEED_CLOUD=$R/steps/2024Q2_to_2024Q3/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2025Q1 -hold_jid rtw_2024Q4 -o $R/logs/step_2024Q4_to_2025Q1.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2024Q4,SEED_CLOUD=$R/steps/2024Q3_to_2024Q4/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2025Q2 -hold_jid rtw_2025Q1 -o $R/logs/step_2025Q1_to_2025Q2.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2025Q1,SEED_CLOUD=$R/steps/2024Q4_to_2025Q1/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2025Q3 -hold_jid rtw_2025Q2 -o $R/logs/step_2025Q2_to_2025Q3.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2025Q2,SEED_CLOUD=$R/steps/2025Q1_to_2025Q2/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2025Q4 -hold_jid rtw_2025Q3 -o $R/logs/step_2025Q3_to_2025Q4.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2025Q3,SEED_CLOUD=$R/steps/2025Q2_to_2025Q3/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
+qsub -b y -q all.q -wd $R -j y -r y -N rtw_2026Q1 -hold_jid rtw_2025Q4 -o $R/logs/step_2025Q4_to_2026Q1.log -l h_vmem=40G,h_rt=38:00:00 -v NW=0,FRBNY_NW=96,WALL=133200,ORIGIN=2025Q4,SEED_CLOUD=$R/steps/2025Q3_to_2025Q4/cloud_health.jld2 /bin/bash $R/scripts/run.sh step.jl
